@@ -221,9 +221,9 @@ const Dashboard = () => {
                 <CardContent className="p-4">
                   <h3 className="text-lg font-semibold text-green-400 mb-3">📈 Dernier rapport IA :</h3>
                   <div className="font-mono text-sm text-green-400 space-y-2 bg-black p-3 rounded">
-                    <p>> Analyse de 142 pubs...</p>
-                    <p>> Détection tendance haussière crypto</p>
-                    <p>> Profit estimé : +47€</p>
+                    <p>{"> Analyse de 142 pubs..."}</p>
+                    <p>{"> Détection tendance haussière crypto"}</p>
+                    <p>{"> Profit estimé : +47€"}</p>
                     <p className="blink-cursor">&nbsp;</p>
                   </div>
                 </CardContent>
