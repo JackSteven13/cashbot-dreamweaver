@@ -10,7 +10,7 @@ const Index = () => {
   const features = [
     {
       title: 'Intelligence Artificielle',
-      description: 'Notre moteur d'IA analyse des millions de données financières pour prendre les meilleures décisions.',
+      description: 'Notre moteur d\'IA analyse des millions de données financières pour prendre les meilleures décisions.',
       icon: <Cpu className="w-6 h-6" />
     },
     {
@@ -30,7 +30,7 @@ const Index = () => {
     },
     {
       title: 'Rendements Supérieurs',
-      description: 'Nos algorithmes surpassent constamment les méthodes d'investissement traditionnelles.',
+      description: 'Nos algorithmes surpassent constamment les méthodes d\'investissement traditionnelles.',
       icon: <TrendingUp className="w-6 h-6" />
     },
     {
