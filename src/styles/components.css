@@ -1,0 +1,51 @@
+
+/* Custom Components */
+@layer components {
+  .glass-card,
+  .glass-panel {
+    @apply bg-background/60 backdrop-blur-sm border border-border/50 shadow-sm;
+  }
+  
+  .bg-gradient-subtle {
+    @apply bg-gradient-to-b from-background to-muted/50;
+  }
+
+  /* Cyberpunk Theme Components */
+  .cyberpunk-bg {
+    background: #0f0f23;
+    color: #00ff00;
+  }
+
+  .neuro-panel {
+    background: #1a1a2f;
+    padding: 2rem;
+    border-radius: 20px;
+    border: 2px solid #4CAF50;
+    @apply shadow-lg;
+  }
+
+  .cyber-card {
+    background: #1a1a2f;
+    padding: 1.5rem;
+    border-radius: 10px;
+    border: 1px solid #4CAF50;
+    @apply shadow-md;
+  }
+
+  .cyber-terminal {
+    background: #000;
+    color: #4CAF50;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #4CAF50;
+    font-family: 'Courier New', monospace;
+  }
+  
+  /* Price Card Highlight */
+  .price-highlight {
+    position: relative;
+    border: 2px solid #00ff00;
+    transform: scale(1.05);
+    z-index: 1;
+  }
+}
