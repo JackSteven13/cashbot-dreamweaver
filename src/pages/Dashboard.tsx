@@ -10,10 +10,13 @@ import {
   LogOut, 
   Settings, 
   Share2, 
-  UserCircle 
+  UserCircle,
+  Copy
 } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 import Button from '@/components/Button';
 import SessionCard from '@/components/SessionCard';
+import { Card, CardContent } from '@/components/ui/card';
 
 // Mock data - in a real app, this would come from your backend
 const mockUser = {
@@ -50,8 +53,20 @@ const Dashboard = () => {
     // Simulate a session (in a real app, this would call your backend)
     setTimeout(() => {
       setIsStartingSession(false);
+      toast({
+        title: "Session démarrée",
+        description: "L'IA analyse actuellement le marché pour vous",
+      });
       // You would typically update the user data here from your backend
     }, 2000);
+  };
+
+  const handleCopyReferralLink = () => {
+    navigator.clipboard.writeText(mockUser.referralLink);
+    toast({
+      title: "Lien copié !",
+      description: "Votre lien de parrainage a été copié dans le presse-papier",
+    });
   };
 
   return (
@@ -164,56 +179,55 @@ const Dashboard = () => {
         
         {/* Content */}
         <main className="flex-1 p-4 md:p-6">
-          {/* Balance Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="glass-card p-6 rounded-xl">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Solde actuel</h3>
-                <DollarSign className="text-primary" size={20} />
-              </div>
-              <p className="text-3xl font-bold mt-2">{mockUser.balance.toFixed(2)}€</p>
-              <p className="text-sm text-muted-foreground mt-1">Dernière mise à jour il y a 2 heures</p>
-            </div>
-            
-            <div className="glass-card p-6 rounded-xl">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Abonnement</h3>
-                <CreditCard className="text-primary" size={20} />
-              </div>
-              <p className="text-3xl font-bold mt-2 capitalize">{mockUser.subscription}</p>
-              <p className="text-sm text-muted-foreground mt-1">Profit max: 100€/jour</p>
-            </div>
-            
-            <div className="glass-card p-6 rounded-xl">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Nombre de parrainages</h3>
-                <Share2 className="text-primary" size={20} />
-              </div>
-              <p className="text-3xl font-bold mt-2">{mockUser.referrals.length}</p>
-              <div className="flex items-center mt-1">
-                <input 
-                  type="text" 
-                  value={mockUser.referralLink} 
-                  readOnly 
-                  className="text-xs bg-secondary/50 rounded px-2 py-1 flex-1 mr-2 truncate"
-                />
-                <Button variant="outline" size="sm">Copier</Button>
-              </div>
-            </div>
-          </div>
-          
-          {/* Start Session */}
+          {/* Main Dashboard Panel */}
           <div className="glass-panel p-6 rounded-xl mb-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-semibold">Démarrer une session</h2>
-                <p className="text-muted-foreground mt-1">
-                  Lancez l'algorithme CashBot pour commencer à générer des profits
-                </p>
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Left Column */}
+              <div className="flex-1">
+                <div className="flex items-center mb-6">
+                  <DollarSign className="text-primary h-8 w-8 mr-2" />
+                  <h2 className="text-2xl font-semibold">Solde : {mockUser.balance.toFixed(2)}€</h2>
+                </div>
+                
+                <Button 
+                  size="lg" 
+                  fullWidth 
+                  className="pulse-animation mb-6"
+                  isLoading={isStartingSession} 
+                  onClick={handleStartSession}
+                >
+                  {isStartingSession ? "Analyse en cours..." : "▶️ Lancer une session IA"}
+                </Button>
+                
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold mb-3">🚀 Votre lien magique :</h3>
+                  <div className="flex">
+                    <input 
+                      type="text" 
+                      value={mockUser.referralLink} 
+                      readOnly 
+                      className="bg-secondary/40 rounded-l-lg px-3 py-2 flex-1 text-sm"
+                    />
+                    <Button variant="outline" onClick={handleCopyReferralLink} className="rounded-l-none">
+                      <Copy size={16} />
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">Gagnez 70% sur chaque filleul !</p>
+                </div>
               </div>
-              <Button size="lg" isLoading={isStartingSession} onClick={handleStartSession}>
-                {isStartingSession ? "Analyse en cours..." : "Lancer la session"}
-              </Button>
+              
+              {/* Right Column - AI Terminal */}
+              <Card className="w-full lg:w-1/2 bg-black border-gray-800">
+                <CardContent className="p-4">
+                  <h3 className="text-lg font-semibold text-green-400 mb-3">📈 Dernier rapport IA :</h3>
+                  <div className="font-mono text-sm text-green-400 space-y-2 bg-black p-3 rounded">
+                    <p>> Analyse de 142 pubs...</p>
+                    <p>> Détection tendance haussière crypto</p>
+                    <p>> Profit estimé : +47€</p>
+                    <p className="blink-cursor">&nbsp;</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
           
