@@ -70,11 +70,11 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen overflow-hidden cyberpunk-bg">
       {/* Sidebar */}
-      <div className="hidden md:flex w-64 flex-col bg-card border-r border-border">
+      <div className="hidden md:flex w-64 flex-col bg-[#1a1a2f] border-r border-[#4CAF50]">
         <div className="p-6">
-          <Link to="/" className="text-2xl font-semibold tracking-tight">
+          <Link to="/" className="text-2xl font-semibold tracking-tight text-[#4CAF50]">
             CashBot
           </Link>
         </div>
@@ -83,8 +83,8 @@ const Dashboard = () => {
           <button
             className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
               selectedNavItem === 'dashboard' 
-                ? 'bg-primary text-primary-foreground' 
-                : 'hover:bg-secondary text-foreground'
+                ? 'bg-[#4CAF50] text-black' 
+                : 'hover:bg-[#2a2a4f] text-[#00ff00]'
             }`}
             onClick={() => setSelectedNavItem('dashboard')}
           >
@@ -94,8 +94,8 @@ const Dashboard = () => {
           <button
             className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
               selectedNavItem === 'transactions' 
-                ? 'bg-primary text-primary-foreground' 
-                : 'hover:bg-secondary text-foreground'
+                ? 'bg-[#4CAF50] text-black' 
+                : 'hover:bg-[#2a2a4f] text-[#00ff00]'
             }`}
             onClick={() => setSelectedNavItem('transactions')}
           >
@@ -105,8 +105,8 @@ const Dashboard = () => {
           <button
             className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
               selectedNavItem === 'analytics' 
-                ? 'bg-primary text-primary-foreground' 
-                : 'hover:bg-secondary text-foreground'
+                ? 'bg-[#4CAF50] text-black' 
+                : 'hover:bg-[#2a2a4f] text-[#00ff00]'
             }`}
             onClick={() => setSelectedNavItem('analytics')}
           >
@@ -116,8 +116,8 @@ const Dashboard = () => {
           <button
             className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
               selectedNavItem === 'wallet' 
-                ? 'bg-primary text-primary-foreground' 
-                : 'hover:bg-secondary text-foreground'
+                ? 'bg-[#4CAF50] text-black' 
+                : 'hover:bg-[#2a2a4f] text-[#00ff00]'
             }`}
             onClick={() => setSelectedNavItem('wallet')}
           >
@@ -127,8 +127,8 @@ const Dashboard = () => {
           <button
             className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
               selectedNavItem === 'referrals' 
-                ? 'bg-primary text-primary-foreground' 
-                : 'hover:bg-secondary text-foreground'
+                ? 'bg-[#4CAF50] text-black' 
+                : 'hover:bg-[#2a2a4f] text-[#00ff00]'
             }`}
             onClick={() => setSelectedNavItem('referrals')}
           >
@@ -138,8 +138,8 @@ const Dashboard = () => {
           <button
             className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
               selectedNavItem === 'settings' 
-                ? 'bg-primary text-primary-foreground' 
-                : 'hover:bg-secondary text-foreground'
+                ? 'bg-[#4CAF50] text-black' 
+                : 'hover:bg-[#2a2a4f] text-[#00ff00]'
             }`}
             onClick={() => setSelectedNavItem('settings')}
           >
@@ -150,7 +150,7 @@ const Dashboard = () => {
         
         <div className="p-4 mt-auto">
           <Link to="/logout">
-            <Button variant="outline" fullWidth className="justify-start">
+            <Button variant="outline" fullWidth className="justify-start border-[#4CAF50] text-[#00ff00] hover:bg-[#2a2a4f]">
               <LogOut size={18} className="mr-3" />
               Déconnexion
             </Button>
@@ -159,18 +159,18 @@ const Dashboard = () => {
       </div>
       
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-y-auto">
+      <div className="flex-1 flex flex-col overflow-y-auto bg-[#0f0f23]">
         {/* Header */}
-        <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
+        <header className="sticky top-0 z-10 bg-[#1a1a2f] border-b border-[#4CAF50]">
           <div className="flex items-center justify-between p-4">
-            <h1 className="text-xl font-semibold">Tableau de bord</h1>
+            <h1 className="text-xl font-semibold text-[#00ff00]">Tableau de bord</h1>
             
             <div className="flex items-center space-x-4">
               <div className="text-sm text-right hidden sm:block">
-                <p className="font-medium">{mockUser.username}</p>
-                <p className="text-muted-foreground">Abonnement {mockUser.subscription}</p>
+                <p className="font-medium text-[#00ff00]">{mockUser.username}</p>
+                <p className="text-[#4CAF50]">Abonnement {mockUser.subscription}</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+              <div className="h-10 w-10 rounded-full bg-[#2a2a4f] flex items-center justify-center text-[#4CAF50]">
                 <UserCircle size={24} />
               </div>
             </div>
@@ -180,19 +180,19 @@ const Dashboard = () => {
         {/* Content */}
         <main className="flex-1 p-4 md:p-6">
           {/* Main Dashboard Panel */}
-          <div className="glass-panel p-6 rounded-xl mb-8">
+          <div className="neuro-panel mb-8">
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Left Column */}
               <div className="flex-1">
                 <div className="flex items-center mb-6">
-                  <DollarSign className="text-primary h-8 w-8 mr-2" />
-                  <h2 className="text-2xl font-semibold">Solde : {mockUser.balance.toFixed(2)}€</h2>
+                  <DollarSign className="text-[#4CAF50] h-8 w-8 mr-2" />
+                  <h2 className="text-2xl font-semibold text-[#00ff00]">Solde : {mockUser.balance.toFixed(2)}€</h2>
                 </div>
                 
                 <Button 
                   size="lg" 
                   fullWidth 
-                  className="pulse-animation mb-6"
+                  className="cyber-pulse mb-6 bg-[#4CAF50] text-white"
                   isLoading={isStartingSession} 
                   onClick={handleStartSession}
                 >
@@ -200,54 +200,53 @@ const Dashboard = () => {
                 </Button>
                 
                 <div className="mt-8">
-                  <h3 className="text-lg font-semibold mb-3">🚀 Votre lien magique :</h3>
+                  <h3 className="text-lg font-semibold mb-3 text-[#00ff00]">🚀 Votre lien magique :</h3>
                   <div className="flex">
                     <input 
                       type="text" 
                       value={mockUser.referralLink} 
                       readOnly 
-                      className="bg-secondary/40 rounded-l-lg px-3 py-2 flex-1 text-sm"
+                      className="bg-[#2a2a4f] rounded-l-lg px-3 py-2 flex-1 text-sm text-[#00ff00] border-[#4CAF50]"
                     />
-                    <Button variant="outline" onClick={handleCopyReferralLink} className="rounded-l-none">
+                    <Button variant="outline" onClick={handleCopyReferralLink} className="rounded-l-none border-[#4CAF50] bg-[#2a2a4f] text-[#00ff00]">
                       <Copy size={16} />
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">Gagnez 70% sur chaque filleul !</p>
+                  <p className="text-sm text-[#4CAF50] mt-2">Gagnez 70% sur chaque filleul !</p>
                 </div>
               </div>
               
               {/* Right Column - AI Terminal */}
-              <Card className="w-full lg:w-1/2 bg-black border-gray-800">
-                <CardContent className="p-4">
-                  <h3 className="text-lg font-semibold text-green-400 mb-3">📈 Dernier rapport IA :</h3>
-                  <div className="font-mono text-sm text-green-400 space-y-2 bg-black p-3 rounded">
-                    <p>{"> Analyse de 142 pubs..."}</p>
-                    <p>{"> Détection tendance haussière crypto"}</p>
-                    <p>{"> Profit estimé : +47€"}</p>
-                    <p className="blink-cursor">&nbsp;</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="w-full lg:w-1/2 cyber-terminal">
+                <h3 className="text-lg font-semibold text-[#4CAF50] mb-3">📈 Dernier rapport IA :</h3>
+                <div className="font-mono text-sm text-[#00ff00] space-y-2">
+                  <p>{"> Analyse de 142 pubs..."}</p>
+                  <p>{"> Détection tendance haussière crypto"}</p>
+                  <p>{"> Profit estimé : +47€"}</p>
+                  <p className="blink-cursor">&nbsp;</p>
+                </div>
+              </div>
             </div>
           </div>
           
           {/* Recent Sessions */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold">Sessions récentes</h2>
-              <Button variant="outline" size="sm">
+              <h2 className="text-2xl font-semibold text-[#00ff00]">Sessions récentes</h2>
+              <Button variant="outline" size="sm" className="border-[#4CAF50] bg-[#2a2a4f] text-[#00ff00] hover:bg-[#1a1a2f]">
                 Voir tout l'historique
               </Button>
             </div>
             
             <div className="space-y-4">
               {mockUser.transactions.map((transaction, index) => (
-                <SessionCard 
-                  key={index}
-                  gain={transaction.gain}
-                  report={transaction.report}
-                  date={transaction.date}
-                />
+                <div key={index} className="cyber-card">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[#4CAF50]">{transaction.date}</span>
+                    <span className="text-[#00ff00] font-bold">+{transaction.gain}€</span>
+                  </div>
+                  <p className="text-sm text-[#cce0cc] italic">{transaction.report}</p>
+                </div>
               ))}
             </div>
           </div>
