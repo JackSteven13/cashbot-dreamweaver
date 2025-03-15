@@ -1,8 +1,8 @@
 
 import { ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import Button from './Button';
+import 'leaflet/dist/leaflet.css';
 
 const Hero = () => {
   const mapRef = useRef(null);
@@ -11,22 +11,15 @@ const Hero = () => {
   const [password, setPassword] = useState('');
 
   useEffect(() => {
-    // Import Leaflet dynamically for client-side only
-    let L;
+    // Use a flag to track if the component is mounted
+    let isMounted = true;
     let map;
     let spotInterval;
     
     const loadMap = async () => {
-      if (typeof window !== 'undefined' && mapRef.current) {
-        L = await import('leaflet');
-        
-        // Add CSS for Leaflet
-        if (!document.querySelector('[href*="leaflet.css"]')) {
-          const link = document.createElement('link');
-          link.rel = 'stylesheet';
-          link.href = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css';
-          document.head.appendChild(link);
-        }
+      if (typeof window !== 'undefined' && mapRef.current && isMounted) {
+        // Import Leaflet dynamically for client-side only
+        const L = await import('leaflet');
         
         // Initialize map
         map = L.map(mapRef.current).setView([46.2276, 2.2137], 5);
@@ -34,23 +27,27 @@ const Hero = () => {
         
         // Add markers every 500ms
         const addMarker = () => {
-          L.circleMarker(
-            [46.2276 + Math.random() * 2, 2.2137 + Math.random() * 2], 
-            { radius: 3, color: '#4CAF50' }
-          ).addTo(map);
+          if (isMounted && map) {
+            L.circleMarker(
+              [46.2276 + Math.random() * 2, 2.2137 + Math.random() * 2], 
+              { radius: 3, color: '#4CAF50' }
+            ).addTo(map);
+          }
         };
         
         const interval = setInterval(addMarker, 500);
         
         // Countdown timer for available spots
         spotInterval = setInterval(() => {
-          setSpots(prev => {
-            const newSpot = prev - 1;
-            return newSpot < 0 ? 3 : newSpot;
-          });
+          if (isMounted) {
+            setSpots(prev => {
+              const newSpot = prev - 1;
+              return newSpot < 0 ? 3 : newSpot;
+            });
+          }
         }, 15000);
         
-        // Cleanup
+        // Return cleanup function
         return () => {
           clearInterval(interval);
           clearInterval(spotInterval);
@@ -61,7 +58,9 @@ const Hero = () => {
     
     loadMap();
     
+    // Cleanup function
     return () => {
+      isMounted = false;
       if (spotInterval) clearInterval(spotInterval);
     };
   }, []);
