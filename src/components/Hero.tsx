@@ -1,9 +1,107 @@
 
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
 import Button from './Button';
 
 const Hero = () => {
+  const mapRef = useRef(null);
+  const [spots, setSpots] = useState(3);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    // Import Leaflet dynamically for client-side only
+    let L;
+    let map;
+    let spotInterval;
+    
+    const loadMap = async () => {
+      if (typeof window !== 'undefined' && mapRef.current) {
+        L = await import('leaflet');
+        
+        // Add CSS for Leaflet
+        if (!document.querySelector('[href*="leaflet.css"]')) {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css';
+          document.head.appendChild(link);
+        }
+        
+        // Initialize map
+        map = L.map(mapRef.current).setView([46.2276, 2.2137], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        
+        // Add markers every 500ms
+        const addMarker = () => {
+          L.circleMarker(
+            [46.2276 + Math.random() * 2, 2.2137 + Math.random() * 2], 
+            { radius: 3, color: '#4CAF50' }
+          ).addTo(map);
+        };
+        
+        const interval = setInterval(addMarker, 500);
+        
+        // Countdown timer for available spots
+        spotInterval = setInterval(() => {
+          setSpots(prev => {
+            const newSpot = prev - 1;
+            return newSpot < 0 ? 3 : newSpot;
+          });
+        }, 15000);
+        
+        // Cleanup
+        return () => {
+          clearInterval(interval);
+          clearInterval(spotInterval);
+          if (map) map.remove();
+        };
+      }
+    };
+    
+    loadMap();
+    
+    return () => {
+      if (spotInterval) clearInterval(spotInterval);
+    };
+  }, []);
+
+  // Simulate countUp with useState
+  const [adsCount, setAdsCount] = useState(0);
+  const [revenueCount, setRevenueCount] = useState(0);
+  
+  useEffect(() => {
+    const adsTarget = 15432;
+    const revenueTarget = 289432;
+    const duration = 2000; // 2 seconds
+    const steps = 30;
+    const adsIncrement = adsTarget / steps;
+    const revenueIncrement = revenueTarget / steps;
+    
+    let currentStep = 0;
+    
+    const interval = setInterval(() => {
+      currentStep++;
+      
+      if (currentStep <= steps) {
+        setAdsCount(Math.min(Math.floor(adsIncrement * currentStep), adsTarget));
+        setRevenueCount(Math.min(Math.floor(revenueIncrement * currentStep), revenueTarget));
+      } else {
+        clearInterval(interval);
+      }
+    }, duration / steps);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handle form submission
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // This would normally submit to /login in the Flask app
+    // For now, we'll just redirect to /dashboard
+    window.location.href = '/dashboard';
+  };
+
   return (
     <section className="relative overflow-hidden pt-32 pb-16 md:pt-40 md:pb-24">
       {/* Background Elements */}
@@ -17,53 +115,61 @@ const Hero = () => {
       </div>
       
       <div className="container mx-auto px-4 md:px-6">
-        <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
-          <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium bg-primary/10 text-primary mb-4 animate-fade-in">
-            IA de Trading Autonome
-          </span>
-          
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-balance mb-6 animate-slide-down">
-            Générez des revenus passifs avec notre IA financière
+        <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-balance mb-8 animate-slide-down">
+            Gagnez 2000€/mois en dormant 💸
           </h1>
           
-          <p className="text-lg md:text-xl text-muted-foreground mb-8 md:mb-10 text-balance max-w-2xl animate-slide-up">
-            CashBot utilise des algorithmes d'intelligence artificielle avancés pour générer des revenus constants et sécurisés, même pendant votre sommeil.
-          </p>
+          {/* Map */}
+          <div 
+            ref={mapRef} 
+            className="w-full h-[300px] rounded-xl shadow-lg mb-8 animate-fade-in"
+          ></div>
           
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-3 w-full sm:w-auto animate-fade-in">
-            <Link to="/register" className="w-full sm:w-auto">
-              <Button size="lg" fullWidth className="group">
-                Commencer gratuitement
-                <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </Link>
-            <Link to="/features" className="w-full sm:w-auto">
-              <Button variant="outline" size="lg" fullWidth>
-                Découvrir les fonctionnalités
-              </Button>
-            </Link>
+          {/* Counters */}
+          <div className="grid grid-cols-2 gap-8 w-full max-w-lg mb-8 animate-slide-up">
+            <div className="glass-panel p-6 rounded-xl text-center">
+              <span className="text-3xl font-bold text-primary">{adsCount.toLocaleString()}</span>
+              <p className="text-sm text-muted-foreground mt-1">Publicités analysées</p>
+            </div>
+            <div className="glass-panel p-6 rounded-xl text-center">
+              <span className="text-3xl font-bold text-primary">{revenueCount.toLocaleString()}€</span>
+              <p className="text-sm text-muted-foreground mt-1">Revenus générés</p>
+            </div>
           </div>
           
-          <div className="mt-12 sm:mt-16 p-6 glass-panel rounded-xl animate-scale-in">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-              <div className="text-left">
-                <p className="text-lg font-medium">Nouveau compte Alpha</p>
-                <p className="text-4xl font-bold">+€104.28</p>
-                <p className="text-sm text-muted-foreground mt-1">Gains aujourd'hui</p>
+          {/* CTA Form */}
+          <div className="w-full max-w-lg glass-panel p-6 rounded-xl animate-scale-in">
+            <p className="text-lg font-medium mb-4 text-primary">
+              Dernières places disponibles : <span className="font-bold">{spots}</span>
+            </p>
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <input 
+                  type="text" 
+                  placeholder="Email" 
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full p-3 border border-border rounded-lg bg-background"
+                />
               </div>
-              <div className="h-24 w-[1px] bg-border hidden sm:block"></div>
-              <div className="text-left">
-                <p className="text-lg font-medium">Transactions réussies</p>
-                <p className="text-4xl font-bold">97.6%</p>
-                <p className="text-sm text-muted-foreground mt-1">Taux de succès</p>
+              <div>
+                <input 
+                  type="password" 
+                  placeholder="Mot de passe" 
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full p-3 border border-border rounded-lg bg-background"
+                />
               </div>
-              <div className="h-24 w-[1px] bg-border hidden sm:block"></div>
-              <div className="text-left">
-                <p className="text-lg font-medium">Utilisateurs actifs</p>
-                <p className="text-4xl font-bold">5,280+</p>
-                <p className="text-sm text-muted-foreground mt-1">Partout dans le monde</p>
-              </div>
-            </div>
+              <Button type="submit" size="lg" fullWidth className="group">
+                Démarrer maintenant
+                <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </form>
           </div>
         </div>
       </div>
