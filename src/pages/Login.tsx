@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -6,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
+import { verifyAndRepairAuth, forceSignOut } from "@/utils/authUtils";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -17,62 +17,43 @@ const Login = () => {
   
   // Vérifier si l'utilisateur est déjà connecté
   useEffect(() => {
+    let isMounted = true;
+    
     const checkSession = async () => {
       try {
         setIsCheckingSession(true);
         
-        // Vérifier et réparer l'authentification si nécessaire
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Utiliser la fonction de vérification complète
+        const isAuthValid = await verifyAndRepairAuth();
         
-        if (error) {
-          console.error("Error checking session:", error);
-          toast({
-            title: "Erreur",
-            description: "Impossible de vérifier votre session.",
-            variant: "destructive",
-          });
-          setIsCheckingSession(false);
-          return;
-        }
+        if (!isMounted) return;
         
-        if (session) {
-          // Vérifier si le token est expiré ou près d'expirer
-          const tokenExpiry = new Date(session.expires_at * 1000);
-          const now = new Date();
-          const timeToExpiry = tokenExpiry.getTime() - now.getTime();
-          
-          // Si le token expire dans moins de 5 minutes, le rafraîchir
-          if (timeToExpiry < 300000) {
-            console.log("Token expiring soon, refreshing session");
-            try {
-              const { data, error: refreshError } = await supabase.auth.refreshSession();
-              
-              if (refreshError || !data.session) {
-                console.error("Session refresh failed:", refreshError);
-                setIsCheckingSession(false);
-                return;
-              }
-              
-              console.log("Session refreshed successfully");
-            } catch (refreshError) {
-              console.error("Error refreshing session:", refreshError);
-              setIsCheckingSession(false);
-              return;
-            }
-          }
-          
+        if (isAuthValid) {
           console.log("User already logged in, redirecting to dashboard");
-          navigate('/dashboard', { replace: true, state: { justLoggedIn: false } });
+          // Ajouter un délai court pour éviter les redirections trop rapides
+          setTimeout(() => {
+            if (isMounted) {
+              navigate('/dashboard', { replace: true, state: { justLoggedIn: false } });
+            }
+          }, 100);
         } else {
+          // Nettoyer toute trace de session précédente
+          await forceSignOut();
           setIsCheckingSession(false);
         }
       } catch (error) {
         console.error("Session check error:", error);
-        setIsCheckingSession(false);
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
       }
     };
     
     checkSession();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [navigate]);
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,9 +61,8 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Nettoyer les données de session précédentes
-      localStorage.removeItem('supabase.auth.token');
-      sessionStorage.removeItem('supabase.auth.token');
+      // S'assurer qu'il n'y a pas de session résiduelle
+      await forceSignOut();
       
       // Effectuer l'authentification avec les nouvelles informations
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -94,6 +74,13 @@ const Login = () => {
       
       if (data && data.user) {
         console.log("Login successful, user:", data.user.id);
+        
+        // Vérifier que la session est valide avant de rediriger
+        const isSessionValid = await verifyAndRepairAuth();
+        
+        if (!isSessionValid) {
+          throw new Error("Session could not be established");
+        }
         
         // Récupérer le profil utilisateur
         const { data: profileData } = await supabase
@@ -114,7 +101,11 @@ const Login = () => {
         // Rediriger vers la page d'origine ou le tableau de bord avec l'état de connexion
         const from = location.state?.from?.pathname || '/dashboard';
         console.log("Redirecting to:", from);
-        navigate(from, { state: { justLoggedIn: true }, replace: true });
+        
+        // Utiliser un délai court pour éviter les problèmes de course
+        setTimeout(() => {
+          navigate(from, { state: { justLoggedIn: true }, replace: true });
+        }, 100);
       }
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
