@@ -1,5 +1,5 @@
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState, useRef } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, RefreshCcw, LogOut } from 'lucide-react';
@@ -19,6 +19,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [retryAttempts, setRetryAttempts] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
   const maxRetries = 3;
+  const authCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initialCheckRef = useRef(true);
 
   const checkAuth = async (isManualRetry = false) => {
     if (isManualRetry) {
@@ -88,7 +90,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         setIsRetrying(false);
         
         // Afficher le message d'accueil uniquement après la connexion
-        if (location.state?.justLoggedIn) {
+        if (location.state?.justLoggedIn && initialCheckRef.current) {
+          initialCheckRef.current = false;
           toast({
             title: `Bienvenue, ${displayName} !`,
             description: "Vous êtes maintenant connecté à votre compte CashBot.",
@@ -121,10 +124,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   useEffect(() => {
     let isMounted = true;
-    let authTimeout: NodeJS.Timeout;
     
     // Réinitialiser l'état à chaque montage
     if (isMounted) {
+      initialCheckRef.current = true;
       setAuthCheckFailed(false);
       setRetryAttempts(0);
       setIsAuthenticated(null);
@@ -138,7 +141,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }, 300);
     
     // Définir un timeout pour éviter un chargement infini
-    authTimeout = setTimeout(() => {
+    authCheckTimeoutRef.current = setTimeout(() => {
       if (isAuthenticated === null && isMounted) {
         console.warn("Délai d'authentification dépassé");
         setAuthCheckFailed(true);
@@ -174,7 +177,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
     return () => {
       isMounted = false;
-      clearTimeout(authTimeout);
+      clearTimeout(authCheckTimeoutRef.current);
       clearTimeout(initTimeout);
       subscription.unsubscribe();
     };

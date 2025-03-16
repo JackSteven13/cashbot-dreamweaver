@@ -59,13 +59,7 @@ export const checkDailyLimit = (balance: number, subscription: string) => {
  */
 export const forceSignOut = async (): Promise<boolean> => {
   try {
-    // Effectuer la déconnexion avec portée globale d'abord
-    await supabase.auth.signOut({ scope: 'global' });
-    
-    // Attendre un court instant pour s'assurer que la déconnexion est traitée
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Nettoyer toutes les données locales
+    // Nettoyer toutes les données locales avant la déconnexion
     localStorage.removeItem('supabase.auth.token');
     localStorage.removeItem('supabase.auth.expires_at');
     localStorage.removeItem('supabase.auth.refresh_token');
@@ -87,6 +81,12 @@ export const forceSignOut = async (): Promise<boolean> => {
       const [name] = cookie.trim().split("=");
       document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
     });
+    
+    // Effectuer la déconnexion avec portée globale ensuite
+    await supabase.auth.signOut({ scope: 'global' });
+    
+    // Attendre un court instant pour s'assurer que la déconnexion est traitée
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     console.log("User signed out and all session data cleared");
     return true;

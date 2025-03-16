@@ -19,8 +19,10 @@ export const useUserFetch = (): UserFetchResult => {
   const isMounted = useRef(true);
   const fetchInProgress = useRef(false);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 2; // Reduced to prevent excessive retries
+  const maxRetries = 2;
   const retryDelay = useRef(800);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const sessionStabilityChecked = useRef(false);
   
   const [fetcherState, fetcherActions] = useUserDataFetcher();
   
@@ -34,17 +36,40 @@ export const useUserFetch = (): UserFetchResult => {
       return;
     }
     
+    // Clear any existing timeout
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
+      fetchTimeoutRef.current = null;
+    }
+    
     try {
       console.log("Starting fetchData in useUserFetch");
       fetchInProgress.current = true;
       
-      const isAuthValid = await verifyAndRepairAuth();
-      
-      if (!isAuthValid) {
-        console.error("Invalid authentication state, cannot fetch user data");
-        fetchInProgress.current = false;
-        return;
+      // Vérifier si la session est stable
+      if (!sessionStabilityChecked.current) {
+        console.log("Vérification de la stabilité de la session...");
+        const isAuthValid = await verifyAndRepairAuth();
+        
+        if (!isAuthValid) {
+          console.error("Invalid authentication state, cannot fetch user data");
+          fetchInProgress.current = false;
+          
+          // Ne pas réessayer immédiatement mais attendre
+          fetchTimeoutRef.current = setTimeout(() => {
+            if (isMounted.current) {
+              fetchInProgress.current = false;
+              fetchData();
+            }
+          }, 2000);
+          return;
+        }
+        
+        sessionStabilityChecked.current = true;
       }
+      
+      // Ajouter un délai pour éviter les appels trop rapides
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       await fetchUserData();
       console.log("fetchUserData completed successfully");
@@ -62,16 +87,28 @@ export const useUserFetch = (): UserFetchResult => {
         const backoffTime = retryDelay.current * (nextRetry);
         console.log(`Retrying fetch (${nextRetry}/${maxRetries}) in ${backoffTime}ms`);
         
-        setTimeout(() => {
+        fetchTimeoutRef.current = setTimeout(() => {
           if (isMounted.current) {
             console.log(`Executing retry ${nextRetry}/${maxRetries}`);
             fetchInProgress.current = false;
+            sessionStabilityChecked.current = false; // Réinitialiser pour vérifier à nouveau la session
             fetchData().catch(e => console.error("Retry failed:", e));
           }
         }, backoffTime);
       } else {
         fetchInProgress.current = false;
         console.log("All retries failed or component unmounted");
+        
+        // Après les tentatives maximales, attendre plus longtemps avant de réessayer
+        fetchTimeoutRef.current = setTimeout(() => {
+          if (isMounted.current) {
+            console.log("Final attempt after cooldown");
+            fetchInProgress.current = false;
+            sessionStabilityChecked.current = false;
+            setRetryCount(0);
+            fetchData().catch(e => console.error("Final attempt failed:", e));
+          }
+        }, 5000);
       }
     }
   }, [fetchUserData, retryCount, maxRetries]);
@@ -80,31 +117,61 @@ export const useUserFetch = (): UserFetchResult => {
   useEffect(() => {
     isMounted.current = true;
     fetchInProgress.current = false;
+    sessionStabilityChecked.current = false;
     
-    // We use a simple debounce to prevent parallel auth checks
-    let initialFetchTimeout: NodeJS.Timeout;
+    // Utiliser un délai progressif pour les tentatives initiales
+    const initialDelays = [300, 1000, 2000];
+    let currentAttempt = 0;
     
-    const initiateAuthCheck = async () => {
-      const isAuthValid = await verifyAndRepairAuth();
+    const scheduleInitialFetch = () => {
+      if (!isMounted.current) return;
       
-      if (!isAuthValid || !isMounted.current) {
-        console.log("Auth check failed or component unmounted, skipping fetch");
-        return;
-      }
+      const delay = initialDelays[currentAttempt] || 3000;
+      console.log(`Scheduling initial fetch attempt ${currentAttempt + 1} in ${delay}ms`);
       
-      initialFetchTimeout = setTimeout(() => {
-        if (isMounted.current && !fetchInProgress.current) {
-          fetchData().catch(e => console.error("Initial fetch failed:", e));
+      fetchTimeoutRef.current = setTimeout(async () => {
+        if (!isMounted.current) return;
+        
+        try {
+          const isAuthValid = await verifyAndRepairAuth();
+          
+          if (!isAuthValid) {
+            currentAttempt++;
+            if (currentAttempt < initialDelays.length + 2) {
+              scheduleInitialFetch();
+            }
+            return;
+          }
+          
+          if (!fetchInProgress.current) {
+            fetchData().catch(e => {
+              console.error("Initial fetch failed:", e);
+              currentAttempt++;
+              if (currentAttempt < initialDelays.length + 2) {
+                scheduleInitialFetch();
+              }
+            });
+          }
+        } catch (e) {
+          console.error("Auth check error:", e);
+          currentAttempt++;
+          if (currentAttempt < initialDelays.length + 2) {
+            scheduleInitialFetch();
+          }
         }
-      }, 300);
+      }, delay);
     };
     
-    initiateAuthCheck().catch(e => console.error("Auth check error:", e));
+    // Démarrer la séquence de tentatives
+    scheduleInitialFetch();
     
     return () => {
       console.log("useUserFetch component unmounting");
       isMounted.current = false;
-      if (initialFetchTimeout) clearTimeout(initialFetchTimeout);
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = null;
+      }
     };
   }, [fetchData]);
 
@@ -121,6 +188,8 @@ export const useUserFetch = (): UserFetchResult => {
     }
     
     console.log("Manually refetching user data");
+    sessionStabilityChecked.current = false;
+    
     const isAuthValid = await verifyAndRepairAuth();
     
     if (isAuthValid) {

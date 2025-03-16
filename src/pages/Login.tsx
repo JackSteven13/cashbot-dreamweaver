@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
@@ -14,6 +15,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const loginAttemptRef = useRef(0);
   
   // Improved session check on component mount
   useEffect(() => {
@@ -54,6 +56,10 @@ const Login = () => {
     setIsLoading(true);
     
     try {
+      loginAttemptRef.current += 1;
+      const attemptId = loginAttemptRef.current;
+      console.log(`Starting login attempt #${attemptId}`);
+      
       // Start fresh - ensure no lingering session
       await forceSignOut();
       
@@ -69,16 +75,21 @@ const Login = () => {
       if (error) throw error;
       
       if (data && data.user) {
-        console.log("Login successful, user:", data.user.id);
+        console.log(`Login attempt #${attemptId} successful, user:`, data.user.id);
         
         // Wait for session establishment
-        await new Promise(resolve => setTimeout(resolve, 600));
+        await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Verify session is valid
-        const isSessionValid = await verifyAndRepairAuth();
+        // Verify session is valid with multiple attempts if needed
+        let isSessionValid = false;
+        for (let i = 0; i < 3; i++) {
+          isSessionValid = await verifyAndRepairAuth();
+          if (isSessionValid) break;
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
         
         if (!isSessionValid) {
-          throw new Error("Session could not be established");
+          throw new Error("Session could not be established after multiple attempts");
         }
         
         // Get user profile for display name
@@ -99,11 +110,12 @@ const Login = () => {
         
         // Redirect with delay to ensure session is fully established
         const from = location.state?.from?.pathname || '/dashboard';
-        console.log("Redirecting to:", from);
+        console.log(`Login attempt #${attemptId} redirecting to:`, from);
         
+        // Clear any previous navigation attempt for this login
         setTimeout(() => {
           navigate(from, { state: { justLoggedIn: true }, replace: true });
-        }, 600);
+        }, 800);
       }
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
