@@ -4,15 +4,24 @@ import { toast } from '@/components/ui/use-toast';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 
+// Plans et leurs limites de gains
+const SUBSCRIPTION_LIMITS = {
+  'freemium': 0.5,
+  'pro': 5,
+  'visionnaire': 20,
+  'alpha': 50
+};
+
 // Mock data - in a real app, this would come from your backend
 const getInitialUserData = () => {
   // Check if user is new by looking for a stored flag in localStorage
   const isNewUser = !localStorage.getItem('user_registered');
+  const subscription = localStorage.getItem('subscription') || 'freemium';
   
   return {
     username: localStorage.getItem('username') || 'utilisateur',
     balance: isNewUser ? 0 : 1567.82,
-    subscription: 'alpha',
+    subscription: subscription,
     referrals: [],
     referralLink: 'https://cashbot.com?ref=admin',
     transactions: isNewUser ? [] : [
@@ -40,6 +49,7 @@ const Dashboard = () => {
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
   const [userData, setUserData] = useState(getInitialUserData);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [lastAutoSessionTime, setLastAutoSessionTime] = useState(Date.now());
 
   useEffect(() => {
     // Check if this is the first visit
@@ -50,31 +60,85 @@ const Dashboard = () => {
       // Show welcome message for new users
       toast({
         title: "Bienvenue sur CashBot !",
-        description: "Votre compte a été créé avec succès. Commencez par lancer votre première session d'analyse !",
+        description: "Votre compte a été créé avec succès. Notre bot analyse automatiquement les publicités pour vous !",
       });
       // Set the flag for future visits
       localStorage.setItem('user_registered', 'true');
     }
   }, []);
 
+  // Effet pour simuler l'analyse automatique des publicités
+  useEffect(() => {
+    const autoSessionInterval = setInterval(() => {
+      // Vérifier si 5 minutes (300000 ms) se sont écoulées depuis la dernière session
+      if (Date.now() - lastAutoSessionTime >= 300000) {
+        generateAutomaticRevenue();
+        setLastAutoSessionTime(Date.now());
+      }
+    }, 60000); // Vérifier toutes les minutes
+
+    return () => clearInterval(autoSessionInterval);
+  }, [lastAutoSessionTime, userData.subscription]);
+
+  const generateAutomaticRevenue = () => {
+    // Obtenir la limite de gain pour l'abonnement actuel
+    const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    
+    // Générer un gain aléatoire en fonction de l'abonnement (entre 20% et 80% de la limite)
+    const minGain = dailyLimit * 0.2;
+    const maxGain = dailyLimit * 0.8;
+    const randomGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
+
+    // Générer un nombre aléatoire de publicités entre 50 et 300
+    const adCount = Math.floor(Math.random() * 250) + 50;
+    
+    // Mettre à jour les données utilisateur
+    setUserData(prev => ({
+      ...prev,
+      balance: parseFloat((prev.balance + randomGain).toFixed(2)),
+      transactions: [
+        {
+          date: new Date().toISOString().split('T')[0],
+          gain: randomGain,
+          report: `CashBot a automatiquement analysé ${adCount} publicités et généré ${randomGain}€ de revenus pour votre compte ${prev.subscription}.`
+        },
+        ...prev.transactions
+      ]
+    }));
+
+    // Notification de gain
+    toast({
+      title: "Analyse automatique terminée",
+      description: `CashBot a généré ${randomGain}€ pour vous !`,
+    });
+  };
+
   const handleStartSession = () => {
     setIsStartingSession(true);
-    // Simulate a session (in a real app, this would call your backend)
+    // Simuler une session manuelle
     setTimeout(() => {
       setIsStartingSession(false);
       
-      // Generate a random gain between 5 and 15
-      const randomGain = Math.floor(Math.random() * 10) + 5;
+      // Obtenir la limite de gain pour l'abonnement actuel
+      const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
-      // Update the user data with the new gain
+      // Générer un gain aléatoire en fonction de l'abonnement (plus élevé que les sessions auto)
+      const minGain = dailyLimit * 0.3;
+      const maxGain = dailyLimit;
+      const randomGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
+      
+      // Générer un nombre aléatoire de publicités entre 100 et 400
+      const adCount = Math.floor(Math.random() * 300) + 100;
+      
+      // Mettre à jour les données utilisateur
       setUserData(prev => ({
         ...prev,
-        balance: prev.balance + randomGain,
+        balance: parseFloat((prev.balance + randomGain).toFixed(2)),
         transactions: [
           {
             date: new Date().toISOString().split('T')[0],
             gain: randomGain,
-            report: `L'IA a analysé ${Math.floor(Math.random() * 100) + 50} publicités et généré ${randomGain}€ de revenus.`
+            report: `Session manuelle : CashBot a analysé ${adCount} publicités et généré ${randomGain}€ de revenus pour votre compte ${prev.subscription}.`
           },
           ...prev.transactions
         ]
@@ -82,7 +146,7 @@ const Dashboard = () => {
       
       toast({
         title: "Session terminée",
-        description: `L'IA a généré ${randomGain}€ de revenus pour vous !`,
+        description: `CashBot a généré ${randomGain}€ de revenus pour vous !`,
       });
     }, 2000);
   };
@@ -101,6 +165,7 @@ const Dashboard = () => {
         handleStartSession={handleStartSession}
         transactions={userData.transactions}
         isNewUser={isNewUser}
+        subscription={userData.subscription}
       />
     </DashboardLayout>
   );
