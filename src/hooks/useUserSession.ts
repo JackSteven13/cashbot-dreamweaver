@@ -8,6 +8,18 @@ import {
 } from "@/utils/userDataUtils";
 import { supabase } from "@/integrations/supabase/client";
 
+// Define return types for better type safety
+interface BalanceUpdateResult {
+  success: boolean;
+  newBalance?: number;
+  limitReached?: boolean;
+  transaction?: {
+    date: string;
+    gain: number;
+    report: string;
+  } | null;
+}
+
 export const useUserSession = () => {
   // Increment session count
   const incrementSessionCount = async (dailySessionCount: number) => {
@@ -31,7 +43,7 @@ export const useUserSession = () => {
   };
 
   // Update balance after a session
-  const updateBalance = async (gain: number, report: string) => {
+  const updateBalance = async (gain: number, report: string): Promise<BalanceUpdateResult> => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -104,7 +116,7 @@ export const useUserSession = () => {
   };
 
   // Reset balance (for withdrawals)
-  const resetBalance = async () => {
+  const resetBalance = async (): Promise<BalanceUpdateResult> => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -132,7 +144,11 @@ export const useUserSession = () => {
       // Reset balance
       const result = await resetUserBalance(session.user.id, userBalanceData.balance);
       
-      return result;
+      // Make sure the transaction property is properly typed in the result
+      return { 
+        success: result.success,
+        transaction: result.success && result.transaction ? result.transaction : null
+      };
     } catch (error) {
       console.error("Error in resetBalance:", error);
       toast({

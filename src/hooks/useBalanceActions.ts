@@ -77,7 +77,7 @@ export const useBalanceActions = ({
       const result = await resetUserBalance();
       
       if (result.success) {
-        // Immédiatement mettre à jour l'état local avec le solde à 0
+        // Check if transaction property exists before trying to use it
         setUserData(prev => ({
           ...prev,
           balance: 0,
