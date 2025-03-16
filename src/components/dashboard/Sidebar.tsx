@@ -5,8 +5,10 @@ import {
   CreditCard, 
   GaugeCircle, 
   History, 
+  Home,
   LineChart, 
   LogOut, 
+  Package, 
   Settings, 
   Share2
 } from 'lucide-react';
@@ -69,6 +71,18 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
           selectedNavItem={selectedNavItem}
           setSelectedNavItem={setSelectedNavItem}
         />
+        
+        <div className="pt-6 mt-4 border-t border-[#2d5f8a]/30">
+          <h3 className="px-3 mb-2 text-xs font-semibold text-blue-100/70 uppercase">Navigation</h3>
+          <Link to="/" className="flex items-center px-3 py-2 text-sm rounded-lg text-blue-100 hover:bg-[#334e68]/50 transition-colors">
+            <Home size={18} className="mr-3" />
+            Page d'accueil
+          </Link>
+          <Link to="/offres" className="flex items-center px-3 py-2 text-sm rounded-lg text-blue-100 hover:bg-[#334e68]/50 transition-colors">
+            <Package size={18} className="mr-3" />
+            Nos offres
+          </Link>
+        </div>
       </div>
       
       <div className="p-4 mt-auto">
