@@ -70,6 +70,18 @@ export const forceSignOut = async (): Promise<boolean> => {
     localStorage.removeItem('supabase.auth.expires_at');
     localStorage.removeItem('supabase.auth.refresh_token');
     
+    // Nettoyer également le localStorage pour plus de sûreté
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes('supabase')) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch (e) {
+      console.log("Error clearing localStorage items:", e);
+    }
+    
     // Supprimer tous les cookies liés à l'authentification
     document.cookie.split(";").forEach(cookie => {
       const [name] = cookie.trim().split("=");
@@ -137,6 +149,20 @@ export const verifyAndRepairAuth = async (): Promise<boolean> => {
         return !!refreshResult;
       }
       
+      // Vérification supplémentaire - tester si l'utilisateur peut accéder à ses données
+      try {
+        const { error: userError } = await supabase.auth.getUser();
+        if (userError) {
+          console.error("User data error despite valid session:", userError);
+          // La session semble valide mais l'utilisateur ne peut pas être récupéré
+          const newSession = await refreshSession();
+          return !!newSession;
+        }
+      } catch (userCheckError) {
+        console.error("Error checking user data:", userCheckError);
+        return false;
+      }
+      
       console.log("Valid session found");
       return true;
     }
@@ -146,10 +172,13 @@ export const verifyAndRepairAuth = async (): Promise<boolean> => {
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
     
     if (refreshError || !refreshData.session) {
-      console.log("Session refresh failed, trying recovery...");
+      console.log("Session refresh failed, forcing reset and trying recovery...");
       
-      // Dernière tentative - Nettoyer et récupérer la session si possible
+      // Dernière tentative - Nettoyer complètement et récupérer si possible
       await forceSignOut();
+      await new Promise(resolve => setTimeout(resolve, 300)); // Attendre que la déconnexion soit complète
+      
+      // Nouvelle tentative de connexion après nettoyage
       const { data: recoveryData } = await supabase.auth.getSession();
       
       if (recoveryData.session) {

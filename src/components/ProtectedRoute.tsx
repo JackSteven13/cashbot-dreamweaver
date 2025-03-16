@@ -1,3 +1,4 @@
+
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -31,19 +32,23 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       
       // Forcer la déconnexion d'abord si c'est une nouvelle tentative manuelle
       if (isManualRetry) {
-        await forceSignOut();
+        const signOutSuccess = await forceSignOut();
+        if (!signOutSuccess) {
+          console.warn("Force sign out failed, continuing anyway");
+        }
         // Pause brève pour s'assurer que la déconnexion a pris effet
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
       
-      // Utiliser la fonction de vérification et réparation
+      // Utiliser la fonction de vérification et réparation avec délai supplémentaire pour éviter les conditions de course
+      await new Promise(resolve => setTimeout(resolve, 200));
       const isAuthValid = await verifyAndRepairAuth();
       
       if (!isAuthValid) {
         if (retryAttempts < maxRetries && !isManualRetry) {
           setRetryAttempts(prev => prev + 1);
           console.log(`Auth check retry ${retryAttempts + 1}/${maxRetries} scheduled`);
-          setTimeout(() => checkAuth(), 1500); // Intervalle fixe pour les tentatives automatiques
+          setTimeout(() => checkAuth(), 1800); // Délai plus long pour les tentatives automatiques
           return;
         }
         
@@ -110,7 +115,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       if (retryAttempts < maxRetries && !isManualRetry) {
         setRetryAttempts(prev => prev + 1);
         console.log(`Auth check retry ${retryAttempts + 1}/${maxRetries} scheduled`);
-        setTimeout(() => checkAuth(), 1500); // Délai fixe pour les tentatives automatiques
+        setTimeout(() => checkAuth(), 1800); // Délai plus long pour les tentatives automatiques
         return;
       }
       
@@ -133,11 +138,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     
     // Effectuer la vérification d'authentification avec un léger délai
     // pour éviter les problèmes de course avec d'autres processus d'initialisation
-    setTimeout(() => {
+    const initTimeout = setTimeout(() => {
       if (isMounted) {
         checkAuth();
       }
-    }, 100);
+    }, 300);
     
     // Définir un timeout pour éviter un chargement infini
     authTimeout = setTimeout(() => {
@@ -146,7 +151,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
       }
-    }, 8000); // Réduit à 8s car les délais plus longs peuvent causer des problèmes
+    }, 10000); // Augmenté à 10s pour donner plus de temps sur les réseaux lents
 
     // Surveiller les changements d'état d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -178,16 +183,22 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return () => {
       isMounted = false;
       clearTimeout(authTimeout);
+      clearTimeout(initTimeout);
       subscription.unsubscribe();
     };
   }, [location.pathname]); // Ne pas inclure retryAttempts pour éviter les boucles
 
   // Fonction pour effectuer une connexion propre
   const handleCleanLogin = () => {
-    // Using void to explicitly indicate we're ignoring the Promise result
-    void Promise.resolve(forceSignOut())
-      .then(() => {
-        // Rediriger vers la page de connexion
+    // Code explicite pour gérer la connexion propre
+    forceSignOut()
+      .then((success) => {
+        if (success) {
+          console.log("Successfully signed out, redirecting to login");
+        } else {
+          console.warn("Sign out may not have completed successfully, still redirecting");
+        }
+        // Rediriger vers la page de connexion dans tous les cas
         navigate('/login', { replace: true });
       })
       .catch((error) => {

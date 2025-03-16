@@ -28,32 +28,21 @@ const Login = () => {
         await forceSignOut();
         
         // Petit délai pour s'assurer que la déconnexion est traitée
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // Maintenant vérifier s'il y a une session active
-        const { data: { session } } = await supabase.auth.getSession();
+        const isValid = await verifyAndRepairAuth();
         
         if (!isMounted) return;
         
-        if (session) {
-          // Vérifier si le token est valide
-          const tokenExpiry = new Date(session.expires_at * 1000);
-          const now = new Date();
-          
-          if (now > tokenExpiry) {
-            console.log("Found expired session, clearing it");
-            await forceSignOut();
-            setIsCheckingSession(false);
-            return;
-          }
-          
+        if (isValid) {
           console.log("User already logged in, redirecting to dashboard");
           // Ajouter un délai court pour éviter les redirections trop rapides
           setTimeout(() => {
             if (isMounted) {
               navigate('/dashboard', { replace: true, state: { justLoggedIn: false } });
             }
-          }, 300);
+          }, 500);
         } else {
           setIsCheckingSession(false);
         }
@@ -80,6 +69,9 @@ const Login = () => {
       // S'assurer qu'il n'y a pas de session résiduelle
       await forceSignOut();
       
+      // Délai pour assurer que la session précédente est bien nettoyée
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Effectuer l'authentification avec les nouvelles informations
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -92,7 +84,7 @@ const Login = () => {
         console.log("Login successful, user:", data.user.id);
         
         // Attendre que la session soit complètement établie
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 800));
         
         // Vérifier que la session est valide avant de rediriger
         const isSessionValid = await verifyAndRepairAuth();
@@ -124,7 +116,7 @@ const Login = () => {
         // Utiliser un délai plus long pour éviter les problèmes de course
         setTimeout(() => {
           navigate(from, { state: { justLoggedIn: true }, replace: true });
-        }, 500);
+        }, 800);
       }
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
@@ -133,6 +125,13 @@ const Login = () => {
         description: error.message || "Vérifiez vos identifiants et réessayez",
         variant: "destructive",
       });
+      
+      // En cas d'erreur, essayer de nettoyer complètement la session
+      try {
+        await forceSignOut();
+      } catch (cleanupError) {
+        console.error("Error during cleanup after failed login:", cleanupError);
+      }
     } finally {
       setIsLoading(false);
     }
