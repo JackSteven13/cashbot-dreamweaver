@@ -94,43 +94,69 @@ const Hero = () => {
     };
   }, [isMobile]);
 
-  // Stats counters with continuous incrementation that reset at midnight
+  // Stats counters with continuous incrementation that reset at midnight Paris time
   const [adsCount, setAdsCount] = useState(0);
   const [revenueCount, setRevenueCount] = useState(0);
   
   useEffect(() => {
-    // Initial target values
-    const initialAdsTarget = 15432;
-    const initialRevenueTarget = 289432;
-    const initialDuration = 2000; // 2 seconds for initial animation
-    const steps = 30;
+    // Target values - match the requested values (30,000 ads and €300,000 per day)
+    const dailyAdsTarget = 30000;
+    const dailyRevenueTarget = 300000;
     
-    // Calculate increments for initial animation
-    const adsIncrement = initialAdsTarget / steps;
-    const revenueIncrement = initialRevenueTarget / steps;
-    
-    let currentStep = 0;
-    
-    // Calculate time until next midnight
-    const getTimeUntilMidnight = () => {
+    // Get current Paris time
+    const getNowInParis = () => {
       const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
-      return tomorrow.getTime() - now.getTime();
+      // Convert to Paris time (UTC+2 or UTC+1 depending on DST)
+      const parisOffset = now.getTimezoneOffset();
+      const parisTime = new Date(now.getTime() - parisOffset * 60000);
+      return parisTime;
     };
     
-    // Function to reset counters at midnight
+    // Calculate progress of the day (0 to 1) in Paris time
+    const getDayProgress = () => {
+      const parisTime = getNowInParis();
+      const hours = parisTime.getHours();
+      const minutes = parisTime.getMinutes();
+      const seconds = parisTime.getSeconds();
+      
+      // Calculate seconds elapsed since midnight
+      const secondsElapsed = hours * 3600 + minutes * 60 + seconds;
+      // Total seconds in a day
+      const totalSecondsInDay = 24 * 3600;
+      
+      return secondsElapsed / totalSecondsInDay;
+    };
+    
+    // Set initial values based on time of day
+    const initializeCounters = () => {
+      const dayProgress = getDayProgress();
+      const currentAdsCount = Math.floor(dayProgress * dailyAdsTarget);
+      const currentRevenueCount = Math.floor(dayProgress * dailyRevenueTarget);
+      
+      setAdsCount(currentAdsCount);
+      setRevenueCount(currentRevenueCount);
+    };
+    
+    // Calculate time until midnight in Paris
+    const getTimeUntilMidnightParis = () => {
+      const parisTime = getNowInParis();
+      const tomorrow = new Date(parisTime);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      
+      return tomorrow.getTime() - parisTime.getTime();
+    };
+    
+    // Schedule reset at midnight Paris time
     const scheduleReset = () => {
-      const timeUntilMidnight = getTimeUntilMidnight();
+      const timeUntilMidnight = getTimeUntilMidnightParis();
+      
+      console.log(`Next reset scheduled in ${Math.floor(timeUntilMidnight / 1000 / 60)} minutes`);
       
       const resetTimeout = setTimeout(() => {
         // Reset counters
         setAdsCount(0);
         setRevenueCount(0);
-        
-        // Start the initial animation again
-        startInitialAnimation();
         
         // Schedule the next reset
         scheduleReset();
@@ -139,58 +165,57 @@ const Hero = () => {
       return resetTimeout;
     };
     
-    // Function for initial animation
-    const startInitialAnimation = () => {
-      let step = 0;
+    // Start continuous increment after initial values are set
+    const startIncrements = () => {
+      // Calculate remaining ads and revenue to hit target by end of day
+      const dayProgress = getDayProgress();
+      const remainingDayPercentage = 1 - dayProgress;
       
-      const animInterval = setInterval(() => {
-        step++;
-        
-        if (step <= steps) {
-          setAdsCount(Math.min(Math.floor(adsIncrement * step), initialAdsTarget));
-          setRevenueCount(Math.min(Math.floor(revenueIncrement * step), initialRevenueTarget));
-        } else {
-          clearInterval(animInterval);
-          
-          // After initial animation, start continuous incrementation
-          startContinuousIncrement();
-        }
-      }, initialDuration / steps);
+      if (remainingDayPercentage <= 0) return null; // It's midnight exactly
       
-      return animInterval;
-    };
-    
-    // Function to start continuous increment after initial animation
-    const startContinuousIncrement = () => {
-      // Continuous increment intervals (slower than initial animation)
+      const remainingAds = dailyAdsTarget - adsCount;
+      const remainingRevenue = dailyRevenueTarget - revenueCount;
+      
+      // Calculate interval timings to spread increments evenly across remaining time
+      const remainingTimeInMs = remainingDayPercentage * 24 * 60 * 60 * 1000;
+      
+      // Aim for approximately 1 ad increment every 2-3 seconds on average
+      const adIncrementInterval = Math.max(2000, remainingTimeInMs / (remainingAds / 5));
+      
+      // Aim for approximately 1 revenue increment every 4-5 seconds on average
+      const revenueIncrementInterval = Math.max(4000, remainingTimeInMs / (remainingRevenue / 50));
+      
+      // Add between 3-8 ads randomly
       const adsInterval = setInterval(() => {
-        // Add between 1-3 ads randomly
-        const increment = Math.floor(Math.random() * 3) + 1;
-        setAdsCount(prev => prev + increment);
-      }, 3000); // Every 3 seconds
+        const increment = Math.floor(Math.random() * 6) + 3;
+        setAdsCount(prev => Math.min(prev + increment, dailyAdsTarget));
+      }, adIncrementInterval);
       
+      // Add between €30-80 randomly
       const revenueInterval = setInterval(() => {
-        // Add between €10-50 randomly
-        const increment = (Math.floor(Math.random() * 41) + 10);
-        setRevenueCount(prev => prev + increment);
-      }, 5000); // Every 5 seconds
+        const increment = Math.floor(Math.random() * 51) + 30;
+        setRevenueCount(prev => Math.min(prev + increment, dailyRevenueTarget));
+      }, revenueIncrementInterval);
       
       return { adsInterval, revenueInterval };
     };
     
-    // Start initial animation
-    const initialAnimInterval = startInitialAnimation();
+    // Initialize counters based on time of day in Paris
+    initializeCounters();
+    
+    // Start increments
+    const incrementIntervals = startIncrements();
     
     // Schedule midnight reset
     const resetTimeout = scheduleReset();
     
     // Cleanup
     return () => {
-      clearInterval(initialAnimInterval);
-      clearTimeout(resetTimeout);
-      
-      // The continuous increment intervals are managed inside startContinuousIncrement
-      // and will be automatically cleaned up when the component unmounts
+      if (resetTimeout) clearTimeout(resetTimeout);
+      if (incrementIntervals) {
+        clearInterval(incrementIntervals.adsInterval);
+        clearInterval(incrementIntervals.revenueInterval);
+      }
     };
   }, []);
 
