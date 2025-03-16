@@ -1,5 +1,5 @@
 import React from 'react';
-import SummaryPanel from '@/components/dashboard/SummaryPanel';
+import { SummaryPanel } from '@/components/dashboard/summary';
 import TransactionsList from '@/components/dashboard/TransactionsList';
 import LocationFeed from '@/components/LocationFeed';
 
