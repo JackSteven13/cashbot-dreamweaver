@@ -202,6 +202,16 @@ const Hero = () => {
     window.location.href = '/dashboard';
   };
 
+  // Format revenue with correct spacing for thousands and € symbol at the end
+  const formatRevenue = (value: number): string => {
+    return new Intl.NumberFormat('fr-FR', { 
+      style: 'currency',
+      currency: 'EUR',
+      maximumFractionDigits: 0,
+      currencyDisplay: 'symbol'
+    }).format(value);
+  };
+
   return (
     <section className="relative overflow-hidden pt-32 pb-16 md:pt-40 md:pb-24">
       {/* Background Elements */}
@@ -232,15 +242,19 @@ const Hero = () => {
             ></div>
           )}
           
-          {/* Counters */}
-          <div className="grid grid-cols-2 gap-8 w-full max-w-lg mb-8 animate-slide-up">
-            <div className="glass-panel p-6 rounded-xl text-center">
-              <span className="text-3xl font-bold text-primary">{adsCount.toLocaleString()}</span>
-              <p className="text-sm text-muted-foreground mt-1">Publicités analysées</p>
+          {/* Counters - Improved for better responsive display */}
+          <div className="grid grid-cols-2 gap-4 sm:gap-8 w-full max-w-lg mb-8 animate-slide-up">
+            <div className="glass-panel p-4 sm:p-6 rounded-xl text-center">
+              <div className="text-2xl sm:text-3xl font-bold text-primary truncate">
+                {adsCount.toLocaleString('fr-FR')}
+              </div>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">Publicités analysées</p>
             </div>
-            <div className="glass-panel p-6 rounded-xl text-center">
-              <span className="text-3xl font-bold text-primary">{revenueCount.toLocaleString()}€</span>
-              <p className="text-sm text-muted-foreground mt-1">Revenus générés</p>
+            <div className="glass-panel p-4 sm:p-6 rounded-xl text-center">
+              <div className="text-2xl sm:text-3xl font-bold text-primary truncate">
+                {formatRevenue(revenueCount)}
+              </div>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">Revenus générés</p>
             </div>
           </div>
           
