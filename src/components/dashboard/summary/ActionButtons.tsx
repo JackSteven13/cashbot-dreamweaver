@@ -21,10 +21,10 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   onWithdraw
 }) => {
   return (
-    <div className="flex gap-2 mb-6">
+    <div className="flex flex-col sm:flex-row gap-2 mb-6">
       <Button 
         size="lg" 
-        className={`flex-1 ${canStartSession && !isButtonDisabled ? 'bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white' : 'bg-gray-300 hover:bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+        className={`w-full ${canStartSession && !isButtonDisabled ? 'bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white' : 'bg-gray-300 hover:bg-gray-300 text-gray-500 cursor-not-allowed'}`}
         disabled={!canStartSession || isButtonDisabled || isStartingSession}
         onClick={onBoostClick}
       >
@@ -34,7 +34,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       <Button 
         size="lg" 
         variant="outline"
-        className="flex-1 border-[#2d5f8a] text-[#2d5f8a] hover:bg-[#e2e8f0]"
+        className="w-full border-[#2d5f8a] text-[#2d5f8a] hover:bg-[#e2e8f0]"
         disabled={isWithdrawing || isButtonDisabled}
         onClick={onWithdraw}
       >
