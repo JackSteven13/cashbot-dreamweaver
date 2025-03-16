@@ -7,8 +7,8 @@ interface StatsCounterProps {
 }
 
 const StatsCounter = ({
-  dailyAdsTarget = 30000,
-  dailyRevenueTarget = 100000
+  dailyAdsTarget = 65000,
+  dailyRevenueTarget = 186000
 }: StatsCounterProps) => {
   // Real counters tracking actual values
   const [adsCount, setAdsCount] = useState(0);
@@ -28,26 +28,51 @@ const StatsCounter = ({
       return parisTime;
     };
     
-    // Calculate progress of the day (0 to 1) in Paris time
-    const getDayProgress = () => {
+    // Calculate progression within the current 14-day period (0 to 1)
+    const getBiWeeklyProgress = () => {
       const parisTime = getNowInParis();
+      const currentDay = parisTime.getDate();
+      
+      // Determine which 14-day period we're in
+      let periodStartDay;
+      if (currentDay < 15) {
+        periodStartDay = 1;
+      } else if (currentDay < 29) {
+        periodStartDay = 15;
+      } else {
+        const lastDayOfMonth = new Date(parisTime.getFullYear(), parisTime.getMonth() + 1, 0).getDate();
+        periodStartDay = 29;
+        
+        // If this is a short month and we don't have a day 29, use different logic
+        if (periodStartDay > lastDayOfMonth) {
+          // Adjust for months with less than 29 days
+          const daysPassed = currentDay;
+          const totalDaysInMonth = lastDayOfMonth;
+          return daysPassed / totalDaysInMonth;
+        }
+      }
+      
+      // Calculate days passed in this period and seconds in the current day
+      const daysPassed = currentDay - periodStartDay;
       const hours = parisTime.getHours();
       const minutes = parisTime.getMinutes();
       const seconds = parisTime.getSeconds();
       
-      // Calculate seconds elapsed since midnight
-      const secondsElapsed = hours * 3600 + minutes * 60 + seconds;
-      // Total seconds in a day
-      const totalSecondsInDay = 24 * 3600;
+      // Calculate total seconds elapsed in the 14-day period
+      const secondsInDay = hours * 3600 + minutes * 60 + seconds;
+      const totalElapsedSeconds = daysPassed * 86400 + secondsInDay;
       
-      return secondsElapsed / totalSecondsInDay;
+      // Total seconds in a 14-day period
+      const totalSecondsIn14Days = 14 * 86400;
+      
+      return Math.min(totalElapsedSeconds / totalSecondsIn14Days, 1);
     };
     
-    // Set initial values based on time of day
+    // Set initial values based on time within 14-day period
     const initializeCounters = () => {
-      const dayProgress = getDayProgress();
-      const currentAdsCount = Math.floor(dayProgress * dailyAdsTarget);
-      const currentRevenueCount = Math.floor(dayProgress * dailyRevenueTarget);
+      const periodProgress = getBiWeeklyProgress();
+      const currentAdsCount = Math.floor(periodProgress * dailyAdsTarget);
+      const currentRevenueCount = Math.floor(periodProgress * dailyRevenueTarget);
       
       setAdsCount(currentAdsCount);
       setRevenueCount(currentRevenueCount);
@@ -56,21 +81,44 @@ const StatsCounter = ({
       setDisplayedRevenueCount(currentRevenueCount);
     };
     
-    // Calculate time until midnight in Paris
-    const getTimeUntilMidnightParis = () => {
+    // Calculate time until next reset (1st, 15th, or 29th at midnight Paris time)
+    const getTimeUntilNextReset = () => {
       const parisTime = getNowInParis();
-      const tomorrow = new Date(parisTime);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
+      const currentDay = parisTime.getDate();
+      const currentYear = parisTime.getFullYear();
+      const currentMonth = parisTime.getMonth();
       
-      return tomorrow.getTime() - parisTime.getTime();
+      let nextResetDate;
+      
+      if (currentDay < 15) {
+        // Next reset is on the 15th
+        nextResetDate = new Date(currentYear, currentMonth, 15);
+      } else if (currentDay < 29) {
+        // Next reset is on the 29th, but check if month has 29th
+        const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        nextResetDate = new Date(currentYear, currentMonth, Math.min(29, lastDayOfMonth));
+      } else {
+        // Next reset is on the 1st of next month
+        nextResetDate = new Date(currentYear, currentMonth + 1, 1);
+      }
+      
+      // Set to midnight
+      nextResetDate.setHours(0, 0, 0, 0);
+      
+      // If we're already past midnight, add a day
+      if (parisTime.getHours() === 0 && parisTime.getMinutes() === 0 && 
+          parisTime.getDate() === nextResetDate.getDate()) {
+        nextResetDate.setDate(nextResetDate.getDate() + 1);
+      }
+      
+      return nextResetDate.getTime() - parisTime.getTime();
     };
     
-    // Schedule reset at midnight Paris time
+    // Schedule reset at appropriate time
     const scheduleReset = () => {
-      const timeUntilMidnight = getTimeUntilMidnightParis();
+      const timeUntilNextReset = getTimeUntilNextReset();
       
-      console.log(`Next reset scheduled in ${Math.floor(timeUntilMidnight / 1000 / 60)} minutes`);
+      console.log(`Next reset scheduled in ${Math.floor(timeUntilNextReset / 1000 / 60)} minutes`);
       
       const resetTimeout = setTimeout(() => {
         // Reset counters
@@ -81,34 +129,34 @@ const StatsCounter = ({
         
         // Schedule the next reset
         scheduleReset();
-      }, timeUntilMidnight);
+      }, timeUntilNextReset);
       
       return resetTimeout;
     };
     
     // Start continuous increment after initial values are set
     const startIncrements = () => {
-      // Calculate remaining ads and revenue to hit target by end of day
-      const dayProgress = getDayProgress();
-      const remainingDayPercentage = 1 - dayProgress;
+      // Calculate remaining ads and revenue to hit target by end of period
+      const periodProgress = getBiWeeklyProgress();
+      const remainingPeriodPercentage = 1 - periodProgress;
       
-      if (remainingDayPercentage <= 0) return null; // It's midnight exactly
+      if (remainingPeriodPercentage <= 0) return null; // It's reset time exactly
       
       const remainingAds = dailyAdsTarget - adsCount;
       const remainingRevenue = dailyRevenueTarget - revenueCount;
       
       // Calculate interval timings to spread increments evenly across remaining time
-      const remainingTimeInMs = remainingDayPercentage * 24 * 60 * 60 * 1000;
+      const remainingTimeInMs = remainingPeriodPercentage * 14 * 24 * 60 * 60 * 1000;
       
       // Aim for approximately 1 ad increment every 2-3 seconds on average
-      const adIncrementInterval = Math.max(2000, remainingTimeInMs / (remainingAds / 5));
+      const adIncrementInterval = Math.max(2000, remainingTimeInMs / (remainingAds / 7));
       
       // Aim for approximately 1 revenue increment every 4-5 seconds on average
-      const revenueIncrementInterval = Math.max(4000, remainingTimeInMs / (remainingRevenue / 50));
+      const revenueIncrementInterval = Math.max(4000, remainingTimeInMs / (remainingRevenue / 100));
       
-      // Add between 3-8 ads randomly
+      // Add between 5-12 ads randomly
       const adsInterval = setInterval(() => {
-        const increment = Math.floor(Math.random() * 6) + 3;
+        const increment = Math.floor(Math.random() * 8) + 5;
         setAdsCount(prev => {
           const newValue = Math.min(prev + increment, dailyAdsTarget);
           setDisplayedAdsCount(newValue); // Update displayed value directly
@@ -116,9 +164,9 @@ const StatsCounter = ({
         });
       }, adIncrementInterval);
       
-      // Add between €30-80 randomly
+      // Add between €60-140 randomly
       const revenueInterval = setInterval(() => {
-        const increment = Math.floor(Math.random() * 51) + 30;
+        const increment = Math.floor(Math.random() * 81) + 60;
         setRevenueCount(prev => {
           const newValue = Math.min(prev + increment, dailyRevenueTarget);
           setDisplayedRevenueCount(newValue); // Update displayed value directly
@@ -129,13 +177,13 @@ const StatsCounter = ({
       return { adsInterval, revenueInterval };
     };
     
-    // Initialize counters based on time of day in Paris
+    // Initialize counters based on time in the 14-day period
     initializeCounters();
     
     // Start increments
     const incrementIntervals = startIncrements();
     
-    // Schedule midnight reset
+    // Schedule reset for next 14-day mark
     const resetTimeout = scheduleReset();
     
     // Cleanup
