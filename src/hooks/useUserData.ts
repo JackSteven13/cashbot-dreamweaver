@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UserData } from '@/types/userData';
 import { useUserFetch } from './useUserFetch';
 import { useBalanceActions } from './useBalanceActions';
@@ -23,12 +23,17 @@ export const useUserData = () => {
   const [showLimitAlert, setShowLimitAlert] = useState<boolean>(initialShowLimitAlert);
 
   // Update local state when fetched data changes
-  if (fetchedUserData !== userData && fetchedUserData.username) {
-    setUserData(fetchedUserData);
-  }
-  if (fetchedDailySessionCount !== dailySessionCount) {
-    setDailySessionCount(fetchedDailySessionCount);
-  }
+  useEffect(() => {
+    if (fetchedUserData !== userData && fetchedUserData.username) {
+      setUserData(fetchedUserData);
+    }
+    if (fetchedDailySessionCount !== dailySessionCount) {
+      setDailySessionCount(fetchedDailySessionCount);
+    }
+    if (initialShowLimitAlert !== showLimitAlert) {
+      setShowLimitAlert(initialShowLimitAlert);
+    }
+  }, [fetchedUserData, fetchedDailySessionCount, initialShowLimitAlert]);
   
   // Get balance and session action handlers
   const { 

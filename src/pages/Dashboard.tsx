@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -9,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -18,18 +20,28 @@ const Dashboard = () => {
   // Vérifier l'authentification avant de charger les données
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          toast({
+            title: "Accès refusé",
+            description: "Vous devez être connecté pour accéder à votre tableau de bord.",
+            variant: "destructive"
+          });
+          navigate('/login');
+          return;
+        }
+        
+        setIsAuthChecking(false);
+      } catch (error) {
+        console.error("Erreur de vérification d'authentification:", error);
         toast({
-          title: "Accès refusé",
-          description: "Vous devez être connecté pour accéder à votre tableau de bord.",
+          title: "Erreur",
+          description: "Impossible de vérifier votre session. Veuillez vous reconnecter.",
           variant: "destructive"
         });
         navigate('/login');
-        return;
       }
-      
-      setIsAuthChecking(false);
     };
     
     checkAuth();
