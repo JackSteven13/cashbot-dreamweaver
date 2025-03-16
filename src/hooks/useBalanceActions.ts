@@ -30,45 +30,65 @@ export const useBalanceActions = ({
   } = useUserSession();
 
   const incrementSessionCount = async () => {
-    const newCount = await incrementSession(dailySessionCount);
-    if (typeof newCount === 'number') {
-      setDailySessionCount(newCount);
+    try {
+      const newCount = await incrementSession(dailySessionCount);
+      if (typeof newCount === 'number') {
+        setDailySessionCount(newCount);
+      }
+    } catch (error) {
+      console.error("Failed to increment session count:", error);
     }
   };
 
   const updateBalance = async (gain: number, report: string) => {
-    const result = await updateUserBalance(gain, report);
-    
-    if (result.success) {
-      // Immédiatement mettre à jour l'état local avec le nouveau solde
-      setUserData(prev => ({
-        ...prev,
-        balance: result.newBalance || prev.balance,
-        transactions: result.transaction ? [
-          result.transaction,
-          ...prev.transactions
-        ] : prev.transactions
-      }));
+    try {
+      console.log("Updating balance with gain:", gain);
+      const result = await updateUserBalance(gain, report);
       
-      if (result.limitReached) {
-        setShowLimitAlert(true);
+      if (result.success) {
+        console.log("Balance update successful. New balance:", result.newBalance);
+        // Immédiatement mettre à jour l'état local avec le nouveau solde
+        setUserData(prev => {
+          const updatedData = {
+            ...prev,
+            balance: result.newBalance !== undefined ? result.newBalance : prev.balance,
+            transactions: result.transaction ? [
+              result.transaction,
+              ...prev.transactions
+            ] : prev.transactions
+          };
+          console.log("Updated userData state:", updatedData);
+          return updatedData;
+        });
+        
+        if (result.limitReached) {
+          setShowLimitAlert(true);
+        }
+      } else {
+        console.error("Balance update failed");
       }
+    } catch (error) {
+      console.error("Error in updateBalance:", error);
     }
   };
 
   const resetBalance = async () => {
-    const result = await resetUserBalance();
-    
-    if (result.success) {
-      // Immédiatement mettre à jour l'état local avec le solde à 0
-      setUserData(prev => ({
-        ...prev,
-        balance: 0,
-        transactions: result.transaction ? [
-          result.transaction,
-          ...prev.transactions
-        ] : prev.transactions
-      }));
+    try {
+      const result = await resetUserBalance();
+      
+      if (result.success) {
+        // Immédiatement mettre à jour l'état local avec le solde à 0
+        setUserData(prev => ({
+          ...prev,
+          balance: 0,
+          transactions: result.transaction ? [
+            result.transaction,
+            ...prev.transactions
+          ] : prev.transactions
+        }));
+      }
+    } catch (error) {
+      console.error("Error in resetBalance:", error);
     }
   };
 
