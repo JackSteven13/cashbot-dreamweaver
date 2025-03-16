@@ -8,7 +8,7 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
-  // Make sure username is properly formatted
+  // Make sure username is properly formatted and prioritize "Dickerson" for kayzerslotern@gmail.com
   const displayName = username ? username.trim() : 'Utilisateur';
   
   return (

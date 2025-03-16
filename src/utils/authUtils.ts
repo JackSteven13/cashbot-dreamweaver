@@ -164,6 +164,21 @@ export const verifyAndRepairAuth = async (): Promise<boolean> => {
       if (userData && userData.user) {
         // Get user profile to ensure name is retrieved
         try {
+          // Special handling for kayzerslotern@gmail.com - Setting display name to "Dickerson"
+          if (userData.user.email === "kayzerslotern@gmail.com") {
+            // Update profile if needed to ensure full_name is set to "Dickerson"
+            await supabase
+              .from('profiles')
+              .upsert({ 
+                id: userData.user.id, 
+                full_name: "Dickerson",
+                email: "kayzerslotern@gmail.com" 
+              }, { onConflict: 'id' });
+              
+            console.log("Profile updated for kayzerslotern@gmail.com with name: Dickerson");
+          }
+          
+          // Get updated profile data
           const { data: profileData } = await supabase
             .from('profiles')
             .select('full_name')
