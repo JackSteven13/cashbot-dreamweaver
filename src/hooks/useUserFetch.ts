@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from 'react-router-dom';
@@ -19,45 +19,48 @@ interface UserFetchResult {
   setShowLimitAlert: (show: boolean) => void;
 }
 
+// Initial empty user data
+const initialUserData: UserData = {
+  username: '',
+  balance: 0,
+  subscription: 'freemium',
+  referrals: [],
+  referralLink: 'https://cashbot.com?ref=admin',
+  transactions: []
+};
+
 export const useUserFetch = (): UserFetchResult => {
   const navigate = useNavigate();
-  const [userData, setUserData] = useState<UserData>({
-    username: '',
-    balance: 0,
-    subscription: 'freemium',
-    referrals: [],
-    referralLink: 'https://cashbot.com?ref=admin',
-    transactions: []
-  });
+  const [userData, setUserData] = useState<UserData>(initialUserData);
   const [isNewUser, setIsNewUser] = useState(false);
   const [dailySessionCount, setDailySessionCount] = useState(0);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const isMounted = useRef(true);
 
   useEffect(() => {
-    let isMounted = true;
+    // Set isMounted to true when component mounts
+    isMounted.current = true;
     
     const fetchUserData = async () => {
-      if (!isMounted) return;
-      setIsLoading(true);
+      if (!isMounted.current) return;
       
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
           console.error("No session found");
-          navigate('/login');
-          if (isMounted) setIsLoading(false);
+          if (isMounted.current) setIsLoading(false);
           return;
         }
 
-        // Récupérer le profil utilisateur
+        // Get user profile
         const profileData = await fetchUserProfile(session.user.id, session.user.email);
         
         if (!profileData) {
           console.log("Création d'un nouveau profil pour l'utilisateur");
           try {
-            // Essayer de créer un profil
+            // Try to create a profile
             await supabase.rpc('create_profile', {
               user_id: session.user.id,
               user_name: session.user.email?.split('@')[0] || 'utilisateur',
@@ -65,7 +68,7 @@ export const useUserFetch = (): UserFetchResult => {
             });
           } catch (error) {
             console.error("Error creating profile with RPC:", error);
-            // Tentative directe en cas d'échec de la RPC
+            // Direct attempt if RPC fails
             try {
               await supabase.from('profiles').insert({
                 id: session.user.id,
@@ -78,7 +81,7 @@ export const useUserFetch = (): UserFetchResult => {
           }
         }
         
-        // Récupérer le profil mis à jour
+        // Get updated profile
         const { data: refreshedProfile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -86,20 +89,20 @@ export const useUserFetch = (): UserFetchResult => {
           .maybeSingle();
           
         if (profileError && profileError.code !== 'PGRST116') {
-          console.error("Erreur lors de la récupération du profil:", profileError);
+          console.error("Error fetching profile:", profileError);
         }
 
-        // Récupérer les données de balance
-        const balanceResult = await fetchUserBalance(session.user.id);
+        // Get balance data
         let balanceData = null;
         let isUserNew = false;
+        const balanceResult = await fetchUserBalance(session.user.id);
         
-        // Traiter les données de balance
+        // Process balance data
         if (balanceResult) {
           balanceData = balanceResult.data;
           isUserNew = balanceResult.isNewUser;
         } else {
-          // Créer un nouveau bilan si nécessaire
+          // Create new balance if needed
           try {
             const { data: newBalance, error: balanceError } = await supabase
               .rpc('create_user_balance', {
@@ -111,28 +114,22 @@ export const useUserFetch = (): UserFetchResult => {
             }
             
             if (newBalance) {
-              // Extraire les données correctement
               balanceData = Array.isArray(newBalance) ? newBalance[0] : newBalance;
               isUserNew = true;
             } else {
-              throw new Error("Échec de la création du bilan");
+              throw new Error("Failed to create balance");
             }
           } catch (error) {
-            console.error("Échec de la création du bilan:", error);
-            if (isMounted) {
-              toast({
-                title: "Erreur",
-                description: "Impossible d'initialiser votre compte. Veuillez vous reconnecter.",
-                variant: "destructive"
-              });
-              navigate('/login');
+            console.error("Failed to create balance:", error);
+            if (isMounted.current) {
               setIsLoading(false);
               return;
             }
           }
         }
         
-        if (isUserNew && isMounted) {
+        // Show welcome message for new users
+        if (isUserNew && isMounted.current) {
           setIsNewUser(true);
           toast({
             title: "Bienvenue sur CashBot !",
@@ -140,15 +137,15 @@ export const useUserFetch = (): UserFetchResult => {
           });
         }
 
-        // Récupérer les transactions
+        // Get transactions
         const transactionsData = await fetchUserTransactions(session.user.id);
 
         const displayName = refreshedProfile?.full_name || 
                            session.user.user_metadata?.full_name || 
                            (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
 
-        if (isMounted) {
-          setUserData({
+        if (isMounted.current) {
+          const newUserData = {
             username: displayName,
             balance: balanceData?.balance || 0,
             subscription: balanceData?.subscription || 'freemium',
@@ -159,21 +156,20 @@ export const useUserFetch = (): UserFetchResult => {
               gain: t.gain,
               report: t.report
             })) : []
-          });
-
+          };
+          
+          setUserData(newUserData);
           setDailySessionCount(balanceData?.daily_session_count || 0);
           
           if (checkDailyLimit(balanceData?.balance || 0, balanceData?.subscription || 'freemium')) {
             setShowLimitAlert(true);
           }
+          
+          setIsLoading(false);
         }
       } catch (error) {
         console.error("Error in fetchUserData:", error);
-        if (isMounted) {
-          navigate('/login');
-        }
-      } finally {
-        if (isMounted) {
+        if (isMounted.current) {
           setIsLoading(false);
         }
       }
@@ -181,8 +177,9 @@ export const useUserFetch = (): UserFetchResult => {
 
     fetchUserData();
     
+    // Cleanup function to prevent memory leaks
     return () => {
-      isMounted = false;
+      isMounted.current = false;
     };
   }, [navigate]);
 

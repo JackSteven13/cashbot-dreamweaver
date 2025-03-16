@@ -10,14 +10,13 @@ import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import { Skeleton } from '@/components/ui/skeleton';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   
-  // Vérifier l'authentification avant de charger les données
+  // Check authentication before loading data
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -34,7 +33,7 @@ const Dashboard = () => {
         
         setIsAuthChecking(false);
       } catch (error) {
-        console.error("Erreur de vérification d'authentification:", error);
+        console.error("Authentication error:", error);
         toast({
           title: "Erreur",
           description: "Impossible de vérifier votre session. Veuillez vous reconnecter.",
@@ -60,7 +59,7 @@ const Dashboard = () => {
     isLoading
   } = useUserData();
   
-  // Session management logic
+  // Session management logic - wrap in useEffect to prevent render-time updates
   const {
     isStartingSession,
     handleStartSession,
@@ -74,7 +73,7 @@ const Dashboard = () => {
     resetBalance
   );
 
-  // Afficher un loader pendant le chargement des données
+  // Show a loader while checking auth and loading data
   if (isAuthChecking || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#0f0f23]">
@@ -83,10 +82,9 @@ const Dashboard = () => {
     );
   }
 
-  // Rediriger vers la page de connexion si l'utilisateur n'est pas authentifié
+  // Redirect to login if user is not authenticated
   if (!userData.username) {
-    navigate('/login');
-    return null;
+    return null; // Don't render anything, useEffect will redirect
   }
 
   return (

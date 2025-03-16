@@ -24,16 +24,22 @@ export const useUserData = () => {
 
   // Update local state when fetched data changes
   useEffect(() => {
-    if (fetchedUserData !== userData && fetchedUserData.username) {
+    if (fetchedUserData && fetchedUserData !== userData) {
       setUserData(fetchedUserData);
     }
+  }, [fetchedUserData, userData]);
+
+  useEffect(() => {
     if (fetchedDailySessionCount !== dailySessionCount) {
       setDailySessionCount(fetchedDailySessionCount);
     }
+  }, [fetchedDailySessionCount, dailySessionCount]);
+
+  useEffect(() => {
     if (initialShowLimitAlert !== showLimitAlert) {
       setShowLimitAlert(initialShowLimitAlert);
     }
-  }, [fetchedUserData, fetchedDailySessionCount, initialShowLimitAlert]);
+  }, [initialShowLimitAlert, showLimitAlert]);
   
   // Get balance and session action handlers
   const { 
