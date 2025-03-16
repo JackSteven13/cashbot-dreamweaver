@@ -85,6 +85,9 @@ const SummaryPanel = ({
     ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}`
     : 'Sessions illimitées';
 
+  // Ensure balance is never displayed as negative
+  const displayBalance = Math.max(0, balance);
+
   return (
     <div className="neuro-panel mb-8">
       {isNewUser && (
@@ -98,9 +101,9 @@ const SummaryPanel = ({
         {/* Left Column */}
         <div className="flex-1">
           <div className="flex items-center mb-4">
-            <DollarSign className={`h-8 w-8 mr-2 ${balance >= 0 ? 'text-[#2d5f8a]' : 'text-red-600'}`} />
-            <h2 className={`text-2xl font-semibold ${balance >= 0 ? 'text-[#1e3a5f]' : 'text-red-600'}`}>
-              Solde : {balance.toFixed(2)}€
+            <DollarSign className="text-[#2d5f8a] h-8 w-8 mr-2" />
+            <h2 className="text-2xl font-semibold text-[#1e3a5f]">
+              Solde : {displayBalance.toFixed(2)}€
             </h2>
           </div>
           

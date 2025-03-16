@@ -29,12 +29,13 @@ const getInitialUserData = (): UserData => {
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS];
   
   // If balance exceeds daily limit for freemium accounts, cap it
+  // Also ensure balance is never negative
   const balanceToUse = subscription === 'freemium' && storedBalance > dailyLimit 
     ? dailyLimit 
-    : storedBalance;
+    : Math.max(0, storedBalance);
   
   // Save the corrected balance
-  if (subscription === 'freemium' && storedBalance > dailyLimit) {
+  if (subscription === 'freemium' && storedBalance > dailyLimit || storedBalance < 0) {
     localStorage.setItem('user_balance', balanceToUse.toString());
   }
   
@@ -93,6 +94,16 @@ export const useUserData = () => {
         transactions: []
       }));
       localStorage.setItem('daily_session_count', '0');
+    } else {
+      // If not a new user, ensure balance is never negative
+      if (userData.balance < 0) {
+        const correctedBalance = 0;
+        localStorage.setItem('user_balance', correctedBalance.toString());
+        setUserData(prev => ({
+          ...prev,
+          balance: correctedBalance
+        }));
+      }
     }
     
     // Check if daily limit alert should be shown
@@ -103,8 +114,11 @@ export const useUserData = () => {
 
   // Update user balance after a session
   const updateBalance = (gain: number, report: string) => {
+    // Ensure gain is always positive
+    const positiveGain = Math.max(0, gain);
+    
     setUserData(prev => {
-      const newBalance = parseFloat((prev.balance + gain).toFixed(2));
+      const newBalance = parseFloat((prev.balance + positiveGain).toFixed(2));
       // Check if limit reached
       const limitReached = newBalance >= SUBSCRIPTION_LIMITS[prev.subscription as keyof typeof SUBSCRIPTION_LIMITS] && prev.subscription === 'freemium';
       
@@ -121,7 +135,7 @@ export const useUserData = () => {
         transactions: [
           {
             date: new Date().toISOString().split('T')[0],
-            gain: gain,
+            gain: positiveGain,
             report: report
           },
           ...prev.transactions

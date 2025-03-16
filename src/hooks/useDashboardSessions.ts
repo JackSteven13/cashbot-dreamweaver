@@ -68,8 +68,9 @@ export const useDashboardSessions = (
     }
     
     // Generate random gain based on subscription (between 20% and 80% of remaining limit)
-    const minGain = Math.min(dailyLimit * 0.1, remainingAmount);
-    const maxGain = Math.min(dailyLimit * 0.3, remainingAmount);
+    // Ensure gain is always positive
+    const minGain = Math.max(0.01, Math.min(dailyLimit * 0.1, remainingAmount));
+    const maxGain = Math.max(minGain + 0.01, Math.min(dailyLimit * 0.3, remainingAmount));
     const randomGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
     
     // Update user balance and show notification
@@ -127,9 +128,9 @@ export const useDashboardSessions = (
       const remainingAmount = dailyLimit - userData.balance;
       
       // Generate random gain (higher than auto sessions, limited by remaining amount)
-      // IMPORTANT: Always generate positive gain between 0.10 and remaining amount
-      const minGain = Math.min(0.10, remainingAmount);
-      const maxGain = Math.min(dailyLimit * 0.5, remainingAmount);
+      // CRITICAL: Always generate positive gain between 0.10 and remaining amount
+      const minGain = Math.max(0.10, Math.min(0.10, remainingAmount));
+      const maxGain = Math.max(minGain + 0.01, Math.min(dailyLimit * 0.5, remainingAmount));
       const randomGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
       
       // Update user data
