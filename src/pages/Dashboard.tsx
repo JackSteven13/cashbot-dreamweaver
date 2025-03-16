@@ -144,6 +144,25 @@ const Dashboard = () => {
       });
     }, 2000);
   };
+  
+  const handleWithdrawal = () => {
+    // Process withdrawal only if sufficient balance (at least 20€) and not freemium account
+    if (userData.balance >= 20 && userData.subscription !== 'freemium') {
+      // Reset balance to 0 to simulate withdrawal
+      setUserData(prev => ({
+        ...prev,
+        balance: 0,
+        transactions: [
+          {
+            date: new Date().toISOString().split('T')[0],
+            gain: -prev.balance, // Negative because it's a withdrawal
+            report: `Retrait de ${prev.balance.toFixed(2)}€ effectué avec succès. Le transfert vers votre compte bancaire est en cours.`
+          },
+          ...prev.transactions
+        ]
+      }));
+    }
+  };
 
   return (
     <DashboardLayout
@@ -157,6 +176,7 @@ const Dashboard = () => {
         referralLink={userData.referralLink}
         isStartingSession={isStartingSession}
         handleStartSession={handleStartSession}
+        handleWithdrawal={handleWithdrawal}
         transactions={userData.transactions}
         isNewUser={isNewUser}
         subscription={userData.subscription}

@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Copy, DollarSign } from 'lucide-react';
+import React, { useState } from 'react';
+import { Copy, DollarSign, ArrowUpCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import Button from '@/components/Button';
 
@@ -19,6 +19,7 @@ interface SummaryPanelProps {
   handleStartSession: () => void;
   isNewUser?: boolean;
   subscription: string;
+  handleWithdrawal?: () => void;
 }
 
 const SummaryPanel = ({ 
@@ -27,8 +28,11 @@ const SummaryPanel = ({
   isStartingSession, 
   handleStartSession,
   isNewUser = false,
-  subscription
+  subscription,
+  handleWithdrawal
 }: SummaryPanelProps) => {
+  
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   
   const handleCopyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);
@@ -36,6 +40,36 @@ const SummaryPanel = ({
       title: "Lien copié !",
       description: "Votre lien de parrainage a été copié dans le presse-papier",
     });
+  };
+  
+  const onWithdraw = () => {
+    setIsWithdrawing(true);
+    
+    // Simulate withdrawal process
+    setTimeout(() => {
+      setIsWithdrawing(false);
+      
+      // If subscription is freemium, withdrawal will fail
+      if (subscription === 'freemium') {
+        toast({
+          title: "Demande refusée",
+          description: "Les retraits sont disponibles uniquement pour les abonnements payants. Veuillez mettre à niveau votre compte.",
+          variant: "destructive"
+        });
+      } else if (balance < 20) {
+        toast({
+          title: "Montant insuffisant",
+          description: "Le montant minimum de retrait est de 20€. Continuez à gagner plus de revenus.",
+          variant: "destructive"
+        });
+      } else {
+        if (handleWithdrawal) handleWithdrawal();
+        toast({
+          title: "Demande de retrait acceptée",
+          description: "Votre retrait a été traité et sera envoyé sur votre compte bancaire sous 2-3 jours ouvrés.",
+        });
+      }
+    }, 2000);
   };
 
   // Obtenir la limite de gain pour l'abonnement actuel
@@ -67,15 +101,27 @@ const SummaryPanel = ({
             </p>
           </div>
           
-          <Button 
-            size="lg" 
-            fullWidth 
-            className="mb-6 bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
-            isLoading={isStartingSession} 
-            onClick={handleStartSession}
-          >
-            {isStartingSession ? "Traitement en cours..." : "▶️ Lancer une session manuelle"}
-          </Button>
+          <div className="flex gap-2 mb-6">
+            <Button 
+              size="lg" 
+              className="flex-1 bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
+              isLoading={isStartingSession} 
+              onClick={handleStartSession}
+            >
+              {isStartingSession ? "Traitement en cours..." : "▶️ Boost manuel"}
+            </Button>
+            
+            <Button 
+              size="lg" 
+              variant="outline"
+              className="flex-1 border-[#2d5f8a] text-[#2d5f8a] hover:bg-[#e2e8f0]"
+              isLoading={isWithdrawing}
+              onClick={onWithdraw}
+            >
+              <ArrowUpCircle className="mr-2 h-4 w-4" />
+              Retirer les fonds
+            </Button>
+          </div>
           
           <div className="mt-8">
             <h3 className="text-lg font-semibold mb-3 text-[#1e3a5f]">🚀 Votre lien magique :</h3>
