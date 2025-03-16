@@ -18,9 +18,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [authCheckFailed, setAuthCheckFailed] = useState(false);
   const [retryAttempts, setRetryAttempts] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
-  const maxRetries = 3;
+  const maxRetries = 5; // Increased number of retries
   const authCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialCheckRef = useRef(true);
+  const mountedTimeRef = useRef(Date.now());
 
   const checkAuth = async (isManualRetry = false) => {
     if (isManualRetry) {
@@ -36,18 +37,21 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       if (isManualRetry) {
         await forceSignOut();
         // Pause pour s'assurer que la déconnexion est complète
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
       // Utiliser un délai pour éviter les conditions de course
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       const isAuthValid = await verifyAndRepairAuth();
       
       if (!isAuthValid) {
         if (retryAttempts < maxRetries && !isManualRetry) {
           setRetryAttempts(prev => prev + 1);
           console.log(`Nouvelle tentative ${retryAttempts + 1}/${maxRetries} programmée`);
-          setTimeout(() => checkAuth(), 1500);
+          
+          // Délai exponentiel entre les tentatives
+          const delay = Math.min(1000 * Math.pow(1.5, retryAttempts), 10000);
+          setTimeout(() => checkAuth(), delay);
           return;
         }
         
@@ -89,13 +93,21 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         setIsAuthenticated(true);
         setIsRetrying(false);
         
-        // Afficher le message d'accueil uniquement après la connexion
+        // Afficher le message d'accueil uniquement après la connexion initiale
         if (location.state?.justLoggedIn && initialCheckRef.current) {
           initialCheckRef.current = false;
-          toast({
-            title: `Bienvenue, ${displayName} !`,
-            description: "Vous êtes maintenant connecté à votre compte CashBot.",
-          });
+          
+          // Vérifier que le timestamp est récent pour éviter les messages sur d'anciennes sessions
+          const loginTimestamp = location.state?.timestamp || 0;
+          const now = Date.now();
+          const isRecentLogin = (now - loginTimestamp) < 10000; // Moins de 10 secondes
+          
+          if (isRecentLogin) {
+            toast({
+              title: `Bienvenue, ${displayName} !`,
+              description: "Vous êtes maintenant connecté à votre compte CashBot.",
+            });
+          }
           
           // Nettoyer l'état pour ne pas répéter le message
           navigate(location.pathname, { replace: true, state: {} });
@@ -112,7 +124,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       if (retryAttempts < maxRetries && !isManualRetry) {
         setRetryAttempts(prev => prev + 1);
         console.log(`Nouvelle tentative ${retryAttempts + 1}/${maxRetries} programmée`);
-        setTimeout(() => checkAuth(), 1500);
+        
+        // Délai exponentiel entre les tentatives
+        const delay = Math.min(1000 * Math.pow(1.5, retryAttempts), 10000);
+        setTimeout(() => checkAuth(), delay);
         return;
       }
       
@@ -131,14 +146,19 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       setAuthCheckFailed(false);
       setRetryAttempts(0);
       setIsAuthenticated(null);
+      mountedTimeRef.current = Date.now();
     }
+    
+    // Prévenir les vérifications multiples en même temps
+    const uniqueKey = `auth_check_${mountedTimeRef.current}`;
+    console.log(`Starting auth check with key: ${uniqueKey}`);
     
     // Effectuer la vérification avec un délai pour éviter les problèmes d'initialisation
     const initTimeout = setTimeout(() => {
       if (isMounted) {
         checkAuth();
       }
-    }, 300);
+    }, 600);
     
     // Définir un timeout pour éviter un chargement infini
     authCheckTimeoutRef.current = setTimeout(() => {
@@ -147,52 +167,50 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
       }
-    }, 8000); // 8 secondes maximum
+    }, 12000); // 12 secondes maximum
 
     // Surveiller les changements d'état d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Changement d'état d'authentification:", event);
+      if (!isMounted) return;
+      
+      console.log(`[${uniqueKey}] Changement d'état d'authentification:`, event);
+      
       if (event === 'SIGNED_OUT') {
-        if (isMounted) {
-          setIsAuthenticated(false);
-          setUsername(null);
-        }
+        setIsAuthenticated(false);
+        setUsername(null);
       } else if (event === 'SIGNED_IN' && session && session.user) {
-        if (isMounted) {
-          setIsAuthenticated(true);
-          // Essayer de charger le nom d'utilisateur sans bloquer
-          void supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', session.user.id)
-            .maybeSingle()
-            .then(({ data }) => {
-              if (isMounted && data) {
-                setUsername(data.full_name || session.user.email?.split('@')[0] || 'utilisateur');
-              }
-            });
-        }
+        setIsAuthenticated(true);
+        // Essayer de charger le nom d'utilisateur sans bloquer
+        void supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', session.user.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (isMounted && data) {
+              setUsername(data.full_name || session.user.email?.split('@')[0] || 'utilisateur');
+            }
+          });
       }
     });
 
     return () => {
       isMounted = false;
-      clearTimeout(authCheckTimeoutRef.current);
+      if (authCheckTimeoutRef.current) {
+        clearTimeout(authCheckTimeoutRef.current);
+        authCheckTimeoutRef.current = null;
+      }
       clearTimeout(initTimeout);
       subscription.unsubscribe();
+      console.log(`Auth check with key ${uniqueKey} unmounted`);
     };
-  }, [location.pathname]); 
+  }, [location.pathname, location.state?.justLoggedIn]); 
 
   // Fonction pour effectuer une connexion propre
   const handleCleanLogin = () => {
     Promise.resolve(forceSignOut())
-      .then((success) => {
-        if (success) {
-          console.log("Déconnexion réussie, redirection vers la page de connexion");
-        } else {
-          console.warn("La déconnexion peut ne pas avoir réussi, redirection quand même");
-        }
-        // Rediriger dans tous les cas
+      .then(() => {
+        console.log("Redirection vers la page de connexion");
         navigate('/login', { replace: true });
       })
       .catch((error) => {

@@ -7,6 +7,7 @@ import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { verifyAndRepairAuth, forceSignOut } from "@/utils/authUtils";
+import { Input } from '@/components/ui/input';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,7 +16,9 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const loginAttemptRef = useRef(0);
+  const isSubmittingRef = useRef(false);
   
   // Improved session check on component mount
   useEffect(() => {
@@ -24,13 +27,14 @@ const Login = () => {
     
     const checkSession = async () => {
       try {
+        if (!isMounted) return;
         setIsCheckingSession(true);
         
         // Ensure we start with a clean session state
         await forceSignOut();
         
         // Short delay to ensure signout is complete
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         if (!isMounted) return;
         
@@ -43,7 +47,7 @@ const Login = () => {
       }
     };
     
-    checkTimeout = setTimeout(() => checkSession(), 100);
+    checkTimeout = setTimeout(() => checkSession(), 500);
     
     return () => {
       isMounted = false;
@@ -53,7 +57,11 @@ const Login = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRef.current) return; // Prevent multiple submissions
+    
+    isSubmittingRef.current = true;
     setIsLoading(true);
+    setLoginError(null);
     
     try {
       loginAttemptRef.current += 1;
@@ -64,7 +72,7 @@ const Login = () => {
       await forceSignOut();
       
       // Wait for signout to complete
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       // Attempt login with provided credentials
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -77,15 +85,16 @@ const Login = () => {
       if (data && data.user) {
         console.log(`Login attempt #${attemptId} successful, user:`, data.user.id);
         
-        // Wait for session establishment
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Wait for session establishment - increased delay for stability
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Verify session is valid with multiple attempts if needed
+        // Multiple verification attempts to ensure session is valid
         let isSessionValid = false;
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 5; i++) {
           isSessionValid = await verifyAndRepairAuth();
           if (isSessionValid) break;
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // Increasing wait times between attempts
+          await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
         }
         
         if (!isSessionValid) {
@@ -108,17 +117,24 @@ const Login = () => {
           description: "Vous êtes maintenant connecté à votre compte CashBot.",
         });
         
-        // Redirect with delay to ensure session is fully established
+        // Redirect with longer delay to ensure session is fully established
         const from = location.state?.from?.pathname || '/dashboard';
         console.log(`Login attempt #${attemptId} redirecting to:`, from);
         
         // Clear any previous navigation attempt for this login
         setTimeout(() => {
-          navigate(from, { state: { justLoggedIn: true }, replace: true });
-        }, 800);
+          navigate(from, { 
+            state: { 
+              justLoggedIn: true,
+              timestamp: new Date().getTime() // Add timestamp for uniqueness
+            }, 
+            replace: true 
+          });
+        }, 1500);
       }
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
+      setLoginError(error.message || "Vérifiez vos identifiants et réessayez");
       toast({
         title: "Erreur de connexion",
         description: error.message || "Vérifiez vos identifiants et réessayez",
@@ -133,6 +149,10 @@ const Login = () => {
       }
     } finally {
       setIsLoading(false);
+      // Delay resetting the submitting flag to prevent rapid resubmission
+      setTimeout(() => {
+        isSubmittingRef.current = false;
+      }, 1000);
     }
   };
   
@@ -167,14 +187,15 @@ const Login = () => {
                 <label htmlFor="email" className="block text-sm font-medium mb-1">
                   Email
                 </label>
-                <input
+                <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-3 border border-border rounded-lg bg-background"
+                  className="w-full p-3"
                   placeholder="votre@email.com"
                   required
+                  disabled={isLoading}
                 />
               </div>
               
@@ -182,14 +203,15 @@ const Login = () => {
                 <label htmlFor="password" className="block text-sm font-medium mb-1">
                   Mot de passe
                 </label>
-                <input
+                <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3 border border-border rounded-lg bg-background"
+                  className="w-full p-3"
                   placeholder="••••••••"
                   required
+                  disabled={isLoading}
                 />
                 <div className="flex justify-end mt-1">
                   <Link to="/reset-password" className="text-xs text-primary hover:underline">
@@ -197,6 +219,12 @@ const Login = () => {
                   </Link>
                 </div>
               </div>
+              
+              {loginError && (
+                <div className="text-sm text-red-500 bg-red-50 border border-red-100 p-2 rounded">
+                  {loginError}
+                </div>
+              )}
               
               <div className="pt-2">
                 <Button type="submit" fullWidth size="lg" isLoading={isLoading} className="group">

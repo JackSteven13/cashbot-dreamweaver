@@ -59,6 +59,8 @@ export const checkDailyLimit = (balance: number, subscription: string) => {
  */
 export const forceSignOut = async (): Promise<boolean> => {
   try {
+    console.log("Performing complete sign out...");
+    
     // Nettoyer toutes les données locales avant la déconnexion
     localStorage.removeItem('supabase.auth.token');
     localStorage.removeItem('supabase.auth.expires_at');
@@ -85,8 +87,16 @@ export const forceSignOut = async (): Promise<boolean> => {
     // Effectuer la déconnexion avec portée globale ensuite
     await supabase.auth.signOut({ scope: 'global' });
     
-    // Attendre un court instant pour s'assurer que la déconnexion est traitée
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Attendre un moment plus long pour s'assurer que la déconnexion est traitée
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Vérifier que la déconnexion a bien fonctionné
+    const { data } = await supabase.auth.getSession();
+    if (data.session) {
+      console.warn("Session still exists after signout attempt, trying again");
+      await supabase.auth.signOut({ scope: 'global' });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
     
     console.log("User signed out and all session data cleared");
     return true;
@@ -117,6 +127,14 @@ export const refreshSession = async () => {
     }
     
     console.log("Session refreshed successfully");
+    
+    // Vérifier immédiatement que la session est valide
+    const { data: { session: verifiedSession } } = await supabase.auth.getSession();
+    if (!verifiedSession) {
+      console.warn("Session not verified after refresh");
+      return null;
+    }
+    
     return data.session;
   } catch (error) {
     console.error("Error refreshing session:", error);
@@ -208,6 +226,13 @@ export const verifyAndRepairAuth = async (): Promise<boolean> => {
     
     if (refreshError || !refreshData.session) {
       console.log("Session refresh failed");
+      return false;
+    }
+    
+    // Vérification supplémentaire après rafraîchissement
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData || !userData.user) {
+      console.log("User data not available after refresh");
       return false;
     }
     
