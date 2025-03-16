@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { UserData } from '@/types/userData';
 import { useUserDataFetcher } from './useUserDataFetcher';
 import { toast } from "@/components/ui/use-toast";
+import { verifyAndRepairAuth } from '@/utils/authUtils';
 
 interface UserFetchResult {
   userData: UserData;
@@ -19,7 +20,7 @@ export const useUserFetch = (): UserFetchResult => {
   const isMounted = useRef(true);
   const fetchInProgress = useRef(false);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 5; // Augmenté pour plus de résilience
+  const maxRetries = 5; // Maintenu pour la résilience
   const retryDelay = useRef(1000);
   
   // Initialisation de l'état avec des valeurs par défaut
@@ -35,8 +36,18 @@ export const useUserFetch = (): UserFetchResult => {
     try {
       console.log("Starting fetchData in useUserFetch");
       fetchInProgress.current = true;
+      
+      // Vérifier et réparer l'authentification avant de charger les données
+      const isAuthValid = await verifyAndRepairAuth();
+      
+      if (!isAuthValid) {
+        console.error("Invalid authentication state, cannot fetch user data");
+        throw new Error("Authentication invalid");
+      }
+      
       await fetchUserData();
       console.log("fetchUserData completed successfully");
+      
       // Reset retry count on success
       if (retryCount > 0) setRetryCount(0);
       retryDelay.current = 1000; // Reset delay on success
@@ -66,7 +77,7 @@ export const useUserFetch = (): UserFetchResult => {
         fetchInProgress.current = false;
         toast({
           title: "Problème de connexion",
-          description: "Impossible de charger vos données. Veuillez actualiser la page ou vérifier votre connexion.",
+          description: "Impossible de charger vos données. Veuillez rafraîchir la page ou vérifier votre connexion.",
           variant: "destructive"
         });
       }
@@ -80,21 +91,36 @@ export const useUserFetch = (): UserFetchResult => {
 
   // Effet pour gérer le cycle de vie et éviter les mises à jour d'état sur un composant démonté
   useEffect(() => {
-    // Réinitialiser l'état de montage et lancer la récupération initiale
+    // Réinitialiser l'état de montage
     isMounted.current = true;
     fetchInProgress.current = false;
+    
     console.log("useEffect in useUserFetch triggered, isLoading:", isLoading);
     
-    // Récupération initiale des données
-    let initialFetchTimeout = setTimeout(() => {
-      fetchData().catch(console.error);
-    }, 100); // Petit délai pour s'assurer que tout est bien monté
+    // Vérifier l'authentification avant le chargement des données
+    let initialCheck = setTimeout(async () => {
+      // Vérifier si l'utilisateur est authentifié avant de charger les données
+      const isAuthValid = await verifyAndRepairAuth();
+      
+      if (isAuthValid) {
+        console.log("Authentication valid, proceeding with data fetch");
+        // Récupération initiale des données avec un léger délai
+        setTimeout(() => {
+          if (isMounted.current) {
+            fetchData().catch(console.error);
+          }
+        }, 200);
+      } else {
+        console.log("Authentication invalid, will not fetch user data");
+        // Ne pas tenter de charger les données si l'authentification est invalide
+      }
+    }, 100);
     
     // Nettoyage pour éviter les fuites mémoire et les mises à jour d'état sur des composants démontés
     return () => {
       console.log("useUserFetch component unmounting");
       isMounted.current = false;
-      clearTimeout(initialFetchTimeout);
+      clearTimeout(initialCheck);
     };
   }, [fetchData]);
 
@@ -102,7 +128,19 @@ export const useUserFetch = (): UserFetchResult => {
   const refetchUserData = useCallback(async () => {
     if (isMounted.current && !fetchInProgress.current) {
       console.log("Manually refetching user data");
-      await fetchData();
+      // Vérifier l'authentification avant de recharger
+      const isAuthValid = await verifyAndRepairAuth();
+      
+      if (isAuthValid) {
+        await fetchData();
+      } else {
+        console.log("Authentication invalid, cannot refetch data");
+        toast({
+          title: "Problème d'authentification",
+          description: "Impossible de rafraîchir vos données. Veuillez vous reconnecter.",
+          variant: "destructive"
+        });
+      }
     }
   }, [fetchData]);
 

@@ -15,6 +15,20 @@ export const getCurrentSession = async () => {
       return null;
     }
     
+    if (!session) {
+      console.log("No active session found");
+      return null;
+    }
+    
+    // Vérifier si le token est valide et non expiré
+    const tokenExpiry = new Date(session.expires_at * 1000);
+    const now = new Date();
+    
+    if (now > tokenExpiry) {
+      console.log("Session token expired, attempting refresh");
+      return await refreshSession();
+    }
+    
     return session;
   } catch (error) {
     console.error("Error getting session:", error);
@@ -42,7 +56,14 @@ export const checkDailyLimit = (balance: number, subscription: string) => {
  */
 export const forceSignOut = async () => {
   try {
+    // Suppression complète de la session locale
     await supabase.auth.signOut({ scope: 'local' });
+    
+    // Effacer les données locales potentiellement en cache
+    localStorage.removeItem('supabase.auth.token');
+    
+    // Confirmez le succès
+    console.log("User signed out successfully");
     return true;
   } catch (error) {
     console.error("Error signing out:", error);
@@ -60,16 +81,62 @@ export const forceSignOut = async () => {
  */
 export const refreshSession = async () => {
   try {
+    console.log("Attempting to refresh the session");
     const { data, error } = await supabase.auth.refreshSession();
     
     if (error) {
       console.error("Error refreshing session:", error);
+      
+      // Si erreur de refresh, essayer de nettoyer et forcer la déconnexion
+      if (error.message.includes('refresh token')) {
+        console.log("Invalid refresh token, forcing sign out");
+        await forceSignOut();
+      }
+      
       return null;
     }
     
+    if (!data.session) {
+      console.log("No session returned after refresh");
+      return null;
+    }
+    
+    console.log("Session refreshed successfully");
     return data.session;
   } catch (error) {
     console.error("Error refreshing session:", error);
     return null;
+  }
+};
+
+/**
+ * Vérifie l'état d'authentification et répare une session si possible
+ * @returns Une promesse qui résout à true si l'utilisateur est authentifié, false sinon
+ */
+export const verifyAndRepairAuth = async (): Promise<boolean> => {
+  try {
+    // Vérifier la session actuelle
+    const session = await getCurrentSession();
+    
+    if (session) {
+      console.log("Valid session found");
+      return true;
+    }
+    
+    // Tentative de rafraîchissement si pas de session valide
+    console.log("No valid session, attempting refresh");
+    const refreshedSession = await refreshSession();
+    
+    if (refreshedSession) {
+      console.log("Session restored via refresh");
+      return true;
+    }
+    
+    // Aucune session valide après tentative de réparation
+    console.log("Authentication verification failed");
+    return false;
+  } catch (error) {
+    console.error("Error verifying authentication:", error);
+    return false;
   }
 };
