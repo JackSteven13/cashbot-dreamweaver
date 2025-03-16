@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
@@ -15,38 +15,61 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [isReady, setIsReady] = useState(false);
   
   // Check authentication before loading data
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          toast({
-            title: "Accès refusé",
-            description: "Vous devez être connecté pour accéder à votre tableau de bord.",
-            variant: "destructive"
-          });
-          navigate('/login');
-          return;
-        }
-        
-        setIsAuthChecking(false);
-      } catch (error) {
-        console.error("Authentication error:", error);
+  const checkAuth = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         toast({
-          title: "Erreur",
-          description: "Impossible de vérifier votre session. Veuillez vous reconnecter.",
+          title: "Accès refusé",
+          description: "Vous devez être connecté pour accéder à votre tableau de bord.",
           variant: "destructive"
         });
         navigate('/login');
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Authentication error:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de vérifier votre session. Veuillez vous reconnecter.",
+        variant: "destructive"
+      });
+      navigate('/login');
+      return false;
+    }
+  }, [navigate]);
+  
+  useEffect(() => {
+    // Eviter les initialisations multiples et les race conditions
+    let isMounted = true;
+    
+    const initDashboard = async () => {
+      setIsAuthChecking(true);
+      const isAuthenticated = await checkAuth();
+      
+      if (isMounted && isAuthenticated) {
+        setIsAuthChecking(false);
+        // Donner un petit délai pour que tout s'initialise correctement
+        setTimeout(() => {
+          if (isMounted) setIsReady(true);
+        }, 100);
       }
     };
     
-    checkAuth();
-  }, [navigate]);
+    initDashboard();
+    
+    return () => { 
+      isMounted = false; 
+    };
+  }, [checkAuth]);
   
   // Get user data and session management functions from custom hooks
+  // N'initialiser les hooks que lorsque l'authentification est vérifiée
   const {
     userData,
     isNewUser,
@@ -59,7 +82,7 @@ const Dashboard = () => {
     isLoading
   } = useUserData();
   
-  // Session management logic - wrap in useEffect to prevent render-time updates
+  // Session management logic
   const {
     isStartingSession,
     handleStartSession,
@@ -74,7 +97,7 @@ const Dashboard = () => {
   );
 
   // Show a loader while checking auth and loading data
-  if (isAuthChecking || isLoading) {
+  if (isAuthChecking || isLoading || !isReady) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#0f0f23]">
         <Loader2 className="w-10 h-10 animate-spin text-blue-400" />
@@ -82,7 +105,7 @@ const Dashboard = () => {
     );
   }
 
-  // Redirect to login if user is not authenticated
+  // Safety check for userData
   if (!userData.username) {
     return null; // Don't render anything, useEffect will redirect
   }

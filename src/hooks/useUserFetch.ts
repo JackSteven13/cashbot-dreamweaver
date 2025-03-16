@@ -15,17 +15,19 @@ interface UserFetchResult {
 }
 
 export const useUserFetch = (): UserFetchResult => {
+  // Stabilité des références pour éviter les problèmes de montage/démontage
   const isMounted = useRef(true);
   const fetchInProgress = useRef(false);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
   
-  const [
-    { userData, isNewUser, dailySessionCount, showLimitAlert, isLoading },
-    { setShowLimitAlert, fetchUserData }
-  ] = useUserDataFetcher();
-
-  // Create a debounced fetchData function with retry logic
+  // Initialisation de l'état avec des valeurs par défaut
+  const [fetcherState, fetcherActions] = useUserDataFetcher();
+  
+  const { userData, isNewUser, dailySessionCount, showLimitAlert, isLoading } = fetcherState;
+  const { setShowLimitAlert, fetchUserData } = fetcherActions;
+  
+  // Fonction de récupération de données sécurisée et stabilisée
   const fetchData = useCallback(async () => {
     if (fetchInProgress.current || !isMounted.current) return;
     
@@ -38,7 +40,7 @@ export const useUserFetch = (): UserFetchResult => {
       console.error("Error fetching user data:", error);
       
       // Implement retry logic
-      if (retryCount < maxRetries) {
+      if (retryCount < maxRetries && isMounted.current) {
         const nextRetry = retryCount + 1;
         setRetryCount(nextRetry);
         
@@ -65,20 +67,24 @@ export const useUserFetch = (): UserFetchResult => {
     }
   }, [fetchUserData, retryCount, maxRetries]);
 
+  // Effet pour gérer le cycle de vie et éviter les mises à jour d'état sur un composant démonté
   useEffect(() => {
-    // Set isMounted to true when component mounts
+    // Réinitialiser l'état de montage et lancer la récupération initiale
     isMounted.current = true;
+    fetchInProgress.current = false;
     
-    // Initial data fetch
-    fetchData();
+    // Récupération initiale des données
+    if (!isLoading) {
+      fetchData().catch(console.error);
+    }
     
-    // Cleanup function to prevent memory leaks
+    // Nettoyage pour éviter les fuites mémoire et les mises à jour d'état sur des composants démontés
     return () => {
       isMounted.current = false;
     };
-  }, [fetchData]);
+  }, [fetchData, isLoading]);
 
-  // Create a refetch function with built-in debounce
+  // Fonction refetch stable et sécurisée
   const refetchUserData = useCallback(async () => {
     if (isMounted.current && !fetchInProgress.current) {
       await fetchData();
