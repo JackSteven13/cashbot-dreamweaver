@@ -39,7 +39,7 @@ const SessionCard = ({ gain, report, date = new Date().toLocaleDateString() }: S
           
           <div className="flex items-center">
             <span className="text-sm font-medium mr-2">
-              {isExpanded ? "Masquer le rapport" : "Voir le rapport"}
+              {isExpanded ? "Masquer" : "Détails"}
             </span>
             {isExpanded ? (
               <ChevronUp size={18} />
@@ -55,7 +55,7 @@ const SessionCard = ({ gain, report, date = new Date().toLocaleDateString() }: S
         isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
       )}>
         <div className="p-6">
-          <h4 className="text-lg font-medium mb-3">Rapport d'analyse</h4>
+          <h4 className="text-lg font-medium mb-3">Résumé de session</h4>
           <div className="text-sm text-muted-foreground whitespace-pre-line">
             {report}
           </div>

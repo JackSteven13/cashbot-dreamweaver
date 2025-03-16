@@ -46,7 +46,7 @@ const SummaryPanel = ({
       {isNewUser && (
         <div className="bg-green-50 text-green-800 p-4 mb-6 rounded-md border border-green-200">
           <h3 className="font-medium">🎉 Bienvenue sur CashBot !</h3>
-          <p className="text-sm mt-1">Votre compte a été créé avec succès. Notre bot analyse automatiquement les publicités pour gagner de l'argent pour vous !</p>
+          <p className="text-sm mt-1">Votre compte a été créé avec succès. Notre technologie avancée va maintenant travailler pour vous.</p>
         </div>
       )}
       
@@ -74,7 +74,7 @@ const SummaryPanel = ({
             isLoading={isStartingSession} 
             onClick={handleStartSession}
           >
-            {isStartingSession ? "Analyse en cours..." : "▶️ Lancer une session d'analyse manuelle"}
+            {isStartingSession ? "Traitement en cours..." : "▶️ Lancer une session manuelle"}
           </Button>
           
           <div className="mt-8">
@@ -96,21 +96,21 @@ const SummaryPanel = ({
         
         {/* Right Column - AI Terminal */}
         <div className="w-full lg:w-1/2 cyber-terminal">
-          <h3 className="text-lg font-semibold text-[#a0aec0] mb-3">📈 {isNewUser ? "CashBot est prêt" : "Activité du CashBot :"}</h3>
+          <h3 className="text-lg font-semibold text-[#a0aec0] mb-3">📈 {isNewUser ? "CashBot est actif" : "État du système :"}</h3>
           <div className="font-mono text-sm text-[#e2e8f0] space-y-2">
             {isNewUser ? (
               <>
                 <p>{"> Système initialisé..."}</p>
-                <p>{"> CashBot prêt à analyser des publicités"}</p>
-                <p>{"> Analyse automatique en cours..."}</p>
-                <p>{"> Plafond de gain : " + dailyLimit + "€/jour"}</p>
+                <p>{"> Technologie propriétaire activée"}</p>
+                <p>{"> Processus en cours..."}</p>
+                <p>{"> Limite journalière : " + dailyLimit + "€"}</p>
               </>
             ) : (
               <>
-                <p>{"> CashBot en exécution..."}</p>
-                <p>{"> Analyse automatique des publicités"}</p>
-                <p>{"> Gestion optimisée des campagnes publicitaires"}</p>
-                <p>{"> Gain journalier maximum : " + dailyLimit + "€"}</p>
+                <p>{"> Système en exécution..."}</p>
+                <p>{"> Traitement automatique des données"}</p>
+                <p>{"> Optimisation du rendement"}</p>
+                <p>{"> Potentiel journalier : " + dailyLimit + "€"}</p>
               </>
             )}
             <p className="blink-cursor">&nbsp;</p>
@@ -118,7 +118,7 @@ const SummaryPanel = ({
           
           <div className="mt-4 bg-[#1a2234] p-3 rounded border border-[#2c3e50]">
             <p className="text-[#a0aec0] text-xs">
-              CashBot fonctionne automatiquement et analyse des publicités pour vous. Des sessions sont automatiquement lancées toutes les 5 minutes.
+              CashBot fonctionne automatiquement pour vous. Le système travaille en arrière-plan, aucune action n'est requise de votre part.
             </p>
           </div>
         </div>

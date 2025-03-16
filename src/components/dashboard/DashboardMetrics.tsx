@@ -43,7 +43,7 @@ const DashboardMetrics = ({
         <TransactionsList transactions={transactions} />
       ) : (
         <div className="neuro-panel p-6 text-center">
-          <p className="text-gray-500">Aucune transaction pour le moment. Le CashBot va bientôt commencer à analyser des publicités pour vous !</p>
+          <p className="text-gray-500">Aucune transaction pour le moment. Le système va bientôt commencer à générer des revenus pour vous.</p>
         </div>
       )}
     </>

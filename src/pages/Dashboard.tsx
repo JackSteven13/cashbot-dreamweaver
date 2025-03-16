@@ -28,17 +28,17 @@ const getInitialUserData = () => {
       {
         date: '2023-09-15',
         gain: 98.42,
-        report: "L'IA a analysé 257 publicités premium et a identifié 42 opportunités à forte rémunération. Ciblage particulièrement efficace sur les campagnes du secteur technologique avec un taux de conversion exceptionnel de 8.3%. Revenus optimisés grâce à la durée d'engagement maintenue au-dessus de la moyenne."
+        report: "Session réussie avec résultats supérieurs à la moyenne. Performance optimisée par nos algorithmes exclusifs. Notre technologie a identifié les meilleures opportunités disponibles avec un taux de conversion exceptionnel."
       },
       {
         date: '2023-09-14',
         gain: 76.29,
-        report: "Session concentrée sur 189 publicités du secteur e-commerce. L'algorithme a priorisé les publicités à haut rendement et ignoré celles à faible rémunération. Stratégie d'engagement optimisée avec une orientation vers les vidéos publicitaires complètes, générant un revenu moyen de 0.40€ par publicité."
+        report: "Le système a généré des revenus constants tout au long de la session. Notre technologie propriétaire a utilisé sa stratégie adaptive pour maximiser le rendement dans les conditions du marché actuel."
       },
       {
         date: '2023-09-13',
         gain: 105.11,
-        report: "Performance exceptionnelle avec 312 publicités analysées en moins de 2 heures. Concentration sur les campagnes internationales à haute valeur. L'IA a détecté une opportunité rare dans les publicités du secteur financier, générant à elle seule 23% des revenus totaux de la session."
+        report: "Performance exceptionnelle avec un rendement supérieur à la moyenne. Notre système propriétaire a identifié des opportunités de premier ordre, générant un revenu significativement plus élevé que prévu pour cette session."
       }
     ]
   };
@@ -60,7 +60,7 @@ const Dashboard = () => {
       // Show welcome message for new users
       toast({
         title: "Bienvenue sur CashBot !",
-        description: "Votre compte a été créé avec succès. Notre bot analyse automatiquement les publicités pour vous !",
+        description: "Votre compte a été créé avec succès. Notre système est maintenant actif pour vous.",
       });
       // Set the flag for future visits
       localStorage.setItem('user_registered', 'true');
@@ -88,9 +88,6 @@ const Dashboard = () => {
     const minGain = dailyLimit * 0.2;
     const maxGain = dailyLimit * 0.8;
     const randomGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
-
-    // Générer un nombre aléatoire de publicités entre 50 et 300
-    const adCount = Math.floor(Math.random() * 250) + 50;
     
     // Mettre à jour les données utilisateur
     setUserData(prev => ({
@@ -100,7 +97,7 @@ const Dashboard = () => {
         {
           date: new Date().toISOString().split('T')[0],
           gain: randomGain,
-          report: `CashBot a automatiquement analysé ${adCount} publicités et généré ${randomGain}€ de revenus pour votre compte ${prev.subscription}.`
+          report: `Le système a généré ${randomGain}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${prev.subscription} vous permet d'accéder à ce niveau de performance.`
         },
         ...prev.transactions
       ]
@@ -108,7 +105,7 @@ const Dashboard = () => {
 
     // Notification de gain
     toast({
-      title: "Analyse automatique terminée",
+      title: "Revenus générés",
       description: `CashBot a généré ${randomGain}€ pour vous !`,
     });
   };
@@ -127,9 +124,6 @@ const Dashboard = () => {
       const maxGain = dailyLimit;
       const randomGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
       
-      // Générer un nombre aléatoire de publicités entre 100 et 400
-      const adCount = Math.floor(Math.random() * 300) + 100;
-      
       // Mettre à jour les données utilisateur
       setUserData(prev => ({
         ...prev,
@@ -138,7 +132,7 @@ const Dashboard = () => {
           {
             date: new Date().toISOString().split('T')[0],
             gain: randomGain,
-            report: `Session manuelle : CashBot a analysé ${adCount} publicités et généré ${randomGain}€ de revenus pour votre compte ${prev.subscription}.`
+            report: `Session manuelle : Notre technologie a optimisé le processus et généré ${randomGain}€ de revenus pour votre compte ${prev.subscription}.`
           },
           ...prev.transactions
         ]

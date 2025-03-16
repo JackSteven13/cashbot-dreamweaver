@@ -17,9 +17,9 @@ const TransactionsList = ({ transactions }: TransactionsListProps) => {
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold text-[#1e3a5f]">Sessions d'analyse récentes</h2>
+        <h2 className="text-2xl font-semibold text-[#1e3a5f]">Sessions récentes</h2>
         <Button variant="outline" size="sm" className="border-[#cbd5e0] bg-[#f0f4f8] text-[#334e68] hover:bg-[#e2e8f0]">
-          Voir tout l'historique
+          Voir l'historique complet
         </Button>
       </div>
       
