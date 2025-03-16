@@ -50,19 +50,25 @@ export const useUserData = () => {
         if (!profileData) {
           console.log("Création d'un nouveau profil pour l'utilisateur");
           // Tentative de création de profil
-          await supabase.rpc('create_profile', {
-            user_id: session.user.id,
-            user_name: session.user.email?.split('@')[0] || 'utilisateur',
-            user_email: session.user.email || ''
-          }).catch(async (error) => {
+          try {
+            await supabase.rpc('create_profile', {
+              user_id: session.user.id,
+              user_name: session.user.email?.split('@')[0] || 'utilisateur',
+              user_email: session.user.email || ''
+            });
+          } catch (error) {
             console.error("Error creating profile with RPC:", error);
             // Tentative directe
-            await supabase.from('profiles').insert({
-              id: session.user.id,
-              full_name: session.user.email?.split('@')[0] || 'utilisateur',
-              email: session.user.email
-            });
-          });
+            try {
+              await supabase.from('profiles').insert({
+                id: session.user.id,
+                full_name: session.user.email?.split('@')[0] || 'utilisateur',
+                email: session.user.email
+              });
+            } catch (insertError) {
+              console.error("Error with direct profile insertion:", insertError);
+            }
+          }
         }
         
         // Récupérer à nouveau le profil
@@ -72,6 +78,9 @@ export const useUserData = () => {
           .eq('id', session.user.id)
           .single();
 
+        let balanceData = null;
+        let isUserNew = false;
+        
         const balanceResult = await fetchUserBalance(session.user.id);
         
         if (!balanceResult) {
@@ -88,7 +97,8 @@ export const useUserData = () => {
               throw new Error("Échec de la création du bilan");
             }
             
-            balanceResult = { data: newBalance[0], isNewUser: true };
+            balanceData = Array.isArray(newBalance) ? newBalance[0] : newBalance;
+            isUserNew = true;
           } catch (error) {
             console.error("Échec de la création du bilan:", error);
             toast({
@@ -100,11 +110,13 @@ export const useUserData = () => {
             setIsLoading(false);
             return;
           }
+        } else {
+          const { data, isNewUser: newUser } = balanceResult;
+          balanceData = data;
+          isUserNew = newUser;
         }
         
-        const { data: balanceData, isNewUser: newUser } = balanceResult;
-        
-        if (newUser) {
+        if (isUserNew) {
           setIsNewUser(true);
           
           toast({
@@ -178,14 +190,14 @@ export const useUserData = () => {
   const resetBalance = async () => {
     const result = await resetUserBalance();
     
-    if (result.success) {
+    if (result.success && result.transaction) {
       setUserData(prev => ({
         ...prev,
         balance: 0,
-        transactions: result.transaction ? [
+        transactions: [
           result.transaction,
           ...prev.transactions
-        ] : prev.transactions
+        ]
       }));
     }
   };

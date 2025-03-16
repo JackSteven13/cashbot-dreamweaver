@@ -32,8 +32,25 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
           .eq('id', session.user.id)
           .single();
           
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error("Erreur lors de la récupération du profil:", profileError);
+        if (profileError) {
+          if (profileError.code !== 'PGRST116') { // Ignore not found errors
+            console.error("Erreur lors de la récupération du profil:", profileError);
+          }
+          
+          // Try to create a profile if it doesn't exist
+          if (profileError.code === 'PGRST116') {
+            try {
+              await supabase
+                .from('profiles')
+                .insert({
+                  id: session.user.id,
+                  full_name: session.user.email?.split('@')[0] || 'utilisateur',
+                  email: session.user.email
+                });
+            } catch (insertError) {
+              console.error("Error creating profile:", insertError);
+            }
+          }
         }
           
         const displayName = profileData?.full_name || session.user.email?.split('@')[0] || 'utilisateur';
