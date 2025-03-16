@@ -8,7 +8,6 @@ import LocationFeed from './LocationFeed';
 
 const Hero = () => {
   const mapRef = useRef(null);
-  const [spots, setSpots] = useState(3);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const isMobile = useIsMobile();
@@ -20,7 +19,6 @@ const Hero = () => {
     // Use a flag to track if the component is mounted
     let isMounted = true;
     let map;
-    let spotInterval;
     
     const loadMap = async () => {
       if (typeof window !== 'undefined' && mapRef.current && isMounted) {
@@ -80,20 +78,9 @@ const Hero = () => {
           }
         }, 800);
         
-        // Countdown timer for available spots
-        spotInterval = setInterval(() => {
-          if (isMounted) {
-            setSpots(prev => {
-              const newSpot = prev - 1;
-              return newSpot < 0 ? 3 : newSpot;
-            });
-          }
-        }, 15000);
-        
         // Return cleanup function
         return () => {
           clearInterval(interval);
-          clearInterval(spotInterval);
           if (map) map.remove();
         };
       }
@@ -104,7 +91,6 @@ const Hero = () => {
     // Cleanup function
     return () => {
       isMounted = false;
-      if (spotInterval) clearInterval(spotInterval);
     };
   }, [isMobile]);
 
@@ -260,10 +246,6 @@ const Hero = () => {
           
           {/* CTA Form */}
           <div className="w-full max-w-lg glass-panel p-6 rounded-xl animate-scale-in">
-            <p className="text-lg font-medium mb-4 text-primary">
-              Dernières places disponibles : <span className="font-bold">{spots}</span>
-            </p>
-            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <input 
