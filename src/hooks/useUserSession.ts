@@ -3,7 +3,8 @@ import { toast } from "@/components/ui/use-toast";
 import { 
   updateSessionCount,
   updateUserBalance,
-  addTransaction
+  addTransaction,
+  resetUserBalance
 } from "@/utils/userDataUtils";
 import { supabase } from "@/integrations/supabase/client";
 

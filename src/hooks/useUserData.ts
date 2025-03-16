@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { checkDailyLimit } from '@/utils/subscriptionUtils';
 import { supabase } from "@/integrations/supabase/client";
-import { UserData, Transaction } from '@/types/userData';
+import { UserData } from '@/types/userData';
 import { 
   fetchUserProfile, 
   fetchUserBalance, 
@@ -11,7 +10,7 @@ import {
 } from '@/utils/userDataUtils';
 import { useUserSession } from './useUserSession';
 
-export { Transaction, UserData };
+export type { UserData };
 
 export const useUserData = () => {
   const [userData, setUserData] = useState<UserData>({
@@ -29,12 +28,10 @@ export const useUserData = () => {
   
   const { incrementSessionCount: incrementSession, updateBalance: updateUserBalance, resetBalance: resetUserBalance } = useUserSession();
 
-  // Fetch user data from Supabase when component mounts
   useEffect(() => {
     const fetchUserData = async () => {
       setIsLoading(true);
       try {
-        // Get current user session
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
@@ -43,10 +40,8 @@ export const useUserData = () => {
           return;
         }
 
-        // Get user profile
         const profileData = await fetchUserProfile(session.user.id, session.user.email);
         
-        // Get user metadata
         const { data: userData, error: userError } = await supabase.auth.getUser();
         if (userError) {
           console.error("Error fetching user:", userError);
@@ -54,7 +49,6 @@ export const useUserData = () => {
           return;
         }
 
-        // Get user balance data
         const balanceResult = await fetchUserBalance(session.user.id);
         
         if (!balanceResult) {
@@ -67,22 +61,18 @@ export const useUserData = () => {
         if (newUser) {
           setIsNewUser(true);
           
-          // Show welcome message for new users
           toast({
             title: "Bienvenue sur CashBot !",
             description: "Votre compte a été créé avec succès. Notre système est maintenant actif pour vous.",
           });
         }
 
-        // Get user transactions
         const transactionsData = await fetchUserTransactions(session.user.id);
 
-        // Set username from profile data or from user email
         const displayName = profileData?.full_name || 
                           userData.user?.user_metadata?.full_name || 
                           (userData.user?.email ? userData.user.email.split('@')[0] : 'utilisateur');
 
-        // Set user data
         setUserData({
           username: displayName,
           balance: balanceData?.balance || 0,
@@ -98,7 +88,6 @@ export const useUserData = () => {
 
         setDailySessionCount(balanceData?.daily_session_count || 0);
         
-        // Check if daily limit alert should be shown
         if (checkDailyLimit(balanceData?.balance || 0, balanceData?.subscription || 'freemium')) {
           setShowLimitAlert(true);
         }
@@ -113,15 +102,13 @@ export const useUserData = () => {
     fetchUserData();
   }, []);
 
-  // Public methods that update state after API calls
-  
-  // Increment session count wrapper
   const incrementSessionCount = async () => {
     const newCount = await incrementSession(dailySessionCount);
-    setDailySessionCount(newCount);
+    if (typeof newCount === 'number') {
+      setDailySessionCount(newCount);
+    }
   };
 
-  // Update balance wrapper
   const updateBalance = async (gain: number, report: string) => {
     const result = await updateUserBalance(gain, report);
     
@@ -141,7 +128,6 @@ export const useUserData = () => {
     }
   };
 
-  // Reset balance wrapper
   const resetBalance = async () => {
     const result = await resetUserBalance();
     
