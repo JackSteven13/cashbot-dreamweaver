@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
@@ -55,9 +56,10 @@ const Register = () => {
         }
       }
       
+      // Afficher un message de bienvenue personnalisé avec le nom de l'utilisateur
       toast({
-        title: "Compte créé !",
-        description: "Votre compte a été créé avec succès. Veuillez vérifier votre email pour confirmer votre inscription.",
+        title: `Bienvenue, ${name} !`,
+        description: "Votre compte a été créé avec succès. Vous pouvez maintenant commencer à utiliser CashBot.",
       });
       
       localStorage.setItem('username', name);

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
@@ -25,10 +26,12 @@ const Login = () => {
       // Store username in localStorage
       localStorage.setItem('username', username);
       
+      // Afficher un message de bienvenue personnalisé avec le nom d'utilisateur
       toast({
-        title: "Connexion réussie",
-        description: "Vous êtes maintenant connecté à votre compte.",
+        title: `Bienvenue, ${username} !`,
+        description: "Vous êtes maintenant connecté à votre compte CashBot.",
       });
+      
       navigate('/dashboard');
     }, 1500);
   };
