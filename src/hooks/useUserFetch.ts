@@ -20,8 +20,8 @@ export const useUserFetch = (): UserFetchResult => {
   const isMounted = useRef(true);
   const fetchInProgress = useRef(false);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 5; // Maintenu pour la résilience
-  const retryDelay = useRef(1000);
+  const maxRetries = 3; // Réduit pour accélérer les tentatives
+  const retryDelay = useRef(800); // Réduit pour des reprises plus rapides
   
   // Initialisation de l'état avec des valeurs par défaut
   const [fetcherState, fetcherActions] = useUserDataFetcher();
@@ -37,12 +37,13 @@ export const useUserFetch = (): UserFetchResult => {
       console.log("Starting fetchData in useUserFetch");
       fetchInProgress.current = true;
       
-      // Vérifier et réparer l'authentification avant de charger les données
+      // Vérifier l'authentification avant de charger les données
       const isAuthValid = await verifyAndRepairAuth();
       
       if (!isAuthValid) {
         console.error("Invalid authentication state, cannot fetch user data");
-        throw new Error("Authentication invalid");
+        fetchInProgress.current = false;
+        return;
       }
       
       await fetchUserData();
@@ -50,47 +51,38 @@ export const useUserFetch = (): UserFetchResult => {
       
       // Reset retry count on success
       if (retryCount > 0) setRetryCount(0);
-      retryDelay.current = 1000; // Reset delay on success
+      retryDelay.current = 800; // Reset delay on success
+      fetchInProgress.current = false;
     } catch (error) {
       console.error("Error fetching user data:", error);
       
-      // Implement improved retry logic with exponential backoff
+      // Implement improved retry logic with simpler backoff
       if (retryCount < maxRetries && isMounted.current) {
         const nextRetry = retryCount + 1;
         setRetryCount(nextRetry);
         
-        // Exponential backoff with jitter: 1s, 2s, 4s, 8s, 16s + random jitter
-        const jitter = Math.random() * 500;
-        const backoffTime = Math.min(30000, Math.pow(2, retryCount) * retryDelay.current + jitter);
-        retryDelay.current = backoffTime;
-        
+        // Linear backoff: 800ms, 1600ms, 2400ms
+        const backoffTime = retryDelay.current * (nextRetry);
         console.log(`Retrying fetch (${nextRetry}/${maxRetries}) in ${backoffTime}ms`);
         
         setTimeout(() => {
-          if (isMounted.current && !fetchInProgress.current) {
+          if (isMounted.current) {
             console.log(`Executing retry ${nextRetry}/${maxRetries}`);
+            fetchInProgress.current = false;
             fetchData().catch(e => console.error("Retry failed:", e));
           }
         }, backoffTime);
-      } else if (isMounted.current) {
-        // Only show error after all retries fail and we're still mounted
+      } else {
+        // Only show error after all retries fail
         fetchInProgress.current = false;
         
-        toast({
-          title: "Problème de chargement",
-          description: "Impossible de charger vos données. Essayez de rafraîchir la page.",
-          variant: "destructive"
-        });
-      }
-    } finally {
-      // Don't release lock if retrying, otherwise release it
-      if (retryCount >= maxRetries || retryCount === 0) {
-        fetchInProgress.current = false;
+        // Ne pas montrer de toast ici, cela pourrait être confus
+        console.log("All retries failed or component unmounted");
       }
     }
   }, [fetchUserData, retryCount, maxRetries]);
 
-  // Effet pour gérer le cycle de vie et éviter les mises à jour d'état sur un composant démonté
+  // Effet pour gérer le cycle de vie
   useEffect(() => {
     // Réinitialiser l'état de montage
     isMounted.current = true;
@@ -98,28 +90,19 @@ export const useUserFetch = (): UserFetchResult => {
     
     console.log("useEffect in useUserFetch triggered, isLoading:", isLoading);
     
-    // Délai court avant la première tentative pour permettre au système de s'initialiser
-    setTimeout(async () => {
-      if (!isMounted.current) return;
+    // Vérifier l'authentification avant d'essayer de charger les données
+    verifyAndRepairAuth().then(isAuthValid => {
+      if (!isAuthValid || !isMounted.current) return;
       
-      // Vérifier si l'utilisateur est authentifié avant de charger les données
-      const isAuthValid = await verifyAndRepairAuth();
-      
-      if (isAuthValid && isMounted.current) {
-        console.log("Authentication valid, proceeding with data fetch");
-        
-        // Introduire un léger délai pour éviter les courses
-        setTimeout(() => {
-          if (isMounted.current) {
-            fetchData().catch(console.error);
-          }
-        }, 300);
-      } else if (isMounted.current) {
-        console.log("Authentication invalid, will not fetch user data");
-      }
-    }, 100);
+      // Délai court pour éviter les conflits avec d'autres initialisations
+      setTimeout(() => {
+        if (isMounted.current && !fetchInProgress.current) {
+          fetchData().catch(console.error);
+        }
+      }, 300);
+    }).catch(console.error);
     
-    // Nettoyage pour éviter les fuites mémoire et les mises à jour d'état sur des composants démontés
+    // Nettoyage
     return () => {
       console.log("useUserFetch component unmounting");
       isMounted.current = false;

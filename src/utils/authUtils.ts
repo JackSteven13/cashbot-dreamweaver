@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -7,7 +8,7 @@ import { toast } from "@/components/ui/use-toast";
  */
 export const getCurrentSession = async () => {
   try {
-    // Utiliser directement la fonction getSession sans vérification supplémentaire
+    // Récupérer la session directement sans vérification préalable
     const { data: { session }, error } = await supabase.auth.getSession();
     
     if (error) {
@@ -26,7 +27,8 @@ export const getCurrentSession = async () => {
     
     if (now > tokenExpiry) {
       console.log("Session token expired, attempting refresh");
-      return await refreshSession();
+      const refreshedSession = await refreshSession();
+      return refreshedSession;
     }
     
     return session;
@@ -57,21 +59,22 @@ export const checkDailyLimit = (balance: number, subscription: string) => {
  */
 export const forceSignOut = async () => {
   try {
-    // Clear all local storage to ensure no residual state
-    localStorage.clear();
-    sessionStorage.clear();
+    // Effectuer la déconnexion avec portée globale d'abord
+    await supabase.auth.signOut({ scope: 'global' });
     
-    // Clear cookies that might be storing auth state
+    // Attendre un court instant pour s'assurer que la déconnexion est traitée
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Nettoyer toutes les données locales
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('supabase.auth.expires_at');
+    localStorage.removeItem('supabase.auth.refresh_token');
+    
+    // Supprimer tous les cookies liés à l'authentification
     document.cookie.split(";").forEach(cookie => {
       const [name] = cookie.trim().split("=");
       document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
     });
-    
-    // Perform actual sign out with a global scope
-    await supabase.auth.signOut({ scope: 'global' });
-    
-    // Wait a moment to ensure all auth operations are complete
-    await new Promise(resolve => setTimeout(resolve, 100));
     
     console.log("User signed out and all session data cleared");
     return true;
@@ -88,7 +91,7 @@ export const refreshSession = async () => {
   try {
     console.log("Attempting to refresh the session");
     
-    // Essayer d'abord avec la méthode standard de rafraîchissement
+    // Tentative de rafraîchissement standard de la session
     const { data, error } = await supabase.auth.refreshSession();
     
     if (error) {
@@ -115,17 +118,6 @@ export const refreshSession = async () => {
  */
 export const verifyAndRepairAuth = async (): Promise<boolean> => {
   try {
-    // Nettoyer d'abord toutes les variables locales qui pourraient interférer
-    const localStorageSession = localStorage.getItem('supabase.auth.token');
-    if (localStorageSession && JSON.parse(localStorageSession).currentSession?.expires_at) {
-      const expiry = new Date(JSON.parse(localStorageSession).currentSession.expires_at * 1000);
-      const now = new Date();
-      if (now > expiry) {
-        console.log("Local storage session expired, clearing");
-        localStorage.removeItem('supabase.auth.token');
-      }
-    }
-    
     // Première tentative - Vérifier la session actuelle
     const { data: { session }, error } = await supabase.auth.getSession();
     
@@ -141,8 +133,8 @@ export const verifyAndRepairAuth = async (): Promise<boolean> => {
       
       if (now > tokenExpiry) {
         console.log("Session token expired, attempting refresh");
-        const refreshedSession = await refreshSession();
-        return !!refreshedSession;
+        const refreshResult = await refreshSession();
+        return !!refreshResult;
       }
       
       console.log("Valid session found");
@@ -154,7 +146,18 @@ export const verifyAndRepairAuth = async (): Promise<boolean> => {
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
     
     if (refreshError || !refreshData.session) {
-      console.log("Session refresh failed, no valid auth");
+      console.log("Session refresh failed, trying recovery...");
+      
+      // Dernière tentative - Nettoyer et récupérer la session si possible
+      await forceSignOut();
+      const { data: recoveryData } = await supabase.auth.getSession();
+      
+      if (recoveryData.session) {
+        console.log("Session recovered after cleanup");
+        return true;
+      }
+      
+      console.log("Session recovery failed, no valid auth");
       return false;
     }
     

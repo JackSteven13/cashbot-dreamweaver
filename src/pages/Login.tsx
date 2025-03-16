@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -23,22 +24,37 @@ const Login = () => {
       try {
         setIsCheckingSession(true);
         
-        // Utiliser la fonction de vérification complète
-        const isAuthValid = await verifyAndRepairAuth();
+        // Nettoyer toute session résiduelle d'abord
+        await forceSignOut();
+        
+        // Petit délai pour s'assurer que la déconnexion est traitée
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Maintenant vérifier s'il y a une session active
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (!isMounted) return;
         
-        if (isAuthValid) {
+        if (session) {
+          // Vérifier si le token est valide
+          const tokenExpiry = new Date(session.expires_at * 1000);
+          const now = new Date();
+          
+          if (now > tokenExpiry) {
+            console.log("Found expired session, clearing it");
+            await forceSignOut();
+            setIsCheckingSession(false);
+            return;
+          }
+          
           console.log("User already logged in, redirecting to dashboard");
           // Ajouter un délai court pour éviter les redirections trop rapides
           setTimeout(() => {
             if (isMounted) {
               navigate('/dashboard', { replace: true, state: { justLoggedIn: false } });
             }
-          }, 100);
+          }, 300);
         } else {
-          // Nettoyer toute trace de session précédente
-          await forceSignOut();
           setIsCheckingSession(false);
         }
       } catch (error) {
@@ -75,6 +91,9 @@ const Login = () => {
       if (data && data.user) {
         console.log("Login successful, user:", data.user.id);
         
+        // Attendre que la session soit complètement établie
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         // Vérifier que la session est valide avant de rediriger
         const isSessionValid = await verifyAndRepairAuth();
         
@@ -102,10 +121,10 @@ const Login = () => {
         const from = location.state?.from?.pathname || '/dashboard';
         console.log("Redirecting to:", from);
         
-        // Utiliser un délai court pour éviter les problèmes de course
+        // Utiliser un délai plus long pour éviter les problèmes de course
         setTimeout(() => {
           navigate(from, { state: { justLoggedIn: true }, replace: true });
-        }, 100);
+        }, 500);
       }
     } catch (error: any) {
       console.error("Erreur de connexion:", error);

@@ -30,6 +30,13 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     try {
       console.log(`Authentication check ${isManualRetry ? "manual retry" : "attempt"} ${retryAttempts + 1}/${maxRetries}`);
       
+      // Forcer la déconnexion d'abord si c'est une nouvelle tentative manuelle
+      if (isManualRetry) {
+        await forceSignOut();
+        // Pause brève pour s'assurer que la déconnexion a pris effet
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+      
       // Utiliser la fonction de vérification et réparation
       const isAuthValid = await verifyAndRepairAuth();
       
@@ -37,7 +44,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         if (retryAttempts < maxRetries && !isManualRetry) {
           setRetryAttempts(prev => prev + 1);
           console.log(`Auth check retry ${retryAttempts + 1}/${maxRetries} scheduled`);
-          setTimeout(() => checkAuth(), 1500 * (retryAttempts + 1)); // Backoff exponentiel
+          setTimeout(() => checkAuth(), 1500); // Intervalle fixe pour les tentatives automatiques
           return;
         }
         
@@ -88,6 +95,9 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
             title: `Bienvenue, ${displayName} !`,
             description: "Vous êtes maintenant connecté à votre compte CashBot.",
           });
+          
+          // Nettoyer l'état pour ne pas afficher le message à chaque navigation
+          navigate(location.pathname, { replace: true, state: {} });
         }
       } catch (profileError) {
         console.error("Error in profile fetch:", profileError);
@@ -101,7 +111,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       if (retryAttempts < maxRetries && !isManualRetry) {
         setRetryAttempts(prev => prev + 1);
         console.log(`Auth check retry ${retryAttempts + 1}/${maxRetries} scheduled`);
-        setTimeout(() => checkAuth(), 1500 * (retryAttempts + 1)); // Backoff exponentiel
+        setTimeout(() => checkAuth(), 1500); // Délai fixe pour les tentatives automatiques
         return;
       }
       
@@ -122,8 +132,13 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       setIsAuthenticated(null);
     }
     
-    // Effectuer la vérification d'authentification
-    checkAuth();
+    // Effectuer la vérification d'authentification avec un léger délai
+    // pour éviter les problèmes de course avec d'autres processus d'initialisation
+    setTimeout(() => {
+      if (isMounted) {
+        checkAuth();
+      }
+    }, 100);
     
     // Définir un timeout pour éviter un chargement infini
     authTimeout = setTimeout(() => {
@@ -132,34 +147,31 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
       }
-    }, 12000); // Augmenté à 12s pour donner plus de temps sur les connexions mobiles lentes
+    }, 8000); // Réduit à 8s car les délais plus longs peuvent causer des problèmes
 
-    // Monitor authentication state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Surveiller les changements d'état d'authentification
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth state changed:", event);
       if (event === 'SIGNED_OUT') {
         if (isMounted) {
           setIsAuthenticated(false);
           setUsername(null);
         }
-      } else if (session && session.user) {
+      } else if (event === 'SIGNED_IN' && session && session.user) {
         if (isMounted) {
-          try {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', session.user.id)
-              .maybeSingle();
-              
-            const displayName = profileData?.full_name || 
-                               session.user.user_metadata?.full_name || 
-                               (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
-            setUsername(displayName);
-            setIsAuthenticated(true);
-          } catch (error) {
-            console.error("Error updating username:", error);
-            setIsAuthenticated(true);
-          }
+          setIsAuthenticated(true);
+          // Essayer de charger le nom d'utilisateur, mais ne pas bloquer l'authentification
+          supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', session.user.id)
+            .maybeSingle()
+            .then(({ data }) => {
+              if (isMounted && data) {
+                setUsername(data.full_name || session.user.email?.split('@')[0] || 'utilisateur');
+              }
+            })
+            .catch(console.error);
         }
       }
     });
@@ -169,15 +181,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       clearTimeout(authTimeout);
       subscription.unsubscribe();
     };
-  }, [location]); // Retirer retryAttempts des dépendances pour éviter les boucles
+  }, [location.pathname]); // Ne pas inclure retryAttempts pour éviter les boucles
 
   // Fonction pour effectuer une connexion propre
   const handleCleanLogin = () => {
     forceSignOut().then(() => {
-      // Nettoyer le stockage local pour éviter les conflits
-      localStorage.clear();
-      sessionStorage.clear();
-      
       // Rediriger vers la page de connexion
       navigate('/login', { replace: true });
     });
