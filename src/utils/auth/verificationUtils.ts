@@ -7,8 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
-    // Ajout d'un délai pour permettre au contexte d'authentification de s'initialiser correctement
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Ajout d'un délai plus long pour permettre au contexte d'authentification de s'initialiser correctement
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     // Vérifier la session actuelle
     const { data, error } = await supabase.auth.getSession();
@@ -32,6 +32,14 @@ export const verifyAuth = async (): Promise<boolean> => {
           console.error("Échec du rafraîchissement de session:", refreshResult.error);
           return false;
         }
+        
+        // Vérification supplémentaire du token rafraîchi
+        const newTokenExpiry = new Date((refreshResult.data.session.expires_at || 0) * 1000);
+        if (now > newTokenExpiry) {
+          console.error("Token rafraîchi déjà expiré");
+          return false;
+        }
+        
         console.log("Session rafraîchie avec succès");
         return true;
       }

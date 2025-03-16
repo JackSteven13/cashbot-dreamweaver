@@ -7,6 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const getCurrentSession = async () => {
   try {
+    // Ajout d'un délai court pour éviter les problèmes de concurrence
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
@@ -44,7 +47,7 @@ export const refreshSession = async () => {
     console.log("Attempting to refresh the session");
     
     // Ajout d'un délai court pour éviter les conflits de requêtes
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 150));
     
     const { data, error } = await supabase.auth.refreshSession();
     
@@ -55,6 +58,15 @@ export const refreshSession = async () => {
     
     // Validate the refreshed session
     if (data.session && data.session.user && data.session.user.id) {
+      // Vérification supplémentaire du token rafraîchi
+      const newTokenExpiry = new Date((data.session.expires_at || 0) * 1000);
+      const now = new Date();
+      
+      if (now > newTokenExpiry) {
+        console.error("Refreshed token already expired");
+        return null;
+      }
+      
       console.log("Session refreshed successfully");
       return data.session;
     }
@@ -80,13 +92,13 @@ export const forceSignOut = async (): Promise<boolean> => {
     localStorage.removeItem('supabase.auth.refresh_token');
     
     // Pause pour permettre aux opérations locales de se terminer
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     // Perform more stable sign out
     await supabase.auth.signOut({ scope: 'local' });
     
     // Short delay for sign out to process
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 400));
     
     console.log("User signed out successfully");
     return true;

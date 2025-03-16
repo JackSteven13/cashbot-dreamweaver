@@ -3,7 +3,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { UserData } from '@/types/userData';
 import { useUserDataFetcher } from './useUserDataFetcher';
 import { toast } from "@/components/ui/use-toast";
-import { verifyAuth, refreshSession } from "@/utils/auth/index";
+import { verifyAuth } from "@/utils/auth/verificationUtils";
+import { refreshSession } from "@/utils/auth/sessionUtils";
 
 interface UserFetchResult {
   userData: UserData;
@@ -21,6 +22,7 @@ export const useUserFetch = (): UserFetchResult => {
   const retryCount = useRef(0);
   const maxRetries = 5; // Augmentation du nombre de tentatives
   const initialFetchDelayRef = useRef<NodeJS.Timeout | null>(null);
+  const initialFetchAttempted = useRef(false);
   
   const [fetcherState, fetcherActions] = useUserDataFetcher();
   
@@ -29,6 +31,7 @@ export const useUserFetch = (): UserFetchResult => {
   
   const fetchData = useCallback(async () => {
     if (fetchInProgress.current || !isMounted.current) {
+      console.log("Fetch already in progress or component unmounted, skipping");
       return;
     }
     
@@ -36,9 +39,16 @@ export const useUserFetch = (): UserFetchResult => {
       fetchInProgress.current = true;
       
       // Ajout d'un délai court pour éviter les conflits de requêtes
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
+      // Vérification de l'authentification
       const isAuthValid = await verifyAuth();
+      
+      if (!isMounted.current) {
+        console.log("Component unmounted during auth check, aborting fetch");
+        fetchInProgress.current = false;
+        return;
+      }
       
       if (!isAuthValid) {
         console.log("Auth not valid, attempting refresh...");
@@ -51,10 +61,11 @@ export const useUserFetch = (): UserFetchResult => {
         }
         
         // Attendre un peu après le rafraîchissement
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 400));
       }
       
       if (!isMounted.current) {
+        console.log("Component unmounted after auth refresh, aborting fetch");
         fetchInProgress.current = false;
         return;
       }
@@ -62,6 +73,7 @@ export const useUserFetch = (): UserFetchResult => {
       console.log("Fetching user data...");
       await fetchUserData();
       retryCount.current = 0;
+      initialFetchAttempted.current = true;
       console.log("User data fetched successfully");
       
       fetchInProgress.current = false;
@@ -70,7 +82,7 @@ export const useUserFetch = (): UserFetchResult => {
       fetchInProgress.current = false;
       
       if (retryCount.current < maxRetries && isMounted.current) {
-        const delay = Math.min(1000 * Math.pow(2, retryCount.current), 10000);
+        const delay = Math.min(1000 * Math.pow(1.5, retryCount.current), 8000);
         console.log(`Retrying in ${delay}ms (attempt ${retryCount.current + 1}/${maxRetries})`);
         
         setTimeout(() => {
@@ -80,6 +92,7 @@ export const useUserFetch = (): UserFetchResult => {
           }
         }, delay);
       } else if (isMounted.current) {
+        initialFetchAttempted.current = true;
         // Notification visuelle en cas d'échecs répétés
         toast({
           title: "Problème de connexion",
@@ -91,9 +104,11 @@ export const useUserFetch = (): UserFetchResult => {
   }, [fetchUserData]);
 
   useEffect(() => {
+    console.log("useUserFetch mounting");
     isMounted.current = true;
     fetchInProgress.current = false;
     retryCount.current = 0;
+    initialFetchAttempted.current = false;
     
     // Delay initial fetch to avoid race conditions
     initialFetchDelayRef.current = setTimeout(() => {
@@ -138,7 +153,7 @@ export const useUserFetch = (): UserFetchResult => {
     isNewUser,
     dailySessionCount,
     showLimitAlert,
-    isLoading,
+    isLoading: isLoading || !initialFetchAttempted.current,
     setShowLimitAlert,
     refetchUserData
   };
