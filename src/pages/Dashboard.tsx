@@ -6,6 +6,7 @@ import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
 import { canStartManualSession, SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
+import { Loader2 } from 'lucide-react';
 
 const Dashboard = () => {
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
@@ -19,7 +20,8 @@ const Dashboard = () => {
     setShowLimitAlert,
     updateBalance,
     resetBalance,
-    incrementSessionCount
+    incrementSessionCount,
+    isLoading
   } = useUserData();
   
   // Session management logic
@@ -35,6 +37,15 @@ const Dashboard = () => {
     setShowLimitAlert,
     resetBalance
   );
+
+  // Afficher un loader pendant le chargement des données
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#0f0f23]">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-400" />
+      </div>
+    );
+  }
 
   return (
     <DashboardLayout

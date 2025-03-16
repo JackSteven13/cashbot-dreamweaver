@@ -1,10 +1,11 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, ArrowLeft } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,37 +16,57 @@ const Login = () => {
   
   // Vérifier si l'utilisateur est déjà connecté
   useEffect(() => {
-    const isAuthenticated = localStorage.getItem('user_registered') === 'true' && localStorage.getItem('username');
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    }
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/dashboard');
+      }
+    };
+    
+    checkSession();
   }, [navigate]);
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simuler l'appel API
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // Utiliser le prénom comme nom d'utilisateur (tout ce qui précède le premier espace)
-      const fullName = email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
-      
-      // Stocker le nom d'utilisateur dans le localStorage
-      localStorage.setItem('username', fullName);
-      localStorage.setItem('user_registered', 'true');
-      
-      // Afficher un message de bienvenue personnalisé avec le nom d'utilisateur
-      toast({
-        title: `Bienvenue, ${fullName} !`,
-        description: "Vous êtes maintenant connecté à votre compte CashBot.",
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
       
-      // Rediriger vers la page d'origine ou le tableau de bord
-      const from = location.state?.from?.pathname || '/dashboard';
-      navigate(from);
-    }, 1500);
+      if (error) throw error;
+      
+      if (data && data.user) {
+        // Récupérer le profil utilisateur
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', data.user.id)
+          .single();
+        
+        const displayName = profileData?.full_name || email.split('@')[0];
+        
+        toast({
+          title: `Bienvenue, ${displayName} !`,
+          description: "Vous êtes maintenant connecté à votre compte CashBot.",
+        });
+        
+        // Rediriger vers la page d'origine ou le tableau de bord
+        const from = location.state?.from?.pathname || '/dashboard';
+        navigate(from);
+      }
+    } catch (error: any) {
+      console.error("Erreur de connexion:", error);
+      toast({
+        title: "Erreur de connexion",
+        description: error.message || "Vérifiez vos identifiants et réessayez",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -100,8 +121,17 @@ const Login = () => {
               
               <div className="pt-2">
                 <Button type="submit" fullWidth size="lg" isLoading={isLoading} className="group">
-                  {isLoading ? 'Connexion...' : 'Se connecter'}
-                  {!isLoading && <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />}
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={18} className="mr-2 animate-spin" /> 
+                      Connexion...
+                    </>
+                  ) : (
+                    <>
+                      Se connecter
+                      <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
+                    </>
+                  )}
                 </Button>
               </div>
             </form>

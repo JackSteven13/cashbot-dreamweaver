@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { SUBSCRIPTION_LIMITS, checkDailyLimit } from '@/utils/subscriptionUtils';
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Transaction {
   date: string;
@@ -18,171 +19,212 @@ export interface UserData {
   transactions: Transaction[];
 }
 
-// Get initial user data from localStorage
-const getInitialUserData = (): UserData => {
-  // Check if user is new by looking for a stored flag in localStorage
-  const isNewUser = !localStorage.getItem('user_registered');
-  const subscription = localStorage.getItem('subscription') || 'freemium';
-  
-  // For new users, always set balance to 0
-  if (isNewUser) {
-    localStorage.setItem('user_balance', '0');
-    return {
-      username: localStorage.getItem('username') || 'utilisateur',
-      balance: 0,
-      subscription: subscription,
-      referrals: [],
-      referralLink: 'https://cashbot.com?ref=admin',
-      transactions: []
-    };
-  }
-  
-  // For existing users, ensure consistency with subscription limits
-  const storedBalance = parseFloat(localStorage.getItem('user_balance') || '0');
-  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS];
-  
-  // If balance exceeds daily limit for freemium accounts, cap it
-  // Also ensure balance is never negative
-  const balanceToUse = subscription === 'freemium' && storedBalance > dailyLimit 
-    ? dailyLimit 
-    : Math.max(0, storedBalance);
-  
-  // Save the corrected balance
-  if (subscription === 'freemium' && storedBalance > dailyLimit || storedBalance < 0) {
-    localStorage.setItem('user_balance', balanceToUse.toString());
-  }
-  
-  return {
-    username: localStorage.getItem('username') || 'utilisateur',
-    balance: balanceToUse,
-    subscription: subscription,
+export const useUserData = () => {
+  const [userData, setUserData] = useState<UserData>({
+    username: '',
+    balance: 0,
+    subscription: 'freemium',
     referrals: [],
     referralLink: 'https://cashbot.com?ref=admin',
-    transactions: [
-      {
-        date: '2023-09-15',
-        gain: 0.42,
-        report: "Session réussie avec résultats supérieurs à la moyenne. Performance optimisée par nos algorithmes exclusifs. Notre technologie a identifié les meilleures opportunités disponibles avec un taux de conversion exceptionnel."
-      },
-      {
-        date: '2023-09-14',
-        gain: 0.29,
-        report: "Le système a généré des revenus constants tout au long de la session. Notre technologie propriétaire a utilisé sa stratégie adaptive pour maximiser le rendement dans les conditions du marché actuel."
-      },
-      {
-        date: '2023-09-13',
-        gain: 0.48,
-        report: "Performance exceptionnelle avec un rendement supérieur à la moyenne. Notre système propriétaire a identifié des opportunités de premier ordre, générant un revenu significativement plus élevé que prévu pour cette session."
-      }
-    ]
-  };
-};
-
-export const useUserData = () => {
-  const [userData, setUserData] = useState<UserData>(getInitialUserData);
+    transactions: []
+  });
   const [isNewUser, setIsNewUser] = useState(false);
   const [dailySessionCount, setDailySessionCount] = useState<number>(() => {
     return parseInt(localStorage.getItem('daily_session_count') || '0');
   });
   const [showLimitAlert, setShowLimitAlert] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Check if this is the first visit
+  // Fetch user data from Supabase when component mounts
   useEffect(() => {
-    const isNew = !localStorage.getItem('user_registered');
-    setIsNewUser(isNew);
-    
-    if (isNew) {
-      // Show welcome message for new users
-      toast({
-        title: "Bienvenue sur CashBot !",
-        description: "Votre compte a été créé avec succès. Notre système est maintenant actif pour vous.",
-      });
-      // Set the flag for future visits
-      localStorage.setItem('user_registered', 'true');
-      // Initialize the balance to 0 for new users
-      localStorage.setItem('user_balance', '0');
-      setUserData(prev => ({
-        ...prev,
-        balance: 0,
-        transactions: []
-      }));
-      localStorage.setItem('daily_session_count', '0');
-    } else {
-      // If not a new user, ensure balance is never negative
-      if (userData.balance < 0) {
-        const correctedBalance = 0;
-        localStorage.setItem('user_balance', correctedBalance.toString());
-        setUserData(prev => ({
-          ...prev,
-          balance: correctedBalance
-        }));
+    const fetchUserData = async () => {
+      setIsLoading(true);
+      try {
+        // Get current user session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          console.error("No session found");
+          setIsLoading(false);
+          return;
+        }
+
+        // Get user profile from profiles table
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+          
+          // If no profile found, try to create one
+          if (profileError.code === 'PGRST116') {
+            const { data: userData } = await supabase.auth.getUser();
+            if (userData.user) {
+              const { error: createError } = await supabase
+                .rpc('create_profile', {
+                  user_id: userData.user.id,
+                  user_name: userData.user.email?.split('@')[0] || 'utilisateur',
+                  user_email: userData.user.email || ''
+                });
+                
+              if (createError) {
+                console.error("Error creating profile:", createError);
+              }
+            }
+          }
+        }
+        
+        // Get user metadata
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) {
+          console.error("Error fetching user:", userError);
+          setIsLoading(false);
+          return;
+        }
+
+        // Get stored balance, or set to 0 for new users
+        const storedBalance = parseFloat(localStorage.getItem(`balance_${session.user.id}`) || '0');
+        const isNewUserFlag = !localStorage.getItem(`user_registered_${session.user.id}`);
+        
+        if (isNewUserFlag) {
+          localStorage.setItem(`user_registered_${session.user.id}`, 'true');
+          localStorage.setItem(`balance_${session.user.id}`, '0');
+          
+          // Show welcome message for new users
+          toast({
+            title: "Bienvenue sur CashBot !",
+            description: "Votre compte a été créé avec succès. Notre système est maintenant actif pour vous.",
+          });
+        }
+
+        // Set username from profile data or from user email
+        const displayName = profileData?.full_name || 
+                           userData.user?.user_metadata?.full_name || 
+                           (userData.user?.email ? userData.user.email.split('@')[0] : 'utilisateur');
+
+        // Get subscription type
+        const subscription = localStorage.getItem(`subscription_${session.user.id}`) || 'freemium';
+        
+        // Get daily session count
+        const sessionCount = parseInt(localStorage.getItem(`daily_session_count_${session.user.id}`) || '0');
+        setDailySessionCount(sessionCount);
+
+        // Set user data
+        setUserData({
+          username: displayName,
+          balance: storedBalance,
+          subscription: subscription,
+          referrals: [],
+          referralLink: `https://cashbot.com?ref=${session.user.id.substring(0, 8)}`,
+          transactions: [
+            {
+              date: '2023-09-15',
+              gain: 0.42,
+              report: "Session réussie avec résultats supérieurs à la moyenne. Performance optimisée par nos algorithmes exclusifs."
+            },
+            {
+              date: '2023-09-14',
+              gain: 0.29,
+              report: "Le système a généré des revenus constants tout au long de la session."
+            },
+            {
+              date: '2023-09-13',
+              gain: 0.48,
+              report: "Performance exceptionnelle avec un rendement supérieur à la moyenne."
+            }
+          ]
+        });
+
+        setIsNewUser(isNewUserFlag);
+        
+        // Check if daily limit alert should be shown
+        if (checkDailyLimit(storedBalance, subscription)) {
+          setShowLimitAlert(true);
+        }
+
+      } catch (error) {
+        console.error("Error in fetchUserData:", error);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    
-    // Check if daily limit alert should be shown
-    if (checkDailyLimit(userData.balance, userData.subscription)) {
-      setShowLimitAlert(true);
-    }
-  }, [userData.balance, userData.subscription]);
+    };
+
+    fetchUserData();
+  }, []);
 
   // Update user balance after a session
-  const updateBalance = (gain: number, report: string) => {
+  const updateBalance = async (gain: number, report: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    
     // Ensure gain is always positive
     const positiveGain = Math.max(0, gain);
     
-    setUserData(prev => {
-      const newBalance = parseFloat((prev.balance + positiveGain).toFixed(2));
-      // Check if limit reached
-      const limitReached = newBalance >= SUBSCRIPTION_LIMITS[prev.subscription as keyof typeof SUBSCRIPTION_LIMITS] && prev.subscription === 'freemium';
-      
-      if (limitReached) {
-        setShowLimitAlert(true);
-      }
-      
-      // Save new balance to localStorage
-      localStorage.setItem('user_balance', newBalance.toString());
-      
-      return {
-        ...prev,
-        balance: newBalance,
-        transactions: [
-          {
-            date: new Date().toISOString().split('T')[0],
-            gain: positiveGain,
-            report: report
-          },
-          ...prev.transactions
-        ]
-      };
-    });
+    const userId = session.user.id;
+    const currentBalance = userData.balance;
+    const newBalance = parseFloat((currentBalance + positiveGain).toFixed(2));
+    
+    // Check if limit reached
+    const limitReached = newBalance >= SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] && userData.subscription === 'freemium';
+    
+    if (limitReached) {
+      setShowLimitAlert(true);
+    }
+    
+    // Save new balance to localStorage with user-specific key
+    localStorage.setItem(`balance_${userId}`, newBalance.toString());
+    
+    setUserData(prev => ({
+      ...prev,
+      balance: newBalance,
+      transactions: [
+        {
+          date: new Date().toISOString().split('T')[0],
+          gain: positiveGain,
+          report: report
+        },
+        ...prev.transactions
+      ]
+    }));
   };
 
   // Reset balance (for withdrawals)
-  const resetBalance = () => {
+  const resetBalance = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    
+    const userId = session.user.id;
     const currentBalance = userData.balance;
-    setUserData(prev => {
-      localStorage.setItem('user_balance', '0');
-      
-      return {
-        ...prev,
-        balance: 0,
-        transactions: [
-          {
-            date: new Date().toISOString().split('T')[0],
-            gain: -currentBalance,
-            report: `Retrait de ${currentBalance.toFixed(2)}€ effectué avec succès. Le transfert vers votre compte bancaire est en cours.`
-          },
-          ...prev.transactions
-        ]
-      };
-    });
+    
+    localStorage.setItem(`balance_${userId}`, '0');
+    
+    setUserData(prev => ({
+      ...prev,
+      balance: 0,
+      transactions: [
+        {
+          date: new Date().toISOString().split('T')[0],
+          gain: -currentBalance,
+          report: `Retrait de ${currentBalance.toFixed(2)}€ effectué avec succès. Le transfert vers votre compte bancaire est en cours.`
+        },
+        ...prev.transactions
+      ]
+    }));
   };
 
   // Update session count
-  const incrementSessionCount = () => {
+  const incrementSessionCount = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    
+    const userId = session.user.id;
     const newCount = dailySessionCount + 1;
+    
     setDailySessionCount(newCount);
-    localStorage.setItem('daily_session_count', newCount.toString());
+    localStorage.setItem(`daily_session_count_${userId}`, newCount.toString());
   };
 
   return {
@@ -193,6 +235,7 @@ export const useUserData = () => {
     setShowLimitAlert,
     updateBalance,
     resetBalance,
-    incrementSessionCount
+    incrementSessionCount,
+    isLoading
   };
 };

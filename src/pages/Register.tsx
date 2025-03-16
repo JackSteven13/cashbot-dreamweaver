@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
@@ -44,6 +44,7 @@ const Register = () => {
       if (error) throw error;
       
       if (data && data.user) {
+        // Créer un profil pour l'utilisateur
         const { error: profileError } = await supabase
           .rpc('create_profile', {
             user_id: data.user.id,
@@ -53,20 +54,30 @@ const Register = () => {
           
         if (profileError) {
           console.error("Error creating profile:", profileError);
+          // Si la fonction RPC échoue, essayons d'insérer directement
+          await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              full_name: name,
+              email: email
+            });
         }
+        
+        // Initialiser les données utilisateur
+        localStorage.setItem(`user_registered_${data.user.id}`, 'true');
+        localStorage.setItem(`balance_${data.user.id}`, '0');
+        localStorage.setItem(`daily_session_count_${data.user.id}`, '0');
+        localStorage.setItem(`subscription_${data.user.id}`, 'freemium');
+        
+        // Afficher un message de bienvenue personnalisé
+        toast({
+          title: `Bienvenue, ${name} !`,
+          description: "Votre compte a été créé avec succès. Vous pouvez maintenant commencer à utiliser CashBot.",
+        });
+        
+        navigate('/dashboard');
       }
-      
-      // Afficher un message de bienvenue personnalisé avec le nom de l'utilisateur
-      toast({
-        title: `Bienvenue, ${name} !`,
-        description: "Votre compte a été créé avec succès. Vous pouvez maintenant commencer à utiliser CashBot.",
-      });
-      
-      // Stocker le nom complet dans le localStorage au lieu du nom d'utilisateur extrait de l'email
-      localStorage.setItem('username', name);
-      localStorage.setItem('user_registered', 'true');
-      
-      navigate('/dashboard');
     } catch (error: any) {
       console.error("Registration error:", error);
       toast({
@@ -156,8 +167,17 @@ const Register = () => {
               
               <div className="pt-2">
                 <Button type="submit" fullWidth size="lg" isLoading={isLoading} className="group">
-                  {isLoading ? 'Création en cours...' : 'Créer mon compte'}
-                  {!isLoading && <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />}
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={18} className="mr-2 animate-spin" />
+                      Création en cours...
+                    </>
+                  ) : (
+                    <>
+                      Créer mon compte
+                      <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
+                    </>
+                  )}
                 </Button>
               </div>
             </form>
