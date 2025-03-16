@@ -72,16 +72,21 @@ const SummaryPanel = ({
             description: "Les retraits sont disponibles uniquement pour les abonnements payants. Veuillez mettre à niveau votre compte.",
             variant: "destructive"
           });
-        } else if (displayBalance < 20) {
+        } else if (displayBalance < 100) { // Mise à jour du montant minimum
           toast({
             title: "Montant insuffisant",
-            description: "Le montant minimum de retrait est de 20€. Continuez à gagner plus de revenus.",
+            description: "Le montant minimum de retrait est de 100€. Continuez à gagner plus de revenus.",
             variant: "destructive"
           });
         } else {
+          // Calculer les frais de retrait (simplification)
+          const fee = 0.15; // Taux standard par défaut
+          const feeAmount = displayBalance * fee;
+          const netAmount = displayBalance - feeAmount;
+          
           toast({
             title: "Demande de retrait acceptée",
-            description: "Votre retrait a été traité et sera envoyé sur votre compte bancaire sous 2-3 jours ouvrés.",
+            description: `Votre retrait de ${netAmount.toFixed(2)}€ (après frais de ${(fee * 100).toFixed(0)}%) sera traité dans 10-15 jours ouvrables.`,
           });
         }
       }

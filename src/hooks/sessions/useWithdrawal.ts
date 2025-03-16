@@ -1,7 +1,15 @@
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
+
+interface WithdrawalFees {
+  earlyFee: number; // 35% pour les retraits dans les 3 premiers mois
+  standardFee: number; // 15% après les 3 premiers mois
+  minimumWithdrawalAmount: number; // 100€ au lieu de 20€
+  withdrawalFrequency: number; // Nombre de jours entre les retraits autorisés (30 jours)
+  processingDays: string; // Délai de traitement (10-15 jours)
+}
 
 export const useWithdrawal = (
   userData: UserData,
@@ -11,11 +19,71 @@ export const useWithdrawal = (
   const operationLock = useRef(false);
   const withdrawalAttempts = useRef(0);
   const maxAttempts = 3;
+  
+  // Nouvelles stratégies de retrait
+  const withdrawalRules: WithdrawalFees = {
+    earlyFee: 0.35, // 35% pour les retraits dans les 3 premiers mois
+    standardFee: 0.15, // 15% après les 3 premiers mois
+    minimumWithdrawalAmount: 100, // 100€ au lieu de 20€
+    withdrawalFrequency: 30, // Une fois par mois (30 jours)
+    processingDays: "10-15 jours ouvrables"
+  };
+  
+  // État pour suivre si l'utilisateur peut faire un retrait (fréquence)
+  const [canWithdraw, setCanWithdraw] = useState(true);
+  const [lastWithdrawalDate, setLastWithdrawalDate] = useState<Date | null>(null);
+  const [daysUntilNextWithdrawal, setDaysUntilNextWithdrawal] = useState(0);
+  
+  // Vérifier si l'utilisateur a effectué un retrait récemment
+  useEffect(() => {
+    // On pourrait stocker cette information dans la base de données
+    // Pour l'instant, on utilise le localStorage
+    const lastWithdrawal = localStorage.getItem(`lastWithdrawal_${userData.username}`);
+    
+    if (lastWithdrawal) {
+      const withdrawalDate = new Date(lastWithdrawal);
+      setLastWithdrawalDate(withdrawalDate);
+      
+      const today = new Date();
+      const diffTime = today.getTime() - withdrawalDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays < withdrawalRules.withdrawalFrequency) {
+        setCanWithdraw(false);
+        setDaysUntilNextWithdrawal(withdrawalRules.withdrawalFrequency - diffDays);
+      } else {
+        setCanWithdraw(true);
+        setDaysUntilNextWithdrawal(0);
+      }
+    }
+  }, [userData.username, withdrawalRules.withdrawalFrequency]);
+  
+  // Calculer les frais de retrait en fonction de l'ancienneté de l'utilisateur
+  const calculateWithdrawalFee = () => {
+    // On pourrait stocker la date d'inscription dans la base de données
+    // Pour l'instant, on utilise une date fictive pour démontrer le concept
+    const registerDate = userData.registeredAt || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // Par défaut: supposons 90 jours
+    const today = new Date();
+    const diffTime = today.getTime() - registerDate.getTime();
+    const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30));
+    
+    return diffMonths < 3 ? withdrawalRules.earlyFee : withdrawalRules.standardFee;
+  };
 
   const handleWithdrawal = async () => {
     // Prevent multiple concurrent operations
     if (isProcessingWithdrawal || operationLock.current) {
       console.log("Withdrawal operation already in progress, please wait");
+      return;
+    }
+    
+    // Vérifier si l'utilisateur peut faire un retrait (fréquence)
+    if (!canWithdraw) {
+      toast({
+        title: "Fréquence de retrait limitée",
+        description: `Vous pouvez effectuer un retrait une fois par mois. Prochain retrait possible dans ${daysUntilNextWithdrawal} jour${daysUntilNextWithdrawal > 1 ? 's' : ''}.`,
+        variant: "destructive"
+      });
       return;
     }
     
@@ -25,19 +93,31 @@ export const useWithdrawal = (
       
       console.log("Starting withdrawal process with balance:", userData.balance);
       
-      // Process withdrawal only if sufficient balance (at least 20€) and not freemium account
-      if (userData.balance >= 20 && userData.subscription !== 'freemium') {
+      // Process withdrawal only if sufficient balance (at least 100€) and not freemium account
+      if (userData.balance >= withdrawalRules.minimumWithdrawalAmount && userData.subscription !== 'freemium') {
+        // Calculer les frais de retrait
+        const fee = calculateWithdrawalFee();
+        const feeAmount = userData.balance * fee;
+        const netAmount = userData.balance - feeAmount;
+        
         toast({
           title: "Traitement en cours",
-          description: "Votre demande de retrait est en cours de traitement...",
+          description: `Votre demande de retrait est en cours de traitement. Délai: ${withdrawalRules.processingDays}.`,
         });
         
         try {
           // Reset balance to 0 to simulate withdrawal
           await resetBalance();
+          
+          // Enregistrer la date du retrait
+          localStorage.setItem(`lastWithdrawal_${userData.username}`, new Date().toISOString());
+          setLastWithdrawalDate(new Date());
+          setCanWithdraw(false);
+          setDaysUntilNextWithdrawal(withdrawalRules.withdrawalFrequency);
+          
           toast({
-            title: "Retrait effectué",
-            description: `Votre retrait de ${userData.balance.toFixed(2)}€ a été effectué avec succès.`
+            title: "Retrait programmé",
+            description: `Votre retrait de ${netAmount.toFixed(2)}€ (après frais de ${(fee * 100).toFixed(0)}%: ${feeAmount.toFixed(2)}€) sera traité dans ${withdrawalRules.processingDays}.`
           });
           withdrawalAttempts.current = 0; // Reset attempts on success
         } catch (error) {
@@ -66,10 +146,10 @@ export const useWithdrawal = (
           description: "Les retraits ne sont pas disponibles avec un compte freemium. Passez à un forfait supérieur.",
           variant: "destructive"
         });
-      } else if (userData.balance < 20) {
+      } else if (userData.balance < withdrawalRules.minimumWithdrawalAmount) {
         toast({
           title: "Solde insuffisant",
-          description: "Vous devez avoir au moins 20€ pour effectuer un retrait.",
+          description: `Vous devez avoir au moins ${withdrawalRules.minimumWithdrawalAmount}€ pour effectuer un retrait.`,
           variant: "destructive"
         });
       }
@@ -91,7 +171,10 @@ export const useWithdrawal = (
 
   return {
     handleWithdrawal,
-    isProcessingWithdrawal
+    isProcessingWithdrawal,
+    canWithdraw,
+    daysUntilNextWithdrawal,
+    withdrawalRules
   };
 };
 
