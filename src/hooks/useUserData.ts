@@ -78,9 +78,11 @@ export const useUserData = () => {
           .eq('id', session.user.id)
           .single();
 
+        // Initialize variables outside the conditional blocks to avoid reassignment issues
         let balanceData = null;
         let isUserNew = false;
         
+        // Try to fetch balance data
         const balanceResult = await fetchUserBalance(session.user.id);
         
         if (!balanceResult) {
@@ -97,6 +99,7 @@ export const useUserData = () => {
               throw new Error("Échec de la création du bilan");
             }
             
+            // Instead of reassigning balanceResult, assign to the variables we created
             balanceData = Array.isArray(newBalance) ? newBalance[0] : newBalance;
             isUserNew = true;
           } catch (error) {
@@ -111,9 +114,9 @@ export const useUserData = () => {
             return;
           }
         } else {
-          const { data, isNewUser: newUser } = balanceResult;
-          balanceData = data;
-          isUserNew = newUser;
+          // Extract data and isNewUser from successful balanceResult
+          balanceData = balanceResult.data;
+          isUserNew = balanceResult.isNewUser;
         }
         
         if (isUserNew) {
@@ -175,7 +178,7 @@ export const useUserData = () => {
       setUserData(prev => ({
         ...prev,
         balance: result.newBalance || prev.balance,
-        transactions: result.transaction ? [
+        transactions: 'transaction' in result ? [
           result.transaction,
           ...prev.transactions
         ] : prev.transactions
@@ -190,14 +193,14 @@ export const useUserData = () => {
   const resetBalance = async () => {
     const result = await resetUserBalance();
     
-    if (result.success && result.transaction) {
+    if (result.success) {
       setUserData(prev => ({
         ...prev,
         balance: 0,
-        transactions: [
+        transactions: 'transaction' in result ? [
           result.transaction,
           ...prev.transactions
-        ]
+        ] : prev.transactions
       }));
     }
   };
