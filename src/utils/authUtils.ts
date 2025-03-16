@@ -162,6 +162,19 @@ export const verifyAndRepairAuth = async (): Promise<boolean> => {
       }
       
       if (userData && userData.user) {
+        // Get user profile to ensure name is retrieved
+        try {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', userData.user.id)
+            .maybeSingle();
+            
+          console.log("Profile data retrieved:", profileData);
+        } catch (e) {
+          console.error("Error retrieving profile:", e);
+        }
+        
         console.log("Valid session confirmed with user data");
         return true;
       }
