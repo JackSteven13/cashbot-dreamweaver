@@ -1,4 +1,5 @@
 
+import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { 
   updateSessionCount,
@@ -7,6 +8,7 @@ import {
 } from "@/utils/userBalanceUtils";
 import { addTransaction } from "@/utils/transactionUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentSession } from "@/utils/auth";
 
 // Define return types for better type safety
 interface BalanceUpdateResult {
@@ -21,6 +23,30 @@ interface BalanceUpdateResult {
 }
 
 export const useUserSession = () => {
+  const [session, setSession] = useState(null);
+  
+  // Check for session on component mount
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      
+      // Set up auth state change listener
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          setSession(session);
+        }
+      );
+      
+      // Clean up subscription
+      return () => {
+        subscription.unsubscribe();
+      };
+    };
+    
+    checkSession();
+  }, []);
+  
   // Increment session count
   const incrementSessionCount = async (dailySessionCount: number) => {
     try {
@@ -161,6 +187,7 @@ export const useUserSession = () => {
   };
 
   return {
+    session,
     incrementSessionCount,
     updateBalance,
     resetBalance
