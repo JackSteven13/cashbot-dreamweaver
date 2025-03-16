@@ -12,4 +12,5 @@ export interface UserData {
   referrals: any[];
   referralLink: string;
   transactions: Transaction[];
+  registeredAt?: Date; // Ajout de la propriété registeredAt comme optionnelle
 }

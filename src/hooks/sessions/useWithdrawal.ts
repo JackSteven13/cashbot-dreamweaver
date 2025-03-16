@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
@@ -60,9 +59,8 @@ export const useWithdrawal = (
   
   // Calculer les frais de retrait en fonction de l'ancienneté de l'utilisateur
   const calculateWithdrawalFee = () => {
-    // On pourrait stocker la date d'inscription dans la base de données
-    // Pour l'instant, on utilise une date fictive pour démontrer le concept
-    const registerDate = userData.registeredAt || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // Par défaut: supposons 90 jours
+    // Par défaut, on utilise une date fictive de 3 mois avant aujourd'hui si registeredAt n'existe pas
+    const registerDate = userData.registeredAt || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     const today = new Date();
     const diffTime = today.getTime() - registerDate.getTime();
     const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30));
