@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface StatsCounterProps {
   dailyAdsTarget?: number;
@@ -10,8 +9,17 @@ const StatsCounter = ({
   dailyAdsTarget = 30000,
   dailyRevenueTarget = 100000
 }: StatsCounterProps) => {
+  // Real counters tracking actual values
   const [adsCount, setAdsCount] = useState(0);
   const [revenueCount, setRevenueCount] = useState(0);
+  
+  // Displayed counters for animation
+  const [displayedAdsCount, setDisplayedAdsCount] = useState(0);
+  const [displayedRevenueCount, setDisplayedRevenueCount] = useState(0);
+  
+  // Refs to track previous values for animation
+  const prevAdsCount = useRef(0);
+  const prevRevenueCount = useRef(0);
   
   useEffect(() => {
     // Get current Paris time
@@ -46,6 +54,12 @@ const StatsCounter = ({
       
       setAdsCount(currentAdsCount);
       setRevenueCount(currentRevenueCount);
+      // Initialize displayed values too
+      setDisplayedAdsCount(currentAdsCount);
+      setDisplayedRevenueCount(currentRevenueCount);
+      // Set initial previous values
+      prevAdsCount.current = currentAdsCount;
+      prevRevenueCount.current = currentRevenueCount;
     };
     
     // Calculate time until midnight in Paris
@@ -68,6 +82,10 @@ const StatsCounter = ({
         // Reset counters
         setAdsCount(0);
         setRevenueCount(0);
+        setDisplayedAdsCount(0);
+        setDisplayedRevenueCount(0);
+        prevAdsCount.current = 0;
+        prevRevenueCount.current = 0;
         
         // Schedule the next reset
         scheduleReset();
@@ -130,6 +148,59 @@ const StatsCounter = ({
     };
   }, [dailyAdsTarget, dailyRevenueTarget]);
 
+  // Add animation effect for the counters
+  useEffect(() => {
+    if (adsCount === displayedAdsCount && revenueCount === displayedRevenueCount) return;
+    
+    // Keep track of animation frame so we can cancel it if needed
+    let animationFrame: number;
+    
+    // Animation duration in milliseconds
+    const duration = 800;
+    const startTime = performance.now();
+    
+    // Animation function
+    const animate = (currentTime: number) => {
+      const elapsedTime = currentTime - startTime;
+      const progress = Math.min(elapsedTime / duration, 1);
+      
+      // Easing function for a smoother animation (ease-out)
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      
+      // Calculate current display values based on easing
+      if (adsCount !== prevAdsCount.current) {
+        const adsProgress = prevAdsCount.current + Math.floor((adsCount - prevAdsCount.current) * easedProgress);
+        setDisplayedAdsCount(adsProgress);
+      }
+      
+      if (revenueCount !== prevRevenueCount.current) {
+        const revenueProgress = prevRevenueCount.current + Math.floor((revenueCount - prevRevenueCount.current) * easedProgress);
+        setDisplayedRevenueCount(revenueProgress);
+      }
+      
+      // Continue animation if not complete
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      } else {
+        // Ensure exact final values
+        setDisplayedAdsCount(adsCount);
+        setDisplayedRevenueCount(revenueCount);
+        prevAdsCount.current = adsCount;
+        prevRevenueCount.current = revenueCount;
+      }
+    };
+    
+    // Start animation
+    animationFrame = requestAnimationFrame(animate);
+    
+    // Cleanup animation on component unmount or when values change
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, [adsCount, revenueCount, displayedAdsCount, displayedRevenueCount]);
+
   // Format revenue with correct spacing for thousands and € symbol at the end
   const formatRevenue = (value: number): string => {
     return new Intl.NumberFormat('fr-FR', { 
@@ -144,13 +215,13 @@ const StatsCounter = ({
     <div className="grid grid-cols-2 gap-3 sm:gap-8 w-full max-w-lg mb-6 md:mb-8 animate-slide-up">
       <div className="glass-panel p-3 sm:p-6 rounded-xl text-center">
         <div className="text-xl sm:text-2xl md:text-3xl font-bold text-primary truncate">
-          {adsCount.toLocaleString('fr-FR')}
+          {displayedAdsCount.toLocaleString('fr-FR')}
         </div>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">Publicités analysées</p>
       </div>
       <div className="glass-panel p-3 sm:p-6 rounded-xl text-center">
         <div className="text-xl sm:text-2xl md:text-3xl font-bold text-primary truncate">
-          {formatRevenue(revenueCount)}
+          {formatRevenue(displayedRevenueCount)}
         </div>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">Revenus générés</p>
       </div>
