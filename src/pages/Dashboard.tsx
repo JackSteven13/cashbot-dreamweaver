@@ -20,7 +20,7 @@ const getInitialUserData = () => {
   
   return {
     username: localStorage.getItem('username') || 'utilisateur',
-    balance: isNewUser ? 0 : 1567.82,
+    balance: isNewUser ? 0 : parseFloat(localStorage.getItem('user_balance') || '0'),
     subscription: subscription,
     referrals: [],
     referralLink: 'https://cashbot.com?ref=admin',
@@ -64,6 +64,8 @@ const Dashboard = () => {
       });
       // Set the flag for future visits
       localStorage.setItem('user_registered', 'true');
+      // Initialize the balance to 0 for new users
+      localStorage.setItem('user_balance', '0');
     }
   }, []);
 
@@ -90,18 +92,24 @@ const Dashboard = () => {
     const randomGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
     
     // Mettre à jour les données utilisateur
-    setUserData(prev => ({
-      ...prev,
-      balance: parseFloat((prev.balance + randomGain).toFixed(2)),
-      transactions: [
-        {
-          date: new Date().toISOString().split('T')[0],
-          gain: randomGain,
-          report: `Le système a généré ${randomGain}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${prev.subscription} vous permet d'accéder à ce niveau de performance.`
-        },
-        ...prev.transactions
-      ]
-    }));
+    setUserData(prev => {
+      const newBalance = parseFloat((prev.balance + randomGain).toFixed(2));
+      // Sauvegarder le nouveau solde dans localStorage
+      localStorage.setItem('user_balance', newBalance.toString());
+      
+      return {
+        ...prev,
+        balance: newBalance,
+        transactions: [
+          {
+            date: new Date().toISOString().split('T')[0],
+            gain: randomGain,
+            report: `Le système a généré ${randomGain}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${prev.subscription} vous permet d'accéder à ce niveau de performance.`
+          },
+          ...prev.transactions
+        ]
+      };
+    });
 
     // Notification de gain
     toast({
@@ -125,18 +133,24 @@ const Dashboard = () => {
       const randomGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
       
       // Mettre à jour les données utilisateur
-      setUserData(prev => ({
-        ...prev,
-        balance: parseFloat((prev.balance + randomGain).toFixed(2)),
-        transactions: [
-          {
-            date: new Date().toISOString().split('T')[0],
-            gain: randomGain,
-            report: `Session manuelle : Notre technologie a optimisé le processus et généré ${randomGain}€ de revenus pour votre compte ${prev.subscription}.`
-          },
-          ...prev.transactions
-        ]
-      }));
+      setUserData(prev => {
+        const newBalance = parseFloat((prev.balance + randomGain).toFixed(2));
+        // Sauvegarder le nouveau solde dans localStorage
+        localStorage.setItem('user_balance', newBalance.toString());
+        
+        return {
+          ...prev,
+          balance: newBalance,
+          transactions: [
+            {
+              date: new Date().toISOString().split('T')[0],
+              gain: randomGain,
+              report: `Session manuelle : Notre technologie a optimisé le processus et généré ${randomGain}€ de revenus pour votre compte ${prev.subscription}.`
+            },
+            ...prev.transactions
+          ]
+        };
+      });
       
       toast({
         title: "Session terminée",
@@ -149,18 +163,23 @@ const Dashboard = () => {
     // Process withdrawal only if sufficient balance (at least 20€) and not freemium account
     if (userData.balance >= 20 && userData.subscription !== 'freemium') {
       // Reset balance to 0 to simulate withdrawal
-      setUserData(prev => ({
-        ...prev,
-        balance: 0,
-        transactions: [
-          {
-            date: new Date().toISOString().split('T')[0],
-            gain: -prev.balance, // Negative because it's a withdrawal
-            report: `Retrait de ${prev.balance.toFixed(2)}€ effectué avec succès. Le transfert vers votre compte bancaire est en cours.`
-          },
-          ...prev.transactions
-        ]
-      }));
+      setUserData(prev => {
+        // Sauvegarder le nouveau solde (0) dans localStorage
+        localStorage.setItem('user_balance', '0');
+        
+        return {
+          ...prev,
+          balance: 0,
+          transactions: [
+            {
+              date: new Date().toISOString().split('T')[0],
+              gain: -prev.balance, // Negative because it's a withdrawal
+              report: `Retrait de ${prev.balance.toFixed(2)}€ effectué avec succès. Le transfert vers votre compte bancaire est en cours.`
+            },
+            ...prev.transactions
+          ]
+        };
+      });
     }
   };
 
