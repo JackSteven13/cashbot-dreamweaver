@@ -158,7 +158,7 @@ const Hero = () => {
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-balance mb-8 animate-slide-down">
-            Gagnez 2000€/mois en dormant 💸
+            Générez des revenus passifs simplement et automatiquement avec CashBot. 💸
           </h1>
           
           {/* Map for desktop, LocationFeed for mobile */}
