@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { UserData } from '@/types/userData';
 import { useUserDataFetcher } from './useUserDataFetcher';
@@ -18,7 +19,8 @@ export const useUserFetch = (): UserFetchResult => {
   const isMounted = useRef(true);
   const fetchInProgress = useRef(false);
   const retryCount = useRef(0);
-  const maxRetries = 3;
+  const maxRetries = 5; // Augmentation du nombre de tentatives
+  const initialFetchDelayRef = useRef<NodeJS.Timeout | null>(null);
   
   const [fetcherState, fetcherActions] = useUserDataFetcher();
   
@@ -33,6 +35,9 @@ export const useUserFetch = (): UserFetchResult => {
     try {
       fetchInProgress.current = true;
       
+      // Ajout d'un délai court pour éviter les conflits de requêtes
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       const isAuthValid = await verifyAuth();
       
       if (!isAuthValid) {
@@ -44,6 +49,14 @@ export const useUserFetch = (): UserFetchResult => {
           fetchInProgress.current = false;
           return;
         }
+        
+        // Attendre un peu après le rafraîchissement
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+      
+      if (!isMounted.current) {
+        fetchInProgress.current = false;
+        return;
       }
       
       console.log("Fetching user data...");
@@ -66,6 +79,13 @@ export const useUserFetch = (): UserFetchResult => {
             fetchData();
           }
         }, delay);
+      } else if (isMounted.current) {
+        // Notification visuelle en cas d'échecs répétés
+        toast({
+          title: "Problème de connexion",
+          description: "Impossible de charger vos données. Veuillez rafraîchir la page.",
+          variant: "destructive"
+        });
       }
     }
   }, [fetchUserData]);
@@ -75,7 +95,8 @@ export const useUserFetch = (): UserFetchResult => {
     fetchInProgress.current = false;
     retryCount.current = 0;
     
-    const initialFetch = setTimeout(() => {
+    // Delay initial fetch to avoid race conditions
+    initialFetchDelayRef.current = setTimeout(() => {
       if (isMounted.current) {
         console.log("Starting initial data fetch");
         fetchData();
@@ -85,7 +106,9 @@ export const useUserFetch = (): UserFetchResult => {
     return () => {
       console.log("useUserFetch unmounting");
       isMounted.current = false;
-      clearTimeout(initialFetch);
+      if (initialFetchDelayRef.current) {
+        clearTimeout(initialFetchDelayRef.current);
+      }
     };
   }, [fetchData]);
 
@@ -95,6 +118,8 @@ export const useUserFetch = (): UserFetchResult => {
     }
     
     console.log("Manual refetch requested");
+    
+    // Vérification de l'état d'authentification avant la récupération
     const isAuthValid = await verifyAuth();
     
     if (isAuthValid) {

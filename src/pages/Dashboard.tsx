@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { verifyAuth, refreshSession } from "@/utils/auth/index";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -17,75 +18,81 @@ const Dashboard = () => {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const [authError, setAuthError] = useState(false);
+  const mountedRef = useRef(true);
+  const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const authCheckInProgress = useRef(false);
   
   // Amélioré pour être plus robuste
   const checkAuth = useCallback(async () => {
+    if (authCheckInProgress.current) {
+      console.log("Auth check already in progress, skipping");
+      return false;
+    }
+    
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      authCheckInProgress.current = true;
+      
+      // Essayer de rafraîchir la session avant tout
+      await refreshSession();
+      
+      // Petit délai pour permettre au rafraîchissement de se propager
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const isAuthenticated = await verifyAuth();
+      
+      authCheckInProgress.current = false;
+      
+      if (!isAuthenticated) {
         console.log("No active session found, redirecting to login");
         setAuthError(true);
         return false;
       }
       
-      // Vérifier si la session a expiré
-      const tokenExpiry = new Date(session.expires_at * 1000);
-      const now = new Date();
-      
-      if (now > tokenExpiry) {
-        console.log("Session expired, redirecting to login");
-        toast({
-          title: "Session expirée",
-          description: "Votre session a expiré. Veuillez vous reconnecter.",
-          variant: "destructive"
-        });
-        setAuthError(true);
-        return false;
-      }
-      
-      console.log("Active session found for user:", session.user.id);
+      console.log("Active session found, initializing dashboard");
       return true;
     } catch (error) {
       console.error("Authentication error:", error);
       setAuthError(true);
+      authCheckInProgress.current = false;
       return false;
     }
-  }, [navigate]);
+  }, []);
   
   useEffect(() => {
-    let isMounted = true;
-    let initTimeout: NodeJS.Timeout;
+    mountedRef.current = true;
     
     const initDashboard = async () => {
       setIsAuthChecking(true);
       try {
         const isAuthenticated = await checkAuth();
         
-        if (!isMounted) return;
+        if (!mountedRef.current) return;
         
         if (isAuthenticated) {
           console.log("User authenticated, initializing dashboard");
           setIsAuthChecking(false);
           
           // Délai court pour éviter les problèmes de rendu
-          initTimeout = setTimeout(() => {
-            if (isMounted) {
+          initTimeoutRef.current = setTimeout(() => {
+            if (mountedRef.current) {
               console.log("Dashboard ready");
               setIsReady(true);
             }
-          }, 300);
+          }, 500);
         } else {
           // Redirection vers la page de login avec un délai pour éviter les problèmes
           console.log("Authentication failed, redirecting to login");
-          setTimeout(() => {
-            if (isMounted) {
-              navigate('/login');
-            }
-          }, 300);
+          if (mountedRef.current) {
+            setTimeout(() => {
+              if (mountedRef.current) {
+                navigate('/login', { replace: true });
+              }
+            }, 400);
+          }
         }
       } catch (err) {
         console.error("Error during dashboard initialization:", err);
-        if (isMounted) {
+        if (mountedRef.current) {
           setAuthError(true);
           setIsAuthChecking(false);
         }
@@ -93,16 +100,34 @@ const Dashboard = () => {
     };
     
     console.log("Dashboard component mounted");
-    initDashboard();
+    // Démarrer avec un léger délai pour éviter les conflits d'initialisation
+    setTimeout(() => {
+      if (mountedRef.current) {
+        initDashboard();
+      }
+    }, 300);
+    
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (!mountedRef.current) return;
+      
+      if (event === 'SIGNED_OUT') {
+        console.log("Auth state change: signed out");
+        navigate('/login', { replace: true });
+      }
+    });
     
     return () => { 
       console.log("Dashboard component unmounting");
-      isMounted = false; 
-      clearTimeout(initTimeout);
+      mountedRef.current = false;
+      if (initTimeoutRef.current) {
+        clearTimeout(initTimeoutRef.current);
+      }
+      subscription.unsubscribe();
     };
   }, [checkAuth, navigate]);
   
-  // Délai d'initialisation des hooks pour éviter les problèmes
+  // Hook d'initialisation des hooks pour éviter les problèmes
   const {
     userData,
     isNewUser,
@@ -151,7 +176,7 @@ const Dashboard = () => {
           <h2 className="text-xl font-bold mb-4">Problème d'authentification</h2>
           <p className="mb-6">Nous n'arrivons pas à vérifier votre session.</p>
           <button 
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/login', { replace: true })}
             className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
           >
             Retourner à la page de connexion
@@ -168,10 +193,15 @@ const Dashboard = () => {
         <Loader2 className="w-10 h-10 animate-spin text-blue-400 mb-4" />
         <div className="text-center">
           <p className="mb-2">Chargement des données utilisateur...</p>
-          <p className="text-sm text-blue-300">Si cette page persiste, veuillez vous reconnecter.</p>
           <button 
-            onClick={() => navigate('/login')}
+            onClick={() => refreshUserData ? refreshUserData() : null}
             className="mt-4 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+          >
+            Rafraîchir les données
+          </button>
+          <button 
+            onClick={() => navigate('/login', { replace: true })}
+            className="mt-4 ml-2 px-4 py-2 bg-transparent border border-blue-600 rounded hover:bg-blue-900/20 transition-colors"
           >
             Retourner à la page de connexion
           </button>

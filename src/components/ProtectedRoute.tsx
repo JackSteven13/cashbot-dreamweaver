@@ -1,5 +1,5 @@
 
-import { ReactNode, useCallback } from 'react';
+import { ReactNode, useCallback, useEffect, useRef } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
 import { forceSignOut } from "@/utils/auth/sessionUtils";
@@ -14,6 +14,9 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const redirectInProgress = useRef(false);
+  const initialCheckComplete = useRef(false);
+  
   const { 
     isAuthenticated, 
     authCheckFailed, 
@@ -23,16 +26,48 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   // Handle clean login function
   const handleCleanLogin = useCallback(() => {
+    if (redirectInProgress.current) return;
+    
+    redirectInProgress.current = true;
+    console.log("Déconnexion propre initiée");
+    
     Promise.resolve(forceSignOut())
       .then(() => {
         console.log("Redirection vers la page de connexion");
-        navigate('/login', { replace: true });
+        // Petit délai pour permettre à la déconnexion de se terminer
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+          redirectInProgress.current = false;
+        }, 300);
       })
       .catch((error) => {
         console.error("Erreur pendant la déconnexion propre:", error);
-        navigate('/login', { replace: true });
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+          redirectInProgress.current = false;
+        }, 300);
       });
   }, [navigate]);
+
+  // Effect to prevent infinite redirects
+  useEffect(() => {
+    // Set a timeout to ensure we don't wait forever
+    const timeoutId = setTimeout(() => {
+      if (!initialCheckComplete.current && isAuthenticated === null) {
+        console.log("Auth check timeout reached, forcing redirect to login");
+        handleCleanLogin();
+      }
+    }, 8000); // 8 seconds timeout
+
+    return () => clearTimeout(timeoutId);
+  }, [handleCleanLogin, isAuthenticated]);
+
+  // Mark initial check as complete when we get a definitive answer
+  useEffect(() => {
+    if (isAuthenticated !== null && !initialCheckComplete.current) {
+      initialCheckComplete.current = true;
+    }
+  }, [isAuthenticated]);
 
   // Show recovery screen if auth check failed
   if (authCheckFailed) {
@@ -52,11 +87,14 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   // Redirect to login if not authenticated
   if (isAuthenticated === false) {
-    toast({
-      title: "Accès refusé",
-      description: "Vous devez être connecté pour accéder à cette page.",
-      variant: "destructive"
-    });
+    if (!redirectInProgress.current) {
+      redirectInProgress.current = true;
+      toast({
+        title: "Accès refusé",
+        description: "Vous devez être connecté pour accéder à cette page.",
+        variant: "destructive"
+      });
+    }
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
