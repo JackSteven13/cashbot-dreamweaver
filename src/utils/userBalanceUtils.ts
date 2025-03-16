@@ -4,6 +4,17 @@ import { toast } from "@/components/ui/use-toast";
 import { SUBSCRIPTION_LIMITS } from "@/utils/subscriptionUtils";
 import { addTransaction } from './transactionUtils';
 
+// Utility function to handle errors and display toast messages
+const handleError = (error: any, errorMessage: string) => {
+  console.error(errorMessage, error);
+  toast({
+    title: "Erreur",
+    description: "Une erreur est survenue. Veuillez réessayer.",
+    variant: "destructive"
+  });
+  return false;
+};
+
 // Update user balance
 export const updateUserBalance = async (
   userId: string, 
@@ -23,31 +34,23 @@ export const updateUserBalance = async (
   try {
     console.log("Updating balance from", currentBalance, "to", newBalance, "for user", userId);
     
-    // Use a transaction to ensure data consistency
-    const { error: updateError } = await supabase.rpc('update_user_balance', {
-      user_id: userId,
-      new_balance: newBalance
-    });
+    // Use standard update instead of RPC to avoid TypeScript errors
+    const { error: updateError } = await supabase
+      .from('user_balances')
+      .update({ 
+        balance: newBalance,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
     
     if (updateError) {
-      // Fallback to standard update if RPC fails
-      const { error: fallbackError } = await supabase
-        .from('user_balances')
-        .update({ 
-          balance: newBalance,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId);
-      
-      if (fallbackError) {
-        console.error("Error updating balance:", fallbackError);
-        toast({
-          title: "Erreur",
-          description: "Impossible de mettre à jour votre solde. Veuillez réessayer.",
-          variant: "destructive"
-        });
-        return { success: false, newBalance: currentBalance, limitReached: false };
-      }
+      console.error("Error updating balance:", updateError);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour votre solde. Veuillez réessayer.",
+        variant: "destructive"
+      });
+      return { success: false, newBalance: currentBalance, limitReached: false };
     }
     
     console.log("Balance updated successfully to", newBalance);
@@ -68,30 +71,23 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
   try {
     console.log("Resetting balance from", currentBalance, "to 0 for user", userId);
     
-    // Use a transaction to ensure data consistency
-    const { error: updateError } = await supabase.rpc('reset_user_balance', {
-      user_id: userId
-    });
+    // Use standard update instead of RPC to avoid TypeScript errors
+    const { error: updateError } = await supabase
+      .from('user_balances')
+      .update({ 
+        balance: 0,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
       
     if (updateError) {
-      // Fallback to standard update if RPC fails
-      const { error: fallbackError } = await supabase
-        .from('user_balances')
-        .update({ 
-          balance: 0,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId);
-        
-      if (fallbackError) {
-        console.error("Error resetting balance:", fallbackError);
-        toast({
-          title: "Erreur",
-          description: "Impossible de traiter votre retrait. Veuillez réessayer.",
-          variant: "destructive"
-        });
-        return { success: false, transaction: null };
-      }
+      console.error("Error resetting balance:", updateError);
+      toast({
+        title: "Erreur",
+        description: "Impossible de traiter votre retrait. Veuillez réessayer.",
+        variant: "destructive"
+      });
+      return { success: false, transaction: null };
     }
     
     const report = `Retrait de ${currentBalance.toFixed(2)}€ effectué avec succès. Le transfert vers votre compte bancaire est en cours.`;
@@ -120,26 +116,18 @@ export const updateSessionCount = async (userId: string, newCount: number) => {
   try {
     console.log("Updating session count to", newCount, "for user", userId);
     
-    // Use a transaction to ensure data consistency
-    const { error: updateError } = await supabase.rpc('update_session_count', {
-      user_id: userId,
-      new_count: newCount
-    });
+    // Use standard update instead of RPC to avoid TypeScript errors
+    const { error: updateError } = await supabase
+      .from('user_balances')
+      .update({ 
+        daily_session_count: newCount,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
       
     if (updateError) {
-      // Fallback to standard update if RPC fails
-      const { error: fallbackError } = await supabase
-        .from('user_balances')
-        .update({ 
-          daily_session_count: newCount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId);
-        
-      if (fallbackError) {
-        console.error("Error updating session count:", fallbackError);
-        return false;
-      }
+      console.error("Error updating session count:", updateError);
+      return false;
     }
     
     console.log("Session count updated successfully");
