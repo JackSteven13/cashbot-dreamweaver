@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
@@ -7,9 +7,27 @@ import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
 import { canStartManualSession, SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
 import { Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+  
+  // Vérifier l'authentification avant de charger les données
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/login');
+      } else {
+        setIsAuthChecking(false);
+      }
+    };
+    
+    checkAuth();
+  }, [navigate]);
   
   // Get user data and session management functions from custom hooks
   const {
@@ -39,7 +57,7 @@ const Dashboard = () => {
   );
 
   // Afficher un loader pendant le chargement des données
-  if (isLoading) {
+  if (isAuthChecking || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#0f0f23]">
         <Loader2 className="w-10 h-10 animate-spin text-blue-400" />

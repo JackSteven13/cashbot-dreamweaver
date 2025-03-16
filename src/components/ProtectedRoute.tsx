@@ -16,15 +16,25 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session && session.user) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session || !session.user) {
+          console.log('Utilisateur non authentifié, redirection vers la page de connexion');
+          setIsAuthenticated(false);
+          return;
+        }
+        
         // Récupérer le profil pour afficher le message de bienvenue
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('full_name')
           .eq('id', session.user.id)
           .single();
+          
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Erreur lors de la récupération du profil:", profileError);
+        }
           
         const displayName = profileData?.full_name || session.user.email?.split('@')[0] || 'utilisateur';
         setUsername(displayName);
@@ -38,8 +48,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
             description: "Vous êtes maintenant connecté à votre compte CashBot.",
           });
         }
-      } else {
-        console.log('Utilisateur non authentifié, redirection vers la page de connexion');
+      } catch (error) {
+        console.error("Erreur lors de la vérification de l'authentification:", error);
         setIsAuthenticated(false);
       }
     };
@@ -47,10 +57,20 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     checkAuth();
 
     // Surveiller les changements d'état d'authentification
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session && session.user) {
+        // Mettre à jour le nom d'utilisateur lorsque l'état d'authentification change
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', session.user.id)
+          .single();
+          
+        const displayName = profileData?.full_name || session.user.email?.split('@')[0] || 'utilisateur';
+        setUsername(displayName);
         setIsAuthenticated(true);
       } else {
+        setUsername(null);
         setIsAuthenticated(false);
       }
     });

@@ -10,10 +10,12 @@ import {
   fetchUserTransactions 
 } from '@/utils/userDataFetch';
 import { useUserSession } from './useUserSession';
+import { useNavigate } from 'react-router-dom';
 
 export type { UserData };
 
 export const useUserData = () => {
+  const navigate = useNavigate();
   const [userData, setUserData] = useState<UserData>({
     username: '',
     balance: 0,
@@ -37,6 +39,7 @@ export const useUserData = () => {
         
         if (!session) {
           console.error("No session found");
+          navigate('/login');
           setIsLoading(false);
           return;
         }
@@ -53,6 +56,8 @@ export const useUserData = () => {
         const balanceResult = await fetchUserBalance(session.user.id);
         
         if (!balanceResult) {
+          console.error("Impossible de récupérer les données de solde. Redirection vers la connexion.");
+          navigate('/login');
           setIsLoading(false);
           return;
         }
@@ -95,13 +100,14 @@ export const useUserData = () => {
 
       } catch (error) {
         console.error("Error in fetchUserData:", error);
+        navigate('/login');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchUserData();
-  }, []);
+  }, [navigate]);
 
   const incrementSessionCount = async () => {
     const newCount = await incrementSession(dailySessionCount);
