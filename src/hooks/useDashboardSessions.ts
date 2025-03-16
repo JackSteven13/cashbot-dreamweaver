@@ -9,7 +9,8 @@ export const useDashboardSessions = (
   dailySessionCount: number,
   incrementSessionCount: () => void,
   updateBalance: (gain: number, report: string) => void,
-  setShowLimitAlert: (show: boolean) => void
+  setShowLimitAlert: (show: boolean) => void,
+  resetBalance: () => void // Added resetBalance as a parameter
 ) => {
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [lastAutoSessionTime, setLastAutoSessionTime] = useState(Date.now());
