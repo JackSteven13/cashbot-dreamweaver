@@ -44,15 +44,11 @@ const Register = () => {
       
       if (data && data.user) {
         const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: data.user.id,
-              full_name: name,
-              email: email,
-              created_at: new Date().toISOString(),
-            },
-          ]);
+          .rpc('create_profile', {
+            user_id: data.user.id,
+            user_name: name,
+            user_email: email,
+          });
           
         if (profileError) {
           console.error("Error creating profile:", profileError);
