@@ -1,13 +1,13 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
-import { supabase } from "@/integrations/supabase/client";
-import { verifyAndRepairAuth, forceSignOut } from "@/utils/authUtils";
 import { Input } from '@/components/ui/input';
+import { supabase } from "@/integrations/supabase/client";
+import { verifyAuth } from '@/utils/authUtils';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,159 +15,53 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const loginAttemptRef = useRef(0);
-  const isSubmittingRef = useRef(false);
   
-  // Improved session check on component mount
-  useEffect(() => {
-    let isMounted = true;
-    let checkTimeout: NodeJS.Timeout;
-    
-    const checkSession = async () => {
-      try {
-        if (!isMounted) return;
-        setIsCheckingSession(true);
-        
-        // Ensure we start with a clean session state
-        await forceSignOut();
-        
-        // Short delay to ensure signout is complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        if (!isMounted) return;
-        
-        setIsCheckingSession(false);
-      } catch (error) {
-        console.error("Session check error:", error);
-        if (isMounted) {
-          setIsCheckingSession(false);
-        }
-      }
-    };
-    
-    checkTimeout = setTimeout(() => checkSession(), 500);
-    
-    return () => {
-      isMounted = false;
-      clearTimeout(checkTimeout);
-    };
-  }, [navigate]);
-  
+  const from = (location.state as any)?.from?.pathname || '/dashboard';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmittingRef.current) return; // Prevent multiple submissions
-    
-    isSubmittingRef.current = true;
     setIsLoading(true);
-    setLoginError(null);
     
     try {
-      loginAttemptRef.current += 1;
-      const attemptId = loginAttemptRef.current;
-      console.log(`Starting login attempt #${attemptId}`);
-      
-      // Start fresh - ensure no lingering session
-      await forceSignOut();
-      
-      // Wait for signout to complete
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Attempt login with provided credentials
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       });
       
       if (error) throw error;
       
       if (data && data.user) {
-        console.log(`Login attempt #${attemptId} successful, user:`, data.user.id);
-        
-        // Wait for session establishment - increased delay for stability
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Multiple verification attempts to ensure session is valid
-        let isSessionValid = false;
-        for (let i = 0; i < 5; i++) {
-          isSessionValid = await verifyAndRepairAuth();
-          if (isSessionValid) break;
-          // Increasing wait times between attempts
-          await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
-        }
-        
-        if (!isSessionValid) {
-          throw new Error("Session could not be established after multiple attempts");
-        }
-        
-        // Get user profile for display name
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', data.user.id)
-          .maybeSingle();
-        
-        const displayName = profileData?.full_name || 
-                           data.user.user_metadata?.full_name || 
-                           email.split('@')[0];
-        
-        toast({
-          title: `Bienvenue, ${displayName} !`,
-          description: "Vous êtes maintenant connecté à votre compte CashBot.",
-        });
-        
-        // Redirect with longer delay to ensure session is fully established
-        const from = location.state?.from?.pathname || '/dashboard';
-        console.log(`Login attempt #${attemptId} redirecting to:`, from);
-        
-        // Clear any previous navigation attempt for this login
-        setTimeout(() => {
-          navigate(from, { 
-            state: { 
-              justLoggedIn: true,
-              timestamp: new Date().getTime() // Add timestamp for uniqueness
-            }, 
-            replace: true 
-          });
-        }, 1500);
+        // Attendre que l'authentification soit entièrement établie
+        setTimeout(async () => {
+          // Vérifier que la session est bien établie
+          const isAuth = await verifyAuth();
+          
+          if (isAuth) {
+            toast({
+              title: "Connexion réussie",
+              description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
+            });
+            
+            // Simple redirect
+            navigate('/dashboard', { replace: true });
+          } else {
+            throw new Error("Session non établie après connexion");
+          }
+        }, 1000);
       }
     } catch (error: any) {
-      console.error("Erreur de connexion:", error);
-      setLoginError(error.message || "Vérifiez vos identifiants et réessayez");
+      console.error("Login error:", error);
       toast({
         title: "Erreur de connexion",
-        description: error.message || "Vérifiez vos identifiants et réessayez",
+        description: error.message === "Invalid login credentials" 
+          ? "Email ou mot de passe incorrect" 
+          : (error.message || "Une erreur est survenue lors de la connexion"),
         variant: "destructive",
       });
-      
-      // Cleanup on error
-      try {
-        await forceSignOut();
-      } catch (cleanupError) {
-        console.error("Error during cleanup after failed login:", cleanupError);
-      }
-    } finally {
       setIsLoading(false);
-      // Delay resetting the submitting flag to prevent rapid resubmission
-      setTimeout(() => {
-        isSubmittingRef.current = false;
-      }, 1000);
     }
   };
-  
-  if (isCheckingSession) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        <Navbar />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <span className="ml-2">Vérification de la session...</span>
-        </div>
-      </div>
-    );
-  }
-  
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -175,9 +69,9 @@ const Login = () => {
       <main className="flex-1 flex items-center justify-center py-12">
         <div className="w-full max-w-md px-4">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold">Connectez-vous</h1>
+            <h1 className="text-3xl font-bold">Connectez-vous à votre compte</h1>
             <p className="text-muted-foreground mt-2">
-              Accédez à votre compte CashBot
+              Accédez à votre tableau de bord CashBot
             </p>
           </div>
           
@@ -192,10 +86,9 @@ const Login = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-3"
+                  className="w-full"
                   placeholder="votre@email.com"
                   required
-                  disabled={isLoading}
                 />
               </div>
               
@@ -208,30 +101,24 @@ const Login = () => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3"
+                  className="w-full"
                   placeholder="••••••••"
                   required
-                  disabled={isLoading}
                 />
-                <div className="flex justify-end mt-1">
-                  <Link to="/reset-password" className="text-xs text-primary hover:underline">
-                    Mot de passe oublié ?
-                  </Link>
-                </div>
               </div>
               
-              {loginError && (
-                <div className="text-sm text-red-500 bg-red-50 border border-red-100 p-2 rounded">
-                  {loginError}
-                </div>
-              )}
+              <div className="flex justify-end">
+                <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                  Mot de passe oublié?
+                </Link>
+              </div>
               
               <div className="pt-2">
                 <Button type="submit" fullWidth size="lg" isLoading={isLoading} className="group">
                   {isLoading ? (
                     <>
-                      <Loader2 size={18} className="mr-2 animate-spin" /> 
-                      Connexion...
+                      <Loader2 size={18} className="mr-2 animate-spin" />
+                      Connexion en cours...
                     </>
                   ) : (
                     <>

@@ -1,10 +1,10 @@
 
-import { ReactNode, useEffect, useState, useRef } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, RefreshCcw, LogOut } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
-import { verifyAndRepairAuth, forceSignOut } from "@/utils/authUtils";
+import { verifyAuth, forceSignOut } from "@/utils/authUtils";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -16,12 +16,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [authCheckFailed, setAuthCheckFailed] = useState(false);
-  const [retryAttempts, setRetryAttempts] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
-  const maxRetries = 5; // Increased number of retries
-  const authCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const initialCheckRef = useRef(true);
-  const mountedTimeRef = useRef(Date.now());
 
   const checkAuth = async (isManualRetry = false) => {
     if (isManualRetry) {
@@ -31,40 +26,16 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
     
     try {
-      console.log(`Vérification d'authentification ${isManualRetry ? "manuelle" : "automatique"} ${retryAttempts + 1}/${maxRetries}`);
+      console.log(`Vérification d'authentification ${isManualRetry ? "manuelle" : "automatique"}`);
       
-      // Force deconnection first for manual retry
-      if (isManualRetry) {
-        await forceSignOut();
-        // Pause pour s'assurer que la déconnexion est complète
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-      
-      // Utiliser un délai pour éviter les conditions de course
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const isAuthValid = await verifyAndRepairAuth();
+      const isAuthValid = await verifyAuth();
       
       if (!isAuthValid) {
-        if (retryAttempts < maxRetries && !isManualRetry) {
-          setRetryAttempts(prev => prev + 1);
-          console.log(`Nouvelle tentative ${retryAttempts + 1}/${maxRetries} programmée`);
-          
-          // Délai exponentiel entre les tentatives
-          const delay = Math.min(1000 * Math.pow(1.5, retryAttempts), 10000);
-          setTimeout(() => checkAuth(), delay);
-          return;
-        }
-        
-        console.log("Échec d'authentification après les tentatives maximales");
+        console.log("Échec d'authentification");
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
         setIsRetrying(false);
         return;
-      }
-      
-      // Reset counter on success
-      if (retryAttempts > 0) {
-        setRetryAttempts(0);
       }
       
       // Get user data
@@ -92,45 +63,14 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         setUsername(displayName);
         setIsAuthenticated(true);
         setIsRetrying(false);
-        
-        // Afficher le message d'accueil uniquement après la connexion initiale
-        if (location.state?.justLoggedIn && initialCheckRef.current) {
-          initialCheckRef.current = false;
-          
-          // Vérifier que le timestamp est récent pour éviter les messages sur d'anciennes sessions
-          const loginTimestamp = location.state?.timestamp || 0;
-          const now = Date.now();
-          const isRecentLogin = (now - loginTimestamp) < 10000; // Moins de 10 secondes
-          
-          if (isRecentLogin) {
-            toast({
-              title: `Bienvenue, ${displayName} !`,
-              description: "Vous êtes maintenant connecté à votre compte CashBot.",
-            });
-          }
-          
-          // Nettoyer l'état pour ne pas répéter le message
-          navigate(location.pathname, { replace: true, state: {} });
-        }
       } catch (profileError) {
         console.error("Erreur lors de la récupération du profil:", profileError);
-        // Continuer même si le profil échoue
+        // Continue even if profile fails
         setIsAuthenticated(true);
         setIsRetrying(false);
       }
     } catch (error) {
       console.error("Erreur lors de la vérification d'authentification:", error);
-      
-      if (retryAttempts < maxRetries && !isManualRetry) {
-        setRetryAttempts(prev => prev + 1);
-        console.log(`Nouvelle tentative ${retryAttempts + 1}/${maxRetries} programmée`);
-        
-        // Délai exponentiel entre les tentatives
-        const delay = Math.min(1000 * Math.pow(1.5, retryAttempts), 10000);
-        setTimeout(() => checkAuth(), delay);
-        return;
-      }
-      
       setAuthCheckFailed(true);
       setIsAuthenticated(false);
       setIsRetrying(false);
@@ -140,71 +80,37 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   useEffect(() => {
     let isMounted = true;
     
-    // Réinitialiser l'état à chaque montage
-    if (isMounted) {
-      initialCheckRef.current = true;
-      setAuthCheckFailed(false);
-      setRetryAttempts(0);
-      setIsAuthenticated(null);
-      mountedTimeRef.current = Date.now();
-    }
-    
-    // Prévenir les vérifications multiples en même temps
-    const uniqueKey = `auth_check_${mountedTimeRef.current}`;
-    console.log(`Starting auth check with key: ${uniqueKey}`);
-    
-    // Effectuer la vérification avec un délai pour éviter les problèmes d'initialisation
+    // Set timeout for initial auth check
     const initTimeout = setTimeout(() => {
       if (isMounted) {
         checkAuth();
       }
-    }, 600);
+    }, 500);
     
-    // Définir un timeout pour éviter un chargement infini
-    authCheckTimeoutRef.current = setTimeout(() => {
-      if (isAuthenticated === null && isMounted) {
-        console.warn("Délai d'authentification dépassé");
-        setAuthCheckFailed(true);
-        setIsAuthenticated(false);
-      }
-    }, 12000); // 12 secondes maximum
-
-    // Surveiller les changements d'état d'authentification
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
       
-      console.log(`[${uniqueKey}] Changement d'état d'authentification:`, event);
+      console.log(`Changement d'état d'authentification:`, event);
       
       if (event === 'SIGNED_OUT') {
         setIsAuthenticated(false);
         setUsername(null);
-      } else if (event === 'SIGNED_IN' && session && session.user) {
+      } else if (event === 'SIGNED_IN' && session) {
         setIsAuthenticated(true);
-        // Essayer de charger le nom d'utilisateur sans bloquer
-        void supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', session.user.id)
-          .maybeSingle()
-          .then(({ data }) => {
-            if (isMounted && data) {
-              setUsername(data.full_name || session.user.email?.split('@')[0] || 'utilisateur');
-            }
-          });
+        const user = session.user;
+        if (user) {
+          setUsername(user.user_metadata?.full_name || user.email?.split('@')[0] || 'utilisateur');
+        }
       }
     });
 
     return () => {
       isMounted = false;
-      if (authCheckTimeoutRef.current) {
-        clearTimeout(authCheckTimeoutRef.current);
-        authCheckTimeoutRef.current = null;
-      }
       clearTimeout(initTimeout);
       subscription.unsubscribe();
-      console.log(`Auth check with key ${uniqueKey} unmounted`);
     };
-  }, [location.pathname, location.state?.justLoggedIn]); 
+  }, [location.pathname]); 
 
   // Fonction pour effectuer une connexion propre
   const handleCleanLogin = () => {
@@ -280,7 +186,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f0f23]">
         <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
         <span className="ml-2 text-blue-300 mt-4">Vérification de l'authentification...</span>
-        <span className="text-xs text-blue-200 mt-2">Cela peut prendre quelques instants...</span>
       </div>
     );
   }

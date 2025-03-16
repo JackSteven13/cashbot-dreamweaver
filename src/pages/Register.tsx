@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -46,41 +45,23 @@ const Register = () => {
       
       if (data && data.user) {
         // Créer un profil pour l'utilisateur
-        const { error: profileError } = await supabase
-          .rpc('create_profile', {
-            user_id: data.user.id,
-            user_name: name,
-            user_email: email,
+        await supabase
+          .from('profiles')
+          .upsert({
+            id: data.user.id,
+            full_name: name,
+            email: email
           });
           
-        if (profileError) {
-          console.error("Error creating profile:", profileError);
-          // Si la fonction RPC échoue, essayons d'insérer directement
-          await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              full_name: name,
-              email: email
-            });
-        }
-        
         // Initialiser les données utilisateur dans la base de données
-        const { error: balanceError } = await supabase
+        await supabase
           .from('user_balances')
-          .insert([{
+          .upsert({
             id: data.user.id,
             balance: 0,
             daily_session_count: 0,
             subscription: 'freemium'
-          }]);
-          
-        if (balanceError) {
-          console.error("Error initializing user balance:", balanceError);
-        }
-        
-        // Attendre brièvement pour que les données soient bien persistées
-        await new Promise(resolve => setTimeout(resolve, 500));
+          });
         
         // Afficher un message de bienvenue personnalisé
         toast({
@@ -88,10 +69,16 @@ const Register = () => {
           description: "Votre compte a été créé avec succès. Vous êtes maintenant connecté à CashBot.",
         });
         
-        // Rediriger vers le tableau de bord avec un délai pour laisser l'auth s'initialiser
+        // Sign in to ensure authenticated session
+        await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        // Wait for session to be established
         setTimeout(() => {
-          navigate('/dashboard', { state: { justLoggedIn: true }, replace: true });
-        }, 800);
+          navigate('/dashboard', { replace: true });
+        }, 1000);
       }
     } catch (error: any) {
       console.error("Registration error:", error);
