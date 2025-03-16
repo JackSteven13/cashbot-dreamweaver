@@ -73,8 +73,8 @@ export const useUserSession = () => {
         return { success: false };
       }
       
-      // Ensure gain is always positive
-      const positiveGain = Math.max(0, gain);
+      // Ensure gain is always positive and format to 2 decimal places
+      const positiveGain = Math.max(0, parseFloat(gain.toFixed(2)));
       
       // Update balance
       const balanceResult = await updateUserBalance(

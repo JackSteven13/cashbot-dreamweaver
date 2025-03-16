@@ -8,7 +8,7 @@ import {
   calculateManualSessionGain,
   calculateAutoSessionGain
 } from '@/utils/subscriptionUtils';
-import { UserData } from './useUserData';
+import { UserData } from '@/types/userData';
 import { supabase } from "@/integrations/supabase/client";
 
 export const useDashboardSessions = (
@@ -22,6 +22,17 @@ export const useDashboardSessions = (
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [lastAutoSessionTime, setLastAutoSessionTime] = useState(Date.now());
   const sessionInProgress = useRef(false);
+  const operationLock = useRef(false);
+  const refreshTimeoutRef = useRef<number | null>(null);
+
+  // Clean up any pending timeouts when component unmounts
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current !== null) {
+        window.clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Effect for simulating automatic ad analysis
   useEffect(() => {
@@ -39,51 +50,55 @@ export const useDashboardSessions = (
   // Reset sessions and balances at midnight Paris time
   useEffect(() => {
     const checkMidnightReset = async () => {
-      const now = new Date();
-      const parisTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-      
-      if (parisTime.getHours() === 0 && parisTime.getMinutes() === 0) {
-        // Reset at midnight
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+      try {
+        const now = new Date();
+        const parisTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
         
-        try {
-          // Reset session count for all users
-          const { error: updateError } = await supabase
-            .from('user_balances')
-            .update({ 
-              daily_session_count: 0,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', session.user.id);
-            
-          if (updateError) {
-            console.error("Error resetting session count:", updateError);
-          }
+        if (parisTime.getHours() === 0 && parisTime.getMinutes() === 0) {
+          // Reset at midnight
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) return;
           
-          await incrementSessionCount(); // This will reset to 0 in our function
-          
-          // Also reset balance for freemium accounts
-          if (userData.subscription === 'freemium') {
-            const { error: balanceError } = await supabase
+          try {
+            // Reset session count for all users
+            const { error: updateError } = await supabase
               .from('user_balances')
               .update({ 
-                balance: 0,
+                daily_session_count: 0,
                 updated_at: new Date().toISOString()
               })
-              .eq('id', session.user.id)
-              .eq('subscription', 'freemium');
+              .eq('id', session.user.id);
               
-            if (balanceError) {
-              console.error("Error resetting freemium balance:", balanceError);
+            if (updateError) {
+              console.error("Error resetting session count:", updateError);
             }
             
-            await updateBalance(0, ''); // This will reset balance to 0
-            setShowLimitAlert(false);
+            await incrementSessionCount(); // This will reset to 0 in our function
+            
+            // Also reset balance for freemium accounts
+            if (userData.subscription === 'freemium') {
+              const { error: balanceError } = await supabase
+                .from('user_balances')
+                .update({ 
+                  balance: 0,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', session.user.id)
+                .eq('subscription', 'freemium');
+                
+              if (balanceError) {
+                console.error("Error resetting freemium balance:", balanceError);
+              }
+              
+              await updateBalance(0, ''); // This will reset balance to 0
+              setShowLimitAlert(false);
+            }
+          } catch (error) {
+            console.error("Error in midnight reset:", error);
           }
-        } catch (error) {
-          console.error("Error in midnight reset:", error);
         }
+      } catch (error) {
+        console.error("Error checking midnight reset:", error);
       }
     };
     
@@ -91,12 +106,13 @@ export const useDashboardSessions = (
     const midnightInterval = setInterval(checkMidnightReset, 60000);
     
     return () => clearInterval(midnightInterval);
-  }, [userData.subscription]);
+  }, [userData.subscription, incrementSessionCount, updateBalance, setShowLimitAlert]);
 
   const generateAutomaticRevenue = async () => {
-    if (sessionInProgress.current) return;
+    if (sessionInProgress.current || operationLock.current) return;
     
     try {
+      operationLock.current = true;
       sessionInProgress.current = true;
       
       // Calculate gain using the utility function
@@ -115,22 +131,33 @@ export const useDashboardSessions = (
       // Update user balance and show notification
       await updateBalance(
         randomGain,
-        `Le système a généré ${randomGain}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${userData.subscription} vous permet d'accéder à ce niveau de performance.`
+        `Le système a généré ${randomGain.toFixed(2)}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${userData.subscription} vous permet d'accéder à ce niveau de performance.`
       );
 
       toast({
         title: "Revenus générés",
-        description: `CashBot a généré ${randomGain}€ pour vous !`,
+        description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`,
+      });
+    } catch (error) {
+      console.error("Error generating automatic revenue:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue. Veuillez réessayer plus tard.",
+        variant: "destructive"
       });
     } finally {
       sessionInProgress.current = false;
+      // Release lock after a small delay to prevent rapid subsequent calls
+      setTimeout(() => {
+        operationLock.current = false;
+      }, 500);
     }
   };
 
   const handleStartSession = async () => {
-    // Prevent multiple concurrent sessions
-    if (isStartingSession || sessionInProgress.current) {
-      console.log("Session already in progress, ignoring request");
+    // Prevent multiple concurrent sessions and rapid clicking
+    if (isStartingSession || sessionInProgress.current || operationLock.current) {
+      console.log("Session or operation already in progress, ignoring request");
       return;
     }
     
@@ -158,10 +185,12 @@ export const useDashboardSessions = (
       }
     }
     
-    sessionInProgress.current = true;
-    setIsStartingSession(true);
-    
     try {
+      // Set all locks and flags
+      operationLock.current = true;
+      sessionInProgress.current = true;
+      setIsStartingSession(true);
+      
       // Increment daily session count for freemium accounts
       if (userData.subscription === 'freemium') {
         await incrementSessionCount();
@@ -180,40 +209,68 @@ export const useDashboardSessions = (
       // Update user data
       await updateBalance(
         randomGain,
-        `Session manuelle : Notre technologie a optimisé le processus et généré ${randomGain}€ de revenus pour votre compte ${userData.subscription}.`
+        `Session manuelle : Notre technologie a optimisé le processus et généré ${randomGain.toFixed(2)}€ de revenus pour votre compte ${userData.subscription}.`
       );
       
       toast({
         title: "Session terminée",
-        description: `CashBot a généré ${randomGain}€ de revenus pour vous !`,
+        description: `CashBot a généré ${randomGain.toFixed(2)}€ de revenus pour vous !`,
       });
     } catch (error) {
       console.error("Error during session:", error);
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue pendant la session. Veuillez réessayer.",
+        description: "Une erreur est survenue pendant la session. Veuillez réessayer plus tard.",
         variant: "destructive"
       });
     } finally {
       setIsStartingSession(false);
       sessionInProgress.current = false;
+      // Release operation lock after a delay to prevent rapid clicking
+      setTimeout(() => {
+        operationLock.current = false;
+      }, 1000);
     }
   };
   
   const handleWithdrawal = async () => {
     // Prevent multiple concurrent operations
-    if (isStartingSession || sessionInProgress.current) return;
+    if (isStartingSession || sessionInProgress.current || operationLock.current) return;
     
     try {
+      operationLock.current = true;
       sessionInProgress.current = true;
       
       // Process withdrawal only if sufficient balance (at least 20€) and not freemium account
       if (userData.balance >= 20 && userData.subscription !== 'freemium') {
         // Reset balance to 0 to simulate withdrawal
         await resetBalance();
+      } else if (userData.subscription === 'freemium') {
+        toast({
+          title: "Compte freemium",
+          description: "Les retraits ne sont pas disponibles avec un compte freemium. Passez à un forfait supérieur.",
+          variant: "destructive"
+        });
+      } else if (userData.balance < 20) {
+        toast({
+          title: "Solde insuffisant",
+          description: "Vous devez avoir au moins 20€ pour effectuer un retrait.",
+          variant: "destructive"
+        });
       }
+    } catch (error) {
+      console.error("Error processing withdrawal:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors du retrait. Veuillez réessayer plus tard.",
+        variant: "destructive"
+      });
     } finally {
       sessionInProgress.current = false;
+      // Release operation lock after a delay
+      setTimeout(() => {
+        operationLock.current = false;
+      }, 1000);
     }
   };
 

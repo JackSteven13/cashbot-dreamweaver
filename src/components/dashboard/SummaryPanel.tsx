@@ -1,8 +1,7 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Copy, DollarSign, ArrowUpCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import Button from '@/components/Button';
+import { Button } from '@/components/ui/button';
 
 // Plans et leurs limites de gains
 const SUBSCRIPTION_LIMITS = {
@@ -41,12 +40,22 @@ const SummaryPanel = ({
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [displayBalance, setDisplayBalance] = useState(Math.max(0, balance));
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Update the displayed balance when the balance prop changes
   useEffect(() => {
     console.log("Balance prop changed to:", balance);
     setDisplayBalance(Math.max(0, balance));
   }, [balance]);
+  
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
+    };
+  }, []);
   
   const handleCopyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);
@@ -57,47 +66,69 @@ const SummaryPanel = ({
   };
   
   const onWithdraw = () => {
+    if (isButtonDisabled || isWithdrawing) return;
+    
+    setIsButtonDisabled(true);
     setIsWithdrawing(true);
     
-    // Simulate withdrawal process
-    setTimeout(() => {
-      setIsWithdrawing(false);
-      
-      // If subscription is freemium, withdrawal will fail
-      if (subscription === 'freemium') {
-        toast({
-          title: "Demande refusée",
-          description: "Les retraits sont disponibles uniquement pour les abonnements payants. Veuillez mettre à niveau votre compte.",
-          variant: "destructive"
-        });
-      } else if (displayBalance < 20) {
-        toast({
-          title: "Montant insuffisant",
-          description: "Le montant minimum de retrait est de 20€. Continuez à gagner plus de revenus.",
-          variant: "destructive"
-        });
+    try {
+      // Simulate withdrawal process
+      if (handleWithdrawal) {
+        handleWithdrawal();
       } else {
-        if (handleWithdrawal) handleWithdrawal();
-        toast({
-          title: "Demande de retrait acceptée",
-          description: "Votre retrait a été traité et sera envoyé sur votre compte bancaire sous 2-3 jours ouvrés.",
-        });
+        // Fallback if handleWithdrawal is not provided
+        if (subscription === 'freemium') {
+          toast({
+            title: "Demande refusée",
+            description: "Les retraits sont disponibles uniquement pour les abonnements payants. Veuillez mettre à niveau votre compte.",
+            variant: "destructive"
+          });
+        } else if (displayBalance < 20) {
+          toast({
+            title: "Montant insuffisant",
+            description: "Le montant minimum de retrait est de 20€. Continuez à gagner plus de revenus.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Demande de retrait acceptée",
+            description: "Votre retrait a été traité et sera envoyé sur votre compte bancaire sous 2-3 jours ouvrés.",
+          });
+        }
       }
-    }, 2000);
+    } catch (error) {
+      console.error("Error processing withdrawal:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors du retrait. Veuillez réessayer plus tard.",
+        variant: "destructive"
+      });
+    } finally {
+      // Re-enable button and reset withdrawal state after a delay
+      setTimeout(() => {
+        setIsWithdrawing(false);
+        setIsButtonDisabled(false);
+      }, 2000);
+    }
   };
 
   // Handle boost button click with debounce to prevent multiple rapid clicks
   const onBoostClick = () => {
     if (isButtonDisabled || isStartingSession || !canStartSession) return;
     
-    // Disable button temporarily to prevent multiple clicks
+    // Disable button immediately
     setIsButtonDisabled(true);
+    
+    // Clear any existing timeout
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
     
     // Call the handleStartSession function
     handleStartSession();
     
     // Re-enable button after a delay
-    setTimeout(() => {
+    clickTimeoutRef.current = setTimeout(() => {
       setIsButtonDisabled(false);
     }, 3000);
   };
@@ -150,9 +181,8 @@ const SummaryPanel = ({
             <Button 
               size="lg" 
               className={`flex-1 ${canStartSession && !isButtonDisabled ? 'bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white' : 'bg-gray-300 hover:bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-              isLoading={isStartingSession} 
+              disabled={!canStartSession || isButtonDisabled || isStartingSession}
               onClick={onBoostClick}
-              disabled={!canStartSession || isButtonDisabled}
             >
               {isStartingSession ? "Traitement en cours..." : "▶️ Boost manuel"}
             </Button>
@@ -161,11 +191,11 @@ const SummaryPanel = ({
               size="lg" 
               variant="outline"
               className="flex-1 border-[#2d5f8a] text-[#2d5f8a] hover:bg-[#e2e8f0]"
-              isLoading={isWithdrawing}
+              disabled={isWithdrawing || isButtonDisabled}
               onClick={onWithdraw}
             >
               <ArrowUpCircle className="mr-2 h-4 w-4" />
-              Retirer les fonds
+              {isWithdrawing ? "Traitement..." : "Retirer les fonds"}
             </Button>
           </div>
           
@@ -192,7 +222,7 @@ const SummaryPanel = ({
           <div className="font-mono text-sm text-[#e2e8f0] space-y-2">
             {isNewUser ? (
               <>
-                <p>{"> Système initialisé..."}</p>
+                <p>{"> Syst��me initialisé..."}</p>
                 <p>{"> Technologie propriétaire activée"}</p>
                 <p>{"> Processus en cours..."}</p>
                 <p>{"> Limite journalière : " + dailyLimit + "€"}</p>
