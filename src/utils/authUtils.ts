@@ -52,21 +52,29 @@ export const checkDailyLimit = (balance: number, subscription: string) => {
 };
 
 /**
- * Clears session cache and forces sign out
+ * Clears all session data and forces a complete sign out
  */
 export const forceSignOut = async () => {
   try {
-    // Suppression complète de la session locale
-    await supabase.auth.signOut({ scope: 'local' });
-    
-    // Effacer les données locales potentiellement en cache
+    // Clear auth storage in browser
     localStorage.removeItem('supabase.auth.token');
+    sessionStorage.removeItem('supabase.auth.token');
     
-    // Confirmez le succès
-    console.log("User signed out successfully");
+    // Clear cookies that might be storing auth state
+    document.cookie.split(";").forEach(cookie => {
+      const [name] = cookie.trim().split("=");
+      if (name.includes("supabase") || name.includes("sb-")) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+      }
+    });
+    
+    // Perform actual sign out with a complete scope
+    await supabase.auth.signOut({ scope: 'global' });
+    
+    console.log("User signed out and all session data cleared");
     return true;
   } catch (error) {
-    console.error("Error signing out:", error);
+    console.error("Error during forced sign out:", error);
     toast({
       title: "Erreur",
       description: "Une erreur s'est produite pendant la déconnexion.",
@@ -115,7 +123,7 @@ export const refreshSession = async () => {
  */
 export const verifyAndRepairAuth = async (): Promise<boolean> => {
   try {
-    // Vérifier la session actuelle
+    // Première tentative - Vérifier la session actuelle
     const session = await getCurrentSession();
     
     if (session) {
@@ -123,7 +131,7 @@ export const verifyAndRepairAuth = async (): Promise<boolean> => {
       return true;
     }
     
-    // Tentative de rafraîchissement si pas de session valide
+    // Deuxième tentative - Essayer un rafraîchissement de session
     console.log("No valid session, attempting refresh");
     const refreshedSession = await refreshSession();
     
@@ -132,7 +140,29 @@ export const verifyAndRepairAuth = async (): Promise<boolean> => {
       return true;
     }
     
-    // Aucune session valide après tentative de réparation
+    // Dernière tentative - Vérifier si l'utilisateur peut être récupéré directement
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      console.error("Error getting user:", userError);
+      return false;
+    }
+    
+    if (user) {
+      console.log("User found but no session, attempting session creation");
+      // L'utilisateur existe mais pas de session valide, tenter de forcer une nouvelle session
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error || !data.session) {
+        console.error("Failed to create new session");
+        return false;
+      }
+      
+      console.log("New session created successfully");
+      return true;
+    }
+    
+    // Aucune session valide après tentatives de réparation
     console.log("Authentication verification failed");
     return false;
   } catch (error) {

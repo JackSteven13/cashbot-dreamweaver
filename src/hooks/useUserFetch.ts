@@ -73,11 +73,12 @@ export const useUserFetch = (): UserFetchResult => {
           }
         }, backoffTime);
       } else if (isMounted.current) {
-        // Only show error after all retries fail
+        // Only show error after all retries fail and we're still mounted
         fetchInProgress.current = false;
+        
         toast({
-          title: "Problème de connexion",
-          description: "Impossible de charger vos données. Veuillez rafraîchir la page ou vérifier votre connexion.",
+          title: "Problème de chargement",
+          description: "Impossible de charger vos données. Essayez de rafraîchir la page.",
           variant: "destructive"
         });
       }
@@ -97,22 +98,24 @@ export const useUserFetch = (): UserFetchResult => {
     
     console.log("useEffect in useUserFetch triggered, isLoading:", isLoading);
     
-    // Vérifier l'authentification avant le chargement des données
-    let initialCheck = setTimeout(async () => {
+    // Délai court avant la première tentative pour permettre au système de s'initialiser
+    setTimeout(async () => {
+      if (!isMounted.current) return;
+      
       // Vérifier si l'utilisateur est authentifié avant de charger les données
       const isAuthValid = await verifyAndRepairAuth();
       
-      if (isAuthValid) {
+      if (isAuthValid && isMounted.current) {
         console.log("Authentication valid, proceeding with data fetch");
-        // Récupération initiale des données avec un léger délai
+        
+        // Introduire un léger délai pour éviter les courses
         setTimeout(() => {
           if (isMounted.current) {
             fetchData().catch(console.error);
           }
-        }, 200);
-      } else {
+        }, 300);
+      } else if (isMounted.current) {
         console.log("Authentication invalid, will not fetch user data");
-        // Ne pas tenter de charger les données si l'authentification est invalide
       }
     }, 100);
     
@@ -120,7 +123,6 @@ export const useUserFetch = (): UserFetchResult => {
     return () => {
       console.log("useUserFetch component unmounting");
       isMounted.current = false;
-      clearTimeout(initialCheck);
     };
   }, [fetchData]);
 

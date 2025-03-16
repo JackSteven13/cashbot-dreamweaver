@@ -20,6 +20,8 @@ const Login = () => {
     const checkSession = async () => {
       try {
         setIsCheckingSession(true);
+        
+        // Vérifier et réparer l'authentification si nécessaire
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -29,15 +31,43 @@ const Login = () => {
             description: "Impossible de vérifier votre session.",
             variant: "destructive",
           });
+          setIsCheckingSession(false);
+          return;
         }
         
         if (session) {
+          // Vérifier si le token est expiré ou près d'expirer
+          const tokenExpiry = new Date(session.expires_at * 1000);
+          const now = new Date();
+          const timeToExpiry = tokenExpiry.getTime() - now.getTime();
+          
+          // Si le token expire dans moins de 5 minutes, le rafraîchir
+          if (timeToExpiry < 300000) {
+            console.log("Token expiring soon, refreshing session");
+            try {
+              const { data, error: refreshError } = await supabase.auth.refreshSession();
+              
+              if (refreshError || !data.session) {
+                console.error("Session refresh failed:", refreshError);
+                setIsCheckingSession(false);
+                return;
+              }
+              
+              console.log("Session refreshed successfully");
+            } catch (refreshError) {
+              console.error("Error refreshing session:", refreshError);
+              setIsCheckingSession(false);
+              return;
+            }
+          }
+          
           console.log("User already logged in, redirecting to dashboard");
-          navigate('/dashboard', { replace: true });
+          navigate('/dashboard', { replace: true, state: { justLoggedIn: false } });
+        } else {
+          setIsCheckingSession(false);
         }
       } catch (error) {
         console.error("Session check error:", error);
-      } finally {
         setIsCheckingSession(false);
       }
     };
@@ -50,6 +80,11 @@ const Login = () => {
     setIsLoading(true);
     
     try {
+      // Nettoyer les données de session précédentes
+      localStorage.removeItem('supabase.auth.token');
+      sessionStorage.removeItem('supabase.auth.token');
+      
+      // Effectuer l'authentification avec les nouvelles informations
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -67,7 +102,9 @@ const Login = () => {
           .eq('id', data.user.id)
           .maybeSingle();
         
-        const displayName = profileData?.full_name || email.split('@')[0];
+        const displayName = profileData?.full_name || 
+                           data.user.user_metadata?.full_name || 
+                           email.split('@')[0];
         
         toast({
           title: `Bienvenue, ${displayName} !`,

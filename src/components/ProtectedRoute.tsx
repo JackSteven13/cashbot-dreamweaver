@@ -2,7 +2,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, RefreshCcw } from 'lucide-react';
+import { Loader2, RefreshCcw, LogOut } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
 import { verifyAndRepairAuth, forceSignOut } from "@/utils/authUtils";
 
@@ -34,7 +34,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       const isAuthValid = await verifyAndRepairAuth();
       
       if (!isAuthValid) {
-        if (retryAttempts < maxRetries) {
+        if (retryAttempts < maxRetries && !isManualRetry) {
           setRetryAttempts(prev => prev + 1);
           console.log(`Auth check retry ${retryAttempts + 1}/${maxRetries} scheduled`);
           setTimeout(() => checkAuth(), 1500 * (retryAttempts + 1)); // Backoff exponentiel
@@ -98,7 +98,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     } catch (error) {
       console.error("Error checking authentication:", error);
       
-      if (retryAttempts < maxRetries) {
+      if (retryAttempts < maxRetries && !isManualRetry) {
         setRetryAttempts(prev => prev + 1);
         console.log(`Auth check retry ${retryAttempts + 1}/${maxRetries} scheduled`);
         setTimeout(() => checkAuth(), 1500 * (retryAttempts + 1)); // Backoff exponentiel
@@ -132,7 +132,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
       }
-    }, 10000); // Augmenté à 10s pour donner plus de temps de réponse au serveur
+    }, 12000); // Augmenté à 12s pour donner plus de temps sur les connexions mobiles lentes
 
     // Monitor authentication state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -171,7 +171,19 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     };
   }, [location]); // Retirer retryAttempts des dépendances pour éviter les boucles
 
-  // Afficher un bouton manuel de réessai et de déconnexion en cas d'échec
+  // Fonction pour effectuer une connexion propre
+  const handleCleanLogin = () => {
+    forceSignOut().then(() => {
+      // Nettoyer le stockage local pour éviter les conflits
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Rediriger vers la page de connexion
+      navigate('/login', { replace: true });
+    });
+  };
+
+  // Afficher un écran de récupération en cas d'échec
   if (authCheckFailed) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f0f23] text-white p-4">
@@ -186,7 +198,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
             </li>
             <li className="flex items-start">
               <span className="mr-2">•</span>
-              <span>Une session expirée ou invalide</span>
+              <span>Une session expirée ou corrompue</span>
             </li>
             <li className="flex items-start">
               <span className="mr-2">•</span>
@@ -214,13 +226,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
             </button>
             
             <button 
-              onClick={() => {
-                forceSignOut().then(() => {
-                  navigate('/login', { replace: true });
-                });
-              }}
-              className="w-full px-4 py-2 bg-transparent border border-white/30 hover:bg-white/10 rounded transition-colors"
+              onClick={handleCleanLogin}
+              className="w-full flex items-center justify-center px-4 py-2 bg-transparent border border-white/30 hover:bg-white/10 rounded transition-colors"
             >
+              <LogOut className="w-4 h-4 mr-2" />
               Se connecter à nouveau
             </button>
           </div>
