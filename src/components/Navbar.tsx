@@ -24,6 +24,19 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
+
   return (
     <nav
       className={`fixed w-full z-50 transition-all duration-300 ${
@@ -114,57 +127,60 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        <div
-          className={`md:hidden transition-all duration-300 ease-in-out overflow-hidden ${
-            isMobileMenuOpen ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0'
-          }`}
-        >
-          <div className="py-4 flex flex-col space-y-4">
-            <Link
-              to="/"
-              className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-secondary"
-            >
-              Accueil
-            </Link>
-            <Link
-              to="/offres"
-              className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-secondary"
-            >
-              Offres
-            </Link>
-            <Link
-              to="/features"
-              className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-secondary"
-            >
-              Fonctionnalités
-            </Link>
-            <Link
-              to="/pricing"
-              className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-secondary"
-            >
-              Tarifs
-            </Link>
-            <Link
-              to="/about"
-              className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-secondary"
-            >
-              À propos
-            </Link>
-            <div className="pt-2 flex flex-col space-y-2 border-t border-border">
-              <Link to="/login">
-                <Button variant="outline" fullWidth>
-                  Connexion
-                </Button>
+        {/* Mobile Menu - Full Overlay */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 bg-background z-40 pt-20 pb-6 px-4 overflow-y-auto">
+            <div className="flex flex-col space-y-4">
+              <Link
+                to="/"
+                className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Accueil
               </Link>
-              <Link to="/register">
-                <Button fullWidth>
-                  S'inscrire
-                </Button>
+              <Link
+                to="/offres"
+                className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Offres
               </Link>
+              <Link
+                to="/features"
+                className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Fonctionnalités
+              </Link>
+              <Link
+                to="/pricing"
+                className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Tarifs
+              </Link>
+              <Link
+                to="/about"
+                className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                À propos
+              </Link>
+              <div className="pt-4 flex flex-col space-y-3 border-t border-border mt-2">
+                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="outline" fullWidth>
+                    Connexion
+                  </Button>
+                </Link>
+                <Link to="/register" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button fullWidth>
+                    S'inscrire
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </nav>
   );
