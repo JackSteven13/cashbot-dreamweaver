@@ -53,9 +53,9 @@ const Login = () => {
           description: "Vous êtes maintenant connecté à votre compte CashBot.",
         });
         
-        // Rediriger vers la page d'origine ou le tableau de bord
+        // Rediriger vers la page d'origine ou le tableau de bord avec l'état de connexion
         const from = location.state?.from?.pathname || '/dashboard';
-        navigate(from);
+        navigate(from, { state: { justLoggedIn: true } });
       }
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
