@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { 
   CreditCard, 
   GaugeCircle, 
@@ -18,13 +18,6 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
-  const navigate = useNavigate();
-  
-  const handleNavigation = (id: string) => {
-    setSelectedNavItem(id);
-    navigate(`/${id}`);
-  };
-  
   return (
     <div className="hidden md:flex w-64 flex-col bg-[#1e3a5f] border-r border-[#2d5f8a]/30">
       <div className="p-6">
@@ -39,42 +32,42 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
           label="Tableau de bord"
           id="dashboard"
           selectedNavItem={selectedNavItem}
-          setSelectedNavItem={handleNavigation}
+          setSelectedNavItem={setSelectedNavItem}
         />
         <NavItem 
           icon={<History size={18} className="mr-3" />}
           label="Historique"
           id="transactions"
           selectedNavItem={selectedNavItem}
-          setSelectedNavItem={handleNavigation}
+          setSelectedNavItem={setSelectedNavItem}
         />
         <NavItem 
           icon={<LineChart size={18} className="mr-3" />}
           label="Analyses"
           id="analytics"
           selectedNavItem={selectedNavItem}
-          setSelectedNavItem={handleNavigation}
+          setSelectedNavItem={setSelectedNavItem}
         />
         <NavItem 
           icon={<CreditCard size={18} className="mr-3" />}
           label="Portefeuille"
           id="wallet"
           selectedNavItem={selectedNavItem}
-          setSelectedNavItem={handleNavigation}
+          setSelectedNavItem={setSelectedNavItem}
         />
         <NavItem 
           icon={<Share2 size={18} className="mr-3" />}
           label="Parrainage"
           id="referrals"
           selectedNavItem={selectedNavItem}
-          setSelectedNavItem={handleNavigation}
+          setSelectedNavItem={setSelectedNavItem}
         />
         <NavItem 
           icon={<Settings size={18} className="mr-3" />}
           label="Paramètres"
           id="settings"
           selectedNavItem={selectedNavItem}
-          setSelectedNavItem={handleNavigation}
+          setSelectedNavItem={setSelectedNavItem}
         />
       </div>
       
