@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { ArrowUpRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ChevronUp, ArrowDownRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SessionCardProps {
@@ -24,14 +24,19 @@ const SessionCard = ({ gain, report, date = new Date().toLocaleDateString() }: S
             <div className="flex items-center gap-2 mt-1">
               <h3 className={cn(
                 "text-2xl font-semibold",
-                gain > 0 ? "text-emerald-600" : "text-red-600"
+                gain >= 0 ? "text-emerald-600" : "text-red-600"
               )}>
-                {gain > 0 ? "+" : ""}{gain.toFixed(2)}€
+                {gain >= 0 ? "+" : ""}{gain.toFixed(2)}€
               </h3>
-              {gain > 0 && (
+              {gain >= 0 ? (
                 <ArrowUpRight 
                   size={18} 
                   className="text-emerald-600" 
+                />
+              ) : (
+                <ArrowDownRight
+                  size={18}
+                  className="text-red-600"
                 />
               )}
             </div>

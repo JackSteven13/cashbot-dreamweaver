@@ -10,7 +10,7 @@ export const useDashboardSessions = (
   incrementSessionCount: () => void,
   updateBalance: (gain: number, report: string) => void,
   setShowLimitAlert: (show: boolean) => void,
-  resetBalance: () => void // Added resetBalance as a parameter
+  resetBalance: () => void
 ) => {
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [lastAutoSessionTime, setLastAutoSessionTime] = useState(Date.now());
@@ -127,7 +127,8 @@ export const useDashboardSessions = (
       const remainingAmount = dailyLimit - userData.balance;
       
       // Generate random gain (higher than auto sessions, limited by remaining amount)
-      const minGain = Math.min(dailyLimit * 0.2, remainingAmount);
+      // IMPORTANT: Always generate positive gain between 0.10 and remaining amount
+      const minGain = Math.min(0.10, remainingAmount);
       const maxGain = Math.min(dailyLimit * 0.5, remainingAmount);
       const randomGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
       

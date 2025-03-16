@@ -98,8 +98,10 @@ const SummaryPanel = ({
         {/* Left Column */}
         <div className="flex-1">
           <div className="flex items-center mb-4">
-            <DollarSign className="text-[#2d5f8a] h-8 w-8 mr-2" />
-            <h2 className="text-2xl font-semibold text-[#1e3a5f]">Solde : {balance.toFixed(2)}€</h2>
+            <DollarSign className={`h-8 w-8 mr-2 ${balance >= 0 ? 'text-[#2d5f8a]' : 'text-red-600'}`} />
+            <h2 className={`text-2xl font-semibold ${balance >= 0 ? 'text-[#1e3a5f]' : 'text-red-600'}`}>
+              Solde : {balance.toFixed(2)}€
+            </h2>
           </div>
           
           <div className="mb-3 bg-blue-50 p-3 rounded-md border border-blue-100">
