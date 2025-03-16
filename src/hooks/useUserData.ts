@@ -15,7 +15,7 @@ export const useUserData = () => {
     showLimitAlert: initialShowLimitAlert,
     isLoading,
     setShowLimitAlert: setFetchedShowLimitAlert,
-    refetchUserData // This property is now properly defined in the interface
+    refetchUserData
   } = useUserFetch();
 
   // Create state variables to be managed by balance actions
