@@ -31,6 +31,7 @@ const Register = () => {
     setIsLoading(true);
     
     try {
+      // Sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -78,13 +79,19 @@ const Register = () => {
           console.error("Error initializing user balance:", balanceError);
         }
         
+        // Attendre brièvement pour que les données soient bien persistées
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         // Afficher un message de bienvenue personnalisé
         toast({
           title: `Bienvenue, ${name} !`,
-          description: "Votre compte a été créé avec succès. Vous pouvez maintenant commencer à utiliser CashBot.",
+          description: "Votre compte a été créé avec succès. Vous êtes maintenant connecté à CashBot.",
         });
         
-        navigate('/dashboard');
+        // Rediriger vers le tableau de bord avec un délai pour laisser l'auth s'initialiser
+        setTimeout(() => {
+          navigate('/dashboard', { state: { justLoggedIn: true }, replace: true });
+        }, 800);
       }
     } catch (error: any) {
       console.error("Registration error:", error);

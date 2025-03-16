@@ -28,94 +28,88 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
     
     try {
-      console.log(`Authentication check ${isManualRetry ? "manual retry" : "attempt"} ${retryAttempts + 1}/${maxRetries}`);
+      console.log(`Vérification d'authentification ${isManualRetry ? "manuelle" : "automatique"} ${retryAttempts + 1}/${maxRetries}`);
       
-      // Forcer la déconnexion d'abord si c'est une nouvelle tentative manuelle
+      // Force deconnection first for manual retry
       if (isManualRetry) {
-        const signOutSuccess = await forceSignOut();
-        if (!signOutSuccess) {
-          console.warn("Force sign out failed, continuing anyway");
-        }
-        // Pause brève pour s'assurer que la déconnexion a pris effet
+        await forceSignOut();
+        // Pause pour s'assurer que la déconnexion est complète
         await new Promise(resolve => setTimeout(resolve, 500));
       }
       
-      // Utiliser la fonction de vérification et réparation avec délai supplémentaire pour éviter les conditions de course
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Utiliser un délai pour éviter les conditions de course
+      await new Promise(resolve => setTimeout(resolve, 300));
       const isAuthValid = await verifyAndRepairAuth();
       
       if (!isAuthValid) {
         if (retryAttempts < maxRetries && !isManualRetry) {
           setRetryAttempts(prev => prev + 1);
-          console.log(`Auth check retry ${retryAttempts + 1}/${maxRetries} scheduled`);
-          setTimeout(() => checkAuth(), 1800); // Délai plus long pour les tentatives automatiques
+          console.log(`Nouvelle tentative ${retryAttempts + 1}/${maxRetries} programmée`);
+          setTimeout(() => checkAuth(), 1500);
           return;
         }
         
-        console.log("Authentication failed after max retries");
+        console.log("Échec d'authentification après les tentatives maximales");
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
         setIsRetrying(false);
         return;
       }
       
-      // Reset retry counter on success
+      // Reset counter on success
       if (retryAttempts > 0) {
         setRetryAttempts(0);
       }
       
       // Get user data
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
       
       if (!user) {
-        throw new Error("No user found despite valid session");
+        throw new Error("Aucun utilisateur trouvé malgré une session valide");
       }
       
-      console.log("User authenticated:", user.id);
+      console.log("Utilisateur authentifié:", user.id);
       
       // Get profile for welcome message
       try {
-        const { data: profileData, error: profileError } = await supabase
+        const { data: profileData } = await supabase
           .from('profiles')
           .select('full_name')
           .eq('id', user.id)
           .maybeSingle();
           
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error("Error fetching profile:", profileError);
-        }
-          
         const displayName = profileData?.full_name || 
-                           user.user_metadata?.full_name || 
-                           (user.email ? user.email.split('@')[0] : 'utilisateur');
+                          user.user_metadata?.full_name || 
+                          (user.email ? user.email.split('@')[0] : 'utilisateur');
         
         setUsername(displayName);
         setIsAuthenticated(true);
         setIsRetrying(false);
         
-        // Show welcome message only if user just logged in
+        // Afficher le message d'accueil uniquement après la connexion
         if (location.state?.justLoggedIn) {
           toast({
             title: `Bienvenue, ${displayName} !`,
             description: "Vous êtes maintenant connecté à votre compte CashBot.",
           });
           
-          // Nettoyer l'état pour ne pas afficher le message à chaque navigation
+          // Nettoyer l'état pour ne pas répéter le message
           navigate(location.pathname, { replace: true, state: {} });
         }
       } catch (profileError) {
-        console.error("Error in profile fetch:", profileError);
-        // Continue with authentication even if profile fetch fails
+        console.error("Erreur lors de la récupération du profil:", profileError);
+        // Continuer même si le profil échoue
         setIsAuthenticated(true);
         setIsRetrying(false);
       }
     } catch (error) {
-      console.error("Error checking authentication:", error);
+      console.error("Erreur lors de la vérification d'authentification:", error);
       
       if (retryAttempts < maxRetries && !isManualRetry) {
         setRetryAttempts(prev => prev + 1);
-        console.log(`Auth check retry ${retryAttempts + 1}/${maxRetries} scheduled`);
-        setTimeout(() => checkAuth(), 1800); // Délai plus long pour les tentatives automatiques
+        console.log(`Nouvelle tentative ${retryAttempts + 1}/${maxRetries} programmée`);
+        setTimeout(() => checkAuth(), 1500);
         return;
       }
       
@@ -136,8 +130,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       setIsAuthenticated(null);
     }
     
-    // Effectuer la vérification d'authentification avec un léger délai
-    // pour éviter les problèmes de course avec d'autres processus d'initialisation
+    // Effectuer la vérification avec un délai pour éviter les problèmes d'initialisation
     const initTimeout = setTimeout(() => {
       if (isMounted) {
         checkAuth();
@@ -147,15 +140,15 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     // Définir un timeout pour éviter un chargement infini
     authTimeout = setTimeout(() => {
       if (isAuthenticated === null && isMounted) {
-        console.warn("Auth check timed out");
+        console.warn("Délai d'authentification dépassé");
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
       }
-    }, 10000); // Augmenté à 10s pour donner plus de temps sur les réseaux lents
+    }, 8000); // 8 secondes maximum
 
     // Surveiller les changements d'état d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state changed:", event);
+      console.log("Changement d'état d'authentification:", event);
       if (event === 'SIGNED_OUT') {
         if (isMounted) {
           setIsAuthenticated(false);
@@ -164,8 +157,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       } else if (event === 'SIGNED_IN' && session && session.user) {
         if (isMounted) {
           setIsAuthenticated(true);
-          // Essayer de charger le nom d'utilisateur, mais ne pas bloquer l'authentification
-          // Using void to ignore the Promise result, which avoids the need for catch
+          // Essayer de charger le nom d'utilisateur sans bloquer
           void supabase
             .from('profiles')
             .select('full_name')
@@ -186,23 +178,22 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       clearTimeout(initTimeout);
       subscription.unsubscribe();
     };
-  }, [location.pathname]); // Ne pas inclure retryAttempts pour éviter les boucles
+  }, [location.pathname]); 
 
   // Fonction pour effectuer une connexion propre
   const handleCleanLogin = () => {
-    // Code explicite pour gérer la connexion propre
-    forceSignOut()
+    Promise.resolve(forceSignOut())
       .then((success) => {
         if (success) {
-          console.log("Successfully signed out, redirecting to login");
+          console.log("Déconnexion réussie, redirection vers la page de connexion");
         } else {
-          console.warn("Sign out may not have completed successfully, still redirecting");
+          console.warn("La déconnexion peut ne pas avoir réussi, redirection quand même");
         }
-        // Rediriger vers la page de connexion dans tous les cas
+        // Rediriger dans tous les cas
         navigate('/login', { replace: true });
       })
       .catch((error) => {
-        console.error("Error during clean login:", error);
+        console.error("Erreur pendant la déconnexion propre:", error);
         navigate('/login', { replace: true });
       });
   };

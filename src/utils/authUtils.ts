@@ -8,7 +8,7 @@ import { toast } from "@/components/ui/use-toast";
  */
 export const getCurrentSession = async () => {
   try {
-    // Récupérer la session directement sans vérification préalable
+    // Récupérer la session directement
     const { data: { session }, error } = await supabase.auth.getSession();
     
     if (error) {
@@ -130,6 +130,8 @@ export const refreshSession = async () => {
  */
 export const verifyAndRepairAuth = async (): Promise<boolean> => {
   try {
+    console.log("Vérification de l'authentification...");
+    
     // Première tentative - Vérifier la session actuelle
     const { data: { session }, error } = await supabase.auth.getSession();
     
@@ -149,22 +151,23 @@ export const verifyAndRepairAuth = async (): Promise<boolean> => {
         return !!refreshResult;
       }
       
-      // Vérification supplémentaire - tester si l'utilisateur peut accéder à ses données
-      try {
-        const { error: userError } = await supabase.auth.getUser();
-        if (userError) {
-          console.error("User data error despite valid session:", userError);
-          // La session semble valide mais l'utilisateur ne peut pas être récupéré
-          const newSession = await refreshSession();
-          return !!newSession;
-        }
-      } catch (userCheckError) {
-        console.error("Error checking user data:", userCheckError);
-        return false;
+      // Test direct pour vérifier si l'utilisateur peut accéder à ses données
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error("User data error despite valid session:", userError);
+        // La session semble valide mais l'utilisateur ne peut pas être récupéré
+        const newSession = await refreshSession();
+        return !!newSession;
       }
       
-      console.log("Valid session found");
-      return true;
+      if (userData && userData.user) {
+        console.log("Valid session confirmed with user data");
+        return true;
+      }
+      
+      console.log("Session exists but no user data found");
+      return false;
     }
     
     // Aucune session trouvée, essayer de rafraîchir
@@ -172,21 +175,7 @@ export const verifyAndRepairAuth = async (): Promise<boolean> => {
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
     
     if (refreshError || !refreshData.session) {
-      console.log("Session refresh failed, forcing reset and trying recovery...");
-      
-      // Dernière tentative - Nettoyer complètement et récupérer si possible
-      await forceSignOut();
-      await new Promise(resolve => setTimeout(resolve, 300)); // Attendre que la déconnexion soit complète
-      
-      // Nouvelle tentative de connexion après nettoyage
-      const { data: recoveryData } = await supabase.auth.getSession();
-      
-      if (recoveryData.session) {
-        console.log("Session recovered after cleanup");
-        return true;
-      }
-      
-      console.log("Session recovery failed, no valid auth");
+      console.log("Session refresh failed");
       return false;
     }
     
