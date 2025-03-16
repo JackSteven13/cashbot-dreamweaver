@@ -10,32 +10,32 @@ const Index = () => {
   const features = [
     {
       title: 'Intelligence Artificielle',
-      description: 'Notre moteur d\'IA analyse des millions de données financières pour prendre les meilleures décisions.',
+      description: 'Notre moteur d\'IA analyse des millions de publicités pour identifier les plus rémunératrices.',
       icon: <Cpu className="w-6 h-6" />
     },
     {
-      title: 'Trading Automatisé',
-      description: 'Générez des profits constants sans connaissances en trading et sans effort manuel.',
+      title: 'Analyse Automatisée',
+      description: 'Générez des revenus constants sans connaissances techniques et sans effort manuel.',
       icon: <Zap className="w-6 h-6" />
     },
     {
       title: 'Sécurité Maximale',
-      description: 'Vos fonds sont toujours protégés grâce à nos protocoles de sécurité de pointe.',
+      description: 'Vos données sont toujours protégées grâce à nos protocoles de sécurité de pointe.',
       icon: <ShieldCheck className="w-6 h-6" />
     },
     {
       title: 'Analyses en Temps Réel',
-      description: 'Obtenez des rapports détaillés sur chaque transaction pour comprendre les performances.',
+      description: 'Obtenez des rapports détaillés sur chaque campagne publicitaire analysée.',
       icon: <BarChart3 className="w-6 h-6" />
     },
     {
       title: 'Rendements Supérieurs',
-      description: 'Nos algorithmes surpassent constamment les méthodes d\'investissement traditionnelles.',
+      description: 'Nos algorithmes surpassent constamment les méthodes traditionnelles de monétisation.',
       icon: <TrendingUp className="w-6 h-6" />
     },
     {
       title: 'Confidentialité Garantie',
-      description: 'Vos données personnelles et financières sont cryptées et jamais partagées.',
+      description: 'Vos données personnelles sont cryptées et jamais partagées.',
       icon: <Lock className="w-6 h-6" />
     }
   ];
@@ -48,8 +48,8 @@ const Index = () => {
         <Hero />
         
         <FeaturesGrid 
-          title="Une Plateforme Financière Révolutionnaire"
-          subtitle="CashBot combine intelligence artificielle et algorithmes financiers pour créer un système de revenus passifs unique."
+          title="Une Plateforme de Monétisation Révolutionnaire"
+          subtitle="CashBot combine intelligence artificielle et analyse de publicités pour créer un système de revenus passifs unique."
           features={features}
         />
         
@@ -81,7 +81,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Utilisatrice depuis 1 an</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"Je n'ai aucune connaissance en trading, mais grâce à CashBot, j'ai pu créer un flux de revenus passifs stable qui a transformé ma vie financière."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"Je n'ai aucune connaissance technique, mais grâce à CashBot, j'ai pu créer un flux de revenus passifs stable qui a transformé ma vie financière."</p>
               </div>
               
               <div className="glass-card p-4 md:p-6 rounded-xl">
@@ -92,7 +92,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Utilisateur depuis 6 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"Les rapports détaillés et la transparence de CashBot m'ont convaincu. Je peux suivre chaque centime généré et comprendre les stratégies utilisées."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"Les rapports détaillés et la transparence de CashBot m'ont convaincu. Je peux suivre chaque centime généré et comprendre les annonces analysées."</p>
               </div>
             </div>
           </div>
