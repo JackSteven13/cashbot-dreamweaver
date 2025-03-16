@@ -1,14 +1,14 @@
+
 import { ArrowRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import Button from './Button';
 import 'leaflet/dist/leaflet.css';
 import { useIsMobile } from '../hooks/use-mobile';
 import LocationFeed from './LocationFeed';
+import { Link } from 'react-router-dom';
 
 const Hero = () => {
   const mapRef = useRef(null);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -218,14 +218,6 @@ const Hero = () => {
     };
   }, []);
 
-  // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // This would normally submit to /login in the Flask app
-    // For now, we'll just redirect to /dashboard
-    window.location.href = '/dashboard';
-  };
-
   // Format revenue with correct spacing for thousands and € symbol at the end
   const formatRevenue = (value: number): string => {
     return new Intl.NumberFormat('fr-FR', { 
@@ -282,34 +274,14 @@ const Hero = () => {
             </div>
           </div>
           
-          {/* CTA Form */}
+          {/* CTA Button - Replaced form with button linked to /login */}
           <div className="w-full max-w-lg glass-panel p-4 sm:p-6 rounded-xl animate-scale-in">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <input 
-                  type="text" 
-                  placeholder="Email" 
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full p-3 border border-border rounded-lg bg-background"
-                />
-              </div>
-              <div>
-                <input 
-                  type="password" 
-                  placeholder="Mot de passe" 
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3 border border-border rounded-lg bg-background"
-                />
-              </div>
-              <Button type="submit" size="lg" fullWidth className="group">
+            <Link to="/login" className="block w-full">
+              <Button type="button" size="lg" fullWidth className="group">
                 Démarrer maintenant
                 <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
               </Button>
-            </form>
+            </Link>
           </div>
         </div>
       </div>
