@@ -12,6 +12,7 @@ import Offres from "./pages/Offres";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import About from "./pages/About";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -24,7 +25,14 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="/offres" element={<Offres />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />

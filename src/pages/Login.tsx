@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
@@ -8,23 +8,33 @@ import { toast } from '@/components/ui/use-toast';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Vérifier si l'utilisateur est déjà connecté
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem('user_registered') === 'true' && localStorage.getItem('username');
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API call
+    // Simuler l'appel API
     setTimeout(() => {
       setIsLoading(false);
       
-      // Extract username from email (everything before @)
+      // Extraire le nom d'utilisateur de l'email (tout ce qui précède @)
       const username = email.split('@')[0];
       
-      // Store username in localStorage
+      // Stocker le nom d'utilisateur dans le localStorage
       localStorage.setItem('username', username);
+      localStorage.setItem('user_registered', 'true');
       
       // Afficher un message de bienvenue personnalisé avec le nom d'utilisateur
       toast({
@@ -32,7 +42,9 @@ const Login = () => {
         description: "Vous êtes maintenant connecté à votre compte CashBot.",
       });
       
-      navigate('/dashboard');
+      // Rediriger vers la page d'origine ou le tableau de bord
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from);
     }, 1500);
   };
   
