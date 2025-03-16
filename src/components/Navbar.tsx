@@ -53,6 +53,14 @@ const Navbar = () => {
                 Accueil
               </Link>
               <Link 
+                to="/offres" 
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  location.pathname === '/offres' ? 'text-primary' : 'text-foreground/80'
+                }`}
+              >
+                Offres
+              </Link>
+              <Link 
                 to="/features" 
                 className={`text-sm font-medium transition-colors hover:text-primary ${
                   location.pathname === '/features' ? 'text-primary' : 'text-foreground/80'
@@ -118,6 +126,12 @@ const Navbar = () => {
               className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-secondary"
             >
               Accueil
+            </Link>
+            <Link
+              to="/offres"
+              className="px-4 py-2 text-sm font-medium rounded-lg hover:bg-secondary"
+            >
+              Offres
             </Link>
             <Link
               to="/features"
