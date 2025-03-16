@@ -9,13 +9,15 @@ interface SummaryPanelProps {
   referralLink: string;
   isStartingSession: boolean;
   handleStartSession: () => void;
+  isNewUser?: boolean;
 }
 
 const SummaryPanel = ({ 
   balance, 
   referralLink, 
   isStartingSession, 
-  handleStartSession 
+  handleStartSession,
+  isNewUser = false
 }: SummaryPanelProps) => {
   
   const handleCopyReferralLink = () => {
@@ -28,6 +30,13 @@ const SummaryPanel = ({
 
   return (
     <div className="neuro-panel mb-8">
+      {isNewUser && (
+        <div className="bg-green-50 text-green-800 p-4 mb-6 rounded-md border border-green-200">
+          <h3 className="font-medium">🎉 Bienvenue sur CashBot !</h3>
+          <p className="text-sm mt-1">Votre compte a été créé avec succès. Lancez votre première session d'analyse pour commencer à gagner de l'argent.</p>
+        </div>
+      )}
+      
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left Column */}
         <div className="flex-1">
@@ -65,11 +74,21 @@ const SummaryPanel = ({
         
         {/* Right Column - AI Terminal */}
         <div className="w-full lg:w-1/2 cyber-terminal">
-          <h3 className="text-lg font-semibold text-[#a0aec0] mb-3">📈 Dernier rapport d'analyse :</h3>
+          <h3 className="text-lg font-semibold text-[#a0aec0] mb-3">📈 {isNewUser ? "Prêt pour votre première analyse" : "Dernier rapport d'analyse :"}</h3>
           <div className="font-mono text-sm text-[#e2e8f0] space-y-2">
-            <p>{"> Analyse de 142 pubs..."}</p>
-            <p>{"> Ciblage de campagnes premium réussi"}</p>
-            <p>{"> Revenus générés : +47€"}</p>
+            {isNewUser ? (
+              <>
+                <p>{"> Système initialisé..."}</p>
+                <p>{"> En attente de première session"}</p>
+                <p>{"> Cliquez sur 'Lancer une session d'analyse'"}</p>
+              </>
+            ) : (
+              <>
+                <p>{"> Analyse de 142 pubs..."}</p>
+                <p>{"> Ciblage de campagnes premium réussi"}</p>
+                <p>{"> Revenus générés : +47€"}</p>
+              </>
+            )}
             <p className="blink-cursor">&nbsp;</p>
           </div>
         </div>

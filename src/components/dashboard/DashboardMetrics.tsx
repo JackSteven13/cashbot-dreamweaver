@@ -15,6 +15,7 @@ interface DashboardMetricsProps {
   isStartingSession: boolean;
   handleStartSession: () => void;
   transactions: Transaction[];
+  isNewUser?: boolean;
 }
 
 const DashboardMetrics = ({ 
@@ -22,7 +23,8 @@ const DashboardMetrics = ({
   referralLink, 
   isStartingSession, 
   handleStartSession,
-  transactions
+  transactions,
+  isNewUser = false
 }: DashboardMetricsProps) => {
   return (
     <>
@@ -31,9 +33,16 @@ const DashboardMetrics = ({
         referralLink={referralLink}
         isStartingSession={isStartingSession}
         handleStartSession={handleStartSession}
+        isNewUser={isNewUser}
       />
       
-      <TransactionsList transactions={transactions} />
+      {transactions.length > 0 ? (
+        <TransactionsList transactions={transactions} />
+      ) : (
+        <div className="neuro-panel p-6 text-center">
+          <p className="text-gray-500">Aucune transaction pour le moment. Lancez une session d'analyse pour commencer !</p>
+        </div>
+      )}
     </>
   );
 };

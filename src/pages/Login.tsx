@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
@@ -19,6 +18,13 @@ const Login = () => {
     // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
+      
+      // Extract username from email (everything before @)
+      const username = email.split('@')[0];
+      
+      // Store username in localStorage
+      localStorage.setItem('username', username);
+      
       toast({
         title: "Connexion réussie",
         description: "Vous êtes maintenant connecté à votre compte.",
