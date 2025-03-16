@@ -26,25 +26,31 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
   profit,
   onClick
 }) => {
-  // Determine background color based on current state
+  // Dark mode compatible background colors
   const bgColorClass = isHomePage 
-    ? isSelected ? 'bg-blue-900/40 border-blue-500' : 'bg-blue-950/40 border-blue-800/50' 
-    : isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200';
+    ? isSelected ? 'bg-blue-900/40 border-blue-500 dark:bg-blue-800/60 dark:border-blue-400' : 'bg-blue-950/40 border-blue-800/50 dark:bg-blue-900/50 dark:border-blue-700/50' 
+    : isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-500' : 'border-gray-200 dark:border-gray-700 dark:bg-gray-800/50';
   
-  // Determine text colors based on page context
+  // Dark mode compatible text colors
   const titleClass = isHomePage 
-    ? (isCurrent ? 'text-blue-300' : 'text-white') 
-    : (isCurrent ? 'text-blue-700' : 'text-gray-800');
+    ? (isCurrent ? 'text-blue-300 dark:text-blue-200' : 'text-white') 
+    : (isCurrent ? 'text-blue-700 dark:text-blue-300' : 'text-gray-800 dark:text-gray-100');
   
-  const smallTextClass = isHomePage ? 'text-blue-300' : 'text-gray-500';
-  const revenueClass = isHomePage ? 'text-green-400' : 'text-green-600';
+  const smallTextClass = isHomePage 
+    ? 'text-blue-300 dark:text-blue-200' 
+    : 'text-gray-500 dark:text-gray-400';
+  
+  const revenueClass = isHomePage 
+    ? 'text-green-400 dark:text-green-300' 
+    : 'text-green-600 dark:text-green-400';
+  
   const profitClass = profit > 0 
-    ? (isHomePage ? 'text-green-400' : 'text-green-600') 
-    : 'text-red-500';
+    ? (isHomePage ? 'text-green-400 dark:text-green-300' : 'text-green-600 dark:text-green-400') 
+    : 'text-red-500 dark:text-red-400';
 
   return (
     <div 
-      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${bgColorClass}`}
+      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${bgColorClass} hover:shadow-md`}
       onClick={onClick}
     >
       <div className="flex items-center justify-between">

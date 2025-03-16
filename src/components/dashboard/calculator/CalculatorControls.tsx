@@ -24,9 +24,19 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
   control, 
   isHomePage 
 }) => {
-  const labelClass = isHomePage ? "text-white font-medium" : "text-[#1e3a5f] font-medium";
-  const descriptionClass = isHomePage ? "text-blue-200" : "";
-  const valueClass = `w-12 text-center font-medium ${isHomePage ? 'text-white' : ''}`;
+  // Updated these classes to work better in both light and dark modes
+  const labelClass = isHomePage 
+    ? "text-white font-medium dark:text-blue-100" 
+    : "text-[#1e3a5f] font-medium dark:text-white";
+  const descriptionClass = isHomePage 
+    ? "text-blue-200 dark:text-blue-200" 
+    : "text-gray-600 dark:text-gray-300";
+  // Improved contrast for the value display
+  const valueClass = `w-12 text-center font-medium ${
+    isHomePage 
+      ? 'text-white bg-blue-900/50 dark:bg-blue-900/70 rounded px-2 py-1' 
+      : 'text-blue-700 dark:text-white bg-blue-50 dark:bg-blue-900/50 rounded px-2 py-1'
+  }`;
 
   return (
     <div className="space-y-5">

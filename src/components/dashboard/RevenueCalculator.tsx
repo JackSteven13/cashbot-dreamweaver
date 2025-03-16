@@ -54,17 +54,17 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
     setCalculatedResults(results);
   }, [values.sessionsPerDay, values.daysPerMonth]);
 
-  // Adapter les styles selon l'endroit où le composant est affiché
+  // Adapter les styles selon l'endroit où le composant est affiché et le mode sombre
   const cardClassName = isHomePage 
-    ? "w-full bg-white/5 backdrop-blur-lg border border-white/10 shadow-xl" 
-    : "w-full mt-8 bg-white shadow-md border border-blue-100";
+    ? "w-full bg-white/5 backdrop-blur-lg border border-white/10 shadow-xl dark:bg-gray-900/30 dark:border-gray-800/50" 
+    : "w-full mt-8 bg-white shadow-md border border-blue-100 dark:bg-gray-800 dark:border-gray-700";
 
   const headerClassName = isHomePage
-    ? "bg-gradient-to-r from-blue-900/50 to-indigo-900/50 border-b border-white/10"
-    : "bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-100";
+    ? "bg-gradient-to-r from-blue-900/50 to-indigo-900/50 border-b border-white/10 dark:from-blue-950/70 dark:to-indigo-950/70 dark:border-gray-800"
+    : "bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-100 dark:from-blue-900/30 dark:to-indigo-900/30 dark:border-gray-700";
 
-  const textColorClass = isHomePage ? "text-white" : "text-[#1e3a5f]";
-  const descriptionColorClass = isHomePage ? "text-blue-100" : "text-gray-500";
+  const textColorClass = isHomePage ? "text-white dark:text-white" : "text-[#1e3a5f] dark:text-white";
+  const descriptionColorClass = isHomePage ? "text-blue-100 dark:text-blue-200" : "text-gray-500 dark:text-gray-300";
 
   return (
     <Card className={cardClassName}>
@@ -78,14 +78,14 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
             : "Comparez vos revenus potentiels selon différents abonnements"}
         </CardDescription>
       </CardHeader>
-      <CardContent className={`pt-6 ${isHomePage ? 'text-white' : ''}`}>
+      <CardContent className={`pt-6 ${isHomePage ? 'text-white dark:text-white' : 'dark:text-gray-100'}`}>
         <Form {...form}>
           {/* Contrôles du simulateur */}
           <CalculatorControls control={control} isHomePage={isHomePage} />
         </Form>
 
         <div className="mt-8 space-y-3">
-          <h3 className={`text-md font-semibold ${isHomePage ? 'text-white' : 'text-[#1e3a5f]'}`}>
+          <h3 className={`text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
             Revenus mensuels estimés
           </h3>
           <div className="grid grid-cols-1 gap-3">
@@ -116,7 +116,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
           </div>
         </div>
       </CardContent>
-      <CardFooter className={isHomePage ? "bg-blue-950/50 border-t border-white/10 pt-4" : "bg-gray-50 border-t pt-4"}>
+      <CardFooter className={isHomePage ? "bg-blue-950/50 border-t border-white/10 pt-4 dark:bg-gray-900/70 dark:border-gray-800" : "bg-gray-50 border-t pt-4 dark:bg-gray-800 dark:border-gray-700"}>
         <CalculatorFooter 
           isHomePage={isHomePage} 
           selectedPlan={selectedPlan}

@@ -14,10 +14,10 @@ const CalculatorFooter: React.FC<CalculatorFooterProps> = ({
   selectedPlan,
   subscriptionLabels
 }) => {
-  // Styling based on page context
+  // Updated button styling for better dark mode visibility
   const buttonClass = isHomePage 
-    ? "bg-green-500 hover:bg-green-600 text-white w-full md:w-auto" 
-    : "bg-green-600 hover:bg-green-700 text-white";
+    ? "bg-green-500 hover:bg-green-600 text-white w-full md:w-auto dark:bg-green-600 dark:hover:bg-green-700 shadow-sm" 
+    : "bg-green-600 hover:bg-green-700 text-white dark:bg-green-500 dark:hover:bg-green-600";
   
   // Button text based on context
   const buttonText = isHomePage 
