@@ -24,6 +24,11 @@ const getInitialUserData = (): UserData => {
   const isNewUser = !localStorage.getItem('user_registered');
   const subscription = localStorage.getItem('subscription') || 'freemium';
   
+  // For new users, always set balance to 0
+  if (isNewUser) {
+    localStorage.setItem('user_balance', '0');
+  }
+  
   // Ensure consistency with subscription limits
   const storedBalance = parseFloat(localStorage.getItem('user_balance') || '0');
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS];
