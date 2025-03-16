@@ -108,7 +108,7 @@ const Hero = () => {
     };
   }, [isMobile]);
 
-  // Stats counters with continuous incrementation
+  // Stats counters with continuous incrementation that reset at midnight
   const [adsCount, setAdsCount] = useState(0);
   const [revenueCount, setRevenueCount] = useState(0);
   
@@ -125,20 +125,54 @@ const Hero = () => {
     
     let currentStep = 0;
     
-    // Initial rapid count-up animation
-    const initialInterval = setInterval(() => {
-      currentStep++;
+    // Calculate time until next midnight
+    const getTimeUntilMidnight = () => {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      return tomorrow.getTime() - now.getTime();
+    };
+    
+    // Function to reset counters at midnight
+    const scheduleReset = () => {
+      const timeUntilMidnight = getTimeUntilMidnight();
       
-      if (currentStep <= steps) {
-        setAdsCount(Math.min(Math.floor(adsIncrement * currentStep), initialAdsTarget));
-        setRevenueCount(Math.min(Math.floor(revenueIncrement * currentStep), initialRevenueTarget));
-      } else {
-        clearInterval(initialInterval);
+      const resetTimeout = setTimeout(() => {
+        // Reset counters
+        setAdsCount(0);
+        setRevenueCount(0);
         
-        // After initial animation, start continuous incrementation
-        startContinuousIncrement();
-      }
-    }, initialDuration / steps);
+        // Start the initial animation again
+        startInitialAnimation();
+        
+        // Schedule the next reset
+        scheduleReset();
+      }, timeUntilMidnight);
+      
+      return resetTimeout;
+    };
+    
+    // Function for initial animation
+    const startInitialAnimation = () => {
+      let step = 0;
+      
+      const animInterval = setInterval(() => {
+        step++;
+        
+        if (step <= steps) {
+          setAdsCount(Math.min(Math.floor(adsIncrement * step), initialAdsTarget));
+          setRevenueCount(Math.min(Math.floor(revenueIncrement * step), initialRevenueTarget));
+        } else {
+          clearInterval(animInterval);
+          
+          // After initial animation, start continuous incrementation
+          startContinuousIncrement();
+        }
+      }, initialDuration / steps);
+      
+      return animInterval;
+    };
     
     // Function to start continuous increment after initial animation
     const startContinuousIncrement = () => {
@@ -155,16 +189,22 @@ const Hero = () => {
         setRevenueCount(prev => prev + increment);
       }, 5000); // Every 5 seconds
       
-      // Cleanup function
-      return () => {
-        clearInterval(adsInterval);
-        clearInterval(revenueInterval);
-      };
+      return { adsInterval, revenueInterval };
     };
+    
+    // Start initial animation
+    const initialAnimInterval = startInitialAnimation();
+    
+    // Schedule midnight reset
+    const resetTimeout = scheduleReset();
     
     // Cleanup
     return () => {
-      clearInterval(initialInterval);
+      clearInterval(initialAnimInterval);
+      clearTimeout(resetTimeout);
+      
+      // The continuous increment intervals are managed inside startContinuousIncrement
+      // and will be automatically cleaned up when the component unmounts
     };
   }, []);
 
