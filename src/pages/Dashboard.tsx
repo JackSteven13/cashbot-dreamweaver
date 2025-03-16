@@ -9,6 +9,7 @@ import { canStartManualSession, SUBSCRIPTION_LIMITS } from '@/utils/subscription
 import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -20,10 +21,16 @@ const Dashboard = () => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        toast({
+          title: "Accès refusé",
+          description: "Vous devez être connecté pour accéder à votre tableau de bord.",
+          variant: "destructive"
+        });
         navigate('/login');
-      } else {
-        setIsAuthChecking(false);
+        return;
       }
+      
+      setIsAuthChecking(false);
     };
     
     checkAuth();
@@ -63,6 +70,12 @@ const Dashboard = () => {
         <Loader2 className="w-10 h-10 animate-spin text-blue-400" />
       </div>
     );
+  }
+
+  // Rediriger vers la page de connexion si l'utilisateur n'est pas authentifié
+  if (!userData.username) {
+    navigate('/login');
+    return null;
   }
 
   return (

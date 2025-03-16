@@ -44,22 +44,62 @@ export const useUserData = () => {
           return;
         }
 
+        // Récupérer le profil utilisateur
         const profileData = await fetchUserProfile(session.user.id, session.user.email);
         
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError) {
-          console.error("Error fetching user:", userError);
-          setIsLoading(false);
-          return;
+        if (!profileData) {
+          console.log("Création d'un nouveau profil pour l'utilisateur");
+          // Tentative de création de profil
+          await supabase.rpc('create_profile', {
+            user_id: session.user.id,
+            user_name: session.user.email?.split('@')[0] || 'utilisateur',
+            user_email: session.user.email || ''
+          }).catch(async (error) => {
+            console.error("Error creating profile with RPC:", error);
+            // Tentative directe
+            await supabase.from('profiles').insert({
+              id: session.user.id,
+              full_name: session.user.email?.split('@')[0] || 'utilisateur',
+              email: session.user.email
+            });
+          });
         }
+        
+        // Récupérer à nouveau le profil
+        const { data: refreshedProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
 
         const balanceResult = await fetchUserBalance(session.user.id);
         
         if (!balanceResult) {
-          console.error("Impossible de récupérer les données de solde. Redirection vers la connexion.");
-          navigate('/login');
-          setIsLoading(false);
-          return;
+          console.error("Impossible de récupérer les données de solde");
+          
+          // Tentative de création du bilan utilisateur
+          try {
+            const { data: newBalance } = await supabase
+              .rpc('create_user_balance', {
+                user_id: session.user.id
+              });
+              
+            if (!newBalance) {
+              throw new Error("Échec de la création du bilan");
+            }
+            
+            balanceResult = { data: newBalance[0], isNewUser: true };
+          } catch (error) {
+            console.error("Échec de la création du bilan:", error);
+            toast({
+              title: "Erreur",
+              description: "Impossible d'initialiser votre compte. Veuillez vous reconnecter.",
+              variant: "destructive"
+            });
+            navigate('/login');
+            setIsLoading(false);
+            return;
+          }
         }
         
         const { data: balanceData, isNewUser: newUser } = balanceResult;
@@ -75,9 +115,9 @@ export const useUserData = () => {
 
         const transactionsData = await fetchUserTransactions(session.user.id);
 
-        const displayName = profileData?.full_name || 
-                          userData.user?.user_metadata?.full_name || 
-                          (userData.user?.email ? userData.user.email.split('@')[0] : 'utilisateur');
+        const displayName = refreshedProfile?.full_name || 
+                           session.user.user_metadata?.full_name || 
+                           (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
 
         setUserData({
           username: displayName,

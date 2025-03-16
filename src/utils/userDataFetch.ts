@@ -20,23 +20,47 @@ export const fetchUserProfile = async (userId: string, userEmail?: string | null
       if (profileError.code === 'PGRST116') {
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
-          const { error: createError } = await supabase
-            .rpc('create_profile', {
-              user_id: userData.user.id,
-              user_name: userData.user.email?.split('@')[0] || 'utilisateur',
-              user_email: userData.user.email || ''
-            });
-            
-          if (createError) {
-            console.error("Error creating profile:", createError);
-            // Tentative directe d'insertion
-            await supabase
-              .from('profiles')
-              .insert({
-                id: userData.user.id,
-                full_name: userData.user.email?.split('@')[0] || 'utilisateur',
-                email: userData.user.email
+          try {
+            // Try using RPC first
+            const { error: createError } = await supabase
+              .rpc('create_profile', {
+                user_id: userData.user.id,
+                user_name: userData.user.email?.split('@')[0] || 'utilisateur',
+                user_email: userData.user.email || ''
               });
+              
+            if (createError) {
+              console.error("Error creating profile with RPC:", createError);
+              
+              // Try direct insertion as fallback
+              const { error: insertError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: userData.user.id,
+                  full_name: userData.user.email?.split('@')[0] || 'utilisateur',
+                  email: userData.user.email
+                });
+                
+              if (insertError) {
+                console.error("Error with direct profile insertion:", insertError);
+                toast({
+                  title: "Erreur de profil",
+                  description: "Impossible de créer votre profil. Veuillez vous reconnecter.",
+                  variant: "destructive"
+                });
+              }
+            }
+            
+            // Fetch the newly created profile
+            const { data: newProfile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', userData.user.id)
+              .single();
+              
+            return newProfile;
+          } catch (error) {
+            console.error("Profile creation failed:", error);
           }
         }
       }
@@ -63,36 +87,50 @@ export const fetchUserBalance = async (userId: string) => {
       
       // If balance not found, create a new entry
       if (balanceError.code === 'PGRST116') {
-        // Creation directe sans utiliser d'insertion
-        const { data: newBalance, error: insertError } = await supabase
-          .rpc('create_user_balance', {
-            user_id: userId
-          });
-          
-        if (insertError) {
-          console.error("Error creating balance:", insertError);
-          // Si la fonction RPC échoue, on tente d'insérer directement avec la politique RLS correcte
-          const { data: directInsert, error: directError } = await supabase
-            .from('user_balances')
-            .insert([
-              { 
-                id: userId, 
-                balance: 0, 
-                daily_session_count: 0, 
-                subscription: 'freemium' 
-              }
-            ])
-            .select();
+        try {
+          // Try using RPC first
+          const { data: newBalance, error: rpcError } = await supabase
+            .rpc('create_user_balance', {
+              user_id: userId
+            });
             
-          if (directError) {
-            console.error("Direct insert error:", directError);
-            return null;
+          if (rpcError) {
+            console.error("Error creating balance with RPC:", rpcError);
+            
+            // Try direct insertion as fallback
+            const { data: directInsert, error: insertError } = await supabase
+              .from('user_balances')
+              .insert([
+                { 
+                  id: userId, 
+                  balance: 0, 
+                  daily_session_count: 0, 
+                  subscription: 'freemium' 
+                }
+              ])
+              .select();
+              
+            if (insertError) {
+              console.error("Direct insert error:", insertError);
+              toast({
+                title: "Erreur d'initialisation",
+                description: "Impossible d'initialiser votre compte. Veuillez vous reconnecter.",
+                variant: "destructive"
+              });
+              return null;
+            }
+            
+            return { data: directInsert?.[0], isNewUser: true };
           }
           
-          return { data: directInsert?.[0], isNewUser: true };
+          // If array returned, get first element
+          const balanceData = Array.isArray(newBalance) ? newBalance[0] : newBalance;
+          return { data: balanceData, isNewUser: true };
+          
+        } catch (error) {
+          console.error("Balance creation failed:", error);
+          return null;
         }
-        
-        return { data: newBalance, isNewUser: true };
       }
       
       return null;

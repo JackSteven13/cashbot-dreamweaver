@@ -94,6 +94,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_user_balance: {
+        Args: {
+          user_id: string
+        }
+        Returns: {
+          balance: number
+          daily_session_count: number
+          id: string
+          subscription: string
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

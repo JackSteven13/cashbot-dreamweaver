@@ -58,7 +58,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
     // Surveiller les changements d'état d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session && session.user) {
+      if (event === 'SIGNED_OUT') {
+        setIsAuthenticated(false);
+        setUsername(null);
+      } else if (session && session.user) {
         // Mettre à jour le nom d'utilisateur lorsque l'état d'authentification change
         const { data: profileData } = await supabase
           .from('profiles')
@@ -69,9 +72,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         const displayName = profileData?.full_name || session.user.email?.split('@')[0] || 'utilisateur';
         setUsername(displayName);
         setIsAuthenticated(true);
-      } else {
-        setUsername(null);
-        setIsAuthenticated(false);
       }
     });
 
@@ -89,6 +89,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   // Si l'utilisateur n'est pas authentifié, rediriger vers la page de connexion
   if (isAuthenticated === false) {
+    toast({
+      title: "Accès refusé",
+      description: "Vous devez être connecté pour accéder à cette page.",
+      variant: "destructive"
+    });
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
