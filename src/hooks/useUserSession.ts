@@ -3,9 +3,9 @@ import { toast } from "@/components/ui/use-toast";
 import { 
   updateSessionCount,
   updateUserBalance,
-  addTransaction,
   resetUserBalance
-} from "@/utils/userDataUtils";
+} from "@/utils/userBalanceUtils";
+import { addTransaction } from "@/utils/transactionUtils";
 import { supabase } from "@/integrations/supabase/client";
 
 // Define return types for better type safety
