@@ -97,7 +97,10 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
           variant="outline" 
           fullWidth 
           className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50"
-          onClick={() => navigate('/')}
+          onClick={() => {
+            // Naviguez d'abord vers la page d'accueil
+            navigate('/');
+          }}
         >
           <Home size={18} className="mr-3" />
           Retour à l'accueil
