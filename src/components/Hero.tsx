@@ -33,7 +33,7 @@ const Hero = () => {
           {/* Counters - Improved for better responsive display */}
           <StatsCounter />
           
-          {/* CTA Button - Replaced form with button linked to /login */}
+          {/* CTA Button */}
           <HeroCallToAction />
           
           {/* Revenue Calculator - Added directly after the CTA button */}
