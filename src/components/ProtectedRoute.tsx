@@ -2,7 +2,7 @@
 import { ReactNode, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
-import { forceSignOut } from "@/utils/authUtils";
+import { forceSignOut } from "@/utils/auth/sessionUtils";
 import { useAuthVerification } from '@/hooks/useAuthVerification';
 import AuthRecoveryScreen from './auth/AuthRecoveryScreen';
 import AuthLoadingScreen from './auth/AuthLoadingScreen';

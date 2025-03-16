@@ -1,9 +1,8 @@
-
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { UserData } from '@/types/userData';
 import { useUserDataFetcher } from './useUserDataFetcher';
 import { toast } from "@/components/ui/use-toast";
-import { verifyAuth, refreshSession } from '@/utils/authUtils';
+import { verifyAuth, refreshSession } from "@/utils/auth/index";
 
 interface UserFetchResult {
   userData: UserData;
@@ -26,7 +25,6 @@ export const useUserFetch = (): UserFetchResult => {
   const { userData, isNewUser, dailySessionCount, showLimitAlert, isLoading } = fetcherState;
   const { setShowLimitAlert, fetchUserData } = fetcherActions;
   
-  // Simplified data fetching function with exponential backoff retry
   const fetchData = useCallback(async () => {
     if (fetchInProgress.current || !isMounted.current) {
       return;
@@ -50,7 +48,7 @@ export const useUserFetch = (): UserFetchResult => {
       
       console.log("Fetching user data...");
       await fetchUserData();
-      retryCount.current = 0; // Reset retry count on success
+      retryCount.current = 0;
       console.log("User data fetched successfully");
       
       fetchInProgress.current = false;
@@ -58,7 +56,6 @@ export const useUserFetch = (): UserFetchResult => {
       console.error("Error fetching user data:", error);
       fetchInProgress.current = false;
       
-      // Implement retry with exponential backoff
       if (retryCount.current < maxRetries && isMounted.current) {
         const delay = Math.min(1000 * Math.pow(2, retryCount.current), 10000);
         console.log(`Retrying in ${delay}ms (attempt ${retryCount.current + 1}/${maxRetries})`);
@@ -73,19 +70,17 @@ export const useUserFetch = (): UserFetchResult => {
     }
   }, [fetchUserData]);
 
-  // Component lifecycle with improved initialization
   useEffect(() => {
     isMounted.current = true;
     fetchInProgress.current = false;
     retryCount.current = 0;
     
-    // Initial fetch with progressive delay
     const initialFetch = setTimeout(() => {
       if (isMounted.current) {
         console.log("Starting initial data fetch");
         fetchData();
       }
-    }, 1500); // Slightly longer initial delay for better stability
+    }, 1500);
     
     return () => {
       console.log("useUserFetch unmounting");
@@ -94,7 +89,6 @@ export const useUserFetch = (): UserFetchResult => {
     };
   }, [fetchData]);
 
-  // Safe refetch function with debounce
   const refetchUserData = useCallback(async () => {
     if (!isMounted.current || fetchInProgress.current) {
       return;

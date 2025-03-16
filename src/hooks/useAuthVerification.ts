@@ -1,7 +1,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { refreshSession, verifyAuth } from "@/utils/authUtils";
+import { refreshSession, verifyAuth } from "@/utils/auth/index";
 import { toast } from "@/components/ui/use-toast";
 
 interface UseAuthVerificationResult {

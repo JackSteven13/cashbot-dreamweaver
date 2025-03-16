@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -7,7 +6,7 @@ import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
-import { verifyAuth } from '@/utils/authUtils';
+import { verifyAuth } from '@/utils/auth/verificationUtils';
 
 const Login = () => {
   const navigate = useNavigate();
