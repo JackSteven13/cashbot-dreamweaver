@@ -13,6 +13,19 @@ import Register from "./pages/Register";
 import Login from "./pages/Login";
 import About from "./pages/About";
 
+// Create placeholder pages for dashboard navigation
+const Transactions = () => <Dashboard />;
+const Analytics = () => <Dashboard />;
+const Wallet = () => <Dashboard />;
+const Referrals = () => <Dashboard />;
+const Settings = () => <Dashboard />;
+const Logout = () => {
+  // Clear local storage on logout
+  localStorage.clear();
+  window.location.href = "/";
+  return null;
+};
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -25,6 +38,12 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/transactions" element={<Transactions />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/wallet" element={<Wallet />} />
+            <Route path="/referrals" element={<Referrals />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/logout" element={<Logout />} />
             <Route path="/offres" element={<Offres />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />

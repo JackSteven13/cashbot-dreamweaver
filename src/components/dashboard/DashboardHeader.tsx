@@ -11,7 +11,9 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
   return (
     <header className="sticky top-0 z-10 bg-[#1e3a5f] border-b border-[#2d5f8a]/30">
       <div className="flex items-center justify-between p-4">
-        <h1 className="text-xl font-semibold text-white">Tableau de bord</h1>
+        <h1 className="text-xl font-semibold text-white">
+          Bonjour, {username} !
+        </h1>
         
         <div className="flex items-center space-x-4">
           <div className="text-sm text-right hidden sm:block">
