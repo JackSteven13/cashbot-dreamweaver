@@ -27,9 +27,17 @@ const getInitialUserData = (): UserData => {
   // For new users, always set balance to 0
   if (isNewUser) {
     localStorage.setItem('user_balance', '0');
+    return {
+      username: localStorage.getItem('username') || 'utilisateur',
+      balance: 0,
+      subscription: subscription,
+      referrals: [],
+      referralLink: 'https://cashbot.com?ref=admin',
+      transactions: []
+    };
   }
   
-  // Ensure consistency with subscription limits
+  // For existing users, ensure consistency with subscription limits
   const storedBalance = parseFloat(localStorage.getItem('user_balance') || '0');
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS];
   
@@ -50,7 +58,7 @@ const getInitialUserData = (): UserData => {
     subscription: subscription,
     referrals: [],
     referralLink: 'https://cashbot.com?ref=admin',
-    transactions: isNewUser ? [] : [
+    transactions: [
       {
         date: '2023-09-15',
         gain: 0.42,
