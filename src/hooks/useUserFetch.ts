@@ -31,7 +31,10 @@ export const useUserFetch = (): UserFetchResult => {
   
   // Fonction de récupération de données sécurisée et stabilisée
   const fetchData = useCallback(async () => {
-    if (fetchInProgress.current || !isMounted.current) return;
+    if (fetchInProgress.current || !isMounted.current) {
+      console.log("Fetch skipped: already in progress or component unmounted");
+      return;
+    }
     
     try {
       console.log("Starting fetchData in useUserFetch");
@@ -92,15 +95,25 @@ export const useUserFetch = (): UserFetchResult => {
     
     // Vérifier l'authentification avant d'essayer de charger les données
     verifyAndRepairAuth().then(isAuthValid => {
-      if (!isAuthValid || !isMounted.current) return;
+      if (!isAuthValid) {
+        console.log("Auth verification failed, skipping data fetch");
+        return;
+      }
+      
+      if (!isMounted.current) {
+        console.log("Component unmounted after auth verification, skipping fetch");
+        return;
+      }
       
       // Délai court pour éviter les conflits avec d'autres initialisations
       setTimeout(() => {
         if (isMounted.current && !fetchInProgress.current) {
-          fetchData().catch(console.error);
+          fetchData().catch(e => console.error("Initial fetch failed:", e));
         }
       }, 300);
-    }).catch(console.error);
+    }).catch(error => {
+      console.error("Auth verification error:", error);
+    });
     
     // Nettoyage
     return () => {
@@ -111,21 +124,29 @@ export const useUserFetch = (): UserFetchResult => {
 
   // Fonction refetch stable et sécurisée
   const refetchUserData = useCallback(async () => {
-    if (isMounted.current && !fetchInProgress.current) {
-      console.log("Manually refetching user data");
-      // Vérifier l'authentification avant de recharger
-      const isAuthValid = await verifyAndRepairAuth();
-      
-      if (isAuthValid) {
-        await fetchData();
-      } else {
-        console.log("Authentication invalid, cannot refetch data");
-        toast({
-          title: "Problème d'authentification",
-          description: "Impossible de rafraîchir vos données. Veuillez vous reconnecter.",
-          variant: "destructive"
-        });
-      }
+    if (!isMounted.current) {
+      console.log("Cannot refetch: component unmounted");
+      return;
+    }
+    
+    if (fetchInProgress.current) {
+      console.log("Cannot refetch: fetch already in progress");
+      return;
+    }
+    
+    console.log("Manually refetching user data");
+    // Vérifier l'authentification avant de recharger
+    const isAuthValid = await verifyAndRepairAuth();
+    
+    if (isAuthValid) {
+      await fetchData();
+    } else {
+      console.log("Authentication invalid, cannot refetch data");
+      toast({
+        title: "Problème d'authentification",
+        description: "Impossible de rafraîchir vos données. Veuillez vous reconnecter.",
+        variant: "destructive"
+      });
     }
   }, [fetchData]);
 
