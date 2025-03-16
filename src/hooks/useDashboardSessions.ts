@@ -24,12 +24,16 @@ export const useDashboardSessions = (
   const sessionInProgress = useRef(false);
   const operationLock = useRef(false);
   const refreshTimeoutRef = useRef<number | null>(null);
+  const clickTimeoutRef = useRef<number | null>(null);
 
   // Clean up any pending timeouts when component unmounts
   useEffect(() => {
     return () => {
       if (refreshTimeoutRef.current !== null) {
         window.clearTimeout(refreshTimeoutRef.current);
+      }
+      if (clickTimeoutRef.current !== null) {
+        window.clearTimeout(clickTimeoutRef.current);
       }
     };
   }, []);
@@ -155,11 +159,22 @@ export const useDashboardSessions = (
   };
 
   const handleStartSession = async () => {
+    // Debounce rapid clicks - ignore if clicked within last 2 seconds
+    if (clickTimeoutRef.current !== null) {
+      console.log("Ignoring rapid click, debouncing active");
+      return;
+    }
+    
     // Prevent multiple concurrent sessions and rapid clicking
     if (isStartingSession || sessionInProgress.current || operationLock.current) {
       console.log("Session or operation already in progress, ignoring request");
       return;
     }
+    
+    // Set click debounce
+    clickTimeoutRef.current = window.setTimeout(() => {
+      clickTimeoutRef.current = null;
+    }, 2000);
     
     // Check if session can be started
     if (!canStartManualSession(userData.subscription, dailySessionCount, userData.balance)) {
