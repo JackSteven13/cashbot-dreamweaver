@@ -1,9 +1,11 @@
 
 import React from 'react';
 import { Check } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Button from '@/components/Button';
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 // Mock data from the Flask application
 const OFFRES = {
@@ -15,29 +17,57 @@ const OFFRES = {
 
 // Helper to determine if a plan is the current user's plan
 const isCurrentPlan = (plan: string) => {
-  // In a real app, this would check the logged-in user's subscription
-  const subscription = localStorage.getItem('subscription') || 'freemium';
-  return plan === subscription;
+  // Check from localStorage for non-authenticated users or during loading
+  const localSubscription = localStorage.getItem('subscription') || 'freemium';
+  return plan === localSubscription;
 };
 
 const Offres = () => {
-  const handleSubscribe = (niveau: string) => {
-    // In a real app, this would call your backend API
-    console.log(`Subscribing to ${niveau}`);
-    
-    // Mettre à jour l'abonnement de l'utilisateur en localStorage
-    localStorage.setItem('subscription', niveau);
-    
-    // You would typically redirect to a payment page or process the subscription
-    toast({
-      title: `Abonnement ${niveau.charAt(0).toUpperCase() + niveau.slice(1)} activé !`,
-      description: `Vous bénéficiez maintenant des avantages du forfait ${niveau}.`,
-    });
-    
-    // Pour actualiser la page après changement d'abonnement
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
+  const navigate = useNavigate();
+
+  const handleSubscribe = async (niveau: string) => {
+    // If the plan is freemium, update directly without payment
+    if (niveau === 'freemium') {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          // Update the user's subscription in Supabase
+          const { error } = await supabase
+            .from('user_balances')
+            .update({ 
+              subscription: niveau,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', session.user.id);
+            
+          if (error) {
+            throw error;
+          }
+        }
+        
+        // Update localStorage for UI consistency
+        localStorage.setItem('subscription', niveau);
+        
+        toast({
+          title: `Abonnement ${niveau.charAt(0).toUpperCase() + niveau.slice(1)} activé !`,
+          description: `Vous bénéficiez maintenant des avantages du forfait ${niveau}.`,
+        });
+        
+        // Redirect to dashboard
+        navigate('/dashboard');
+      } catch (error) {
+        console.error("Error updating subscription:", error);
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors de la mise à jour de votre abonnement.",
+          variant: "destructive"
+        });
+      }
+    } else {
+      // For paid plans, redirect to payment page
+      navigate(`/payment?plan=${niveau}`, { state: { plan: niveau } });
+    }
   };
 
   return (
@@ -107,7 +137,7 @@ const Offres = () => {
                   onClick={() => !isCurrentPlan(key) && handleSubscribe(key)}
                   disabled={isCurrentPlan(key)}
                 >
-                  {isCurrentPlan(key) ? "Abonnement actuel" : "Souscrire"}
+                  {isCurrentPlan(key) ? "Abonnement actuel" : key === 'freemium' ? "Souscrire gratuitement" : "Souscrire"}
                 </Button>
               </CardFooter>
             </Card>
@@ -116,11 +146,6 @@ const Offres = () => {
       </main>
     </div>
   );
-};
-
-// Fonction toast pour les notifications
-const toast = ({title, description, variant}: {title: string, description: string, variant?: string}) => {
-  alert(`${title}\n\n${description}`);
 };
 
 export default Offres;
