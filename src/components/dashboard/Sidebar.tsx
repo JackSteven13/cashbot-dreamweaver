@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   CreditCard, 
   GaugeCircle, 
@@ -11,8 +11,7 @@ import {
   Share2,
   Home
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import Button from '@/components/Button';
 
 interface SidebarProps {
   selectedNavItem: string;
@@ -21,11 +20,14 @@ interface SidebarProps {
 
 const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
   const navigate = useNavigate();
-  const location = useLocation();
   
   // Function to handle logout
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    localStorage.removeItem('user_registered');
+    localStorage.removeItem('username');
+    localStorage.removeItem('user_balance');
+    localStorage.removeItem('daily_session_count');
+    localStorage.removeItem('subscription');
     navigate('/');
   };
   
@@ -38,7 +40,7 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
   };
   
   return (
-    <div className="hidden md:flex w-64 flex-col bg-[#1e3a5f] border-r border-[#2d5f8a]/30 h-full">
+    <div className="hidden md:flex w-64 flex-col bg-[#1e3a5f] border-r border-[#2d5f8a]/30">
       <div className="p-6">
         <Link to="/" className="text-2xl font-semibold tracking-tight text-white">
           CashBot
@@ -51,49 +53,50 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
           label="Tableau de bord"
           id="dashboard"
           selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("dashboard", "/dashboard")}
+          onClick={() => handleNavigation("dashboard")}
         />
         <NavItem 
           icon={<History size={18} className="mr-3" />}
           label="Historique"
           id="transactions"
           selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("transactions", "/dashboard/transactions")}
+          onClick={() => handleNavigation("transactions")}
         />
         <NavItem 
           icon={<LineChart size={18} className="mr-3" />}
           label="Analyses"
           id="analytics"
           selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("analytics", "/dashboard/analytics")}
+          onClick={() => handleNavigation("analytics")}
         />
         <NavItem 
           icon={<CreditCard size={18} className="mr-3" />}
           label="Portefeuille"
           id="wallet"
           selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("wallet", "/dashboard/wallet")}
+          onClick={() => handleNavigation("wallet")}
         />
         <NavItem 
           icon={<Share2 size={18} className="mr-3" />}
           label="Parrainage"
           id="referrals"
           selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("referrals", "/dashboard/referrals")}
+          onClick={() => handleNavigation("referrals")}
         />
         <NavItem 
           icon={<Settings size={18} className="mr-3" />}
           label="Paramètres"
           id="settings"
           selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("settings", "/dashboard/settings")}
+          onClick={() => handleNavigation("settings")}
         />
       </div>
       
       <div className="p-4 mt-auto space-y-2">
         <Button 
           variant="outline" 
-          className="w-full justify-start border-[#486581] text-white hover:bg-[#334e68]/50"
+          fullWidth 
+          className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50"
           onClick={() => navigate('/')}
         >
           <Home size={18} className="mr-3" />
@@ -101,7 +104,8 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
         </Button>
         <Button 
           variant="outline" 
-          className="w-full justify-start border-[#486581] text-white hover:bg-[#334e68]/50"
+          fullWidth 
+          className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50"
           onClick={handleLogout}
         >
           <LogOut size={18} className="mr-3" />

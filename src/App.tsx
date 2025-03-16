@@ -14,13 +14,6 @@ import Login from "./pages/Login";
 import About from "./pages/About";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// Create a placeholder component for dashboard sections that aren't implemented yet
-const PlaceholderPage = ({ title }: { title: string }) => (
-  <div className="flex items-center justify-center h-full">
-    <h1 className="text-2xl font-bold text-white">Page {title} en cours de développement</h1>
-  </div>
-);
-
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -32,36 +25,14 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/transactions" element={
-              <ProtectedRoute>
-                <Dashboard initialNavItem="transactions" />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/analytics" element={
-              <ProtectedRoute>
-                <Dashboard initialNavItem="analytics" />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/wallet" element={
-              <ProtectedRoute>
-                <Dashboard initialNavItem="wallet" />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/referrals" element={
-              <ProtectedRoute>
-                <Dashboard initialNavItem="referrals" />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/settings" element={
-              <ProtectedRoute>
-                <Dashboard initialNavItem="settings" />
-              </ProtectedRoute>
-            } />
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="/offres" element={<Offres />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
