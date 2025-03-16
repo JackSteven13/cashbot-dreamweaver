@@ -15,7 +15,7 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
         
         <div className="flex items-center space-x-4">
           <div className="text-sm text-right hidden sm:block">
-            <p className="font-medium text-white">{username}</p>
+            <p className="font-medium text-white">Bonjour, {username}</p>
             <p className="text-blue-200">Abonnement {subscription}</p>
           </div>
           <div className="h-10 w-10 rounded-full bg-[#334e68] flex items-center justify-center text-white">

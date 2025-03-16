@@ -87,6 +87,11 @@ export const useUserData = () => {
       localStorage.setItem('user_registered', 'true');
       // Initialize the balance to 0 for new users
       localStorage.setItem('user_balance', '0');
+      setUserData(prev => ({
+        ...prev,
+        balance: 0,
+        transactions: []
+      }));
       localStorage.setItem('daily_session_count', '0');
     }
     

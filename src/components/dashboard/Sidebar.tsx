@@ -8,7 +8,8 @@ import {
   LineChart, 
   LogOut, 
   Settings, 
-  Share2
+  Share2,
+  Home
 } from 'lucide-react';
 import Button from '@/components/Button';
 
@@ -71,7 +72,13 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
         />
       </div>
       
-      <div className="p-4 mt-auto">
+      <div className="p-4 mt-auto space-y-2">
+        <Link to="/">
+          <Button variant="outline" fullWidth className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50">
+            <Home size={18} className="mr-3" />
+            Retour à l'accueil
+          </Button>
+        </Link>
         <Link to="/logout">
           <Button variant="outline" fullWidth className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50">
             <LogOut size={18} className="mr-3" />
