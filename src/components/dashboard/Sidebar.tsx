@@ -21,13 +21,16 @@ interface SidebarProps {
 const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
   const navigate = useNavigate();
   
+  // Function to handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('user_registered');
+    localStorage.removeItem('username');
+    navigate('/');
+  };
+  
   // Function to handle both setting the selected item and navigation
-  const handleNavigation = (id: string, path: string) => {
+  const handleNavigation = (id: string) => {
     setSelectedNavItem(id);
-    // If path is provided, navigate to that route
-    if (path) {
-      navigate(path);
-    }
   };
   
   return (
@@ -43,49 +46,43 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
           icon={<GaugeCircle size={18} className="mr-3" />}
           label="Tableau de bord"
           id="dashboard"
-          path="/dashboard"
           selectedNavItem={selectedNavItem}
-          onClick={handleNavigation}
+          onClick={() => handleNavigation("dashboard")}
         />
         <NavItem 
           icon={<History size={18} className="mr-3" />}
           label="Historique"
           id="transactions"
-          path="/dashboard"
           selectedNavItem={selectedNavItem}
-          onClick={handleNavigation}
+          onClick={() => handleNavigation("transactions")}
         />
         <NavItem 
           icon={<LineChart size={18} className="mr-3" />}
           label="Analyses"
           id="analytics"
-          path="/dashboard"
           selectedNavItem={selectedNavItem}
-          onClick={handleNavigation}
+          onClick={() => handleNavigation("analytics")}
         />
         <NavItem 
           icon={<CreditCard size={18} className="mr-3" />}
           label="Portefeuille"
           id="wallet"
-          path="/dashboard"
           selectedNavItem={selectedNavItem}
-          onClick={handleNavigation}
+          onClick={() => handleNavigation("wallet")}
         />
         <NavItem 
           icon={<Share2 size={18} className="mr-3" />}
           label="Parrainage"
           id="referrals"
-          path="/dashboard"
           selectedNavItem={selectedNavItem}
-          onClick={handleNavigation}
+          onClick={() => handleNavigation("referrals")}
         />
         <NavItem 
           icon={<Settings size={18} className="mr-3" />}
           label="Paramètres"
           id="settings"
-          path="/dashboard"
           selectedNavItem={selectedNavItem}
-          onClick={handleNavigation}
+          onClick={() => handleNavigation("settings")}
         />
       </div>
       
@@ -96,12 +93,15 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
             Retour à l'accueil
           </Button>
         </Link>
-        <Link to="/">
-          <Button variant="outline" fullWidth className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50">
-            <LogOut size={18} className="mr-3" />
-            Déconnexion
-          </Button>
-        </Link>
+        <Button 
+          variant="outline" 
+          fullWidth 
+          className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50"
+          onClick={handleLogout}
+        >
+          <LogOut size={18} className="mr-3" />
+          Déconnexion
+        </Button>
       </div>
     </div>
   );
@@ -111,19 +111,18 @@ interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   id: string;
-  path: string;
   selectedNavItem: string;
-  onClick: (id: string, path: string) => void;
+  onClick: () => void;
 }
 
-const NavItem = ({ icon, label, id, path, selectedNavItem, onClick }: NavItemProps) => (
+const NavItem = ({ icon, label, id, selectedNavItem, onClick }: NavItemProps) => (
   <button
     className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
       selectedNavItem === id 
         ? 'bg-[#2d5f8a] text-white' 
         : 'hover:bg-[#334e68]/50 text-blue-100'
     }`}
-    onClick={() => onClick(id, path)}
+    onClick={onClick}
   >
     {icon}
     {label}

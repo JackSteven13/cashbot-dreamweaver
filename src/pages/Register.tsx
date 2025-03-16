@@ -62,6 +62,7 @@ const Register = () => {
         description: "Votre compte a été créé avec succès. Vous pouvez maintenant commencer à utiliser CashBot.",
       });
       
+      // Stocker le nom complet dans le localStorage au lieu du nom d'utilisateur extrait de l'email
       localStorage.setItem('username', name);
       localStorage.setItem('user_registered', 'true');
       

@@ -29,16 +29,16 @@ const Login = () => {
     setTimeout(() => {
       setIsLoading(false);
       
-      // Extraire le nom d'utilisateur de l'email (tout ce qui précède @)
-      const username = email.split('@')[0];
+      // Utiliser le prénom comme nom d'utilisateur (tout ce qui précède le premier espace)
+      const fullName = email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
       
       // Stocker le nom d'utilisateur dans le localStorage
-      localStorage.setItem('username', username);
+      localStorage.setItem('username', fullName);
       localStorage.setItem('user_registered', 'true');
       
       // Afficher un message de bienvenue personnalisé avec le nom d'utilisateur
       toast({
-        title: `Bienvenue, ${username} !`,
+        title: `Bienvenue, ${fullName} !`,
         description: "Vous êtes maintenant connecté à votre compte CashBot.",
       });
       
