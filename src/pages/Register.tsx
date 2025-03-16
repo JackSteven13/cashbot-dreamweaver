@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
@@ -6,7 +5,7 @@ import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
-import { createClient } from '@/lib/supabase';
+import { supabase } from "@/integrations/supabase/client";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -31,10 +30,6 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      // Initialize Supabase client
-      const supabase = createClient();
-      
-      // Register the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -47,7 +42,6 @@ const Register = () => {
       
       if (error) throw error;
       
-      // Create a user profile in the profiles table
       if (data && data.user) {
         const { error: profileError } = await supabase
           .from('profiles')
@@ -62,7 +56,6 @@ const Register = () => {
           
         if (profileError) {
           console.error("Error creating profile:", profileError);
-          // We still continue as the auth record was created
         }
       }
       
@@ -71,7 +64,6 @@ const Register = () => {
         description: "Votre compte a été créé avec succès. Veuillez vérifier votre email pour confirmer votre inscription.",
       });
       
-      // Store basic user info in localStorage
       localStorage.setItem('username', name);
       localStorage.setItem('user_registered', 'true');
       
