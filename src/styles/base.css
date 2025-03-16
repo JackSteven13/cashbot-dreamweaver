@@ -35,15 +35,15 @@
  
     --radius: 0.5rem;
 
-    /* Cyberpunk Theme - Light Mode */
-    --cyber-bg: 210 50% 98%;
-    --cyber-text: 120 100% 25%;
-    --cyber-accent: 120 60% 50%;
-    --cyber-border: 120 60% 50%;
-    --cyber-panel: 210 30% 95%;
-    --cyber-card: 210 30% 95%;
-    --cyber-terminal: 0 0% 95%;
-    --cyber-terminal-text: 120 100% 25%;
+    /* Professional Financial Theme - Light Mode */
+    --cyber-bg: 210 33% 98%;
+    --cyber-text: 215 50% 23%;
+    --cyber-accent: 215 70% 35%;
+    --cyber-border: 214 20% 80%;
+    --cyber-panel: 210 30% 96%;
+    --cyber-card: 210 30% 98%;
+    --cyber-terminal: 215 30% 15%;
+    --cyber-terminal-text: 210 15% 90%;
   }
  
   .dark {
@@ -75,15 +75,15 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
 
-    /* Cyberpunk Theme - Dark Mode */
-    --cyber-bg: 240 20% 10%;
-    --cyber-text: 120 100% 50%;
-    --cyber-accent: 120 60% 50%;
-    --cyber-border: 120 60% 50%;
-    --cyber-panel: 240 15% 15%;
-    --cyber-card: 240 15% 15%;
-    --cyber-terminal: 0 0% 0%;
-    --cyber-terminal-text: 120 100% 50%;
+    /* Professional Financial Theme - Dark Mode */
+    --cyber-bg: 215 30% 12%;
+    --cyber-text: 210 15% 90%;
+    --cyber-accent: 210 65% 45%;
+    --cyber-border: 215 20% 25%;
+    --cyber-panel: 215 30% 18%;
+    --cyber-card: 215 30% 20%;
+    --cyber-terminal: 215 35% 10%;
+    --cyber-terminal-text: 210 15% 85%;
   }
 }
  

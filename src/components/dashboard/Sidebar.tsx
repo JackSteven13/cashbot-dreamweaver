@@ -19,9 +19,9 @@ interface SidebarProps {
 
 const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
   return (
-    <div className="hidden md:flex w-64 flex-col bg-[#1a1a2f] border-r border-[#4CAF50]">
+    <div className="hidden md:flex w-64 flex-col bg-[#1e3a5f] border-r border-[#2d5f8a]/30">
       <div className="p-6">
-        <Link to="/" className="text-2xl font-semibold tracking-tight text-[#4CAF50]">
+        <Link to="/" className="text-2xl font-semibold tracking-tight text-white">
           CashBot
         </Link>
       </div>
@@ -73,7 +73,7 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
       
       <div className="p-4 mt-auto">
         <Link to="/logout">
-          <Button variant="outline" fullWidth className="justify-start border-[#4CAF50] text-[#00ff00] hover:bg-[#2a2a4f]">
+          <Button variant="outline" fullWidth className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50">
             <LogOut size={18} className="mr-3" />
             Déconnexion
           </Button>
@@ -95,8 +95,8 @@ const NavItem = ({ icon, label, id, selectedNavItem, setSelectedNavItem }: NavIt
   <button
     className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
       selectedNavItem === id 
-        ? 'bg-[#4CAF50] text-black' 
-        : 'hover:bg-[#2a2a4f] text-[#00ff00]'
+        ? 'bg-[#2d5f8a] text-white' 
+        : 'hover:bg-[#334e68]/50 text-blue-100'
     }`}
     onClick={() => setSelectedNavItem(id)}
   >

@@ -10,7 +10,7 @@
     @apply bg-gradient-to-b from-background to-muted/50;
   }
 
-  /* Cyberpunk Theme Components */
+  /* Professional Financial Theme Components */
   .cyberpunk-bg {
     background: hsl(var(--cyber-bg));
     color: hsl(var(--cyber-text));
@@ -19,26 +19,26 @@
   .neuro-panel {
     background: hsl(var(--cyber-panel));
     padding: 2rem;
-    border-radius: 20px;
-    border: 2px solid hsl(var(--cyber-border));
-    @apply shadow-lg;
+    border-radius: 12px;
+    border: 1px solid hsl(var(--cyber-border));
+    @apply shadow-md;
   }
 
   .cyber-card {
     background: hsl(var(--cyber-card));
     padding: 1.5rem;
-    border-radius: 10px;
+    border-radius: 8px;
     border: 1px solid hsl(var(--cyber-border));
-    @apply shadow-md;
+    @apply shadow-sm;
   }
 
   .cyber-terminal {
     background: hsl(var(--cyber-terminal));
     color: hsl(var(--cyber-terminal-text));
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid hsl(var(--cyber-border));
-    font-family: 'Courier New', monospace;
+    font-family: 'Consolas', 'Monaco', monospace;
   }
   
   /* Price Card Highlight */

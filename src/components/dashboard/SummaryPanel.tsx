@@ -32,14 +32,14 @@ const SummaryPanel = ({
         {/* Left Column */}
         <div className="flex-1">
           <div className="flex items-center mb-6">
-            <DollarSign className="text-[#4CAF50] h-8 w-8 mr-2" />
-            <h2 className="text-2xl font-semibold text-[#00ff00]">Solde : {balance.toFixed(2)}€</h2>
+            <DollarSign className="text-[#2d5f8a] h-8 w-8 mr-2" />
+            <h2 className="text-2xl font-semibold text-[#1e3a5f]">Solde : {balance.toFixed(2)}€</h2>
           </div>
           
           <Button 
             size="lg" 
             fullWidth 
-            className="cyber-pulse mb-6 bg-[#4CAF50] text-white"
+            className="mb-6 bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
             isLoading={isStartingSession} 
             onClick={handleStartSession}
           >
@@ -47,26 +47,26 @@ const SummaryPanel = ({
           </Button>
           
           <div className="mt-8">
-            <h3 className="text-lg font-semibold mb-3 text-[#00ff00]">🚀 Votre lien magique :</h3>
+            <h3 className="text-lg font-semibold mb-3 text-[#1e3a5f]">🚀 Votre lien magique :</h3>
             <div className="flex">
               <input 
                 type="text" 
                 value={referralLink} 
                 readOnly 
-                className="bg-[#2a2a4f] rounded-l-lg px-3 py-2 flex-1 text-sm text-[#00ff00] border-[#4CAF50]"
+                className="bg-[#f0f4f8] rounded-l-lg px-3 py-2 flex-1 text-sm text-[#334e68] border-[#cbd5e0]"
               />
-              <Button variant="outline" onClick={handleCopyReferralLink} className="rounded-l-none border-[#4CAF50] bg-[#2a2a4f] text-[#00ff00]">
+              <Button variant="outline" onClick={handleCopyReferralLink} className="rounded-l-none border-[#cbd5e0] bg-[#f0f4f8] text-[#334e68]">
                 <Copy size={16} />
               </Button>
             </div>
-            <p className="text-sm text-[#4CAF50] mt-2">Gagnez 70% sur chaque filleul !</p>
+            <p className="text-sm text-[#486581] mt-2">Gagnez 70% sur chaque filleul !</p>
           </div>
         </div>
         
         {/* Right Column - AI Terminal */}
         <div className="w-full lg:w-1/2 cyber-terminal">
-          <h3 className="text-lg font-semibold text-[#4CAF50] mb-3">📈 Dernier rapport IA :</h3>
-          <div className="font-mono text-sm text-[#00ff00] space-y-2">
+          <h3 className="text-lg font-semibold text-[#a0aec0] mb-3">📈 Dernier rapport IA :</h3>
+          <div className="font-mono text-sm text-[#e2e8f0] space-y-2">
             <p>{"> Analyse de 142 pubs..."}</p>
             <p>{"> Détection tendance haussière crypto"}</p>
             <p>{"> Profit estimé : +47€"}</p>
