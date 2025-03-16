@@ -1,4 +1,3 @@
-
 import React from 'react';
 import SummaryPanel from '@/components/dashboard/SummaryPanel';
 import TransactionsList from '@/components/dashboard/TransactionsList';
@@ -53,13 +52,10 @@ const DashboardMetrics = ({
           referralCount={referrals.length}
         />
         
-        {transactions.length > 0 ? (
-          <TransactionsList transactions={transactions} />
-        ) : (
-          <div className="neuro-panel p-6 text-center">
-            <p className="text-gray-500">Aucune transaction pour le moment. Le système va bientôt commencer à générer des revenus pour vous.</p>
-          </div>
-        )}
+        <TransactionsList 
+          transactions={transactions} 
+          isNewUser={isNewUser} 
+        />
       </div>
       
       <div className="space-y-6">
