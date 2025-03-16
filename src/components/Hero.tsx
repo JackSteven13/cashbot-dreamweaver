@@ -2,14 +2,20 @@ import { ArrowRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import Button from './Button';
 import 'leaflet/dist/leaflet.css';
+import { useIsMobile } from '../hooks/use-mobile';
+import LocationFeed from './LocationFeed';
 
 const Hero = () => {
   const mapRef = useRef(null);
   const [spots, setSpots] = useState(3);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const isMobile = useIsMobile();
 
   useEffect(() => {
+    // If on mobile, don't load the map
+    if (isMobile) return;
+    
     // Use a flag to track if the component is mounted
     let isMounted = true;
     let map;
@@ -99,7 +105,7 @@ const Hero = () => {
       isMounted = false;
       if (spotInterval) clearInterval(spotInterval);
     };
-  }, []);
+  }, [isMobile]);
 
   // Simulate countUp with useState
   const [adsCount, setAdsCount] = useState(0);
@@ -155,11 +161,17 @@ const Hero = () => {
             Gagnez 2000€/mois en dormant 💸
           </h1>
           
-          {/* Map */}
-          <div 
-            ref={mapRef} 
-            className="w-full h-[300px] rounded-xl shadow-lg mb-8 animate-fade-in"
-          ></div>
+          {/* Map for desktop, LocationFeed for mobile */}
+          {isMobile ? (
+            <div className="w-full max-w-lg mb-8 animate-fade-in">
+              <LocationFeed />
+            </div>
+          ) : (
+            <div 
+              ref={mapRef} 
+              className="w-full h-[300px] rounded-xl shadow-lg mb-8 animate-fade-in"
+            ></div>
+          )}
           
           {/* Counters */}
           <div className="grid grid-cols-2 gap-8 w-full max-w-lg mb-8 animate-slide-up">
