@@ -47,7 +47,7 @@ export const useBalanceActions = ({
       
       if (result.success) {
         console.log("Balance update successful. New balance:", result.newBalance);
-        // Immédiatement mettre à jour l'état local avec le nouveau solde
+        // Update local state immediately with new balance
         setUserData(prev => {
           const updatedData = {
             ...prev,
@@ -77,7 +77,7 @@ export const useBalanceActions = ({
       const result = await resetUserBalance();
       
       if (result.success) {
-        // Check if transaction property exists before trying to use it
+        // Safely update state regardless of whether transaction exists
         setUserData(prev => ({
           ...prev,
           balance: 0,

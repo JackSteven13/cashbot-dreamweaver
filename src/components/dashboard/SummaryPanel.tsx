@@ -40,9 +40,11 @@ const SummaryPanel = ({
   
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [displayBalance, setDisplayBalance] = useState(Math.max(0, balance));
+  const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   
-  // Mettre à jour le solde affiché quand le solde change
+  // Update the displayed balance when the balance prop changes
   useEffect(() => {
+    console.log("Balance prop changed to:", balance);
     setDisplayBalance(Math.max(0, balance));
   }, [balance]);
   
@@ -82,6 +84,22 @@ const SummaryPanel = ({
         });
       }
     }, 2000);
+  };
+
+  // Handle boost button click with debounce to prevent multiple rapid clicks
+  const onBoostClick = () => {
+    if (isButtonDisabled || isStartingSession || !canStartSession) return;
+    
+    // Disable button temporarily to prevent multiple clicks
+    setIsButtonDisabled(true);
+    
+    // Call the handleStartSession function
+    handleStartSession();
+    
+    // Re-enable button after a delay
+    setTimeout(() => {
+      setIsButtonDisabled(false);
+    }, 3000);
   };
 
   // Obtenir la limite de gain pour l'abonnement actuel
@@ -131,10 +149,10 @@ const SummaryPanel = ({
           <div className="flex gap-2 mb-6">
             <Button 
               size="lg" 
-              className={`flex-1 ${canStartSession ? 'bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white' : 'bg-gray-300 hover:bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+              className={`flex-1 ${canStartSession && !isButtonDisabled ? 'bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white' : 'bg-gray-300 hover:bg-gray-300 text-gray-500 cursor-not-allowed'}`}
               isLoading={isStartingSession} 
-              onClick={handleStartSession}
-              disabled={!canStartSession}
+              onClick={onBoostClick}
+              disabled={!canStartSession || isButtonDisabled}
             >
               {isStartingSession ? "Traitement en cours..." : "▶️ Boost manuel"}
             </Button>

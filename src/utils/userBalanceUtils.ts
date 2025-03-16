@@ -39,7 +39,7 @@ export const updateUserBalance = async (
         description: "Impossible de mettre à jour votre solde. Veuillez réessayer.",
         variant: "destructive"
       });
-      return { success: false };
+      return { success: false, newBalance: currentBalance, limitReached: false };
     }
     
     console.log("Balance updated successfully to", newBalance);
@@ -51,7 +51,7 @@ export const updateUserBalance = async (
       description: "Une erreur est survenue. Veuillez réessayer.",
       variant: "destructive"
     });
-    return { success: false };
+    return { success: false, newBalance: currentBalance, limitReached: false };
   }
 };
 
@@ -76,7 +76,7 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
         description: "Impossible de traiter votre retrait. Veuillez réessayer.",
         variant: "destructive"
       });
-      return { success: false };
+      return { success: false, transaction: null };
     }
     
     const report = `Retrait de ${currentBalance.toFixed(2)}€ effectué avec succès. Le transfert vers votre compte bancaire est en cours.`;
@@ -96,7 +96,7 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
       description: "Une erreur est survenue. Veuillez réessayer.",
       variant: "destructive"
     });
-    return { success: false };
+    return { success: false, transaction: null };
   }
 };
 

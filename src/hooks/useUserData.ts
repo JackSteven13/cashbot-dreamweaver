@@ -14,7 +14,8 @@ export const useUserData = () => {
     dailySessionCount: fetchedDailySessionCount, 
     showLimitAlert: initialShowLimitAlert,
     isLoading,
-    setShowLimitAlert: setFetchedShowLimitAlert
+    setShowLimitAlert: setFetchedShowLimitAlert,
+    refetchUserData // Make sure this exists in useUserFetch
   } = useUserFetch();
 
   // Create state variables to be managed by balance actions
@@ -64,6 +65,13 @@ export const useUserData = () => {
     setFetchedShowLimitAlert(show);
   }, [setFetchedShowLimitAlert]);
 
+  // Add a function to refresh the user data from the backend
+  const refreshUserData = useCallback(async () => {
+    if (refetchUserData) {
+      await refetchUserData();
+    }
+  }, [refetchUserData]);
+
   return {
     userData,
     isNewUser,
@@ -73,6 +81,7 @@ export const useUserData = () => {
     updateBalance,
     resetBalance,
     incrementSessionCount,
-    isLoading
+    isLoading,
+    refreshUserData
   };
 };

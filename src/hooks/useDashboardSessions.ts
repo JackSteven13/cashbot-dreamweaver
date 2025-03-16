@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { 
   SUBSCRIPTION_LIMITS, 
@@ -21,6 +21,7 @@ export const useDashboardSessions = (
 ) => {
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [lastAutoSessionTime, setLastAutoSessionTime] = useState(Date.now());
+  const sessionInProgress = useRef(false);
 
   // Effect for simulating automatic ad analysis
   useEffect(() => {
@@ -93,32 +94,46 @@ export const useDashboardSessions = (
   }, [userData.subscription]);
 
   const generateAutomaticRevenue = async () => {
-    // Calculate gain using the utility function
-    const randomGain = calculateAutoSessionGain(
-      userData.subscription, 
-      userData.balance, 
-      userData.referrals.length
-    );
+    if (sessionInProgress.current) return;
     
-    // If no gain was generated (due to limit being reached), show alert
-    if (randomGain <= 0) {
-      setShowLimitAlert(true);
-      return;
-    }
-    
-    // Update user balance and show notification
-    await updateBalance(
-      randomGain,
-      `Le système a généré ${randomGain}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${userData.subscription} vous permet d'accéder à ce niveau de performance.`
-    );
+    try {
+      sessionInProgress.current = true;
+      
+      // Calculate gain using the utility function
+      const randomGain = calculateAutoSessionGain(
+        userData.subscription, 
+        userData.balance, 
+        userData.referrals.length
+      );
+      
+      // If no gain was generated (due to limit being reached), show alert
+      if (randomGain <= 0) {
+        setShowLimitAlert(true);
+        return;
+      }
+      
+      // Update user balance and show notification
+      await updateBalance(
+        randomGain,
+        `Le système a généré ${randomGain}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${userData.subscription} vous permet d'accéder à ce niveau de performance.`
+      );
 
-    toast({
-      title: "Revenus générés",
-      description: `CashBot a généré ${randomGain}€ pour vous !`,
-    });
+      toast({
+        title: "Revenus générés",
+        description: `CashBot a généré ${randomGain}€ pour vous !`,
+      });
+    } finally {
+      sessionInProgress.current = false;
+    }
   };
 
   const handleStartSession = async () => {
+    // Prevent multiple concurrent sessions
+    if (isStartingSession || sessionInProgress.current) {
+      console.log("Session already in progress, ignoring request");
+      return;
+    }
+    
     // Check if session can be started
     if (!canStartManualSession(userData.subscription, dailySessionCount, userData.balance)) {
       // If freemium account and session limit reached
@@ -143,15 +158,18 @@ export const useDashboardSessions = (
       }
     }
     
+    sessionInProgress.current = true;
     setIsStartingSession(true);
     
-    // Increment daily session count for freemium accounts
-    if (userData.subscription === 'freemium') {
-      await incrementSessionCount();
-    }
-    
-    // Simulate manual session
-    setTimeout(async () => {
+    try {
+      // Increment daily session count for freemium accounts
+      if (userData.subscription === 'freemium') {
+        await incrementSessionCount();
+      }
+      
+      // Simulate manual session
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       // Calculate gain using the utility function
       const randomGain = calculateManualSessionGain(
         userData.subscription, 
@@ -165,20 +183,37 @@ export const useDashboardSessions = (
         `Session manuelle : Notre technologie a optimisé le processus et généré ${randomGain}€ de revenus pour votre compte ${userData.subscription}.`
       );
       
-      setIsStartingSession(false);
-      
       toast({
         title: "Session terminée",
         description: `CashBot a généré ${randomGain}€ de revenus pour vous !`,
       });
-    }, 2000);
+    } catch (error) {
+      console.error("Error during session:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue pendant la session. Veuillez réessayer.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsStartingSession(false);
+      sessionInProgress.current = false;
+    }
   };
   
   const handleWithdrawal = async () => {
-    // Process withdrawal only if sufficient balance (at least 20€) and not freemium account
-    if (userData.balance >= 20 && userData.subscription !== 'freemium') {
-      // Reset balance to 0 to simulate withdrawal
-      await resetBalance();
+    // Prevent multiple concurrent operations
+    if (isStartingSession || sessionInProgress.current) return;
+    
+    try {
+      sessionInProgress.current = true;
+      
+      // Process withdrawal only if sufficient balance (at least 20€) and not freemium account
+      if (userData.balance >= 20 && userData.subscription !== 'freemium') {
+        // Reset balance to 0 to simulate withdrawal
+        await resetBalance();
+      }
+    } finally {
+      sessionInProgress.current = false;
     }
   };
 
