@@ -16,6 +16,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const navigate = useNavigate();
   const redirectInProgress = useRef(false);
   const initialCheckComplete = useRef(false);
+  const autoRetryCount = useRef(0);
   
   const { 
     isAuthenticated, 
@@ -23,6 +24,19 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     isRetrying, 
     checkAuth
   } = useAuthVerification();
+
+  // Fonction pour retry automatique améliorée
+  useEffect(() => {
+    if (authCheckFailed && autoRetryCount.current < 2) {
+      console.log(`Auto-retry authentication attempt ${autoRetryCount.current + 1}`);
+      const timer = setTimeout(() => {
+        checkAuth(true);
+        autoRetryCount.current += 1;
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [authCheckFailed, checkAuth]);
 
   // Handle clean login function
   const handleCleanLogin = useCallback(() => {

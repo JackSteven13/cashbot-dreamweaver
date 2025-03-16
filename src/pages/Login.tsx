@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
@@ -14,14 +15,36 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   
   const from = (location.state as any)?.from?.pathname || '/dashboard';
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      try {
+        const isAuthenticated = await verifyAuth();
+        
+        if (isAuthenticated) {
+          console.log("User already authenticated, redirecting to dashboard");
+          navigate('/dashboard', { replace: true });
+        }
+      } catch (error) {
+        console.error("Error checking authentication:", error);
+      } finally {
+        setIsCheckingSession(false);
+      }
+    };
+    
+    checkExistingSession();
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
+      // Utiliser la persistance par défaut (localStorage)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -46,7 +69,7 @@ const Login = () => {
           } else {
             throw new Error("Session non établie après connexion");
           }
-        }, 1000);
+        }, 800);
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -60,6 +83,21 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
+  // Si on vérifie encore la session, afficher un loader
+  if (isCheckingSession) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+            <p className="mt-2">Vérification de session...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">

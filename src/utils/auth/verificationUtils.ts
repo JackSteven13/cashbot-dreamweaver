@@ -2,15 +2,15 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Vérifie l'état d'authentification de manière stable
+ * Vérifie l'état d'authentification de manière stable avec persistance améliorée
  * @returns Une promesse qui résout à true si l'utilisateur est authentifié, false sinon
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
-    // Ajout d'un délai plus long pour permettre au contexte d'authentification de s'initialiser correctement
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Petit délai pour permettre au contexte d'authentification de s'initialiser correctement
+    await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Vérifier la session actuelle
+    // Vérifier la session actuelle avec persistance activée
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
@@ -25,8 +25,8 @@ export const verifyAuth = async (): Promise<boolean> => {
       const now = new Date();
       
       if (now > tokenExpiry) {
-        console.log("Session expirée, tentative de rafraîchissement...");
-        // Tentons de rafraîchir automatiquement
+        console.log("Session expirée, tentative de rafraîchissement automatique...");
+        // Tentative de rafraîchissement automatique
         const refreshResult = await supabase.auth.refreshSession();
         if (refreshResult.error || !refreshResult.data.session) {
           console.error("Échec du rafraîchissement de session:", refreshResult.error);

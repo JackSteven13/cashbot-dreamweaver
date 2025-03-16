@@ -2,14 +2,15 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Gets the current user session
+ * Gets the current user session with improved persistence
  * @returns The user session or null if not authenticated
  */
 export const getCurrentSession = async () => {
   try {
-    // Ajout d'un délai court pour éviter les problèmes de concurrence
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Léger délai pour éviter les problèmes de concurrence
+    await new Promise(resolve => setTimeout(resolve, 150));
     
+    // Utiliser getSession avec la persistance locale activée par défaut
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
@@ -24,7 +25,7 @@ export const getCurrentSession = async () => {
       const now = new Date();
       
       if (now > tokenExpiry) {
-        console.log("Session expired, attempting refresh...");
+        console.log("Session expired, attempting automatic refresh...");
         const refreshed = await refreshSession();
         return refreshed;
       }
@@ -40,15 +41,13 @@ export const getCurrentSession = async () => {
 };
 
 /**
- * Refreshes the current session to ensure fresh authentication
+ * Refreshes the current session with improved persistence
  */
 export const refreshSession = async () => {
   try {
     console.log("Attempting to refresh the session");
     
-    // Ajout d'un délai court pour éviter les conflits de requêtes
-    await new Promise(resolve => setTimeout(resolve, 150));
-    
+    // Utiliser refreshSession avec persistance
     const { data, error } = await supabase.auth.refreshSession();
     
     if (error) {
