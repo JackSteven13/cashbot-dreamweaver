@@ -5,6 +5,7 @@ import { useUserDataFetcher } from './useUserDataFetcher';
 import { toast } from "@/components/ui/use-toast";
 import { verifyAuth } from "@/utils/auth/verificationUtils";
 import { refreshSession } from "@/utils/auth/sessionUtils";
+import { ensureZeroBalanceForNewUser } from '@/utils/userDataInitializer';
 
 interface UserFetchResult {
   userData: UserData;
@@ -27,7 +28,7 @@ export const useUserFetch = (): UserFetchResult => {
   
   const [fetcherState, fetcherActions] = useUserDataFetcher();
   
-  const { userData, isNewUser, dailySessionCount, showLimitAlert, isLoading } = fetcherState;
+  const { userData: fetchedUserData, isNewUser, dailySessionCount, showLimitAlert, isLoading } = fetcherState;
   const { setShowLimitAlert, fetchUserData } = fetcherActions;
   
   const fetchData = useCallback(async () => {
@@ -161,8 +162,11 @@ export const useUserFetch = (): UserFetchResult => {
     }
   }, [fetchData]);
 
+  // Ensure new users have zero balance
+  const correctedUserData = ensureZeroBalanceForNewUser(isNewUser, fetchedUserData);
+
   return {
-    userData,
+    userData: correctedUserData,
     isNewUser,
     dailySessionCount,
     showLimitAlert,

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { SummaryPanel } from '@/components/dashboard/summary';
 import TransactionsList from '@/components/dashboard/TransactionsList';
@@ -64,17 +65,23 @@ const DashboardMetrics = ({
           <div className="space-y-4">
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm text-[#334e68] font-medium">Aujourd'hui</p>
-              <p className="text-2xl font-bold text-[#2d5f8a]">+{balance.toFixed(2)}€</p>
+              <p className="text-2xl font-bold text-[#2d5f8a]">
+                {isNewUser ? "0.00€" : `+${balance.toFixed(2)}€`}
+              </p>
             </div>
             
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm text-[#334e68] font-medium">Cette semaine</p>
-              <p className="text-2xl font-bold text-[#2d5f8a]">+{(balance * 1.5).toFixed(2)}€</p>
+              <p className="text-2xl font-bold text-[#2d5f8a]">
+                {isNewUser ? "0.00€" : `+${(balance * 1.5).toFixed(2)}€`}
+              </p>
             </div>
             
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm text-[#334e68] font-medium">Ce mois</p>
-              <p className="text-2xl font-bold text-[#2d5f8a]">+{(balance * 3).toFixed(2)}€</p>
+              <p className="text-2xl font-bold text-[#2d5f8a]">
+                {isNewUser ? "0.00€" : `+${(balance * 3).toFixed(2)}€`}
+              </p>
             </div>
           </div>
         </div>
