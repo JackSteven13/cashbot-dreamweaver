@@ -5,6 +5,7 @@ import BackgroundElements from './hero/BackgroundElements';
 import HeroCallToAction from './hero/HeroCallToAction';
 import MapComponent from './hero/MapComponent';
 import StatsCounter from './hero/StatsCounter';
+import RevenueCalculator from '@/components/dashboard/RevenueCalculator';
 
 const Hero = () => {
   const isMobile = useIsMobile();
@@ -34,6 +35,15 @@ const Hero = () => {
           
           {/* CTA Button - Replaced form with button linked to /login */}
           <HeroCallToAction />
+          
+          {/* Revenue Calculator - Added directly after the CTA button */}
+          <div className="w-full max-w-3xl mt-10 md:mt-16 animate-fade-in">
+            <RevenueCalculator 
+              currentSubscription="freemium" 
+              isNewUser={true}
+              isHomePage={true}
+            />
+          </div>
         </div>
       </div>
     </section>

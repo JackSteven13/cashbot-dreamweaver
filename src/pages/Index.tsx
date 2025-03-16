@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
 import { FeaturesGrid } from '@/components/Feature';
 import Button from '@/components/Button';
+import RevenueCalculator from '@/components/dashboard/RevenueCalculator';
 
 const Index = () => {
   const features = [
@@ -46,6 +47,21 @@ const Index = () => {
       
       <main className="flex-1">
         <Hero />
+        
+        {/* Revenue Calculator Section */}
+        <section className="py-10 md:py-16 bg-gradient-to-b from-slate-900 to-slate-950">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="max-w-3xl mx-auto">
+              <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center text-white">
+                Simulez vos revenus potentiels avec CashBot
+              </h2>
+              <RevenueCalculator 
+                currentSubscription="freemium" 
+                isNewUser={true} 
+              />
+            </div>
+          </div>
+        </section>
         
         <FeaturesGrid 
           title="Une Plateforme de Monétisation Révolutionnaire"

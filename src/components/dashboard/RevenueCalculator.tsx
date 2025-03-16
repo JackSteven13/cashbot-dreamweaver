@@ -22,10 +22,12 @@ import {
 } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { SUBSCRIPTION_LIMITS } from '@/components/dashboard/summary/constants';
+import { Link } from 'react-router-dom';
 
 interface RevenueCalculatorProps {
   currentSubscription: string;
   isNewUser: boolean;
+  isHomePage?: boolean;
 }
 
 const subscriptionLabels: Record<string, string> = {
@@ -49,15 +51,16 @@ interface FormValues {
 
 const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({ 
   currentSubscription, 
-  isNewUser 
+  isNewUser,
+  isHomePage = false
 }) => {
-  const [selectedPlan, setSelectedPlan] = useState(currentSubscription);
+  const [selectedPlan, setSelectedPlan] = useState(currentSubscription === 'freemium' ? 'pro' : currentSubscription);
   const [calculatedRevenue, setCalculatedRevenue] = useState<Record<string, number>>({});
   const [monthlyProfit, setMonthlyProfit] = useState<Record<string, number>>({});
 
   const form = useForm<FormValues>({
     defaultValues: {
-      sessionsPerDay: 1,
+      sessionsPerDay: 2,
       daysPerMonth: 20
     }
   });
@@ -92,19 +95,31 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
     setMonthlyProfit(profits);
   }, [values.sessionsPerDay, values.daysPerMonth]);
 
+  // Adapter les styles selon l'endroit où le composant est affiché
+  const cardClassName = isHomePage 
+    ? "w-full bg-white/5 backdrop-blur-lg border border-white/10 shadow-xl" 
+    : "w-full mt-8 bg-white shadow-md border border-blue-100";
+
+  const headerClassName = isHomePage
+    ? "bg-gradient-to-r from-blue-900/50 to-indigo-900/50 border-b border-white/10"
+    : "bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-100";
+
+  const textColorClass = isHomePage ? "text-white" : "text-[#1e3a5f]";
+  const descriptionColorClass = isHomePage ? "text-blue-100" : "text-gray-500";
+
   return (
-    <Card className="w-full mt-8 bg-white shadow-md border border-blue-100">
-      <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-100">
-        <CardTitle className="text-xl font-semibold text-[#1e3a5f]">
+    <Card className={cardClassName}>
+      <CardHeader className={headerClassName}>
+        <CardTitle className={`text-xl font-semibold ${textColorClass}`}>
           Simulateur de Revenus
         </CardTitle>
-        <CardDescription>
+        <CardDescription className={descriptionColorClass}>
           {isNewUser 
             ? "Découvrez votre potentiel de gains avec différents abonnements" 
             : "Comparez vos revenus potentiels selon différents abonnements"}
         </CardDescription>
       </CardHeader>
-      <CardContent className="pt-6">
+      <CardContent className={`pt-6 ${isHomePage ? 'text-white' : ''}`}>
         <Form {...form}>
           <div className="space-y-5">
             <FormField
@@ -112,10 +127,10 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
               name="sessionsPerDay"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[#1e3a5f] font-medium">
+                  <FormLabel className={isHomePage ? "text-white font-medium" : "text-[#1e3a5f] font-medium"}>
                     Sessions par jour
                   </FormLabel>
-                  <FormDescription>
+                  <FormDescription className={isHomePage ? "text-blue-200" : ""}>
                     Nombre de sessions de gain que vous souhaitez lancer quotidiennement
                   </FormDescription>
                   <div className="flex items-center space-x-4">
@@ -129,7 +144,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
                         className="flex-1"
                       />
                     </FormControl>
-                    <div className="w-12 text-center font-medium">
+                    <div className={`w-12 text-center font-medium ${isHomePage ? 'text-white' : ''}`}>
                       {field.value}
                     </div>
                   </div>
@@ -142,10 +157,10 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
               name="daysPerMonth"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[#1e3a5f] font-medium">
+                  <FormLabel className={isHomePage ? "text-white font-medium" : "text-[#1e3a5f] font-medium"}>
                     Jours d'activité par mois
                   </FormLabel>
-                  <FormDescription>
+                  <FormDescription className={isHomePage ? "text-blue-200" : ""}>
                     Combien de jours par mois utiliserez-vous l'application?
                   </FormDescription>
                   <div className="flex items-center space-x-4">
@@ -159,7 +174,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
                         className="flex-1"
                       />
                     </FormControl>
-                    <div className="w-12 text-center font-medium">
+                    <div className={`w-12 text-center font-medium ${isHomePage ? 'text-white' : ''}`}>
                       {field.value}
                     </div>
                   </div>
@@ -170,42 +185,53 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
         </Form>
 
         <div className="mt-8 space-y-3">
-          <h3 className="text-md font-semibold text-[#1e3a5f]">Revenus mensuels estimés</h3>
+          <h3 className={`text-md font-semibold ${isHomePage ? 'text-white' : 'text-[#1e3a5f]'}`}>
+            Revenus mensuels estimés
+          </h3>
           <div className="grid grid-cols-1 gap-3">
             {Object.keys(SUBSCRIPTION_LIMITS).map((plan) => {
+              if (plan === 'freemium' && isHomePage) return null; // Ne pas afficher freemium sur la page d'accueil
+              
               const isFreemium = plan === 'freemium';
               const isCurrent = plan === currentSubscription;
+              const bgColorClass = isHomePage 
+                ? selectedPlan === plan ? 'bg-blue-900/40 border-blue-500' : 'bg-blue-950/40 border-blue-800/50' 
+                : selectedPlan === plan ? 'border-blue-500 bg-blue-50' : 'border-gray-200';
               
               return (
                 <div 
                   key={plan}
-                  className={`p-4 rounded-lg border-2 ${
-                    selectedPlan === plan 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200'
-                  }`}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${bgColorClass}`}
                   onClick={() => setSelectedPlan(plan)}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className={`font-medium ${isCurrent ? 'text-blue-700' : 'text-gray-800'}`}>
+                      <span className={`font-medium ${
+                        isHomePage 
+                          ? (isCurrent ? 'text-blue-300' : 'text-white') 
+                          : (isCurrent ? 'text-blue-700' : 'text-gray-800')
+                      }`}>
                         {subscriptionLabels[plan]}
                         {isFreemium && 
                           <span className="ml-2 text-xs opacity-75">(Limité à 1 session/jour)</span>
                         }
                       </span>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className={`text-xs ${isHomePage ? 'text-blue-300' : 'text-gray-500'} mt-1`}>
                         {subscriptionPrices[plan] > 0 
                           ? `${subscriptionPrices[plan].toFixed(2)}€/mois` 
                           : 'Gratuit'}
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-bold text-green-600">
+                      <div className={`text-lg font-bold ${isHomePage ? 'text-green-400' : 'text-green-600'}`}>
                         {calculatedRevenue[plan]?.toFixed(2)}€
                       </div>
-                      <div className="text-xs text-gray-500">
-                        Profit: <span className={monthlyProfit[plan] > 0 ? 'text-green-600' : 'text-red-500'}>
+                      <div className={`text-xs ${isHomePage ? 'text-blue-300' : 'text-gray-500'}`}>
+                        Profit: <span className={
+                          monthlyProfit[plan] > 0 
+                            ? (isHomePage ? 'text-green-400' : 'text-green-600') 
+                            : 'text-red-500'
+                        }>
                           {monthlyProfit[plan]?.toFixed(2)}€
                         </span>
                       </div>
@@ -217,21 +243,24 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="bg-gray-50 border-t pt-4 flex justify-end space-x-2">
-        {selectedPlan !== currentSubscription && (
-          <Button 
-            variant="default"
-            className="bg-green-600 hover:bg-green-700 text-white"
-            onClick={() => window.location.href = '/offres'}
-          >
-            Passer à l'offre {subscriptionLabels[selectedPlan]}
-          </Button>
-        )}
-        {selectedPlan === currentSubscription && (
-          <Button variant="outline">
-            {currentSubscription === 'freemium' ? 'Découvrir les offres' : 'Votre abonnement actuel'}
-          </Button>
-        )}
+      <CardFooter className={isHomePage ? "bg-blue-950/50 border-t border-white/10 pt-4" : "bg-gray-50 border-t pt-4"}>
+        <div className="w-full flex justify-center md:justify-end space-x-2">
+          <Link to="/register">
+            <Button 
+              variant="default"
+              className={
+                isHomePage 
+                  ? "bg-green-500 hover:bg-green-600 text-white w-full md:w-auto" 
+                  : "bg-green-600 hover:bg-green-700 text-white"
+              }
+            >
+              {isHomePage 
+                ? "Démarrer et gagner avec CashBot" 
+                : `Passer à l'offre ${subscriptionLabels[selectedPlan]}`
+              }
+            </Button>
+          </Link>
+        </div>
       </CardFooter>
     </Card>
   );
