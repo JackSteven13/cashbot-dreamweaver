@@ -3,6 +3,7 @@ import React from 'react';
 import { SummaryPanel } from '@/components/dashboard/summary';
 import TransactionsList from '@/components/dashboard/TransactionsList';
 import LocationFeed from '@/components/LocationFeed';
+import RevenueCalculator from '@/components/dashboard/RevenueCalculator';
 
 interface Transaction {
   date: string;
@@ -52,6 +53,14 @@ const DashboardMetrics = ({
           canStartSession={canStartSession}
           referralCount={referrals.length}
         />
+        
+        {/* Uniquement pour les nouveaux utilisateurs ou ceux qui ont un abonnement freemium */}
+        {(isNewUser || subscription === 'freemium') && (
+          <RevenueCalculator 
+            currentSubscription={subscription}
+            isNewUser={isNewUser}
+          />
+        )}
         
         <TransactionsList 
           transactions={transactions} 
