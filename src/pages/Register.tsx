@@ -5,6 +5,8 @@ import { ArrowRight, ArrowLeft } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
+import { Input } from '@/components/ui/input';
+import { createClient } from '@/lib/supabase';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -13,8 +15,8 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (password !== confirmPassword) {
@@ -28,15 +30,62 @@ const Register = () => {
     
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Initialize Supabase client
+      const supabase = createClient();
+      
+      // Register the user
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          },
+        },
+      });
+      
+      if (error) throw error;
+      
+      // Create a user profile in the profiles table
+      if (data && data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: data.user.id,
+              full_name: name,
+              email: email,
+              created_at: new Date().toISOString(),
+            },
+          ]);
+          
+        if (profileError) {
+          console.error("Error creating profile:", profileError);
+          // We still continue as the auth record was created
+        }
+      }
+      
       toast({
         title: "Compte créé !",
-        description: "Votre compte a été créé avec succès.",
+        description: "Votre compte a été créé avec succès. Veuillez vérifier votre email pour confirmer votre inscription.",
       });
+      
+      // Store basic user info in localStorage
+      localStorage.setItem('username', name);
+      localStorage.setItem('user_registered', 'true');
+      
       navigate('/dashboard');
-    }, 1500);
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      toast({
+        title: "Erreur d'inscription",
+        description: error.message || "Une erreur est survenue lors de l'inscription.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -58,12 +107,12 @@ const Register = () => {
                 <label htmlFor="name" className="block text-sm font-medium mb-1">
                   Nom complet
                 </label>
-                <input
+                <Input
                   id="name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full p-3 border border-border rounded-lg bg-background"
+                  className="w-full"
                   placeholder="Votre nom"
                   required
                 />
@@ -73,12 +122,12 @@ const Register = () => {
                 <label htmlFor="email" className="block text-sm font-medium mb-1">
                   Email
                 </label>
-                <input
+                <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-3 border border-border rounded-lg bg-background"
+                  className="w-full"
                   placeholder="votre@email.com"
                   required
                 />
@@ -88,12 +137,12 @@ const Register = () => {
                 <label htmlFor="password" className="block text-sm font-medium mb-1">
                   Mot de passe
                 </label>
-                <input
+                <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3 border border-border rounded-lg bg-background"
+                  className="w-full"
                   placeholder="••••••••"
                   required
                 />
@@ -103,12 +152,12 @@ const Register = () => {
                 <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">
                   Confirmer le mot de passe
                 </label>
-                <input
+                <Input
                   id="confirmPassword"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full p-3 border border-border rounded-lg bg-background"
+                  className="w-full"
                   placeholder="••••••••"
                   required
                 />
