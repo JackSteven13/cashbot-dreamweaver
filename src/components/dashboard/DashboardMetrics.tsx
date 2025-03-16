@@ -19,6 +19,8 @@ interface DashboardMetricsProps {
   transactions: Transaction[];
   isNewUser?: boolean;
   subscription: string;
+  dailySessionCount?: number;
+  canStartSession?: boolean;
 }
 
 const DashboardMetrics = ({ 
@@ -29,7 +31,9 @@ const DashboardMetrics = ({
   handleWithdrawal,
   transactions,
   isNewUser = false,
-  subscription
+  subscription,
+  dailySessionCount = 0,
+  canStartSession = true
 }: DashboardMetricsProps) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -42,6 +46,8 @@ const DashboardMetrics = ({
           handleWithdrawal={handleWithdrawal}
           isNewUser={isNewUser}
           subscription={subscription}
+          dailySessionCount={dailySessionCount}
+          canStartSession={canStartSession}
         />
         
         {transactions.length > 0 ? (
@@ -59,17 +65,17 @@ const DashboardMetrics = ({
           <div className="space-y-4">
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm text-[#334e68] font-medium">Aujourd'hui</p>
-              <p className="text-2xl font-bold text-[#2d5f8a]">+{(Math.random() * 5).toFixed(2)}€</p>
+              <p className="text-2xl font-bold text-[#2d5f8a]">+{balance.toFixed(2)}€</p>
             </div>
             
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm text-[#334e68] font-medium">Cette semaine</p>
-              <p className="text-2xl font-bold text-[#2d5f8a]">+{(Math.random() * 15 + 5).toFixed(2)}€</p>
+              <p className="text-2xl font-bold text-[#2d5f8a]">+{(balance * 1.5).toFixed(2)}€</p>
             </div>
             
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm text-[#334e68] font-medium">Ce mois</p>
-              <p className="text-2xl font-bold text-[#2d5f8a]">+{(Math.random() * 50 + 20).toFixed(2)}€</p>
+              <p className="text-2xl font-bold text-[#2d5f8a]">+{(balance * 3).toFixed(2)}€</p>
             </div>
           </div>
         </div>

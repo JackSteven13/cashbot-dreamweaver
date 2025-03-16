@@ -20,6 +20,8 @@ interface SummaryPanelProps {
   isNewUser?: boolean;
   subscription: string;
   handleWithdrawal?: () => void;
+  dailySessionCount?: number;
+  canStartSession?: boolean;
 }
 
 const SummaryPanel = ({ 
@@ -29,7 +31,9 @@ const SummaryPanel = ({
   handleStartSession,
   isNewUser = false,
   subscription,
-  handleWithdrawal
+  handleWithdrawal,
+  dailySessionCount = 0,
+  canStartSession = true
 }: SummaryPanelProps) => {
   
   const [isWithdrawing, setIsWithdrawing] = useState(false);
@@ -74,6 +78,12 @@ const SummaryPanel = ({
 
   // Obtenir la limite de gain pour l'abonnement actuel
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  
+  // Calculer les sessions restantes
+  const remainingSessions = subscription === 'freemium' ? Math.max(0, 1 - dailySessionCount!) : 'illimitées';
+  const sessionsDisplay = subscription === 'freemium' 
+    ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}`
+    : 'Sessions illimitées';
 
   return (
     <div className="neuro-panel mb-8">
@@ -99,14 +109,18 @@ const SummaryPanel = ({
             <p className="text-sm text-blue-800">
               <span className="font-semibold">Gain maximum :</span> {dailyLimit}€ par jour
             </p>
+            <p className="text-sm text-blue-800">
+              <span className="font-semibold">Sessions :</span> {sessionsDisplay}
+            </p>
           </div>
           
           <div className="flex gap-2 mb-6">
             <Button 
               size="lg" 
-              className="flex-1 bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
+              className={`flex-1 ${canStartSession ? 'bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white' : 'bg-gray-300 hover:bg-gray-300 text-gray-500 cursor-not-allowed'}`}
               isLoading={isStartingSession} 
               onClick={handleStartSession}
+              disabled={!canStartSession}
             >
               {isStartingSession ? "Traitement en cours..." : "▶️ Boost manuel"}
             </Button>
@@ -150,6 +164,7 @@ const SummaryPanel = ({
                 <p>{"> Technologie propriétaire activée"}</p>
                 <p>{"> Processus en cours..."}</p>
                 <p>{"> Limite journalière : " + dailyLimit + "€"}</p>
+                <p>{subscription === 'freemium' ? "> 1 session manuelle par jour" : "> Sessions manuelles illimitées"}</p>
               </>
             ) : (
               <>
@@ -157,6 +172,9 @@ const SummaryPanel = ({
                 <p>{"> Traitement automatique des données"}</p>
                 <p>{"> Optimisation du rendement"}</p>
                 <p>{"> Potentiel journalier : " + dailyLimit + "€"}</p>
+                <p>{subscription === 'freemium' 
+                  ? `> Sessions restantes : ${remainingSessions}` 
+                  : "> Sessions illimitées"}</p>
               </>
             )}
             <p className="blink-cursor">&nbsp;</p>
@@ -164,7 +182,10 @@ const SummaryPanel = ({
           
           <div className="mt-4 bg-[#1a2234] p-3 rounded border border-[#2c3e50]">
             <p className="text-[#a0aec0] text-xs">
-              CashBot fonctionne automatiquement pour vous. Le système travaille en arrière-plan, aucune action n'est requise de votre part.
+              Une session correspond à un boost manuel où CashBot analyse intensivement des publicités pour générer des revenus immédiats. 
+              {subscription === 'freemium' 
+                ? ' Avec le forfait Freemium, vous êtes limité à 1 session par jour et 0.5€ de gains maximum.' 
+                : ' Votre abonnement vous permet de lancer des sessions manuelles illimitées.'}
             </p>
           </div>
         </div>

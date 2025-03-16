@@ -16,15 +16,28 @@ const OFFRES = {
 // Helper to determine if a plan is the current user's plan
 const isCurrentPlan = (plan: string) => {
   // In a real app, this would check the logged-in user's subscription
-  return plan === 'freemium'; // Default for demo
+  const subscription = localStorage.getItem('subscription') || 'freemium';
+  return plan === subscription;
 };
 
 const Offres = () => {
   const handleSubscribe = (niveau: string) => {
     // In a real app, this would call your backend API
     console.log(`Subscribing to ${niveau}`);
+    
+    // Mettre à jour l'abonnement de l'utilisateur en localStorage
+    localStorage.setItem('subscription', niveau);
+    
     // You would typically redirect to a payment page or process the subscription
-    alert(`🔄 Abonnement ${niveau.charAt(0).toUpperCase() + niveau.slice(1)} activé !`);
+    toast({
+      title: `Abonnement ${niveau.charAt(0).toUpperCase() + niveau.slice(1)} activé !`,
+      description: `Vous bénéficiez maintenant des avantages du forfait ${niveau}.`,
+    });
+    
+    // Pour actualiser la page après changement d'abonnement
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
   };
 
   return (
@@ -38,9 +51,18 @@ const Offres = () => {
       
       <main className="container mx-auto py-12 px-4">
         <h2 className="text-3xl font-bold text-center text-[#1e3a5f] mb-4">Nos Offres</h2>
-        <p className="text-[#486581] text-center mb-12 max-w-2xl mx-auto">
+        <p className="text-[#486581] text-center mb-6 max-w-2xl mx-auto">
           Choisissez l'abonnement qui vous convient et commencez à générer des revenus avec notre IA de trading avancée.
         </p>
+        
+        <div className="bg-blue-50 p-4 mb-8 rounded-lg border border-blue-100 max-w-2xl mx-auto">
+          <h3 className="text-lg font-medium text-[#1e3a5f] mb-2">Qu'est-ce qu'une session ?</h3>
+          <p className="text-[#334e68]">
+            Une session correspond à un boost manuel où CashBot analyse intensivement des publicités pour générer des revenus immédiats.
+            Avec le forfait Freemium, vous êtes limité à 1 session par jour et 0.5€ de gains maximum.
+            Les gains quotidiens sont réinitialisés à minuit (heure de Paris).
+          </p>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {Object.entries(OFFRES).map(([key, plan]) => (
@@ -61,7 +83,7 @@ const Offres = () => {
                 <div className="space-y-2">
                   <div className="flex items-center text-[#334e68]">
                     <Check className="mr-2 h-4 w-4 text-[#2d5f8a]" />
-                    <span>{typeof plan.sessions === 'number' ? `${plan.sessions} sessions/jour` : `Sessions ${plan.sessions}`}</span>
+                    <span>{typeof plan.sessions === 'number' ? `${plan.sessions} session${plan.sessions > 1 ? 's' : ''} manuelle${plan.sessions > 1 ? 's' : ''}/jour` : `Sessions ${plan.sessions}`}</span>
                   </div>
                   <div className="flex items-center text-[#334e68]">
                     <Check className="mr-2 h-4 w-4 text-[#2d5f8a]" />
@@ -94,6 +116,11 @@ const Offres = () => {
       </main>
     </div>
   );
+};
+
+// Fonction toast pour les notifications
+const toast = ({title, description, variant}: {title: string, description: string, variant?: string}) => {
+  alert(`${title}\n\n${description}`);
 };
 
 export default Offres;
