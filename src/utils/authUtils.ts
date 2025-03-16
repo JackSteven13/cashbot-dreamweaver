@@ -15,7 +15,12 @@ export const getCurrentSession = async () => {
       return null;
     }
     
-    return data.session;
+    // Add extra validation to ensure session is complete
+    if (data.session && data.session.user && data.session.user.id) {
+      return data.session;
+    }
+    
+    return null;
   } catch (error) {
     console.error("Error getting session:", error);
     return null;
@@ -45,16 +50,16 @@ export const forceSignOut = async (): Promise<boolean> => {
   try {
     console.log("Performing complete sign out...");
     
-    // Clear local storage
+    // Clear local storage (without removing all items, just auth-related ones)
     localStorage.removeItem('supabase.auth.token');
     localStorage.removeItem('supabase.auth.expires_at');
     localStorage.removeItem('supabase.auth.refresh_token');
     
-    // Sign out with global scope
-    await supabase.auth.signOut({ scope: 'global' });
+    // Perform more stable sign out
+    await supabase.auth.signOut();
     
     // Short delay for sign out to process
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 800));
     
     console.log("User signed out successfully");
     return true;
@@ -78,7 +83,13 @@ export const refreshSession = async () => {
       return null;
     }
     
-    return data.session;
+    // Validate the refreshed session
+    if (data.session && data.session.user && data.session.user.id) {
+      console.log("Session refreshed successfully");
+      return data.session;
+    }
+    
+    return null;
   } catch (error) {
     console.error("Error refreshing session:", error);
     return null;
@@ -86,7 +97,7 @@ export const refreshSession = async () => {
 };
 
 /**
- * Vérifie l'état d'authentification
+ * Vérifie l'état d'authentification de manière stable
  * @returns Une promesse qui résout à true si l'utilisateur est authentifié, false sinon
  */
 export const verifyAuth = async (): Promise<boolean> => {
@@ -99,12 +110,12 @@ export const verifyAuth = async (): Promise<boolean> => {
       return false;
     }
     
-    if (data.session) {
-      // Vérifier que l'utilisateur est accessible
-      const { data: userData } = await supabase.auth.getUser();
-      return !!userData?.user;
+    if (data.session && data.session.user && data.session.user.id) {
+      console.log("Valid session found for user:", data.session.user.id);
+      return true;
     }
     
+    console.log("No valid session found");
     return false;
   } catch (error) {
     console.error("Error verifying authentication:", error);

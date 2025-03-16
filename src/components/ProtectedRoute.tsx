@@ -1,10 +1,10 @@
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, RefreshCcw, LogOut } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
-import { verifyAuth, forceSignOut } from "@/utils/authUtils";
+import { verifyAuth, forceSignOut, refreshSession } from "@/utils/authUtils";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -17,8 +17,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [username, setUsername] = useState<string | null>(null);
   const [authCheckFailed, setAuthCheckFailed] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [retryAttempts, setRetryAttempts] = useState(0);
+  const maxRetries = 3;
 
-  const checkAuth = async (isManualRetry = false) => {
+  const checkAuth = useCallback(async (isManualRetry = false) => {
     if (isManualRetry) {
       setIsRetrying(true);
       setAuthCheckFailed(false);
@@ -26,12 +28,29 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
     
     try {
-      console.log(`Vérification d'authentification ${isManualRetry ? "manuelle" : "automatique"}`);
+      console.log(`Vérification d'authentification ${isManualRetry ? "manuelle" : "automatique"} (tentative ${retryAttempts + 1})`);
+      
+      // Try refreshing the session first for better stability
+      if (retryAttempts > 0) {
+        console.log("Trying to refresh session before auth check");
+        await refreshSession();
+      }
       
       const isAuthValid = await verifyAuth();
       
       if (!isAuthValid) {
         console.log("Échec d'authentification");
+        
+        if (retryAttempts < maxRetries && !isManualRetry) {
+          // Auto-retry with exponential backoff
+          const delay = Math.min(1000 * Math.pow(1.5, retryAttempts), 5000);
+          console.log(`Nouvelle tentative automatique dans ${delay}ms`);
+          
+          setRetryAttempts(prev => prev + 1);
+          setTimeout(() => checkAuth(), delay);
+          return;
+        }
+        
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
         setIsRetrying(false);
@@ -47,6 +66,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       }
       
       console.log("Utilisateur authentifié:", user.id);
+      setRetryAttempts(0); // Reset retry counter on success
       
       // Get profile for welcome message
       try {
@@ -71,21 +91,33 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       }
     } catch (error) {
       console.error("Erreur lors de la vérification d'authentification:", error);
+      
+      if (retryAttempts < maxRetries && !isManualRetry) {
+        // Auto-retry with exponential backoff
+        const delay = Math.min(1000 * Math.pow(1.5, retryAttempts), 5000);
+        console.log(`Nouvelle tentative après erreur dans ${delay}ms`);
+        
+        setRetryAttempts(prev => prev + 1);
+        setTimeout(() => checkAuth(), delay);
+        return;
+      }
+      
       setAuthCheckFailed(true);
       setIsAuthenticated(false);
       setIsRetrying(false);
     }
-  };
+  }, [retryAttempts]);
 
   useEffect(() => {
     let isMounted = true;
     
-    // Set timeout for initial auth check
+    // Set timeout for initial auth check with longer delay
     const initTimeout = setTimeout(() => {
       if (isMounted) {
+        setRetryAttempts(0); // Reset retry attempts on new mount
         checkAuth();
       }
-    }, 500);
+    }, 800);
     
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -110,7 +142,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       clearTimeout(initTimeout);
       subscription.unsubscribe();
     };
-  }, [location.pathname]); 
+  }, [location.pathname, checkAuth]); 
 
   // Fonction pour effectuer une connexion propre
   const handleCleanLogin = () => {
