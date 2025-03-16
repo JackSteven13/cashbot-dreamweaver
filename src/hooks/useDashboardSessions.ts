@@ -1,7 +1,13 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
-import { SUBSCRIPTION_LIMITS, checkDailyLimit, canStartManualSession } from '@/utils/subscriptionUtils';
+import { 
+  SUBSCRIPTION_LIMITS, 
+  checkDailyLimit, 
+  canStartManualSession,
+  calculateManualSessionGain,
+  calculateAutoSessionGain
+} from '@/utils/subscriptionUtils';
 import { UserData } from './useUserData';
 import { supabase } from "@/integrations/supabase/client";
 
@@ -87,23 +93,18 @@ export const useDashboardSessions = (
   }, [userData.subscription]);
 
   const generateAutomaticRevenue = () => {
-    // Get daily limit for current subscription
-    const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    // Calculate gain using the new utility function
+    const randomGain = calculateAutoSessionGain(
+      userData.subscription, 
+      userData.balance, 
+      userData.referrals.length
+    );
     
-    // Calculate remaining amount before reaching limit
-    const remainingAmount = dailyLimit - userData.balance;
-    
-    // If limit already reached, don't generate revenue
-    if (remainingAmount <= 0) {
+    // If no gain was generated (due to limit being reached), show alert
+    if (randomGain <= 0) {
       setShowLimitAlert(true);
       return;
     }
-    
-    // Generate random gain based on subscription (between 20% and 80% of remaining limit)
-    // Ensure gain is always positive
-    const minGain = Math.max(0.01, Math.min(dailyLimit * 0.1, remainingAmount));
-    const maxGain = Math.max(minGain + 0.01, Math.min(dailyLimit * 0.3, remainingAmount));
-    const randomGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
     
     // Update user balance and show notification
     updateBalance(
@@ -153,17 +154,12 @@ export const useDashboardSessions = (
     setTimeout(() => {
       setIsStartingSession(false);
       
-      // Get daily limit for current subscription
-      const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-      
-      // Calculate remaining amount before reaching limit
-      const remainingAmount = dailyLimit - userData.balance;
-      
-      // Generate random gain (higher than auto sessions, limited by remaining amount)
-      // CRITICAL: Always generate positive gain between 0.10 and remaining amount
-      const minGain = Math.max(0.10, Math.min(0.10, remainingAmount));
-      const maxGain = Math.max(minGain + 0.01, Math.min(dailyLimit * 0.5, remainingAmount));
-      const randomGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
+      // Calculate gain using the new utility function
+      const randomGain = calculateManualSessionGain(
+        userData.subscription, 
+        userData.balance, 
+        userData.referrals.length
+      );
       
       // Update user data
       updateBalance(

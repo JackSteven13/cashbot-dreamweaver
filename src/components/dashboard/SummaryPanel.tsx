@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Copy, DollarSign, ArrowUpCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -22,6 +21,7 @@ interface SummaryPanelProps {
   handleWithdrawal?: () => void;
   dailySessionCount?: number;
   canStartSession?: boolean;
+  referralCount?: number;
 }
 
 const SummaryPanel = ({ 
@@ -33,7 +33,8 @@ const SummaryPanel = ({
   subscription,
   handleWithdrawal,
   dailySessionCount = 0,
-  canStartSession = true
+  canStartSession = true,
+  referralCount = 0
 }: SummaryPanelProps) => {
   
   const [isWithdrawing, setIsWithdrawing] = useState(false);
@@ -117,6 +118,10 @@ const SummaryPanel = ({
             <p className="text-sm text-blue-800">
               <span className="font-semibold">Sessions :</span> {sessionsDisplay}
             </p>
+            <p className="text-sm text-blue-800">
+              <span className="font-semibold">Filleuls actifs :</span> {referralCount}
+              {referralCount > 0 && <span className="ml-1 text-green-600">(+{Math.min(referralCount * 5, 25)}% de bonus)</span>}
+            </p>
           </div>
           
           <div className="flex gap-2 mb-6">
@@ -170,6 +175,7 @@ const SummaryPanel = ({
                 <p>{"> Processus en cours..."}</p>
                 <p>{"> Limite journalière : " + dailyLimit + "€"}</p>
                 <p>{subscription === 'freemium' ? "> 1 session manuelle par jour" : "> Sessions manuelles illimitées"}</p>
+                <p>{referralCount > 0 ? `> Bonus filleuls : +${Math.min(referralCount * 5, 25)}%` : "> Aucun filleul actif"}</p>
               </>
             ) : (
               <>
@@ -180,6 +186,7 @@ const SummaryPanel = ({
                 <p>{subscription === 'freemium' 
                   ? `> Sessions restantes : ${remainingSessions}` 
                   : "> Sessions illimitées"}</p>
+                <p>{referralCount > 0 ? `> Bonus filleuls : +${Math.min(referralCount * 5, 25)}%` : "> Aucun filleul actif"}</p>
               </>
             )}
             <p className="blink-cursor">&nbsp;</p>
@@ -191,6 +198,7 @@ const SummaryPanel = ({
               {subscription === 'freemium' 
                 ? ' Avec le forfait Freemium, vous êtes limité à 1 session par jour et 0.5€ de gains maximum.' 
                 : ' Votre abonnement vous permet de lancer des sessions manuelles illimitées.'}
+              {referralCount > 0 && ' Chaque filleul vous apporte un bonus de gains de 5% (jusqu\'à 25% au total).'}
             </p>
           </div>
         </div>
@@ -200,3 +208,4 @@ const SummaryPanel = ({
 };
 
 export default SummaryPanel;
+

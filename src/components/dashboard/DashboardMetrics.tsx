@@ -21,6 +21,7 @@ interface DashboardMetricsProps {
   subscription: string;
   dailySessionCount?: number;
   canStartSession?: boolean;
+  referrals?: any[];
 }
 
 const DashboardMetrics = ({ 
@@ -33,7 +34,8 @@ const DashboardMetrics = ({
   isNewUser = false,
   subscription,
   dailySessionCount = 0,
-  canStartSession = true
+  canStartSession = true,
+  referrals = []
 }: DashboardMetricsProps) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -48,6 +50,7 @@ const DashboardMetrics = ({
           subscription={subscription}
           dailySessionCount={dailySessionCount}
           canStartSession={canStartSession}
+          referralCount={referrals.length}
         />
         
         {transactions.length > 0 ? (

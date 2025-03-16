@@ -75,6 +75,7 @@ const Dashboard = () => {
         subscription={userData.subscription}
         dailySessionCount={dailySessionCount}
         canStartSession={canStartManualSession(userData.subscription, dailySessionCount, userData.balance)}
+        referrals={userData.referrals}
       />
     </DashboardLayout>
   );
