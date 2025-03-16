@@ -28,7 +28,7 @@ export const useDashboardSessions = (
     setShowLimitAlert
   );
 
-  const { handleWithdrawal } = useWithdrawal(
+  const { handleWithdrawal, isProcessingWithdrawal } = useWithdrawal(
     userData,
     resetBalance
   );
@@ -44,7 +44,8 @@ export const useDashboardSessions = (
   return {
     isStartingSession,
     handleStartSession,
-    handleWithdrawal
+    handleWithdrawal,
+    isProcessingWithdrawal
   };
 };
 
