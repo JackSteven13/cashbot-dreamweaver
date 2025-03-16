@@ -20,9 +20,10 @@ export const useUserFetch = (): UserFetchResult => {
   const isMounted = useRef(true);
   const fetchInProgress = useRef(false);
   const retryCount = useRef(0);
-  const maxRetries = 5; // Augmentation du nombre de tentatives
+  const maxRetries = 5;
   const initialFetchDelayRef = useRef<NodeJS.Timeout | null>(null);
   const initialFetchAttempted = useRef(false);
+  const lastFetchTimestamp = useRef(0);
   
   const [fetcherState, fetcherActions] = useUserDataFetcher();
   
@@ -30,6 +31,13 @@ export const useUserFetch = (): UserFetchResult => {
   const { setShowLimitAlert, fetchUserData } = fetcherActions;
   
   const fetchData = useCallback(async () => {
+    // Prevent multiple fetches within a short timeframe (debounce)
+    const now = Date.now();
+    if (now - lastFetchTimestamp.current < 2000) {
+      console.log("Skipping fetch - too soon after last fetch");
+      return;
+    }
+    
     if (fetchInProgress.current || !isMounted.current) {
       console.log("Fetch already in progress or component unmounted, skipping");
       return;
@@ -37,6 +45,7 @@ export const useUserFetch = (): UserFetchResult => {
     
     try {
       fetchInProgress.current = true;
+      lastFetchTimestamp.current = now;
       
       // Ajout d'un délai court pour éviter les conflits de requêtes
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -76,10 +85,8 @@ export const useUserFetch = (): UserFetchResult => {
       initialFetchAttempted.current = true;
       console.log("User data fetched successfully");
       
-      fetchInProgress.current = false;
     } catch (error) {
       console.error("Error fetching user data:", error);
-      fetchInProgress.current = false;
       
       if (retryCount.current < maxRetries && isMounted.current) {
         const delay = Math.min(1000 * Math.pow(1.5, retryCount.current), 8000);
@@ -100,6 +107,8 @@ export const useUserFetch = (): UserFetchResult => {
           variant: "destructive"
         });
       }
+    } finally {
+      fetchInProgress.current = false;
     }
   }, [fetchUserData]);
 
@@ -107,16 +116,20 @@ export const useUserFetch = (): UserFetchResult => {
     console.log("useUserFetch mounting");
     isMounted.current = true;
     fetchInProgress.current = false;
-    retryCount.current = 0;
-    initialFetchAttempted.current = false;
     
-    // Delay initial fetch to avoid race conditions
-    initialFetchDelayRef.current = setTimeout(() => {
-      if (isMounted.current) {
-        console.log("Starting initial data fetch");
-        fetchData();
-      }
-    }, 1500);
+    // Only reset these on initial mount, not on re-renders
+    if (!initialFetchAttempted.current) {
+      retryCount.current = 0;
+      initialFetchAttempted.current = false;
+      
+      // Delay initial fetch to avoid race conditions
+      initialFetchDelayRef.current = setTimeout(() => {
+        if (isMounted.current) {
+          console.log("Starting initial data fetch");
+          fetchData();
+        }
+      }, 1500);
+    }
     
     return () => {
       console.log("useUserFetch unmounting");

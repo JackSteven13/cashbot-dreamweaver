@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import DashboardLoading from '@/components/dashboard/DashboardLoading';
@@ -12,6 +12,7 @@ import { useDashboardInitialization } from '@/hooks/useDashboardInitialization';
 
 const Dashboard = () => {
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
+  const [renderKey, setRenderKey] = useState(Date.now()); // Force re-renders when needed
   
   const {
     isAuthChecking,
@@ -45,6 +46,19 @@ const Dashboard = () => {
     resetBalance
   );
 
+  // Callback to force refresh when needed
+  const forceRefresh = useCallback(() => {
+    setRenderKey(Date.now());
+    refreshUserData();
+  }, [refreshUserData]);
+
+  // One-time check on initial render to detect stale data
+  useEffect(() => {
+    if (!isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
+      console.log("Dashboard mounted with user data:", userData.username);
+    }
+  }, [isAuthChecking, isLoading, userData]);
+
   // Afficher un loader plus robuste pendant le chargement
   if (isAuthChecking || isLoading || !isReady) {
     return <DashboardLoading />;
@@ -57,12 +71,13 @@ const Dashboard = () => {
 
   // Vérification supplémentaire pour userData
   if (!userData || !userData.username) {
-    return <DashboardError errorType="data" onRefresh={refreshUserData} />;
+    return <DashboardError errorType="data" onRefresh={forceRefresh} />;
   }
 
   // Enfin, afficher le tableau de bord
   return (
     <DashboardLayout
+      key={renderKey}
       username={userData.username}
       subscription={userData.subscription}
       selectedNavItem={selectedNavItem}

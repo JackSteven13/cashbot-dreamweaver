@@ -12,6 +12,7 @@ export const useDashboardInitialization = () => {
   const mountedRef = useRef(true);
   const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const authCheckInProgress = useRef(false);
+  const authCheckAttempted = useRef(false);
   
   // Amélioré pour être plus robuste
   const checkAuth = useCallback(async () => {
@@ -22,6 +23,7 @@ export const useDashboardInitialization = () => {
     
     try {
       authCheckInProgress.current = true;
+      authCheckAttempted.current = true;
       
       // Essayer de rafraîchir la session avant tout
       await refreshSession();
@@ -31,19 +33,26 @@ export const useDashboardInitialization = () => {
       
       const isAuthenticated = await verifyAuth();
       
-      authCheckInProgress.current = false;
+      if (!mountedRef.current) {
+        authCheckInProgress.current = false;
+        return false;
+      }
       
       if (!isAuthenticated) {
         console.log("No active session found, redirecting to login");
         setAuthError(true);
+        authCheckInProgress.current = false;
         return false;
       }
       
       console.log("Active session found, initializing dashboard");
+      authCheckInProgress.current = false;
       return true;
     } catch (error) {
       console.error("Authentication error:", error);
-      setAuthError(true);
+      if (mountedRef.current) {
+        setAuthError(true);
+      }
       authCheckInProgress.current = false;
       return false;
     }
@@ -53,6 +62,11 @@ export const useDashboardInitialization = () => {
     mountedRef.current = true;
     
     const initDashboard = async () => {
+      if (authCheckAttempted.current) {
+        console.log("Auth check already attempted, skipping duplicate initialization");
+        return;
+      }
+      
       setIsAuthChecking(true);
       try {
         const isAuthenticated = await checkAuth();
@@ -105,6 +119,9 @@ export const useDashboardInitialization = () => {
       if (event === 'SIGNED_OUT') {
         console.log("Auth state change: signed out");
         navigate('/login', { replace: true });
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log("Auth state change: token refreshed");
+        // No need to reinitialize here, just acknowledge the refresh
       }
     });
     

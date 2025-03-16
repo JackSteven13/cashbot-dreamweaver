@@ -1,8 +1,20 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { handleError } from "./errorHandling";
 
 // Update session count with retry mechanism
 export const updateSessionCount = async (userId: string, newCount: number) => {
+  // Cache local progress to avoid duplicate calls
+  const cacheKey = `sessionUpdate_${userId}_${Date.now()}`;
+  const updateInProgress = window.sessionStorage.getItem(cacheKey);
+  
+  if (updateInProgress) {
+    console.log('Session count update already in progress, skipping duplicate call');
+    return true;
+  }
+  
+  window.sessionStorage.setItem(cacheKey, 'true');
+  
   const maxRetries = 3;
   let retryCount = 0;
   
@@ -24,7 +36,8 @@ export const updateSessionCount = async (userId: string, newCount: number) => {
         retryCount++;
         
         if (retryCount >= maxRetries) {
-          return false;
+          window.sessionStorage.removeItem(cacheKey);
+          return handleError(updateError, "Error updating session count");
         }
         
         // Wait before retrying
@@ -33,13 +46,15 @@ export const updateSessionCount = async (userId: string, newCount: number) => {
       }
       
       console.log("Session count updated successfully");
+      window.sessionStorage.removeItem(cacheKey);
       return true;
     } catch (error) {
       console.error("Error in updateSessionCount (attempt " + (retryCount + 1) + "):", error);
       retryCount++;
       
       if (retryCount >= maxRetries) {
-        return false;
+        window.sessionStorage.removeItem(cacheKey);
+        return handleError(error, "Exception in updateSessionCount");
       }
       
       // Wait before retrying
@@ -47,5 +62,6 @@ export const updateSessionCount = async (userId: string, newCount: number) => {
     }
   }
   
+  window.sessionStorage.removeItem(cacheKey);
   return false;
 };
