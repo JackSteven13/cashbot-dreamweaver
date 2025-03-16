@@ -1,3 +1,4 @@
+
 import { ArrowRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import Button from './Button';
@@ -107,32 +108,64 @@ const Hero = () => {
     };
   }, [isMobile]);
 
-  // Simulate countUp with useState
+  // Stats counters with continuous incrementation
   const [adsCount, setAdsCount] = useState(0);
   const [revenueCount, setRevenueCount] = useState(0);
   
   useEffect(() => {
-    const adsTarget = 15432;
-    const revenueTarget = 289432;
-    const duration = 2000; // 2 seconds
+    // Initial target values
+    const initialAdsTarget = 15432;
+    const initialRevenueTarget = 289432;
+    const initialDuration = 2000; // 2 seconds for initial animation
     const steps = 30;
-    const adsIncrement = adsTarget / steps;
-    const revenueIncrement = revenueTarget / steps;
+    
+    // Calculate increments for initial animation
+    const adsIncrement = initialAdsTarget / steps;
+    const revenueIncrement = initialRevenueTarget / steps;
     
     let currentStep = 0;
     
-    const interval = setInterval(() => {
+    // Initial rapid count-up animation
+    const initialInterval = setInterval(() => {
       currentStep++;
       
       if (currentStep <= steps) {
-        setAdsCount(Math.min(Math.floor(adsIncrement * currentStep), adsTarget));
-        setRevenueCount(Math.min(Math.floor(revenueIncrement * currentStep), revenueTarget));
+        setAdsCount(Math.min(Math.floor(adsIncrement * currentStep), initialAdsTarget));
+        setRevenueCount(Math.min(Math.floor(revenueIncrement * currentStep), initialRevenueTarget));
       } else {
-        clearInterval(interval);
+        clearInterval(initialInterval);
+        
+        // After initial animation, start continuous incrementation
+        startContinuousIncrement();
       }
-    }, duration / steps);
+    }, initialDuration / steps);
     
-    return () => clearInterval(interval);
+    // Function to start continuous increment after initial animation
+    const startContinuousIncrement = () => {
+      // Continuous increment intervals (slower than initial animation)
+      const adsInterval = setInterval(() => {
+        // Add between 1-3 ads randomly
+        const increment = Math.floor(Math.random() * 3) + 1;
+        setAdsCount(prev => prev + increment);
+      }, 3000); // Every 3 seconds
+      
+      const revenueInterval = setInterval(() => {
+        // Add between €10-50 randomly
+        const increment = (Math.floor(Math.random() * 41) + 10);
+        setRevenueCount(prev => prev + increment);
+      }, 5000); // Every 5 seconds
+      
+      // Cleanup function
+      return () => {
+        clearInterval(adsInterval);
+        clearInterval(revenueInterval);
+      };
+    };
+    
+    // Cleanup
+    return () => {
+      clearInterval(initialInterval);
+    };
   }, []);
 
   // Handle form submission
