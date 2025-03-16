@@ -1,10 +1,8 @@
 
 import { useState } from 'react';
 import { toast } from '@/components/ui/use-toast';
-import Sidebar from '@/components/dashboard/Sidebar';
-import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import SummaryPanel from '@/components/dashboard/SummaryPanel';
-import TransactionsList from '@/components/dashboard/TransactionsList';
+import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 
 // Mock data - in a real app, this would come from your backend
 const mockUser = {
@@ -50,30 +48,20 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden cyberpunk-bg">
-      <Sidebar 
-        selectedNavItem={selectedNavItem} 
-        setSelectedNavItem={setSelectedNavItem} 
+    <DashboardLayout
+      username={mockUser.username}
+      subscription={mockUser.subscription}
+      selectedNavItem={selectedNavItem}
+      setSelectedNavItem={setSelectedNavItem}
+    >
+      <DashboardMetrics
+        balance={mockUser.balance}
+        referralLink={mockUser.referralLink}
+        isStartingSession={isStartingSession}
+        handleStartSession={handleStartSession}
+        transactions={mockUser.transactions}
       />
-      
-      <div className="flex-1 flex flex-col overflow-y-auto bg-[#0f0f23]">
-        <DashboardHeader 
-          username={mockUser.username} 
-          subscription={mockUser.subscription} 
-        />
-        
-        <main className="flex-1 p-4 md:p-6">
-          <SummaryPanel 
-            balance={mockUser.balance}
-            referralLink={mockUser.referralLink}
-            isStartingSession={isStartingSession}
-            handleStartSession={handleStartSession}
-          />
-          
-          <TransactionsList transactions={mockUser.transactions} />
-        </main>
-      </div>
-    </div>
+    </DashboardLayout>
   );
 };
 
