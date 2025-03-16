@@ -1,4 +1,3 @@
-
 import { ArrowRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import Button from './Button';
@@ -99,9 +98,9 @@ const Hero = () => {
   const [revenueCount, setRevenueCount] = useState(0);
   
   useEffect(() => {
-    // Target values - match the requested values (30,000 ads and €300,000 per day)
+    // Target values - updated revenue target to €100,000 per day
     const dailyAdsTarget = 30000;
-    const dailyRevenueTarget = 300000;
+    const dailyRevenueTarget = 100000; // Changed from 300000 to 100000
     
     // Get current Paris time
     const getNowInParis = () => {
