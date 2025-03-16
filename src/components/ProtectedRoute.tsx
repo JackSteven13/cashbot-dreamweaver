@@ -1,6 +1,6 @@
 
 import { ReactNode, useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
@@ -11,15 +11,28 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [authCheckFailed, setAuthCheckFailed] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
+    let authTimeout: NodeJS.Timeout;
     
     const checkAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log("Checking authentication status");
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error checking auth session:", error);
+          if (isMounted) {
+            setAuthCheckFailed(true);
+            setIsAuthenticated(false);
+          }
+          return;
+        }
         
         if (!session || !session.user) {
           console.log('User not authenticated, redirecting to login');
@@ -29,35 +42,22 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
           return;
         }
         
+        console.log("User authenticated:", session.user.id);
+        
         // Get profile for welcome message
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('full_name')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
           
-        if (profileError) {
-          if (profileError.code !== 'PGRST116') { // Ignore not found errors
-            console.error("Error fetching profile:", profileError);
-          }
-          
-          // Try to create a profile if it doesn't exist
-          if (profileError.code === 'PGRST116') {
-            try {
-              await supabase
-                .from('profiles')
-                .insert({
-                  id: session.user.id,
-                  full_name: session.user.email?.split('@')[0] || 'utilisateur',
-                  email: session.user.email
-                });
-            } catch (insertError) {
-              console.error("Error creating profile:", insertError);
-            }
-          }
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error fetching profile:", profileError);
         }
           
-        const displayName = profileData?.full_name || session.user.email?.split('@')[0] || 'utilisateur';
+        const displayName = profileData?.full_name || 
+                           session.user.user_metadata?.full_name || 
+                           (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
         
         if (isMounted) {
           setUsername(displayName);
@@ -74,15 +74,26 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       } catch (error) {
         console.error("Error checking authentication:", error);
         if (isMounted) {
+          setAuthCheckFailed(true);
           setIsAuthenticated(false);
         }
       }
     };
 
     checkAuth();
+    
+    // Set a timeout to prevent infinite loading
+    authTimeout = setTimeout(() => {
+      if (isAuthenticated === null && isMounted) {
+        console.warn("Auth check timed out");
+        setAuthCheckFailed(true);
+        setIsAuthenticated(false);
+      }
+    }, 10000);
 
     // Monitor authentication state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event);
       if (event === 'SIGNED_OUT') {
         if (isMounted) {
           setIsAuthenticated(false);
@@ -95,9 +106,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
             .from('profiles')
             .select('full_name')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
             
-          const displayName = profileData?.full_name || session.user.email?.split('@')[0] || 'utilisateur';
+          const displayName = profileData?.full_name || 
+                             session.user.user_metadata?.full_name || 
+                             (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
           setUsername(displayName);
           setIsAuthenticated(true);
         }
@@ -106,15 +119,31 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
     return () => {
       isMounted = false;
+      clearTimeout(authTimeout);
       subscription.unsubscribe();
     };
   }, [location]);
 
   // Show loader during verification
   if (isAuthenticated === null) {
+    if (authCheckFailed) {
+      return (
+        <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f23] text-white p-4">
+          <p className="mb-4 text-center">Problème de vérification de l'authentification</p>
+          <button 
+            onClick={() => navigate('/login')}
+            className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+          >
+            Retourner à la page de connexion
+          </button>
+        </div>
+      );
+    }
+    
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center h-screen bg-[#0f0f23]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+        <span className="ml-2 text-blue-300">Vérification de l'authentification...</span>
       </div>
     );
   }

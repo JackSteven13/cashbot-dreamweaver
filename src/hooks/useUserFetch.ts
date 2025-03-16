@@ -32,8 +32,10 @@ export const useUserFetch = (): UserFetchResult => {
     if (fetchInProgress.current || !isMounted.current) return;
     
     try {
+      console.log("Starting fetchData in useUserFetch");
       fetchInProgress.current = true;
       await fetchUserData();
+      console.log("fetchUserData completed successfully");
       // Reset retry count on success
       if (retryCount > 0) setRetryCount(0);
     } catch (error) {
@@ -72,21 +74,22 @@ export const useUserFetch = (): UserFetchResult => {
     // Réinitialiser l'état de montage et lancer la récupération initiale
     isMounted.current = true;
     fetchInProgress.current = false;
+    console.log("useEffect in useUserFetch triggered, isLoading:", isLoading);
     
-    // Récupération initiale des données
-    if (!isLoading) {
-      fetchData().catch(console.error);
-    }
+    // Récupération initiale des données 
+    fetchData().catch(console.error);
     
     // Nettoyage pour éviter les fuites mémoire et les mises à jour d'état sur des composants démontés
     return () => {
+      console.log("useUserFetch component unmounting");
       isMounted.current = false;
     };
-  }, [fetchData, isLoading]);
+  }, [fetchData]);
 
   // Fonction refetch stable et sécurisée
   const refetchUserData = useCallback(async () => {
     if (isMounted.current && !fetchInProgress.current) {
+      console.log("Manually refetching user data");
       await fetchData();
     }
   }, [fetchData]);

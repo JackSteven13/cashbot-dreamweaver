@@ -22,6 +22,7 @@ const Dashboard = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        console.log("No active session found, redirecting to login");
         toast({
           title: "Accès refusé",
           description: "Vous devez être connecté pour accéder à votre tableau de bord.",
@@ -31,6 +32,7 @@ const Dashboard = () => {
         return false;
       }
       
+      console.log("Active session found for user:", session.user.id);
       return true;
     } catch (error) {
       console.error("Authentication error:", error);
@@ -53,17 +55,23 @@ const Dashboard = () => {
       const isAuthenticated = await checkAuth();
       
       if (isMounted && isAuthenticated) {
+        console.log("User authenticated, initializing dashboard");
         setIsAuthChecking(false);
         // Donner un petit délai pour que tout s'initialise correctement
         setTimeout(() => {
-          if (isMounted) setIsReady(true);
-        }, 100);
+          if (isMounted) {
+            console.log("Dashboard ready");
+            setIsReady(true);
+          }
+        }, 300);
       }
     };
     
+    console.log("Dashboard component mounted");
     initDashboard();
     
     return () => { 
+      console.log("Dashboard component unmounting");
       isMounted = false; 
     };
   }, [checkAuth]);
@@ -79,14 +87,16 @@ const Dashboard = () => {
     updateBalance,
     resetBalance,
     incrementSessionCount,
-    isLoading
+    isLoading,
+    refreshUserData
   } = useUserData();
   
   // Session management logic
   const {
     isStartingSession,
     handleStartSession,
-    handleWithdrawal
+    handleWithdrawal,
+    isProcessingWithdrawal
   } = useDashboardSessions(
     userData,
     dailySessionCount,
@@ -101,13 +111,29 @@ const Dashboard = () => {
     return (
       <div className="flex items-center justify-center h-screen bg-[#0f0f23]">
         <Loader2 className="w-10 h-10 animate-spin text-blue-400" />
+        <span className="ml-2 text-blue-400 sr-only">Chargement...</span>
       </div>
     );
   }
 
   // Safety check for userData
-  if (!userData.username) {
-    return null; // Don't render anything, useEffect will redirect
+  if (!userData || !userData.username) {
+    console.error("userData or username is missing:", userData);
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f23] text-white">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-400 mb-4" />
+        <div className="text-center">
+          <p className="mb-2">Chargement des données utilisateur...</p>
+          <p className="text-sm text-blue-300">Si cette page persiste, veuillez vous reconnecter.</p>
+          <button 
+            onClick={() => navigate('/login')}
+            className="mt-4 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+          >
+            Retourner à la page de connexion
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

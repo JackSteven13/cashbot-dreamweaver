@@ -13,13 +13,32 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   
   // Vérifier si l'utilisateur est déjà connecté
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate('/dashboard');
+      try {
+        setIsCheckingSession(true);
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error checking session:", error);
+          toast({
+            title: "Erreur",
+            description: "Impossible de vérifier votre session.",
+            variant: "destructive",
+          });
+        }
+        
+        if (session) {
+          console.log("User already logged in, redirecting to dashboard");
+          navigate('/dashboard', { replace: true });
+        }
+      } catch (error) {
+        console.error("Session check error:", error);
+      } finally {
+        setIsCheckingSession(false);
       }
     };
     
@@ -39,12 +58,14 @@ const Login = () => {
       if (error) throw error;
       
       if (data && data.user) {
+        console.log("Login successful, user:", data.user.id);
+        
         // Récupérer le profil utilisateur
         const { data: profileData } = await supabase
           .from('profiles')
           .select('full_name')
           .eq('id', data.user.id)
-          .single();
+          .maybeSingle();
         
         const displayName = profileData?.full_name || email.split('@')[0];
         
@@ -55,7 +76,8 @@ const Login = () => {
         
         // Rediriger vers la page d'origine ou le tableau de bord avec l'état de connexion
         const from = location.state?.from?.pathname || '/dashboard';
-        navigate(from, { state: { justLoggedIn: true } });
+        console.log("Redirecting to:", from);
+        navigate(from, { state: { justLoggedIn: true }, replace: true });
       }
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
@@ -68,6 +90,18 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+  
+  if (isCheckingSession) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <span className="ml-2">Vérification de la session...</span>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="flex flex-col min-h-screen">
