@@ -12,40 +12,45 @@
 
   /* Cyberpunk Theme Components */
   .cyberpunk-bg {
-    background: #0f0f23;
-    color: #00ff00;
+    background: hsl(var(--cyber-bg));
+    color: hsl(var(--cyber-text));
   }
 
   .neuro-panel {
-    background: #1a1a2f;
+    background: hsl(var(--cyber-panel));
     padding: 2rem;
     border-radius: 20px;
-    border: 2px solid #4CAF50;
+    border: 2px solid hsl(var(--cyber-border));
     @apply shadow-lg;
   }
 
   .cyber-card {
-    background: #1a1a2f;
+    background: hsl(var(--cyber-card));
     padding: 1.5rem;
     border-radius: 10px;
-    border: 1px solid #4CAF50;
+    border: 1px solid hsl(var(--cyber-border));
     @apply shadow-md;
   }
 
   .cyber-terminal {
-    background: #000;
-    color: #4CAF50;
+    background: hsl(var(--cyber-terminal));
+    color: hsl(var(--cyber-terminal-text));
     padding: 1rem;
     border-radius: 8px;
-    border: 1px solid #4CAF50;
+    border: 1px solid hsl(var(--cyber-border));
     font-family: 'Courier New', monospace;
   }
   
   /* Price Card Highlight */
   .price-highlight {
     position: relative;
-    border: 2px solid #00ff00;
+    border: 2px solid hsl(var(--cyber-accent));
     transform: scale(1.05);
     z-index: 1;
+  }
+
+  /* Dark mode transition */
+  .dark-transition {
+    @apply transition-colors duration-300;
   }
 }

@@ -34,6 +34,16 @@
     --ring: 222.2 84% 4.9%;
  
     --radius: 0.5rem;
+
+    /* Cyberpunk Theme - Light Mode */
+    --cyber-bg: 210 50% 98%;
+    --cyber-text: 120 100% 25%;
+    --cyber-accent: 120 60% 50%;
+    --cyber-border: 120 60% 50%;
+    --cyber-panel: 210 30% 95%;
+    --cyber-card: 210 30% 95%;
+    --cyber-terminal: 0 0% 95%;
+    --cyber-terminal-text: 120 100% 25%;
   }
  
   .dark {
@@ -64,6 +74,16 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+
+    /* Cyberpunk Theme - Dark Mode */
+    --cyber-bg: 240 20% 10%;
+    --cyber-text: 120 100% 50%;
+    --cyber-accent: 120 60% 50%;
+    --cyber-border: 120 60% 50%;
+    --cyber-panel: 240 15% 15%;
+    --cyber-card: 240 15% 15%;
+    --cyber-terminal: 0 0% 0%;
+    --cyber-terminal-text: 120 100% 50%;
   }
 }
  

@@ -65,6 +65,16 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				cyber: {
+					text: 'hsl(var(--cyber-text))',
+					accent: 'hsl(var(--cyber-accent))',
+					border: 'hsl(var(--cyber-border))',
+					bg: 'hsl(var(--cyber-bg))',
+					panel: 'hsl(var(--cyber-panel))',
+					card: 'hsl(var(--cyber-card))',
+					terminal: 'hsl(var(--cyber-terminal))',
+					'terminal-text': 'hsl(var(--cyber-terminal-text))',
 				}
 			},
 			borderRadius: {
