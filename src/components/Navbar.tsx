@@ -4,11 +4,20 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import Button from './Button';
 import DarkModeToggle from './DarkModeToggle';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -18,24 +27,6 @@ const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  // Close mobile menu when changing routes
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [location.pathname]);
-
-  // Prevent body scroll when mobile menu is open
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isMobileMenuOpen]);
 
   return (
     <nav
@@ -114,73 +105,84 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu using Sheet component from shadcn/ui */}
           <div className="md:hidden flex items-center gap-2">
             <DarkModeToggle />
-            <button
-              className="text-foreground p-2 rounded-lg hover:bg-secondary transition-colors"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label="Toggle menu"
-            >
-              {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
+            <Sheet>
+              <SheetTrigger asChild>
+                <button
+                  className="text-foreground p-2 rounded-lg hover:bg-secondary transition-colors"
+                  aria-label="Ouvrir le menu"
+                >
+                  <Menu size={20} />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[85%] sm:w-[350px] pt-16">
+                <SheetHeader>
+                  <SheetTitle className="text-left text-xl font-bold mb-4">Menu</SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col space-y-4">
+                  <SheetClose asChild>
+                    <Link
+                      to="/"
+                      className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                    >
+                      Accueil
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
+                      to="/offres"
+                      className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                    >
+                      Offres
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
+                      to="/features"
+                      className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                    >
+                      Fonctionnalités
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
+                      to="/pricing"
+                      className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                    >
+                      Tarifs
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
+                      to="/about"
+                      className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                    >
+                      À propos
+                    </Link>
+                  </SheetClose>
+                  <div className="pt-4 flex flex-col space-y-3 border-t border-border mt-2">
+                    <SheetClose asChild>
+                      <Link to="/login">
+                        <Button variant="outline" fullWidth>
+                          Connexion
+                        </Button>
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link to="/register">
+                        <Button fullWidth>
+                          S'inscrire
+                        </Button>
+                      </Link>
+                    </SheetClose>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
-
-        {/* Mobile Menu - Full Overlay */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden fixed inset-0 bg-background z-40 pt-20 pb-6 px-4 overflow-y-auto">
-            <div className="flex flex-col space-y-4">
-              <Link
-                to="/"
-                className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Accueil
-              </Link>
-              <Link
-                to="/offres"
-                className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Offres
-              </Link>
-              <Link
-                to="/features"
-                className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Fonctionnalités
-              </Link>
-              <Link
-                to="/pricing"
-                className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Tarifs
-              </Link>
-              <Link
-                to="/about"
-                className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                À propos
-              </Link>
-              <div className="pt-4 flex flex-col space-y-3 border-t border-border mt-2">
-                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="outline" fullWidth>
-                    Connexion
-                  </Button>
-                </Link>
-                <Link to="/register" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button fullWidth>
-                    S'inscrire
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   );
