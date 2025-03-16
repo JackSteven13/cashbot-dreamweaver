@@ -16,19 +16,30 @@ const Dashboard = () => {
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isReady, setIsReady] = useState(false);
+  const [authError, setAuthError] = useState(false);
   
-  // Check authentication before loading data
+  // Amélioré pour être plus robuste
   const checkAuth = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         console.log("No active session found, redirecting to login");
+        setAuthError(true);
+        return false;
+      }
+      
+      // Vérifier si la session a expiré
+      const tokenExpiry = new Date(session.expires_at * 1000);
+      const now = new Date();
+      
+      if (now > tokenExpiry) {
+        console.log("Session expired, redirecting to login");
         toast({
-          title: "Accès refusé",
-          description: "Vous devez être connecté pour accéder à votre tableau de bord.",
+          title: "Session expirée",
+          description: "Votre session a expiré. Veuillez vous reconnecter.",
           variant: "destructive"
         });
-        navigate('/login');
+        setAuthError(true);
         return false;
       }
       
@@ -36,34 +47,48 @@ const Dashboard = () => {
       return true;
     } catch (error) {
       console.error("Authentication error:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de vérifier votre session. Veuillez vous reconnecter.",
-        variant: "destructive"
-      });
-      navigate('/login');
+      setAuthError(true);
       return false;
     }
   }, [navigate]);
   
   useEffect(() => {
-    // Eviter les initialisations multiples et les race conditions
     let isMounted = true;
+    let initTimeout: NodeJS.Timeout;
     
     const initDashboard = async () => {
       setIsAuthChecking(true);
-      const isAuthenticated = await checkAuth();
-      
-      if (isMounted && isAuthenticated) {
-        console.log("User authenticated, initializing dashboard");
-        setIsAuthChecking(false);
-        // Donner un petit délai pour que tout s'initialise correctement
-        setTimeout(() => {
-          if (isMounted) {
-            console.log("Dashboard ready");
-            setIsReady(true);
-          }
-        }, 300);
+      try {
+        const isAuthenticated = await checkAuth();
+        
+        if (!isMounted) return;
+        
+        if (isAuthenticated) {
+          console.log("User authenticated, initializing dashboard");
+          setIsAuthChecking(false);
+          
+          // Délai court pour éviter les problèmes de rendu
+          initTimeout = setTimeout(() => {
+            if (isMounted) {
+              console.log("Dashboard ready");
+              setIsReady(true);
+            }
+          }, 300);
+        } else {
+          // Redirection vers la page de login avec un délai pour éviter les problèmes
+          console.log("Authentication failed, redirecting to login");
+          setTimeout(() => {
+            if (isMounted) {
+              navigate('/login');
+            }
+          }, 300);
+        }
+      } catch (err) {
+        console.error("Error during dashboard initialization:", err);
+        if (isMounted) {
+          setAuthError(true);
+          setIsAuthChecking(false);
+        }
       }
     };
     
@@ -73,11 +98,11 @@ const Dashboard = () => {
     return () => { 
       console.log("Dashboard component unmounting");
       isMounted = false; 
+      clearTimeout(initTimeout);
     };
-  }, [checkAuth]);
+  }, [checkAuth, navigate]);
   
-  // Get user data and session management functions from custom hooks
-  // N'initialiser les hooks que lorsque l'authentification est vérifiée
+  // Délai d'initialisation des hooks pour éviter les problèmes
   const {
     userData,
     isNewUser,
@@ -91,7 +116,6 @@ const Dashboard = () => {
     refreshUserData
   } = useUserData();
   
-  // Session management logic
   const {
     isStartingSession,
     handleStartSession,
@@ -106,21 +130,41 @@ const Dashboard = () => {
     resetBalance
   );
 
-  // Show a loader while checking auth and loading data
+  // Afficher un loader plus robuste pendant le chargement
   if (isAuthChecking || isLoading || !isReady) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#0f0f23]">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-400" />
-        <span className="ml-2 text-blue-400 sr-only">Chargement...</span>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f0f23]">
+        <Loader2 className="w-12 h-12 animate-spin text-blue-400 mb-4" />
+        <div className="text-center">
+          <p className="text-blue-300 mb-2">Chargement de votre tableau de bord...</p>
+          <p className="text-xs text-blue-200">Veuillez patienter...</p>
+        </div>
       </div>
     );
   }
 
-  // Safety check for userData
-  if (!userData || !userData.username) {
-    console.error("userData or username is missing:", userData);
+  // Afficher une page d'erreur si l'authentification échoue
+  if (authError) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f23] text-white">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f0f23] text-white">
+        <div className="text-center max-w-md">
+          <h2 className="text-xl font-bold mb-4">Problème d'authentification</h2>
+          <p className="mb-6">Nous n'arrivons pas à vérifier votre session.</p>
+          <button 
+            onClick={() => navigate('/login')}
+            className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+          >
+            Retourner à la page de connexion
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Vérification supplémentaire pour userData
+  if (!userData || !userData.username) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f0f23] text-white">
         <Loader2 className="w-10 h-10 animate-spin text-blue-400 mb-4" />
         <div className="text-center">
           <p className="mb-2">Chargement des données utilisateur...</p>
@@ -136,6 +180,7 @@ const Dashboard = () => {
     );
   }
 
+  // Enfin, afficher le tableau de bord
   return (
     <DashboardLayout
       username={userData.username}

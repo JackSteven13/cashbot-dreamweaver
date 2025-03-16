@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -16,36 +15,24 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   
-  // Vérifier si l'utilisateur est déjà connecté
+  // Improved session check on component mount
   useEffect(() => {
     let isMounted = true;
+    let checkTimeout: NodeJS.Timeout;
     
     const checkSession = async () => {
       try {
         setIsCheckingSession(true);
         
-        // Nettoyer toute session résiduelle d'abord
+        // Ensure we start with a clean session state
         await forceSignOut();
         
-        // Petit délai pour s'assurer que la déconnexion est traitée
+        // Short delay to ensure signout is complete
         await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Maintenant vérifier s'il y a une session active
-        const isValid = await verifyAndRepairAuth();
         
         if (!isMounted) return;
         
-        if (isValid) {
-          console.log("User already logged in, redirecting to dashboard");
-          // Ajouter un délai court pour éviter les redirections trop rapides
-          setTimeout(() => {
-            if (isMounted) {
-              navigate('/dashboard', { replace: true, state: { justLoggedIn: false } });
-            }
-          }, 500);
-        } else {
-          setIsCheckingSession(false);
-        }
+        setIsCheckingSession(false);
       } catch (error) {
         console.error("Session check error:", error);
         if (isMounted) {
@@ -54,10 +41,11 @@ const Login = () => {
       }
     };
     
-    checkSession();
+    checkTimeout = setTimeout(() => checkSession(), 100);
     
     return () => {
       isMounted = false;
+      clearTimeout(checkTimeout);
     };
   }, [navigate]);
   
@@ -66,13 +54,13 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // S'assurer qu'il n'y a pas de session résiduelle
+      // Start fresh - ensure no lingering session
       await forceSignOut();
       
-      // Délai pour assurer que la session précédente est bien nettoyée
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for signout to complete
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Effectuer l'authentification avec les nouvelles informations
+      // Attempt login with provided credentials
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -83,17 +71,17 @@ const Login = () => {
       if (data && data.user) {
         console.log("Login successful, user:", data.user.id);
         
-        // Attendre que la session soit complètement établie
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Wait for session establishment
+        await new Promise(resolve => setTimeout(resolve, 600));
         
-        // Vérifier que la session est valide avant de rediriger
+        // Verify session is valid
         const isSessionValid = await verifyAndRepairAuth();
         
         if (!isSessionValid) {
           throw new Error("Session could not be established");
         }
         
-        // Récupérer le profil utilisateur
+        // Get user profile for display name
         const { data: profileData } = await supabase
           .from('profiles')
           .select('full_name')
@@ -109,14 +97,13 @@ const Login = () => {
           description: "Vous êtes maintenant connecté à votre compte CashBot.",
         });
         
-        // Rediriger vers la page d'origine ou le tableau de bord avec l'état de connexion
+        // Redirect with delay to ensure session is fully established
         const from = location.state?.from?.pathname || '/dashboard';
         console.log("Redirecting to:", from);
         
-        // Utiliser un délai plus long pour éviter les problèmes de course
         setTimeout(() => {
           navigate(from, { state: { justLoggedIn: true }, replace: true });
-        }, 800);
+        }, 600);
       }
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
@@ -126,7 +113,7 @@ const Login = () => {
         variant: "destructive",
       });
       
-      // En cas d'erreur, essayer de nettoyer complètement la session
+      // Cleanup on error
       try {
         await forceSignOut();
       } catch (cleanupError) {

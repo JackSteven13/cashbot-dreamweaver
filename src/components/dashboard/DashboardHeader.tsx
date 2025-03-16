@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { UserCircle } from 'lucide-react';
 
 interface DashboardHeaderProps {
@@ -8,10 +8,22 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
-  // Ensure we have a consistent display name logic
-  const displayName = username === "kayzerslotern@gmail.com" 
-    ? "Dickerson" 
-    : (username ? username.trim() : 'Utilisateur');
+  // Amélioré pour être plus robuste et stable
+  const displayName = useMemo(() => {
+    // Gestion spéciale pour ce compte
+    if (username === "kayzerslotern@gmail.com") {
+      return "Dickerson";
+    }
+    
+    // Nettoyage du nom avec remplacement par défaut
+    if (!username || username.trim() === '') {
+      return 'Utilisateur';
+    }
+    
+    // Limiter la longueur pour éviter les problèmes d'affichage
+    const cleanName = username.trim();
+    return cleanName.length > 20 ? cleanName.substring(0, 20) + '...' : cleanName;
+  }, [username]);
   
   return (
     <header className="sticky top-0 z-10 bg-[#1e3a5f] border-b border-[#2d5f8a]/30">
@@ -23,7 +35,7 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
         <div className="flex items-center space-x-4">
           <div className="text-sm text-right hidden sm:block">
             <p className="font-medium text-white">{displayName}</p>
-            <p className="text-blue-200">Abonnement {subscription}</p>
+            <p className="text-blue-200">Abonnement {subscription || 'freemium'}</p>
           </div>
           <div className="h-10 w-10 rounded-full bg-[#334e68] flex items-center justify-center text-white">
             <UserCircle size={24} />
