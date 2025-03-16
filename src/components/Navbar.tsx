@@ -65,22 +65,6 @@ const Navbar = () => {
                 Offres
               </Link>
               <Link 
-                to="/features" 
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname === '/features' ? 'text-primary' : 'text-foreground/80'
-                }`}
-              >
-                Fonctionnalités
-              </Link>
-              <Link 
-                to="/pricing" 
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname === '/pricing' ? 'text-primary' : 'text-foreground/80'
-                }`}
-              >
-                Tarifs
-              </Link>
-              <Link 
                 to="/about" 
                 className={`text-sm font-medium transition-colors hover:text-primary ${
                   location.pathname === '/about' ? 'text-primary' : 'text-foreground/80'
@@ -136,22 +120,6 @@ const Navbar = () => {
                       className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
                     >
                       Offres
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link
-                      to="/features"
-                      className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
-                    >
-                      Fonctionnalités
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link
-                      to="/pricing"
-                      className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
-                    >
-                      Tarifs
                     </Link>
                   </SheetClose>
                   <SheetClose asChild>
