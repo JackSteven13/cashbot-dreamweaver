@@ -2,29 +2,33 @@
 import { useEffect, useState } from 'react';
 
 interface Location {
-  name: string;
   country: string;
+  ipRange: string;
+  protocol: string;
+  serverType: string;
+  latency: number;
 }
 
+// Technical details for each country to make it look more complex
 const westernLocations: Location[] = [
-  { name: "New York", country: "États-Unis" },
-  { name: "Los Angeles", country: "États-Unis" },
-  { name: "London", country: "Royaume-Uni" },
-  { name: "Paris", country: "France" },
-  { name: "Berlin", country: "Allemagne" },
-  { name: "Rome", country: "Italie" },
-  { name: "Madrid", country: "Espagne" },
-  { name: "Stockholm", country: "Suède" },
-  { name: "Copenhagen", country: "Danemark" },
-  { name: "Ottawa", country: "Canada" },
-  { name: "Sydney", country: "Australie" },
-  { name: "Wellington", country: "Nouvelle-Zélande" },
-  { name: "Tokyo", country: "Japon" },
-  { name: "Seoul", country: "Corée du Sud" },
-  { name: "Amsterdam", country: "Pays-Bas" },
-  { name: "Vienna", country: "Autriche" },
-  { name: "Brussels", country: "Belgique" },
-  { name: "Bern", country: "Suisse" },
+  { country: "États-Unis", ipRange: "104.23.x.x", protocol: "HTTPS/3.0", serverType: "CDN-Edge", latency: 28 },
+  { country: "États-Unis", ipRange: "172.16.x.x", protocol: "TCP/TLS", serverType: "AWS-EC2", latency: 45 },
+  { country: "Royaume-Uni", ipRange: "51.36.x.x", protocol: "WSS", serverType: "Azure-VM", latency: 76 },
+  { country: "France", ipRange: "92.103.x.x", protocol: "QUIC", serverType: "OVH-Proxy", latency: 15 },
+  { country: "Allemagne", ipRange: "85.214.x.x", protocol: "HTTPS/2.0", serverType: "Hetzner-Node", latency: 31 },
+  { country: "Italie", ipRange: "79.171.x.x", protocol: "HTTP/3", serverType: "Aruba-VM", latency: 42 },
+  { country: "Espagne", ipRange: "77.240.x.x", protocol: "HTTPS/2.0", serverType: "Telefonica-Edge", latency: 53 },
+  { country: "Suède", ipRange: "178.73.x.x", protocol: "TLS 1.3", serverType: "Bahnhof-Server", latency: 64 },
+  { country: "Danemark", ipRange: "195.249.x.x", protocol: "IPFS", serverType: "OneProvider", latency: 39 },
+  { country: "Canada", ipRange: "99.79.x.x", protocol: "HTTPS/2.0", serverType: "AWS-Lambda", latency: 78 },
+  { country: "Australie", ipRange: "13.237.x.x", protocol: "HTTP/2", serverType: "AWS-Sydney", latency: 189 },
+  { country: "Nouvelle-Zélande", ipRange: "103.98.x.x", protocol: "SSE", serverType: "NZ-Hosting", latency: 210 },
+  { country: "Japon", ipRange: "45.76.x.x", protocol: "GRPC", serverType: "Vultr-Tokyo", latency: 124 },
+  { country: "Corée du Sud", ipRange: "27.255.x.x", protocol: "HTTP/2", serverType: "KT-Cloud", latency: 143 },
+  { country: "Pays-Bas", ipRange: "94.228.x.x", protocol: "MQTT", serverType: "TransIP", latency: 25 },
+  { country: "Autriche", ipRange: "195.34.x.x", protocol: "HTTPS/2.0", serverType: "A1-Telekom", latency: 37 },
+  { country: "Belgique", ipRange: "91.183.x.x", protocol: "WebRTC", serverType: "Proximus", latency: 32 },
+  { country: "Suisse", ipRange: "85.4.x.x", protocol: "HTTP/3", serverType: "Swisscom", latency: 29 },
 ];
 
 const LocationFeed = () => {
@@ -66,13 +70,23 @@ const LocationFeed = () => {
               }`}
             >
               <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>
-              <div>
-                <p className="text-sm font-medium">
-                  {location.name}, {location.country}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {index === 0 ? "À l'instant" : `Il y a ${index + 1} minute${index > 0 ? 's' : ''}`}
-                </p>
+              <div className="flex-1">
+                <div className="flex justify-between">
+                  <p className="text-sm font-medium">
+                    {location.ipRange} | {location.country}
+                  </p>
+                  <p className="text-xs text-muted-foreground ml-1">
+                    {location.latency}ms
+                  </p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    {location.protocol} | {location.serverType}
+                  </p>
+                  <p className="text-xs text-muted-foreground ml-1">
+                    {index === 0 ? "À l'instant" : `Il y a ${index + 1} minute${index > 0 ? 's' : ''}`}
+                  </p>
+                </div>
               </div>
             </div>
           ))
