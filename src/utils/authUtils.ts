@@ -57,7 +57,7 @@ export const checkDailyLimit = (balance: number, subscription: string) => {
  * Clears all session data and forces a complete sign out
  * @returns Promise<boolean> true if successful, false otherwise
  */
-export const forceSignOut = async () => {
+export const forceSignOut = async (): Promise<boolean> => {
   try {
     // Effectuer la déconnexion avec portée globale d'abord
     await supabase.auth.signOut({ scope: 'global' });

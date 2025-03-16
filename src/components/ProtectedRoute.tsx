@@ -1,4 +1,3 @@
-
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -161,7 +160,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         if (isMounted) {
           setIsAuthenticated(true);
           // Essayer de charger le nom d'utilisateur, mais ne pas bloquer l'authentification
-          supabase
+          // Using void to ignore the Promise result, which avoids the need for catch
+          void supabase
             .from('profiles')
             .select('full_name')
             .eq('id', session.user.id)
@@ -170,10 +170,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
               if (isMounted && data) {
                 setUsername(data.full_name || session.user.email?.split('@')[0] || 'utilisateur');
               }
-            })
-            .catch((error) => {
-              // Add explicit error handling with a proper catch handler
-              console.error("Error fetching profile data:", error);
             });
         }
       }
@@ -188,8 +184,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   // Fonction pour effectuer une connexion propre
   const handleCleanLogin = () => {
-    // Convert the Promise-like to a proper Promise to ensure catch is available
-    Promise.resolve(forceSignOut())
+    // Using void to explicitly indicate we're ignoring the Promise result
+    void Promise.resolve(forceSignOut())
       .then(() => {
         // Rediriger vers la page de connexion
         navigate('/login', { replace: true });
