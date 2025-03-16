@@ -30,6 +30,57 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          created_at: string
+          date: string
+          gain: number
+          id: string
+          report: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          gain: number
+          id?: string
+          report: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          gain?: number
+          id?: string
+          report?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_balances: {
+        Row: {
+          balance: number
+          daily_session_count: number
+          id: string
+          subscription: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          daily_session_count?: number
+          id: string
+          subscription?: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          daily_session_count?: number
+          id?: string
+          subscription?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

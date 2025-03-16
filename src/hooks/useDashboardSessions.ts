@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { SUBSCRIPTION_LIMITS, checkDailyLimit, canStartManualSession } from '@/utils/subscriptionUtils';
 import { UserData } from './useUserData';
+import { supabase } from "@/integrations/supabase/client";
 
 export const useDashboardSessions = (
   userData: UserData,
@@ -30,20 +31,51 @@ export const useDashboardSessions = (
 
   // Reset sessions and balances at midnight Paris time
   useEffect(() => {
-    const checkMidnightReset = () => {
+    const checkMidnightReset = async () => {
       const now = new Date();
       const parisTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
       
       if (parisTime.getHours() === 0 && parisTime.getMinutes() === 0) {
         // Reset at midnight
-        localStorage.setItem('daily_session_count', '0');
-        incrementSessionCount(); // This will reset to 0 since we're setting 0 in localStorage
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
         
-        // Also reset balance for freemium accounts
-        if (userData.subscription === 'freemium') {
-          localStorage.setItem('user_balance', '0');
-          updateBalance(0, ''); // This will reset balance to 0
-          setShowLimitAlert(false);
+        try {
+          // Reset session count for all users
+          const { error: updateError } = await supabase
+            .from('user_balances')
+            .update({ 
+              daily_session_count: 0,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', session.user.id);
+            
+          if (updateError) {
+            console.error("Error resetting session count:", updateError);
+          }
+          
+          incrementSessionCount(); // This will reset to 0 in our function
+          
+          // Also reset balance for freemium accounts
+          if (userData.subscription === 'freemium') {
+            const { error: balanceError } = await supabase
+              .from('user_balances')
+              .update({ 
+                balance: 0,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', session.user.id)
+              .eq('subscription', 'freemium');
+              
+            if (balanceError) {
+              console.error("Error resetting freemium balance:", balanceError);
+            }
+            
+            updateBalance(0, ''); // This will reset balance to 0
+            setShowLimitAlert(false);
+          }
+        } catch (error) {
+          console.error("Error in midnight reset:", error);
         }
       }
     };

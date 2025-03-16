@@ -64,11 +64,19 @@ const Register = () => {
             });
         }
         
-        // Initialiser les données utilisateur
-        localStorage.setItem(`user_registered_${data.user.id}`, 'true');
-        localStorage.setItem(`balance_${data.user.id}`, '0');
-        localStorage.setItem(`daily_session_count_${data.user.id}`, '0');
-        localStorage.setItem(`subscription_${data.user.id}`, 'freemium');
+        // Initialiser les données utilisateur dans la base de données
+        const { error: balanceError } = await supabase
+          .from('user_balances')
+          .insert([{
+            id: data.user.id,
+            balance: 0,
+            daily_session_count: 0,
+            subscription: 'freemium'
+          }]);
+          
+        if (balanceError) {
+          console.error("Error initializing user balance:", balanceError);
+        }
         
         // Afficher un message de bienvenue personnalisé
         toast({

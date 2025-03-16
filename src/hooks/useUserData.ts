@@ -29,9 +29,7 @@ export const useUserData = () => {
     transactions: []
   });
   const [isNewUser, setIsNewUser] = useState(false);
-  const [dailySessionCount, setDailySessionCount] = useState<number>(() => {
-    return parseInt(localStorage.getItem('daily_session_count') || '0');
-  });
+  const [dailySessionCount, setDailySessionCount] = useState(0);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -85,19 +83,49 @@ export const useUserData = () => {
           return;
         }
 
-        // Get stored balance, or set to 0 for new users
-        const storedBalance = parseFloat(localStorage.getItem(`balance_${session.user.id}`) || '0');
-        const isNewUserFlag = !localStorage.getItem(`user_registered_${session.user.id}`);
-        
-        if (isNewUserFlag) {
-          localStorage.setItem(`user_registered_${session.user.id}`, 'true');
-          localStorage.setItem(`balance_${session.user.id}`, '0');
+        // Get user balance data
+        let balanceData;
+        const { data: userBalanceData, error: balanceError } = await supabase
+          .from('user_balances')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (balanceError) {
+          console.error("Error fetching balance:", balanceError);
+          // If balance not found, create a new entry
+          if (balanceError.code === 'PGRST116') {
+            const { data: newBalance, error: insertError } = await supabase
+              .from('user_balances')
+              .insert([{ id: session.user.id }])
+              .select();
+              
+            if (insertError) {
+              console.error("Error creating balance:", insertError);
+            } else {
+              balanceData = newBalance[0];
+              setIsNewUser(true);
+              
+              // Show welcome message for new users
+              toast({
+                title: "Bienvenue sur CashBot !",
+                description: "Votre compte a été créé avec succès. Notre système est maintenant actif pour vous.",
+              });
+            }
+          }
+        } else {
+          balanceData = userBalanceData;
+        }
+
+        // Get user transactions
+        const { data: transactionsData, error: transactionsError } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false });
           
-          // Show welcome message for new users
-          toast({
-            title: "Bienvenue sur CashBot !",
-            description: "Votre compte a été créé avec succès. Notre système est maintenant actif pour vous.",
-          });
+        if (transactionsError) {
+          console.error("Error fetching transactions:", transactionsError);
         }
 
         // Set username from profile data or from user email
@@ -105,43 +133,24 @@ export const useUserData = () => {
                            userData.user?.user_metadata?.full_name || 
                            (userData.user?.email ? userData.user.email.split('@')[0] : 'utilisateur');
 
-        // Get subscription type
-        const subscription = localStorage.getItem(`subscription_${session.user.id}`) || 'freemium';
-        
-        // Get daily session count
-        const sessionCount = parseInt(localStorage.getItem(`daily_session_count_${session.user.id}`) || '0');
-        setDailySessionCount(sessionCount);
-
         // Set user data
         setUserData({
           username: displayName,
-          balance: storedBalance,
-          subscription: subscription,
+          balance: balanceData?.balance || 0,
+          subscription: balanceData?.subscription || 'freemium',
           referrals: [],
           referralLink: `https://cashbot.com?ref=${session.user.id.substring(0, 8)}`,
-          transactions: [
-            {
-              date: '2023-09-15',
-              gain: 0.42,
-              report: "Session réussie avec résultats supérieurs à la moyenne. Performance optimisée par nos algorithmes exclusifs."
-            },
-            {
-              date: '2023-09-14',
-              gain: 0.29,
-              report: "Le système a généré des revenus constants tout au long de la session."
-            },
-            {
-              date: '2023-09-13',
-              gain: 0.48,
-              report: "Performance exceptionnelle avec un rendement supérieur à la moyenne."
-            }
-          ]
+          transactions: transactionsData ? transactionsData.map(t => ({
+            date: t.date,
+            gain: t.gain,
+            report: t.report
+          })) : []
         });
 
-        setIsNewUser(isNewUserFlag);
+        setDailySessionCount(balanceData?.daily_session_count || 0);
         
         // Check if daily limit alert should be shown
-        if (checkDailyLimit(storedBalance, subscription)) {
+        if (checkDailyLimit(balanceData?.balance || 0, balanceData?.subscription || 'freemium')) {
           setShowLimitAlert(true);
         }
 
@@ -174,21 +183,61 @@ export const useUserData = () => {
       setShowLimitAlert(true);
     }
     
-    // Save new balance to localStorage with user-specific key
-    localStorage.setItem(`balance_${userId}`, newBalance.toString());
-    
-    setUserData(prev => ({
-      ...prev,
-      balance: newBalance,
-      transactions: [
-        {
+    try {
+      // Update balance in database
+      const { error: updateError } = await supabase
+        .from('user_balances')
+        .update({ 
+          balance: newBalance,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+        
+      if (updateError) {
+        console.error("Error updating balance:", updateError);
+        toast({
+          title: "Erreur",
+          description: "Impossible de mettre à jour votre solde. Veuillez réessayer.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Add transaction in database
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert([{
+          user_id: userId,
           date: new Date().toISOString().split('T')[0],
           gain: positiveGain,
           report: report
-        },
-        ...prev.transactions
-      ]
-    }));
+        }]);
+        
+      if (transactionError) {
+        console.error("Error creating transaction:", transactionError);
+      }
+      
+      // Update local state
+      setUserData(prev => ({
+        ...prev,
+        balance: newBalance,
+        transactions: [
+          {
+            date: new Date().toISOString().split('T')[0],
+            gain: positiveGain,
+            report: report
+          },
+          ...prev.transactions
+        ]
+      }));
+    } catch (error) {
+      console.error("Error in updateBalance:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue. Veuillez réessayer.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Reset balance (for withdrawals)
@@ -199,20 +248,61 @@ export const useUserData = () => {
     const userId = session.user.id;
     const currentBalance = userData.balance;
     
-    localStorage.setItem(`balance_${userId}`, '0');
-    
-    setUserData(prev => ({
-      ...prev,
-      balance: 0,
-      transactions: [
-        {
+    try {
+      // Reset balance in database
+      const { error: updateError } = await supabase
+        .from('user_balances')
+        .update({ 
+          balance: 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+        
+      if (updateError) {
+        console.error("Error resetting balance:", updateError);
+        toast({
+          title: "Erreur",
+          description: "Impossible de traiter votre retrait. Veuillez réessayer.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Add withdrawal transaction
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert([{
+          user_id: userId,
           date: new Date().toISOString().split('T')[0],
           gain: -currentBalance,
           report: `Retrait de ${currentBalance.toFixed(2)}€ effectué avec succès. Le transfert vers votre compte bancaire est en cours.`
-        },
-        ...prev.transactions
-      ]
-    }));
+        }]);
+        
+      if (transactionError) {
+        console.error("Error creating withdrawal transaction:", transactionError);
+      }
+      
+      // Update local state
+      setUserData(prev => ({
+        ...prev,
+        balance: 0,
+        transactions: [
+          {
+            date: new Date().toISOString().split('T')[0],
+            gain: -currentBalance,
+            report: `Retrait de ${currentBalance.toFixed(2)}€ effectué avec succès. Le transfert vers votre compte bancaire est en cours.`
+          },
+          ...prev.transactions
+        ]
+      }));
+    } catch (error) {
+      console.error("Error in resetBalance:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue. Veuillez réessayer.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Update session count
@@ -223,8 +313,26 @@ export const useUserData = () => {
     const userId = session.user.id;
     const newCount = dailySessionCount + 1;
     
-    setDailySessionCount(newCount);
-    localStorage.setItem(`daily_session_count_${userId}`, newCount.toString());
+    try {
+      // Update session count in database
+      const { error: updateError } = await supabase
+        .from('user_balances')
+        .update({ 
+          daily_session_count: newCount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+        
+      if (updateError) {
+        console.error("Error updating session count:", updateError);
+        return;
+      }
+      
+      // Update local state
+      setDailySessionCount(newCount);
+    } catch (error) {
+      console.error("Error in incrementSessionCount:", error);
+    }
   };
 
   return {
