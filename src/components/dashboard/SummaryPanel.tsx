@@ -43,7 +43,7 @@ const SummaryPanel = ({
             isLoading={isStartingSession} 
             onClick={handleStartSession}
           >
-            {isStartingSession ? "Analyse en cours..." : "▶️ Lancer une session IA"}
+            {isStartingSession ? "Analyse en cours..." : "▶️ Lancer une session d'analyse"}
           </Button>
           
           <div className="mt-8">
@@ -65,11 +65,11 @@ const SummaryPanel = ({
         
         {/* Right Column - AI Terminal */}
         <div className="w-full lg:w-1/2 cyber-terminal">
-          <h3 className="text-lg font-semibold text-[#a0aec0] mb-3">📈 Dernier rapport IA :</h3>
+          <h3 className="text-lg font-semibold text-[#a0aec0] mb-3">📈 Dernier rapport d'analyse :</h3>
           <div className="font-mono text-sm text-[#e2e8f0] space-y-2">
             <p>{"> Analyse de 142 pubs..."}</p>
-            <p>{"> Détection tendance haussière crypto"}</p>
-            <p>{"> Profit estimé : +47€"}</p>
+            <p>{"> Ciblage de campagnes premium réussi"}</p>
+            <p>{"> Revenus générés : +47€"}</p>
             <p className="blink-cursor">&nbsp;</p>
           </div>
         </div>

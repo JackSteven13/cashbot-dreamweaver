@@ -15,17 +15,17 @@ const mockUser = {
     {
       date: '2023-09-15',
       gain: 98.42,
-      report: "L'algorithme a identifié une divergence de volatilité sur EUR/USD suite à la publication des données d'inflation. Exploitation d'un arbitrage temporaire avec un ratio risque/rendement de 1:3.2. Transition fluide entre les positions, minimisant l'exposition au risque systémique."
+      report: "L'IA a analysé 257 publicités premium et a identifié 42 opportunités à forte rémunération. Ciblage particulièrement efficace sur les campagnes du secteur technologique avec un taux de conversion exceptionnel de 8.3%. Revenus optimisés grâce à la durée d'engagement maintenue au-dessus de la moyenne."
     },
     {
       date: '2023-09-14',
       gain: 76.29,
-      report: "Analyse technique révélant une formation en triangle ascendant sur BTC/USD. L'IA a anticipé le franchissement du niveau de résistance et a exécuté un ordre d'achat à 42,850€ avec TP à 43,215€. Clôture avec un gain net après frais de transaction."
+      report: "Session concentrée sur 189 publicités du secteur e-commerce. L'algorithme a priorisé les publicités à haut rendement et ignoré celles à faible rémunération. Stratégie d'engagement optimisée avec une orientation vers les vidéos publicitaires complètes, générant un revenu moyen de 0.40€ par publicité."
     },
     {
       date: '2023-09-13',
       gain: 105.11,
-      report: "Corrélation inter-marchés exploitée entre indices boursiers européens et américains. Position initiée sur DAX à l'ouverture européenne avant le gap haussier américain. Optimisation du timing d'entrée basée sur les modèles historiques et les flux institutionnels."
+      report: "Performance exceptionnelle avec 312 publicités analysées en moins de 2 heures. Concentration sur les campagnes internationales à haute valeur. L'IA a détecté une opportunité rare dans les publicités du secteur financier, générant à elle seule 23% des revenus totaux de la session."
     }
   ]
 };
@@ -41,7 +41,7 @@ const Dashboard = () => {
       setIsStartingSession(false);
       toast({
         title: "Session démarrée",
-        description: "L'IA analyse actuellement le marché pour vous",
+        description: "L'IA analyse actuellement les publicités pour vous",
       });
       // You would typically update the user data here from your backend
     }, 2000);
