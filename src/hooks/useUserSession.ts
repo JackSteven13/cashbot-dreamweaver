@@ -18,7 +18,7 @@ export const useUserSession = () => {
     const newCount = dailySessionCount + 1;
     
     const success = await updateSessionCount(userId, newCount);
-    return success ? newCount : dailySessionCount;
+    return success ? newCount : false;
   };
 
   // Update balance after a session

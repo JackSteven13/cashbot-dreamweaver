@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { checkDailyLimit } from '@/utils/subscriptionUtils';
@@ -7,7 +8,7 @@ import {
   fetchUserProfile, 
   fetchUserBalance, 
   fetchUserTransactions 
-} from '@/utils/userDataUtils';
+} from '@/utils/userDataFetch';
 import { useUserSession } from './useUserSession';
 
 export type { UserData };
