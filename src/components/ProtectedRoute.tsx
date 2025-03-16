@@ -1,10 +1,11 @@
 
-import { ReactNode, useEffect, useState, useCallback } from 'react';
+import { ReactNode, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from "@/integrations/supabase/client";
-import { Loader2, RefreshCcw, LogOut } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
-import { verifyAuth, forceSignOut, refreshSession } from "@/utils/authUtils";
+import { forceSignOut } from "@/utils/authUtils";
+import { useAuthVerification } from '@/hooks/useAuthVerification';
+import AuthRecoveryScreen from './auth/AuthRecoveryScreen';
+import AuthLoadingScreen from './auth/AuthLoadingScreen';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -13,139 +14,15 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
-  const [authCheckFailed, setAuthCheckFailed] = useState(false);
-  const [isRetrying, setIsRetrying] = useState(false);
-  const [retryAttempts, setRetryAttempts] = useState(0);
-  const maxRetries = 3;
+  const { 
+    isAuthenticated, 
+    authCheckFailed, 
+    isRetrying, 
+    checkAuth
+  } = useAuthVerification();
 
-  const checkAuth = useCallback(async (isManualRetry = false) => {
-    if (isManualRetry) {
-      setIsRetrying(true);
-      setAuthCheckFailed(false);
-      setIsAuthenticated(null);
-    }
-    
-    try {
-      console.log(`Vérification d'authentification ${isManualRetry ? "manuelle" : "automatique"} (tentative ${retryAttempts + 1})`);
-      
-      // Try refreshing the session first for better stability
-      if (retryAttempts > 0) {
-        console.log("Trying to refresh session before auth check");
-        await refreshSession();
-      }
-      
-      const isAuthValid = await verifyAuth();
-      
-      if (!isAuthValid) {
-        console.log("Échec d'authentification");
-        
-        if (retryAttempts < maxRetries && !isManualRetry) {
-          // Auto-retry with exponential backoff
-          const delay = Math.min(1000 * Math.pow(1.5, retryAttempts), 5000);
-          console.log(`Nouvelle tentative automatique dans ${delay}ms`);
-          
-          setRetryAttempts(prev => prev + 1);
-          setTimeout(() => checkAuth(), delay);
-          return;
-        }
-        
-        setAuthCheckFailed(true);
-        setIsAuthenticated(false);
-        setIsRetrying(false);
-        return;
-      }
-      
-      // Get user data
-      const { data } = await supabase.auth.getUser();
-      const user = data.user;
-      
-      if (!user) {
-        throw new Error("Aucun utilisateur trouvé malgré une session valide");
-      }
-      
-      console.log("Utilisateur authentifié:", user.id);
-      setRetryAttempts(0); // Reset retry counter on success
-      
-      // Get profile for welcome message
-      try {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .maybeSingle();
-          
-        const displayName = profileData?.full_name || 
-                          user.user_metadata?.full_name || 
-                          (user.email ? user.email.split('@')[0] : 'utilisateur');
-        
-        setUsername(displayName);
-        setIsAuthenticated(true);
-        setIsRetrying(false);
-      } catch (profileError) {
-        console.error("Erreur lors de la récupération du profil:", profileError);
-        // Continue even if profile fails
-        setIsAuthenticated(true);
-        setIsRetrying(false);
-      }
-    } catch (error) {
-      console.error("Erreur lors de la vérification d'authentification:", error);
-      
-      if (retryAttempts < maxRetries && !isManualRetry) {
-        // Auto-retry with exponential backoff
-        const delay = Math.min(1000 * Math.pow(1.5, retryAttempts), 5000);
-        console.log(`Nouvelle tentative après erreur dans ${delay}ms`);
-        
-        setRetryAttempts(prev => prev + 1);
-        setTimeout(() => checkAuth(), delay);
-        return;
-      }
-      
-      setAuthCheckFailed(true);
-      setIsAuthenticated(false);
-      setIsRetrying(false);
-    }
-  }, [retryAttempts]);
-
-  useEffect(() => {
-    let isMounted = true;
-    
-    // Set timeout for initial auth check with longer delay
-    const initTimeout = setTimeout(() => {
-      if (isMounted) {
-        setRetryAttempts(0); // Reset retry attempts on new mount
-        checkAuth();
-      }
-    }, 800);
-    
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!isMounted) return;
-      
-      console.log(`Changement d'état d'authentification:`, event);
-      
-      if (event === 'SIGNED_OUT') {
-        setIsAuthenticated(false);
-        setUsername(null);
-      } else if (event === 'SIGNED_IN' && session) {
-        setIsAuthenticated(true);
-        const user = session.user;
-        if (user) {
-          setUsername(user.user_metadata?.full_name || user.email?.split('@')[0] || 'utilisateur');
-        }
-      }
-    });
-
-    return () => {
-      isMounted = false;
-      clearTimeout(initTimeout);
-      subscription.unsubscribe();
-    };
-  }, [location.pathname, checkAuth]); 
-
-  // Fonction pour effectuer une connexion propre
-  const handleCleanLogin = () => {
+  // Handle clean login function
+  const handleCleanLogin = useCallback(() => {
     Promise.resolve(forceSignOut())
       .then(() => {
         console.log("Redirection vers la page de connexion");
@@ -155,74 +32,25 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         console.error("Erreur pendant la déconnexion propre:", error);
         navigate('/login', { replace: true });
       });
-  };
+  }, [navigate]);
 
-  // Afficher un écran de récupération en cas d'échec
+  // Show recovery screen if auth check failed
   if (authCheckFailed) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f0f23] text-white p-4">
-        <div className="glass-panel p-6 rounded-xl max-w-md w-full text-center">
-          <h2 className="text-xl font-bold mb-4">Problème de connexion</h2>
-          <p className="mb-6">Nous n'arrivons pas à vérifier votre session. Cela peut être dû à:</p>
-          
-          <ul className="text-left mb-6 space-y-2">
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span>Une connexion internet instable</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span>Une session expirée ou corrompue</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span>Un problème temporaire avec le service</span>
-            </li>
-          </ul>
-          
-          <div className="space-y-3">
-            <button 
-              onClick={() => checkAuth(true)}
-              disabled={isRetrying}
-              className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors disabled:opacity-50"
-            >
-              {isRetrying ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Tentative en cours...
-                </>
-              ) : (
-                <>
-                  <RefreshCcw className="w-4 h-4 mr-2" />
-                  Réessayer
-                </>
-              )}
-            </button>
-            
-            <button 
-              onClick={handleCleanLogin}
-              className="w-full flex items-center justify-center px-4 py-2 bg-transparent border border-white/30 hover:bg-white/10 rounded transition-colors"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Se connecter à nouveau
-            </button>
-          </div>
-        </div>
-      </div>
+      <AuthRecoveryScreen 
+        isRetrying={isRetrying}
+        onRetry={() => checkAuth(true)}
+        onCleanLogin={handleCleanLogin}
+      />
     );
   }
   
-  // Afficher un loader pendant la vérification
+  // Show loading screen while checking auth
   if (isAuthenticated === null) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f0f23]">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-        <span className="ml-2 text-blue-300 mt-4">Vérification de l'authentification...</span>
-      </div>
-    );
+    return <AuthLoadingScreen />;
   }
 
-  // Si l'utilisateur n'est pas authentifié, rediriger vers la page de connexion
+  // Redirect to login if not authenticated
   if (isAuthenticated === false) {
     toast({
       title: "Accès refusé",
@@ -232,7 +60,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  // Si l'utilisateur est authentifié, afficher le contenu protégé
+  // If authenticated, show protected content
   return <>{children}</>;
 };
 
