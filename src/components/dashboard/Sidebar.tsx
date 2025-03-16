@@ -25,12 +25,18 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
   const handleLogout = () => {
     localStorage.removeItem('user_registered');
     localStorage.removeItem('username');
+    localStorage.removeItem('user_balance');
+    localStorage.removeItem('daily_session_count');
+    localStorage.removeItem('subscription');
     navigate('/');
   };
   
   // Function to handle both setting the selected item and navigation
-  const handleNavigation = (id: string) => {
+  const handleNavigation = (id: string, path: string = '') => {
     setSelectedNavItem(id);
+    if (path) {
+      navigate(path);
+    }
   };
   
   return (
@@ -87,12 +93,15 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
       </div>
       
       <div className="p-4 mt-auto space-y-2">
-        <Link to="/">
-          <Button variant="outline" fullWidth className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50">
-            <Home size={18} className="mr-3" />
-            Retour à l'accueil
-          </Button>
-        </Link>
+        <Button 
+          variant="outline" 
+          fullWidth 
+          className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50"
+          onClick={() => navigate('/')}
+        >
+          <Home size={18} className="mr-3" />
+          Retour à l'accueil
+        </Button>
         <Button 
           variant="outline" 
           fullWidth 

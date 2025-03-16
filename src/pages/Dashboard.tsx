@@ -33,7 +33,7 @@ const Dashboard = () => {
     incrementSessionCount,
     updateBalance,
     setShowLimitAlert,
-    resetBalance  // Pass resetBalance to the hook
+    resetBalance
   );
 
   return (
