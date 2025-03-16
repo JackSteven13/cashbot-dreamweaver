@@ -171,7 +171,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
                 setUsername(data.full_name || session.user.email?.split('@')[0] || 'utilisateur');
               }
             })
-            .catch(console.error);
+            .catch((error) => {
+              // Add explicit error handling with a proper catch handler
+              console.error("Error fetching profile data:", error);
+            });
         }
       }
     });
@@ -185,10 +188,16 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   // Fonction pour effectuer une connexion propre
   const handleCleanLogin = () => {
-    forceSignOut().then(() => {
-      // Rediriger vers la page de connexion
-      navigate('/login', { replace: true });
-    });
+    // Convert the Promise-like to a proper Promise to ensure catch is available
+    Promise.resolve(forceSignOut())
+      .then(() => {
+        // Rediriger vers la page de connexion
+        navigate('/login', { replace: true });
+      })
+      .catch((error) => {
+        console.error("Error during clean login:", error);
+        navigate('/login', { replace: true });
+      });
   };
 
   // Afficher un écran de récupération en cas d'échec
