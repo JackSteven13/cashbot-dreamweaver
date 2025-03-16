@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Copy, DollarSign, ArrowUpCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import Button from '@/components/Button';
@@ -38,6 +39,12 @@ const SummaryPanel = ({
 }: SummaryPanelProps) => {
   
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [displayBalance, setDisplayBalance] = useState(Math.max(0, balance));
+  
+  // Mettre à jour le solde affiché quand le solde change
+  useEffect(() => {
+    setDisplayBalance(Math.max(0, balance));
+  }, [balance]);
   
   const handleCopyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);
@@ -61,7 +68,7 @@ const SummaryPanel = ({
           description: "Les retraits sont disponibles uniquement pour les abonnements payants. Veuillez mettre à niveau votre compte.",
           variant: "destructive"
         });
-      } else if (balance < 20) {
+      } else if (displayBalance < 20) {
         toast({
           title: "Montant insuffisant",
           description: "Le montant minimum de retrait est de 20€. Continuez à gagner plus de revenus.",
@@ -85,9 +92,6 @@ const SummaryPanel = ({
   const sessionsDisplay = subscription === 'freemium' 
     ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}`
     : 'Sessions illimitées';
-
-  // Ensure balance is never displayed as negative
-  const displayBalance = Math.max(0, balance);
 
   return (
     <div className="neuro-panel mb-8">
@@ -187,6 +191,7 @@ const SummaryPanel = ({
                   ? `> Sessions restantes : ${remainingSessions}` 
                   : "> Sessions illimitées"}</p>
                 <p>{referralCount > 0 ? `> Bonus filleuls : +${Math.min(referralCount * 5, 25)}%` : "> Aucun filleul actif"}</p>
+                <p>{`> Solde actuel : ${displayBalance.toFixed(2)}€`}</p>
               </>
             )}
             <p className="blink-cursor">&nbsp;</p>
@@ -208,4 +213,3 @@ const SummaryPanel = ({
 };
 
 export default SummaryPanel;
-

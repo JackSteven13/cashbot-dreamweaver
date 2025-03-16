@@ -14,10 +14,10 @@ import { supabase } from "@/integrations/supabase/client";
 export const useDashboardSessions = (
   userData: UserData,
   dailySessionCount: number,
-  incrementSessionCount: () => void,
-  updateBalance: (gain: number, report: string) => void,
+  incrementSessionCount: () => Promise<void>,
+  updateBalance: (gain: number, report: string) => Promise<void>,
   setShowLimitAlert: (show: boolean) => void,
-  resetBalance: () => void
+  resetBalance: () => Promise<void>
 ) => {
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [lastAutoSessionTime, setLastAutoSessionTime] = useState(Date.now());
@@ -60,7 +60,7 @@ export const useDashboardSessions = (
             console.error("Error resetting session count:", updateError);
           }
           
-          incrementSessionCount(); // This will reset to 0 in our function
+          await incrementSessionCount(); // This will reset to 0 in our function
           
           // Also reset balance for freemium accounts
           if (userData.subscription === 'freemium') {
@@ -77,7 +77,7 @@ export const useDashboardSessions = (
               console.error("Error resetting freemium balance:", balanceError);
             }
             
-            updateBalance(0, ''); // This will reset balance to 0
+            await updateBalance(0, ''); // This will reset balance to 0
             setShowLimitAlert(false);
           }
         } catch (error) {
@@ -92,8 +92,8 @@ export const useDashboardSessions = (
     return () => clearInterval(midnightInterval);
   }, [userData.subscription]);
 
-  const generateAutomaticRevenue = () => {
-    // Calculate gain using the new utility function
+  const generateAutomaticRevenue = async () => {
+    // Calculate gain using the utility function
     const randomGain = calculateAutoSessionGain(
       userData.subscription, 
       userData.balance, 
@@ -107,7 +107,7 @@ export const useDashboardSessions = (
     }
     
     // Update user balance and show notification
-    updateBalance(
+    await updateBalance(
       randomGain,
       `Le système a généré ${randomGain}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${userData.subscription} vous permet d'accéder à ce niveau de performance.`
     );
@@ -118,7 +118,7 @@ export const useDashboardSessions = (
     });
   };
 
-  const handleStartSession = () => {
+  const handleStartSession = async () => {
     // Check if session can be started
     if (!canStartManualSession(userData.subscription, dailySessionCount, userData.balance)) {
       // If freemium account and session limit reached
@@ -147,14 +147,12 @@ export const useDashboardSessions = (
     
     // Increment daily session count for freemium accounts
     if (userData.subscription === 'freemium') {
-      incrementSessionCount();
+      await incrementSessionCount();
     }
     
     // Simulate manual session
-    setTimeout(() => {
-      setIsStartingSession(false);
-      
-      // Calculate gain using the new utility function
+    setTimeout(async () => {
+      // Calculate gain using the utility function
       const randomGain = calculateManualSessionGain(
         userData.subscription, 
         userData.balance, 
@@ -162,10 +160,12 @@ export const useDashboardSessions = (
       );
       
       // Update user data
-      updateBalance(
+      await updateBalance(
         randomGain,
         `Session manuelle : Notre technologie a optimisé le processus et généré ${randomGain}€ de revenus pour votre compte ${userData.subscription}.`
       );
+      
+      setIsStartingSession(false);
       
       toast({
         title: "Session terminée",
@@ -174,11 +174,11 @@ export const useDashboardSessions = (
     }, 2000);
   };
   
-  const handleWithdrawal = () => {
+  const handleWithdrawal = async () => {
     // Process withdrawal only if sufficient balance (at least 20€) and not freemium account
     if (userData.balance >= 20 && userData.subscription !== 'freemium') {
       // Reset balance to 0 to simulate withdrawal
-      resetBalance();
+      await resetBalance();
     }
   };
 

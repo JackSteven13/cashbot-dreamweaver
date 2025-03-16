@@ -21,6 +21,8 @@ export const updateUserBalance = async (
     subscription === 'freemium';
   
   try {
+    console.log("Updating balance from", currentBalance, "to", newBalance, "for user", userId);
+    
     // Update balance in database
     const { error: updateError } = await supabase
       .from('user_balances')
@@ -40,6 +42,7 @@ export const updateUserBalance = async (
       return { success: false };
     }
     
+    console.log("Balance updated successfully to", newBalance);
     return { success: true, newBalance, limitReached };
   } catch (error) {
     console.error("Error in updateBalance:", error);
@@ -55,6 +58,8 @@ export const updateUserBalance = async (
 // Reset user balance (for withdrawals)
 export const resetUserBalance = async (userId: string, currentBalance: number) => {
   try {
+    console.log("Resetting balance from", currentBalance, "to 0 for user", userId);
+    
     // Reset balance in database
     const { error: updateError } = await supabase
       .from('user_balances')
@@ -79,6 +84,7 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
     // Add withdrawal transaction result
     const transactionResult = await addTransaction(userId, -currentBalance, report);
     
+    console.log("Balance reset successfully and transaction created");
     return { 
       success: true, 
       transaction: transactionResult.success ? transactionResult.transaction : null 
@@ -97,6 +103,8 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
 // Update session count
 export const updateSessionCount = async (userId: string, newCount: number) => {
   try {
+    console.log("Updating session count to", newCount, "for user", userId);
+    
     // Update session count in database
     const { error: updateError } = await supabase
       .from('user_balances')
@@ -111,6 +119,7 @@ export const updateSessionCount = async (userId: string, newCount: number) => {
       return false;
     }
     
+    console.log("Session count updated successfully");
     return true;
   } catch (error) {
     console.error("Error in incrementSessionCount:", error);

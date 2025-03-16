@@ -40,10 +40,11 @@ export const useBalanceActions = ({
     const result = await updateUserBalance(gain, report);
     
     if (result.success) {
+      // Immédiatement mettre à jour l'état local avec le nouveau solde
       setUserData(prev => ({
         ...prev,
         balance: result.newBalance || prev.balance,
-        transactions: 'transaction' in result ? [
+        transactions: result.transaction ? [
           result.transaction,
           ...prev.transactions
         ] : prev.transactions
@@ -59,10 +60,11 @@ export const useBalanceActions = ({
     const result = await resetUserBalance();
     
     if (result.success) {
+      // Immédiatement mettre à jour l'état local avec le solde à 0
       setUserData(prev => ({
         ...prev,
         balance: 0,
-        transactions: 'transaction' in result ? [
+        transactions: result.transaction ? [
           result.transaction,
           ...prev.transactions
         ] : prev.transactions
