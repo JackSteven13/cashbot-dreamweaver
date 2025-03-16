@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 
 interface Location {
@@ -51,9 +52,9 @@ const LocationFeed = () => {
   return (
     <div className="bg-gradient-to-b from-background/50 to-background/10 backdrop-blur-sm rounded-xl shadow-lg p-3 overflow-hidden">
       <h3 className="text-sm font-medium mb-2 text-primary">Publicités en cours d'analyse</h3>
-      <div className="space-y-2 max-h-[240px] overflow-y-auto">
+      <div className="space-y-2 max-h-[180px] md:max-h-[240px] overflow-y-auto">
         {locations.length === 0 ? (
-          <div className="text-center text-muted-foreground text-sm py-4">
+          <div className="text-center text-muted-foreground text-sm py-3">
             Chargement des données...
           </div>
         ) : (

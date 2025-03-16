@@ -213,7 +213,7 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative overflow-hidden pt-32 pb-16 md:pt-40 md:pb-24">
+    <section className="relative overflow-hidden pt-16 pb-10 md:pt-32 md:pb-16">
       {/* Background Elements */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute top-0 right-0 -z-10 overflow-hidden">
@@ -226,13 +226,13 @@ const Hero = () => {
       
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-balance mb-8 animate-slide-down">
+          <h1 className="text-3xl md:text-4xl lg:text-6xl font-bold tracking-tight text-balance mb-6 md:mb-8 animate-slide-down">
             Générez des revenus passifs simplement et automatiquement avec CashBot. 💸
           </h1>
           
           {/* Map for desktop, LocationFeed for mobile */}
           {isMobile ? (
-            <div className="w-full max-w-lg mb-8 animate-fade-in">
+            <div className="w-full max-w-lg mb-6 md:mb-8 animate-fade-in">
               <LocationFeed />
             </div>
           ) : (
@@ -243,15 +243,15 @@ const Hero = () => {
           )}
           
           {/* Counters - Improved for better responsive display */}
-          <div className="grid grid-cols-2 gap-4 sm:gap-8 w-full max-w-lg mb-8 animate-slide-up">
-            <div className="glass-panel p-4 sm:p-6 rounded-xl text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-primary truncate">
+          <div className="grid grid-cols-2 gap-3 sm:gap-8 w-full max-w-lg mb-6 md:mb-8 animate-slide-up">
+            <div className="glass-panel p-3 sm:p-6 rounded-xl text-center">
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-primary truncate">
                 {adsCount.toLocaleString('fr-FR')}
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">Publicités analysées</p>
             </div>
-            <div className="glass-panel p-4 sm:p-6 rounded-xl text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-primary truncate">
+            <div className="glass-panel p-3 sm:p-6 rounded-xl text-center">
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-primary truncate">
                 {formatRevenue(revenueCount)}
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">Revenus générés</p>
@@ -259,7 +259,7 @@ const Hero = () => {
           </div>
           
           {/* CTA Form */}
-          <div className="w-full max-w-lg glass-panel p-6 rounded-xl animate-scale-in">
+          <div className="w-full max-w-lg glass-panel p-4 sm:p-6 rounded-xl animate-scale-in">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <input 
