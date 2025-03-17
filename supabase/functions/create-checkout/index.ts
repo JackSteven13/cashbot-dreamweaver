@@ -50,6 +50,9 @@ async function getOrCreatePrice(planName, amount) {
     const product = await stripe.products.create({
       name: `${planName} Monthly Subscription`,
       description: `${planName} tier monthly subscription`,
+      metadata: {
+        plan_type: planName,
+      }
     });
     
     // Create a price for the product
@@ -60,6 +63,9 @@ async function getOrCreatePrice(planName, amount) {
       recurring: { interval: 'month' },
       product: product.id,
       lookup_key: lookupKey,
+      metadata: {
+        plan_type: planName,
+      }
     });
     
     console.log(`Created new price for ${planName} plan:`, newPrice.id);
@@ -67,6 +73,58 @@ async function getOrCreatePrice(planName, amount) {
   } catch (error) {
     console.error(`Error creating product/price for ${planName}:`, error);
     throw error;
+  }
+}
+
+// Find referrer from referral code
+async function findReferrer(referralCode) {
+  if (!referralCode) return null;
+  
+  try {
+    // Extract user ID from referral code (assuming format like "userId_abc123")
+    const userId = referralCode.split('_')[0];
+    if (!userId) return null;
+    
+    // Look up the user in the database
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
+      
+    if (error || !data) {
+      console.error("Error finding referrer:", error);
+      return null;
+    }
+    
+    return data.id;
+  } catch (error) {
+    console.error("Error processing referral code:", error);
+    return null;
+  }
+}
+
+// Function to track a referral
+async function trackReferral(referrerId, newUserId, planType) {
+  if (!referrerId || !newUserId) return;
+  
+  try {
+    const { error } = await supabase
+      .from('referrals')
+      .insert({
+        referrer_id: referrerId,
+        referred_user_id: newUserId,
+        plan_type: planType,
+        status: 'active',
+      });
+      
+    if (error) {
+      console.error("Error tracking referral:", error);
+    } else {
+      console.log(`Referral tracked: ${referrerId} referred ${newUserId}`);
+    }
+  } catch (error) {
+    console.error("Error in trackReferral:", error);
   }
 }
 
@@ -111,8 +169,12 @@ Deno.serve(async (req) => {
     }
     
     // Parse request body
-    const { plan, successUrl, cancelUrl } = await req.json()
-    console.log('Received plan:', plan)
+    const { plan, successUrl, cancelUrl, referralCode } = await req.json()
+    console.log('Received plan:', plan, 'Referral code:', referralCode || 'none')
+    
+    // Find referrer if referral code provided
+    const referrerId = await findReferrer(referralCode)
+    console.log('Referrer ID:', referrerId || 'none')
     
     // Validate plan
     if (!plan || !['freemium', 'pro', 'visionnaire', 'alpha'].includes(plan)) {
@@ -141,6 +203,11 @@ Deno.serve(async (req) => {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
+      }
+      
+      // Track referral if applicable
+      if (referrerId) {
+        await trackReferral(referrerId, user.id, plan)
       }
       
       return new Response(JSON.stringify({ success: true, free: true }), {
@@ -183,6 +250,7 @@ Deno.serve(async (req) => {
         metadata: {
           userId: user.id,
           plan: plan,
+          referrerId: referrerId || '',
         },
       });
       

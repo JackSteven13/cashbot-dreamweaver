@@ -9,7 +9,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
   const [isStripeProcessing, setIsStripeProcessing] = useState(false);
 
-  const handleStripeCheckout = async () => {
+  const handleStripeCheckout = async (referralCode?: string) => {
     if (!selectedPlan) {
       toast({
         title: "Erreur",
@@ -36,13 +36,14 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       }
 
       // Call Supabase Edge Function to create a Stripe checkout session
-      console.log("Calling Stripe checkout for", selectedPlan, "plan");
+      console.log("Calling Stripe checkout for", selectedPlan, "plan", referralCode ? `with referral: ${referralCode}` : "without referral");
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           plan: selectedPlan,
           successUrl: `${window.location.origin}/payment-success`,
-          cancelUrl: `${window.location.origin}/offres`
+          cancelUrl: `${window.location.origin}/offres`,
+          referralCode: referralCode || null
         }
       });
       
@@ -90,7 +91,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       } else if (error.message?.includes('Edge Function returned a non-2xx status code')) {
         errorMessage = "Le service de paiement est temporairement indisponible. Veuillez réessayer dans quelques instants.";
       } else if (error.message?.includes('product exists in live mode, but a test mode key was used')) {
-        errorMessage = "Configuration de paiement incorrecte. L'environnement de test est utilisé au lieu de l'environnement de production.";
+        errorMessage = "Système en cours de migration vers la production. Merci de réessayer dans quelques minutes.";
       } else {
         // Use the original error message or a generic one
         errorMessage = error.message || "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.";
