@@ -116,14 +116,34 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
         return;
       }
 
-      // Pour les tests de développement uniquement - simuler un paiement réussi
-      // Dans un environnement de production, nous utiliserions un vrai processeur de paiement
-      console.log("Simulating payment processing for", selectedPlan, "plan");
+      // Générer un ID de transaction fictif pour le paiement par carte
+      const cardTransactionId = `card_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      // Carte utilisée (masquée pour la sécurité)
+      const maskedCardNumber = formData.cardNumber.slice(-4).padStart(16, '*');
+      
+      console.log(`Simulation de paiement par carte pour le plan ${selectedPlan}`);
+      console.log(`Transaction ID: ${cardTransactionId}`);
+      console.log(`Carte utilisée: ${maskedCardNumber}, Expiration: ${formData.expiry}`);
       
       // Simuler un délai de traitement de paiement
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Mettre à jour l'abonnement de l'utilisateur directement pour les tests
+      // Enregistrer le log de paiement simulé dans Supabase
+      const { error: logError } = await supabase
+        .from('transactions')
+        .insert([{
+          user_id: session.user.id,
+          date: new Date().toISOString().split('T')[0],
+          gain: 0, // Puisque c'est un paiement, pas un gain
+          report: `Paiement par carte pour l'abonnement ${selectedPlan}. Transaction ID: ${cardTransactionId}. Carte: ${maskedCardNumber}`
+        }]);
+        
+      if (logError) {
+        console.error("Erreur lors de l'enregistrement du log de paiement:", logError);
+      }
+      
+      // Mettre à jour l'abonnement de l'utilisateur
       const { error: updateError } = await supabase
         .from('user_balances')
         .update({ 
@@ -136,12 +156,17 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
         throw updateError;
       }
       
+      // Log détaillé dans la console
+      console.log(`Paiement par carte simulé réussi pour ${session.user.email}`);
+      console.log(`Abonnement ${selectedPlan} activé pour l'utilisateur ${session.user.id}`);
+      console.log(`Montant facturé: ${PLAN_PRICES[selectedPlan]}€`);
+      
       setIsProcessing(false);
       toast({
         title: "Paiement réussi",
         description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
       });
-      navigate('/dashboard');
+      navigate('/payment-success');
 
     } catch (error) {
       console.error("Payment error:", error);
