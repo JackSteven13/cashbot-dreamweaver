@@ -43,69 +43,27 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Much more controlled increments with greatly reduced frequency for stable visualization
+  // Completely redesigned increment logic to ensure constant, predictable growth
   const incrementCountersRandomly = useCallback(() => {
-    // Updated calculations for more stable progression
-    const secondsInDay = 24 * 60 * 60;
-    // Smaller multiplier for more stable progression
-    const cycleMultiplier = 15; 
-    const adsIncrementPerSecond = (dailyAdsTarget * cycleMultiplier) / secondsInDay;
-    
-    // Very limited randomization for more readable counter movement
-    const randomFactor = Math.random() * 1.5 + 0.5; // Random between 0.5-2x
-    
-    // Smaller increments per update for ads
-    const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor);
-    
+    // Use fixed, small increments for stable progression
     setAdsCount(prevAdsCount => {
-      // Only increments if we haven't reached the target
+      // Only incrementing, never decreasing
       if (prevAdsCount >= dailyAdsTarget) return dailyAdsTarget;
-      const newAdsCount = Math.min(prevAdsCount + adsIncrement, dailyAdsTarget);
       
-      // Update revenue with more predictable increments
-      const adsDifference = newAdsCount - prevAdsCount;
+      // Calculate a small, fixed percentage of the daily target to add
+      const increment = Math.floor(dailyAdsTarget * 0.001);
+      const newAdsCount = Math.min(prevAdsCount + increment, dailyAdsTarget);
       
-      // Calculate revenue for these new ads
-      let totalRevenueFromNewAds = 0;
-      
-      // Calculate revenue for each ad with more balanced distribution
-      for (let i = 0; i < adsDifference; i++) {
-        const adValueRoll = Math.random();
-        let adRevenue;
-        
-        if (adValueRoll > 0.95) {
-          // EXCEPTIONAL ads (20-25€ per ad) - less frequent
-          adRevenue = 20 + Math.random() * 5;
-          if (i % 1000 === 0) { // Log much less frequently
-            console.log(`💎💎💎 JACKPOT: Exceptional ad worth ${Math.round(adRevenue)}€!`);
-          }
-        } else if (adValueRoll > 0.85) {
-          // Premium ads (15-20€ per ad)
-          adRevenue = 15 + Math.random() * 5;
-          if (i % 1000 === 0) {
-            console.log(`💰💰 Premium ad worth ${Math.round(adRevenue)}€!`);
-          }
-        } else if (adValueRoll > 0.70) {
-          // High-value ads (10-15€ per ad)
-          adRevenue = 10 + Math.random() * 5;
-          if (i % 1500 === 0) {
-            console.log(`💰 High-value ad: ${Math.round(adRevenue)}€`);
-          }
-        } else if (adValueRoll > 0.40) {
-          // Medium-value ads (5-10€ per ad)
-          adRevenue = 5 + Math.random() * 5;
-        } else {
-          // Standard ads (1-5€ per ad) - most common
-          adRevenue = 1 + Math.random() * 4;
-        }
-        
-        totalRevenueFromNewAds += adRevenue;
-      }
-      
-      // Direct update of revenue based on new ads
+      // Always update revenue when ads are updated, with a fixed ratio
+      // This ensures revenue always correlates with ad count
       setRevenueCount(prevRevenueCount => {
         if (prevRevenueCount >= dailyRevenueTarget) return dailyRevenueTarget;
-        return Math.min(prevRevenueCount + totalRevenueFromNewAds, dailyRevenueTarget);
+        
+        // Use fixed revenue per ad for stability
+        const averageRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
+        const revenueIncrement = Math.floor((newAdsCount - prevAdsCount) * averageRevenuePerAd);
+        
+        return Math.min(prevRevenueCount + revenueIncrement, dailyRevenueTarget);
       });
       
       return newAdsCount;

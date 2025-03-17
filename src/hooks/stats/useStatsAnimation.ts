@@ -14,40 +14,28 @@ export const useStatsAnimation = ({
   setDisplayedAdsCount,
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
-  // Animation drastically slowed down for better readability
+  // Complete redesign of animation logic to ensure stability
   const animateCounters = useCallback(() => {
-    // Update ad count with extremely slower animation
+    // Update ad count with stable animation
     setDisplayedAdsCount((prevCount) => {
+      // If we've reached the target, don't change
       if (prevCount >= adsCount) return adsCount;
       
-      // Much smaller increments for very readable animation
-      // Only increment by maximum 1% of the difference to make it much more readable
-      const increment = Math.max(Math.ceil((adsCount - prevCount) * 0.01), 1);
-      const newAdsCount = Math.min(prevCount + increment, adsCount);
+      // Use extremely small fixed increment for stability
+      // This ensures values only go up, never down
+      const increment = Math.max(1, Math.floor((adsCount - prevCount) * 0.005));
+      return Math.min(prevCount + increment, adsCount);
+    });
+
+    // Update revenue independently with stable animation
+    setDisplayedRevenueCount((prevRevCount) => {
+      // If we've reached the target, don't change
+      if (prevRevCount >= revenueCount) return revenueCount;
       
-      // Only update revenue display when ads are updated
-      if (newAdsCount > prevCount) {
-        setDisplayedRevenueCount((prevRevCount) => {
-          if (prevRevCount >= revenueCount) return revenueCount;
-          
-          // Calculate how much revenue should be shown based on new ads processed
-          const adsProcessed = newAdsCount - prevCount;
-          
-          // Stable revenue calculation - each ad is worth between 1-25€ on average
-          const averageRevenuePerAd = 10; // Set average revenue per ad
-          const totalRevenueIncrement = adsProcessed * averageRevenuePerAd;
-          
-          // Use an extremely small increment for stable display
-          const smoothIncrement = Math.min(
-            totalRevenueIncrement,
-            (revenueCount - prevRevCount) * 0.01
-          );
-          
-          return Math.min(prevRevCount + smoothIncrement, revenueCount);
-        });
-      }
-      
-      return newAdsCount;
+      // Use extremely small fixed increment for stability
+      // This ensures values only go up, never down
+      const increment = Math.max(1, Math.floor((revenueCount - prevRevCount) * 0.005));
+      return Math.min(prevRevCount + increment, revenueCount);
     });
 
     // Return true to indicate animation is still active if either counter hasn't reached its target
