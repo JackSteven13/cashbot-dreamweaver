@@ -1,9 +1,13 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { CreditCard } from 'lucide-react';
 import Button from '@/components/Button';
 import CardPaymentForm from '@/components/payment/CardPaymentForm';
 import { PaymentFormData } from '@/hooks/payment/types';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Link } from 'react-router-dom';
+import { toast } from "@/components/ui/use-toast";
 
 interface ManualPaymentFormProps {
   isProcessing: boolean;
@@ -11,6 +15,24 @@ interface ManualPaymentFormProps {
 }
 
 const ManualPaymentForm = ({ isProcessing, onSubmit }: ManualPaymentFormProps) => {
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  
+  const handleFormSubmit = () => {
+    if (!termsAccepted) {
+      toast({
+        title: "Conditions non acceptées",
+        description: "Vous devez accepter les conditions générales pour continuer.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const formData = document.getElementById('card-payment-form') as HTMLFormElement;
+    if (formData) {
+      formData.dispatchEvent(new Event('submit', { bubbles: true }));
+    }
+  };
+  
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-[#1e3a5f] mb-2">
@@ -19,17 +41,27 @@ const ManualPaymentForm = ({ isProcessing, onSubmit }: ManualPaymentFormProps) =
       </div>
       
       <CardPaymentForm onSubmit={onSubmit} />
+      
+      <div className="flex items-start space-x-2 py-2">
+        <Checkbox 
+          id="terms-manual" 
+          checked={termsAccepted}
+          onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+          className="mt-0.5"
+        />
+        <div className="grid gap-1.5 leading-none">
+          <Label htmlFor="terms-manual" className="text-sm text-gray-700">
+            J'ai lu et j'accepte les <Link to="/terms" className="text-blue-600 hover:underline" target="_blank">Conditions Générales d'Utilisation</Link> de la plateforme
+          </Label>
+        </div>
+      </div>
     
       <Button 
         fullWidth 
         className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
-        onClick={() => {
-          const formData = document.getElementById('card-payment-form') as HTMLFormElement;
-          if (formData) {
-            formData.dispatchEvent(new Event('submit', { bubbles: true }));
-          }
-        }}
+        onClick={handleFormSubmit}
         isLoading={isProcessing}
+        disabled={!termsAccepted}
       >
         {isProcessing ? 'Traitement en cours...' : 'Payer maintenant'}
       </Button>
