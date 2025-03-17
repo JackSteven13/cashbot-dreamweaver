@@ -1,6 +1,6 @@
 
 import { useCallback } from 'react';
-import { calculateTimeUntilNextReset } from '@/utils/timeUtils';
+import { calculateTimeUntilMidnight } from '@/utils/timeUtils';
 
 interface UseStatsCycleManagementParams {
   setAdsCount: React.Dispatch<React.SetStateAction<number>>;
@@ -21,16 +21,16 @@ export const useStatsCycleManagement = ({
 }: UseStatsCycleManagementParams) => {
   // Schedule next cycle update
   const scheduleCycleUpdate = useCallback(() => {
-    const timeUntilNextReset = calculateTimeUntilNextReset();
+    const timeUntilMidnight = calculateTimeUntilMidnight();
     
-    // Convert to days for the logs
-    const daysUntilReset = Math.floor(timeUntilNextReset / 1000 / 60 / 60 / 24);
-    const hoursUntilReset = Math.floor((timeUntilNextReset / 1000 / 60 / 60) % 24);
+    // Convert to hours for the logs
+    const hoursUntilMidnight = Math.floor(timeUntilMidnight / 1000 / 60 / 60);
+    const minutesUntilMidnight = Math.floor((timeUntilMidnight / 1000 / 60) % 60);
     
-    console.log(`Next counter reset scheduled in ${daysUntilReset} days and ${hoursUntilReset} hours`);
+    console.log(`Next counter reset scheduled in ${hoursUntilMidnight} hours and ${minutesUntilMidnight} minutes`);
     
     const resetTimeout = setTimeout(() => {
-      // Reset counters only at the scheduled reset time
+      // Reset counters at midnight Paris time
       setAdsCount(0);
       setRevenueCount(0);
       setDisplayedAdsCount(0);
@@ -38,28 +38,27 @@ export const useStatsCycleManagement = ({
       
       // Schedule the next reset
       scheduleCycleUpdate();
-    }, timeUntilNextReset);
+    }, timeUntilMidnight);
     
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Ultra-aggressive increments to make counters move at extremely high speeds
-  // Ensure revenue increments are directly tied to ad increments
+  // Regular increments to make counters move steadily throughout the day
   const incrementCountersRandomly = useCallback(() => {
     // Calculate average revenue per ad
     const avgRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
     
-    // Update calculations for 2ms updates (500 times per second)
+    // Update calculations for once per second
     const secondsInDay = 24 * 60 * 60;
-    // Extreme multiplier to achieve 200+ ads per second
-    const cycleMultiplier = 250; 
+    // Normal multiplier to achieve steady progression
+    const cycleMultiplier = 3; 
     const adsIncrementPerSecond = (dailyAdsTarget * cycleMultiplier) / secondsInDay;
     
-    // Extreme randomization for high variation in counter jumps
-    const randomFactor = Math.random() * 25 + 25; // Random between 25-50x
+    // Mild randomization for natural counter movement
+    const randomFactor = Math.random() * 2 + 0.5; // Random between 0.5-2.5x
     
-    // Very high increments per update for ads
-    const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor / 100);
+    // Reasonable increments per update for ads
+    const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor);
     
     setAdsCount(prevAdsCount => {
       // Only increment if we haven't reached the target

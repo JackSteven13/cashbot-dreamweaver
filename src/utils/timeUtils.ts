@@ -13,6 +13,19 @@ export const getParisTime = (): Date => {
 };
 
 /**
+ * Calculates time until midnight in Paris timezone
+ * @returns Time in milliseconds until midnight
+ */
+export const calculateTimeUntilMidnight = (): number => {
+  const parisTime = getParisTime();
+  const tomorrow = new Date(parisTime);
+  tomorrow.setDate(parisTime.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  
+  return tomorrow.getTime() - parisTime.getTime();
+};
+
+/**
  * Calculates time until next reset date (every 17 days)
  * @returns Time in milliseconds until the next reset
  */

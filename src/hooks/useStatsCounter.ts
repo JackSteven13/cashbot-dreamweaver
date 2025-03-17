@@ -60,8 +60,8 @@ export const useStatsCounter = ({
     
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Increase update frequency to 2ms (500 times per second) for much more dynamic counters
-    const activityInterval = setInterval(incrementCountersRandomly, 2); 
+    // Use a normal update frequency of once per second for smooth progression
+    const activityInterval = setInterval(incrementCountersRandomly, 1000); 
     
     const resetTimeout = scheduleCycleUpdate();
     

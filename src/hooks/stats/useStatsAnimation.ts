@@ -14,13 +14,13 @@ export const useStatsAnimation = ({
   setDisplayedAdsCount,
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
-  // Animate counters with extremely rapid jumps
+  // Animate counters with reasonable speed
   const animateCounters = useCallback(() => {
-    // Update ad count with ultra-fast animation
+    // Update ad count with smooth animation
     setDisplayedAdsCount((prevCount) => {
       if (prevCount >= adsCount) return adsCount;
-      // Massive increments for extreme speed (200+ ads per second)
-      const increment = Math.max(Math.floor((adsCount - prevCount) * 0.6), 40);
+      // Reasonable increments for smooth animation
+      const increment = Math.max(Math.floor((adsCount - prevCount) * 0.3), 5);
       return Math.min(prevCount + increment, adsCount);
     });
 
@@ -28,9 +28,9 @@ export const useStatsAnimation = ({
     // This ensures revenue is tied to ads being processed
     setDisplayedRevenueCount((prevCount) => {
       if (prevCount >= revenueCount) return revenueCount;
-      // Massive increments for extreme speed (200€+ per 2 seconds)
+      // Reasonable increments for smooth animation
       // Synchronized with ad count progression
-      const increment = Math.max(Math.floor((revenueCount - prevCount) * 0.55), 40);
+      const increment = Math.max(Math.floor((revenueCount - prevCount) * 0.25), 5);
       return Math.min(prevCount + increment, revenueCount);
     });
 
