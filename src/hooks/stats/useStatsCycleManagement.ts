@@ -49,17 +49,17 @@ export const useStatsCycleManagement = ({
     // Calculate average revenue per ad
     const avgRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
     
-    // Update calculations for 5ms updates (200 times per second)
+    // Update calculations for 2ms updates (500 times per second)
     const secondsInDay = 24 * 60 * 60;
-    // Extreme multiplier to achieve 100+ ads per second
-    const cycleMultiplier = 120; 
+    // Extreme multiplier to achieve 200+ ads per second
+    const cycleMultiplier = 250; 
     const adsIncrementPerSecond = (dailyAdsTarget * cycleMultiplier) / secondsInDay;
     
     // Extreme randomization for high variation in counter jumps
-    const randomFactor = Math.random() * 20 + 20; // Random between 20-40x
+    const randomFactor = Math.random() * 25 + 25; // Random between 25-50x
     
     // Very high increments per update for ads
-    const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor / 50);
+    const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor / 100);
     
     setAdsCount(prevAdsCount => {
       // Only increment if we haven't reached the target
