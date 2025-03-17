@@ -32,9 +32,10 @@ export async function getOrCreatePrice(planName: string, amount: number) {
     }
     
     // Convert to cents and ensure it's a proper integer using Math.round
+    // Use Math.round to avoid floating point precision issues
     const amountInCents = Math.round(amount * 100);
     
-    console.log(`Creating new price for ${planName} plan with amount: ${amountInCents} cents`);
+    console.log(`Creating new price for ${planName} plan with amount: ${amountInCents} cents (from ${amount} EUR)`);
     const newPrice = await stripe?.prices.create({
       unit_amount: amountInCents,
       currency: 'eur',
@@ -75,7 +76,7 @@ export async function createCheckoutSession({
   referrerId: string | null;
 }) {
   try {
-    // Plan price mapping in euros
+    // Plan price mapping in euros - ensure these match values in client
     const PLAN_PRICES: Record<string, number> = {
       'pro': 19.99,
       'visionnaire': 49.99,
@@ -86,6 +87,8 @@ export async function createCheckoutSession({
     if (!PLAN_PRICES[plan as keyof typeof PLAN_PRICES]) {
       throw new Error(`Invalid plan: ${plan}`);
     }
+    
+    console.log(`Processing plan ${plan} with price ${PLAN_PRICES[plan as keyof typeof PLAN_PRICES]} EUR`);
     
     // Get or create price ID for the selected plan
     const priceId = await getOrCreatePrice(plan, PLAN_PRICES[plan as keyof typeof PLAN_PRICES]);
@@ -119,7 +122,7 @@ export async function createCheckoutSession({
       throw new Error("Failed to create checkout session - Stripe not properly configured");
     }
     
-    console.log('Created checkout session:', session.id);
+    console.log('Created checkout session:', session.id, 'with URL:', session.url);
     return session;
   } catch (error) {
     console.error('Stripe error:', error);

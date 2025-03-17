@@ -1,4 +1,3 @@
-
 import { toast } from "@/components/ui/use-toast";
 
 export const validateCardPayment = (cardNumber: string, expiry: string, cvc: string) => {
@@ -61,4 +60,10 @@ export const formatErrorMessage = (error: any): string => {
   }
   
   return errorMessage;
+};
+
+// Ensure prices are always precise integers when converted to cents
+export const priceToCents = (price: number): number => {
+  // First multiply by 100 then round to ensure we get a precise integer
+  return Math.round(price * 100);
 };

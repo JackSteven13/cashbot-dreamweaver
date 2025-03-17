@@ -62,7 +62,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       
       // Redirect to Stripe checkout URL
       if (data?.url) {
-        // Redirect in a way that ensures the browser actually navigates to the URL
+        console.log("Redirecting to Stripe checkout URL:", data.url);
+        // Force navigation to URL using window.location for reliable redirect
         window.location.href = data.url;
       } else {
         throw new Error("Aucune URL de paiement retournée");

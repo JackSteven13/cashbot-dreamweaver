@@ -25,6 +25,7 @@ const StripeCheckoutForm = ({
         className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white w-full py-2 px-4"
         onClick={onCheckout}
         disabled={isStripeProcessing}
+        type="button"
       >
         {isStripeProcessing ? 'Traitement en cours...' : 'Payer avec Stripe'}
       </Button>
