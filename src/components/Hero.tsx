@@ -29,7 +29,7 @@ const Hero = () => {
             <MapComponent />
           )}
           
-          {/* Counters - Updated with new target values */}
+          {/* Counters - Using refactored component */}
           <StatsCounter 
             dailyAdsTarget={65000} 
             dailyRevenueTarget={186000} 
