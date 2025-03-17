@@ -3,6 +3,7 @@ import React from 'react';
 import { ArrowUpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
 
 interface ActionButtonsProps {
   canStartSession: boolean;
@@ -27,19 +28,34 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   onBoostClick,
   onWithdraw
 }) => {
-  // Vérifier si la limite est atteinte
+  // Vérifier si la limite est atteinte - check against the actual current balance
   const limitReached = currentBalance >= dailyLimit;
+  
+  // Calculer le pourcentage de la limite atteinte pour l'affichage visuel
+  const limitPercentage = Math.min(100, (currentBalance / dailyLimit) * 100);
   
   return (
     <div className="flex flex-col sm:flex-row gap-2 mb-6">
       {canStartSession && !limitReached ? (
         <Button 
           size="lg" 
-          className="w-full bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
-          disabled={isButtonDisabled || isStartingSession}
+          className="w-full bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white relative overflow-hidden"
+          disabled={isButtonDisabled || isStartingSession || limitReached}
           onClick={onBoostClick}
         >
-          {isStartingSession ? "Traitement en cours..." : "▶️ Boost manuel"}
+          {/* Indicateur visuel de progression vers la limite */}
+          <div 
+            className="absolute bottom-0 left-0 h-1 bg-yellow-400" 
+            style={{ width: `${limitPercentage}%` }}
+          />
+          
+          {isStartingSession ? (
+            "Traitement en cours..."
+          ) : limitReached ? (
+            "Limite journalière atteinte"
+          ) : (
+            "▶️ Boost manuel"
+          )}
         </Button>
       ) : (
         <div className="flex flex-col sm:flex-row gap-2 w-full">

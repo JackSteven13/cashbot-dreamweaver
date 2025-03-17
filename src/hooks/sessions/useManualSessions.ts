@@ -20,8 +20,12 @@ export const useManualSessions = (
   const sessionInProgress = useRef(false);
   const operationLock = useRef(false);
   const clickTimeoutRef = useRef<number | null>(null);
+  
   // Maintenir une référence locale au solde actuel pour éviter les conditions de concurrence
   const currentBalanceRef = useRef<number>(userData.balance);
+  // Ajouter un compteur de boosts pour empêcher les abus
+  const boostCountRef = useRef<number>(0);
+  const lastBoostTimeRef = useRef<number>(Date.now());
 
   // Mettre à jour la référence locale au solde lorsque userData change
   useEffect(() => {
@@ -37,6 +41,15 @@ export const useManualSessions = (
     };
   }, []);
 
+  // Réinitialiser le compteur de boosts toutes les 5 minutes
+  useEffect(() => {
+    const resetInterval = setInterval(() => {
+      boostCountRef.current = 0;
+    }, 5 * 60 * 1000);
+    
+    return () => clearInterval(resetInterval);
+  }, []);
+
   const handleStartSession = async () => {
     // Debounce rapid clicks - ignore if clicked within last 2 seconds
     if (clickTimeoutRef.current !== null) {
@@ -47,6 +60,17 @@ export const useManualSessions = (
     // Prevent multiple concurrent sessions and rapid clicking
     if (isStartingSession || sessionInProgress.current || operationLock.current) {
       console.log("Session or operation already in progress, ignoring request");
+      return;
+    }
+    
+    // Anti-abus: vérifier le nombre de boosts récents
+    const now = Date.now();
+    if (now - lastBoostTimeRef.current < 30000 && boostCountRef.current >= 5) {
+      toast({
+        title: "Action limitée",
+        description: "Vous effectuez trop de boosts en peu de temps. Veuillez patienter quelques minutes.",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -110,7 +134,7 @@ export const useManualSessions = (
       const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       const remainingAmount = dailyLimit - currentBalanceRef.current;
       
-      // Only proceed if there's still room within the daily limit
+      // Vérification finale avant d'appliquer le gain
       if (remainingAmount <= 0) {
         setShowLimitAlert(true);
         toast({
@@ -118,6 +142,9 @@ export const useManualSessions = (
           description: `Vous avez atteint votre limite de gain journalier de ${dailyLimit}€. Revenez demain ou passez à un forfait supérieur.`,
           variant: "destructive"
         });
+        sessionInProgress.current = false;
+        operationLock.current = false;
+        setIsStartingSession(false);
         return;
       }
       
@@ -127,15 +154,38 @@ export const useManualSessions = (
         userData.referrals.length
       );
       
+      // Vérifier une dernière fois que nous ne dépassons pas la limite
+      const calculatedNewBalance = currentBalanceRef.current + randomGain;
+      const finalGain = calculatedNewBalance > dailyLimit ? 
+                        dailyLimit - currentBalanceRef.current : 
+                        randomGain;
+                        
+      if (finalGain <= 0) {
+        setShowLimitAlert(true);
+        toast({
+          title: "Limite journalière atteinte",
+          description: `Vous avez atteint votre limite de gain journalier de ${dailyLimit}€. Revenez demain ou passez à un forfait supérieur.`,
+          variant: "destructive"
+        });
+        sessionInProgress.current = false;
+        operationLock.current = false;
+        setIsStartingSession(false);
+        return;
+      }
+      
       // Mettre à jour la référence locale avant d'appeler l'API
-      const newBalance = currentBalanceRef.current + randomGain;
+      const newBalance = currentBalanceRef.current + finalGain;
       currentBalanceRef.current = newBalance;
       
       // Update user data
       await updateBalance(
-        randomGain,
-        `Session manuelle : Notre technologie a optimisé le processus et généré ${randomGain.toFixed(2)}€ de revenus pour votre compte ${userData.subscription}.`
+        finalGain,
+        `Session manuelle : Notre technologie a optimisé le processus et généré ${finalGain.toFixed(2)}€ de revenus pour votre compte ${userData.subscription}.`
       );
+      
+      // Mettre à jour le compteur de boosts
+      boostCountRef.current += 1;
+      lastBoostTimeRef.current = Date.now();
       
       // Vérifier si la limite est maintenant atteinte
       if (newBalance >= dailyLimit) {
@@ -144,7 +194,7 @@ export const useManualSessions = (
       
       toast({
         title: "Session terminée",
-        description: `CashBot a généré ${randomGain.toFixed(2)}€ de revenus pour vous !`,
+        description: `CashBot a généré ${finalGain.toFixed(2)}€ de revenus pour vous !`,
       });
     } catch (error) {
       console.error("Error during session:", error);

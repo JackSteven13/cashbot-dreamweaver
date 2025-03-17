@@ -6,7 +6,7 @@ import ActionButtons from './ActionButtons';
 import ReferralLink from './ReferralLink';
 import SystemTerminal from './SystemTerminal';
 import WelcomeMessage from './WelcomeMessage';
-import { SUBSCRIPTION_LIMITS } from './constants';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
 
 interface SummaryPanelProps {
   balance: number;
@@ -38,9 +38,12 @@ const SummaryPanel = ({
   const [displayBalance, setDisplayBalance] = useState(Math.max(0, balance));
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const latestBalanceRef = useRef(balance);
   
+  // Immediately update the reference when the balance prop changes
   useEffect(() => {
     console.log("Balance prop changed to:", balance);
+    latestBalanceRef.current = balance;
     setDisplayBalance(Math.max(0, balance));
   }, [balance]);
   
@@ -51,6 +54,9 @@ const SummaryPanel = ({
       }
     };
   }, []);
+  
+  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  const currentlyCanStartSession = canStartSession && (latestBalanceRef.current < dailyLimit);
   
   const onWithdraw = () => {
     if (isButtonDisabled || isWithdrawing) return;
@@ -101,7 +107,17 @@ const SummaryPanel = ({
   };
 
   const onBoostClick = () => {
-    if (isButtonDisabled || isStartingSession || !canStartSession) return;
+    if (isButtonDisabled || isStartingSession || !currentlyCanStartSession) return;
+    
+    // Double check balance limit
+    if (latestBalanceRef.current >= dailyLimit) {
+      toast({
+        title: "Limite journalière atteinte",
+        description: `Vous avez atteint votre limite de gain journalier de ${dailyLimit}€. Revenez demain ou passez à un forfait supérieur.`,
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsButtonDisabled(true);
     
@@ -115,8 +131,6 @@ const SummaryPanel = ({
       setIsButtonDisabled(false);
     }, 3000);
   };
-
-  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
   const remainingSessions = subscription === 'freemium' ? Math.max(0, 1 - dailySessionCount!) : 'illimitées';
   const sessionsDisplay = subscription === 'freemium' 
@@ -138,7 +152,7 @@ const SummaryPanel = ({
           />
           
           <ActionButtons 
-            canStartSession={canStartSession}
+            canStartSession={currentlyCanStartSession}
             isButtonDisabled={isButtonDisabled}
             isStartingSession={isStartingSession}
             isWithdrawing={isWithdrawing}
