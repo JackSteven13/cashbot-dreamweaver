@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import UserBalanceCard from './UserBalanceCard';
@@ -39,13 +38,11 @@ const SummaryPanel = ({
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Update the displayed balance when the balance prop changes
   useEffect(() => {
     console.log("Balance prop changed to:", balance);
     setDisplayBalance(Math.max(0, balance));
   }, [balance]);
   
-  // Clean up timeout on unmount
   useEffect(() => {
     return () => {
       if (clickTimeoutRef.current) {
@@ -61,26 +58,23 @@ const SummaryPanel = ({
     setIsWithdrawing(true);
     
     try {
-      // Simulate withdrawal process
       if (handleWithdrawal) {
         handleWithdrawal();
       } else {
-        // Fallback if handleWithdrawal is not provided
         if (subscription === 'freemium') {
           toast({
             title: "Demande refusée",
             description: "Les retraits sont disponibles uniquement pour les abonnements payants. Veuillez mettre à niveau votre compte.",
             variant: "destructive"
           });
-        } else if (displayBalance < 100) { // Mise à jour du montant minimum
+        } else if (displayBalance < 100) {
           toast({
             title: "Montant insuffisant",
             description: "Le montant minimum de retrait est de 100€. Continuez à gagner plus de revenus.",
             variant: "destructive"
           });
         } else {
-          // Calculer les frais de retrait (simplification)
-          const fee = 0.15; // Taux standard par défaut
+          const fee = 0.15;
           const feeAmount = displayBalance * fee;
           const netAmount = displayBalance - feeAmount;
           
@@ -98,7 +92,6 @@ const SummaryPanel = ({
         variant: "destructive"
       });
     } finally {
-      // Re-enable button and reset withdrawal state after a delay
       setTimeout(() => {
         setIsWithdrawing(false);
         setIsButtonDisabled(false);
@@ -106,31 +99,24 @@ const SummaryPanel = ({
     }
   };
 
-  // Handle boost button click with debounce to prevent multiple rapid clicks
   const onBoostClick = () => {
     if (isButtonDisabled || isStartingSession || !canStartSession) return;
     
-    // Disable button immediately
     setIsButtonDisabled(true);
     
-    // Clear any existing timeout
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current);
     }
     
-    // Call the handleStartSession function
     handleStartSession();
     
-    // Re-enable button after a delay
     clickTimeoutRef.current = setTimeout(() => {
       setIsButtonDisabled(false);
     }, 3000);
   };
 
-  // Obtenir la limite de gain pour l'abonnement actuel
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
-  // Calculer les sessions restantes
   const remainingSessions = subscription === 'freemium' ? Math.max(0, 1 - dailySessionCount!) : 'illimitées';
   const sessionsDisplay = subscription === 'freemium' 
     ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}`
@@ -141,7 +127,6 @@ const SummaryPanel = ({
       <WelcomeMessage isNewUser={isNewUser} />
       
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left Column */}
         <div className="flex-1">
           <UserBalanceCard 
             displayBalance={displayBalance}
@@ -156,6 +141,7 @@ const SummaryPanel = ({
             isButtonDisabled={isButtonDisabled}
             isStartingSession={isStartingSession}
             isWithdrawing={isWithdrawing}
+            subscription={subscription}
             onBoostClick={onBoostClick}
             onWithdraw={onWithdraw}
           />
@@ -163,7 +149,6 @@ const SummaryPanel = ({
           <ReferralLink referralLink={referralLink} />
         </div>
         
-        {/* Right Column - AI Terminal */}
         <SystemTerminal 
           isNewUser={isNewUser}
           dailyLimit={dailyLimit}
