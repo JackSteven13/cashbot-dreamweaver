@@ -86,6 +86,7 @@ const Dashboard = () => {
       <DailyLimitAlert 
         show={showLimitAlert} 
         subscription={userData.subscription}
+        currentBalance={userData.balance}
       />
       
       <DashboardMetrics

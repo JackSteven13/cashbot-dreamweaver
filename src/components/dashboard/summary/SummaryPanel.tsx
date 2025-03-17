@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import UserBalanceCard from './UserBalanceCard';
@@ -142,6 +143,8 @@ const SummaryPanel = ({
             isStartingSession={isStartingSession}
             isWithdrawing={isWithdrawing}
             subscription={subscription}
+            currentBalance={displayBalance}
+            dailyLimit={dailyLimit}
             onBoostClick={onBoostClick}
             onWithdraw={onWithdraw}
           />

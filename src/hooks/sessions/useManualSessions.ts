@@ -20,6 +20,13 @@ export const useManualSessions = (
   const sessionInProgress = useRef(false);
   const operationLock = useRef(false);
   const clickTimeoutRef = useRef<number | null>(null);
+  // Maintenir une référence locale au solde actuel pour éviter les conditions de concurrence
+  const currentBalanceRef = useRef<number>(userData.balance);
+
+  // Mettre à jour la référence locale au solde lorsque userData change
+  useEffect(() => {
+    currentBalanceRef.current = userData.balance;
+  }, [userData.balance]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -43,13 +50,26 @@ export const useManualSessions = (
       return;
     }
     
+    // Vérifier d'abord si la limite est atteinte
+    const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    if (currentBalanceRef.current >= dailyLimit) {
+      console.log("Daily limit already reached:", currentBalanceRef.current, ">=", dailyLimit);
+      setShowLimitAlert(true);
+      toast({
+        title: "Limite journalière atteinte",
+        description: `Vous avez atteint votre limite de gain journalier de ${dailyLimit}€. Revenez demain ou passez à un forfait supérieur.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Set click debounce
     clickTimeoutRef.current = window.setTimeout(() => {
       clickTimeoutRef.current = null;
     }, 2000);
     
     // Check if session can be started
-    if (!canStartManualSession(userData.subscription, dailySessionCount, userData.balance)) {
+    if (!canStartManualSession(userData.subscription, dailySessionCount, currentBalanceRef.current)) {
       // If freemium account and session limit reached
       if (userData.subscription === 'freemium' && dailySessionCount >= 1) {
         toast({
@@ -61,7 +81,7 @@ export const useManualSessions = (
       }
       
       // If daily gain limit reached
-      if (checkDailyLimit(userData.balance, userData.subscription)) {
+      if (checkDailyLimit(currentBalanceRef.current, userData.subscription)) {
         setShowLimitAlert(true);
         toast({
           title: "Limite journalière atteinte",
@@ -86,18 +106,41 @@ export const useManualSessions = (
       // Simulate manual session
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Calculate gain using the utility function
+      // Calculate gain using the utility function, ensure we use the latest balance
+      const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      const remainingAmount = dailyLimit - currentBalanceRef.current;
+      
+      // Only proceed if there's still room within the daily limit
+      if (remainingAmount <= 0) {
+        setShowLimitAlert(true);
+        toast({
+          title: "Limite journalière atteinte",
+          description: `Vous avez atteint votre limite de gain journalier de ${dailyLimit}€. Revenez demain ou passez à un forfait supérieur.`,
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const randomGain = calculateManualSessionGain(
         userData.subscription, 
-        userData.balance, 
+        currentBalanceRef.current, 
         userData.referrals.length
       );
+      
+      // Mettre à jour la référence locale avant d'appeler l'API
+      const newBalance = currentBalanceRef.current + randomGain;
+      currentBalanceRef.current = newBalance;
       
       // Update user data
       await updateBalance(
         randomGain,
         `Session manuelle : Notre technologie a optimisé le processus et généré ${randomGain.toFixed(2)}€ de revenus pour votre compte ${userData.subscription}.`
       );
+      
+      // Vérifier si la limite est maintenant atteinte
+      if (newBalance >= dailyLimit) {
+        setShowLimitAlert(true);
+      }
       
       toast({
         title: "Session terminée",

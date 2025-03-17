@@ -10,6 +10,8 @@ interface ActionButtonsProps {
   isStartingSession: boolean;
   isWithdrawing: boolean;
   subscription: string;
+  currentBalance: number;
+  dailyLimit: number;
   onBoostClick: () => void;
   onWithdraw: () => void;
 }
@@ -20,12 +22,17 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   isStartingSession,
   isWithdrawing,
   subscription,
+  currentBalance,
+  dailyLimit,
   onBoostClick,
   onWithdraw
 }) => {
+  // Vérifier si la limite est atteinte
+  const limitReached = currentBalance >= dailyLimit;
+  
   return (
     <div className="flex flex-col sm:flex-row gap-2 mb-6">
-      {canStartSession ? (
+      {canStartSession && !limitReached ? (
         <Button 
           size="lg" 
           className="w-full bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
@@ -41,15 +48,15 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
             className="w-full bg-gray-300 hover:bg-gray-300 text-gray-500 cursor-not-allowed"
             disabled={true}
           >
-            ▶️ Boost manuel
+            {limitReached ? "Limite journalière atteinte" : "▶️ Boost manuel"}
           </Button>
-          {subscription === 'freemium' && (
+          {(subscription === 'freemium' || limitReached) && (
             <Link to="/offres" className="w-full sm:w-auto">
               <Button 
                 size="lg" 
                 className="w-full bg-green-600 hover:bg-green-700 text-white"
               >
-                Passer à l'offre Pro
+                {limitReached ? "Augmenter votre limite" : "Passer à l'offre Pro"}
               </Button>
             </Link>
           )}
