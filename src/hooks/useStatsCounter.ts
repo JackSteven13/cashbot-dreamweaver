@@ -67,8 +67,8 @@ export const useStatsCounter = ({
     // Start animation with requestAnimationFrame for smoother updates
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Schedule faster real data updates (every 500ms for more dynamic movement)
-    const activityInterval = setInterval(incrementCountersRandomly, 500); 
+    // Schedule faster real data updates (every 250ms instead of 500ms for more dynamic movement)
+    const activityInterval = setInterval(incrementCountersRandomly, 250); 
     
     // Schedule reset at the end of the 17-day cycle
     const resetTimeout = scheduleCycleUpdate();
