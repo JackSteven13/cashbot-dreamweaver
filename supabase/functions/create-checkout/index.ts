@@ -25,12 +25,12 @@ const stripe = isValidStripeKey ? new Stripe(stripeSecretKey, {
 }) : null;
 
 // Define subscription plan IDs
-// For production, replace these with your actual Stripe price IDs
+// Update with the actual product IDs
 const PLAN_IDS = {
   'freemium': 'free',
-  'pro': 'price_1OWlHbPpjKfOPBSRnBzNBRIY',     // Replace with your actual Stripe price ID
-  'visionnaire': 'price_1OWlIEPpjKfOPBSROvnx6rKo', // Replace with your actual Stripe price ID
-  'alpha': 'price_1OWlJ1PpjKfOPBSRmxkRZmjC',     // Replace with your actual Stripe price ID
+  'pro': 'price_1OWlHbPpjKfOPBSRnBzNBRIY',     // Will be updated with price ID from the product
+  'visionnaire': 'price_1OWlIEPpjKfOPBSROvnx6rKo', 
+  'alpha': 'price_1OWlJ1PpjKfOPBSRmxkRZmjC',     
 }
 
 // Create a Supabase client
@@ -54,6 +54,28 @@ Deno.serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+    
+    // First, try to get the price ID for the pro product
+    if (PLAN_IDS['pro'] === 'price_1OWlHbPpjKfOPBSRnBzNBRIY') {
+      try {
+        // Look up prices for the provided product ID
+        console.log('Looking up prices for product ID: prod_RopJPyaRmXWQ1V');
+        const prices = await stripe.prices.list({
+          product: 'prod_RopJPyaRmXWQ1V',
+          active: true,
+        });
+        
+        if (prices.data.length > 0) {
+          // Use the first active price
+          PLAN_IDS['pro'] = prices.data[0].id;
+          console.log(`Found price ID for Pro plan: ${PLAN_IDS['pro']}`);
+        } else {
+          console.error('No active prices found for the Pro product');
+        }
+      } catch (priceError) {
+        console.error('Error retrieving prices for Pro product:', priceError);
+      }
     }
     
     // Extract authorization token from request
