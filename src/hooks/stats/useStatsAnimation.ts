@@ -24,24 +24,29 @@ export const useStatsAnimation = ({
       return Math.min(prevCount + increment, adsCount);
     });
 
-    // Mise à jour du nombre de revenus avec des sauts variables pour refléter des publicités à forte valeur
+    // Mise à jour du nombre de revenus avec des sauts TRÈS VISIBLES pour refléter des publicités à forte valeur
     setDisplayedRevenueCount((prevCount) => {
       if (prevCount >= revenueCount) return revenueCount;
       
-      // Variation aléatoire pour simuler des publicités à haute valeur
-      // Parfois de grands sauts (publicités à 2-4€)
+      // Variation aléatoire EXTRÊME pour simuler des publicités à haute valeur
+      // Parfois des ÉNORMES sauts (publicités jusqu'à 15€)
       const randomFactor = Math.random();
       let increment;
       
-      if (randomFactor > 0.92) {
-        // Grands sauts occasionnels (4-5€)
-        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.85), 400);
-      } else if (randomFactor > 0.75) {
-        // Sauts moyens fréquents (2-3€)
-        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.8), 250);
+      if (randomFactor > 0.95) {
+        // Sauts GIGANTESQUES rares (10-15€)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.9), 1500);
+        console.log("🚀 PUBLICITÉ PREMIUM DÉTECTÉE: +1500€ minimum!");
+      } else if (randomFactor > 0.85) {
+        // Grands sauts occasionnels (5-8€)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.85), 800);
+        console.log("💰 Publicité à haute valeur: +800€ minimum");
+      } else if (randomFactor > 0.6) {
+        // Sauts moyens fréquents (3-5€)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.8), 400);
       } else {
         // Incréments plus petits mais toujours impressionnants
-        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.75), 150);
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.75), 200);
       }
       
       return Math.min(prevCount + increment, revenueCount);

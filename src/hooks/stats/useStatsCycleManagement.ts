@@ -45,7 +45,7 @@ export const useStatsCycleManagement = ({
   
   // Incréments ultra-rapides pour montrer une opération mondiale à très haut volume
   const incrementCountersRandomly = useCallback(() => {
-    // Calculer le revenu moyen par publicité, avec une variance plus élevée
+    // Calculer le revenu moyen par publicité, avec une variance BEAUCOUP plus élevée
     const baseRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
     
     // Calculs mis à jour pour une opération à très haute fréquence
@@ -55,7 +55,7 @@ export const useStatsCycleManagement = ({
     const adsIncrementPerSecond = (dailyAdsTarget * cycleMultiplier) / secondsInDay;
     
     // Forte randomisation pour un mouvement spectaculaire des compteurs
-    const randomFactor = Math.random() * 5 + 2; // Aléatoire entre 2-7x
+    const randomFactor = Math.random() * 8 + 2; // Aléatoire entre 2-10x
     
     // Incréments massifs par mise à jour pour les publicités
     const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor);
@@ -65,22 +65,27 @@ export const useStatsCycleManagement = ({
       if (prevAdsCount >= dailyAdsTarget) return dailyAdsTarget;
       const newAdsCount = Math.min(prevAdsCount + adsIncrement, dailyAdsTarget);
       
-      // Mise à jour des revenus avec des increments variables pour refléter des publicités à forte valeur
+      // Mise à jour des revenus avec des increments EXTRÊMEMENT variables pour refléter des publicités à forte valeur
       const adsDifference = newAdsCount - prevAdsCount;
       
-      // Parfois on obtient des publicités très rentables (jusqu'à 4-5€ par publicité)
+      // Parfois on obtient des publicités TRÈS rentables (jusqu'à 15€ par publicité)
       let revenueMultiplier;
       const valueRoll = Math.random();
       
-      if (valueRoll > 0.95) {
-        // Publicités exceptionnelles (4-5€ par pub)
-        revenueMultiplier = baseRevenuePerAd * (4 + Math.random());
-      } else if (valueRoll > 0.85) {
-        // Publicités très rentables (2.5-4€ par pub)
-        revenueMultiplier = baseRevenuePerAd * (2.5 + Math.random() * 1.5);
-      } else if (valueRoll > 0.7) {
-        // Publicités rentables (1.5-2.5€ par pub)
-        revenueMultiplier = baseRevenuePerAd * (1.5 + Math.random());
+      if (valueRoll > 0.96) {
+        // Publicités EXCEPTIONNELLES (10-15€ par pub)
+        revenueMultiplier = baseRevenuePerAd * (10 + Math.random() * 5);
+        console.log("💎 JACKPOT: Publicité exceptionnelle détectée!");
+      } else if (valueRoll > 0.90) {
+        // Publicités premium (6-10€ par pub)
+        revenueMultiplier = baseRevenuePerAd * (6 + Math.random() * 4);
+        console.log("💰 Publicité premium détectée!");
+      } else if (valueRoll > 0.75) {
+        // Publicités très rentables (3-6€ par pub)
+        revenueMultiplier = baseRevenuePerAd * (3 + Math.random() * 3);
+      } else if (valueRoll > 0.5) {
+        // Publicités rentables (2-3€ par pub)
+        revenueMultiplier = baseRevenuePerAd * (2 + Math.random());
       } else {
         // Publicités standard avec légère variance
         revenueMultiplier = baseRevenuePerAd * (0.8 + Math.random() * 0.7);
