@@ -43,61 +43,61 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Incréments ultra-rapides pour montrer une opération mondiale à très haut volume
+  // Ultra-fast increments to show high-volume global operation
   const incrementCountersRandomly = useCallback(() => {
-    // Calcul de revenu par publicité avec FORTE VARIANCE pour une expérience visuelle impressionnante
+    // Calculate revenue per ad with HIGH VARIANCE for impressive visual experience
     const baseRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
     
-    // Calculs mis à jour pour une opération à très haute fréquence
+    // Updated calculations for very high frequency operation
     const secondsInDay = 24 * 60 * 60;
-    // Multiplicateur extrêmement élevé pour une progression impressionnante
-    const cycleMultiplier = 120; 
+    // Extremely high multiplier for impressive progression
+    const cycleMultiplier = 150; 
     const adsIncrementPerSecond = (dailyAdsTarget * cycleMultiplier) / secondsInDay;
     
-    // Forte randomisation pour un mouvement spectaculaire des compteurs
-    const randomFactor = Math.random() * 8 + 2; // Aléatoire entre 2-10x
+    // Strong randomization for spectacular counter movement
+    const randomFactor = Math.random() * 10 + 5; // Random between 5-15x
     
-    // Incréments massifs par mise à jour pour les publicités
+    // Massive increments per update for ads
     const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor);
     
     setAdsCount(prevAdsCount => {
-      // Ne s'incrémente que si nous n'avons pas atteint la cible
+      // Only increments if we haven't reached the target
       if (prevAdsCount >= dailyAdsTarget) return dailyAdsTarget;
       const newAdsCount = Math.min(prevAdsCount + adsIncrement, dailyAdsTarget);
       
-      // Mise à jour des revenus avec des increments EXTRÊMEMENT variables
+      // Update revenue with EXTREMELY variable increments
       const adsDifference = newAdsCount - prevAdsCount;
       
-      // Simulation de différentes valeurs de publicités, avec des variations TRÈS IMPORTANTES
+      // Simulate different ad values, with VERY SIGNIFICANT variations
       let revenueMultiplier;
       const valueRoll = Math.random();
       
       if (valueRoll > 0.97) {
-        // Publicités EXCEPTIONNELLES (25-40€ par pub)
-        revenueMultiplier = baseRevenuePerAd * (25 + Math.random() * 15);
-        console.log("💎💎💎 JACKPOT: Publicité exceptionnelle de 25-40€!");
+        // EXCEPTIONAL ads (30-40€ per ad)
+        revenueMultiplier = baseRevenuePerAd * (30 + Math.random() * 10);
+        console.log("💎💎💎 JACKPOT: Exceptional ad worth 30-40€!");
       } else if (valueRoll > 0.90) {
-        // Publicités premium (15-25€ par pub)
-        revenueMultiplier = baseRevenuePerAd * (15 + Math.random() * 10);
-        console.log("💰💰 Publicité premium de 15-25€!");
+        // Premium ads (20-30€ per ad)
+        revenueMultiplier = baseRevenuePerAd * (20 + Math.random() * 10);
+        console.log("💰💰 Premium ad worth 20-30€!");
       } else if (valueRoll > 0.75) {
-        // Publicités très rentables (8-15€ par pub)
-        revenueMultiplier = baseRevenuePerAd * (8 + Math.random() * 7);
-        console.log("💰 Publicité à haute valeur: 8-15€");
+        // Very profitable ads (10-20€ per ad)
+        revenueMultiplier = baseRevenuePerAd * (10 + Math.random() * 10);
+        console.log("💰 High-value ad: 10-20€");
       } else if (valueRoll > 0.5) {
-        // Publicités rentables (4-8€ par pub)
-        revenueMultiplier = baseRevenuePerAd * (4 + Math.random() * 4);
+        // Profitable ads (5-10€ per ad)
+        revenueMultiplier = baseRevenuePerAd * (5 + Math.random() * 5);
       } else if (valueRoll > 0.3) {
-        // Publicités standard (2-4€ par pub)
-        revenueMultiplier = baseRevenuePerAd * (2 + Math.random() * 2);
+        // Standard ads (3-5€ per ad)
+        revenueMultiplier = baseRevenuePerAd * (3 + Math.random() * 2);
       } else {
-        // Publicités basiques (1-2€ par pub)
-        revenueMultiplier = baseRevenuePerAd * (1 + Math.random());
+        // Basic ads (1-3€ per ad)
+        revenueMultiplier = baseRevenuePerAd * (1 + Math.random() * 2);
       }
       
       const revenueIncrement = adsDifference * revenueMultiplier;
       
-      // Mise à jour directe des revenus en fonction des nouvelles publicités
+      // Direct update of revenue based on new ads
       setRevenueCount(prevRevenueCount => {
         if (prevRevenueCount >= dailyRevenueTarget) return dailyRevenueTarget;
         return Math.min(prevRevenueCount + revenueIncrement, dailyRevenueTarget);

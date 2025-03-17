@@ -14,48 +14,48 @@ export const useStatsAnimation = ({
   setDisplayedAdsCount,
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
-  // Animation extrêmement rapide pour des nombres impressionnants
+  // Animation dramatically improved for impressive numbers
   const animateCounters = useCallback(() => {
-    // Mise à jour du nombre de publicités avec une animation ultra-rapide pour montrer un traitement massif
+    // Update ad count with ultra-fast animation to show massive processing
     setDisplayedAdsCount((prevCount) => {
       if (prevCount >= adsCount) return adsCount;
-      // Incréments beaucoup plus importants pour un effet visuel spectaculaire
-      const increment = Math.max(Math.floor((adsCount - prevCount) * 0.8), 200);
+      // Much larger increments for dramatic visual effect
+      const increment = Math.max(Math.floor((adsCount - prevCount) * 0.8), 300);
       return Math.min(prevCount + increment, adsCount);
     });
 
-    // Mise à jour du nombre de revenus avec des sauts ÉNORMES et TRÈS VISIBLES
+    // Update revenue count with HUGE and VERY VISIBLE jumps
     setDisplayedRevenueCount((prevCount) => {
       if (prevCount >= revenueCount) return revenueCount;
       
-      // Variation aléatoire EXTRÊME pour simuler des publicités à haute valeur
+      // EXTREME random variation to simulate high-value ads
       const randomFactor = Math.random();
       let increment;
       
       if (randomFactor > 0.95) {
-        // Sauts GIGANTESQUES rares (15-30€ par pub)
-        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.85), 3000);
-        console.log("💎💎💎 PUBLICITÉ ULTRA-PREMIUM: +3000€!");
+        // GIGANTIC rare jumps (25-40€ per ad)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.85), 4000);
+        console.log("💎💎💎 ULTRA-PREMIUM AD: +4000€!");
       } else if (randomFactor > 0.85) {
-        // Grands sauts occasionnels (10-15€ par pub)
-        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.75), 1500);
-        console.log("💰💰 PUBLICITÉ PREMIUM: +1500€!");
+        // Large occasional jumps (15-25€ per ad)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.75), 2500);
+        console.log("💰💰 PREMIUM AD: +2500€!");
       } else if (randomFactor > 0.65) {
-        // Sauts moyens fréquents (5-10€ par pub)
-        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.65), 800);
-        console.log("💰 Publicité à haute valeur: +800€");
+        // Medium frequent jumps (8-15€ per ad)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.65), 1500);
+        console.log("💰 High-value ad: +1500€");
       } else if (randomFactor > 0.4) {
-        // Petits sauts mais toujours visibles (3-5€ par pub)
-        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.5), 400);
+        // Small but still visible jumps (4-8€ per ad)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.5), 800);
       } else {
-        // Incréments standard (1-3€ par pub)
-        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.3), 200);
+        // Standard increments (1-4€ per ad)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.3), 400);
       }
       
       return Math.min(prevCount + increment, revenueCount);
     });
 
-    // Retourne true pour indiquer que l'animation est toujours active si l'un des compteurs n'a pas atteint sa cible
+    // Return true to indicate animation is still active if either counter hasn't reached its target
     return { 
       animationActive: adsCount > 0 || revenueCount > 0 
     };

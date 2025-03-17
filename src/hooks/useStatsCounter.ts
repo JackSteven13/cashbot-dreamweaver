@@ -15,8 +15,8 @@ interface StatsCounterData {
 }
 
 export const useStatsCounter = ({
-  dailyAdsTarget = 65000,
-  dailyRevenueTarget = 186000
+  dailyAdsTarget = 350000,
+  dailyRevenueTarget = 850000
 }: UseStatsCounterParams): StatsCounterData => {
   const {
     adsCount,
@@ -60,8 +60,8 @@ export const useStatsCounter = ({
     
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Fréquence de mise à jour ultra-rapide pour une progression spectaculaire (toutes les 100ms)
-    const activityInterval = setInterval(incrementCountersRandomly, 100); 
+    // Ultra-fast update frequency for spectacular progression (every 70ms)
+    const activityInterval = setInterval(incrementCountersRandomly, 70); 
     
     const resetTimeout = scheduleCycleUpdate();
     
