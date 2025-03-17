@@ -10,10 +10,10 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const [isStripeProcessing, setIsStripeProcessing] = useState(false);
 
   const handleStripeCheckout = async () => {
-    if (!selectedPlan || selectedPlan === 'freemium') {
+    if (!selectedPlan) {
       toast({
         title: "Erreur",
-        description: "Veuillez sélectionner un plan payant",
+        description: "Veuillez sélectionner un plan",
         variant: "destructive"
       });
       return;
@@ -42,11 +42,12 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         body: {
           plan: selectedPlan,
           successUrl: `${window.location.origin}/payment-success`,
-          cancelUrl: `${window.location.origin}/payment?plan=${selectedPlan}`
+          cancelUrl: `${window.location.origin}/offres`
         }
       });
       
       if (error) {
+        console.error("Function error:", error);
         throw new Error(`Function error: ${error.message}`);
       }
       

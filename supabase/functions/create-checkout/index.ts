@@ -34,9 +34,10 @@ Deno.serve(async (req) => {
   }
   
   try {
-    // Extract authorization token
+    // Extract authorization token from request
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      console.error('No Authorization header provided')
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -60,7 +61,8 @@ Deno.serve(async (req) => {
     console.log('Received plan:', plan)
     
     // Validate plan
-    if (!plan || !PLAN_IDS[plan] || plan === 'freemium') {
+    if (!plan || !PLAN_IDS[plan]) {
+      console.error('Invalid plan:', plan)
       return new Response(JSON.stringify({ error: 'Invalid plan' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -71,7 +73,8 @@ Deno.serve(async (req) => {
     const priceId = PLAN_IDS[plan]
     
     // If it's a free plan, just update the user's subscription
-    if (priceId === 'free') {
+    if (priceId === 'free' || plan === 'freemium') {
+      console.log('Handling freemium plan subscription')
       // Update user subscription in database
       const { error: updateError } = await supabase
         .from('user_balances')
@@ -94,31 +97,41 @@ Deno.serve(async (req) => {
       })
     }
     
+    console.log('Creating Stripe checkout session for plan:', plan, 'with price ID:', priceId)
+    
     // For paid plans, create a Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'subscription',
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
+    try {
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        mode: 'subscription',
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        success_url: successUrl || 'https://cashbot.com/payment-success?session_id={CHECKOUT_SESSION_ID}',
+        cancel_url: cancelUrl || 'https://cashbot.com/payment-cancelled',
+        client_reference_id: user.id,
+        customer_email: user.email,
+        metadata: {
+          userId: user.id,
+          plan: plan,
         },
-      ],
-      success_url: successUrl || 'https://cashbot.com/payment-success?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: cancelUrl || 'https://cashbot.com/payment-cancelled',
-      client_reference_id: user.id,
-      customer_email: user.email,
-      metadata: {
-        userId: user.id,
-        plan: plan,
-      },
-    })
-    
-    console.log('Created checkout session:', session.id)
-    
-    return new Response(JSON.stringify({ success: true, url: session.url }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+      })
+      
+      console.log('Created checkout session:', session.id)
+      
+      return new Response(JSON.stringify({ success: true, url: session.url }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    } catch (stripeError) {
+      console.error('Stripe error:', stripeError)
+      return new Response(JSON.stringify({ error: stripeError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
   } catch (error) {
     console.error('Error creating checkout session:', error)
     return new Response(JSON.stringify({ error: error.message }), {

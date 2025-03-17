@@ -93,7 +93,7 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
         return;
       }
 
-      // For freemium plan, update directly without payment
+      // For free plan, update directly without payment
       if (selectedPlan === 'freemium') {
         const { error: updateError } = await supabase
           .from('user_balances')
@@ -116,13 +116,15 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
         return;
       }
 
-      // For paid plans, redirect to Stripe checkout for more secure processing
-      // We'll use the Stripe checkout instead of processing the card directly
+      // For paid plans with manual card form, redirect to Stripe checkout
+      // as we don't process cards directly for security reasons
+      console.log("Redirecting to Stripe checkout for", selectedPlan);
+      
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           plan: selectedPlan,
           successUrl: `${window.location.origin}/payment-success`,
-          cancelUrl: `${window.location.origin}/payment?plan=${selectedPlan}`
+          cancelUrl: `${window.location.origin}/offres`
         }
       });
       
