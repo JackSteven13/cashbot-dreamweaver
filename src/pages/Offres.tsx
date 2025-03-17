@@ -1,160 +1,217 @@
 
-import React, { useState } from 'react';
-import { Check } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import Button from '@/components/Button';
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import { CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
-// Mock data from the Flask application
-const OFFRES = {
-  'freemium': { 'prix': 0, 'sessions': 1, 'gain_max': 0.5, 'avantages': ['Tableau de bord basique'] },
-  'pro': { 'prix': 19.99, 'sessions': 'illimitées', 'gain_max': 5, 'avantages': ['Analyses premium', 'Support prioritaire'] },
-  'visionnaire': { 'prix': 49.99, 'sessions': 'illimitées', 'gain_max': 20, 'avantages': ['Classement VIP', 'Pubs premium'] },
-  'alpha': { 'prix': 99.99, 'sessions': 'illimitées', 'gain_max': 50, 'avantages': ['Coaching IA', 'Pubs ultra-premium'] }
-};
+// Types des plans d'abonnement
+type PlanType = 'freemium' | 'pro' | 'visionnaire' | 'alpha';
 
-// Helper to determine if a plan is the current user's plan
-const isCurrentPlan = (plan: string) => {
-  // Check from localStorage for non-authenticated users or during loading
-  const localSubscription = localStorage.getItem('subscription') || 'freemium';
-  return plan === localSubscription;
-};
+// Structure d'un plan
+interface Plan {
+  id: PlanType;
+  name: string;
+  price: number;
+  description: string;
+  features: string[];
+  recommended: boolean;
+  callToAction: string;
+}
+
+// Liste des plans disponibles
+const plans: Plan[] = [
+  {
+    id: 'freemium',
+    name: 'Freemium',
+    price: 0,
+    description: 'Parfait pour découvrir la plateforme',
+    features: [
+      'Accès à la plateforme de base',
+      '1 session automatique par jour',
+      'Gains limités à 50€ par mois',
+      'Support par email'
+    ],
+    recommended: false,
+    callToAction: 'Commencer gratuitement'
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: 19.99,
+    description: 'Pour les utilisateurs sérieux',
+    features: [
+      'Tout ce qui est inclus dans Freemium',
+      '5 sessions automatiques par jour',
+      'Gains jusqu\'à 250€ par mois',
+      'Support prioritaire',
+      'Accès aux analyses avancées'
+    ],
+    recommended: true,
+    callToAction: 'Choisir Pro'
+  },
+  {
+    id: 'visionnaire',
+    name: 'Visionnaire',
+    price: 49.99,
+    description: 'Pour ceux qui veulent maximiser leurs gains',
+    features: [
+      'Tout ce qui est inclus dans Pro',
+      'Sessions illimitées',
+      'Gains jusqu\'à 1000€ par mois',
+      'Support dédié 7j/7',
+      'Algorithmes optimisés pour votre profil',
+      'Priorité sur les nouvelles fonctionnalités'
+    ],
+    recommended: false,
+    callToAction: 'Choisir Visionnaire'
+  },
+  {
+    id: 'alpha',
+    name: 'Alpha',
+    price: 99.99,
+    description: 'Notre offre premium sans limites',
+    features: [
+      'Tout ce qui est inclus dans Visionnaire',
+      'Gains illimités',
+      'Accès à toutes les opportunités',
+      'Support VIP 24/7',
+      'Conseiller personnel dédié',
+      'Accès anticipé aux innovations',
+      'Frais de retrait réduits'
+    ],
+    recommended: false,
+    callToAction: 'Choisir Alpha'
+  }
+];
 
 const Offres = () => {
   const navigate = useNavigate();
-  const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<PlanType | null>(null);
 
-  const handleSubscribe = async (niveau: string) => {
-    // If the plan is freemium, update directly without payment
-    if (niveau === 'freemium') {
-      try {
-        setIsProcessing(niveau);
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          // Update the user's subscription in Supabase
-          const { error } = await supabase
-            .from('user_balances')
-            .update({ 
-              subscription: niveau,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', session.user.id);
-            
-          if (error) {
-            throw error;
-          }
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+      
+      if (session) {
+        // Si l'utilisateur est connecté, récupérer son plan actuel
+        const { data, error } = await supabase
+          .from('user_balances')
+          .select('subscription')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (!error && data) {
+          setCurrentPlan(data.subscription as PlanType);
         }
-        
-        // Update localStorage for UI consistency
-        localStorage.setItem('subscription', niveau);
-        
-        toast({
-          title: `Abonnement ${niveau.charAt(0).toUpperCase() + niveau.slice(1)} activé !`,
-          description: `Vous bénéficiez maintenant des avantages du forfait ${niveau}.`,
-        });
-        
-        setIsProcessing(null);
-        // Redirect to dashboard
-        navigate('/dashboard');
-      } catch (error) {
-        console.error("Error updating subscription:", error);
-        setIsProcessing(null);
-        toast({
-          title: "Erreur",
-          description: "Une erreur est survenue lors de la mise à jour de votre abonnement.",
-          variant: "destructive"
-        });
       }
-    } else {
-      // For paid plans, redirect to payment page instead of using Stripe Checkout directly
-      navigate(`/payment?plan=${niveau}`);
+    };
+    
+    checkAuth();
+  }, []);
+
+  const handleSubscribe = (plan: PlanType) => {
+    if (!isLoggedIn) {
+      toast({
+        title: "Connexion requise",
+        description: "Veuillez vous connecter pour souscrire à un abonnement.",
+        variant: "destructive"
+      });
+      navigate('/login');
+      return;
     }
+    
+    // Si l'utilisateur est déjà sur ce plan
+    if (currentPlan === plan) {
+      toast({
+        title: "Déjà abonné",
+        description: `Vous êtes déjà abonné au plan ${plan}.`,
+      });
+      return;
+    }
+    
+    // Rediriger vers la page de paiement avec le plan sélectionné
+    navigate('/payment', { state: { plan } });
   };
 
   return (
-    <div className="cyberpunk-bg min-h-screen">
-      <header className="bg-[#1e3a5f] shadow-md p-4">
-        <div className="container mx-auto">
-          <h1 className="text-2xl font-bold text-white">CashBot</h1>
-          <Link to="/" className="text-blue-200 hover:underline">← Retour à l'accueil</Link>
-        </div>
-      </header>
-      
-      <main className="container mx-auto py-12 px-4">
-        <h2 className="text-3xl font-bold text-center text-[#1e3a5f] mb-4">Nos Offres</h2>
-        <p className="text-[#486581] text-center mb-6 max-w-2xl mx-auto">
-          Choisissez l'abonnement qui vous convient et commencez à générer des revenus avec notre IA de trading avancée.
-        </p>
-        
-        <div className="bg-blue-50 p-4 mb-8 rounded-lg border border-blue-100 max-w-2xl mx-auto">
-          <h3 className="text-lg font-medium text-[#1e3a5f] mb-2">Qu'est-ce qu'une session ?</h3>
-          <p className="text-[#334e68]">
-            Une session correspond à un boost manuel où CashBot analyse intensivement des publicités pour générer des revenus immédiats.
-            Avec le forfait Freemium, vous êtes limité à 1 session par jour et 0.5€ de gains maximum.
-            Les gains quotidiens sont réinitialisés à minuit (heure de Paris).
-          </p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {Object.entries(OFFRES).map(([key, plan]) => (
-            <Card key={key} className={`cyber-card ${key === 'alpha' ? 'border-2 border-[#1e3a5f] relative overflow-hidden' : ''}`}>
-              {key === 'alpha' && (
-                <div className="absolute top-0 right-0 bg-[#1e3a5f] text-white px-3 py-1 font-bold text-xs">
-                  RECOMMANDÉ
-                </div>
-              )}
-              <CardHeader>
-                <CardTitle className="text-xl text-[#1e3a5f]">{key.charAt(0).toUpperCase() + key.slice(1)}</CardTitle>
-                <div className="mt-2">
-                  <span className="text-3xl font-bold text-[#2d5f8a]">{plan.prix}€</span>
-                  <span className="text-[#486581] opacity-70"> /mois</span>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center text-[#334e68]">
-                    <Check className="mr-2 h-4 w-4 text-[#2d5f8a]" />
-                    <span>{typeof plan.sessions === 'number' ? `${plan.sessions} session${plan.sessions > 1 ? 's' : ''} manuelle${plan.sessions > 1 ? 's' : ''}/jour` : `Sessions ${plan.sessions}`}</span>
+    <div className="flex flex-col min-h-screen">
+      <Navbar />
+      <main className="flex-grow py-16 bg-gray-50 dark:bg-gray-900">
+        <div className="container px-4 md:px-6 mx-auto">
+          <div className="text-center mb-16">
+            <h1 className="text-4xl font-bold tracking-tight mb-4">Nos offres</h1>
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Choisissez l'offre qui correspond le mieux à vos objectifs financiers et commencez à générer des revenus passifs dès aujourd'hui.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {plans.map((plan) => (
+              <div 
+                key={plan.id}
+                className={`rounded-lg overflow-hidden border ${
+                  plan.recommended 
+                    ? 'border-blue-500 dark:border-blue-400 shadow-lg' 
+                    : 'border-gray-200 dark:border-gray-700'
+                } transition-all hover:shadow-md bg-white dark:bg-gray-800`}
+              >
+                {plan.recommended && (
+                  <div className="bg-blue-500 dark:bg-blue-600 text-white text-center py-2 text-sm font-medium">
+                    Recommandé
                   </div>
-                  <div className="flex items-center text-[#334e68]">
-                    <Check className="mr-2 h-4 w-4 text-[#2d5f8a]" />
-                    <span>Gain max: {plan.gain_max}€/jour</span>
+                )}
+                
+                <div className="p-6">
+                  <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
+                  <div className="mb-4">
+                    <span className="text-3xl font-bold">{plan.price}€</span>
+                    <span className="text-gray-500 dark:text-gray-400">/mois</span>
                   </div>
-                  {plan.avantages.map((avantage, i) => (
-                    <div key={i} className="flex items-center text-[#334e68]">
-                      <Check className="mr-2 h-4 w-4 text-[#2d5f8a]" />
-                      <span>{avantage}</span>
-                    </div>
-                  ))}
+                  <p className="text-gray-600 dark:text-gray-300 mb-6">{plan.description}</p>
+                  
+                  <ul className="space-y-3 mb-8">
+                    {plan.features.map((feature, index) => (
+                      <li key={index} className="flex items-start">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400 mr-2 shrink-0 mt-0.5" />
+                        <span className="text-gray-600 dark:text-gray-300 text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <Button 
+                    className={`w-full ${
+                      plan.recommended 
+                        ? 'bg-blue-500 hover:bg-blue-600' 
+                        : ''
+                    }`}
+                    onClick={() => handleSubscribe(plan.id)}
+                    disabled={currentPlan === plan.id}
+                  >
+                    {currentPlan === plan.id ? 'Abonnement actif' : plan.callToAction}
+                  </Button>
                 </div>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  fullWidth 
-                  variant={isCurrentPlan(key) ? "secondary" : "primary"}
-                  className={isCurrentPlan(key) 
-                    ? "bg-[#edf2f7] hover:bg-[#edf2f7] text-[#486581] cursor-default" 
-                    : "bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"}
-                  onClick={() => !isCurrentPlan(key) && handleSubscribe(key)}
-                  disabled={isCurrentPlan(key) || isProcessing !== null}
-                  isLoading={isProcessing === key}
-                >
-                  {isProcessing === key 
-                    ? "Traitement..." 
-                    : isCurrentPlan(key) 
-                      ? "Abonnement actuel" 
-                      : key === 'freemium' 
-                        ? "Souscrire gratuitement" 
-                        : "Souscrire"}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-16 text-center">
+            <h2 className="text-2xl font-bold mb-4">Besoin d'une solution sur mesure ?</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-2xl mx-auto">
+              Contactez-nous pour discuter de vos besoins spécifiques et découvrir comment nous pouvons vous aider à atteindre vos objectifs financiers.
+            </p>
+            <Button variant="outline" size="lg">
+              Nous contacter
+            </Button>
+          </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 };

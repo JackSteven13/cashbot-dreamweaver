@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +15,7 @@ import About from "./pages/About";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Payment from './pages/Payment';
 import PaymentSuccess from './pages/PaymentSuccess';
+import CGU from './pages/CGU';
 
 const queryClient = new QueryClient();
 
@@ -61,6 +63,10 @@ const routes = [
         <PaymentSuccess />
       </ProtectedRoute>
     ),
+  },
+  {
+    path: '/cgu',
+    element: <CGU />,
   },
   {
     path: '*',
