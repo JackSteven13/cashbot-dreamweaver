@@ -1,19 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CreditCard, Check } from 'lucide-react';
+import { ArrowLeft, CreditCard, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Button from '@/components/Button';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Custom components
 import CardPaymentForm from '@/components/payment/CardPaymentForm';
-import PaypalPaymentForm from '@/components/payment/PaypalPaymentForm';
-import PaypalLogo from '@/components/payment/PaypalLogo';
 import PlanSummary from '@/components/payment/PlanSummary';
 
 // Custom hooks
@@ -24,7 +20,6 @@ const Payment = () => {
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState("card");
   
   const { isProcessing, processPayment } = usePaymentProcessing(selectedPlan);
 
@@ -67,17 +62,8 @@ const Payment = () => {
     checkAuth();
   }, [location, navigate]);
 
-  const handlePayment = async () => {
-    const formData: PaymentFormData = {};
-    processPayment(paymentMethod, formData);
-  };
-
-  const handleCardFormSubmit = (cardData: { cardNumber: string; expiry: string; cvc: string; }) => {
-    processPayment('card', cardData);
-  };
-
-  const handlePaypalFormSubmit = (paypalData: { paypalEmail: string }) => {
-    processPayment('paypal', paypalData);
+  const handleCardFormSubmit = (cardData: PaymentFormData) => {
+    processPayment(cardData);
   };
 
   if (isAuthChecking) {
@@ -113,36 +99,28 @@ const Payment = () => {
             <CardContent className="space-y-4">
               <PlanSummary selectedPlan={selectedPlan} />
               
-              <Tabs defaultValue="card" onValueChange={setPaymentMethod} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="card" className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Carte bancaire
-                  </TabsTrigger>
-                  <TabsTrigger value="paypal" className="flex items-center gap-2">
-                    <PaypalLogo />
-                    PayPal
-                  </TabsTrigger>
-                </TabsList>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-[#1e3a5f] mb-2">
+                  <CreditCard className="h-5 w-5" />
+                  <h3 className="font-medium">Paiement par carte</h3>
+                </div>
                 
-                <TabsContent value="card" className="space-y-4">
-                  <CardPaymentForm onSubmit={handleCardFormSubmit} />
-                </TabsContent>
-                
-                <TabsContent value="paypal" className="space-y-4">
-                  <PaypalPaymentForm onSubmit={handlePaypalFormSubmit} />
-                </TabsContent>
-              </Tabs>
-              
+                <CardPaymentForm onSubmit={handleCardFormSubmit} />
+              </div>
             </CardContent>
             <CardFooter>
               <Button 
                 fullWidth 
                 className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
-                onClick={handlePayment}
+                onClick={() => {
+                  const formData = document.getElementById('card-payment-form') as HTMLFormElement;
+                  if (formData) {
+                    formData.dispatchEvent(new Event('submit', { bubbles: true }));
+                  }
+                }}
                 isLoading={isProcessing}
               >
-                {isProcessing ? 'Traitement en cours...' : `Payer maintenant avec ${paymentMethod === 'card' ? 'carte' : 'PayPal'}`}
+                {isProcessing ? 'Traitement en cours...' : 'Payer maintenant'}
               </Button>
             </CardFooter>
           </Card>

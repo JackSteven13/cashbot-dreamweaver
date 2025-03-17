@@ -15,10 +15,9 @@ export const PLAN_PRICES = {
 };
 
 export type PaymentFormData = {
-  cardNumber?: string;
-  expiry?: string;
-  cvc?: string;
-  paypalEmail?: string;
+  cardNumber: string;
+  expiry: string;
+  cvc: string;
 };
 
 export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
@@ -57,20 +56,7 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
     return true;
   };
 
-  const validatePaypalPayment = (paypalEmail: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!paypalEmail || !emailRegex.test(paypalEmail)) {
-      toast({
-        title: "Erreur",
-        description: "Adresse e-mail PayPal invalide",
-        variant: "destructive"
-      });
-      return false;
-    }
-    return true;
-  };
-
-  const processPayment = async (paymentMethod: string, formData: PaymentFormData) => {
+  const processPayment = async (formData: PaymentFormData) => {
     if (!selectedPlan) {
       toast({
         title: "Erreur",
@@ -80,17 +66,12 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
       return;
     }
 
-    // Validate based on payment method
-    let isValid = false;
-    if (paymentMethod === "card") {
-      isValid = validateCardPayment(
-        formData.cardNumber || '', 
-        formData.expiry || '', 
-        formData.cvc || ''
-      );
-    } else if (paymentMethod === "paypal") {
-      isValid = validatePaypalPayment(formData.paypalEmail || '');
-    }
+    // Validate card data
+    const isValid = validateCardPayment(
+      formData.cardNumber, 
+      formData.expiry, 
+      formData.cvc
+    );
 
     if (!isValid) {
       return;

@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, FormEvent } from 'react';
 import { CreditCard } from 'lucide-react';
 import { Input } from "@/components/ui/input";
+import { PaymentFormData } from '@/hooks/usePaymentProcessing';
 
 interface CardPaymentFormProps {
-  onSubmit: (formData: { cardNumber: string; expiry: string; cvc: string; }) => void;
+  onSubmit: (formData: PaymentFormData) => void;
 }
 
 const CardPaymentForm = ({ onSubmit }: CardPaymentFormProps) => {
@@ -49,7 +50,8 @@ const CardPaymentForm = ({ onSubmit }: CardPaymentFormProps) => {
     setCvc(value.slice(0, 3));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
     onSubmit({
       cardNumber,
       expiry,
@@ -58,7 +60,7 @@ const CardPaymentForm = ({ onSubmit }: CardPaymentFormProps) => {
   };
 
   return (
-    <div className="space-y-4">
+    <form id="card-payment-form" onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="card-number" className="block text-sm font-medium text-[#334e68] mb-1">
           Numéro de carte
@@ -71,6 +73,7 @@ const CardPaymentForm = ({ onSubmit }: CardPaymentFormProps) => {
             onChange={handleCardNumberChange}
             placeholder="1234 5678 9012 3456"
             className="w-full pr-10"
+            required
           />
           <CreditCard className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
         </div>
@@ -88,6 +91,7 @@ const CardPaymentForm = ({ onSubmit }: CardPaymentFormProps) => {
             onChange={handleExpiryChange}
             placeholder="MM/YY"
             className="w-full"
+            required
           />
         </div>
         
@@ -102,10 +106,11 @@ const CardPaymentForm = ({ onSubmit }: CardPaymentFormProps) => {
             onChange={handleCvcChange}
             placeholder="123"
             className="w-full"
+            required
           />
         </div>
       </div>
-    </div>
+    </form>
   );
 };
 
