@@ -1,5 +1,6 @@
 
 import { useState, useCallback } from 'react';
+import { getParisTime } from '@/utils/timeUtils';
 
 interface UseStatsInitializationParams {
   dailyAdsTarget: number;
@@ -30,17 +31,9 @@ export const useStatsInitialization = ({
   const [displayedAdsCount, setDisplayedAdsCount] = useState(0);
   const [displayedRevenueCount, setDisplayedRevenueCount] = useState(0);
   
-  // Get current Paris time
-  const getNowInParis = useCallback(() => {
-    const now = new Date();
-    const parisOffset = now.getTimezoneOffset();
-    const parisTime = new Date(now.getTime() - parisOffset * 60000);
-    return parisTime;
-  }, []);
-  
   // Calculate bi-weekly progress
   const getBiWeeklyProgress = useCallback(() => {
-    const parisTime = getNowInParis();
+    const parisTime = getParisTime();
     const currentDay = parisTime.getDate();
     
     // Determine which 14-day period we're in
@@ -76,7 +69,7 @@ export const useStatsInitialization = ({
     const totalSecondsIn14Days = 14 * 86400;
     
     return Math.min(totalElapsedSeconds / totalSecondsIn14Days, 1);
-  }, [getNowInParis]);
+  }, []);
   
   // Initialize counters
   const initializeCounters = useCallback(() => {
