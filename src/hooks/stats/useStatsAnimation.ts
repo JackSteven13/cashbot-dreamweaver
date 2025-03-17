@@ -24,13 +24,26 @@ export const useStatsAnimation = ({
       return Math.min(prevCount + increment, adsCount);
     });
 
-    // Mise à jour du nombre de revenus seulement si le nombre de publicités augmente
-    // Pour garantir que le revenu est lié aux publicités traitées
+    // Mise à jour du nombre de revenus avec des sauts variables pour refléter des publicités à forte valeur
     setDisplayedRevenueCount((prevCount) => {
       if (prevCount >= revenueCount) return revenueCount;
-      // Incréments massifs pour un effet visuel spectaculaire
-      // Synchronisé avec la progression du compteur de publicités
-      const increment = Math.max(Math.floor((revenueCount - prevCount) * 0.75), 150);
+      
+      // Variation aléatoire pour simuler des publicités à haute valeur
+      // Parfois de grands sauts (publicités à 2-4€)
+      const randomFactor = Math.random();
+      let increment;
+      
+      if (randomFactor > 0.92) {
+        // Grands sauts occasionnels (4-5€)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.85), 400);
+      } else if (randomFactor > 0.75) {
+        // Sauts moyens fréquents (2-3€)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.8), 250);
+      } else {
+        // Incréments plus petits mais toujours impressionnants
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.75), 150);
+      }
+      
       return Math.min(prevCount + increment, revenueCount);
     });
 

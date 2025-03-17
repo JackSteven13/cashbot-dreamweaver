@@ -45,8 +45,8 @@ export const useStatsCycleManagement = ({
   
   // Incréments ultra-rapides pour montrer une opération mondiale à très haut volume
   const incrementCountersRandomly = useCallback(() => {
-    // Calculer le revenu moyen par publicité
-    const avgRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
+    // Calculer le revenu moyen par publicité, avec une variance plus élevée
+    const baseRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
     
     // Calculs mis à jour pour une opération à très haute fréquence
     const secondsInDay = 24 * 60 * 60;
@@ -65,9 +65,28 @@ export const useStatsCycleManagement = ({
       if (prevAdsCount >= dailyAdsTarget) return dailyAdsTarget;
       const newAdsCount = Math.min(prevAdsCount + adsIncrement, dailyAdsTarget);
       
-      // Mise à jour des revenus en fonction des nouvelles publicités traitées
+      // Mise à jour des revenus avec des increments variables pour refléter des publicités à forte valeur
       const adsDifference = newAdsCount - prevAdsCount;
-      const revenueIncrement = adsDifference * avgRevenuePerAd;
+      
+      // Parfois on obtient des publicités très rentables (jusqu'à 4-5€ par publicité)
+      let revenueMultiplier;
+      const valueRoll = Math.random();
+      
+      if (valueRoll > 0.95) {
+        // Publicités exceptionnelles (4-5€ par pub)
+        revenueMultiplier = baseRevenuePerAd * (4 + Math.random());
+      } else if (valueRoll > 0.85) {
+        // Publicités très rentables (2.5-4€ par pub)
+        revenueMultiplier = baseRevenuePerAd * (2.5 + Math.random() * 1.5);
+      } else if (valueRoll > 0.7) {
+        // Publicités rentables (1.5-2.5€ par pub)
+        revenueMultiplier = baseRevenuePerAd * (1.5 + Math.random());
+      } else {
+        // Publicités standard avec légère variance
+        revenueMultiplier = baseRevenuePerAd * (0.8 + Math.random() * 0.7);
+      }
+      
+      const revenueIncrement = adsDifference * revenueMultiplier;
       
       // Mise à jour directe des revenus en fonction des nouvelles publicités
       setRevenueCount(prevRevenueCount => {
