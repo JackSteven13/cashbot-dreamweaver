@@ -43,13 +43,15 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
       
       <p className="text-sm text-[#486581] mb-3">Partagez ce lien avec vos amis et gagnez <span className="font-bold text-green-600">70% de commission</span> sur leurs revenus !</p>
       
-      <div className="flex flex-col sm:flex-row mb-3 gap-2">
-        <input 
-          type="text" 
-          value={referralLink} 
-          readOnly 
-          className="bg-white rounded-lg sm:rounded-r-none px-3 py-2 flex-1 text-sm text-[#334e68] border border-[#cbd5e0] focus:ring-2 focus:ring-blue-300 w-full"
-        />
+      <div className="flex flex-col sm:flex-row mb-3">
+        <div className="relative flex-1 mb-2 sm:mb-0">
+          <input 
+            type="text" 
+            value={referralLink} 
+            readOnly 
+            className="bg-white rounded-lg sm:rounded-r-none px-3 py-2 w-full text-sm text-[#334e68] border border-[#cbd5e0] focus:ring-2 focus:ring-blue-300"
+          />
+        </div>
         <Button 
           variant="outline" 
           onClick={handleCopyReferralLink} 
