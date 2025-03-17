@@ -116,6 +116,12 @@ export async function createCheckoutSession({
         plan: plan,
         referrerId: referrerId || '',
       },
+      // Add UI customization to improve visibility
+      custom_text: {
+        submit: {
+          message: 'Merci de compléter votre paiement pour activer votre abonnement'
+        }
+      }
     });
     
     if (!session) {

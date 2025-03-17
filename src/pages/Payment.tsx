@@ -26,6 +26,8 @@ const Payment = () => {
   // Get plan from state or URL parameters
   useEffect(() => {
     const plan = location.state?.plan || new URLSearchParams(location.search).get('plan');
+    console.log("Payment page initialized with plan:", plan);
+    
     if (plan && ['freemium', 'pro', 'visionnaire', 'alpha'].includes(plan)) {
       setSelectedPlan(plan as PlanType);
     } else {
@@ -70,6 +72,15 @@ const Payment = () => {
     setUseStripePayment(!useStripePayment);
   };
 
+  const initiateStripeCheckout = () => {
+    console.log("Initiating Stripe checkout from Payment page");
+    try {
+      handleStripeCheckout();
+    } catch (error) {
+      console.error("Error initiating Stripe checkout:", error);
+    }
+  };
+
   if (isAuthChecking) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#0f0f23]">
@@ -91,7 +102,7 @@ const Payment = () => {
             isProcessing={isProcessing}
             onToggleMethod={togglePaymentMethod}
             onCardFormSubmit={handleCardFormSubmit}
-            onStripeCheckout={handleStripeCheckout}
+            onStripeCheckout={initiateStripeCheckout}
           />
           
           <SecurityNote />

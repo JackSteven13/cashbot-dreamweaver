@@ -63,8 +63,32 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       // Redirect to Stripe checkout URL
       if (data?.url) {
         console.log("Redirecting to Stripe checkout URL:", data.url);
-        // Force navigation to URL using window.location for reliable redirect
-        window.location.href = data.url;
+        
+        // Enhanced redirect method
+        try {
+          // Create a hidden anchor element to force a proper navigation
+          const link = document.createElement('a');
+          link.href = data.url;
+          link.target = '_blank'; // Open in new tab to avoid navigation issues
+          link.rel = 'noopener noreferrer';
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          
+          // After a short delay, also try direct location change as fallback
+          setTimeout(() => {
+            window.location.href = data.url;
+          }, 100);
+          
+          toast({
+            title: "Redirection en cours",
+            description: "Si la page de paiement ne s'ouvre pas automatiquement, veuillez cliquer à nouveau sur le bouton.",
+          });
+        } catch (redirectError) {
+          console.error("Redirect error:", redirectError);
+          // Fallback to direct location change
+          window.location.href = data.url;
+        }
       } else {
         throw new Error("Aucune URL de paiement retournée");
       }
