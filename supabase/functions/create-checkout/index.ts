@@ -55,10 +55,13 @@ async function getOrCreatePrice(planName, amount) {
       }
     });
     
+    // Convert to cents and ensure it's a proper integer using Math.round
+    const amountInCents = Math.round(amount * 100);
+    
     // Create a price for the product
-    console.log(`Creating new price for ${planName} plan`);
+    console.log(`Creating new price for ${planName} plan with amount: ${amountInCents} cents`);
     const newPrice = await stripe.prices.create({
-      unit_amount: amount * 100, // Convert to cents
+      unit_amount: amountInCents,
       currency: 'eur',
       recurring: { interval: 'month' },
       product: product.id,
