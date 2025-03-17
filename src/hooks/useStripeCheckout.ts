@@ -48,7 +48,12 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       
       if (error) {
         console.error("Function error:", error);
-        throw new Error(`Function error: ${error.message}`);
+        throw new Error(`Erreur de service: ${error.message}`);
+      }
+      
+      if (data?.error) {
+        console.error("Stripe configuration error:", data.error);
+        throw new Error(data.error);
       }
       
       console.log("Stripe checkout response:", data);

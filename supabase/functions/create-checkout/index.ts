@@ -10,12 +10,19 @@ const corsHeaders = {
 
 // Get the Stripe secret key from environment variables
 const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
-console.log('Initializing Stripe with key:', stripeSecretKey.substring(0, 5) + '...');
+
+// Validate Stripe key format before using
+const isValidStripeKey = stripeSecretKey && stripeSecretKey.startsWith('sk_');
+if (!isValidStripeKey) {
+  console.error('Invalid Stripe secret key format. Keys should start with sk_');
+}
+
+console.log('Initializing Stripe with key format:', isValidStripeKey ? 'Valid (sk_*)' : 'Invalid');
 
 // Initialize Stripe with the secret key
-const stripe = new Stripe(stripeSecretKey, {
+const stripe = isValidStripeKey ? new Stripe(stripeSecretKey, {
   apiVersion: '2023-10-16',
-})
+}) : null;
 
 // Define subscription plan IDs
 // For production, replace these with your actual Stripe price IDs
@@ -38,6 +45,17 @@ Deno.serve(async (req) => {
   }
   
   try {
+    // Check if Stripe is properly configured
+    if (!isValidStripeKey || !stripe) {
+      console.error('Stripe is not properly configured. Please check the STRIPE_SECRET_KEY environment variable.')
+      return new Response(JSON.stringify({ 
+        error: 'Stripe is not properly configured. Please contact the administrator.' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    
     // Extract authorization token from request
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
