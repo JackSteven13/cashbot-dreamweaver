@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { calculateTimeUntilMidnight } from '@/utils/timeUtils';
 
@@ -42,16 +43,16 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Much more controlled increments for stable visualization
+  // Much more controlled increments with greatly reduced frequency for stable visualization
   const incrementCountersRandomly = useCallback(() => {
     // Updated calculations for more stable progression
     const secondsInDay = 24 * 60 * 60;
     // Smaller multiplier for more stable progression
-    const cycleMultiplier = 30; 
+    const cycleMultiplier = 15; 
     const adsIncrementPerSecond = (dailyAdsTarget * cycleMultiplier) / secondsInDay;
     
     // Very limited randomization for more readable counter movement
-    const randomFactor = Math.random() * 2 + 1; // Random between 1-3x
+    const randomFactor = Math.random() * 1.5 + 0.5; // Random between 0.5-2x
     
     // Smaller increments per update for ads
     const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor);

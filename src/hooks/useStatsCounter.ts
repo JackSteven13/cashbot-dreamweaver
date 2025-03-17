@@ -52,20 +52,20 @@ export const useStatsCounter = ({
   useEffect(() => {
     initializeCounters();
     
-    // Much slower animation refresh rate for better readability
+    // Drastically slower animation refresh rate for better readability
     let animationFrameId: number;
     const updateAnimation = () => {
       animateCounters();
       // Much slower animation refresh with setTimeout
       setTimeout(() => {
         animationFrameId = requestAnimationFrame(updateAnimation);
-      }, 300); // Add a significant delay between frames for very smooth animation
+      }, 1000); // Add a significant delay between frames for very stable numbers
     };
     
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Reduced update frequency for more stable progression (every 600ms)
-    const activityInterval = setInterval(incrementCountersRandomly, 600); 
+    // Greatly reduced update frequency for more stable progression (every 2 seconds)
+    const activityInterval = setInterval(incrementCountersRandomly, 2000); 
     
     const resetTimeout = scheduleCycleUpdate();
     
