@@ -16,23 +16,26 @@ export const useStatsAnimation = ({
 }: UseStatsAnimationParams) => {
   // Animate the counters more dramatically to impress users
   const animateCounters = useCallback(() => {
-    // Add slight randomization to make the numbers feel more "alive"
-    // but always try to catch up to the actual count
-    const adsGap = adsCount - setDisplayedAdsCount((prevCount) => {
+    // Update ad count with smooth animation
+    setDisplayedAdsCount((prevCount) => {
       if (prevCount >= adsCount) return adsCount;
       // Move faster toward target with larger increments
       const increment = Math.max(Math.floor((adsCount - prevCount) * 0.2), 10);
       return Math.min(prevCount + increment, adsCount);
     });
 
-    const revenueGap = revenueCount - setDisplayedRevenueCount((prevCount) => {
+    // Update revenue count with smooth animation
+    setDisplayedRevenueCount((prevCount) => {
       if (prevCount >= revenueCount) return revenueCount;
       // Move faster toward target with larger increments
       const increment = Math.max(Math.floor((revenueCount - prevCount) * 0.2), 25);
       return Math.min(prevCount + increment, revenueCount);
     });
 
-    return { adsGap, revenueGap };
+    // Return true to indicate animation is still active if either count hasn't reached target
+    return { 
+      animationActive: adsCount > 0 || revenueCount > 0 
+    };
   }, [adsCount, revenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
 
   return { animateCounters };
