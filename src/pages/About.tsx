@@ -4,13 +4,14 @@ import Navbar from '@/components/Navbar';
 import { ArrowRight, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Button from '@/components/Button';
+import Footer from '@/components/Footer';
 
 const About = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
       
-      <main className="container mx-auto px-4 py-32 md:py-40">
+      <main className="container mx-auto px-4 py-32 md:py-40 flex-grow">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-bold mb-6">À propos de CashBot</h1>
           
@@ -85,6 +86,8 @@ const About = () => {
           </div>
         </div>
       </main>
+      
+      <Footer />
     </div>
   );
 };

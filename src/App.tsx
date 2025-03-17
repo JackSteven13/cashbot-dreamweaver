@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +12,7 @@ import Offres from "./pages/Offres";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import About from "./pages/About";
+import Terms from "./pages/Terms";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Payment from './pages/Payment';
 import PaymentSuccess from './pages/PaymentSuccess';
@@ -45,6 +47,10 @@ const routes = [
   {
     path: '/offres',
     element: <Offres />,
+  },
+  {
+    path: '/terms',
+    element: <Terms />,
   },
   {
     path: '/payment',

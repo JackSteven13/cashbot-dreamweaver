@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Check } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -6,8 +5,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import Button from '@/components/Button';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import Footer from '@/components/Footer';
 
-// Mock data from the Flask application
 const OFFRES = {
   'freemium': { 'prix': 0, 'sessions': 1, 'gain_max': 0.5, 'avantages': ['Tableau de bord basique'] },
   'pro': { 'prix': 19.99, 'sessions': 'illimitées', 'gain_max': 5, 'avantages': ['Analyses premium', 'Support prioritaire'] },
@@ -15,9 +14,7 @@ const OFFRES = {
   'alpha': { 'prix': 99.99, 'sessions': 'illimitées', 'gain_max': 50, 'avantages': ['Coaching IA', 'Pubs ultra-premium'] }
 };
 
-// Helper to determine if a plan is the current user's plan
 const isCurrentPlan = (plan: string) => {
-  // Check from localStorage for non-authenticated users or during loading
   const localSubscription = localStorage.getItem('subscription') || 'freemium';
   return plan === localSubscription;
 };
@@ -27,14 +24,12 @@ const Offres = () => {
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
   const handleSubscribe = async (niveau: string) => {
-    // If the plan is freemium, update directly without payment
     if (niveau === 'freemium') {
       try {
         setIsProcessing(niveau);
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
-          // Update the user's subscription in Supabase
           const { error } = await supabase
             .from('user_balances')
             .update({ 
@@ -48,7 +43,6 @@ const Offres = () => {
           }
         }
         
-        // Update localStorage for UI consistency
         localStorage.setItem('subscription', niveau);
         
         toast({
@@ -57,7 +51,6 @@ const Offres = () => {
         });
         
         setIsProcessing(null);
-        // Redirect to dashboard
         navigate('/dashboard');
       } catch (error) {
         console.error("Error updating subscription:", error);
@@ -69,13 +62,12 @@ const Offres = () => {
         });
       }
     } else {
-      // For paid plans, redirect to payment page instead of using Stripe Checkout directly
       navigate(`/payment?plan=${niveau}`);
     }
   };
 
   return (
-    <div className="cyberpunk-bg min-h-screen">
+    <div className="cyberpunk-bg min-h-screen flex flex-col">
       <header className="bg-[#1e3a5f] shadow-md p-4">
         <div className="container mx-auto">
           <h1 className="text-2xl font-bold text-white">CashBot</h1>
@@ -83,7 +75,7 @@ const Offres = () => {
         </div>
       </header>
       
-      <main className="container mx-auto py-12 px-4">
+      <main className="container mx-auto py-12 px-4 flex-grow">
         <h2 className="text-3xl font-bold text-center text-[#1e3a5f] mb-4">Nos Offres</h2>
         <p className="text-[#486581] text-center mb-6 max-w-2xl mx-auto">
           Choisissez l'abonnement qui vous convient et commencez à générer des revenus avec notre IA d'analyse publicitaire avancée.
@@ -155,6 +147,8 @@ const Offres = () => {
           ))}
         </div>
       </main>
+      
+      <Footer />
     </div>
   );
 };
