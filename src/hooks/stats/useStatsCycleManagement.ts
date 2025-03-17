@@ -43,34 +43,28 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Increment the counters in a more stable way
+  // Faster increments for more responsive updates
   const incrementCountersRandomly = useCallback(() => {
-    // Calculate more stable increments for steady progression
-    const adsHourlyIncrement = dailyAdsTarget / 24;
-    const revenueHourlyIncrement = dailyRevenueTarget / 24;
+    // Faster calculation for more accurate representation
+    // Calculate for 1-second updates 
+    const secondsInDay = 24 * 60 * 60;
+    const adsIncrementPerSecond = dailyAdsTarget / secondsInDay;
+    const revenueIncrementPerSecond = dailyRevenueTarget / secondsInDay;
     
-    // Calculate increments for 5-second updates (12 per minute)
-    const adsIncrementBase = adsHourlyIncrement / (60 * 12);
-    const revenueIncrementBase = revenueHourlyIncrement / (60 * 12);
+    // Calculate increments for update interval (1 second)
+    const adsIncrement = Math.ceil(adsIncrementPerSecond);
+    const revenueIncrement = Math.ceil(revenueIncrementPerSecond);
     
     setAdsCount(prev => {
       // Only increment if we haven't reached the target
       if (prev >= dailyAdsTarget) return dailyAdsTarget;
-      
-      // Very small random variation (±5%) for natural but stable progression
-      const randomFactor = 0.95 + (Math.random() * 0.1);
-      const increment = Math.ceil(adsIncrementBase * randomFactor);
-      return Math.min(prev + increment, dailyAdsTarget);
+      return Math.min(prev + adsIncrement, dailyAdsTarget);
     });
     
     setRevenueCount(prev => {
       // Only increment if we haven't reached the target
       if (prev >= dailyRevenueTarget) return dailyRevenueTarget;
-      
-      // Very small random variation (±5%) for natural but stable progression
-      const randomFactor = 0.95 + (Math.random() * 0.1);
-      const increment = Math.ceil(revenueIncrementBase * randomFactor);
-      return Math.min(prev + increment, dailyRevenueTarget);
+      return Math.min(prev + revenueIncrement, dailyRevenueTarget);
     });
   }, [dailyAdsTarget, dailyRevenueTarget, setAdsCount, setRevenueCount]);
 
