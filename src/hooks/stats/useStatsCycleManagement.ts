@@ -43,17 +43,19 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Faster increments for more responsive updates
+  // More aggressive increments to make the counters move faster
   const incrementCountersRandomly = useCallback(() => {
-    // Faster calculation for more accurate representation
-    // Calculate for 1-second updates 
+    // Update calculations for 500ms updates (twice per second)
     const secondsInDay = 24 * 60 * 60;
     const adsIncrementPerSecond = dailyAdsTarget / secondsInDay;
     const revenueIncrementPerSecond = dailyRevenueTarget / secondsInDay;
     
-    // Calculate increments for update interval (1 second)
-    const adsIncrement = Math.ceil(adsIncrementPerSecond);
-    const revenueIncrement = Math.ceil(revenueIncrementPerSecond);
+    // Add some randomization to make it feel more dynamic
+    // Sometimes show bigger jumps to create the impression of high activity
+    const randomFactor = Math.random() * 3 + 1; // Random between 1-4x
+    
+    const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor);
+    const revenueIncrement = Math.ceil(revenueIncrementPerSecond * randomFactor);
     
     setAdsCount(prev => {
       // Only increment if we haven't reached the target
