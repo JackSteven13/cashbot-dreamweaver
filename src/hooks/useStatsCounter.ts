@@ -16,7 +16,7 @@ interface StatsCounterData {
 
 export const useStatsCounter = ({
   dailyAdsTarget = 350000,
-  dailyRevenueTarget = 850000
+  dailyRevenueTarget = 1500000
 }: UseStatsCounterParams): StatsCounterData => {
   const {
     adsCount,
@@ -52,16 +52,20 @@ export const useStatsCounter = ({
   useEffect(() => {
     initializeCounters();
     
+    // Slower animation refresh rate for better readability
     let animationFrameId: number;
     const updateAnimation = () => {
       animateCounters();
-      animationFrameId = requestAnimationFrame(updateAnimation);
+      // Slower animation refresh with setTimeout instead of requestAnimationFrame
+      setTimeout(() => {
+        animationFrameId = requestAnimationFrame(updateAnimation);
+      }, 100); // Add a small delay between frames for smoother animation
     };
     
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Ultra-fast update frequency for spectacular progression (every 70ms)
-    const activityInterval = setInterval(incrementCountersRandomly, 70); 
+    // Reduced update frequency for more readable progression (every 200ms)
+    const activityInterval = setInterval(incrementCountersRandomly, 200); 
     
     const resetTimeout = scheduleCycleUpdate();
     
