@@ -19,8 +19,8 @@ export const useStatsAnimation = ({
     // Update ad count with ultra-fast animation
     setDisplayedAdsCount((prevCount) => {
       if (prevCount >= adsCount) return adsCount;
-      // Massive increments for extreme speed (10+ ads per second)
-      const increment = Math.max(Math.floor((adsCount - prevCount) * 0.3), 3);
+      // Massive increments for extreme speed (100+ ads per second)
+      const increment = Math.max(Math.floor((adsCount - prevCount) * 0.5), 30);
       return Math.min(prevCount + increment, adsCount);
     });
 
@@ -28,9 +28,9 @@ export const useStatsAnimation = ({
     // This ensures revenue is tied to ads being processed
     setDisplayedRevenueCount((prevCount) => {
       if (prevCount >= revenueCount) return revenueCount;
-      // Massive increments for extreme speed (15€+ per 2 seconds)
+      // Massive increments for extreme speed (150€+ per 2 seconds)
       // Synchronized with ad count progression
-      const increment = Math.max(Math.floor((revenueCount - prevCount) * 0.25), 2);
+      const increment = Math.max(Math.floor((revenueCount - prevCount) * 0.45), 25);
       return Math.min(prevCount + increment, revenueCount);
     });
 
