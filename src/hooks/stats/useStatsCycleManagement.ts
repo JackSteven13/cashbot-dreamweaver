@@ -19,7 +19,7 @@ export const useStatsCycleManagement = ({
   dailyAdsTarget,
   dailyRevenueTarget
 }: UseStatsCycleManagementParams) => {
-  // Schedule next cycle update
+  // Schedule next cycle update at midnight Paris time
   const scheduleCycleUpdate = useCallback(() => {
     const timeUntilMidnight = calculateTimeUntilMidnight();
     
@@ -43,21 +43,21 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Regular increments to make counters move steadily throughout the day
+  // Much faster increments to show a high-volume global operation
   const incrementCountersRandomly = useCallback(() => {
     // Calculate average revenue per ad
     const avgRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
     
-    // Update calculations for once per second
+    // Update calculations for high-frequency operation
     const secondsInDay = 24 * 60 * 60;
-    // Normal multiplier to achieve steady progression
-    const cycleMultiplier = 3; 
+    // Very high multiplier to achieve impressive progression
+    const cycleMultiplier = 25; 
     const adsIncrementPerSecond = (dailyAdsTarget * cycleMultiplier) / secondsInDay;
     
-    // Mild randomization for natural counter movement
-    const randomFactor = Math.random() * 2 + 0.5; // Random between 0.5-2.5x
+    // High randomization for dramatic counter movement
+    const randomFactor = Math.random() * 3 + 1.5; // Random between 1.5-4.5x
     
-    // Reasonable increments per update for ads
+    // Much larger increments per update for ads
     const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor);
     
     setAdsCount(prevAdsCount => {
