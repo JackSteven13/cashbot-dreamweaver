@@ -14,21 +14,21 @@ export const useStatsAnimation = ({
   setDisplayedAdsCount,
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
-  // Animate the counters more dramatically to impress users
+  // Animate the counters much more dramatically to impress users
   const animateCounters = useCallback(() => {
-    // Update ad count with more aggressive animation
+    // Update ad count with extremely aggressive animation
     setDisplayedAdsCount((prevCount) => {
       if (prevCount >= adsCount) return adsCount;
-      // Much larger increments for more dramatic movement (50% faster)
-      const increment = Math.max(Math.floor((adsCount - prevCount) * 0.3), 25);
+      // Very large increments for dramatic movement (300% faster)
+      const increment = Math.max(Math.floor((adsCount - prevCount) * 0.5), 75);
       return Math.min(prevCount + increment, adsCount);
     });
 
-    // Update revenue count with more aggressive animation
+    // Update revenue count with extremely aggressive animation
     setDisplayedRevenueCount((prevCount) => {
       if (prevCount >= revenueCount) return revenueCount;
-      // Much larger increments for more dramatic movement (50% faster)
-      const increment = Math.max(Math.floor((revenueCount - prevCount) * 0.3), 60);
+      // Very large increments for dramatic movement (300% faster)
+      const increment = Math.max(Math.floor((revenueCount - prevCount) * 0.5), 120);
       return Math.min(prevCount + increment, revenueCount);
     });
 
