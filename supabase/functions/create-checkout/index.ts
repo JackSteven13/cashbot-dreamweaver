@@ -24,13 +24,10 @@ const stripe = isValidStripeKey ? new Stripe(stripeSecretKey, {
   apiVersion: '2023-10-16',
 }) : null;
 
-// Define subscription plan IDs
-// Update with the actual product IDs
-const PLAN_IDS = {
-  'freemium': 'free',
-  'pro': 'price_1OWlHbPpjKfOPBSRnBzNBRIY',     // Will be updated with price ID from the product
-  'visionnaire': 'price_1OWlIEPpjKfOPBSROvnx6rKo', 
-  'alpha': 'price_1OWlJ1PpjKfOPBSRmxkRZmjC',     
+// Define product ID mapping
+const PRODUCT_IDS = {
+  'pro': 'prod_RopJPyaRmXWQ1V',
+  // Add other product IDs here if available
 }
 
 // Create a Supabase client
@@ -54,28 +51,6 @@ Deno.serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
-    }
-    
-    // First, try to get the price ID for the pro product
-    if (PLAN_IDS['pro'] === 'price_1OWlHbPpjKfOPBSRnBzNBRIY') {
-      try {
-        // Look up prices for the provided product ID
-        console.log('Looking up prices for product ID: prod_RopJPyaRmXWQ1V');
-        const prices = await stripe.prices.list({
-          product: 'prod_RopJPyaRmXWQ1V',
-          active: true,
-        });
-        
-        if (prices.data.length > 0) {
-          // Use the first active price
-          PLAN_IDS['pro'] = prices.data[0].id;
-          console.log(`Found price ID for Pro plan: ${PLAN_IDS['pro']}`);
-        } else {
-          console.error('No active prices found for the Pro product');
-        }
-      } catch (priceError) {
-        console.error('Error retrieving prices for Pro product:', priceError);
-      }
     }
     
     // Extract authorization token from request
@@ -105,7 +80,7 @@ Deno.serve(async (req) => {
     console.log('Received plan:', plan)
     
     // Validate plan
-    if (!plan || !PLAN_IDS[plan]) {
+    if (!plan || !['freemium', 'pro', 'visionnaire', 'alpha'].includes(plan)) {
       console.error('Invalid plan:', plan)
       return new Response(JSON.stringify({ error: 'Invalid plan' }), {
         status: 400,
@@ -113,11 +88,8 @@ Deno.serve(async (req) => {
       })
     }
     
-    // Create a Stripe checkout session
-    const priceId = PLAN_IDS[plan]
-    
     // If it's a free plan, just update the user's subscription
-    if (priceId === 'free' || plan === 'freemium') {
+    if (plan === 'freemium') {
       console.log('Handling freemium plan subscription')
       // Update user subscription in database
       const { error: updateError } = await supabase
@@ -141,10 +113,111 @@ Deno.serve(async (req) => {
       })
     }
     
-    console.log('Creating Stripe checkout session for plan:', plan, 'with price ID:', priceId)
+    // Get or retrieve the price ID for the plan
+    console.log(`Creating Stripe checkout session for plan: ${plan}`)
     
     // For paid plans, create a Stripe checkout session
     try {
+      let priceId;
+      
+      // If it's the Pro plan, use the product ID to find the active price
+      if (plan === 'pro' && PRODUCT_IDS['pro']) {
+        try {
+          console.log(`Looking up prices for product ID: ${PRODUCT_IDS['pro']}`);
+          const prices = await stripe.prices.list({
+            product: PRODUCT_IDS['pro'],
+            active: true,
+            limit: 1
+          });
+          
+          if (prices.data.length > 0) {
+            priceId = prices.data[0].id;
+            console.log(`Found price ID for Pro plan: ${priceId}`);
+          } else {
+            throw new Error('No active prices found for the Pro product');
+          }
+        } catch (priceError) {
+          console.error('Error retrieving prices for Pro product:', priceError);
+          return new Response(JSON.stringify({ 
+            error: 'Unable to retrieve pricing information for the Pro plan' 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } else if (plan === 'visionnaire') {
+        // For Visionnaire plan, create a price if needed or use a hardcoded ID
+        try {
+          const prices = await stripe.prices.list({
+            active: true,
+            lookup_keys: ['visionnaire_monthly']
+          });
+          
+          if (prices.data.length > 0) {
+            priceId = prices.data[0].id;
+          } else {
+            // Create a new price for Visionnaire plan
+            const newPrice = await stripe.prices.create({
+              unit_amount: 4999, // 49.99 in cents
+              currency: 'eur',
+              recurring: { interval: 'month' },
+              product_data: {
+                name: 'Visionnaire Monthly Subscription'
+              },
+              lookup_key: 'visionnaire_monthly'
+            });
+            priceId = newPrice.id;
+          }
+          console.log(`Using price ID for Visionnaire plan: ${priceId}`);
+        } catch (priceError) {
+          console.error('Error with Visionnaire pricing:', priceError);
+          return new Response(JSON.stringify({ 
+            error: 'Unable to set up pricing for the Visionnaire plan' 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } else if (plan === 'alpha') {
+        // For Alpha plan, create a price if needed or use a hardcoded ID
+        try {
+          const prices = await stripe.prices.list({
+            active: true,
+            lookup_keys: ['alpha_monthly']
+          });
+          
+          if (prices.data.length > 0) {
+            priceId = prices.data[0].id;
+          } else {
+            // Create a new price for Alpha plan
+            const newPrice = await stripe.prices.create({
+              unit_amount: 9999, // 99.99 in cents
+              currency: 'eur',
+              recurring: { interval: 'month' },
+              product_data: {
+                name: 'Alpha Monthly Subscription'
+              },
+              lookup_key: 'alpha_monthly'
+            });
+            priceId = newPrice.id;
+          }
+          console.log(`Using price ID for Alpha plan: ${priceId}`);
+        } catch (priceError) {
+          console.error('Error with Alpha pricing:', priceError);
+          return new Response(JSON.stringify({ 
+            error: 'Unable to set up pricing for the Alpha plan' 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+      
+      if (!priceId) {
+        throw new Error(`Could not determine price ID for plan: ${plan}`);
+      }
+      
+      // Create the checkout session with the retrieved or created price ID
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'subscription',
@@ -162,25 +235,29 @@ Deno.serve(async (req) => {
           userId: user.id,
           plan: plan,
         },
-      })
+      });
       
-      console.log('Created checkout session:', session.id)
+      console.log('Created checkout session:', session.id);
       
       return new Response(JSON.stringify({ success: true, url: session.url }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      });
     } catch (stripeError) {
-      console.error('Stripe error:', stripeError)
-      return new Response(JSON.stringify({ error: stripeError.message }), {
+      console.error('Stripe error:', stripeError);
+      return new Response(JSON.stringify({ 
+        error: `Payment processing error: ${stripeError.message}`
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      });
     }
   } catch (error) {
-    console.error('Error creating checkout session:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Error creating checkout session:', error);
+    return new Response(JSON.stringify({ 
+      error: `General error: ${error.message}`
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    });
   }
-})
+});

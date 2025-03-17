@@ -79,8 +79,20 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       console.error("Payment error:", error);
       setIsStripeProcessing(false);
       
-      // More detailed error message
-      const errorMessage = error.message || "Une erreur est survenue lors du traitement du paiement";
+      // Create a more user-friendly error message
+      let errorMessage;
+      
+      // Check for specific error patterns
+      if (error.message?.includes('No such price')) {
+        errorMessage = "La configuration des prix n'est pas encore terminée. Veuillez réessayer ultérieurement.";
+      } else if (error.message?.includes('Invalid API Key')) {
+        errorMessage = "Configuration de paiement incorrecte. Veuillez contacter le support.";
+      } else if (error.message?.includes('Edge Function returned a non-2xx status code')) {
+        errorMessage = "Le service de paiement est temporairement indisponible. Veuillez réessayer dans quelques instants.";
+      } else {
+        // Use the original error message or a generic one
+        errorMessage = error.message || "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.";
+      }
       
       toast({
         title: "Erreur de paiement",
