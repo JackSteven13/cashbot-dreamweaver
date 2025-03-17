@@ -69,70 +69,8 @@ const Offres = () => {
         });
       }
     } else {
-      // For paid plans, use Stripe checkout
-      try {
-        setIsProcessing(niveau);
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          toast({
-            title: "Erreur",
-            description: "Vous devez être connecté pour souscrire à un abonnement payant.",
-            variant: "destructive"
-          });
-          navigate('/login');
-          return;
-        }
-        
-        // Redirect to payment page with selected plan
-        const token = session.access_token;
-        const response = await fetch(`${window.location.origin}/functions/v1/create-checkout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            plan: niveau,
-            successUrl: `${window.location.origin}/dashboard?payment=success`,
-            cancelUrl: `${window.location.origin}/offres`,
-          }),
-        });
-        
-        const data = await response.json();
-        
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        
-        // If it's a free plan that was processed on the server
-        if (data.free) {
-          setIsProcessing(null);
-          toast({
-            title: "Abonnement activé",
-            description: `Votre abonnement ${niveau} a été activé avec succès !`,
-          });
-          navigate('/dashboard');
-          return;
-        }
-        
-        // Redirect to Stripe checkout page
-        if (data.url) {
-          window.location.href = data.url;
-          return;
-        }
-        
-        throw new Error("Aucune URL de paiement reçue");
-      } catch (error) {
-        console.error("Payment error:", error);
-        setIsProcessing(null);
-        
-        toast({
-          title: "Erreur de paiement",
-          description: "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.",
-          variant: "destructive"
-        });
-      }
+      // For paid plans, redirect to payment page instead of using Stripe Checkout directly
+      navigate(`/payment?plan=${niveau}`);
     }
   };
 
