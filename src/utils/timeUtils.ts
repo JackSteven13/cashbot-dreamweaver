@@ -13,37 +13,34 @@ export const getParisTime = (): Date => {
 };
 
 /**
- * Calculates time until next reset date (1st, 15th, or 29th of month)
+ * Calculates time until next reset date (every 17 days)
  * @returns Time in milliseconds until the next reset
  */
 export const calculateTimeUntilNextReset = (): number => {
   const parisTime = getParisTime();
-  const currentDay = parisTime.getDate();
-  const currentYear = parisTime.getFullYear();
-  const currentMonth = parisTime.getMonth();
   
-  let nextResetDate;
+  // Définir une date de référence (1er janvier 2024)
+  const referenceDate = new Date(2024, 0, 1);
+  referenceDate.setHours(0, 0, 0, 0);
   
-  if (currentDay < 15) {
-    // Next reset is on the 15th
-    nextResetDate = new Date(currentYear, currentMonth, 15);
-  } else if (currentDay < 29) {
-    // Next reset is on the 29th, but check if month has 29th
-    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    nextResetDate = new Date(currentYear, currentMonth, Math.min(29, lastDayOfMonth));
-  } else {
-    // Next reset is on the 1st of next month
-    nextResetDate = new Date(currentYear, currentMonth + 1, 1);
+  // Calculer le nombre de jours écoulés depuis la date de référence
+  const daysSinceReference = Math.floor((parisTime.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Calculer le nombre de jours restants jusqu'au prochain cycle de 17 jours
+  const daysUntilNextCycle = 17 - (daysSinceReference % 17);
+  
+  // Si on est au jour exact de reset, on passe au cycle suivant
+  const currentHour = parisTime.getHours();
+  const currentMinutes = parisTime.getMinutes();
+  
+  if (daysUntilNextCycle === 17 && currentHour === 0 && currentMinutes === 0) {
+    return 0; // Reset immédiat
   }
   
-  // Set to midnight
+  // Calculer la date du prochain reset
+  const nextResetDate = new Date(parisTime);
+  nextResetDate.setDate(parisTime.getDate() + daysUntilNextCycle);
   nextResetDate.setHours(0, 0, 0, 0);
-  
-  // If we're already past midnight, add a day
-  if (parisTime.getHours() === 0 && parisTime.getMinutes() === 0 && 
-      parisTime.getDate() === nextResetDate.getDate()) {
-    nextResetDate.setDate(nextResetDate.getDate() + 1);
-  }
   
   return nextResetDate.getTime() - parisTime.getTime();
 };

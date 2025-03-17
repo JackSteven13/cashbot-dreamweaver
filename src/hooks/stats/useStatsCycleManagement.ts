@@ -23,7 +23,11 @@ export const useStatsCycleManagement = ({
   const scheduleCycleUpdate = useCallback(() => {
     const timeUntilNextReset = calculateTimeUntilNextReset();
     
-    console.log(`Next counter reset scheduled in ${Math.floor(timeUntilNextReset / 1000 / 60)} minutes`);
+    // Convertir en jours pour l'affichage dans les logs
+    const daysUntilReset = Math.floor(timeUntilNextReset / 1000 / 60 / 60 / 24);
+    const hoursUntilReset = Math.floor((timeUntilNextReset / 1000 / 60 / 60) % 24);
+    
+    console.log(`Next counter reset scheduled in ${daysUntilReset} days and ${hoursUntilReset} hours`);
     
     const resetTimeout = setTimeout(() => {
       // Reset counters
@@ -39,19 +43,24 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Randomly increment counters
+  // Incrémenter les compteurs de manière plus régulière et moins agitée
   const incrementCountersRandomly = useCallback(() => {
-    // Simulate real-time activity with randomized increases
+    // Calculer des incréments plus stables pour une progression plus régulière
+    const dailyAdsIncrement = dailyAdsTarget / (24 * 60 * 20); // Incrément par 3 secondes
+    const dailyRevenueIncrement = dailyRevenueTarget / (24 * 60 * 20); // Incrément par 3 secondes
+    
     setAdsCount(prev => {
-      const randomIncrement = Math.floor(Math.random() * 10) + 3;
-      const newValue = Math.min(prev + randomIncrement, dailyAdsTarget);
-      return newValue;
+      // Petite variation aléatoire autour de l'incrément moyen (±10%)
+      const randomFactor = 0.9 + (Math.random() * 0.2);
+      const increment = Math.ceil(dailyAdsIncrement * randomFactor);
+      return Math.min(prev + increment, dailyAdsTarget);
     });
     
     setRevenueCount(prev => {
-      const randomIncrement = Math.floor(Math.random() * 100) + 50;
-      const newValue = Math.min(prev + randomIncrement, dailyRevenueTarget);
-      return newValue;
+      // Petite variation aléatoire autour de l'incrément moyen (±10%)
+      const randomFactor = 0.9 + (Math.random() * 0.2);
+      const increment = Math.ceil(dailyRevenueIncrement * randomFactor);
+      return Math.min(prev + increment, dailyRevenueTarget);
     });
   }, [dailyAdsTarget, dailyRevenueTarget, setAdsCount, setRevenueCount]);
 

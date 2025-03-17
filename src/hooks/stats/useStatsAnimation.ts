@@ -14,25 +14,20 @@ export const useStatsAnimation = ({
   setDisplayedAdsCount,
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
-  // Animation speed references
-  const adsAnimationSpeedRef = useRef(1);
-  const revenueAnimationSpeedRef = useRef(1);
+  // Animation speed references (constantes pour plus de stabilité)
+  const adsAnimationSpeedRef = useRef(0.8);
+  const revenueAnimationSpeedRef = useRef(0.8);
   
   // Animation function
   const animateCounters = useCallback(() => {
-    // Randomly adjust animation speeds occasionally for visual interest
-    if (Math.random() < 0.1) {
-      adsAnimationSpeedRef.current = 0.5 + Math.random() * 1.5;
-      revenueAnimationSpeedRef.current = 0.5 + Math.random() * 1.5;
-    }
+    // Suppression de la variation aléatoire pour plus de stabilité
     
     setDisplayedAdsCount(prev => {
-      // Add random variations to increment speed
       const diff = adsCount - prev;
       if (diff <= 0) return prev;
       
-      // Faster animation when further from target
-      const increment = Math.ceil(Math.max(1, diff * 0.05 * adsAnimationSpeedRef.current));
+      // Animation plus douce et constante
+      const increment = Math.ceil(Math.max(1, diff * 0.03 * adsAnimationSpeedRef.current));
       return Math.min(prev + increment, adsCount);
     });
     
@@ -40,8 +35,8 @@ export const useStatsAnimation = ({
       const diff = revenueCount - prev;
       if (diff <= 0) return prev;
       
-      // Faster animation when further from target
-      const increment = Math.ceil(Math.max(1, diff * 0.05 * revenueAnimationSpeedRef.current));
+      // Animation plus douce et constante
+      const increment = Math.ceil(Math.max(1, diff * 0.03 * revenueAnimationSpeedRef.current));
       return Math.min(prev + increment, revenueCount);
     });
   }, [adsCount, revenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);

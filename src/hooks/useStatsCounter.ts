@@ -67,10 +67,10 @@ export const useStatsCounter = ({
     // Start animation
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Schedule periodic real data updates (simulating real-time data)
+    // Schedule periodic real data updates (moins fréquents pour moins d'agitation)
     const activityInterval = setInterval(incrementCountersRandomly, 3000);
     
-    // Schedule reset at the end of the 14-day cycle
+    // Schedule reset at the end of the 17-day cycle
     const resetTimeout = scheduleCycleUpdate();
     
     // Cleanup
