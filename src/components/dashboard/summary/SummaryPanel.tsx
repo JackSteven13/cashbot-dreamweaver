@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import UserBalanceCard from './UserBalanceCard';
@@ -19,6 +18,7 @@ interface SummaryPanelProps {
   dailySessionCount?: number;
   canStartSession?: boolean;
   referralCount?: number;
+  referralBonus?: number;
 }
 
 const SummaryPanel = ({ 
@@ -31,7 +31,8 @@ const SummaryPanel = ({
   handleWithdrawal,
   dailySessionCount = 0,
   canStartSession = true,
-  referralCount = 0
+  referralCount = 0,
+  referralBonus = 0
 }: SummaryPanelProps) => {
   
   const [isWithdrawing, setIsWithdrawing] = useState(false);
@@ -40,7 +41,6 @@ const SummaryPanel = ({
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const latestBalanceRef = useRef(balance);
   
-  // Immediately update the reference when the balance prop changes
   useEffect(() => {
     console.log("Balance prop changed to:", balance);
     latestBalanceRef.current = balance;
@@ -109,7 +109,6 @@ const SummaryPanel = ({
   const onBoostClick = () => {
     if (isButtonDisabled || isStartingSession || !currentlyCanStartSession) return;
     
-    // Double check balance limit
     if (latestBalanceRef.current >= dailyLimit) {
       toast({
         title: "Limite journalière atteinte",
@@ -149,6 +148,7 @@ const SummaryPanel = ({
             dailyLimit={dailyLimit}
             sessionsDisplay={sessionsDisplay}
             referralCount={referralCount}
+            referralBonus={referralBonus}
           />
           
           <ActionButtons 
@@ -173,6 +173,7 @@ const SummaryPanel = ({
           remainingSessions={remainingSessions}
           referralCount={referralCount}
           displayBalance={displayBalance}
+          referralBonus={referralBonus}
         />
       </div>
     </div>
