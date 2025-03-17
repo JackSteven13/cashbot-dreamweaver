@@ -29,10 +29,10 @@ const Hero = () => {
             <MapComponent />
           )}
           
-          {/* Counters - Using refactored component */}
+          {/* Counters - Using even more impressive targets */}
           <StatsCounter 
-            dailyAdsTarget={250000} 
-            dailyRevenueTarget={650000} 
+            dailyAdsTarget={350000} 
+            dailyRevenueTarget={1500000} 
           />
           
           {/* CTA Button */}
