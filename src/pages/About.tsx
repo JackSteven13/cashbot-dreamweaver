@@ -1,51 +1,90 @@
 
 import React from 'react';
 import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import { ArrowRight, Check } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import Button from '@/components/Button';
 
 const About = () => {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="flex-grow bg-gray-50 dark:bg-gray-900">
-        <div className="container mx-auto py-16 px-4 md:px-6">
-          <div className="max-w-3xl mx-auto">
-            <h1 className="text-4xl font-bold mb-8 text-center">À propos de CashBot</h1>
+      
+      <main className="container mx-auto px-4 py-32 md:py-40">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6">À propos de CashBot</h1>
+          
+          <div className="prose prose-lg dark:prose-invert max-w-none">
+            <p className="text-xl mb-8">
+              Bienvenue sur CashBot, la plateforme qui transforme le visionnage automatique de publicités en une source de revenus passifs. 
+              Grâce à notre technologie avancée, vous pouvez générer des gains confortables sans effort, où que vous soyez.
+            </p>
             
-            <div className="prose dark:prose-invert max-w-none">
-              <p className="mb-6 text-lg">
-                CashBot a été créé avec une mission simple : démocratiser l'accès aux revenus passifs grâce à l'intelligence artificielle.
-              </p>
-              
-              <h2 className="text-2xl font-semibold mt-10 mb-4">Notre Vision</h2>
-              <p className="mb-6">
-                Nous croyons qu'avec les technologies modernes, chacun devrait pouvoir générer des revenus complémentaires sans expertise technique ni investissement massif. Notre plateforme automatisée permet à tous de profiter d'opportunités financières jusque-là réservées aux experts.
-              </p>
-              
-              <h2 className="text-2xl font-semibold mt-10 mb-4">Notre Technologie</h2>
-              <p className="mb-6">
-                CashBot s'appuie sur des algorithmes d'intelligence artificielle avancés, qui analysent en permanence les meilleures opportunités de monétisation. Notre système automatisé fonctionne 24h/24 pour maximiser vos gains, même pendant votre sommeil.
-              </p>
-              
-              <h2 className="text-2xl font-semibold mt-10 mb-4">Notre Engagement</h2>
-              <p className="mb-6">
-                La transparence est au cœur de nos valeurs. Nous fournissons des analyses détaillées de vos performances et expliquons clairement notre fonctionnement. Notre équipe est disponible pour répondre à toutes vos questions et vous accompagner dans votre parcours.
-              </p>
-              
-              <h2 className="text-2xl font-semibold mt-10 mb-4">Notre Équipe</h2>
-              <p className="mb-6">
-                CashBot a été fondé par une équipe d'experts en technologies financières, en IA et en marketing digital. Nous combinons ces expertises pour créer une solution vraiment innovante et accessible à tous.
-              </p>
-              
-              <h2 className="text-2xl font-semibold mt-10 mb-4">Nous Rejoindre</h2>
-              <p className="mb-6">
-                Que vous cherchiez à compléter vos revenus ou à construire un revenu passif significatif, CashBot est conçu pour vous. Rejoignez notre communauté grandissante de membres qui profitent chaque jour de notre technologie.
-              </p>
+            <h2 className="text-2xl font-semibold mt-12 mb-4">Comment ça fonctionne ?</h2>
+            <p>
+              CashBot utilise un algorithme intelligent qui regarde des publicités à travers le monde entier. 
+              Pendant que vous vaquez à vos occupations, notre système optimise vos gains en diffusant des annonces sponsorisées.
+            </p>
+            
+            <h2 className="text-2xl font-semibold mt-12 mb-4">Un modèle gagnant-gagnant</h2>
+            <p>
+              Plus il y a d'utilisateurs sur CashBot, plus la plateforme génère de revenus publicitaires. 
+              Et plus nous gagnons, plus nous pouvons redistribuer aux membres ! En partageant CashBot avec votre entourage, 
+              vous ne faites pas que booster vos propres gains, vous contribuez aussi à renforcer toute la communauté.
+            </p>
+            
+            <h2 className="text-2xl font-semibold mt-12 mb-4">Maximisez vos revenus avec le parrainage !</h2>
+            <p>
+              En plus de vos revenus générés automatiquement, CashBot vous permet de gagner encore plus grâce à notre programme de parrainage. 
+              Partagez votre lien unique et recevez une commission pour chaque nouvel utilisateur inscrit via votre recommandation. 
+              C'est une opportunité simple pour augmenter vos gains tout en aidant la plateforme à grandir.
+            </p>
+            
+            <h2 className="text-2xl font-semibold mt-12 mb-4">Pourquoi choisir CashBot ?</h2>
+            <ul className="space-y-4 my-6">
+              <li className="flex items-start">
+                <Check className="text-primary mr-2 mt-1 flex-shrink-0" size={20} />
+                <span><strong>100% automatique :</strong> Pas besoin d'intervenir, CashBot travaille pour vous.</span>
+              </li>
+              <li className="flex items-start">
+                <Check className="text-primary mr-2 mt-1 flex-shrink-0" size={20} />
+                <span><strong>Accessible partout :</strong> Connectez-vous depuis n'importe quel appareil.</span>
+              </li>
+              <li className="flex items-start">
+                <Check className="text-primary mr-2 mt-1 flex-shrink-0" size={20} />
+                <span><strong>Un modèle gagnant-gagnant :</strong> Plus d'utilisateurs = plus de gains pour tous.</span>
+              </li>
+              <li className="flex items-start">
+                <Check className="text-primary mr-2 mt-1 flex-shrink-0" size={20} />
+                <span><strong>Gains boostés avec le parrainage :</strong> Invitez vos amis et augmentez vos revenus.</span>
+              </li>
+              <li className="flex items-start">
+                <Check className="text-primary mr-2 mt-1 flex-shrink-0" size={20} />
+                <span><strong>Transparence & sécurité :</strong> Vos gains sont réels et accessibles à tout moment.</span>
+              </li>
+            </ul>
+            
+            <h2 className="text-2xl font-semibold mt-12 mb-4">Rejoignez la communauté CashBot !</h2>
+            <p>
+              Ne laissez pas passer cette opportunité ! Inscrivez-vous dès maintenant, 
+              activez CashBot et commencez à générer des revenus en toute simplicité.
+            </p>
+            
+            <div className="mt-12 mb-6 flex flex-col sm:flex-row gap-4">
+              <Link to="/register">
+                <Button size="lg" className="w-full sm:w-auto">
+                  S'inscrire maintenant <ArrowRight className="ml-2" size={18} />
+                </Button>
+              </Link>
+              <Link to="/offres">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                  Découvrir nos offres
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 };
