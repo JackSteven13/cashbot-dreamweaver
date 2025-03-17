@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CreditCard, Check, PaypalLogo } from 'lucide-react';
+import { ArrowLeft, CreditCard, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Button from '@/components/Button';
@@ -19,7 +19,7 @@ const PLAN_PRICES = {
   'alpha': 99.99
 };
 
-// PayPal logo component (since lucide doesn't have PayPal)
+// Custom PayPal logo component
 const PaypalLogo = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M7 12a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2h9a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1"></path>
