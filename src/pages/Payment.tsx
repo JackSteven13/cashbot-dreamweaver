@@ -19,7 +19,7 @@ const Payment = () => {
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
-  const [useStripeCheckout, setUseStripeCheckout] = useState(true);
+  const [useStripePayment, setUseStripePayment] = useState(true);
   
   // Get the processing state from the payment hooks
   const { isProcessing, processPayment } = usePaymentProcessing(selectedPlan);
@@ -69,7 +69,7 @@ const Payment = () => {
   };
 
   const togglePaymentMethod = () => {
-    setUseStripeCheckout(!useStripeCheckout);
+    setUseStripePayment(!useStripePayment);
   };
 
   if (isAuthChecking) {
@@ -88,7 +88,7 @@ const Payment = () => {
         <div className="max-w-2xl mx-auto">
           <PaymentCard 
             selectedPlan={selectedPlan}
-            useStripeCheckout={useStripeCheckout}
+            useStripeCheckout={useStripePayment}
             isStripeProcessing={isStripeProcessing}
             isProcessing={isProcessing}
             onToggleMethod={togglePaymentMethod}
