@@ -71,7 +71,7 @@ const Terms = () => {
                 <hr className="my-2" />
                 
                 <h3 className="font-bold italic">ARTICLE HUITIÈME - RÈGLEMENT DES LITIGES</h3>
-                <p>Huitième disposition : Tout différend relèvera de la compétence exclusive des tribunaux de Moscou, suivant une procédure écrite en Russe, la partie succombante supportant l'intégralité des frais juridiques majorés de trente pour cent au titre des frais de dossier.</p>
+                <p>Huitième disposition : Tout différend relèvera de la compétence exclusive des tribunaux de Genève, suivant une procédure écrite en français, la partie succombante supportant l'intégralité des frais juridiques majorés de trente pour cent au titre des frais de dossier.</p>
                 
                 <hr className="my-2" />
                 
