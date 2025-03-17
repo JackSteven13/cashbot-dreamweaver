@@ -43,3 +43,48 @@ export const applyReferralBonus = (value: number, referralsCount: number) => {
   const bonusMultiplier = 1 + (bonusPercentage / 100);
   return value * bonusMultiplier;
 };
+
+// Get referral code from URL
+export const getReferralCodeFromUrl = () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('ref') || null;
+};
+
+// Store referral code in local storage for later use during registration
+export const storeReferralCode = (code: string) => {
+  localStorage.setItem('referralCode', code);
+};
+
+// Retrieve stored referral code
+export const getStoredReferralCode = () => {
+  return localStorage.getItem('referralCode');
+};
+
+// Clear stored referral code
+export const clearStoredReferralCode = () => {
+  localStorage.removeItem('referralCode');
+};
+
+// Validate if a referral code is valid
+export const validateReferralCode = async (code: string) => {
+  if (!code || code.length < 8) return false;
+  
+  try {
+    // Look for users with id starting with the referral code
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('id', `${code}%`)
+      .limit(1);
+      
+    if (error) {
+      console.error('Error validating referral code:', error);
+      return false;
+    }
+    
+    return data && data.length > 0;
+  } catch (error) {
+    console.error('Error in validateReferralCode:', error);
+    return false;
+  }
+};

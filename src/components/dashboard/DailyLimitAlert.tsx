@@ -22,13 +22,13 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
   const isNearLimit = limitPercentage >= 90;
 
   return (
-    <Alert className={`mb-6 ${isLimitReached ? 'bg-red-50 border-red-300' : 'bg-yellow-50 border-yellow-200'}`}>
-      <AlertTitle className={isLimitReached ? 'text-red-800' : 'text-yellow-800'}>
+    <Alert className={`mb-6 ${isLimitReached ? 'bg-amber-50 border-amber-300' : 'bg-yellow-50 border-yellow-200'}`}>
+      <AlertTitle className={isLimitReached ? 'text-amber-800' : 'text-yellow-800'}>
         {isLimitReached ? 'Limite journalière atteinte' : 'Limite journalière presque atteinte'}
       </AlertTitle>
       <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex-1">
-          <span className={isLimitReached ? 'text-red-700' : 'text-yellow-700'}>
+          <span className={isLimitReached ? 'text-amber-700' : 'text-yellow-700'}>
             {isLimitReached 
               ? `Vous avez atteint votre limite de gain journalier de ${limit}€ avec votre compte ${subscription.charAt(0).toUpperCase() + subscription.slice(1)}.
                  Votre solde actuel est de ${currentBalance.toFixed(2)}€.`
@@ -40,7 +40,7 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
           {/* Barre de progression visuelle */}
           <div className="w-full h-2 bg-gray-200 rounded-full mt-2 overflow-hidden">
             <div 
-              className={`h-full ${isLimitReached ? 'bg-red-500' : isNearLimit ? 'bg-orange-500' : 'bg-yellow-500'}`}
+              className={`h-full ${isLimitReached ? 'bg-amber-500' : isNearLimit ? 'bg-orange-500' : 'bg-yellow-500'}`}
               style={{ width: `${limitPercentage}%` }}
             />
           </div>
@@ -50,7 +50,7 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
           <Button 
             variant="default" 
             size="sm" 
-            className={`whitespace-nowrap ${isLimitReached ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white`}
+            className={`whitespace-nowrap ${isLimitReached ? 'bg-amber-600 hover:bg-amber-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white`}
           >
             Augmenter ma limite
           </Button>

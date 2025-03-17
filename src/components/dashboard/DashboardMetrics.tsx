@@ -50,7 +50,6 @@ const DashboardMetrics = ({
           subscription={subscription}
           dailySessionCount={dailySessionCount}
           canStartSession={canStartSession}
-          referrals={referrals}
           referralCount={referrals.length}
           referralBonus={referralBonus}
         />
