@@ -79,9 +79,10 @@ export const useStatsInitialization = ({
     
     setAdsCount(currentAdsCount);
     setRevenueCount(currentRevenueCount);
-    // Start animations from lower values for more dramatic effect
-    setDisplayedAdsCount(Math.floor(currentAdsCount * 0.5));
-    setDisplayedRevenueCount(Math.floor(currentRevenueCount * 0.5));
+    
+    // Initialize displayed counters to match real counters (no animation drop)
+    setDisplayedAdsCount(currentAdsCount);
+    setDisplayedRevenueCount(currentRevenueCount);
   }, [getBiWeeklyProgress, dailyAdsTarget, dailyRevenueTarget]);
 
   return {

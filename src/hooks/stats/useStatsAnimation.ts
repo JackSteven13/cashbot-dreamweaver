@@ -24,7 +24,8 @@ export const useStatsAnimation = ({
     
     setDisplayedAdsCount(prev => {
       const diff = adsCount - prev;
-      if (diff <= 0) return prev;
+      // Never decrease the counter
+      if (diff <= 0) return Math.max(prev, adsCount);
       
       // Smoother, more consistent animation with smaller increments
       const increment = Math.ceil(Math.max(1, diff * 0.02 * adsAnimationSpeedRef.current));
@@ -33,7 +34,8 @@ export const useStatsAnimation = ({
     
     setDisplayedRevenueCount(prev => {
       const diff = revenueCount - prev;
-      if (diff <= 0) return prev;
+      // Never decrease the counter
+      if (diff <= 0) return Math.max(prev, revenueCount);
       
       // Smoother, more consistent animation with smaller increments
       const increment = Math.ceil(Math.max(1, diff * 0.02 * revenueAnimationSpeedRef.current));

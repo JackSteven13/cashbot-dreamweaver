@@ -30,7 +30,7 @@ export const useStatsCycleManagement = ({
     console.log(`Next counter reset scheduled in ${daysUntilReset} days and ${hoursUntilReset} hours`);
     
     const resetTimeout = setTimeout(() => {
-      // Reset counters
+      // Reset counters only at the scheduled reset time
       setAdsCount(0);
       setRevenueCount(0);
       setDisplayedAdsCount(0);
@@ -49,11 +49,14 @@ export const useStatsCycleManagement = ({
     const adsHourlyIncrement = dailyAdsTarget / 24;
     const revenueHourlyIncrement = dailyRevenueTarget / 24;
     
-    // Calculate increments for 3-second updates (20 per minute)
-    const adsIncrementBase = adsHourlyIncrement / (60 * 20);
-    const revenueIncrementBase = revenueHourlyIncrement / (60 * 20);
+    // Calculate increments for 5-second updates (12 per minute)
+    const adsIncrementBase = adsHourlyIncrement / (60 * 12);
+    const revenueIncrementBase = revenueHourlyIncrement / (60 * 12);
     
     setAdsCount(prev => {
+      // Only increment if we haven't reached the target
+      if (prev >= dailyAdsTarget) return dailyAdsTarget;
+      
       // Very small random variation (±5%) for natural but stable progression
       const randomFactor = 0.95 + (Math.random() * 0.1);
       const increment = Math.ceil(adsIncrementBase * randomFactor);
@@ -61,6 +64,9 @@ export const useStatsCycleManagement = ({
     });
     
     setRevenueCount(prev => {
+      // Only increment if we haven't reached the target
+      if (prev >= dailyRevenueTarget) return dailyRevenueTarget;
+      
       // Very small random variation (±5%) for natural but stable progression
       const randomFactor = 0.95 + (Math.random() * 0.1);
       const increment = Math.ceil(revenueIncrementBase * randomFactor);
