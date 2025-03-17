@@ -16,11 +16,12 @@ export const useStatsAnimation = ({
 }: UseStatsAnimationParams) => {
   // Animation improved for better readability
   const animateCounters = useCallback(() => {
-    // Update ad count with smoother animation
+    // Update ad count with much slower animation
     setDisplayedAdsCount((prevCount) => {
       if (prevCount >= adsCount) return adsCount;
-      // Smaller increments for smoother animation
-      const increment = Math.max(Math.floor((adsCount - prevCount) * 0.2), 50);
+      
+      // Much smaller increments for more readable animation
+      const increment = Math.max(Math.floor((adsCount - prevCount) * 0.05), 10);
       const newAdsCount = Math.min(prevCount + increment, adsCount);
       
       // Only update revenue display when ads are updated
@@ -35,10 +36,10 @@ export const useStatsAnimation = ({
           const averageRevenuePerAd = 8; // Set average revenue per ad
           const totalRevenueIncrement = adsProcessed * averageRevenuePerAd;
           
-          // Smoother animation with smaller increments
+          // Much smaller increments for more stable display
           const smoothIncrement = Math.min(
             totalRevenueIncrement,
-            (revenueCount - prevRevCount) * 0.1
+            (revenueCount - prevRevCount) * 0.05
           );
           
           return Math.min(prevRevCount + smoothIncrement, revenueCount);

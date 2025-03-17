@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { calculateTimeUntilMidnight } from '@/utils/timeUtils';
 
@@ -43,18 +42,18 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // More balanced increments for smoother visualization
+  // Much more controlled increments for stable visualization
   const incrementCountersRandomly = useCallback(() => {
-    // Updated calculations for smoother operation
+    // Updated calculations for more stable progression
     const secondsInDay = 24 * 60 * 60;
-    // Moderate multiplier for smoother progression
-    const cycleMultiplier = 100; 
+    // Smaller multiplier for more stable progression
+    const cycleMultiplier = 30; 
     const adsIncrementPerSecond = (dailyAdsTarget * cycleMultiplier) / secondsInDay;
     
-    // Reduced randomization for more predictable counter movement
-    const randomFactor = Math.random() * 5 + 1; // Random between 1-6x
+    // Very limited randomization for more readable counter movement
+    const randomFactor = Math.random() * 2 + 1; // Random between 1-3x
     
-    // Moderate increments per update for ads
+    // Smaller increments per update for ads
     const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor);
     
     setAdsCount(prevAdsCount => {
@@ -76,19 +75,19 @@ export const useStatsCycleManagement = ({
         if (adValueRoll > 0.95) {
           // EXCEPTIONAL ads (20-25€ per ad) - less frequent
           adRevenue = 20 + Math.random() * 5;
-          if (i % 300 === 0) { // Log less frequently
+          if (i % 1000 === 0) { // Log much less frequently
             console.log(`💎💎💎 JACKPOT: Exceptional ad worth ${Math.round(adRevenue)}€!`);
           }
         } else if (adValueRoll > 0.85) {
           // Premium ads (15-20€ per ad)
           adRevenue = 15 + Math.random() * 5;
-          if (i % 300 === 0) {
+          if (i % 1000 === 0) {
             console.log(`💰💰 Premium ad worth ${Math.round(adRevenue)}€!`);
           }
         } else if (adValueRoll > 0.70) {
           // High-value ads (10-15€ per ad)
           adRevenue = 10 + Math.random() * 5;
-          if (i % 500 === 0) {
+          if (i % 1500 === 0) {
             console.log(`💰 High-value ad: ${Math.round(adRevenue)}€`);
           }
         } else if (adValueRoll > 0.40) {
