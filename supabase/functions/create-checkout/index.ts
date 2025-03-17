@@ -12,28 +12,63 @@ const corsHeaders = {
 const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
 
 // Validate Stripe key format before using
-const isValidStripeKey = stripeSecretKey && stripeSecretKey.startsWith('sk_');
+const isValidStripeKey = stripeSecretKey && (stripeSecretKey.startsWith('sk_test_') || stripeSecretKey.startsWith('sk_live_'));
 if (!isValidStripeKey) {
-  console.error('Invalid Stripe secret key format. Keys should start with sk_');
+  console.error('Invalid Stripe secret key format. Keys should start with sk_test_ or sk_live_');
 }
 
-console.log('Initializing Stripe with key format:', isValidStripeKey ? 'Valid (sk_*)' : 'Invalid');
+console.log('Initializing Stripe with key format:', isValidStripeKey ? (stripeSecretKey.startsWith('sk_test_') ? 'Test Mode' : 'Live Mode') : 'Invalid');
 
 // Initialize Stripe with the secret key
 const stripe = isValidStripeKey ? new Stripe(stripeSecretKey, {
   apiVersion: '2023-10-16',
 }) : null;
 
-// Define product ID mapping
-const PRODUCT_IDS = {
-  'pro': 'prod_RopJPyaRmXWQ1V',
-  // Add other product IDs here if available
-}
-
 // Create a Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 const supabase = createClient(supabaseUrl, supabaseKey)
+
+// Function to create or get products and prices
+async function getOrCreatePrice(planName, amount) {
+  try {
+    // Look for existing prices with matching lookup key
+    const lookupKey = `${planName.toLowerCase()}_monthly`;
+    const existingPrices = await stripe.prices.list({
+      active: true,
+      lookup_keys: [lookupKey],
+      limit: 1,
+    });
+    
+    if (existingPrices.data.length > 0) {
+      console.log(`Found existing price for ${planName} plan:`, existingPrices.data[0].id);
+      return existingPrices.data[0].id;
+    }
+    
+    // Create a product first
+    console.log(`Creating new product for ${planName} plan`);
+    const product = await stripe.products.create({
+      name: `${planName} Monthly Subscription`,
+      description: `${planName} tier monthly subscription`,
+    });
+    
+    // Create a price for the product
+    console.log(`Creating new price for ${planName} plan`);
+    const newPrice = await stripe.prices.create({
+      unit_amount: amount * 100, // Convert to cents
+      currency: 'eur',
+      recurring: { interval: 'month' },
+      product: product.id,
+      lookup_key: lookupKey,
+    });
+    
+    console.log(`Created new price for ${planName} plan:`, newPrice.id);
+    return newPrice.id;
+  } catch (error) {
+    console.error(`Error creating product/price for ${planName}:`, error);
+    throw error;
+  }
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -113,111 +148,25 @@ Deno.serve(async (req) => {
       })
     }
     
-    // Get or retrieve the price ID for the plan
+    // For paid plans, create a Stripe checkout session
     console.log(`Creating Stripe checkout session for plan: ${plan}`)
     
-    // For paid plans, create a Stripe checkout session
     try {
-      let priceId;
+      // Plan price mapping in euros
+      const PLAN_PRICES = {
+        'pro': 19.99,
+        'visionnaire': 49.99,
+        'alpha': 99.99
+      };
       
-      // If it's the Pro plan, use the product ID to find the active price
-      if (plan === 'pro' && PRODUCT_IDS['pro']) {
-        try {
-          console.log(`Looking up prices for product ID: ${PRODUCT_IDS['pro']}`);
-          const prices = await stripe.prices.list({
-            product: PRODUCT_IDS['pro'],
-            active: true,
-            limit: 1
-          });
-          
-          if (prices.data.length > 0) {
-            priceId = prices.data[0].id;
-            console.log(`Found price ID for Pro plan: ${priceId}`);
-          } else {
-            throw new Error('No active prices found for the Pro product');
-          }
-        } catch (priceError) {
-          console.error('Error retrieving prices for Pro product:', priceError);
-          return new Response(JSON.stringify({ 
-            error: 'Unable to retrieve pricing information for the Pro plan' 
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-      } else if (plan === 'visionnaire') {
-        // For Visionnaire plan, create a price if needed or use a hardcoded ID
-        try {
-          const prices = await stripe.prices.list({
-            active: true,
-            lookup_keys: ['visionnaire_monthly']
-          });
-          
-          if (prices.data.length > 0) {
-            priceId = prices.data[0].id;
-          } else {
-            // Create a new price for Visionnaire plan
-            const newPrice = await stripe.prices.create({
-              unit_amount: 4999, // 49.99 in cents
-              currency: 'eur',
-              recurring: { interval: 'month' },
-              product_data: {
-                name: 'Visionnaire Monthly Subscription'
-              },
-              lookup_key: 'visionnaire_monthly'
-            });
-            priceId = newPrice.id;
-          }
-          console.log(`Using price ID for Visionnaire plan: ${priceId}`);
-        } catch (priceError) {
-          console.error('Error with Visionnaire pricing:', priceError);
-          return new Response(JSON.stringify({ 
-            error: 'Unable to set up pricing for the Visionnaire plan' 
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-      } else if (plan === 'alpha') {
-        // For Alpha plan, create a price if needed or use a hardcoded ID
-        try {
-          const prices = await stripe.prices.list({
-            active: true,
-            lookup_keys: ['alpha_monthly']
-          });
-          
-          if (prices.data.length > 0) {
-            priceId = prices.data[0].id;
-          } else {
-            // Create a new price for Alpha plan
-            const newPrice = await stripe.prices.create({
-              unit_amount: 9999, // 99.99 in cents
-              currency: 'eur',
-              recurring: { interval: 'month' },
-              product_data: {
-                name: 'Alpha Monthly Subscription'
-              },
-              lookup_key: 'alpha_monthly'
-            });
-            priceId = newPrice.id;
-          }
-          console.log(`Using price ID for Alpha plan: ${priceId}`);
-        } catch (priceError) {
-          console.error('Error with Alpha pricing:', priceError);
-          return new Response(JSON.stringify({ 
-            error: 'Unable to set up pricing for the Alpha plan' 
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-      }
+      // Get or create price ID for the selected plan
+      const priceId = await getOrCreatePrice(plan, PLAN_PRICES[plan]);
       
       if (!priceId) {
         throw new Error(`Could not determine price ID for plan: ${plan}`);
       }
       
-      // Create the checkout session with the retrieved or created price ID
+      // Create the checkout session with the price ID
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'subscription',

@@ -89,6 +89,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         errorMessage = "Configuration de paiement incorrecte. Veuillez contacter le support.";
       } else if (error.message?.includes('Edge Function returned a non-2xx status code')) {
         errorMessage = "Le service de paiement est temporairement indisponible. Veuillez réessayer dans quelques instants.";
+      } else if (error.message?.includes('product exists in live mode, but a test mode key was used')) {
+        errorMessage = "Configuration de paiement incorrecte. L'environnement de test est utilisé au lieu de l'environnement de production.";
       } else {
         // Use the original error message or a generic one
         errorMessage = error.message || "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.";
