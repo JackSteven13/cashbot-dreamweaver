@@ -22,6 +22,10 @@ const Payment = () => {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [useStripeCheckout, setUseStripeCheckout] = useState(true);
   
+  // Create a local state for processing to use with Stripe Checkout
+  const [isStripeProcessing, setIsStripeProcessing] = useState(false);
+  
+  // Get the processing state from the payment hook
   const { isProcessing, processPayment } = usePaymentProcessing(selectedPlan);
 
   // Get plan from state or URL parameters
@@ -77,7 +81,7 @@ const Payment = () => {
       return;
     }
 
-    setIsProcessing(true);
+    setIsStripeProcessing(true);
 
     try {
       // Get user session
@@ -102,7 +106,7 @@ const Payment = () => {
         },
         body: JSON.stringify({
           plan: selectedPlan,
-          successUrl: `${window.location.origin}/dashboard?payment=success`,
+          successUrl: `${window.location.origin}/payment-success`,
           cancelUrl: `${window.location.origin}/offres`,
         }),
       });
@@ -115,7 +119,7 @@ const Payment = () => {
 
       // If it's a free plan that was processed on the server
       if (data.free) {
-        setIsProcessing(false);
+        setIsStripeProcessing(false);
         toast({
           title: "Abonnement activé",
           description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
@@ -133,7 +137,7 @@ const Payment = () => {
       throw new Error("Aucune URL de paiement reçue");
     } catch (error) {
       console.error("Payment error:", error);
-      setIsProcessing(false);
+      setIsStripeProcessing(false);
       
       toast({
         title: "Erreur de paiement",
@@ -187,9 +191,9 @@ const Payment = () => {
                     fullWidth 
                     className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
                     onClick={handleStripeCheckout}
-                    isLoading={isProcessing}
+                    isLoading={isStripeProcessing}
                   >
-                    {isProcessing ? 'Traitement en cours...' : 'Payer avec Stripe'}
+                    {isStripeProcessing ? 'Traitement en cours...' : 'Payer avec Stripe'}
                   </Button>
                 </div>
               ) : (
