@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { calculateTimeUntilNextReset } from '@/utils/timeUtils';
 
@@ -43,31 +44,39 @@ export const useStatsCycleManagement = ({
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
   // Ultra-aggressive increments to make counters move at extremely high speeds
+  // Ensure revenue increments are directly tied to ad increments
   const incrementCountersRandomly = useCallback(() => {
+    // Calculate average revenue per ad
+    const avgRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
+    
     // Update calculations for 20ms updates (50 times per second)
     const secondsInDay = 24 * 60 * 60;
-    // Massive multiplier to achieve 10 ads per second and 15€ per 2 seconds
-    const cycleMultiplier = 12; // Dramatically higher multiplier
+    // Massive multiplier to achieve 10 ads per second
+    const cycleMultiplier = 20; 
     const adsIncrementPerSecond = (dailyAdsTarget * cycleMultiplier) / secondsInDay;
-    const revenueIncrementPerSecond = (dailyRevenueTarget * cycleMultiplier) / secondsInDay;
     
     // Extreme randomization for high variation in counter jumps
-    const randomFactor = Math.random() * 15 + 5; // Random between 5-20x
+    const randomFactor = Math.random() * 10 + 10; // Random between 10-20x
     
-    // Very high increments per update
-    const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor * 10);
-    const revenueIncrement = Math.ceil(revenueIncrementPerSecond * randomFactor * 10);
+    // Very high increments per update for ads
+    const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor / 50);
     
-    setAdsCount(prev => {
+    setAdsCount(prevAdsCount => {
       // Only increment if we haven't reached the target
-      if (prev >= dailyAdsTarget) return dailyAdsTarget;
-      return Math.min(prev + adsIncrement, dailyAdsTarget);
-    });
-    
-    setRevenueCount(prev => {
-      // Only increment if we haven't reached the target
-      if (prev >= dailyRevenueTarget) return dailyRevenueTarget;
-      return Math.min(prev + revenueIncrement, dailyRevenueTarget);
+      if (prevAdsCount >= dailyAdsTarget) return dailyAdsTarget;
+      const newAdsCount = Math.min(prevAdsCount + adsIncrement, dailyAdsTarget);
+      
+      // Update revenue based on new ads processed
+      const adsDifference = newAdsCount - prevAdsCount;
+      const revenueIncrement = adsDifference * avgRevenuePerAd;
+      
+      // Update revenue directly based on new ads
+      setRevenueCount(prevRevenueCount => {
+        if (prevRevenueCount >= dailyRevenueTarget) return dailyRevenueTarget;
+        return Math.min(prevRevenueCount + revenueIncrement, dailyRevenueTarget);
+      });
+      
+      return newAdsCount;
     });
   }, [dailyAdsTarget, dailyRevenueTarget, setAdsCount, setRevenueCount]);
 

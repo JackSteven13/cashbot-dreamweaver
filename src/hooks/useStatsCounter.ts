@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useStatsInitialization } from './stats/useStatsInitialization';
 import { useStatsAnimation } from './stats/useStatsAnimation';
@@ -59,7 +60,8 @@ export const useStatsCounter = ({
     
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    const activityInterval = setInterval(incrementCountersRandomly, 20); 
+    // Increase update frequency to 10ms (100 times per second) for more dynamic counters
+    const activityInterval = setInterval(incrementCountersRandomly, 10); 
     
     const resetTimeout = scheduleCycleUpdate();
     
