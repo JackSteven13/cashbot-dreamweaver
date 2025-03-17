@@ -70,13 +70,16 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         throw new Error("Aucune URL de paiement retournée");
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Payment error:", error);
       setIsStripeProcessing(false);
       
+      // More detailed error message
+      const errorMessage = error.message || "Une erreur est survenue lors du traitement du paiement";
+      
       toast({
         title: "Erreur de paiement",
-        description: "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.",
+        description: errorMessage,
         variant: "destructive"
       });
     }

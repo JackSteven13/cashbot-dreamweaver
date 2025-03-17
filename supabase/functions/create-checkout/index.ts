@@ -8,8 +8,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Get the Stripe secret key from environment variables
+const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
+console.log('Initializing Stripe with key:', stripeSecretKey.substring(0, 5) + '...');
+
 // Initialize Stripe with the secret key
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+const stripe = new Stripe(stripeSecretKey, {
   apiVersion: '2023-10-16',
 })
 
