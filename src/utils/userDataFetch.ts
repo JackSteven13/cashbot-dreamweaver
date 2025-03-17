@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Transaction } from "@/types/userData";
+import { fetchUserReferrals, generateReferralLink } from "@/utils/referralUtils";
 
 // Create or get user profile
 export const fetchUserProfile = async (userId: string, userEmail?: string | null) => {
@@ -161,5 +162,37 @@ export const fetchUserTransactions = async (userId: string): Promise<Transaction
   } catch (error) {
     console.error("Error in fetchUserTransactions:", error);
     return [];
+  }
+};
+
+// Fetch complete user data including referrals
+export const fetchCompleteUserData = async (userId: string, userEmail?: string | null) => {
+  try {
+    // Get profile
+    const profile = await fetchUserProfile(userId, userEmail);
+    
+    // Get balance
+    const balanceResult = await fetchUserBalance(userId);
+    
+    // Get transactions
+    const transactions = await fetchUserTransactions(userId);
+    
+    // Get referrals
+    const referrals = await fetchUserReferrals(userId);
+    
+    // Generate referral link
+    const referralLink = generateReferralLink(userId);
+    
+    return {
+      profile,
+      balance: balanceResult?.data,
+      transactions,
+      referrals,
+      referralLink,
+      isNewUser: balanceResult?.isNewUser || false
+    };
+  } catch (error) {
+    console.error("Error fetching complete user data:", error);
+    return null;
   }
 };

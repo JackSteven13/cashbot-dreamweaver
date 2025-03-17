@@ -5,12 +5,23 @@ export interface Transaction {
   report: string;
 }
 
+export interface Referral {
+  id: string;
+  referrer_id: string;
+  referred_user_id: string;
+  plan_type: string;
+  status: string;
+  commission_rate: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface UserData {
   username: string;
   balance: number;
   subscription: string;
-  referrals: any[];
+  referrals: Referral[];
   referralLink: string;
   transactions: Transaction[];
-  registeredAt?: Date; // Ajout de la propriété registeredAt comme optionnelle
+  registeredAt?: Date;
 }

@@ -30,6 +30,39 @@ export type Database = {
         }
         Relationships: []
       }
+      referrals: {
+        Row: {
+          commission_rate: number
+          created_at: string
+          id: string
+          plan_type: string
+          referred_user_id: string
+          referrer_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          commission_rate?: number
+          created_at?: string
+          id?: string
+          plan_type: string
+          referred_user_id: string
+          referrer_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          commission_rate?: number
+          created_at?: string
+          id?: string
+          plan_type?: string
+          referred_user_id?: string
+          referrer_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           created_at: string
@@ -105,6 +138,24 @@ export type Database = {
           subscription: string
           updated_at: string
         }[]
+      }
+      get_referral_code: {
+        Args: {
+          user_id: string
+        }
+        Returns: string
+      }
+      get_user_referral_commission: {
+        Args: {
+          user_id: string
+        }
+        Returns: number
+      }
+      get_user_referrals_count: {
+        Args: {
+          user_id: string
+        }
+        Returns: number
       }
     }
     Enums: {

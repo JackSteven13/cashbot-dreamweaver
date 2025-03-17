@@ -9,6 +9,12 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
   const [isStripeProcessing, setIsStripeProcessing] = useState(false);
 
+  // Extract referral code from URL if present
+  const getReferralCodeFromURL = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('ref');
+  };
+
   const handleStripeCheckout = async (referralCode?: string) => {
     if (!selectedPlan) {
       toast({
@@ -35,15 +41,18 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         return;
       }
 
+      // Get referral code from URL parameter if not provided
+      const effectiveReferralCode = referralCode || getReferralCodeFromURL();
+
       // Call Supabase Edge Function to create a Stripe checkout session
-      console.log("Calling Stripe checkout for", selectedPlan, "plan", referralCode ? `with referral: ${referralCode}` : "without referral");
+      console.log("Calling Stripe checkout for", selectedPlan, "plan", effectiveReferralCode ? `with referral: ${effectiveReferralCode}` : "without referral");
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           plan: selectedPlan,
           successUrl: `${window.location.origin}/payment-success`,
           cancelUrl: `${window.location.origin}/offres`,
-          referralCode: referralCode || null
+          referralCode: effectiveReferralCode || null
         }
       });
       

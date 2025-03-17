@@ -8,6 +8,7 @@ interface SystemTerminalProps {
   remainingSessions: number | string;
   referralCount: number;
   displayBalance: number;
+  referralBonus?: number;
 }
 
 const SystemTerminal: React.FC<SystemTerminalProps> = ({
@@ -16,7 +17,8 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   subscription,
   remainingSessions,
   referralCount,
-  displayBalance
+  displayBalance,
+  referralBonus = 0
 }) => {
   return (
     <div className="w-full lg:w-1/2 cyber-terminal">
@@ -29,7 +31,8 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
             <p>{"> Processus en cours..."}</p>
             <p>{"> Limite journalière : " + dailyLimit + "€"}</p>
             <p>{subscription === 'freemium' ? "> 1 session manuelle par jour" : "> Sessions manuelles illimitées"}</p>
-            <p>{referralCount > 0 ? `> Bonus filleuls : +${Math.min(referralCount * 5, 25)}%` : "> Aucun filleul actif"}</p>
+            <p>{referralCount > 0 ? `> Bonus filleuls : +${referralBonus}%` : "> Aucun filleul actif"}</p>
+            <p>{"> Programme d'affiliation : Activé (70% de commission)"}</p>
           </>
         ) : (
           <>
@@ -40,8 +43,9 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
             <p>{subscription === 'freemium' 
               ? `> Sessions restantes : ${remainingSessions}` 
               : "> Sessions illimitées"}</p>
-            <p>{referralCount > 0 ? `> Bonus filleuls : +${Math.min(referralCount * 5, 25)}%` : "> Aucun filleul actif"}</p>
+            <p>{referralCount > 0 ? `> Bonus filleuls : +${referralBonus}%` : "> Aucun filleul actif"}</p>
             <p>{`> Solde actuel : ${displayBalance.toFixed(2)}€`}</p>
+            <p>{"> Programme d'affiliation : Actif (70% de commission)"}</p>
           </>
         )}
         <p className="blink-cursor">&nbsp;</p>

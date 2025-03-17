@@ -2,12 +2,13 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
-import { fetchUserTransactions } from '@/utils/userDataFetch';
+import { fetchUserTransactions, fetchCompleteUserData } from '@/utils/userDataFetch';
 import { UserData } from '@/types/userData';
 import { getCurrentSession, checkDailyLimit } from '@/utils/authUtils';
 import { initialUserData } from '@/utils/userDataInitializer';
 import { useProfileLoader } from './useProfileLoader';
 import { useBalanceLoader } from './useBalanceLoader';
+import { generateReferralLink } from '@/utils/referralUtils';
 
 export interface UserFetcherState {
   userData: UserData;
@@ -47,6 +48,14 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
         return;
       }
 
+      // Get complete user data including referrals
+      const userData = await fetchCompleteUserData(session.user.id, session.user.email);
+      
+      if (!userData || !userData.balance) {
+        setState(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
+      
       // Get user profile
       const refreshedProfile = await loadUserProfile(session.user.id, session.user.email);
       
@@ -70,8 +79,8 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
         username: displayName,
         balance: balanceData?.balance || 0,
         subscription: balanceData?.subscription || 'freemium',
-        referrals: [],
-        referralLink: `https://cashbot.com?ref=${session.user.id.substring(0, 8)}`,
+        referrals: userData.referrals || [],
+        referralLink: userData.referralLink || generateReferralLink(session.user.id),
         transactions: transactionsData ? transactionsData.map(t => ({
           date: t.date,
           gain: t.gain,
@@ -85,7 +94,7 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
       
       setState({
         userData: newUserData,
-        isNewUser: isNewUser,
+        isNewUser: userData.isNewUser || isNewUser,
         dailySessionCount: newDailySessionCount,
         showLimitAlert: limitReached,
         isLoading: false

@@ -3,7 +3,8 @@
 export { 
   fetchUserProfile,
   fetchUserBalance,
-  fetchUserTransactions
+  fetchUserTransactions,
+  fetchCompleteUserData
 } from './userDataFetch';
 
 export {
@@ -15,3 +16,10 @@ export {
 export {
   addTransaction
 } from './transactionUtils';
+
+export {
+  fetchUserReferrals,
+  generateReferralLink,
+  calculateReferralBonus,
+  applyReferralBonus
+} from './referralUtils';
