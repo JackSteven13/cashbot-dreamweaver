@@ -15,7 +15,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     return urlParams.get('ref');
   };
 
-  const handleStripeCheckout = async (referralCode?: string) => {
+  const handleStripeCheckout = async () => {
     if (!selectedPlan) {
       toast({
         title: "Erreur",
@@ -41,8 +41,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         return;
       }
 
-      // Get referral code from URL parameter if not provided
-      const effectiveReferralCode = referralCode || getReferralCodeFromURL();
+      // Get referral code from URL parameter
+      const effectiveReferralCode = getReferralCodeFromURL();
 
       // Call Supabase Edge Function to create a Stripe checkout session
       console.log("Calling Stripe checkout for", selectedPlan, "plan", effectiveReferralCode ? `with referral: ${effectiveReferralCode}` : "without referral");
@@ -101,6 +101,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         errorMessage = "Le service de paiement est temporairement indisponible. Veuillez réessayer dans quelques instants.";
       } else if (error.message?.includes('product exists in live mode, but a test mode key was used')) {
         errorMessage = "Système en cours de migration vers la production. Merci de réessayer dans quelques minutes.";
+      } else if (error.message?.includes('Converting circular structure to JSON')) {
+        errorMessage = "Erreur technique dans le format de la requête. Veuillez réessayer.";
       } else {
         // Use the original error message or a generic one
         errorMessage = error.message || "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.";
