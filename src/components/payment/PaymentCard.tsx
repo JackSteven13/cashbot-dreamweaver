@@ -5,7 +5,7 @@ import PlanSummary from '@/components/payment/PlanSummary';
 import StripeCheckoutForm from '@/components/payment/StripeCheckoutForm';
 import ManualPaymentForm from '@/components/payment/ManualPaymentForm';
 import PaymentMethodToggle from '@/components/payment/PaymentMethodToggle';
-import { PaymentFormData, PlanType } from '@/hooks/usePaymentProcessing';
+import { PaymentFormData, PlanType } from '@/hooks/payment/types';
 
 interface PaymentCardProps {
   selectedPlan: PlanType | null;

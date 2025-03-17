@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
@@ -6,8 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
 // Custom hooks
-import { usePaymentProcessing, PaymentFormData, PlanType } from '@/hooks/usePaymentProcessing';
-import { useStripeCheckout } from '@/hooks/useStripeCheckout';
+import { usePaymentProcessing, useStripeCheckout, PaymentFormData, PlanType } from '@/hooks/payment';
 
 // Custom components
 import PaymentHeader from '@/components/payment/PaymentHeader';

@@ -2,7 +2,7 @@
 import React, { useState, FormEvent } from 'react';
 import { CreditCard } from 'lucide-react';
 import { Input } from "@/components/ui/input";
-import { PaymentFormData } from '@/hooks/usePaymentProcessing';
+import { PaymentFormData } from '@/hooks/payment/types';
 
 interface CardPaymentFormProps {
   onSubmit: (formData: PaymentFormData) => void;

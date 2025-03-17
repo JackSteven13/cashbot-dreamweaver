@@ -3,7 +3,7 @@ import React from 'react';
 import { CreditCard } from 'lucide-react';
 import Button from '@/components/Button';
 import CardPaymentForm from '@/components/payment/CardPaymentForm';
-import { PaymentFormData, PlanType } from '@/hooks/usePaymentProcessing';
+import { PaymentFormData } from '@/hooks/payment/types';
 
 interface ManualPaymentFormProps {
   isProcessing: boolean;

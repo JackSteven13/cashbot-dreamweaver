@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { PlanType } from '@/hooks/usePaymentProcessing';
+import { PlanType } from '@/hooks/payment/types';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;

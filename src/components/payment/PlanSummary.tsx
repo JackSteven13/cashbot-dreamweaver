@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PlanType, PLAN_PRICES } from '@/hooks/usePaymentProcessing';
+import { PlanType, PLAN_PRICES } from '@/hooks/payment/types';
 
 interface PlanSummaryProps {
   selectedPlan: PlanType | null;
