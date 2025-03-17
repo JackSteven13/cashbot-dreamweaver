@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CreditCard, Check } from 'lucide-react';
+import { ArrowLeft, CreditCard, Check, PaypalLogo } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Button from '@/components/Button';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 
 // Plan prices
 const PLAN_PRICES = {
@@ -16,6 +18,15 @@ const PLAN_PRICES = {
   'visionnaire': 49.99,
   'alpha': 99.99
 };
+
+// PayPal logo component (since lucide doesn't have PayPal)
+const PaypalLogo = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 12a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2h9a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1"></path>
+    <path d="M14 12v5c0 1.1-.9 2-2 2H6a2 2 0 0 1-2-2v-5"></path>
+    <path d="M16 6v7a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1a2 2 0 0 0-2 2Z"></path>
+  </svg>
+);
 
 const Payment = () => {
   const location = useLocation();
@@ -26,6 +37,8 @@ const Payment = () => {
   const [cvc, setCvc] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [paypalEmail, setPaypalEmail] = useState('');
 
   // Get plan from state or URL parameters
   useEffect(() => {
@@ -103,6 +116,51 @@ const Payment = () => {
     setCvc(value.slice(0, 3));
   };
 
+  const validateCardPayment = () => {
+    // Basic form validation
+    if (!cardNumber || cardNumber.replace(/\s/g, '').length !== 16) {
+      toast({
+        title: "Erreur",
+        description: "Numéro de carte invalide",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    if (!expiry || expiry.length !== 5) {
+      toast({
+        title: "Erreur",
+        description: "Date d'expiration invalide",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    if (!cvc || cvc.length !== 3) {
+      toast({
+        title: "Erreur",
+        description: "Code CVC invalide",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const validatePaypalPayment = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!paypalEmail || !emailRegex.test(paypalEmail)) {
+      toast({
+        title: "Erreur",
+        description: "Adresse e-mail PayPal invalide",
+        variant: "destructive"
+      });
+      return false;
+    }
+    return true;
+  };
+
   const handlePayment = async () => {
     if (!selectedPlan) {
       toast({
@@ -113,31 +171,15 @@ const Payment = () => {
       return;
     }
 
-    // Basic form validation
-    if (!cardNumber || cardNumber.replace(/\s/g, '').length !== 16) {
-      toast({
-        title: "Erreur",
-        description: "Numéro de carte invalide",
-        variant: "destructive"
-      });
-      return;
+    // Validate based on payment method
+    let isValid = false;
+    if (paymentMethod === "card") {
+      isValid = validateCardPayment();
+    } else if (paymentMethod === "paypal") {
+      isValid = validatePaypalPayment();
     }
 
-    if (!expiry || expiry.length !== 5) {
-      toast({
-        title: "Erreur",
-        description: "Date d'expiration invalide",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!cvc || cvc.length !== 3) {
-      toast({
-        title: "Erreur",
-        description: "Code CVC invalide",
-        variant: "destructive"
-      });
+    if (!isValid) {
       return;
     }
 
@@ -243,54 +285,87 @@ const Payment = () => {
                 </div>
               )}
               
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="card-number" className="block text-sm font-medium text-[#334e68] mb-1">
-                    Numéro de carte
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      id="card-number"
-                      value={cardNumber}
-                      onChange={handleCardNumberChange}
-                      placeholder="1234 5678 9012 3456"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2d5f8a]"
-                    />
-                    <CreditCard className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
-                  </div>
-                </div>
+              <Tabs defaultValue="card" onValueChange={setPaymentMethod} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="card" className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Carte bancaire
+                  </TabsTrigger>
+                  <TabsTrigger value="paypal" className="flex items-center gap-2">
+                    <PaypalLogo />
+                    PayPal
+                  </TabsTrigger>
+                </TabsList>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <TabsContent value="card" className="space-y-4">
                   <div>
-                    <label htmlFor="expiry" className="block text-sm font-medium text-[#334e68] mb-1">
-                      Date d'expiration
+                    <label htmlFor="card-number" className="block text-sm font-medium text-[#334e68] mb-1">
+                      Numéro de carte
                     </label>
-                    <input
-                      type="text"
-                      id="expiry"
-                      value={expiry}
-                      onChange={handleExpiryChange}
-                      placeholder="MM/YY"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2d5f8a]"
-                    />
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        id="card-number"
+                        value={cardNumber}
+                        onChange={handleCardNumberChange}
+                        placeholder="1234 5678 9012 3456"
+                        className="w-full pr-10"
+                      />
+                      <CreditCard className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+                    </div>
                   </div>
                   
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="expiry" className="block text-sm font-medium text-[#334e68] mb-1">
+                        Date d'expiration
+                      </label>
+                      <Input
+                        type="text"
+                        id="expiry"
+                        value={expiry}
+                        onChange={handleExpiryChange}
+                        placeholder="MM/YY"
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="cvc" className="block text-sm font-medium text-[#334e68] mb-1">
+                        CVC/CVV
+                      </label>
+                      <Input
+                        type="text"
+                        id="cvc"
+                        value={cvc}
+                        onChange={handleCvcChange}
+                        placeholder="123"
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="paypal" className="space-y-4">
                   <div>
-                    <label htmlFor="cvc" className="block text-sm font-medium text-[#334e68] mb-1">
-                      CVC/CVV
+                    <label htmlFor="paypal-email" className="block text-sm font-medium text-[#334e68] mb-1">
+                      Adresse e-mail PayPal
                     </label>
-                    <input
-                      type="text"
-                      id="cvc"
-                      value={cvc}
-                      onChange={handleCvcChange}
-                      placeholder="123"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2d5f8a]"
+                    <Input
+                      type="email"
+                      id="paypal-email"
+                      value={paypalEmail}
+                      onChange={(e) => setPaypalEmail(e.target.value)}
+                      placeholder="email@exemple.com"
+                      className="w-full"
                     />
                   </div>
-                </div>
-              </div>
+                  <p className="text-sm text-[#486581] italic">
+                    Vous serez redirigé vers PayPal pour terminer votre paiement de manière sécurisée.
+                  </p>
+                </TabsContent>
+              </Tabs>
+              
             </CardContent>
             <CardFooter>
               <Button 
@@ -299,7 +374,7 @@ const Payment = () => {
                 onClick={handlePayment}
                 isLoading={isProcessing}
               >
-                {isProcessing ? 'Traitement en cours...' : 'Payer maintenant'}
+                {isProcessing ? 'Traitement en cours...' : `Payer maintenant avec ${paymentMethod === 'card' ? 'carte' : 'PayPal'}`}
               </Button>
             </CardFooter>
           </Card>
