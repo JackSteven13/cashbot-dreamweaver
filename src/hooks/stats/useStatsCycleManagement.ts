@@ -23,7 +23,7 @@ export const useStatsCycleManagement = ({
   const scheduleCycleUpdate = useCallback(() => {
     const timeUntilNextReset = calculateTimeUntilNextReset();
     
-    // Convertir en jours pour l'affichage dans les logs
+    // Convert to days for the logs
     const daysUntilReset = Math.floor(timeUntilNextReset / 1000 / 60 / 60 / 24);
     const hoursUntilReset = Math.floor((timeUntilNextReset / 1000 / 60 / 60) % 24);
     
@@ -43,23 +43,27 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Incrémenter les compteurs de manière plus régulière et moins agitée
+  // Increment the counters in a more stable way
   const incrementCountersRandomly = useCallback(() => {
-    // Calculer des incréments plus stables pour une progression plus régulière
-    const dailyAdsIncrement = dailyAdsTarget / (24 * 60 * 20); // Incrément par 3 secondes
-    const dailyRevenueIncrement = dailyRevenueTarget / (24 * 60 * 20); // Incrément par 3 secondes
+    // Calculate more stable increments for steady progression
+    const adsHourlyIncrement = dailyAdsTarget / 24;
+    const revenueHourlyIncrement = dailyRevenueTarget / 24;
+    
+    // Calculate increments for 3-second updates (20 per minute)
+    const adsIncrementBase = adsHourlyIncrement / (60 * 20);
+    const revenueIncrementBase = revenueHourlyIncrement / (60 * 20);
     
     setAdsCount(prev => {
-      // Petite variation aléatoire autour de l'incrément moyen (±10%)
-      const randomFactor = 0.9 + (Math.random() * 0.2);
-      const increment = Math.ceil(dailyAdsIncrement * randomFactor);
+      // Very small random variation (±5%) for natural but stable progression
+      const randomFactor = 0.95 + (Math.random() * 0.1);
+      const increment = Math.ceil(adsIncrementBase * randomFactor);
       return Math.min(prev + increment, dailyAdsTarget);
     });
     
     setRevenueCount(prev => {
-      // Petite variation aléatoire autour de l'incrément moyen (±10%)
-      const randomFactor = 0.9 + (Math.random() * 0.2);
-      const increment = Math.ceil(dailyRevenueIncrement * randomFactor);
+      // Very small random variation (±5%) for natural but stable progression
+      const randomFactor = 0.95 + (Math.random() * 0.1);
+      const increment = Math.ceil(revenueIncrementBase * randomFactor);
       return Math.min(prev + increment, dailyRevenueTarget);
     });
   }, [dailyAdsTarget, dailyRevenueTarget, setAdsCount, setRevenueCount]);
