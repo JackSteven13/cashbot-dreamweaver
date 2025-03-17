@@ -43,33 +43,33 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Much faster increments to show a high-volume global operation
+  // Incréments ultra-rapides pour montrer une opération mondiale à très haut volume
   const incrementCountersRandomly = useCallback(() => {
-    // Calculate average revenue per ad
+    // Calculer le revenu moyen par publicité
     const avgRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
     
-    // Update calculations for high-frequency operation
+    // Calculs mis à jour pour une opération à très haute fréquence
     const secondsInDay = 24 * 60 * 60;
-    // Very high multiplier to achieve impressive progression
-    const cycleMultiplier = 25; 
+    // Multiplicateur extrêmement élevé pour une progression impressionnante
+    const cycleMultiplier = 120; 
     const adsIncrementPerSecond = (dailyAdsTarget * cycleMultiplier) / secondsInDay;
     
-    // High randomization for dramatic counter movement
-    const randomFactor = Math.random() * 3 + 1.5; // Random between 1.5-4.5x
+    // Forte randomisation pour un mouvement spectaculaire des compteurs
+    const randomFactor = Math.random() * 5 + 2; // Aléatoire entre 2-7x
     
-    // Much larger increments per update for ads
+    // Incréments massifs par mise à jour pour les publicités
     const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor);
     
     setAdsCount(prevAdsCount => {
-      // Only increment if we haven't reached the target
+      // Ne s'incrémente que si nous n'avons pas atteint la cible
       if (prevAdsCount >= dailyAdsTarget) return dailyAdsTarget;
       const newAdsCount = Math.min(prevAdsCount + adsIncrement, dailyAdsTarget);
       
-      // Update revenue based on new ads processed
+      // Mise à jour des revenus en fonction des nouvelles publicités traitées
       const adsDifference = newAdsCount - prevAdsCount;
       const revenueIncrement = adsDifference * avgRevenuePerAd;
       
-      // Update revenue directly based on new ads
+      // Mise à jour directe des revenus en fonction des nouvelles publicités
       setRevenueCount(prevRevenueCount => {
         if (prevRevenueCount >= dailyRevenueTarget) return dailyRevenueTarget;
         return Math.min(prevRevenueCount + revenueIncrement, dailyRevenueTarget);

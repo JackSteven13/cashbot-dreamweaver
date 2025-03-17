@@ -10,8 +10,8 @@ interface StatsCounterProps {
 }
 
 const StatsCounter = ({
-  dailyAdsTarget = 65000,
-  dailyRevenueTarget = 186000
+  dailyAdsTarget = 250000, // Augmenté pour montrer un traitement beaucoup plus important
+  dailyRevenueTarget = 650000 // Augmenté pour montrer des revenus plus impressionnants
 }: StatsCounterProps) => {
   const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
     dailyAdsTarget,

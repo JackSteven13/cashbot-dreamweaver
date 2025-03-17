@@ -14,27 +14,27 @@ export const useStatsAnimation = ({
   setDisplayedAdsCount,
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
-  // Animate counters with much higher speed for more impressive numbers
+  // Animation extrêmement rapide pour des nombres impressionnants
   const animateCounters = useCallback(() => {
-    // Update ad count with fast animation to show high-volume processing
+    // Mise à jour du nombre de publicités avec une animation ultra-rapide pour montrer un traitement massif
     setDisplayedAdsCount((prevCount) => {
       if (prevCount >= adsCount) return adsCount;
-      // Much larger increments for dramatic animation effect
-      const increment = Math.max(Math.floor((adsCount - prevCount) * 0.5), 50);
+      // Incréments beaucoup plus importants pour un effet visuel spectaculaire
+      const increment = Math.max(Math.floor((adsCount - prevCount) * 0.8), 200);
       return Math.min(prevCount + increment, adsCount);
     });
 
-    // Update revenue count only if ads count is increasing
-    // This ensures revenue is tied to ads being processed
+    // Mise à jour du nombre de revenus seulement si le nombre de publicités augmente
+    // Pour garantir que le revenu est lié aux publicités traitées
     setDisplayedRevenueCount((prevCount) => {
       if (prevCount >= revenueCount) return revenueCount;
-      // Much larger increments for dramatic animation effect
-      // Synchronized with ad count progression
-      const increment = Math.max(Math.floor((revenueCount - prevCount) * 0.45), 40);
+      // Incréments massifs pour un effet visuel spectaculaire
+      // Synchronisé avec la progression du compteur de publicités
+      const increment = Math.max(Math.floor((revenueCount - prevCount) * 0.75), 150);
       return Math.min(prevCount + increment, revenueCount);
     });
 
-    // Return true to indicate animation is still active if either count hasn't reached target
+    // Retourne true pour indiquer que l'animation est toujours active si l'un des compteurs n'a pas atteint sa cible
     return { 
       animationActive: adsCount > 0 || revenueCount > 0 
     };
