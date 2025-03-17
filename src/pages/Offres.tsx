@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Check } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,11 +24,13 @@ const isCurrentPlan = (plan: string) => {
 
 const Offres = () => {
   const navigate = useNavigate();
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
   const handleSubscribe = async (niveau: string) => {
     // If the plan is freemium, update directly without payment
     if (niveau === 'freemium') {
       try {
+        setIsProcessing(niveau);
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
@@ -54,10 +56,12 @@ const Offres = () => {
           description: `Vous bénéficiez maintenant des avantages du forfait ${niveau}.`,
         });
         
+        setIsProcessing(null);
         // Redirect to dashboard
         navigate('/dashboard');
       } catch (error) {
         console.error("Error updating subscription:", error);
+        setIsProcessing(null);
         toast({
           title: "Erreur",
           description: "Une erreur est survenue lors de la mise à jour de votre abonnement.",
@@ -65,8 +69,70 @@ const Offres = () => {
         });
       }
     } else {
-      // For paid plans, redirect to payment page
-      navigate(`/payment?plan=${niveau}`, { state: { plan: niveau } });
+      // For paid plans, use Stripe checkout
+      try {
+        setIsProcessing(niveau);
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          toast({
+            title: "Erreur",
+            description: "Vous devez être connecté pour souscrire à un abonnement payant.",
+            variant: "destructive"
+          });
+          navigate('/login');
+          return;
+        }
+        
+        // Redirect to payment page with selected plan
+        const token = session.access_token;
+        const response = await fetch(`${window.location.origin}/functions/v1/create-checkout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            plan: niveau,
+            successUrl: `${window.location.origin}/dashboard?payment=success`,
+            cancelUrl: `${window.location.origin}/offres`,
+          }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        // If it's a free plan that was processed on the server
+        if (data.free) {
+          setIsProcessing(null);
+          toast({
+            title: "Abonnement activé",
+            description: `Votre abonnement ${niveau} a été activé avec succès !`,
+          });
+          navigate('/dashboard');
+          return;
+        }
+        
+        // Redirect to Stripe checkout page
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
+        
+        throw new Error("Aucune URL de paiement reçue");
+      } catch (error) {
+        console.error("Payment error:", error);
+        setIsProcessing(null);
+        
+        toast({
+          title: "Erreur de paiement",
+          description: "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -135,9 +201,16 @@ const Offres = () => {
                     ? "bg-[#edf2f7] hover:bg-[#edf2f7] text-[#486581] cursor-default" 
                     : "bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"}
                   onClick={() => !isCurrentPlan(key) && handleSubscribe(key)}
-                  disabled={isCurrentPlan(key)}
+                  disabled={isCurrentPlan(key) || isProcessing !== null}
+                  isLoading={isProcessing === key}
                 >
-                  {isCurrentPlan(key) ? "Abonnement actuel" : key === 'freemium' ? "Souscrire gratuitement" : "Souscrire"}
+                  {isProcessing === key 
+                    ? "Traitement..." 
+                    : isCurrentPlan(key) 
+                      ? "Abonnement actuel" 
+                      : key === 'freemium' 
+                        ? "Souscrire gratuitement" 
+                        : "Souscrire"}
                 </Button>
               </CardFooter>
             </Card>

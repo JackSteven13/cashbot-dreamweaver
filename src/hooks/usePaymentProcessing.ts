@@ -93,31 +93,68 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
         return;
       }
 
-      // Update user subscription in Supabase
-      const { error: updateError } = await supabase
-        .from('user_balances')
-        .update({ 
-          subscription: selectedPlan,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', session.user.id);
-        
-      if (updateError) {
-        throw updateError;
-      }
+      // For freemium plan, update directly without payment
+      if (selectedPlan === 'freemium') {
+        const { error: updateError } = await supabase
+          .from('user_balances')
+          .update({ 
+            subscription: selectedPlan,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', session.user.id);
+          
+        if (updateError) {
+          throw updateError;
+        }
 
-      // Simulate payment processing delay
-      setTimeout(() => {
         setIsProcessing(false);
-        
         toast({
-          title: "Paiement réussi",
+          title: "Abonnement activé",
           description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
         });
-        
-        // Redirect to dashboard after successful payment
         navigate('/dashboard');
-      }, 2000);
+        return;
+      }
+
+      // For paid plans, use Stripe Checkout
+      const token = session.access_token;
+      const response = await fetch(`${window.location.origin}/api/create-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          plan: selectedPlan,
+          successUrl: `${window.location.origin}/payment-success`,
+          cancelUrl: `${window.location.origin}/offres`,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // If it's a free plan that was processed on the server
+      if (data.free) {
+        setIsProcessing(false);
+        toast({
+          title: "Abonnement activé",
+          description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
+        });
+        navigate('/dashboard');
+        return;
+      }
+
+      // Redirect to Stripe checkout page
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+
+      throw new Error("Aucune URL de paiement reçue");
     } catch (error) {
       console.error("Payment error:", error);
       setIsProcessing(false);

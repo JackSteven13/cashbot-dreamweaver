@@ -20,6 +20,7 @@ const Payment = () => {
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [useStripeCheckout, setUseStripeCheckout] = useState(true);
   
   const { isProcessing, processPayment } = usePaymentProcessing(selectedPlan);
 
@@ -66,6 +67,82 @@ const Payment = () => {
     processPayment(cardData);
   };
 
+  const handleStripeCheckout = async () => {
+    if (!selectedPlan || selectedPlan === 'freemium') {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un plan payant",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Get user session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({
+          title: "Erreur",
+          description: "Vous devez être connecté pour effectuer cette action",
+          variant: "destructive"
+        });
+        navigate('/login');
+        return;
+      }
+
+      const token = session.access_token;
+      const response = await fetch(`${window.location.origin}/functions/v1/create-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          plan: selectedPlan,
+          successUrl: `${window.location.origin}/dashboard?payment=success`,
+          cancelUrl: `${window.location.origin}/offres`,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // If it's a free plan that was processed on the server
+      if (data.free) {
+        setIsProcessing(false);
+        toast({
+          title: "Abonnement activé",
+          description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
+        });
+        navigate('/dashboard');
+        return;
+      }
+
+      // Redirect to Stripe checkout page
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+
+      throw new Error("Aucune URL de paiement reçue");
+    } catch (error) {
+      console.error("Payment error:", error);
+      setIsProcessing(false);
+      
+      toast({
+        title: "Erreur de paiement",
+        description: "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (isAuthChecking) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#0f0f23]">
@@ -99,29 +176,57 @@ const Payment = () => {
             <CardContent className="space-y-4">
               <PlanSummary selectedPlan={selectedPlan} />
               
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-[#1e3a5f] mb-2">
-                  <CreditCard className="h-5 w-5" />
-                  <h3 className="font-medium">Paiement par carte</h3>
+              {useStripeCheckout ? (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 p-4 rounded-md border border-blue-100 text-center">
+                    <p className="text-[#1e3a5f] mb-2">Vous allez être redirigé vers Stripe pour un paiement sécurisé</p>
+                    <p className="text-sm text-[#486581]">Votre abonnement sera activé immédiatement après le paiement</p>
+                  </div>
+                  
+                  <Button 
+                    fullWidth 
+                    className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
+                    onClick={handleStripeCheckout}
+                    isLoading={isProcessing}
+                  >
+                    {isProcessing ? 'Traitement en cours...' : 'Payer avec Stripe'}
+                  </Button>
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-[#1e3a5f] mb-2">
+                    <CreditCard className="h-5 w-5" />
+                    <h3 className="font-medium">Paiement par carte</h3>
+                  </div>
+                  
+                  <CardPaymentForm onSubmit={handleCardFormSubmit} />
                 
-                <CardPaymentForm onSubmit={handleCardFormSubmit} />
-              </div>
+                  <Button 
+                    fullWidth 
+                    className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
+                    onClick={() => {
+                      const formData = document.getElementById('card-payment-form') as HTMLFormElement;
+                      if (formData) {
+                        formData.dispatchEvent(new Event('submit', { bubbles: true }));
+                      }
+                    }}
+                    isLoading={isProcessing}
+                  >
+                    {isProcessing ? 'Traitement en cours...' : 'Payer maintenant'}
+                  </Button>
+                </div>
+              )}
             </CardContent>
-            <CardFooter>
-              <Button 
-                fullWidth 
-                className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
-                onClick={() => {
-                  const formData = document.getElementById('card-payment-form') as HTMLFormElement;
-                  if (formData) {
-                    formData.dispatchEvent(new Event('submit', { bubbles: true }));
-                  }
-                }}
-                isLoading={isProcessing}
-              >
-                {isProcessing ? 'Traitement en cours...' : 'Payer maintenant'}
-              </Button>
+            <CardFooter className="flex flex-col">
+              <div className="w-full flex justify-center">
+                <Button 
+                  variant="outline" 
+                  className="text-[#2d5f8a] border-[#2d5f8a]"
+                  onClick={() => setUseStripeCheckout(!useStripeCheckout)}
+                >
+                  {useStripeCheckout ? 'Utiliser le formulaire classique' : 'Payer avec Stripe'}
+                </Button>
+              </div>
             </CardFooter>
           </Card>
           

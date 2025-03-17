@@ -13,8 +13,60 @@ import Login from "./pages/Login";
 import About from "./pages/About";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Payment from './pages/Payment';
+import PaymentSuccess from './pages/PaymentSuccess';
 
 const queryClient = new QueryClient();
+
+const routes = [
+  {
+    path: '/',
+    element: <Index />,
+  },
+  {
+    path: '/login',
+    element: <Login />,
+  },
+  {
+    path: '/register',
+    element: <Register />,
+  },
+  {
+    path: '/dashboard',
+    element: (
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/about',
+    element: <About />,
+  },
+  {
+    path: '/offres',
+    element: <Offres />,
+  },
+  {
+    path: '/payment',
+    element: (
+      <ProtectedRoute>
+        <Payment />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/payment-success',
+    element: (
+      <ProtectedRoute>
+        <PaymentSuccess />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '*',
+    element: <NotFound />,
+  },
+];
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -24,22 +76,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="/offres" element={<Offres />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/payment" element={<Payment />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
+            {routes.map((route) => (
+              <Route key={route.path} {...route} />
+            ))}
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
