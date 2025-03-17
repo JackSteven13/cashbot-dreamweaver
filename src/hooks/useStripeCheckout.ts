@@ -80,6 +80,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       
       // Redirect to Stripe checkout URL
       if (data?.url) {
+        // Redirect in a way that ensures the browser actually navigates to the URL
         window.location.href = data.url;
       } else {
         throw new Error("Aucune URL de paiement retournée");
@@ -103,6 +104,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         errorMessage = "Système en cours de migration vers la production. Merci de réessayer dans quelques minutes.";
       } else if (error.message?.includes('Converting circular structure to JSON')) {
         errorMessage = "Erreur technique dans le format de la requête. Veuillez réessayer.";
+      } else if (error.message?.includes('Invalid integer')) {
+        errorMessage = "Erreur de formatage du prix. Notre équipe a été informée et résoudra ce problème rapidement.";
       } else {
         // Use the original error message or a generic one
         errorMessage = error.message || "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.";

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import Button from '@/components/Button';
+import { Button } from '@/components/ui/button';
 import { PlanType } from '@/hooks/usePaymentProcessing';
 
 interface StripeCheckoutFormProps {
@@ -22,10 +22,9 @@ const StripeCheckoutForm = ({
       </div>
       
       <Button 
-        fullWidth 
-        className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
+        className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white w-full py-2 px-4"
         onClick={onCheckout}
-        isLoading={isStripeProcessing}
+        disabled={isStripeProcessing}
       >
         {isStripeProcessing ? 'Traitement en cours...' : 'Payer avec Stripe'}
       </Button>

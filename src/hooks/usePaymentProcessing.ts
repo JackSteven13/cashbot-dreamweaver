@@ -6,7 +6,7 @@ import { toast } from "@/components/ui/use-toast";
 
 export type PlanType = 'freemium' | 'pro' | 'visionnaire' | 'alpha';
 
-// Plan prices
+// Plan prices - ensure these match values in Edge Functions
 export const PLAN_PRICES = {
   'freemium': 0,
   'pro': 19.99,

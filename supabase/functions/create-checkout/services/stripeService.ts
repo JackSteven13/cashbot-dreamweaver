@@ -34,7 +34,6 @@ export async function getOrCreatePrice(planName: string, amount: number) {
     // Convert to cents and ensure it's a proper integer using Math.round
     const amountInCents = Math.round(amount * 100);
     
-    // Create a price for the product
     console.log(`Creating new price for ${planName} plan with amount: ${amountInCents} cents`);
     const newPrice = await stripe?.prices.create({
       unit_amount: amountInCents,
@@ -82,6 +81,11 @@ export async function createCheckoutSession({
       'visionnaire': 49.99,
       'alpha': 99.99
     };
+    
+    // Ensure the plan is valid
+    if (!PLAN_PRICES[plan as keyof typeof PLAN_PRICES]) {
+      throw new Error(`Invalid plan: ${plan}`);
+    }
     
     // Get or create price ID for the selected plan
     const priceId = await getOrCreatePrice(plan, PLAN_PRICES[plan as keyof typeof PLAN_PRICES]);
