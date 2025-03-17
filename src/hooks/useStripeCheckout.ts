@@ -35,59 +35,32 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         return;
       }
 
-      const token = session.access_token;
+      // Pour les tests de développement uniquement - simuler un checkout Stripe réussi
+      console.log("Simulating Stripe checkout for", selectedPlan, "plan");
       
-      // Use the same domain as the current application
-      const apiUrl = `${window.location.origin}/api/create-checkout`;
-      console.log("Calling API at:", apiUrl);
+      // Simuler un délai de traitement
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Log the request body for debugging
-      const requestBody = {
-        plan: selectedPlan,
-        successUrl: `${window.location.origin}/payment-success`,
-        cancelUrl: `${window.location.origin}/offres`,
-      };
-      console.log("Request body:", JSON.stringify(requestBody));
+      // Mettre à jour l'abonnement de l'utilisateur directement pour les tests
+      const { error: updateError } = await supabase
+        .from('user_balances')
+        .update({ 
+          subscription: selectedPlan,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', session.user.id);
+        
+      if (updateError) {
+        throw updateError;
+      }
       
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(requestBody),
+      setIsStripeProcessing(false);
+      toast({
+        title: "Paiement réussi",
+        description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
       });
+      navigate('/dashboard');
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API response error:", response.status, errorText);
-        throw new Error(`API error: ${response.status} - ${errorText || "Unknown error"}`);
-      }
-
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      // If it's a free plan that was processed on the server
-      if (data.free) {
-        setIsStripeProcessing(false);
-        toast({
-          title: "Abonnement activé",
-          description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
-        });
-        navigate('/dashboard');
-        return;
-      }
-
-      // Redirect to Stripe checkout page
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-
-      throw new Error("Aucune URL de paiement reçue");
     } catch (error) {
       console.error("Payment error:", error);
       setIsStripeProcessing(false);

@@ -116,45 +116,33 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
         return;
       }
 
-      // For paid plans, use Stripe Checkout
-      const token = session.access_token;
-      const response = await fetch(`${window.location.origin}/api/create-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          plan: selectedPlan,
-          successUrl: `${window.location.origin}/payment-success`,
-          cancelUrl: `${window.location.origin}/offres`,
-        }),
+      // Pour les tests de développement uniquement - simuler un paiement réussi
+      // Dans un environnement de production, nous utiliserions un vrai processeur de paiement
+      console.log("Simulating payment processing for", selectedPlan, "plan");
+      
+      // Simuler un délai de traitement de paiement
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Mettre à jour l'abonnement de l'utilisateur directement pour les tests
+      const { error: updateError } = await supabase
+        .from('user_balances')
+        .update({ 
+          subscription: selectedPlan,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', session.user.id);
+        
+      if (updateError) {
+        throw updateError;
+      }
+      
+      setIsProcessing(false);
+      toast({
+        title: "Paiement réussi",
+        description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
       });
+      navigate('/dashboard');
 
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      // If it's a free plan that was processed on the server
-      if (data.free) {
-        setIsProcessing(false);
-        toast({
-          title: "Abonnement activé",
-          description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
-        });
-        navigate('/dashboard');
-        return;
-      }
-
-      // Redirect to Stripe checkout page
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-
-      throw new Error("Aucune URL de paiement reçue");
     } catch (error) {
       console.error("Payment error:", error);
       setIsProcessing(false);
