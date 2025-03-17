@@ -31,8 +31,8 @@ const Hero = () => {
           
           {/* Counters - Using refactored component */}
           <StatsCounter 
-            dailyAdsTarget={65000} 
-            dailyRevenueTarget={186000} 
+            dailyAdsTarget={250000} 
+            dailyRevenueTarget={650000} 
           />
           
           {/* CTA Button */}
