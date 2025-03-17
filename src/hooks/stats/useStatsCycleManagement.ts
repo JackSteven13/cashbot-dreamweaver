@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { calculateTimeUntilNextReset } from '@/utils/timeUtils';
 
@@ -43,20 +42,21 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Extremely aggressive increments to make counters move dramatically faster
+  // Ultra-aggressive increments to make counters move at extremely high speeds
   const incrementCountersRandomly = useCallback(() => {
-    // Update calculations for 100ms updates (10 times per second)
+    // Update calculations for 20ms updates (50 times per second)
     const secondsInDay = 24 * 60 * 60;
-    // Adjust for 17-day cycle vs daily targets to make numbers more impressive
-    const cycleMultiplier = 2.5; // Make it look like we're processing more because of 17-day cycle
+    // Massive multiplier to achieve 10 ads per second and 15€ per 2 seconds
+    const cycleMultiplier = 12; // Dramatically higher multiplier
     const adsIncrementPerSecond = (dailyAdsTarget * cycleMultiplier) / secondsInDay;
     const revenueIncrementPerSecond = (dailyRevenueTarget * cycleMultiplier) / secondsInDay;
     
-    // Add much stronger randomization for extremely dynamic movement
-    const randomFactor = Math.random() * 8 + 3; // Random between 3-11x (much higher)
+    // Extreme randomization for high variation in counter jumps
+    const randomFactor = Math.random() * 15 + 5; // Random between 5-20x
     
-    const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor * 4); // 4x previous value
-    const revenueIncrement = Math.ceil(revenueIncrementPerSecond * randomFactor * 4); // 4x previous value
+    // Very high increments per update
+    const adsIncrement = Math.ceil(adsIncrementPerSecond * randomFactor * 10);
+    const revenueIncrement = Math.ceil(revenueIncrementPerSecond * randomFactor * 10);
     
     setAdsCount(prev => {
       // Only increment if we haven't reached the target

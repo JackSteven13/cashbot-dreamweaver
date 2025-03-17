@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useStatsInitialization } from './stats/useStatsInitialization';
 import { useStatsAnimation } from './stats/useStatsAnimation';
@@ -18,7 +17,6 @@ export const useStatsCounter = ({
   dailyAdsTarget = 65000,
   dailyRevenueTarget = 186000
 }: UseStatsCounterParams): StatsCounterData => {
-  // Use the initialization hook
   const {
     adsCount,
     revenueCount,
@@ -34,7 +32,6 @@ export const useStatsCounter = ({
     dailyRevenueTarget
   });
   
-  // Use the animation hook
   const { animateCounters } = useStatsAnimation({
     adsCount,
     revenueCount,
@@ -42,7 +39,6 @@ export const useStatsCounter = ({
     setDisplayedRevenueCount
   });
   
-  // Use the cycle management hook
   const { scheduleCycleUpdate, incrementCountersRandomly } = useStatsCycleManagement({
     setAdsCount,
     setRevenueCount,
@@ -52,28 +48,21 @@ export const useStatsCounter = ({
     dailyRevenueTarget
   });
   
-  // Set up effects
   useEffect(() => {
-    // Initialize counters based on current time
     initializeCounters();
     
-    // Animation frame for more fluid counter updates
     let animationFrameId: number;
     const updateAnimation = () => {
       animateCounters();
       animationFrameId = requestAnimationFrame(updateAnimation);
     };
     
-    // Start animation with requestAnimationFrame for smoother updates
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Schedule much faster real data updates (every 100ms for dramatically more dynamic movement)
-    const activityInterval = setInterval(incrementCountersRandomly, 100); 
+    const activityInterval = setInterval(incrementCountersRandomly, 20); 
     
-    // Schedule reset at the end of the 17-day cycle
     const resetTimeout = scheduleCycleUpdate();
     
-    // Cleanup
     return () => {
       if (resetTimeout) clearTimeout(resetTimeout);
       clearInterval(activityInterval);
@@ -86,7 +75,6 @@ export const useStatsCounter = ({
     scheduleCycleUpdate
   ]);
 
-  // Memoize the return value to prevent unnecessary re-renders
   return useMemo(() => ({
     displayedAdsCount,
     displayedRevenueCount
