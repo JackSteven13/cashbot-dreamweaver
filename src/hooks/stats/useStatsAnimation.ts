@@ -24,29 +24,32 @@ export const useStatsAnimation = ({
       return Math.min(prevCount + increment, adsCount);
     });
 
-    // Mise à jour du nombre de revenus avec des sauts TRÈS VISIBLES pour refléter des publicités à forte valeur
+    // Mise à jour du nombre de revenus avec des sauts ÉNORMES et TRÈS VISIBLES
     setDisplayedRevenueCount((prevCount) => {
       if (prevCount >= revenueCount) return revenueCount;
       
       // Variation aléatoire EXTRÊME pour simuler des publicités à haute valeur
-      // Parfois des ÉNORMES sauts (publicités jusqu'à 15€)
       const randomFactor = Math.random();
       let increment;
       
       if (randomFactor > 0.95) {
-        // Sauts GIGANTESQUES rares (10-15€)
-        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.9), 1500);
-        console.log("🚀 PUBLICITÉ PREMIUM DÉTECTÉE: +1500€ minimum!");
+        // Sauts GIGANTESQUES rares (15-30€ par pub)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.85), 3000);
+        console.log("💎💎💎 PUBLICITÉ ULTRA-PREMIUM: +3000€!");
       } else if (randomFactor > 0.85) {
-        // Grands sauts occasionnels (5-8€)
-        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.85), 800);
-        console.log("💰 Publicité à haute valeur: +800€ minimum");
-      } else if (randomFactor > 0.6) {
-        // Sauts moyens fréquents (3-5€)
-        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.8), 400);
+        // Grands sauts occasionnels (10-15€ par pub)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.75), 1500);
+        console.log("💰💰 PUBLICITÉ PREMIUM: +1500€!");
+      } else if (randomFactor > 0.65) {
+        // Sauts moyens fréquents (5-10€ par pub)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.65), 800);
+        console.log("💰 Publicité à haute valeur: +800€");
+      } else if (randomFactor > 0.4) {
+        // Petits sauts mais toujours visibles (3-5€ par pub)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.5), 400);
       } else {
-        // Incréments plus petits mais toujours impressionnants
-        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.75), 200);
+        // Incréments standard (1-3€ par pub)
+        increment = Math.max(Math.floor((revenueCount - prevCount) * 0.3), 200);
       }
       
       return Math.min(prevCount + increment, revenueCount);
