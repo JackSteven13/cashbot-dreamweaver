@@ -14,9 +14,13 @@ const StatsCounter = ({
   const [adsCount, setAdsCount] = useState(0);
   const [revenueCount, setRevenueCount] = useState(0);
   
-  // Displayed counters that will be set directly to the real values (no animation)
+  // Displayed counters that will animate to the real values
   const [displayedAdsCount, setDisplayedAdsCount] = useState(0);
   const [displayedRevenueCount, setDisplayedRevenueCount] = useState(0);
+  
+  // Animation speed references
+  const adsAnimationSpeedRef = useRef(1);
+  const revenueAnimationSpeedRef = useRef(1);
   
   useEffect(() => {
     // Get current Paris time
@@ -76,9 +80,37 @@ const StatsCounter = ({
       
       setAdsCount(currentAdsCount);
       setRevenueCount(currentRevenueCount);
-      // Initialize displayed values too (directly without animation)
-      setDisplayedAdsCount(currentAdsCount);
-      setDisplayedRevenueCount(currentRevenueCount);
+      // Start animations from lower values for more dramatic effect
+      setDisplayedAdsCount(Math.floor(currentAdsCount * 0.5));
+      setDisplayedRevenueCount(Math.floor(currentRevenueCount * 0.5));
+    };
+    
+    // Animate counters with randomized increments for more natural feel
+    const animateCounters = () => {
+      // Randomly adjust animation speeds occasionally for visual interest
+      if (Math.random() < 0.1) {
+        adsAnimationSpeedRef.current = 0.5 + Math.random() * 1.5;
+        revenueAnimationSpeedRef.current = 0.5 + Math.random() * 1.5;
+      }
+      
+      setDisplayedAdsCount(prev => {
+        // Add random variations to increment speed
+        const diff = adsCount - prev;
+        if (diff <= 0) return prev;
+        
+        // Faster animation when further from target
+        const increment = Math.ceil(Math.max(1, diff * 0.05 * adsAnimationSpeedRef.current));
+        return Math.min(prev + increment, adsCount);
+      });
+      
+      setDisplayedRevenueCount(prev => {
+        const diff = revenueCount - prev;
+        if (diff <= 0) return prev;
+        
+        // Faster animation when further from target
+        const increment = Math.ceil(Math.max(1, diff * 0.05 * revenueAnimationSpeedRef.current));
+        return Math.min(prev + increment, revenueCount);
+      });
     };
     
     // Calculate time until next reset (1st, 15th, or 29th at midnight Paris time)
@@ -114,11 +146,11 @@ const StatsCounter = ({
       return nextResetDate.getTime() - parisTime.getTime();
     };
     
-    // Schedule reset at appropriate time
-    const scheduleReset = () => {
+    // Schedule next cycle update
+    const scheduleCycleUpdate = () => {
       const timeUntilNextReset = getTimeUntilNextReset();
       
-      console.log(`Next reset scheduled in ${Math.floor(timeUntilNextReset / 1000 / 60)} minutes`);
+      console.log(`Next counter reset scheduled in ${Math.floor(timeUntilNextReset / 1000 / 60)} minutes`);
       
       const resetTimeout = setTimeout(() => {
         // Reset counters
@@ -128,71 +160,52 @@ const StatsCounter = ({
         setDisplayedRevenueCount(0);
         
         // Schedule the next reset
-        scheduleReset();
+        scheduleCycleUpdate();
       }, timeUntilNextReset);
       
       return resetTimeout;
     };
     
-    // Start continuous increment after initial values are set
-    const startIncrements = () => {
-      // Calculate remaining ads and revenue to hit target by end of period
-      const periodProgress = getBiWeeklyProgress();
-      const remainingPeriodPercentage = 1 - periodProgress;
-      
-      if (remainingPeriodPercentage <= 0) return null; // It's reset time exactly
-      
-      const remainingAds = dailyAdsTarget - adsCount;
-      const remainingRevenue = dailyRevenueTarget - revenueCount;
-      
-      // Calculate interval timings to spread increments evenly across remaining time
-      const remainingTimeInMs = remainingPeriodPercentage * 14 * 24 * 60 * 60 * 1000;
-      
-      // Aim for approximately 1 ad increment every 2-3 seconds on average
-      const adIncrementInterval = Math.max(2000, remainingTimeInMs / (remainingAds / 7));
-      
-      // Aim for approximately 1 revenue increment every 4-5 seconds on average
-      const revenueIncrementInterval = Math.max(4000, remainingTimeInMs / (remainingRevenue / 100));
-      
-      // Add between 5-12 ads randomly
-      const adsInterval = setInterval(() => {
-        const increment = Math.floor(Math.random() * 8) + 5;
-        setAdsCount(prev => {
-          const newValue = Math.min(prev + increment, dailyAdsTarget);
-          setDisplayedAdsCount(newValue); // Update displayed value directly
-          return newValue;
-        });
-      }, adIncrementInterval);
-      
-      // Add between €60-140 randomly
-      const revenueInterval = setInterval(() => {
-        const increment = Math.floor(Math.random() * 81) + 60;
-        setRevenueCount(prev => {
-          const newValue = Math.min(prev + increment, dailyRevenueTarget);
-          setDisplayedRevenueCount(newValue); // Update displayed value directly
-          return newValue;
-        });
-      }, revenueIncrementInterval);
-      
-      return { adsInterval, revenueInterval };
-    };
-    
-    // Initialize counters based on time in the 14-day period
+    // Initialize counters based on current time
     initializeCounters();
     
-    // Start increments
-    const incrementIntervals = startIncrements();
+    // Start a more frequent cycle to randomly increase counters
+    const incrementCountersRandomly = () => {
+      // Simulate real-time activity with randomized increases
+      setAdsCount(prev => {
+        const randomIncrement = Math.floor(Math.random() * 10) + 3;
+        const newValue = Math.min(prev + randomIncrement, dailyAdsTarget);
+        return newValue;
+      });
+      
+      setRevenueCount(prev => {
+        const randomIncrement = Math.floor(Math.random() * 100) + 50;
+        const newValue = Math.min(prev + randomIncrement, dailyRevenueTarget);
+        return newValue;
+      });
+    };
     
-    // Schedule reset for next 14-day mark
-    const resetTimeout = scheduleReset();
+    // Animation frame for smooth counter updates
+    let animationFrameId: number;
+    const updateAnimation = () => {
+      animateCounters();
+      animationFrameId = requestAnimationFrame(updateAnimation);
+    };
+    
+    // Start animation
+    animationFrameId = requestAnimationFrame(updateAnimation);
+    
+    // Schedule periodic real data updates (simulating real-time data)
+    const activityInterval = setInterval(incrementCountersRandomly, 3000);
+    
+    // Schedule reset at the end of the 14-day cycle
+    const resetTimeout = scheduleCycleUpdate();
     
     // Cleanup
     return () => {
       if (resetTimeout) clearTimeout(resetTimeout);
-      if (incrementIntervals) {
-        clearInterval(incrementIntervals.adsInterval);
-        clearInterval(incrementIntervals.revenueInterval);
-      }
+      clearInterval(activityInterval);
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
   }, [dailyAdsTarget, dailyRevenueTarget]);
 

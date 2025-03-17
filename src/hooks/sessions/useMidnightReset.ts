@@ -9,18 +9,20 @@ export const useMidnightReset = (
   updateBalance: (gain: number, report: string) => Promise<void>,
   setShowLimitAlert: (show: boolean) => void
 ) => {
-  // Reset sessions and balances every 14 days at midnight Paris time
+  // Reset sessions and balances every 14 days (on the 1st, 15th, and 29th) at midnight Paris time
   useEffect(() => {
     const checkMidnightReset = async () => {
       try {
         const now = new Date();
+        // Get Paris time (UTC+1 or UTC+2 depending on DST)
         const parisTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
         
         // 1. Check if it's midnight in Paris
         if (parisTime.getHours() === 0 && parisTime.getMinutes() === 0) {
           // 2. Check if it's a 14-day interval (1st, 15th, 29th of month)
-          if ([1, 15, 29].includes(parisTime.getDate())) {
-            console.log("14-day reset triggered at Paris midnight on day:", parisTime.getDate());
+          const dayOfMonth = parisTime.getDate();
+          if (dayOfMonth === 1 || dayOfMonth === 15 || dayOfMonth === 29) {
+            console.log(`14-day reset triggered at Paris midnight on day: ${parisTime.getDate()}`);
             
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;

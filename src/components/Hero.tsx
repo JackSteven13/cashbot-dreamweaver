@@ -29,8 +29,11 @@ const Hero = () => {
             <MapComponent />
           )}
           
-          {/* Counters - Improved for better responsive display */}
-          <StatsCounter />
+          {/* Counters - Updated with new target values */}
+          <StatsCounter 
+            dailyAdsTarget={65000} 
+            dailyRevenueTarget={186000} 
+          />
           
           {/* CTA Button */}
           <HeroCallToAction />
