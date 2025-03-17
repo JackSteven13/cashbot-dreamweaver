@@ -86,7 +86,7 @@ const Offres = () => {
       <main className="container mx-auto py-12 px-4">
         <h2 className="text-3xl font-bold text-center text-[#1e3a5f] mb-4">Nos Offres</h2>
         <p className="text-[#486581] text-center mb-6 max-w-2xl mx-auto">
-          Choisissez l'abonnement qui vous convient et commencez à générer des revenus avec notre IA de trading avancée.
+          Choisissez l'abonnement qui vous convient et commencez à générer des revenus avec notre IA d'analyse publicitaire avancée.
         </p>
         
         <div className="bg-blue-50 p-4 mb-8 rounded-lg border border-blue-100 max-w-2xl mx-auto">
