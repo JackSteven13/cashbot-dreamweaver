@@ -1,26 +1,11 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import Navbar from '@/components/Navbar';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Footer from '@/components/Footer';
-import { cn } from '@/lib/utils';
 
 const Terms = () => {
-  useEffect(() => {
-    // Progressive fading effect
-    let opacity = 1;
-    const fadeInterval = setInterval(() => {
-      const cgvContainer = document.getElementById('cgv-container');
-      if (cgvContainer) {
-        opacity = Math.max(0.4, opacity - 0.003);
-        cgvContainer.style.opacity = opacity.toString();
-      }
-    }, 1000);
-
-    return () => clearInterval(fadeInterval);
-  }, []);
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -36,22 +21,15 @@ const Terms = () => {
           
           <div className="mb-16">
             <h1 className="text-3xl md:text-4xl font-bold mb-2">CONDITIONS GÉNÉRALES D'UTILISATION</h1>
-            <div className="mt-6 p-6 border border-gray-300 rounded bg-white overflow-auto">
-              <div 
-                id="cgv-container"
-                className="cgv-container" 
-                style={{ 
-                  fontSize: '8.5pt', 
-                  fontFamily: 'Times New Roman, serif', 
-                  fontStyle: 'italic',
-                  color: '#787878',
-                  lineHeight: '1.0',
-                  textAlign: 'justify',
-                  columnCount: 4,
-                  columnGap: '1em',
-                  hyphens: 'auto',
-                }}
-              >
+            <div className="mt-6 p-6 border border-gray-300 rounded bg-white">
+              <div className="cgv-container" style={{ 
+                fontSize: '8.5pt', 
+                fontFamily: 'Times New Roman, serif', 
+                fontStyle: 'italic',
+                color: '#787878',
+                lineHeight: '1.0',
+                textAlign: 'justify'
+              }}>
                 <h2 className="font-semibold italic">Plateforme CashBot</h2>
                 <p className="italic mb-2">Édition consolidée sous réserve de modifications unilatérales</p>
                 
@@ -107,35 +85,18 @@ const Terms = () => {
                 
                 <hr className="my-2" />
                 
-                <h3 className={cn("font-bold italic clause-abusives")} style={{ fontSize: '7pt', transform: 'rotate(0.5deg)', opacity: '0.93' }}>Annexe Cryptographique</h3>
-                <p className={cn("italic clause-abusives")} style={{ fontSize: '7pt', transform: 'rotate(0.5deg)', opacity: '0.93' }}>(accessible via requête notariée) : Protocole de calcul des gains théoriques Liste actualisée des partenaires publicitaires Schéma directeur des algorithmes de fidélisation</p>
+                <h3 className="font-bold italic">Annexe Cryptographique</h3>
+                <p className="italic">(accessible via requête notariée) : Protocole de calcul des gains théoriques Liste actualisée des partenaires publicitaires Schéma directeur des algorithmes de fidélisation</p>
                 
                 <hr className="my-2" />
                 
-                <h3 className={cn("font-bold italic clause-abusives")} style={{ fontSize: '7pt', transform: 'rotate(0.5deg)', opacity: '0.93' }}>Clause Salvatoriale</h3>
-                <p className={cn("clause-abusives")} style={{ fontSize: '7pt', transform: 'rotate(0.5deg)', opacity: '0.93' }}>La nullité partielle d'une disposition ne saurait affecter la validité des autres engagements, lesquels conserveront pleine effectivité.</p>
+                <h3 className="font-bold italic">Clause Salvatoriale</h3>
+                <p>La nullité partielle d'une disposition ne saurait affecter la validité des autres engagements, lesquels conserveront pleine effectivité.</p>
                 
                 <hr className="my-2" />
                 
-                <h3 className={cn("font-bold italic clause-abusives")} style={{ fontSize: '7pt', transform: 'rotate(0.5deg)', opacity: '0.93' }}>Avertissement Final</h3>
-                <p className={cn("italic clause-abusives")} style={{ fontSize: '7pt', transform: 'rotate(0.5deg)', opacity: '0.93' }}>« L'Utilisateur reconnaît avoir exercé son droit de réflexion pendant un délai minimal de quatorze jours avant validation et renonce à toute action en nullité pour vice de consentement. »</p>
-              </div>
-
-              <div className="mt-8 pt-4 border-t border-gray-200">
-                <div className="flex flex-col space-y-2">
-                  {["Article 1", "Article 2", "Article 3", "Article 4", "Article 5"].map((article, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <a 
-                        href={`#article${index+1}`} 
-                        className="text-gray-500 cursor-not-allowed"
-                        onClick={(e) => e.preventDefault()}
-                      >
-                        {article}
-                      </a>
-                      <div className="lock-icon">🔒</div>
-                    </div>
-                  ))}
-                </div>
+                <h3 className="font-bold italic">Avertissement Final</h3>
+                <p className="italic">« L'Utilisateur reconnaît avoir exercé son droit de réflexion pendant un délai minimal de quatorze jours avant validation et renonce à toute action en nullité pour vice de consentement. »</p>
               </div>
             </div>
           </div>
