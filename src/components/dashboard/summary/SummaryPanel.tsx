@@ -4,7 +4,7 @@ import { toast } from '@/components/ui/use-toast';
 import UserBalanceCard from './UserBalanceCard';
 import ActionButtons from './ActionButtons';
 import ReferralLink from './ReferralLink';
-import SystemTerminal from './SystemTerminal';
+import { SystemTerminal } from '@/components/dashboard/terminal';
 import WelcomeMessage from './WelcomeMessage';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
 
