@@ -1,9 +1,7 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   CreditCard, 
-  GaugeCircle, 
   History, 
   LineChart, 
   LogOut, 
@@ -48,13 +46,6 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
       </div>
       
       <div className="flex-1 px-3 py-4 space-y-1">
-        <NavItem 
-          icon={<GaugeCircle size={18} className="mr-3" />}
-          label="Tableau de bord"
-          id="dashboard"
-          selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("dashboard")}
-        />
         <NavItem 
           icon={<History size={18} className="mr-3" />}
           label="Historique"
