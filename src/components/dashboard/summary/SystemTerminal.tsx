@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { useSessionCountdown } from '@/hooks/useSessionCountdown';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SystemTerminalProps {
   isNewUser: boolean;
@@ -31,6 +32,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   const [feedback, setFeedback] = useState('');
   const [showProTrialInfo, setShowProTrialInfo] = useState(isNewUser);
   const [isPromoActivated, setIsPromoActivated] = useState(false);
+  const [tempProEnabled, setTempProEnabled] = useState(false);
   
   // Utiliser notre hook pour le compte à rebours
   const { timeRemaining, isCountingDown } = useSessionCountdown(
@@ -41,9 +43,47 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   // Calculer le pourcentage de progression vers la limite journalière
   const limitPercentage = Math.min(100, (displayBalance / dailyLimit) * 100);
   
-  const activateProTrial = () => {
+  useEffect(() => {
+    // Vérifier si le mode Pro temporaire est activé dans le localStorage
+    const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
+    const proTrialExpires = localStorage.getItem('proTrialExpires');
+    
+    if (proTrialActive && proTrialExpires) {
+      const expiryTime = parseInt(proTrialExpires, 10);
+      const now = Date.now();
+      
+      if (now < expiryTime) {
+        setTempProEnabled(true);
+        setIsPromoActivated(true);
+      } else {
+        // Si expiré, supprimer du localStorage
+        localStorage.removeItem('proTrialActive');
+        localStorage.removeItem('proTrialExpires');
+      }
+    }
+  }, []);
+  
+  const activateProTrial = async () => {
     if (subscription === 'freemium' && !isPromoActivated) {
+      // Définir l'expiration à 48h à partir de maintenant
+      const expiryTime = Date.now() + (48 * 60 * 60 * 1000);
+      
+      // Stocker dans localStorage
+      localStorage.setItem('proTrialActive', 'true');
+      localStorage.setItem('proTrialExpires', expiryTime.toString());
+      
+      // Mettre à jour l'état
+      setTempProEnabled(true);
       setIsPromoActivated(true);
+      
+      // Session utilisateur
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Mise à jour temporaire de la base de données pour indiquer l'essai pro
+        // Note: Ceci n'est pas persistant, c'est juste visuel pour l'interface
+        localStorage.setItem('tempProDisplay', 'true');
+      }
+      
       toast({
         title: "Accès Pro activé !",
         description: "Vous bénéficiez de 48h d'accès aux fonctionnalités Pro. Profitez-en pour maximiser vos gains !",
@@ -60,6 +100,20 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
       setFeedback('');
       setShowFeedbackDialog(false);
     }
+  };
+
+  // Fonction pour afficher le temps restant de l'essai Pro
+  const displayRemainingProTime = () => {
+    const expiryTime = parseInt(localStorage.getItem('proTrialExpires') || '0', 10);
+    const now = Date.now();
+    const remainingMs = expiryTime - now;
+    
+    if (remainingMs <= 0) return "Expiré";
+    
+    const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+    const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return `${hours}h ${minutes}m`;
   };
 
   return (
@@ -121,18 +175,24 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-slate-700/30 p-2 rounded-lg border border-slate-600/50">
               <div className="text-xs text-gray-400">Abonnement</div>
-              <div className="text-sm font-medium text-white capitalize">{subscription}</div>
+              <div className="text-sm font-medium text-white capitalize">
+                {tempProEnabled ? 'Pro (Essai)' : subscription}
+              </div>
             </div>
             <div className="bg-slate-700/30 p-2 rounded-lg border border-slate-600/50">
               <div className="text-xs text-gray-400">Limite journalière</div>
-              <div className="text-sm font-medium text-white">{dailyLimit}€</div>
+              <div className="text-sm font-medium text-white">
+                {tempProEnabled ? '5€' : `${dailyLimit}€`}
+              </div>
             </div>
             <div className="bg-slate-700/30 p-2 rounded-lg border border-slate-600/50">
               <div className="text-xs text-gray-400">Sessions</div>
               <div className="text-sm font-medium text-white">
-                {subscription === 'freemium' 
-                  ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}` 
-                  : 'Illimitées'}
+                {tempProEnabled 
+                  ? 'Illimitées (Essai)' 
+                  : (subscription === 'freemium' 
+                    ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}` 
+                    : 'Illimitées')}
               </div>
             </div>
             <div className="bg-slate-700/30 p-2 rounded-lg border border-slate-600/50">
@@ -171,46 +231,8 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         {isPromoActivated && (
           <div className="bg-gradient-to-r from-blue-900/40 to-blue-700/20 p-3 rounded-lg border border-blue-700/50 mb-4">
             <p className="text-blue-300 text-xs font-medium text-center">
-              ✅ Accès Pro activé pour 48h ! Profitez-en pour maximiser vos gains
+              ✅ Accès Pro activé pour {displayRemainingProTime()} ! Profitez des fonctionnalités Pro
             </p>
-          </div>
-        )}
-        
-        {subscription === 'freemium' && (
-          <div className="bg-slate-800/70 p-3 rounded-lg border border-slate-700 mt-2">
-            <div className="flex justify-between items-center">
-              <p className="text-blue-300 text-xs font-medium">Comparatif des abonnements :</p>
-            </div>
-            <table className="w-full text-xs mt-2">
-              <thead>
-                <tr className="text-gray-300">
-                  <th className="text-left px-1 py-1">Plan</th>
-                  <th className="text-center px-1 py-1">Limite/jour</th>
-                  <th className="text-center px-1 py-1">Sessions</th>
-                  <th className="text-center px-1 py-1">Retraits</th>
-                </tr>
-              </thead>
-              <tbody className="text-gray-300">
-                <tr className="border-t border-slate-700/50">
-                  <td className="py-1 px-1">Freemium</td>
-                  <td className="text-center py-1">0.5€</td>
-                  <td className="text-center py-1">1/jour</td>
-                  <td className="text-center py-1">Non</td>
-                </tr>
-                <tr className="border-t border-slate-700/50">
-                  <td className="py-1 px-1">Pro</td>
-                  <td className="text-center py-1">5€</td>
-                  <td className="text-center py-1">∞</td>
-                  <td className="text-center py-1">Oui</td>
-                </tr>
-                <tr className="border-t border-slate-700/50">
-                  <td className="py-1 px-1">Visionnaire</td>
-                  <td className="text-center py-1">20€</td>
-                  <td className="text-center py-1">∞</td>
-                  <td className="text-center py-1">Oui</td>
-                </tr>
-              </tbody>
-            </table>
           </div>
         )}
       </div>

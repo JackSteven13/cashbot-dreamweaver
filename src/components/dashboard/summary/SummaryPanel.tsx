@@ -39,6 +39,10 @@ const SummaryPanel = ({
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [displayBalance, setDisplayBalance] = useState(Math.max(0, balance));
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+  const [effectiveSubscription, setEffectiveSubscription] = useState(subscription);
+  const [effectiveDailyLimit, setEffectiveDailyLimit] = useState(
+    SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5
+  );
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const latestBalanceRef = useRef(balance);
   
@@ -49,15 +53,34 @@ const SummaryPanel = ({
   }, [balance]);
   
   useEffect(() => {
+    // Vérifier si le mode Pro temporaire est activé
+    const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
+    const proTrialExpires = localStorage.getItem('proTrialExpires');
+    
+    if (proTrialActive && proTrialExpires) {
+      const expiryTime = parseInt(proTrialExpires, 10);
+      const now = Date.now();
+      
+      if (now < expiryTime) {
+        setEffectiveSubscription('pro');
+        setEffectiveDailyLimit(SUBSCRIPTION_LIMITS['pro']);
+      } else {
+        setEffectiveSubscription(subscription);
+        setEffectiveDailyLimit(SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
+      }
+    } else {
+      setEffectiveSubscription(subscription);
+      setEffectiveDailyLimit(SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
+    }
+    
     return () => {
       if (clickTimeoutRef.current) {
         clearTimeout(clickTimeoutRef.current);
       }
     };
-  }, []);
+  }, [subscription]);
   
-  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-  const currentlyCanStartSession = canStartSession && (latestBalanceRef.current < dailyLimit);
+  const currentlyCanStartSession = canStartSession && (latestBalanceRef.current < effectiveDailyLimit);
   
   const onWithdraw = () => {
     if (isButtonDisabled || isWithdrawing) return;
@@ -69,7 +92,7 @@ const SummaryPanel = ({
       if (handleWithdrawal) {
         handleWithdrawal();
       } else {
-        if (subscription === 'freemium') {
+        if (subscription === 'freemium' && effectiveSubscription === 'freemium') {
           toast({
             title: "Demande refusée",
             description: "Les retraits sont disponibles uniquement pour les abonnements payants. Veuillez mettre à niveau votre compte.",
@@ -110,10 +133,10 @@ const SummaryPanel = ({
   const onBoostClick = () => {
     if (isButtonDisabled || isStartingSession || !currentlyCanStartSession) return;
     
-    if (latestBalanceRef.current >= dailyLimit) {
+    if (latestBalanceRef.current >= effectiveDailyLimit) {
       toast({
         title: "Limite journalière atteinte",
-        description: `Vous avez atteint votre limite de gain journalier de ${dailyLimit}€. Revenez demain ou passez à un forfait supérieur.`,
+        description: `Vous avez atteint votre limite de gain journalier de ${effectiveDailyLimit}€. Revenez demain ou passez à un forfait supérieur.`,
         variant: "destructive"
       });
       return;
@@ -132,7 +155,9 @@ const SummaryPanel = ({
     }, 3000);
   };
   
-  const remainingSessions = subscription === 'freemium' ? Math.max(0, 1 - dailySessionCount!) : 'illimitées';
+  const remainingSessions = subscription === 'freemium' && effectiveSubscription === 'freemium' 
+    ? Math.max(0, 1 - dailySessionCount!) 
+    : 'illimitées';
 
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-8">
@@ -142,9 +167,9 @@ const SummaryPanel = ({
         <div className="flex-1">
           <UserBalanceCard 
             displayBalance={displayBalance}
-            subscription={subscription}
-            dailyLimit={dailyLimit}
-            sessionsDisplay={subscription === 'freemium' 
+            subscription={effectiveSubscription}
+            dailyLimit={effectiveDailyLimit}
+            sessionsDisplay={subscription === 'freemium' && effectiveSubscription === 'freemium'
               ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}`
               : 'Sessions illimitées'}
             referralCount={referralCount}
@@ -158,7 +183,7 @@ const SummaryPanel = ({
             isWithdrawing={isWithdrawing}
             subscription={subscription}
             currentBalance={displayBalance}
-            dailyLimit={dailyLimit}
+            dailyLimit={effectiveDailyLimit}
             onBoostClick={onBoostClick}
             onWithdraw={onWithdraw}
           />
@@ -168,7 +193,7 @@ const SummaryPanel = ({
         
         <SystemTerminal 
           isNewUser={isNewUser}
-          dailyLimit={dailyLimit}
+          dailyLimit={effectiveDailyLimit}
           subscription={subscription}
           remainingSessions={remainingSessions}
           referralCount={referralCount}

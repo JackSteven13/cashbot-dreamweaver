@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowUpCircle, Clock, PlayCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -28,18 +28,46 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   onBoostClick,
   onWithdraw
 }) => {
+  const [tempProEnabled, setTempProEnabled] = useState(false);
+  const [effectiveLimit, setEffectiveLimit] = useState(dailyLimit);
+  
+  // Vérifier si le mode Pro temporaire est activé
+  useEffect(() => {
+    const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
+    const proTrialExpires = localStorage.getItem('proTrialExpires');
+    
+    if (proTrialActive && proTrialExpires) {
+      const expiryTime = parseInt(proTrialExpires, 10);
+      const now = Date.now();
+      
+      if (now < expiryTime) {
+        setTempProEnabled(true);
+        // Si en mode d'essai Pro, utiliser la limite Pro
+        setEffectiveLimit(SUBSCRIPTION_LIMITS['pro']);
+      } else {
+        // Si expiré, utiliser la limite normale
+        setEffectiveLimit(dailyLimit);
+      }
+    } else {
+      setEffectiveLimit(dailyLimit);
+    }
+  }, [dailyLimit]);
+  
   // Vérifier si la limite est atteinte - check against the actual current balance
-  const limitReached = currentBalance >= dailyLimit;
+  const limitReached = currentBalance >= effectiveLimit;
   
   // Calculer le pourcentage de la limite atteinte pour l'affichage visuel
-  const limitPercentage = Math.min(100, (currentBalance / dailyLimit) * 100);
+  const limitPercentage = Math.min(100, (currentBalance / effectiveLimit) * 100);
+  
+  // Vérifier si on peut démarrer une session en tenant compte du mode Pro temporaire
+  const canStartSessionNow = tempProEnabled ? true : canStartSession;
   
   return (
     <div className="grid grid-cols-1 gap-3 mb-6">
       {/* Rangée de boutons principale avec layout amélioré */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="w-full">
-          {canStartSession && !limitReached ? (
+          {canStartSessionNow && !limitReached ? (
             <Button 
               size="lg" 
               className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white relative overflow-hidden shadow-md"
@@ -112,7 +140,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       </div>
 
       {/* Rangée conditionnelle pour le bouton d'augmentation de limite */}
-      {(subscription === 'freemium' || limitReached) && (
+      {(subscription === 'freemium' && !tempProEnabled || limitReached) && (
         <div className="mt-1">
           <Link to="/offres" className="w-full block">
             <Button 
