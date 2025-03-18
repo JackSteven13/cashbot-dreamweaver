@@ -112,15 +112,30 @@ export const useSummaryPanel = ({
   };
 
   const onBoostClick = (canStartSession: boolean) => {
-    const currentlyCanStartSession = canStartSession && (latestBalanceRef.current < effectiveDailyLimit);
+    // Vérifier si c'est un utilisateur en mode Pro temporaire
+    const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
+    const proTrialExpires = localStorage.getItem('proTrialExpires');
+    let currentEffectiveLimit = effectiveDailyLimit;
+    
+    if (proTrialActive && proTrialExpires) {
+      const expiryTime = parseInt(proTrialExpires, 10);
+      const now = Date.now();
+      
+      if (now < expiryTime) {
+        // Si en mode Pro, utiliser la limite Pro
+        currentEffectiveLimit = SUBSCRIPTION_LIMITS['pro'];
+      }
+    }
+    
+    const currentlyCanStartSession = canStartSession && (latestBalanceRef.current < currentEffectiveLimit);
     
     if (isButtonDisabled || isWithdrawing || !currentlyCanStartSession) return;
     
     // Utiliser la limite effective pour la vérification
-    if (latestBalanceRef.current >= effectiveDailyLimit) {
+    if (latestBalanceRef.current >= currentEffectiveLimit) {
       toast({
         title: "Limite journalière atteinte",
-        description: `Vous avez atteint votre limite de gain journalier de ${effectiveDailyLimit}€. Revenez demain ou passez à un forfait supérieur.`,
+        description: `Vous avez atteint votre limite de gain journalier de ${currentEffectiveLimit}€. Revenez demain ou passez à un forfait supérieur.`,
         variant: "destructive"
       });
       return;
@@ -146,7 +161,22 @@ export const useSummaryPanel = ({
   };
   
   const getCurrentlyCanStartSession = (canStartSession: boolean) => {
-    return canStartSession && (latestBalanceRef.current < effectiveDailyLimit);
+    // Vérifier si utilisateur est en mode Pro temporaire
+    const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
+    const proTrialExpires = localStorage.getItem('proTrialExpires');
+    let currentEffectiveLimit = effectiveDailyLimit;
+    
+    if (proTrialActive && proTrialExpires) {
+      const expiryTime = parseInt(proTrialExpires, 10);
+      const now = Date.now();
+      
+      if (now < expiryTime) {
+        // Si en mode Pro, utiliser la limite Pro
+        currentEffectiveLimit = SUBSCRIPTION_LIMITS['pro'];
+      }
+    }
+    
+    return canStartSession && (latestBalanceRef.current < currentEffectiveLimit);
   };
 
   return {

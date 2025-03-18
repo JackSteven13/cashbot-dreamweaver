@@ -8,6 +8,8 @@ import { SessionCountdown } from './SessionCountdown';
 import { NewUserGuide } from './NewUserGuide';
 import { useSessionCountdown } from '@/hooks/useSessionCountdown';
 import { supabase } from '@/integrations/supabase/client';
+import { updateUserBalance } from '@/utils/userBalanceUtils';
+import { toast } from '@/components/ui/use-toast';
 
 interface SystemTerminalProps {
   isNewUser: boolean;
@@ -79,12 +81,49 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
       // Session utilisateur
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Mise à jour temporaire de la base de données pour indiquer l'essai pro
-        // Note: Ceci n'est pas persistant, c'est juste visuel pour l'interface
-        localStorage.setItem('tempProDisplay', 'true');
+        try {
+          // Réinitialiser le solde à zéro pour éviter les problèmes avec les limites atteintes
+          const userId = session.user.id;
+          
+          // Mise à jour de la base de données pour réinitialiser le solde
+          const { error } = await supabase
+            .from('user_balances')
+            .update({ 
+              balance: 0,
+              daily_session_count: 0,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+            
+          if (error) {
+            console.error("Erreur lors de la réinitialisation du solde:", error);
+            toast({
+              title: "Erreur",
+              description: "Impossible d'activer l'essai Pro. Veuillez réessayer.",
+              variant: "destructive"
+            });
+            return;
+          }
+          
+          // Indiquer que l'essai Pro a été activé
+          localStorage.setItem('tempProDisplay', 'true');
+          
+          toast({
+            title: "Essai Pro activé !",
+            description: "Votre période d'essai Pro de 48h est maintenant active. Votre solde a été réinitialisé.",
+          });
+          
+          // Rafraîchir la page pour appliquer les changements
+          window.location.reload();
+        } catch (error) {
+          console.error("Erreur lors de l'activation de l'essai Pro:", error);
+          toast({
+            title: "Erreur",
+            description: "Une erreur est survenue. Veuillez réessayer plus tard.",
+            variant: "destructive"
+          });
+        }
       }
-      
-      window.location.reload(); // Rafraîchir pour appliquer immédiatement les changements
     }
   };
 

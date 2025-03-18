@@ -14,6 +14,7 @@ interface DailyLimitAlertProps {
 const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, currentBalance }) => {
   const [effectiveSubscription, setEffectiveSubscription] = useState(subscription);
   const [effectiveLimit, setEffectiveLimit] = useState(0);
+  const [shouldShow, setShouldShow] = useState(show);
   
   // Vérifier si le mode Pro temporaire est activé
   useEffect(() => {
@@ -26,20 +27,26 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
       
       if (now < expiryTime) {
         setEffectiveSubscription('pro');
+        // Lors de l'activation de l'essai Pro, on masque l'alerte de limite
+        if (subscription === 'freemium') {
+          setShouldShow(false);
+        }
       } else {
         setEffectiveSubscription(subscription);
+        setShouldShow(show);
       }
     } else {
       setEffectiveSubscription(subscription);
+      setShouldShow(show);
     }
-  }, [subscription]);
+  }, [subscription, show]);
   
   // Mettre à jour la limite effective
   useEffect(() => {
     setEffectiveLimit(SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
   }, [effectiveSubscription]);
   
-  if (!show) {
+  if (!shouldShow) {
     return null;
   }
 
@@ -47,8 +54,9 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
   const limitPercentage = Math.min(100, (currentBalance / effectiveLimit) * 100);
   const isNearLimit = limitPercentage >= 90;
 
-  // Si l'utilisateur est en mode Pro temporaire, ne pas afficher l'alerte s'il n'a pas vraiment atteint la limite Pro
-  if (effectiveSubscription === 'pro' && subscription === 'freemium' && currentBalance < effectiveLimit) {
+  // Si l'utilisateur est en mode Pro temporaire, ne pas afficher l'alerte 
+  // car nous avons réinitialisé leur solde lors de l'activation
+  if (effectiveSubscription === 'pro' && subscription === 'freemium') {
     return null;
   }
 

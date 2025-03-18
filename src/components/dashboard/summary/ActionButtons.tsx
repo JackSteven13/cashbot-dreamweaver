@@ -54,7 +54,11 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   }, [dailyLimit]);
   
   // Vérifier si la limite est atteinte - check against the actual current balance
-  const limitReached = currentBalance >= effectiveLimit;
+  // Pour les utilisateurs en mode Pro temporaire, on considère qu'ils n'ont pas atteint la limite
+  // car nous avons réinitialisé leur solde lors de l'activation
+  const limitReached = tempProEnabled && subscription === 'freemium' 
+    ? false 
+    : currentBalance >= effectiveLimit;
   
   // Calculer le pourcentage de la limite atteinte pour l'affichage visuel
   const limitPercentage = Math.min(100, (currentBalance / effectiveLimit) * 100);
