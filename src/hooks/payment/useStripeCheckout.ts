@@ -21,6 +21,51 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       return;
     }
 
+    // For freemium, update subscription directly without Stripe
+    if (selectedPlan === 'freemium') {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          toast({
+            title: "Erreur",
+            description: "Vous devez être connecté pour effectuer cette action",
+            variant: "destructive"
+          });
+          navigate('/login');
+          return;
+        }
+        
+        const { error } = await supabase
+          .from('user_balances')
+          .update({ 
+            subscription: selectedPlan,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', session.user.id);
+          
+        if (error) throw error;
+        
+        localStorage.setItem('subscription', selectedPlan);
+        
+        toast({
+          title: "Abonnement Freemium activé",
+          description: "Votre abonnement Freemium a été activé avec succès !",
+        });
+        
+        navigate('/dashboard');
+        return;
+      } catch (error) {
+        console.error("Error updating subscription:", error);
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors de l'activation de votre abonnement.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     setIsStripeProcessing(true);
 
     try {

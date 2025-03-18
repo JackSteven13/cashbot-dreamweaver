@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
@@ -28,7 +29,13 @@ const Payment = () => {
     const plan = location.state?.plan || new URLSearchParams(location.search).get('plan');
     console.log("Payment page initialized with plan:", plan);
     
-    if (plan && ['freemium', 'pro', 'visionnaire', 'alpha'].includes(plan)) {
+    // Redirect freemium users back to dashboard or offers
+    if (plan === 'freemium') {
+      handleFreemiumSubscription();
+      return;
+    }
+    
+    if (plan && ['pro', 'visionnaire', 'alpha'].includes(plan)) {
       setSelectedPlan(plan as PlanType);
     } else {
       // If no valid plan is specified, redirect back to offers
@@ -63,6 +70,44 @@ const Payment = () => {
     
     checkAuth();
   }, [location, navigate]);
+
+  // Handle freemium subscription
+  const handleFreemiumSubscription = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        const { error } = await supabase
+          .from('user_balances')
+          .update({ 
+            subscription: 'freemium',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', session.user.id);
+          
+        if (error) {
+          throw error;
+        }
+        
+        localStorage.setItem('subscription', 'freemium');
+        
+        toast({
+          title: "Abonnement Freemium activé !",
+          description: "Vous bénéficiez maintenant des avantages du forfait Freemium.",
+        });
+      }
+      
+      navigate('/dashboard');
+    } catch (error) {
+      console.error("Error updating subscription:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la mise à jour de votre abonnement.",
+        variant: "destructive"
+      });
+      navigate('/offres');
+    }
+  };
 
   const handleCardFormSubmit = (cardData: PaymentFormData) => {
     processPayment(cardData);

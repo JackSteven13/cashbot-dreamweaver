@@ -24,6 +24,12 @@ const PlanSummary = ({ selectedPlan }: PlanSummaryProps) => {
           {PLAN_PRICES[selectedPlan]}€/mois
         </p>
       </div>
+      
+      {selectedPlan === 'freemium' && (
+        <p className="mt-3 text-green-600 text-sm font-medium">
+          Cet abonnement est gratuit et ne nécessite pas de paiement.
+        </p>
+      )}
     </div>
   );
 };

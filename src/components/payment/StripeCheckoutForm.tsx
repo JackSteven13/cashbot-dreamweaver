@@ -20,6 +20,20 @@ const StripeCheckoutForm = ({
 }: StripeCheckoutFormProps) => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   
+  // If it's freemium plan, don't display the form
+  if (selectedPlan === 'freemium') {
+    return (
+      <div className="text-center">
+        <p className="text-green-600 font-medium mb-4">L'abonnement Freemium est gratuit et ne nécessite pas de paiement.</p>
+        <Link to="/dashboard">
+          <Button className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white">
+            Aller au tableau de bord
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+  
   const handleCheckout = (e: React.MouseEvent) => {
     e.preventDefault();
     
