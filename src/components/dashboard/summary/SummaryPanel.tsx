@@ -65,6 +65,9 @@ const SummaryPanel = ({
         setEffectiveSubscription('pro');
         setEffectiveDailyLimit(SUBSCRIPTION_LIMITS['pro']);
       } else {
+        // Si expiré, nettoyer le localStorage
+        localStorage.removeItem('proTrialActive');
+        localStorage.removeItem('proTrialExpires');
         setEffectiveSubscription(subscription);
         setEffectiveDailyLimit(SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
       }
@@ -80,6 +83,7 @@ const SummaryPanel = ({
     };
   }, [subscription]);
   
+  // Cette variable doit être calculée avec la limite effective, pas la limite de base
   const currentlyCanStartSession = canStartSession && (latestBalanceRef.current < effectiveDailyLimit);
   
   const onWithdraw = () => {
@@ -133,6 +137,7 @@ const SummaryPanel = ({
   const onBoostClick = () => {
     if (isButtonDisabled || isStartingSession || !currentlyCanStartSession) return;
     
+    // Utiliser la limite effective pour la vérification
     if (latestBalanceRef.current >= effectiveDailyLimit) {
       toast({
         title: "Limite journalière atteinte",

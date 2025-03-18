@@ -16,23 +16,46 @@ export const MANUAL_SESSION_GAIN_PERCENTAGES = {
 };
 
 /**
+ * Vérifie le mode Pro temporaire et retourne la souscription effective
+ */
+export const getEffectiveSubscription = (subscription: string): string => {
+  const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
+  const proTrialExpires = localStorage.getItem('proTrialExpires');
+  
+  if (proTrialActive && proTrialExpires) {
+    const expiryTime = parseInt(proTrialExpires, 10);
+    const now = Date.now();
+    
+    if (now < expiryTime) {
+      return 'pro';
+    }
+  }
+  
+  return subscription;
+};
+
+/**
  * Checks if the user has reached the daily gain limit based on their subscription
  */
 export const checkDailyLimit = (balance: number, subscription: string): boolean => {
-  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS];
-  return balance >= dailyLimit && subscription === 'freemium';
+  const effectiveSubscription = getEffectiveSubscription(subscription);
+  const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS];
+  return balance >= dailyLimit && effectiveSubscription === 'freemium';
 };
 
 /**
  * Checks if the user can start a manual session
  */
 export const canStartManualSession = (subscription: string, dailySessionCount: number, balance: number): boolean => {
-  // Freemium users are limited to 1 manual session per day
-  if (subscription === 'freemium') {
-    return dailySessionCount < 1 && !checkDailyLimit(balance, subscription);
+  const effectiveSubscription = getEffectiveSubscription(subscription);
+  
+  // Users with Pro trial or higher subscriptions have unlimited sessions
+  if (effectiveSubscription !== 'freemium') {
+    return true;
   }
-  // Other subscriptions don't have session limits, just the daily gain limit
-  return !checkDailyLimit(balance, subscription);
+  
+  // Freemium users are limited to 1 manual session per day
+  return dailySessionCount < 1 && !checkDailyLimit(balance, subscription);
 };
 
 /**
@@ -47,8 +70,11 @@ export const calculateManualSessionGain = (
   currentBalance: number,
   referralCount: number = 0
 ): number => {
-  // Get daily limit for current subscription
-  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  // Use effective subscription for limit calculation
+  const effectiveSubscription = getEffectiveSubscription(subscription);
+  
+  // Get daily limit for effective subscription
+  const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
   // Calculate remaining amount before reaching limit
   const remainingAmount = dailyLimit - currentBalance;
@@ -59,7 +85,7 @@ export const calculateManualSessionGain = (
   }
   
   // Get base percentage ranges for this subscription
-  const percentages = MANUAL_SESSION_GAIN_PERCENTAGES[subscription as keyof typeof MANUAL_SESSION_GAIN_PERCENTAGES];
+  const percentages = MANUAL_SESSION_GAIN_PERCENTAGES[effectiveSubscription as keyof typeof MANUAL_SESSION_GAIN_PERCENTAGES];
   
   // Base gain is a percentage of the subscription's daily limit
   const minPercentage = percentages.min;
@@ -96,8 +122,11 @@ export const calculateAutoSessionGain = (
   currentBalance: number,
   referralCount: number = 0
 ): number => {
-  // Get daily limit for current subscription
-  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  // Use effective subscription for limit calculation
+  const effectiveSubscription = getEffectiveSubscription(subscription);
+  
+  // Get daily limit for effective subscription
+  const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
   // Calculate remaining amount before reaching limit
   const remainingAmount = dailyLimit - currentBalance;
