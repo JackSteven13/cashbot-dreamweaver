@@ -38,7 +38,7 @@ interface SystemInfoGridProps {
   referralBonus?: number;
 }
 
-const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
+export const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
   subscription,
   tempProEnabled,
   dailyLimit,
@@ -80,6 +80,3 @@ const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
     </div>
   );
 };
-
-// Attach the Grid component to SystemInfo
-SystemInfo.Grid = SystemInfoGrid;

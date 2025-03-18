@@ -17,7 +17,7 @@ export const ProTrialBanner: React.FC<ProTrialBannerProps> = ({ onClick }) => {
   );
 };
 
-const ProTrialActive: React.FC = () => {
+export const ProTrialActive: React.FC = () => {
   // Function to display the remaining time of the Pro trial
   const displayRemainingProTime = () => {
     const expiryTime = parseInt(localStorage.getItem('proTrialExpires') || '0', 10);
@@ -40,6 +40,3 @@ const ProTrialActive: React.FC = () => {
     </div>
   );
 };
-
-// Attach the Active component to ProTrialBanner
-ProTrialBanner.Active = ProTrialActive;

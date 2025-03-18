@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { FeedbackDialog } from './FeedbackDialog';
-import { SystemInfo } from './SystemInfo';
-import { ProTrialBanner } from './ProTrialBanner';
+import { SystemInfo, SystemInfoGrid } from './SystemInfo';
+import { ProTrialBanner, ProTrialActive } from './ProTrialBanner';
 import { SystemProgressBar } from './SystemProgressBar';
 import { SessionCountdown } from './SessionCountdown';
 import { NewUserGuide } from './NewUserGuide';
@@ -110,7 +110,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         )}
         
         {/* System information grid */}
-        <SystemInfo.Grid 
+        <SystemInfoGrid 
           subscription={subscription}
           tempProEnabled={tempProEnabled}
           dailyLimit={dailyLimit}
@@ -127,7 +127,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         )}
         
         {/* Active pro trial banner */}
-        {isPromoActivated && <ProTrialBanner.Active />}
+        {isPromoActivated && <ProTrialActive />}
       </div>
       
       {/* Feedback dialog */}
