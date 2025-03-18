@@ -1,6 +1,5 @@
 
 import React, { useMemo } from 'react';
-import { UserCircle } from 'lucide-react';
 
 interface DashboardHeaderProps {
   username: string;
@@ -32,14 +31,9 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
           {`Bonjour, ${displayName}`}
         </h1>
         
-        <div className="flex items-center space-x-4">
-          <div className="text-sm text-right hidden sm:block">
-            <p className="font-medium text-white">{displayName}</p>
-            <p className="text-blue-200">Abonnement {subscription || 'freemium'}</p>
-          </div>
-          <div className="h-10 w-10 rounded-full bg-[#334e68] flex items-center justify-center text-white">
-            <UserCircle size={24} />
-          </div>
+        <div className="text-sm text-right hidden sm:block">
+          <p className="font-medium text-white">{displayName}</p>
+          <p className="text-blue-200">Abonnement {subscription || 'freemium'}</p>
         </div>
       </div>
     </header>
