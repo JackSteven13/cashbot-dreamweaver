@@ -1,9 +1,12 @@
 
 import React, { useState } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
+import { useSessionCountdown } from '@/hooks/useSessionCountdown';
 
 interface SystemTerminalProps {
   isNewUser: boolean;
@@ -29,6 +32,15 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   const [showProTrialInfo, setShowProTrialInfo] = useState(isNewUser);
   const [isPromoActivated, setIsPromoActivated] = useState(false);
   
+  // Utiliser notre hook pour le compte à rebours
+  const { timeRemaining, isCountingDown } = useSessionCountdown(
+    typeof remainingSessions === 'number' ? 1 - remainingSessions : 0, 
+    subscription
+  );
+  
+  // Calculer le pourcentage de progression vers la limite journalière
+  const limitPercentage = Math.min(100, (displayBalance / dailyLimit) * 100);
+  
   const activateProTrial = () => {
     if (subscription === 'freemium' && !isPromoActivated) {
       setIsPromoActivated(true);
@@ -36,7 +48,6 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         title: "Accès Pro activé !",
         description: "Vous bénéficiez de 48h d'accès aux fonctionnalités Pro. Profitez-en pour maximiser vos gains !",
       });
-      // Dans un cas réel, on stockerait cette information dans la base de données
     }
   };
   
@@ -48,86 +59,93 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
       });
       setFeedback('');
       setShowFeedbackDialog(false);
-      // Dans un cas réel, on enverrait ce feedback à la base de données
     }
   };
 
   return (
-    <div className="w-full lg:w-1/2 cyber-terminal">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="text-lg font-semibold text-[#a0aec0]">📈 {isNewUser ? "CashBot est actif" : "État du système :"}</h3>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="text-xs text-[#a0aec0] hover:text-white hover:bg-[#2d5f8a]/20"
-          onClick={() => setShowFeedbackDialog(true)}
-        >
-          <AlertCircle className="h-3.5 w-3.5 mr-1" />
-          Feedback
-        </Button>
-      </div>
-      
-      <div className="font-mono text-sm text-[#e2e8f0] space-y-2">
-        {isNewUser ? (
-          <>
-            <p>{"> Système initialisé..."}</p>
-            <p>{"> Technologie propriétaire activée"}</p>
-            <p>{"> Premier boost gratuit pour démontrer l'efficacité..."}</p>
-            <p>{"> Limite journalière : " + dailyLimit + "€"}</p>
-            {subscription === 'freemium' && !isPromoActivated && (
-              <p className="text-green-400 cursor-pointer" onClick={activateProTrial}>
-                {"> CLIQUEZ ICI pour activer 48h d'accès Pro GRATUIT"}
-              </p>
-            )}
-            {isPromoActivated && (
-              <p className="text-green-400">
-                {"> Accès Pro activé pour 48h ! Profitez-en !"}
-              </p>
-            )}
-            <p>{subscription === 'freemium' ? "> 1 session manuelle par jour" : "> Sessions manuelles illimitées"}</p>
-            <p>{referralCount > 0 ? `> Bonus filleuls : +${referralBonus}%` : "> Aucun filleul actif"}</p>
-            <p>{"> Programme d'affiliation : Activé (70% de commission)"}</p>
-          </>
-        ) : (
-          <>
-            <p>{"> Système en exécution..."}</p>
-            <p>{"> Traitement automatique des données"}</p>
-            <p>{"> Optimisation du rendement"}</p>
-            <p>{"> Potentiel journalier : " + dailyLimit + "€"}</p>
-            {subscription === 'freemium' && !isPromoActivated && (
-              <p className="text-green-400 cursor-pointer" onClick={activateProTrial}>
-                {"> CLIQUEZ ICI pour activer 48h d'accès Pro GRATUIT"}
-              </p>
-            )}
-            {isPromoActivated && (
-              <p className="text-green-400">
-                {"> Accès Pro activé pour 48h ! Profitez-en !"}
-              </p>
-            )}
-            <p>{subscription === 'freemium' 
-              ? `> Sessions restantes : ${remainingSessions}` 
-              : "> Sessions illimitées"}</p>
-            <p>{referralCount > 0 ? `> Bonus filleuls : +${referralBonus}%` : "> Aucun filleul actif"}</p>
-            <p>{`> Solde actuel : ${displayBalance.toFixed(2)}€`}</p>
-            <p>{"> Programme d'affiliation : Actif (70% de commission)"}</p>
-          </>
+    <div className="w-full lg:w-1/2">
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-lg border border-slate-700 p-5 text-white">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center">
+            <div className="h-3 w-3 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+            <h3 className="text-lg font-medium text-white">
+              {isNewUser ? "CashBot • Bienvenue" : "CashBot • Système actif"}
+            </h3>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-xs text-gray-300 hover:text-white hover:bg-slate-700/50"
+            onClick={() => setShowFeedbackDialog(true)}
+          >
+            <AlertCircle className="h-3.5 w-3.5 mr-1" />
+            Feedback
+          </Button>
+        </div>
+        
+        {/* Barre de progression */}
+        <div className="mb-5">
+          <div className="flex justify-between items-center mb-1">
+            <div className="text-xs font-medium text-gray-300">
+              Progression de la limite journalière
+            </div>
+            <div className="text-xs font-medium text-gray-300">
+              {displayBalance.toFixed(2)}€ / {dailyLimit}€
+            </div>
+          </div>
+          <Progress value={limitPercentage} className="h-2 bg-slate-700">
+            <div 
+              className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"
+              style={{ width: `${limitPercentage}%` }}
+            />
+          </Progress>
+        </div>
+        
+        {/* Compte à rebours si nécessaire */}
+        {isCountingDown && (
+          <div className="mb-5 bg-slate-700/50 p-3 rounded-lg border border-slate-600">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 text-blue-400 mr-2" />
+                <span className="text-sm font-medium text-gray-200">Prochaine session disponible dans :</span>
+              </div>
+              <Badge variant="outline" className="bg-blue-900/30 text-blue-300 border-blue-800">
+                {timeRemaining}
+              </Badge>
+            </div>
+          </div>
         )}
-        <p className="blink-cursor">&nbsp;</p>
-      </div>
-      
-      <div className="mt-4 space-y-3">
-        <div className="bg-[#1a2234] p-3 rounded border border-[#2c3e50]">
-          <p className="text-[#a0aec0] text-xs">
-            Une session correspond à un boost manuel où CashBot analyse intensivement des publicités pour générer des revenus immédiats. 
-            {subscription === 'freemium' 
-              ? ' Avec le forfait Freemium, vous êtes limité à 1 session par jour et 0.5€ de gains maximum.' 
-              : ' Votre abonnement vous permet de lancer des sessions manuelles illimitées.'}
-            {referralCount > 0 && ' Chaque filleul vous apporte un bonus de gains de 5% (jusqu\'à 25% au total).'}
-          </p>
+        
+        {/* Informations système */}
+        <div className="space-y-3 mb-4 font-mono text-sm">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-slate-700/30 p-2 rounded-lg border border-slate-600/50">
+              <div className="text-xs text-gray-400">Abonnement</div>
+              <div className="text-sm font-medium text-white capitalize">{subscription}</div>
+            </div>
+            <div className="bg-slate-700/30 p-2 rounded-lg border border-slate-600/50">
+              <div className="text-xs text-gray-400">Limite journalière</div>
+              <div className="text-sm font-medium text-white">{dailyLimit}€</div>
+            </div>
+            <div className="bg-slate-700/30 p-2 rounded-lg border border-slate-600/50">
+              <div className="text-xs text-gray-400">Sessions</div>
+              <div className="text-sm font-medium text-white">
+                {subscription === 'freemium' 
+                  ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}` 
+                  : 'Illimitées'}
+              </div>
+            </div>
+            <div className="bg-slate-700/30 p-2 rounded-lg border border-slate-600/50">
+              <div className="text-xs text-gray-400">Bonus parrainage</div>
+              <div className="text-sm font-medium text-white">
+                {referralBonus > 0 ? `+${referralBonus}%` : '0%'}
+              </div>
+            </div>
+          </div>
         </div>
         
         {isNewUser && (
-          <div className="bg-green-900/20 p-3 rounded border border-green-800">
+          <div className="bg-gradient-to-r from-green-900/30 to-green-800/20 p-3 rounded-lg border border-green-800/50 mb-4">
             <p className="text-green-300 text-xs font-medium">
               🔥 Guide rapide pour démarrer :
             </p>
@@ -140,34 +158,52 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           </div>
         )}
         
+        {subscription === 'freemium' && !isPromoActivated && (
+          <div onClick={activateProTrial} className="cursor-pointer mb-4">
+            <div className="bg-gradient-to-r from-blue-900/40 to-blue-700/20 p-3 rounded-lg border border-blue-700/50 hover:bg-blue-800/30 transition-colors">
+              <p className="text-blue-300 text-xs font-medium text-center">
+                ✨ CLIQUEZ ICI pour activer 48h d'accès Pro GRATUIT ✨
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {isPromoActivated && (
+          <div className="bg-gradient-to-r from-blue-900/40 to-blue-700/20 p-3 rounded-lg border border-blue-700/50 mb-4">
+            <p className="text-blue-300 text-xs font-medium text-center">
+              ✅ Accès Pro activé pour 48h ! Profitez-en pour maximiser vos gains
+            </p>
+          </div>
+        )}
+        
         {subscription === 'freemium' && (
-          <div className="bg-blue-900/20 p-3 rounded border border-blue-800 mt-2">
+          <div className="bg-slate-800/70 p-3 rounded-lg border border-slate-700 mt-2">
             <div className="flex justify-between items-center">
               <p className="text-blue-300 text-xs font-medium">Comparatif des abonnements :</p>
             </div>
             <table className="w-full text-xs mt-2">
               <thead>
-                <tr className="text-blue-200">
-                  <th className="text-left px-1">Plan</th>
-                  <th className="text-center px-1">Limite/jour</th>
-                  <th className="text-center px-1">Sessions</th>
-                  <th className="text-center px-1">Retraits</th>
+                <tr className="text-gray-300">
+                  <th className="text-left px-1 py-1">Plan</th>
+                  <th className="text-center px-1 py-1">Limite/jour</th>
+                  <th className="text-center px-1 py-1">Sessions</th>
+                  <th className="text-center px-1 py-1">Retraits</th>
                 </tr>
               </thead>
-              <tbody className="text-blue-100">
-                <tr className="border-t border-blue-800/50">
+              <tbody className="text-gray-300">
+                <tr className="border-t border-slate-700/50">
                   <td className="py-1 px-1">Freemium</td>
                   <td className="text-center py-1">0.5€</td>
                   <td className="text-center py-1">1/jour</td>
                   <td className="text-center py-1">Non</td>
                 </tr>
-                <tr className="border-t border-blue-800/50">
+                <tr className="border-t border-slate-700/50">
                   <td className="py-1 px-1">Pro</td>
                   <td className="text-center py-1">5€</td>
                   <td className="text-center py-1">∞</td>
                   <td className="text-center py-1">Oui</td>
                 </tr>
-                <tr className="border-t border-blue-800/50">
+                <tr className="border-t border-slate-700/50">
                   <td className="py-1 px-1">Visionnaire</td>
                   <td className="text-center py-1">20€</td>
                   <td className="text-center py-1">∞</td>

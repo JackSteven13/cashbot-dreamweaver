@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowUpCircle } from 'lucide-react';
+import { ArrowUpCircle, Clock, PlayCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
@@ -42,31 +42,50 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           {canStartSession && !limitReached ? (
             <Button 
               size="lg" 
-              className="w-full bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white relative overflow-hidden"
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white relative overflow-hidden shadow-md"
               disabled={isButtonDisabled || isStartingSession || limitReached}
               onClick={onBoostClick}
             >
               {/* Indicateur visuel de progression vers la limite */}
               <div 
-                className="absolute bottom-0 left-0 h-1 bg-yellow-400" 
+                className="absolute bottom-0 left-0 h-1 bg-blue-300" 
                 style={{ width: `${limitPercentage}%` }}
               />
               
               {isStartingSession ? (
-                "Traitement en cours..."
+                <span className="flex items-center">
+                  <span className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></span>
+                  Traitement...
+                </span>
               ) : limitReached ? (
-                "Limite journalière atteinte"
+                <span className="flex items-center">
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  Limite journalière atteinte
+                </span>
               ) : (
-                "▶️ Boost manuel"
+                <span className="flex items-center">
+                  <PlayCircle className="mr-2 h-5 w-5" />
+                  Boost manuel
+                </span>
               )}
             </Button>
           ) : (
             <Button 
               size="lg" 
-              className="w-full bg-gray-300 hover:bg-gray-300 text-gray-500 cursor-not-allowed"
+              className="w-full bg-slate-300 hover:bg-slate-300 text-slate-600 cursor-not-allowed shadow-md"
               disabled={true}
             >
-              {limitReached ? "Limite journalière atteinte" : "▶️ Boost manuel"}
+              {limitReached ? (
+                <span className="flex items-center">
+                  <Clock className="mr-2 h-4 w-4" />
+                  Limite journalière atteinte
+                </span>
+              ) : (
+                <span className="flex items-center">
+                  <PlayCircle className="mr-2 h-5 w-5" />
+                  Boost manuel
+                </span>
+              )}
             </Button>
           )}
         </div>
@@ -75,12 +94,19 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           <Button 
             size="lg" 
             variant="outline"
-            className="w-full border-[#2d5f8a] text-[#2d5f8a] hover:bg-[#e2e8f0]"
+            className="w-full border-blue-500 text-blue-600 hover:bg-blue-50 shadow-sm"
             disabled={isWithdrawing || isButtonDisabled}
             onClick={onWithdraw}
           >
             <ArrowUpCircle className="mr-2 h-4 w-4" />
-            {isWithdrawing ? "Traitement..." : "Retirer les fonds"}
+            {isWithdrawing ? (
+              <span className="flex items-center">
+                <span className="animate-spin h-4 w-4 mr-2 border-2 border-blue-500 border-t-transparent rounded-full"></span>
+                Traitement...
+              </span>
+            ) : (
+              "Retirer les fonds"
+            )}
           </Button>
         </div>
       </div>
@@ -91,7 +117,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           <Link to="/offres" className="w-full block">
             <Button 
               size="lg" 
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md"
             >
               {limitReached ? "Augmenter votre limite" : "Passer à l'offre Pro"}
             </Button>

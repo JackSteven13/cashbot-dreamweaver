@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import UserBalanceCard from './UserBalanceCard';
@@ -132,12 +133,9 @@ const SummaryPanel = ({
   };
   
   const remainingSessions = subscription === 'freemium' ? Math.max(0, 1 - dailySessionCount!) : 'illimitées';
-  const sessionsDisplay = subscription === 'freemium' 
-    ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}`
-    : 'Sessions illimitées';
 
   return (
-    <div className="neuro-panel mb-8">
+    <div className="bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-8">
       <WelcomeMessage isNewUser={isNewUser} />
       
       <div className="flex flex-col lg:flex-row gap-6">
@@ -146,7 +144,9 @@ const SummaryPanel = ({
             displayBalance={displayBalance}
             subscription={subscription}
             dailyLimit={dailyLimit}
-            sessionsDisplay={sessionsDisplay}
+            sessionsDisplay={subscription === 'freemium' 
+              ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}`
+              : 'Sessions illimitées'}
             referralCount={referralCount}
             referralBonus={referralBonus}
           />
