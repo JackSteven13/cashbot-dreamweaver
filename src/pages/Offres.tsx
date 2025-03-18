@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Check } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -80,15 +81,6 @@ const Offres = () => {
         <p className="text-[#486581] text-center mb-6 max-w-2xl mx-auto">
           Choisissez l'abonnement qui vous convient et commencez à générer des revenus avec notre IA d'analyse publicitaire avancée.
         </p>
-        
-        <div className="bg-blue-50 p-4 mb-8 rounded-lg border border-blue-100 max-w-2xl mx-auto">
-          <h3 className="text-lg font-medium text-[#1e3a5f] mb-2">Qu'est-ce qu'une session ?</h3>
-          <p className="text-[#334e68]">
-            Une session correspond à un boost manuel où CashBot analyse intensivement des publicités pour générer des revenus immédiats.
-            Avec le forfait Freemium, vous êtes limité à 1 session par jour et 0.5€ de gains maximum.
-            Les gains quotidiens sont réinitialisés à minuit (heure de Paris).
-          </p>
-        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {Object.entries(OFFRES).map(([key, plan]) => (
