@@ -43,25 +43,24 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Completely redesigned increment logic to ensure constant, predictable growth
+  // Completely redesigned increment logic for much faster progression
   const incrementCountersRandomly = useCallback(() => {
-    // Use fixed, small increments for stable progression
+    // Use much larger increments for impressive progression
     setAdsCount(prevAdsCount => {
       // Only incrementing, never decreasing
       if (prevAdsCount >= dailyAdsTarget) return dailyAdsTarget;
       
-      // Calculate a small, fixed percentage of the daily target to add
-      const increment = Math.floor(dailyAdsTarget * 0.001);
+      // Calculate a larger percentage of the daily target to add
+      const increment = Math.floor(dailyAdsTarget * 0.01); // 1% instead of 0.1%
       const newAdsCount = Math.min(prevAdsCount + increment, dailyAdsTarget);
       
       // Always update revenue when ads are updated, with a fixed ratio
-      // This ensures revenue always correlates with ad count
       setRevenueCount(prevRevenueCount => {
         if (prevRevenueCount >= dailyRevenueTarget) return dailyRevenueTarget;
         
-        // Use fixed revenue per ad for stability
+        // Use fixed revenue per ad for stability, but with higher growth
         const averageRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
-        const revenueIncrement = Math.floor((newAdsCount - prevAdsCount) * averageRevenuePerAd);
+        const revenueIncrement = Math.floor((newAdsCount - prevAdsCount) * averageRevenuePerAd * 1.2); // 20% bonus
         
         return Math.min(prevRevenueCount + revenueIncrement, dailyRevenueTarget);
       });

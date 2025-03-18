@@ -29,11 +29,17 @@ const Hero = () => {
             <MapComponent />
           )}
           
-          {/* Counters - Using even more impressive targets */}
+          {/* Counters - Using dramatically increased targets */}
           <StatsCounter 
-            dailyAdsTarget={350000} 
-            dailyRevenueTarget={1500000} 
+            dailyAdsTarget={750000} 
+            dailyRevenueTarget={3500000} 
           />
+          
+          {/* Network Effect Message */}
+          <div className="text-sm text-center text-blue-200 bg-blue-900/30 p-3 rounded-lg mb-6 max-w-2xl">
+            <p className="font-medium">Effet réseau puissant : Chaque nouvel utilisateur booste les performances globales.</p>
+            <p>Plus il y a d'utilisateurs sur la plateforme, plus le CashBot traite de publicités et génère de revenus pour tous.</p>
+          </div>
           
           {/* CTA Button */}
           <HeroCallToAction />
