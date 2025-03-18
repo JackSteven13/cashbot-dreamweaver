@@ -21,10 +21,10 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
 }) => {
   return (
     <div className="mb-6">
-      <div className="bg-gradient-to-br from-indigo-500 via-blue-600 to-purple-700 rounded-xl shadow-lg p-6 text-white">
+      <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-white/90">Solde Actuel</h3>
-          <div className="bg-white/20 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+          <div className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
             Max {dailyLimit}€/jour
           </div>
         </div>
@@ -40,19 +40,19 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         </div>
         
         <div className="grid grid-cols-2 gap-4 mt-5">
-          <div className="bg-indigo-600/30 backdrop-blur-sm rounded-lg p-3 border border-white/10">
+          <div className="bg-slate-800/70 backdrop-blur-sm rounded-lg p-3 border border-white/5">
             <div className="text-xs text-white/70 mb-1">Abonnement</div>
             <div className="font-medium capitalize">{subscription}</div>
           </div>
           
-          <div className="bg-indigo-600/30 backdrop-blur-sm rounded-lg p-3 border border-white/10">
+          <div className="bg-slate-800/70 backdrop-blur-sm rounded-lg p-3 border border-white/5">
             <div className="text-xs text-white/70 mb-1">Sessions</div>
             <div className="font-medium">{sessionsDisplay}</div>
           </div>
         </div>
         
         {referralCount > 0 && (
-          <div className="mt-4 bg-indigo-600/30 backdrop-blur-sm rounded-lg p-3 border border-white/10 flex justify-between items-center">
+          <div className="mt-4 bg-slate-800/70 backdrop-blur-sm rounded-lg p-3 border border-white/5 flex justify-between items-center">
             <div>
               <div className="text-xs text-white/70 mb-1">Filleuls actifs</div>
               <div className="font-medium">{referralCount}</div>

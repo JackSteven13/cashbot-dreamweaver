@@ -70,13 +70,13 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           {canStartSessionNow && !limitReached ? (
             <Button 
               size="lg" 
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white relative overflow-hidden shadow-md"
+              className="w-full bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white relative overflow-hidden shadow-md"
               disabled={isButtonDisabled || isStartingSession || limitReached}
               onClick={onBoostClick}
             >
               {/* Indicateur visuel de progression vers la limite */}
               <div 
-                className="absolute bottom-0 left-0 h-1 bg-blue-300" 
+                className="absolute bottom-0 left-0 h-1 bg-slate-400" 
                 style={{ width: `${limitPercentage}%` }}
               />
               
@@ -122,14 +122,14 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           <Button 
             size="lg" 
             variant="outline"
-            className="w-full border-blue-500 text-blue-600 hover:bg-blue-50 shadow-sm"
+            className="w-full border-slate-500 text-slate-600 hover:bg-slate-50 shadow-sm"
             disabled={isWithdrawing || isButtonDisabled}
             onClick={onWithdraw}
           >
             <ArrowUpCircle className="mr-2 h-4 w-4" />
             {isWithdrawing ? (
               <span className="flex items-center">
-                <span className="animate-spin h-4 w-4 mr-2 border-2 border-blue-500 border-t-transparent rounded-full"></span>
+                <span className="animate-spin h-4 w-4 mr-2 border-2 border-slate-500 border-t-transparent rounded-full"></span>
                 Traitement...
               </span>
             ) : (
@@ -145,7 +145,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           <Link to="/offres" className="w-full block">
             <Button 
               size="lg" 
-              className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md"
+              className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-md"
             >
               {limitReached ? "Augmenter votre limite" : "Passer à l'offre Pro"}
             </Button>
