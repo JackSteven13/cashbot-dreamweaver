@@ -5,8 +5,10 @@ import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import DashboardLoading from '@/components/dashboard/DashboardLoading';
 import DashboardError from '@/components/dashboard/DashboardError';
 import DailyLimitAlert from '@/components/dashboard/DailyLimitAlert';
+import DormancyAlert from '@/components/dashboard/DormancyAlert';
 import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
+import { useDormancyCheck } from '@/hooks/useDormancyCheck';
 import { canStartManualSession } from '@/utils/subscriptionUtils';
 import { useDashboardInitialization } from '@/hooks/useDashboardInitialization';
 
@@ -32,6 +34,14 @@ const Dashboard = () => {
     isLoading,
     refreshUserData
   } = useUserData();
+  
+  // Add dormancy check
+  const {
+    isDormant,
+    dormancyData,
+    isChecking,
+    handleReactivate
+  } = useDormancyCheck(userData?.subscription || 'freemium', refreshUserData);
   
   const {
     isStartingSession,
@@ -60,7 +70,7 @@ const Dashboard = () => {
   }, [isAuthChecking, isLoading, userData]);
 
   // Afficher un loader plus robuste pendant le chargement
-  if (isAuthChecking || isLoading || !isReady) {
+  if (isAuthChecking || isLoading || !isReady || isChecking) {
     return <DashboardLoading />;
   }
 
@@ -83,8 +93,21 @@ const Dashboard = () => {
       selectedNavItem={selectedNavItem}
       setSelectedNavItem={setSelectedNavItem}
     >
+      {/* Display dormancy alert if applicable */}
+      {isDormant && dormancyData && (
+        <DormancyAlert 
+          show={isDormant}
+          dormancyDays={dormancyData.dormancyDays}
+          penalties={dormancyData.penalties}
+          originalBalance={dormancyData.originalBalance}
+          remainingBalance={dormancyData.remainingBalance}
+          reactivationFee={dormancyData.reactivationFee}
+          onReactivate={handleReactivate}
+        />
+      )}
+      
       <DailyLimitAlert 
-        show={showLimitAlert} 
+        show={showLimitAlert && !isDormant} 
         subscription={userData.subscription}
         currentBalance={userData.balance}
       />
@@ -99,7 +122,7 @@ const Dashboard = () => {
         isNewUser={isNewUser}
         subscription={userData.subscription}
         dailySessionCount={dailySessionCount}
-        canStartSession={canStartManualSession(userData.subscription, dailySessionCount, userData.balance)}
+        canStartSession={!isDormant && canStartManualSession(userData.subscription, dailySessionCount, userData.balance)}
         referrals={userData.referrals}
       />
     </DashboardLayout>

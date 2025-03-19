@@ -10,7 +10,14 @@ export {
 export {
   updateUserBalance,
   resetUserBalance,
-  updateSessionCount
+  updateSessionCount,
+  // Include dormancy utilities
+  checkAccountDormancy,
+  calculateDormancyPenalties,
+  applyDormancyPenalties,
+  calculateReactivationFee,
+  reactivateAccount,
+  DORMANCY_CONSTANTS
 } from './userBalanceUtils';
 
 export {

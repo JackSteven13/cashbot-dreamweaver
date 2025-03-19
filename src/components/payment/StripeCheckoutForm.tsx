@@ -1,147 +1,111 @@
 
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import React from 'react';
+import { Button } from "@/components/ui/button";
+import { ShoppingCart, CreditCard, ExternalLink } from 'lucide-react';
 import { PlanType } from '@/hooks/payment/types';
-import { toast } from "@/components/ui/use-toast";
-import { Link } from 'react-router-dom';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;
   isStripeProcessing: boolean;
   onCheckout: () => void;
+  stripeUrl?: string;
 }
 
-const StripeCheckoutForm = ({ 
-  selectedPlan, 
-  isStripeProcessing, 
-  onCheckout 
-}: StripeCheckoutFormProps) => {
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [hasClicked, setHasClicked] = useState(false);
-  
-  // If it's freemium plan, don't display the form
-  if (selectedPlan === 'freemium') {
-    return (
-      <div className="text-center">
-        <p className="text-green-600 font-medium mb-4">L'abonnement Freemium est gratuit et ne nécessite pas de paiement.</p>
-        <Link to="/dashboard">
-          <Button className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white">
-            Aller au tableau de bord
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-  
-  // Retenter automatiquement la redirection si la page ne s'est pas ouverte
-  useEffect(() => {
-    let timer: number;
-    if (isStripeProcessing && hasClicked) {
-      timer = window.setTimeout(() => {
-        console.log("Retentative automatique de redirection vers Stripe");
-        if (isStripeProcessing) {
-          onCheckout();
-        }
-      }, 3000);
-    }
-    
-    return () => {
-      if (timer) window.clearTimeout(timer);
-    };
-  }, [isStripeProcessing, hasClicked, onCheckout]);
-  
-  const handleCheckout = (e: React.MouseEvent) => {
-    e.preventDefault();
-    
-    if (!termsAccepted) {
-      toast({
-        title: "Conditions non acceptées",
-        description: "Vous devez accepter les conditions générales pour continuer.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    try {
-      console.log("Initiating Stripe checkout from button click");
-      setHasClicked(true);
-      onCheckout();
-      
-      // Forcer l'ouverture dans un nouvel onglet si la redirection échoue
-      if (selectedPlan && selectedPlan !== 'freemium') {
-        const timer = window.setTimeout(() => {
-          if (isStripeProcessing) {
-            toast({
-              title: "Redirection en cours",
-              description: "Si la page de paiement ne s'ouvre pas automatiquement, veuillez réessayer.",
-            });
-          }
-        }, 1500);
-        
-        return () => window.clearTimeout(timer);
-      }
-    } catch (error) {
-      console.error("Error initiating checkout:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'initier le paiement. Veuillez réessayer.",
-        variant: "destructive"
-      });
+const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
+  selectedPlan,
+  isStripeProcessing,
+  onCheckout,
+  stripeUrl
+}) => {
+  const handleManualRedirect = () => {
+    if (stripeUrl) {
+      console.log("Manually redirecting to:", stripeUrl);
+      window.location.href = stripeUrl;
+    } else {
+      console.log("No Stripe URL available for manual redirect");
+      onCheckout(); // Try again through the normal flow
     }
   };
   
+  // Get the appropriate button text and styling based on the plan
+  const buttonText = (() => {
+    if (isStripeProcessing) return "Redirection en cours...";
+    
+    switch (selectedPlan) {
+      case "pro":
+        return "Payer avec Stripe - Offre Pro";
+      case "visionnaire":
+        return "Payer avec Stripe - Offre Visionnaire";
+      case "alpha":
+        return "Payer avec Stripe - Offre Alpha";
+      default:
+        return "Payer avec Stripe";
+    }
+  })();
+  
+  // Button color classes based on plan
+  const buttonClasses = (() => {
+    const baseClasses = "w-full p-3 font-medium rounded-md flex items-center justify-center gap-2 mt-4 transition-all";
+    
+    // Fixing the error - make sure to use correct type check
+    if (!selectedPlan || selectedPlan === "freemium") {
+      return `${baseClasses} bg-gray-500 text-white`;
+    }
+    
+    switch (selectedPlan) {
+      case "pro":
+        return `${baseClasses} bg-blue-600 hover:bg-blue-700 text-white`;
+      case "visionnaire":
+        return `${baseClasses} bg-purple-600 hover:bg-purple-700 text-white`;
+      case "alpha":
+        return `${baseClasses} bg-indigo-600 hover:bg-indigo-700 text-white`;
+      default:
+        return `${baseClasses} bg-blue-600 hover:bg-blue-700 text-white`;
+    }
+  })();
+  
   return (
     <div className="space-y-4">
-      <div className="bg-blue-50 p-4 rounded-md border border-blue-100 text-center">
-        <p className="text-[#1e3a5f] mb-2">Vous allez être redirigé vers Stripe pour un paiement sécurisé</p>
-        <p className="text-sm text-[#486581]">Votre abonnement sera activé immédiatement après le paiement</p>
-      </div>
-      
-      <div className="flex items-start space-x-2 py-2">
-        <Checkbox 
-          id="terms" 
-          checked={termsAccepted}
-          onCheckedChange={(checked) => setTermsAccepted(checked === true)}
-          className="mt-0.5"
-        />
-        <div className="grid gap-1.5 leading-none">
-          <Label htmlFor="terms" className="text-sm text-gray-700">
-            J'ai lu et j'accepte les <Link to="/terms" className="text-blue-600 hover:underline" target="_blank">Conditions Générales d'Utilisation</Link> de la plateforme
-          </Label>
+      <div className="p-4 border rounded-md bg-slate-50 dark:bg-slate-800 space-y-2">
+        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+          <ShoppingCart className="h-4 w-4" />
+          <span>Paiement 100% sécurisé par Stripe</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+          <CreditCard className="h-4 w-4" />
+          <span>Accepte toutes les cartes bancaires et Apple Pay</span>
         </div>
       </div>
       
-      <Button 
-        className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white w-full py-2 px-4"
-        onClick={handleCheckout}
-        disabled={isStripeProcessing || !termsAccepted}
+      <Button
         type="button"
+        className={buttonClasses}
+        onClick={onCheckout}
+        disabled={isStripeProcessing || !selectedPlan || selectedPlan === "freemium"}
       >
         {isStripeProcessing ? (
-          <span className="flex items-center justify-center">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Redirection en cours...
-          </span>
-        ) : 'Payer avec Stripe'}
+          <>
+            <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+            {buttonText}
+          </>
+        ) : (
+          <>
+            <CreditCard className="h-4 w-4" />
+            {buttonText}
+          </>
+        )}
       </Button>
       
-      {/* Afficher un message et un lien de secours si la redirection échoue */}
-      {isStripeProcessing && hasClicked && (
-        <div className="text-xs text-center mt-2 p-2 bg-yellow-50 border border-yellow-100 rounded">
-          <p className="text-yellow-700 mb-1">
-            Si vous n'êtes pas redirigé automatiquement dans quelques secondes :
-          </p>
-          <Button
-            variant="link"
-            className="text-blue-600 p-0 h-auto font-normal"
-            onClick={() => onCheckout()}
-          >
-            Cliquez ici pour ouvrir la page de paiement
-          </Button>
-        </div>
+      {isStripeProcessing && (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full mt-2 text-sm flex items-center justify-center gap-2"
+          onClick={handleManualRedirect}
+        >
+          <ExternalLink className="h-4 w-4" />
+          Problème d'ouverture? Cliquez ici
+        </Button>
       )}
     </div>
   );
