@@ -47,15 +47,17 @@ export const useBalanceActions = ({
       
       if (result.success) {
         console.log("Balance update successful. New balance:", result.newBalance);
+        
         // Update local state immediately with new balance
-        setUserData(prev => {
+        setUserData(prevData => {
+          const newBalance = result.newBalance !== undefined ? result.newBalance : prevData.balance;
           const updatedData = {
-            ...prev,
-            balance: result.newBalance !== undefined ? result.newBalance : prev.balance,
+            ...prevData,
+            balance: newBalance,
             transactions: result.transaction ? [
               result.transaction,
-              ...prev.transactions
-            ] : prev.transactions
+              ...prevData.transactions
+            ] : prevData.transactions
           };
           console.log("Updated userData state:", updatedData);
           return updatedData;

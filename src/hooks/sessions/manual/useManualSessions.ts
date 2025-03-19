@@ -74,10 +74,12 @@ export const useManualSessions = ({
       );
       
       if (success && finalGain > 0) {
+        console.log("Session successful, updating UI balance from", currentBalanceRef.current, "to", newBalance);
+        
         // Update local reference before API call
         currentBalanceRef.current = newBalance;
         
-        // Update user balance in database
+        // Update user balance in database and immediately update UI
         await updateBalance(
           finalGain,
           `Session manuelle : Notre technologie a optimisé le processus et généré ${finalGain.toFixed(2)}€ de revenus pour votre compte ${userData.subscription}.`
@@ -87,7 +89,10 @@ export const useManualSessions = ({
         updateBoostCount();
         
         // Check if limit is now reached
-        if (newBalance >= SUBSCRIPTION_LIMITS[getEffectiveSubscription(userData.subscription) as keyof typeof SUBSCRIPTION_LIMITS]) {
+        const effectiveSub = getEffectiveSubscription(userData.subscription);
+        const effectiveLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS];
+        
+        if (newBalance >= effectiveLimit) {
           setShowLimitAlert(true);
         }
       }
