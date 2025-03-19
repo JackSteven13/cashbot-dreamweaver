@@ -139,6 +139,12 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_current_subscription: {
+        Args: {
+          user_id: string
+        }
+        Returns: string
+      }
       get_referral_code: {
         Args: {
           user_id: string
@@ -156,6 +162,13 @@ export type Database = {
           user_id: string
         }
         Returns: number
+      }
+      update_user_subscription: {
+        Args: {
+          user_id: string
+          new_subscription: string
+        }
+        Returns: boolean
       }
     }
     Enums: {

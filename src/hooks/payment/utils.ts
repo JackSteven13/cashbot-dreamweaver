@@ -84,7 +84,7 @@ export const updateLocalSubscription = async (subscription: PlanType): Promise<v
                 .rpc('update_user_subscription', { 
                   user_id: session.user.id, 
                   new_subscription: subscription 
-                });
+                }) as { error: any };
                 
               if (!rpcError) {
                 console.log("Synchronisation corrigée avec succès via RPC");
@@ -164,7 +164,22 @@ export const checkCurrentSubscription = async (): Promise<string | null> => {
     
     console.log("Vérification de l'abonnement actuel pour:", session.user.id);
     
-    // Récupérer l'abonnement actuel en contournant le cache
+    // Utiliser la fonction RPC pour obtenir l'abonnement actuel
+    try {
+      const { data, error } = await supabase
+        .rpc('get_current_subscription', { 
+          user_id: session.user.id 
+        }) as { data: string | null, error: any };
+        
+      if (!error && data) {
+        console.log("Abonnement actuel selon RPC:", data);
+        return data;
+      }
+    } catch (rpcError) {
+      console.error("Erreur RPC:", rpcError);
+    }
+    
+    // Si l'appel RPC échoue, récupérer directement depuis la table
     const { data, error } = await supabase
       .from('user_balances')
       .select('subscription')

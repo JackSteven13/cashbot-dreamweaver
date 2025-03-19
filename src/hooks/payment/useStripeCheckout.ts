@@ -1,15 +1,44 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { PlanType } from './types';
-import { getReferralCodeFromURL, formatErrorMessage, updateLocalSubscription } from './utils';
+import { 
+  getReferralCodeFromURL, 
+  formatErrorMessage, 
+  updateLocalSubscription,
+  checkCurrentSubscription
+} from './utils';
 import { createCheckoutSession } from './paymentService';
 
 export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
   const [isStripeProcessing, setIsStripeProcessing] = useState(false);
+  const [actualSubscription, setActualSubscription] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
+  
+  // Vérifier l'abonnement actuel depuis Supabase au chargement
+  useEffect(() => {
+    const verifyCurrentSubscription = async () => {
+      setIsChecking(true);
+      const currentSub = await checkCurrentSubscription();
+      if (currentSub) {
+        setActualSubscription(currentSub);
+        console.log("Abonnement vérifié depuis Supabase:", currentSub);
+        
+        // Mettre à jour le localStorage si nécessaire
+        const localSub = localStorage.getItem('subscription');
+        if (localSub !== currentSub) {
+          console.log(`Mise à jour du localStorage : ${localSub} -> ${currentSub}`);
+          localStorage.setItem('subscription', currentSub);
+        }
+      }
+      setIsChecking(false);
+    };
+    
+    verifyCurrentSubscription();
+  }, []);
 
   const handleStripeCheckout = async () => {
     if (!selectedPlan) {
@@ -21,34 +50,19 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       return;
     }
 
-    // Vérifier si l'utilisateur est déjà abonné à ce plan en interrogeant directement Supabase
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        const { data: userBalanceData, error } = await supabase
-          .from('user_balances')
-          .select('subscription')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (!error && userBalanceData) {
-          // Si l'utilisateur est déjà abonné à ce plan, afficher un message et rediriger
-          if (userBalanceData.subscription === selectedPlan) {
-            toast({
-              title: "Abonnement déjà actif",
-              description: `Vous êtes déjà abonné au forfait ${selectedPlan}.`,
-            });
-            navigate('/dashboard');
-            return;
-          }
-          
-          console.log('Current subscription:', userBalanceData.subscription, 'Selected plan:', selectedPlan);
-        }
-      }
-    } catch (error) {
-      console.error("Error checking current subscription:", error);
-      // Continue with subscription flow even if check fails
+    // Vérifier à nouveau l'abonnement actuel
+    const currentSub = await checkCurrentSubscription();
+    
+    // Si l'utilisateur est déjà abonné à ce plan, afficher un message et rediriger
+    if (currentSub === selectedPlan) {
+      toast({
+        title: "Abonnement déjà actif",
+        description: `Vous êtes déjà abonné au forfait ${selectedPlan}. Vous allez être redirigé vers votre tableau de bord.`,
+      });
+      // Forcer une actualisation des données
+      localStorage.setItem('forceRefreshBalance', 'true');
+      navigate('/dashboard');
+      return;
     }
 
     // Pour freemium, update subscription directement sans Stripe
@@ -66,15 +80,42 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
           return;
         }
         
-        const { error } = await supabase
-          .from('user_balances')
-          .update({ 
-            subscription: selectedPlan,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', session.user.id);
+        // Mise à jour via RPC
+        try {
+          const { error: rpcError } = await supabase
+            .rpc('update_user_subscription', { 
+              user_id: session.user.id, 
+              new_subscription: selectedPlan 
+            }) as { error: any };
+            
+          if (!rpcError) {
+            console.log("Abonnement mis à jour avec succès via RPC");
+          } else {
+            // Si l'appel RPC échoue, essayer la méthode directe
+            const { error } = await supabase
+              .from('user_balances')
+              .update({ 
+                subscription: selectedPlan,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', session.user.id);
+              
+            if (error) throw error;
+          }
+        } catch (error) {
+          console.error("Error updating subscription:", error);
           
-        if (error) throw error;
+          // Dernière tentative - méthode directe
+          const { error: directError } = await supabase
+            .from('user_balances')
+            .update({ 
+              subscription: selectedPlan,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', session.user.id);
+            
+          if (directError) throw directError;
+        }
         
         // Mettre à jour localStorage immédiatement
         await updateLocalSubscription(selectedPlan);
@@ -175,6 +216,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
 
   return {
     isStripeProcessing,
-    handleStripeCheckout
+    handleStripeCheckout,
+    actualSubscription,
+    isChecking
   };
 };

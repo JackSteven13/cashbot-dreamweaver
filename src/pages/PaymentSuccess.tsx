@@ -53,8 +53,11 @@ const PaymentSuccess = () => {
             
             // Essayer une approche alternative en cas d'erreur
             try {
+              // Utiliser la fonction RPC pour obtenir l'abonnement actuel (typage correct)
               const { data: freshData, error: rpcError } = await supabase
-                .rpc('get_current_subscription', { user_id: session.user.id });
+                .rpc('get_current_subscription', { 
+                  user_id: session.user.id 
+                }) as { data: string | null, error: any };
                 
               if (!rpcError && freshData) {
                 console.log("Abonnement récupéré via RPC:", freshData);
