@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -10,6 +11,8 @@ import {
   Home
 } from 'lucide-react';
 import Button from '@/components/Button';
+import { logoutUser } from '@/utils/auth/index';
+import { toast } from '@/components/ui/use-toast';
 
 interface SidebarProps {
   selectedNavItem: string;
@@ -19,14 +22,20 @@ interface SidebarProps {
 const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
   const navigate = useNavigate();
   
-  // Function to handle logout
-  const handleLogout = () => {
-    localStorage.removeItem('user_registered');
-    localStorage.removeItem('username');
-    localStorage.removeItem('user_balance');
-    localStorage.removeItem('daily_session_count');
-    localStorage.removeItem('subscription');
-    navigate('/');
+  // Updated function to handle logout properly
+  const handleLogout = async () => {
+    // Show loading toast
+    toast({
+      title: "Déconnexion en cours",
+      description: "Veuillez patienter...",
+    });
+    
+    const success = await logoutUser();
+    
+    if (success) {
+      // Redirect to home page after logout
+      navigate('/', { replace: true });
+    }
   };
   
   // Function to handle both setting the selected item and navigation
@@ -89,7 +98,7 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
           fullWidth 
           className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50"
           onClick={() => {
-            // Naviguez d'abord vers la page d'accueil
+            // Navigate to the home page
             navigate('/');
           }}
         >
