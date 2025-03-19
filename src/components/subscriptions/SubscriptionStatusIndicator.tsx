@@ -1,6 +1,7 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { supabase } from "@/integrations/supabase/client";
 
 interface SubscriptionStatusIndicatorProps {
   isLoading: boolean;
@@ -11,6 +12,50 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
   isLoading,
   currentSubscription
 }) => {
+  const [verifiedSubscription, setVerifiedSubscription] = useState<string | null>(currentSubscription);
+  
+  // Effet pour vérifier la cohérence avec Supabase directement
+  useEffect(() => {
+    const verifySubscriptionWithSupabase = async () => {
+      try {
+        // Vérifier si l'utilisateur est connecté
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          // Essayer d'abord la fonction RPC pour une récupération fiable
+          const { data: rpcData, error: rpcError } = await supabase
+            .rpc('get_current_subscription', { 
+              user_id: session.user.id 
+            }) as { data: string | null, error: any };
+            
+          if (!rpcError && rpcData) {
+            setVerifiedSubscription(rpcData);
+          } else {
+            // Fallback sur requête directe
+            const { data: userData, error: directError } = await supabase
+              .from('user_balances')
+              .select('subscription')
+              .eq('id', session.user.id)
+              .single();
+              
+            if (!directError && userData && userData.subscription) {
+              setVerifiedSubscription(userData.subscription);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Erreur lors de la vérification de l'abonnement:", error);
+      }
+    };
+    
+    // Si l'état local et les props diffèrent, vérifier avec Supabase
+    if (currentSubscription !== verifiedSubscription) {
+      verifySubscriptionWithSupabase();
+    } else {
+      setVerifiedSubscription(currentSubscription);
+    }
+  }, [currentSubscription]);
+
   // Fonction pour obtenir le nom d'affichage de l'abonnement
   const getDisplayName = (code: string): string => {
     const names: Record<string, string> = {
@@ -49,18 +94,20 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
     );
   }
   
-  if (currentSubscription && currentSubscription !== 'freemium') {
+  const displaySubscription = verifiedSubscription || currentSubscription;
+  
+  if (displaySubscription && displaySubscription !== 'freemium') {
     return (
-      <div className={`mt-6 p-4 bg-gradient-to-r ${getGradient(currentSubscription)} rounded-lg shadow-inner border border-white/10 animate-fadeIn relative overflow-hidden`}>
+      <div className={`mt-6 p-4 bg-gradient-to-r ${getGradient(displaySubscription)} rounded-lg shadow-inner border border-white/10 animate-fadeIn relative overflow-hidden`}>
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-white/5 to-transparent opacity-60"></div>
         <p className="text-[#a0e4ff] font-semibold relative z-10">
           Votre abonnement actuel: <span className="text-white font-bold ml-1">
-            {getDisplayName(currentSubscription)}
+            {getDisplayName(displaySubscription)}
           </span>
         </p>
       </div>
     );
-  } else if (currentSubscription === 'freemium') {
+  } else if (displaySubscription === 'freemium') {
     return (
       <div className="mt-6 p-4 bg-gradient-to-r from-gray-800/70 to-gray-700/70 rounded-lg shadow-inner border border-gray-600/30">
         <p className="text-gray-300 font-medium">

@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import OffresHeader from '@/components/subscriptions/OffresHeader';
@@ -19,14 +20,19 @@ const Offres = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
-          // Forcer un rafraîchissement des données depuis Supabase en évitant le cache
-          console.log("Récupération de l'abonnement depuis Supabase avec bypass du cache");
+          // Désactiver complètement le cache pour cette requête critique
+          const headers = new Headers();
+          headers.append('cache-control', 'no-cache');
+          headers.append('pragma', 'no-cache');
           
           try {
             // 1. Essayer d'abord la fonction RPC pour une réponse plus fiable
             const { data: rpcData, error: rpcError } = await supabase
               .rpc('get_current_subscription', { 
                 user_id: session.user.id 
+              }, { 
+                headers,
+                head: false // Contourner le cache
               }) as { data: string | null, error: any };
               
             if (!rpcError && rpcData) {
@@ -59,6 +65,15 @@ const Offres = () => {
                   console.log("Aucune donnée valide, utilisation de freemium par défaut");
                   setCurrentSubscription('freemium');
                 }
+                
+                // Notification en cas d'erreur
+                if (directError && directError.code !== 'PGRST116') {
+                  toast({
+                    title: "Problème de connexion",
+                    description: "Impossible de vérifier votre abonnement. Les données affichées peuvent ne pas être à jour.",
+                    variant: "destructive"
+                  });
+                }
               }
             }
           } catch (error) {
@@ -84,7 +99,16 @@ const Offres = () => {
       }
     };
     
+    // Vérifier l'abonnement au chargement
     checkSubscription();
+    
+    // Mettre en place un listener pour les changements d'authentification
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        console.log("État d'authentification modifié, actualisation de l'abonnement");
+        checkSubscription();
+      }
+    });
     
     // Écouter les changements d'abonnement via le localStorage
     const handleStorageChange = (event: StorageEvent) => {
@@ -95,7 +119,11 @@ const Offres = () => {
     };
     
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
   
   return (
