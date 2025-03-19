@@ -1,5 +1,5 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { getEffectiveSubscription, SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
 import { useSessionProtection } from './useSessionProtection';
@@ -16,13 +16,16 @@ export const useManualSessions = ({
 }: UseManualSessionsProps): UseManualSessionsReturn => {
   const [isStartingSession, setIsStartingSession] = useState(false);
   
-  // Maintenir une référence locale au solde actuel pour éviter les conditions de concurrence
+  // Maintain a local reference to the current balance to avoid race conditions
   const currentBalanceRef = useRef<number>(userData.balance);
   
-  // Mettre à jour la référence du solde lorsque userData change
-  if (currentBalanceRef.current !== userData.balance) {
-    currentBalanceRef.current = userData.balance;
-  }
+  // Update the balance reference when userData changes
+  useEffect(() => {
+    if (currentBalanceRef.current !== userData.balance) {
+      console.log("Updating balance reference from", currentBalanceRef.current, "to", userData.balance);
+      currentBalanceRef.current = userData.balance;
+    }
+  }, [userData.balance]);
   
   // Hooks for session management
   const { 
