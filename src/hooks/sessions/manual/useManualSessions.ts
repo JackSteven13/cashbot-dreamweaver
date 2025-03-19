@@ -1,7 +1,7 @@
 
 import { useState, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
-import { getEffectiveSubscription } from '@/utils/subscriptionUtils';
+import { getEffectiveSubscription, SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
 import { useSessionProtection } from './useSessionProtection';
 import { useLimitChecking } from './useLimitChecking';
 import { useSessionGain } from './useSessionGain';

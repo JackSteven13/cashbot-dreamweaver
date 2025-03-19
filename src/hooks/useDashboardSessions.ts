@@ -20,13 +20,13 @@ export const useDashboardSessions = (
     setShowLimitAlert
   );
 
-  const { isStartingSession, handleStartSession } = useManualSessions(
+  const { isStartingSession, handleStartSession } = useManualSessions({
     userData,
     dailySessionCount,
     incrementSessionCount,
     updateBalance,
     setShowLimitAlert
-  );
+  });
 
   const { handleWithdrawal, isProcessingWithdrawal } = useWithdrawal(
     userData,
