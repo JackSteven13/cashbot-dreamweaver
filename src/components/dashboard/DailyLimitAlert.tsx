@@ -61,9 +61,9 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
         <div className="flex-1">
           <span className={isLimitReached ? 'text-amber-700' : 'text-yellow-700'}>
             {isLimitReached 
-              ? `Vous avez atteint votre limite de gain journalier de ${effectiveLimit}€ avec votre compte ${effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1)}.
+              ? `Vous avez atteint votre limite de gain journalier de ${effectiveLimit.toFixed(1)}€ avec votre compte ${effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1)}.
                  Votre solde actuel est de ${currentBalance.toFixed(2)}€.`
-              : `Vous approchez de votre limite de gain journalier de ${effectiveLimit}€ avec votre compte ${effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1)}.
+              : `Vous approchez de votre limite de gain journalier de ${effectiveLimit.toFixed(1)}€ avec votre compte ${effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1)}.
                  Votre solde actuel est de ${currentBalance.toFixed(2)}€.`
             }
           </span>

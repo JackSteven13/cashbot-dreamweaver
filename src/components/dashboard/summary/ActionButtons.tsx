@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { ArrowUpCircle, Clock, PlayCircle, AlertTriangle } from 'lucide-react';
+import { ArrowUpCircle, Clock, PlayCircle, AlertTriangle, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
@@ -139,19 +139,18 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         </div>
       </div>
 
-      {/* Rangée conditionnelle pour le bouton d'augmentation de limite */}
-      {(subscription === 'freemium' && !tempProEnabled || limitReached) && (
-        <div className="mt-1">
-          <Link to="/offres" className="w-full block">
-            <Button 
-              size="lg" 
-              className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-md"
-            >
-              {limitReached ? "Augmenter votre limite" : "Passer à l'offre Pro"}
-            </Button>
-          </Link>
-        </div>
-      )}
+      {/* Bouton d'accès aux offres toujours visible */}
+      <div className="mt-1">
+        <Link to="/offres" className="w-full block">
+          <Button 
+            size="lg" 
+            className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white shadow-md"
+          >
+            <Package className="mr-2 h-4 w-4" />
+            {subscription === 'freemium' ? "Passer à l'offre Pro" : "Gérer mon abonnement"}
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 };

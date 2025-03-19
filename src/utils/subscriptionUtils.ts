@@ -1,8 +1,7 @@
-
 // Subscription plans and their limits
 export const SUBSCRIPTION_LIMITS = {
-  'freemium': 0.5,
-  'pro': 5,
+  'freemium': 0.5,  // Limité à 0.5€ par jour pour freemium
+  'pro': 5,         // 5€ par jour pour pro
   'visionnaire': 20,
   'alpha': 50
 };
@@ -40,7 +39,7 @@ export const getEffectiveSubscription = (subscription: string): string => {
 export const checkDailyLimit = (balance: number, subscription: string): boolean => {
   const effectiveSubscription = getEffectiveSubscription(subscription);
   const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS];
-  return balance >= dailyLimit && effectiveSubscription === 'freemium';
+  return balance >= dailyLimit;
 };
 
 /**

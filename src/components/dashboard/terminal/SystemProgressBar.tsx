@@ -20,7 +20,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
           Progression de la limite journalière
         </div>
         <div className="text-sm font-bold text-blue-100">
-          {displayBalance.toFixed(2)}€ / {dailyLimit}€
+          {displayBalance.toFixed(2)}€ / {dailyLimit.toFixed(1)}€
         </div>
       </div>
       <div className="h-2.5 rounded-full bg-blue-800/50 overflow-hidden">
