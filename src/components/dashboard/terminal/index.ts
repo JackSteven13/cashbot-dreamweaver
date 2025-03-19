@@ -1,8 +1,8 @@
 
 export { default as SystemTerminal } from './SystemTerminal';
-export { ProTrialBanner, ProTrialActive } from './ProTrialBanner';
-export { SystemInfo, SystemInfoGrid } from './SystemInfo';
-export { SystemProgressBar } from './SystemProgressBar';
-export { SessionCountdown } from './SessionCountdown';
-export { NewUserGuide } from './NewUserGuide';
-export { FeedbackDialog } from './FeedbackDialog';
+export { default as FeedbackDialog } from './FeedbackDialog';
+export { SystemInfo } from './SystemInfo';
+export { default as SystemProgressBar } from './SystemProgressBar';
+export { default as SessionCountdown } from './SessionCountdown';
+export { default as NewUserGuide } from './NewUserGuide';
+export { default as ProTrialBanner } from './ProTrialBanner';
