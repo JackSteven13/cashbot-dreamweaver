@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscriptionUtils';
@@ -35,10 +34,12 @@ export const useSummaryPanel = ({
   useEffect(() => {
     // Vérifier l'abonnement effectif (avec essai Pro)
     const effectiveSub = getEffectiveSubscription(subscription);
+    console.log("Abonnement effectif:", effectiveSub, "Original:", subscription);
     setEffectiveSubscription(effectiveSub);
     
     // Mettre à jour la limite journalière effective
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    console.log("Limite journalière effective:", limit);
     setEffectiveDailyLimit(limit);
     
     return () => {

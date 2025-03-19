@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { FeedbackDialog } from './FeedbackDialog';
 import { SystemInfo, SystemInfoGrid } from './SystemInfo';
@@ -50,9 +49,11 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
     // Vérifier si le mode Pro temporaire est activé et mettre à jour l'abonnement effectif
     const effectiveSub = getEffectiveSubscription(subscription);
     setEffectiveSubscription(effectiveSub);
+    console.log("SystemTerminal - Abonnement effectif:", effectiveSub);
     
     // Mettre à jour la limite quotidienne effective
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    console.log("SystemTerminal - Limite effective:", limit);
     setEffectiveLimit(limit);
     
     // Vérifier si le mode Pro temporaire est activé dans le localStorage

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { ArrowUpCircle, Clock, PlayCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,10 +33,12 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   // Vérifier l'abonnement effectif et la limite journalière
   useEffect(() => {
     const effectiveSub = getEffectiveSubscription(subscription);
+    console.log("ActionButtons - Abonnement effectif:", effectiveSub);
     setEffectiveSubscription(effectiveSub);
     
     // Utiliser la limite correspondant à l'abonnement effectif
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    console.log("ActionButtons - Limite effective:", limit);
     setEffectiveLimit(limit);
   }, [subscription, dailyLimit]);
   
@@ -49,7 +50,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   
   // Vérifier si on peut démarrer une session en tenant compte de l'abonnement effectif
   const canStartSessionNow = effectiveSubscription !== 'freemium' ? !limitReached : canStartSession;
-  
+
   return (
     <div className="grid grid-cols-1 gap-3 mb-6">
       {/* Rangée de boutons principale avec layout amélioré */}

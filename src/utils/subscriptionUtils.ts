@@ -27,7 +27,12 @@ export const getEffectiveSubscription = (subscription: string): string => {
     const now = Date.now();
     
     if (now < expiryTime) {
+      console.log("Mode Pro temporaire actif, retourne 'pro' au lieu de", subscription);
       return 'pro';
+    } else {
+      // Si expiré, supprimer du localStorage
+      localStorage.removeItem('proTrialActive');
+      localStorage.removeItem('proTrialExpires');
     }
   }
   

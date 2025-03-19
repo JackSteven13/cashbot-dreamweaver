@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
@@ -6,7 +5,8 @@ import {
   SUBSCRIPTION_LIMITS, 
   checkDailyLimit, 
   canStartManualSession,
-  calculateManualSessionGain 
+  calculateManualSessionGain,
+  getEffectiveSubscription 
 } from '@/utils/subscriptionUtils';
 
 export const useManualSessions = (
@@ -74,10 +74,15 @@ export const useManualSessions = (
       return;
     }
     
-    // Vérifier d'abord si la limite est atteinte
-    const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    // Vérifier l'abonnement effectif (y compris l'essai Pro)
+    const effectiveSub = getEffectiveSubscription(userData.subscription);
+    
+    // Vérifier d'abord si la limite est atteinte en fonction de l'abonnement effectif
+    const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    console.log("Vérification de limite:", currentBalanceRef.current, ">=", dailyLimit, "pour l'abonnement", effectiveSub);
+    
     if (currentBalanceRef.current >= dailyLimit) {
-      console.log("Daily limit already reached:", currentBalanceRef.current, ">=", dailyLimit);
+      console.log("Daily limit already reached:", currentBalanceRef.current, ">=", dailyLimit, "for subscription", effectiveSub);
       setShowLimitAlert(true);
       toast({
         title: "Limite journalière atteinte",
@@ -92,10 +97,13 @@ export const useManualSessions = (
       clickTimeoutRef.current = null;
     }, 2000);
     
-    // Check if session can be started
-    if (!canStartManualSession(userData.subscription, dailySessionCount, currentBalanceRef.current)) {
+    // Check if session can be started using the effective subscription
+    const canStartSessionEffective = effectiveSub !== 'freemium' ? true : 
+                                   canStartManualSession(userData.subscription, dailySessionCount, currentBalanceRef.current);
+    
+    if (!canStartSessionEffective) {
       // If freemium account and session limit reached
-      if (userData.subscription === 'freemium' && dailySessionCount >= 1) {
+      if (userData.subscription === 'freemium' && effectiveSub === 'freemium' && dailySessionCount >= 1) {
         toast({
           title: "Limite de sessions atteinte",
           description: "Votre abonnement Freemium est limité à 1 session manuelle par jour. Passez à un forfait supérieur pour plus de sessions.",
@@ -105,11 +113,11 @@ export const useManualSessions = (
       }
       
       // If daily gain limit reached
-      if (checkDailyLimit(currentBalanceRef.current, userData.subscription)) {
+      if (checkDailyLimit(currentBalanceRef.current, effectiveSub)) {
         setShowLimitAlert(true);
         toast({
           title: "Limite journalière atteinte",
-          description: `Vous avez atteint votre limite de gain journalier de ${SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS]}€. Revenez demain ou passez à un forfait supérieur.`,
+          description: `Vous avez atteint votre limite de gain journalier de ${SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS]}€. Revenez demain ou passez à un forfait supérieur.`,
           variant: "destructive"
         });
         return;
@@ -130,8 +138,8 @@ export const useManualSessions = (
       // Simulate manual session
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Calculate gain using the utility function, ensure we use the latest balance
-      const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      // Calculate gain using the utility function, ensure we use the latest balance & effective subscription
+      const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       const remainingAmount = dailyLimit - currentBalanceRef.current;
       
       // Vérification finale avant d'appliquer le gain
@@ -149,7 +157,7 @@ export const useManualSessions = (
       }
       
       const randomGain = calculateManualSessionGain(
-        userData.subscription, 
+        effectiveSub, 
         currentBalanceRef.current, 
         userData.referrals.length
       );
