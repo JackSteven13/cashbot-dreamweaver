@@ -30,6 +30,42 @@ interface FormValues {
   daysPerMonth: number;
 }
 
+// Sample features for each plan
+const SUBSCRIPTION_FEATURES: Record<string, string[]> = {
+  'freemium': [
+    'Limite de gains de 0,5€ par jour',
+    '1 session manuelle par jour',
+    '1 session automatique par jour',
+    'Support par email'
+  ],
+  'pro': [
+    'Limite de gains de 5€ par jour',
+    'Sessions manuelles illimitées',
+    'Sessions automatiques illimitées',
+    'Support prioritaire'
+  ],
+  'visionnaire': [
+    'Limite de gains de 20€ par jour',
+    'Sessions manuelles et automatiques illimitées',
+    'Support prioritaire 24/7',
+    'Accès à toutes les fonctionnalités'
+  ],
+  'alpha': [
+    'Limite de gains de 50€ par jour',
+    'Accès illimité à toutes les fonctionnalités',
+    'Support dédié 24/7',
+    'Fonctionnalités exclusives'
+  ]
+};
+
+// Sample descriptions for each plan
+const SUBSCRIPTION_DESCRIPTIONS: Record<string, string> = {
+  'freemium': 'Pour débuter et explorer la plateforme',
+  'pro': 'Pour les utilisateurs sérieux',
+  'visionnaire': 'Pour maximiser vos gains',
+  'alpha': 'Pour les professionnels et entreprises'
+};
+
 const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({ 
   currentSubscription, 
   isNewUser,
@@ -100,6 +136,11 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
               return (
                 <SubscriptionPlanCard
                   key={plan}
+                  title={SUBSCRIPTION_LABELS[plan] || plan}
+                  price={SUBSCRIPTION_PRICES[plan] || 0}
+                  description={SUBSCRIPTION_DESCRIPTIONS[plan] || ''}
+                  features={SUBSCRIPTION_FEATURES[plan] || []}
+                  limit={SUBSCRIPTION_LIMITS[plan] || 0}
                   plan={plan}
                   isSelected={selectedPlan === plan}
                   isHomePage={isHomePage}
