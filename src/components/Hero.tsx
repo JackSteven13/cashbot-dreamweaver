@@ -35,8 +35,9 @@ const Hero = () => {
             dailyRevenueTarget={3500000} 
           />
           
-          {/* Network Effect Message */}
-          <div className="text-sm text-center text-blue-200 bg-blue-900/30 p-3 rounded-lg mb-6 max-w-2xl">
+          {/* Network Effect Message - Updated styling for better contrast in both modes */}
+          <div className="text-sm text-center bg-blue-900/30 dark:bg-blue-900/30 dark:text-blue-200 text-blue-800 
+            p-3 rounded-lg mb-6 max-w-2xl border border-blue-200/20 shadow-sm">
             <p className="font-medium">Effet réseau puissant : Chaque nouvel utilisateur booste les performances globales.</p>
             <p>Plus il y a d'utilisateurs sur la plateforme, plus le CashBot traite de publicités et génère de revenus pour tous.</p>
           </div>
