@@ -20,39 +20,62 @@ const Offres = () => {
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [currentSubscription, setCurrentSubscription] = useState<string>('freemium');
   const [isLoading, setIsLoading] = useState(true);
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
   
-  // Fonction pour récupérer l'abonnement actuel depuis Supabase
-  const fetchCurrentSubscription = useCallback(async () => {
+  // Fonction améliorée pour récupérer l'abonnement actuel depuis Supabase
+  const fetchCurrentSubscription = useCallback(async (forceRefresh = false) => {
     try {
+      setIsLoading(true);
+      
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (session) {
-        console.log("Session trouvée, récupération de l'abonnement...");
-        
-        const { data: userBalanceData, error } = await supabase
-          .from('user_balances')
-          .select('subscription')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (!error && userBalanceData) {
-          console.log("Abonnement trouvé dans Supabase:", userBalanceData.subscription);
-          // Mettre à jour le state et localStorage
-          setCurrentSubscription(userBalanceData.subscription);
-          localStorage.setItem('subscription', userBalanceData.subscription);
-          return userBalanceData.subscription;
-        } else {
-          console.error("Erreur récupération abonnement:", error);
-          // Fallback sur localStorage
-          const localSubscription = localStorage.getItem('subscription') || 'freemium';
-          setCurrentSubscription(localSubscription);
-          return localSubscription;
-        }
-      } else {
+      if (!session) {
         console.log("Pas de session utilisateur, utilisation localStorage");
-        // Fallback sur localStorage si pas de session
         const localSubscription = localStorage.getItem('subscription') || 'freemium';
         setCurrentSubscription(localSubscription);
+        setIsLoading(false);
+        return localSubscription;
+      }
+      
+      console.log("Session trouvée, récupération de l'abonnement directement depuis Supabase...");
+      
+      // Forcer le bypass du cache pour obtenir les données les plus récentes
+      const { data: userBalanceData, error } = await supabase
+        .from('user_balances')
+        .select('subscription')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (!error && userBalanceData) {
+        console.log("Abonnement trouvé dans Supabase:", userBalanceData.subscription);
+        // Mettre à jour le state et localStorage
+        setCurrentSubscription(userBalanceData.subscription);
+        localStorage.setItem('subscription', userBalanceData.subscription);
+        setIsLoading(false);
+        return userBalanceData.subscription;
+      } else {
+        console.error("Erreur récupération abonnement:", error);
+        
+        // Si erreur, essayons une approche différente avec RPC pour contourner le cache
+        try {
+          const { data: freshData, error: rpcError } = await supabase
+            .rpc('get_current_subscription', { user_id: session.user.id });
+            
+          if (!rpcError && freshData) {
+            console.log("Abonnement récupéré via RPC:", freshData);
+            setCurrentSubscription(freshData);
+            localStorage.setItem('subscription', freshData);
+            setIsLoading(false);
+            return freshData;
+          }
+        } catch (rpcErr) {
+          console.error("Erreur RPC:", rpcErr);
+        }
+        
+        // Fallback sur localStorage en dernier recours
+        const localSubscription = localStorage.getItem('subscription') || 'freemium';
+        setCurrentSubscription(localSubscription);
+        setIsLoading(false);
         return localSubscription;
       }
     } catch (err) {
@@ -60,35 +83,43 @@ const Offres = () => {
       // Fallback sur localStorage en cas d'erreur
       const localSubscription = localStorage.getItem('subscription') || 'freemium';
       setCurrentSubscription(localSubscription);
+      setIsLoading(false);
       return localSubscription;
     }
   }, []);
   
-  // Charger l'abonnement actuel au chargement de la page
+  // Charger l'abonnement actuel au chargement de la page avec rafraîchissement forcé
   useEffect(() => {
-    const loadSubscription = async () => {
-      setIsLoading(true);
-      await fetchCurrentSubscription();
-      setIsLoading(false);
-    };
+    fetchCurrentSubscription(true);
     
-    loadSubscription();
+    // Vérifier si une mise à jour de l'abonnement a été effectuée
+    const forceRefreshFlag = localStorage.getItem('forceRefreshBalance');
+    if (forceRefreshFlag === 'true') {
+      console.log("Forçage du rafraîchissement détecté");
+      localStorage.removeItem('forceRefreshBalance');
+      // Double vérification après un court délai pour permettre à Supabase de se mettre à jour
+      setTimeout(() => {
+        fetchCurrentSubscription(true);
+      }, 1000);
+    }
     
     // Ajouter un intervalle pour vérifier périodiquement l'abonnement
     const checkInterval = setInterval(() => {
-      fetchCurrentSubscription();
-    }, 10000); // Vérifier toutes les 10 secondes
+      fetchCurrentSubscription(true);
+      setLastRefreshTime(Date.now());
+    }, 5000); // Vérifier toutes les 5 secondes
     
     return () => clearInterval(checkInterval);
   }, [fetchCurrentSubscription]);
 
+  // Vérifier si le plan est l'abonnement actuel de l'utilisateur
   const isCurrentPlan = (plan: string) => {
     return plan === currentSubscription;
   };
 
   const handleSubscribe = async (niveau: string) => {
     // Vérifier à nouveau l'abonnement actuel avant de procéder
-    const refreshedSubscription = await fetchCurrentSubscription();
+    const refreshedSubscription = await fetchCurrentSubscription(true);
     
     if (niveau === refreshedSubscription) {
       toast({

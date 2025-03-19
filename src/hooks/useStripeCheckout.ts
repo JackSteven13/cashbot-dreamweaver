@@ -1,19 +1,44 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import { PlanType } from '@/hooks/usePaymentProcessing';
+import { PlanType } from './payment/types';
+import { 
+  getReferralCodeFromURL, 
+  formatErrorMessage, 
+  updateLocalSubscription,
+  checkCurrentSubscription
+} from './payment/utils';
+import { createCheckoutSession } from './payment/paymentService';
 
 export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
   const [isStripeProcessing, setIsStripeProcessing] = useState(false);
-
-  // Extract referral code from URL if present
-  const getReferralCodeFromURL = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('ref');
-  };
+  const [actualSubscription, setActualSubscription] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
+  
+  // Vérifier l'abonnement actuel depuis Supabase au chargement
+  useEffect(() => {
+    const verifyCurrentSubscription = async () => {
+      setIsChecking(true);
+      const currentSub = await checkCurrentSubscription();
+      if (currentSub) {
+        setActualSubscription(currentSub);
+        console.log("Abonnement vérifié depuis Supabase:", currentSub);
+        
+        // Mettre à jour le localStorage si nécessaire
+        const localSub = localStorage.getItem('subscription');
+        if (localSub !== currentSub) {
+          console.log(`Mise à jour du localStorage : ${localSub} -> ${currentSub}`);
+          localStorage.setItem('subscription', currentSub);
+        }
+      }
+      setIsChecking(false);
+    };
+    
+    verifyCurrentSubscription();
+  }, []);
 
   const handleStripeCheckout = async () => {
     if (!selectedPlan) {
@@ -23,6 +48,70 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         variant: "destructive"
       });
       return;
+    }
+
+    // Vérifier à nouveau l'abonnement actuel
+    const currentSub = await checkCurrentSubscription();
+    
+    // Si l'utilisateur est déjà abonné à ce plan, afficher un message et rediriger
+    if (currentSub === selectedPlan) {
+      toast({
+        title: "Abonnement déjà actif",
+        description: `Vous êtes déjà abonné au forfait ${selectedPlan}. Vous allez être redirigé vers votre tableau de bord.`,
+      });
+      // Forcer une actualisation des données
+      localStorage.setItem('forceRefreshBalance', 'true');
+      navigate('/dashboard');
+      return;
+    }
+
+    // Pour freemium, update subscription directement sans Stripe
+    if (selectedPlan === 'freemium') {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          toast({
+            title: "Erreur",
+            description: "Vous devez être connecté pour effectuer cette action",
+            variant: "destructive"
+          });
+          navigate('/login');
+          return;
+        }
+        
+        const { error } = await supabase
+          .from('user_balances')
+          .update({ 
+            subscription: selectedPlan,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', session.user.id);
+          
+        if (error) throw error;
+        
+        // Mettre à jour localStorage immédiatement
+        await updateLocalSubscription(selectedPlan);
+        
+        // Forcer le rafraîchissement des données au retour sur le dashboard
+        localStorage.setItem('forceRefreshBalance', 'true');
+        
+        toast({
+          title: "Abonnement Freemium activé",
+          description: "Votre abonnement Freemium a été activé avec succès !",
+        });
+        
+        navigate('/dashboard');
+        return;
+      } catch (error) {
+        console.error("Error updating subscription:", error);
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors de l'activation de votre abonnement.",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     setIsStripeProcessing(true);
@@ -47,29 +136,21 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       // Call Supabase Edge Function to create a Stripe checkout session
       console.log("Calling Stripe checkout for", selectedPlan, "plan", effectiveReferralCode ? `with referral: ${effectiveReferralCode}` : "without referral");
       
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: {
-          plan: selectedPlan,
-          successUrl: `${window.location.origin}/payment-success`,
-          cancelUrl: `${window.location.origin}/offres`,
-          referralCode: effectiveReferralCode || null
-        }
-      });
-      
-      if (error) {
-        console.error("Function error:", error);
-        throw new Error(`Erreur de service: ${error.message}`);
-      }
-      
-      if (data?.error) {
-        console.error("Stripe configuration error:", data.error);
-        throw new Error(data.error);
-      }
-      
-      console.log("Stripe checkout response:", data);
+      const data = await createCheckoutSession(
+        selectedPlan,
+        `${window.location.origin}/payment-success`,
+        `${window.location.origin}/offres`,
+        effectiveReferralCode
+      );
       
       // If it's a free plan, we're done
       if (data.free) {
+        // Mettre à jour localStorage immédiatement
+        await updateLocalSubscription(selectedPlan);
+        
+        // Forcer le rafraîchissement des données au retour sur le dashboard
+        localStorage.setItem('forceRefreshBalance', 'true');
+        
         toast({
           title: "Abonnement activé",
           description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
@@ -78,9 +159,15 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         return;
       }
       
+      // Update localStorage preemptively to reduce UI flicker
+      localStorage.setItem('subscription', selectedPlan);
+      
+      // Force refresh on dashboard return
+      localStorage.setItem('forceRefreshBalance', 'true');
+      
       // Redirect to Stripe checkout URL
       if (data?.url) {
-        // Redirect in a way that ensures the browser actually navigates to the URL
+        console.log("Redirecting to Stripe checkout URL:", data.url);
         window.location.href = data.url;
       } else {
         throw new Error("Aucune URL de paiement retournée");
@@ -90,26 +177,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       console.error("Payment error:", error);
       setIsStripeProcessing(false);
       
-      // Create a more user-friendly error message
-      let errorMessage;
-      
-      // Check for specific error patterns
-      if (error.message?.includes('No such price')) {
-        errorMessage = "La configuration des prix n'est pas encore terminée. Veuillez réessayer ultérieurement.";
-      } else if (error.message?.includes('Invalid API Key')) {
-        errorMessage = "Configuration de paiement incorrecte. Veuillez contacter le support.";
-      } else if (error.message?.includes('Edge Function returned a non-2xx status code')) {
-        errorMessage = "Le service de paiement est temporairement indisponible. Veuillez réessayer dans quelques instants.";
-      } else if (error.message?.includes('product exists in live mode, but a test mode key was used')) {
-        errorMessage = "Système en cours de migration vers la production. Merci de réessayer dans quelques minutes.";
-      } else if (error.message?.includes('Converting circular structure to JSON')) {
-        errorMessage = "Erreur technique dans le format de la requête. Veuillez réessayer.";
-      } else if (error.message?.includes('Invalid integer')) {
-        errorMessage = "Erreur de formatage du prix. Notre équipe a été informée et résoudra ce problème rapidement.";
-      } else {
-        // Use the original error message or a generic one
-        errorMessage = error.message || "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.";
-      }
+      const errorMessage = formatErrorMessage(error);
       
       toast({
         title: "Erreur de paiement",
@@ -121,6 +189,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
 
   return {
     isStripeProcessing,
-    handleStripeCheckout
+    handleStripeCheckout,
+    actualSubscription,
+    isChecking
   };
 };

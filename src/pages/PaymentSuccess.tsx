@@ -17,7 +17,10 @@ const PaymentSuccess = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
-          // Récupérer les données de l'utilisateur depuis Supabase
+          // Attendre un court délai pour s'assurer que le webhook a eu le temps de mettre à jour Supabase
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Récupérer les données de l'utilisateur depuis Supabase en contournant le cache
           const { data: userBalanceData, error } = await supabase
             .from('user_balances')
             .select('subscription')
@@ -31,8 +34,35 @@ const PaymentSuccess = () => {
             
             // Forcer une actualisation des balances à l'arrivée sur le dashboard
             localStorage.setItem('forceRefreshBalance', 'true');
+            
+            // Faire une deuxième vérification après un délai pour s'assurer que les données sont à jour
+            setTimeout(async () => {
+              const { data: refreshedData, error: refreshError } = await supabase
+                .from('user_balances')
+                .select('subscription')
+                .eq('id', session.user.id)
+                .single();
+                
+              if (!refreshError && refreshedData) {
+                localStorage.setItem('subscription', refreshedData.subscription);
+                console.log('Second check: subscription confirmed as', refreshedData.subscription);
+              }
+            }, 3000);
           } else {
             console.error('Error fetching subscription:', error);
+            
+            // Essayer une approche alternative en cas d'erreur
+            try {
+              const { data: freshData, error: rpcError } = await supabase
+                .rpc('get_current_subscription', { user_id: session.user.id });
+                
+              if (!rpcError && freshData) {
+                console.log("Abonnement récupéré via RPC:", freshData);
+                localStorage.setItem('subscription', freshData);
+              }
+            } catch (rpcErr) {
+              console.error("Erreur RPC:", rpcErr);
+            }
           }
         } else {
           console.error('No session found');

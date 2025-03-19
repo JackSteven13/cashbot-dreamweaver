@@ -28,6 +28,8 @@ export const formatErrorMessage = (error: any): string => {
     return "Erreur technique dans le format de la requête. Veuillez réessayer.";
   } else if (error.message?.includes('Invalid integer')) {
     return "Erreur de formatage du prix. Notre équipe a été informée et résoudra ce problème rapidement.";
+  } else if (error.message?.includes('already subscribed')) {
+    return "Vous êtes déjà abonné à ce forfait. Rafraîchissez la page pour voir votre abonnement actuel.";
   }
   
   // Use the original error message or a generic one
@@ -51,7 +53,7 @@ export const updateLocalSubscription = async (subscription: PlanType): Promise<v
     
     if (session) {
       // Attendre un court délai pour que la base de données ait le temps de se mettre à jour
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Vérifier que l'abonnement est bien mis à jour dans Supabase
       const { data: userBalance, error } = await supabase
@@ -75,6 +77,23 @@ export const updateLocalSubscription = async (subscription: PlanType): Promise<v
             
           if (updateError) {
             console.error("Erreur lors de la correction de la désynchronisation:", updateError);
+            
+            // Tenter une mise à jour via RPC si la méthode directe échoue
+            try {
+              const { error: rpcError } = await supabase
+                .rpc('update_user_subscription', { 
+                  user_id: session.user.id, 
+                  new_subscription: subscription 
+                });
+                
+              if (!rpcError) {
+                console.log("Synchronisation corrigée avec succès via RPC");
+              } else {
+                console.error("Erreur RPC:", rpcError);
+              }
+            } catch (rpcErr) {
+              console.error("Erreur RPC:", rpcErr);
+            }
           } else {
             console.log("Synchronisation corrigée avec succès");
           }
@@ -129,4 +148,38 @@ export const validateCardPayment = (
   }
   
   return isValid;
+};
+
+/**
+ * Vérifie l'abonnement actuel de l'utilisateur directement depuis Supabase
+ */
+export const checkCurrentSubscription = async (): Promise<string | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      console.log("Pas de session utilisateur pour vérifier l'abonnement");
+      return null;
+    }
+    
+    console.log("Vérification de l'abonnement actuel pour:", session.user.id);
+    
+    // Récupérer l'abonnement actuel en contournant le cache
+    const { data, error } = await supabase
+      .from('user_balances')
+      .select('subscription')
+      .eq('id', session.user.id)
+      .single();
+    
+    if (error) {
+      console.error("Erreur lors de la vérification de l'abonnement:", error);
+      return null;
+    }
+    
+    console.log("Abonnement actuel selon Supabase:", data.subscription);
+    return data.subscription;
+  } catch (error) {
+    console.error("Erreur lors de la vérification de l'abonnement:", error);
+    return null;
+  }
 };
