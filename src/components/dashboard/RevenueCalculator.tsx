@@ -23,7 +23,6 @@ interface RevenueCalculatorProps {
   currentSubscription: string;
   isNewUser: boolean;
   isHomePage?: boolean;
-  isCompact?: boolean; // Add new prop for compact mode
 }
 
 interface FormValues {
@@ -70,8 +69,7 @@ const SUBSCRIPTION_DESCRIPTIONS: Record<string, string> = {
 const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({ 
   currentSubscription, 
   isNewUser,
-  isHomePage = false,
-  isCompact = false // Default to false for backward compatibility
+  isHomePage = false
 }) => {
   // Initialize selectedPlan to 'alpha' instead of dynamically based on currentSubscription
   const [selectedPlan, setSelectedPlan] = useState('alpha');
@@ -95,8 +93,8 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
 
   // Adapter les styles selon l'endroit où le composant est affiché et le mode sombre
   const cardClassName = isHomePage 
-    ? `w-full bg-white/5 backdrop-blur-lg border border-white/10 shadow-xl dark:bg-gray-900/30 dark:border-gray-800/50 ${isCompact ? 'max-w-2xl mx-auto' : ''}` 
-    : `w-full mt-8 bg-white shadow-md border border-blue-100 dark:bg-gray-800 dark:border-gray-700 ${isCompact ? 'max-w-2xl mx-auto' : ''}`;
+    ? "w-full bg-white/5 backdrop-blur-lg border border-white/10 shadow-xl dark:bg-gray-900/30 dark:border-gray-800/50" 
+    : "w-full mt-8 bg-white shadow-md border border-blue-100 dark:bg-gray-800 dark:border-gray-700";
 
   const headerClassName = isHomePage
     ? "bg-gradient-to-r from-blue-900/50 to-indigo-900/50 border-b border-white/10 dark:from-blue-950/70 dark:to-indigo-950/70 dark:border-gray-800"
@@ -105,33 +103,30 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
   const textColorClass = isHomePage ? "text-white dark:text-white" : "text-[#1e3a5f] dark:text-white";
   const descriptionColorClass = isHomePage ? "text-blue-100 dark:text-blue-200" : "text-gray-500 dark:text-gray-300";
 
-  // If compact mode, only show Alpha plan
-  const plansToShow = isCompact ? ['alpha'] : Object.keys(SUBSCRIPTION_LIMITS);
-
   return (
     <Card className={cardClassName}>
-      <CardHeader className={`${headerClassName} ${isCompact ? 'py-3' : ''}`}>
-        <CardTitle className={`${isCompact ? 'text-lg' : 'text-xl'} font-semibold ${textColorClass}`}>
+      <CardHeader className={headerClassName}>
+        <CardTitle className={`text-xl font-semibold ${textColorClass}`}>
           Simulateur de Revenus
         </CardTitle>
-        <CardDescription className={`${isCompact ? 'text-xs' : ''} ${descriptionColorClass}`}>
+        <CardDescription className={descriptionColorClass}>
           {isNewUser 
             ? "Découvrez votre potentiel de gains avec différents abonnements" 
             : "Comparez vos revenus potentiels selon différents abonnements"}
         </CardDescription>
       </CardHeader>
-      <CardContent className={`${isCompact ? 'py-3' : 'pt-6'} ${isHomePage ? 'text-white dark:text-white' : 'dark:text-gray-100'}`}>
+      <CardContent className={`pt-6 ${isHomePage ? 'text-white dark:text-white' : 'dark:text-gray-100'}`}>
         <Form {...form}>
-          {/* Contrôles du simulateur - More compact in compact mode */}
-          <CalculatorControls control={control} isHomePage={isHomePage} isCompact={isCompact} />
+          {/* Contrôles du simulateur */}
+          <CalculatorControls control={control} isHomePage={isHomePage} />
         </Form>
 
-        <div className={`${isCompact ? 'mt-4' : 'mt-8'} space-y-3`}>
-          <h3 className={`${isCompact ? 'text-sm' : 'text-md'} font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
+        <div className="mt-8 space-y-3">
+          <h3 className={`text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
             Revenus mensuels estimés
           </h3>
           <div className="grid grid-cols-1 gap-3">
-            {plansToShow.map((plan) => {
+            {Object.keys(SUBSCRIPTION_LIMITS).map((plan) => {
               // Ne pas afficher freemium sur la page d'accueil
               if (plan === 'freemium' && isHomePage) return null;
               
@@ -145,7 +140,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
                   title={SUBSCRIPTION_LABELS[plan] || plan}
                   price={SUBSCRIPTION_PRICES[plan] || 0}
                   description={SUBSCRIPTION_DESCRIPTIONS[plan] || ''}
-                  features={isCompact ? [] : SUBSCRIPTION_FEATURES[plan] || []}
+                  features={SUBSCRIPTION_FEATURES[plan] || []}
                   limit={SUBSCRIPTION_LIMITS[plan] || 0}
                   plan={plan}
                   isSelected={selectedPlan === plan}
@@ -157,19 +152,17 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
                   revenue={results.revenue}
                   profit={results.profit}
                   onClick={() => setSelectedPlan(plan)}
-                  isCompact={isCompact}
                 />
               );
             })}
           </div>
         </div>
       </CardContent>
-      <CardFooter className={`${isHomePage ? "bg-blue-950/50 border-t border-white/10 dark:bg-gray-900/70 dark:border-gray-800" : "bg-gray-50 border-t dark:bg-gray-800 dark:border-gray-700"} ${isCompact ? 'py-3' : 'pt-4'}`}>
+      <CardFooter className={isHomePage ? "bg-blue-950/50 border-t border-white/10 pt-4 dark:bg-gray-900/70 dark:border-gray-800" : "bg-gray-50 border-t pt-4 dark:bg-gray-800 dark:border-gray-700"}>
         <CalculatorFooter 
           isHomePage={isHomePage} 
           selectedPlan={selectedPlan}
           subscriptionLabels={SUBSCRIPTION_LABELS}
-          isCompact={isCompact}
         />
       </CardFooter>
     </Card>

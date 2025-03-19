@@ -18,13 +18,11 @@ interface FormValues {
 interface CalculatorControlsProps {
   control: Control<FormValues>;
   isHomePage: boolean;
-  isCompact?: boolean;
 }
 
 const CalculatorControls: React.FC<CalculatorControlsProps> = ({ 
   control, 
-  isHomePage,
-  isCompact = false
+  isHomePage 
 }) => {
   // Updated these classes to work better in both light and dark modes
   const labelClass = isHomePage 
@@ -41,20 +39,18 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
   }`;
 
   return (
-    <div className={`space-y-${isCompact ? '3' : '5'}`}>
+    <div className="space-y-5">
       <FormField
         control={control}
         name="sessionsPerDay"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className={`${labelClass} ${isCompact ? 'text-sm' : ''}`}>
+            <FormLabel className={labelClass}>
               Sessions par jour
             </FormLabel>
-            {!isCompact && (
-              <FormDescription className={descriptionClass}>
-                Nombre de sessions de gain que vous souhaitez lancer quotidiennement
-              </FormDescription>
-            )}
+            <FormDescription className={descriptionClass}>
+              Nombre de sessions de gain que vous souhaitez lancer quotidiennement
+            </FormDescription>
             <div className="flex items-center space-x-4">
               <FormControl>
                 <Slider
@@ -79,14 +75,12 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
         name="daysPerMonth"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className={`${labelClass} ${isCompact ? 'text-sm' : ''}`}>
+            <FormLabel className={labelClass}>
               Jours d'activité par mois
             </FormLabel>
-            {!isCompact && (
-              <FormDescription className={descriptionClass}>
-                Combien de jours par mois utiliserez-vous l'application?
-              </FormDescription>
-            )}
+            <FormDescription className={descriptionClass}>
+              Combien de jours par mois utiliserez-vous l'application?
+            </FormDescription>
             <div className="flex items-center space-x-4">
               <FormControl>
                 <Slider

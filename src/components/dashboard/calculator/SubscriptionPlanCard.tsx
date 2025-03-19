@@ -23,7 +23,6 @@ interface SubscriptionPlanCardProps {
   revenue?: number;
   profit?: number;
   onClick?: () => void;
-  isCompact?: boolean;
 }
 
 const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
@@ -44,8 +43,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
   subscriptionPrice,
   revenue,
   profit,
-  onClick,
-  isCompact = false
+  onClick
 }) => {
   // Determine the card color based on the props
   const cardBorderClass = isSelected 
@@ -70,68 +68,60 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
       )}
       onClick={onClick}
     >
-      {mostPopular && !isCompact && (
+      {mostPopular && (
         <div className="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1 text-xs font-semibold rounded-bl-lg">
           POPULAIRE
         </div>
       )}
-      {(isCurrent || current) && !isCompact && (
+      {(isCurrent || current) && (
         <div className="absolute top-0 left-0 bg-green-500 text-white px-3 py-1 text-xs font-semibold rounded-br-lg">
           ACTUEL
         </div>
       )}
-      {isSelected && !(isCurrent || current) && !isCompact && (
+      {isSelected && !(isCurrent || current) && (
         <div className="absolute top-0 left-0 bg-purple-600 text-white px-3 py-1 text-xs font-semibold rounded-br-lg">
           SÉLECTIONNÉ
         </div>
       )}
-      <div className={isCompact ? "p-4" : "p-6"}>
-        <h3 className={`${isCompact ? 'text-lg' : 'text-xl'} font-bold text-gray-900 dark:text-white mb-2`}>
+      <div className="p-6">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
           {subscriptionLabel || title}
         </h3>
         <div className="mb-4">
-          <span className={`${isCompact ? 'text-2xl' : 'text-3xl'} font-bold text-gray-900 dark:text-white`}>
+          <span className="text-3xl font-bold text-gray-900 dark:text-white">
             {subscriptionPrice || price}€
           </span>
           {(subscriptionPrice || price) > 0 && <span className="text-gray-500 dark:text-gray-400">/mois</span>}
         </div>
-        {!isCompact && <p className="text-gray-600 dark:text-gray-400 mb-4">{description}</p>}
+        <p className="text-gray-600 dark:text-gray-400 mb-4">{description}</p>
         
         {/* Display revenue and profit information if available */}
         {revenue !== undefined && profit !== undefined && (
-          <div className={`mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md ${isCompact ? 'text-sm' : ''}`}>
-            <p className={`${isCompact ? 'text-xs' : 'text-sm'} font-medium text-blue-800 dark:text-blue-300`}>
+          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
               Revenu: <span className="font-bold">{revenue.toFixed(2)}€</span>
             </p>
-            <p className={`${isCompact ? 'text-xs' : 'text-sm'} font-medium text-blue-800 dark:text-blue-300`}>
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
               Profit: <span className="font-bold">{profit.toFixed(2)}€</span>
             </p>
           </div>
         )}
         
-        {!isCompact && (
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Limite quotidienne: <span className="font-semibold text-blue-600 dark:text-blue-400">{limit}€</span>
-            </p>
-            <ul className="space-y-2 mt-3">
-              {features.map((feature, index) => (
-                <li key={index} className="flex items-start">
-                  <svg className={`h-5 w-5 ${isSelected ? 'text-purple-500' : 'text-green-500'} shrink-0 mr-2`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-gray-600 dark:text-gray-300 text-sm">{feature}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        
-        {isCompact && (
-          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
             Limite quotidienne: <span className="font-semibold text-blue-600 dark:text-blue-400">{limit}€</span>
           </p>
-        )}
+          <ul className="space-y-2 mt-3">
+            {features.map((feature, index) => (
+              <li key={index} className="flex items-start">
+                <svg className={`h-5 w-5 ${isSelected ? 'text-purple-500' : 'text-green-500'} shrink-0 mr-2`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-gray-600 dark:text-gray-300 text-sm">{feature}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
         
         {action && (
           <div>
