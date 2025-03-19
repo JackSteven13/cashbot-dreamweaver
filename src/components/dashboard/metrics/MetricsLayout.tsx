@@ -1,6 +1,5 @@
 
 import React from 'react';
-import ProTrialButton from './ProTrialButton';
 
 interface MetricsLayoutProps {
   mainContent: React.ReactNode;
@@ -11,9 +10,7 @@ interface MetricsLayoutProps {
 
 const MetricsLayout = ({ 
   mainContent, 
-  sideContent, 
-  subscription,
-  onActivateProTrial 
+  sideContent
 }: MetricsLayoutProps) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -21,10 +18,6 @@ const MetricsLayout = ({
         {mainContent}
       </div>
       <div className="space-y-8">
-        <ProTrialButton 
-          subscription={subscription} 
-          onActivate={onActivateProTrial} 
-        />
         {sideContent}
       </div>
     </div>

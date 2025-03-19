@@ -1,6 +1,4 @@
 
-// This file needs to be updated to include the new props from MetricsLayout
-// I'll modify the first few lines of this component to include the subscription and onActivateProTrial
 import React from 'react';
 import MetricsLayout from './metrics/MetricsLayout';
 import MainContent from './metrics/MainContent';
@@ -37,8 +35,7 @@ const DashboardMetrics = ({
   canStartSession = true,
   referralCount,
   referralBonus,
-  dailyLimit,
-  onActivateProTrial
+  dailyLimit
 }: DashboardMetricsProps) => {
   
   return (
@@ -69,7 +66,7 @@ const DashboardMetrics = ({
         />
       }
       subscription={subscription}
-      onActivateProTrial={onActivateProTrial}
+      onActivateProTrial={() => {}}
     />
   );
 };

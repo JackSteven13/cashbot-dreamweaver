@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AlertCircle } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface SystemInfoProps {
@@ -24,10 +24,10 @@ export const SystemInfo: React.FC<SystemInfoProps> = ({ isNewUser, onFeedbackCli
       <Button 
         variant="ghost" 
         size="sm" 
-        className="text-xs text-blue-200 hover:text-white hover:bg-blue-800/50"
+        className="text-xs text-blue-200 hover:text-white hover:bg-blue-800/50 flex items-center gap-1.5"
         onClick={onFeedbackClick}
       >
-        <AlertCircle className="h-3.5 w-3.5 mr-1" />
+        <MessageCircle className="h-4 w-4" />
         Feedback
       </Button>
     </div>

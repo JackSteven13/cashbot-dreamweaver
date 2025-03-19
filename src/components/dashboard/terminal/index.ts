@@ -5,4 +5,3 @@ export { SystemInfo } from './SystemInfo';
 export { SystemProgressBar } from './SystemProgressBar';
 export { SessionCountdown } from './SessionCountdown';
 export { NewUserGuide } from './NewUserGuide';
-export { ProTrialBanner } from './ProTrialBanner';

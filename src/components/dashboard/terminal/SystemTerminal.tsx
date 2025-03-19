@@ -14,7 +14,7 @@ interface SystemTerminalProps {
   remainingSessions: number | string;
   referralCount: number;
   displayBalance: number;
-  referralBonus?: number;
+  referralBonus: number;
 }
 
 const SystemTerminal: React.FC<SystemTerminalProps> = ({
@@ -23,6 +23,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   subscription,
   remainingSessions,
   displayBalance,
+  referralBonus,
 }) => {
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedback, setFeedback] = useState('');
