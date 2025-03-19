@@ -21,6 +21,31 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       return;
     }
 
+    // Vérifier si l'utilisateur est déjà abonné à ce plan
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        const { data: userBalanceData, error } = await supabase
+          .from('user_balances')
+          .select('subscription')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (!error && userBalanceData && userBalanceData.subscription === selectedPlan) {
+          toast({
+            title: "Abonnement déjà actif",
+            description: `Vous êtes déjà abonné au forfait ${selectedPlan}.`,
+          });
+          navigate('/dashboard');
+          return;
+        }
+      }
+    } catch (error) {
+      console.error("Error checking current subscription:", error);
+      // Continue with subscription flow even if check fails
+    }
+
     // Pour freemium, update subscription directement sans Stripe
     if (selectedPlan === 'freemium') {
       try {
@@ -110,38 +135,12 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       }
       
       // Update localStorage preemptively to reduce UI flicker
-      // (will be confirmed in PaymentSuccess page)
-      await updateLocalSubscription(selectedPlan);
+      localStorage.setItem('subscription', selectedPlan);
       
       // Redirect to Stripe checkout URL
       if (data?.url) {
         console.log("Redirecting to Stripe checkout URL:", data.url);
-        
-        // Enhanced redirect method
-        try {
-          // Create a hidden anchor element to force a proper navigation
-          const link = document.createElement('a');
-          link.href = data.url;
-          link.target = '_blank'; // Open in new tab to avoid navigation issues
-          link.rel = 'noopener noreferrer';
-          link.style.display = 'none';
-          document.body.appendChild(link);
-          link.click();
-          
-          // After a short delay, also try direct location change as fallback
-          setTimeout(() => {
-            window.location.href = data.url;
-          }, 100);
-          
-          toast({
-            title: "Redirection en cours",
-            description: "Si la page de paiement ne s'ouvre pas automatiquement, veuillez cliquer à nouveau sur le bouton.",
-          });
-        } catch (redirectError) {
-          console.error("Redirect error:", redirectError);
-          // Fallback to direct location change
-          window.location.href = data.url;
-        }
+        window.location.href = data.url;
       } else {
         throw new Error("Aucune URL de paiement retournée");
       }

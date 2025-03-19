@@ -13,11 +13,11 @@ const PaymentSuccess = () => {
 
   useEffect(() => {
     const updateLocalStorageSubscription = async () => {
-      // Vérifier si l'utilisateur est connecté
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        try {
+      try {
+        // Vérifier si l'utilisateur est connecté
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
           // Récupérer les données de l'utilisateur depuis Supabase
           const { data: userBalanceData, error } = await supabase
             .from('user_balances')
@@ -29,10 +29,17 @@ const PaymentSuccess = () => {
             // Mettre à jour le localStorage avec le nouvel abonnement
             localStorage.setItem('subscription', userBalanceData.subscription);
             console.log('Subscription updated in localStorage:', userBalanceData.subscription);
+            
+            // Forcer une actualisation des balances à l'arrivée sur le dashboard
+            localStorage.setItem('forceRefreshBalance', 'true');
+          } else {
+            console.error('Error fetching subscription:', error);
           }
-        } catch (error) {
-          console.error('Error fetching updated subscription:', error);
+        } else {
+          console.error('No session found');
         }
+      } catch (error) {
+        console.error('Error in updateLocalStorageSubscription:', error);
       }
     };
 
