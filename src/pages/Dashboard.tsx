@@ -98,6 +98,15 @@ const Dashboard = () => {
     return <DashboardError errorType="data" onRefresh={forceRefresh} />;
   }
 
+  // Calculate referral count and bonus
+  const referralCount = userData.referrals?.length || 0;
+  const referralBonus = userData.referrals?.reduce((acc, ref) => acc + (ref.commission_rate || 0), 0) || 0;
+  
+  // Estimate daily limit based on subscription
+  const dailyLimit = userData.subscription === 'freemium' ? 5 : 
+                    userData.subscription === 'pro' ? 20 : 
+                    userData.subscription === 'visionnaire' ? 50 : 100;
+
   // Enfin, afficher le tableau de bord
   return (
     <DashboardLayout
@@ -124,7 +133,9 @@ const Dashboard = () => {
         subscription={userData.subscription}
         dailySessionCount={dailySessionCount}
         canStartSession={canStartManualSession(userData.subscription, dailySessionCount, userData.balance)}
-        referrals={userData.referrals}
+        referralCount={referralCount}
+        referralBonus={referralBonus}
+        dailyLimit={dailyLimit}
         onActivateProTrial={activateProTrial}
       />
     </DashboardLayout>

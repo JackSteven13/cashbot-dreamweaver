@@ -1,9 +1,10 @@
+
 import { useNavigate } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
-import { PlanType } from './types';
-import { useFreemiumSubscription } from './useFreemiumSubscription';
-import { usePaidSubscription } from './usePaidSubscription';
-import { useSubscriptionVerification } from './useSubscriptionVerification';
+import { PlanType } from '@/hooks/payment/types';
+import { useFreemiumSubscription } from '@/hooks/payment/useFreemiumSubscription';
+import { usePaidSubscription } from '@/hooks/payment/usePaidSubscription';
+import { useSubscriptionVerification } from '@/hooks/payment/useSubscriptionVerification';
 
 export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();

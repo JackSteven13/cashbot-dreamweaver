@@ -6,10 +6,18 @@ import LocationFeed from '@/components/LocationFeed';
 interface SideContentProps {
   balance: number;
   isNewUser: boolean;
+  referralCount: number; 
   referralBonus: number;
+  dailyLimit: number;
 }
 
-const SideContent = ({ balance, isNewUser, referralBonus }: SideContentProps) => {
+const SideContent = ({ 
+  balance, 
+  isNewUser, 
+  referralCount, 
+  referralBonus,
+  dailyLimit
+}: SideContentProps) => {
   return (
     <>
       <EarningsCard 
