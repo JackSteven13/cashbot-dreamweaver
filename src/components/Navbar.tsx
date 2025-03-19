@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import Button from './Button';
 import DarkModeToggle from './DarkModeToggle';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -18,6 +18,7 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const isMobile = useIsMobile();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -92,13 +93,14 @@ const Navbar = () => {
           {/* Mobile Menu using Sheet component from shadcn/ui */}
           <div className="md:hidden flex items-center gap-2">
             <DarkModeToggle />
-            <Sheet>
+            <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <SheetTrigger asChild>
                 <button
-                  className="text-foreground p-2 rounded-lg hover:bg-secondary transition-colors"
+                  className="text-foreground p-2 rounded-lg hover:bg-secondary transition-colors focus:outline-none"
                   aria-label="Ouvrir le menu"
+                  onClick={() => setIsMenuOpen(true)}
                 >
-                  <Menu size={20} />
+                  <Menu size={24} />
                 </button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[85%] sm:w-[350px] pt-16">
@@ -110,6 +112,7 @@ const Navbar = () => {
                     <Link
                       to="/"
                       className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                      onClick={() => setIsMenuOpen(false)}
                     >
                       Accueil
                     </Link>
@@ -118,6 +121,7 @@ const Navbar = () => {
                     <Link
                       to="/offres"
                       className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                      onClick={() => setIsMenuOpen(false)}
                     >
                       Offres
                     </Link>
@@ -126,20 +130,21 @@ const Navbar = () => {
                     <Link
                       to="/about"
                       className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                      onClick={() => setIsMenuOpen(false)}
                     >
                       À propos
                     </Link>
                   </SheetClose>
                   <div className="pt-4 flex flex-col space-y-3 border-t border-border mt-2">
                     <SheetClose asChild>
-                      <Link to="/login">
+                      <Link to="/login" onClick={() => setIsMenuOpen(false)}>
                         <Button variant="outline" fullWidth>
                           Connexion
                         </Button>
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
-                      <Link to="/register">
+                      <Link to="/register" onClick={() => setIsMenuOpen(false)}>
                         <Button fullWidth>
                           S'inscrire
                         </Button>
