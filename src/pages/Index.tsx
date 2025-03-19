@@ -49,16 +49,18 @@ const Index = () => {
       <main className="flex-1">
         <Hero />
         
-        {/* Revenue Calculator Section */}
-        <section className="py-10 md:py-16 bg-gradient-to-b from-slate-900 to-slate-950">
+        {/* Revenue Calculator Section - Updated to be more compact */}
+        <section className="py-8 md:py-12 bg-gradient-to-b from-slate-900 to-slate-950">
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-3xl mx-auto">
-              <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center text-white">
+              <h2 className="text-xl md:text-2xl font-bold mb-4 text-center text-white">
                 Simulez vos revenus potentiels avec CashBot
               </h2>
               <RevenueCalculator 
                 currentSubscription="freemium" 
-                isNewUser={true} 
+                isNewUser={true}
+                isHomePage={true}
+                isCompact={true}
               />
             </div>
           </div>
