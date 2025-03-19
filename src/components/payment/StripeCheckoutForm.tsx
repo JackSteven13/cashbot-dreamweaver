@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlanType } from '@/hooks/payment/types';
 import { toast } from "@/components/ui/use-toast";
 import { Link } from 'react-router-dom';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Loader2 } from 'lucide-react';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;
@@ -19,6 +20,7 @@ const StripeCheckoutForm = ({
   onCheckout 
 }: StripeCheckoutFormProps) => {
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [hasClicked, setHasClicked] = useState(false);
   
   // If it's freemium plan, don't display the form
   if (selectedPlan === 'freemium') {
@@ -34,6 +36,23 @@ const StripeCheckoutForm = ({
     );
   }
   
+  // Retenter automatiquement la redirection si la page ne s'est pas ouverte
+  useEffect(() => {
+    let timer: number;
+    if (isStripeProcessing && hasClicked) {
+      timer = window.setTimeout(() => {
+        console.log("Retentative automatique de redirection vers Stripe");
+        if (isStripeProcessing) {
+          onCheckout();
+        }
+      }, 3000);
+    }
+    
+    return () => {
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [isStripeProcessing, hasClicked, onCheckout]);
+  
   const handleCheckout = (e: React.MouseEvent) => {
     e.preventDefault();
     
@@ -48,7 +67,22 @@ const StripeCheckoutForm = ({
     
     try {
       console.log("Initiating Stripe checkout from button click");
+      setHasClicked(true);
       onCheckout();
+      
+      // Forcer l'ouverture dans un nouvel onglet si la redirection échoue
+      if (selectedPlan && selectedPlan !== 'freemium') {
+        const timer = window.setTimeout(() => {
+          if (isStripeProcessing) {
+            toast({
+              title: "Redirection en cours",
+              description: "Si la page de paiement ne s'ouvre pas automatiquement, veuillez réessayer.",
+            });
+          }
+        }, 1500);
+        
+        return () => window.clearTimeout(timer);
+      }
     } catch (error) {
       console.error("Error initiating checkout:", error);
       toast({
@@ -86,14 +120,28 @@ const StripeCheckoutForm = ({
         disabled={isStripeProcessing || !termsAccepted}
         type="button"
       >
-        {isStripeProcessing ? 'Traitement en cours...' : 'Payer avec Stripe'}
+        {isStripeProcessing ? (
+          <span className="flex items-center justify-center">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Redirection en cours...
+          </span>
+        ) : 'Payer avec Stripe'}
       </Button>
       
-      {/* Bouton de secours pour ouvrir la page manuellement si besoin */}
-      {isStripeProcessing && (
-        <p className="text-xs text-center text-gray-500 mt-2">
-          Si la page de paiement ne s'ouvre pas automatiquement, veuillez cliquer à nouveau sur le bouton.
-        </p>
+      {/* Afficher un message et un lien de secours si la redirection échoue */}
+      {isStripeProcessing && hasClicked && (
+        <div className="text-xs text-center mt-2 p-2 bg-yellow-50 border border-yellow-100 rounded">
+          <p className="text-yellow-700 mb-1">
+            Si vous n'êtes pas redirigé automatiquement dans quelques secondes :
+          </p>
+          <Button
+            variant="link"
+            className="text-blue-600 p-0 h-auto font-normal"
+            onClick={() => onCheckout()}
+          >
+            Cliquez ici pour ouvrir la page de paiement
+          </Button>
+        </div>
       )}
     </div>
   );

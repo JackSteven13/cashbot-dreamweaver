@@ -17,6 +17,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const [isStripeProcessing, setIsStripeProcessing] = useState(false);
   const [actualSubscription, setActualSubscription] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(true);
+  const [stripeCheckoutUrl, setStripeCheckoutUrl] = useState<string | null>(null);
   
   // Vérifier l'abonnement actuel depuis Supabase au chargement
   useEffect(() => {
@@ -39,6 +40,28 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     
     verifyCurrentSubscription();
   }, []);
+
+  // Effet pour ouvrir la page Stripe dès que l'URL est disponible
+  useEffect(() => {
+    if (stripeCheckoutUrl) {
+      // Ouvrir l'URL de Stripe dans une nouvelle fenêtre ou onglet
+      console.log("Ouverture de l'URL Stripe:", stripeCheckoutUrl);
+      
+      // Essayer d'ouvrir dans un nouvel onglet d'abord
+      const newWindow = window.open(stripeCheckoutUrl, '_blank');
+      
+      // Si l'ouverture dans un nouvel onglet échoue (bloqueurs de popups), rediriger la fenêtre actuelle
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        console.log("Impossible d'ouvrir dans un nouvel onglet, redirection de la fenêtre actuelle");
+        setTimeout(() => {
+          window.location.href = stripeCheckoutUrl;
+        }, 500);
+      }
+      
+      // Réinitialiser l'URL après tentative d'ouverture
+      setStripeCheckoutUrl(null);
+    }
+  }, [stripeCheckoutUrl]);
 
   const handleStripeCheckout = async () => {
     if (!selectedPlan) {
@@ -141,6 +164,14 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       }
     }
 
+    if (isStripeProcessing) {
+      console.log("Paiement déjà en cours, utilisation de l'URL stockée si disponible");
+      if (stripeCheckoutUrl) {
+        window.location.href = stripeCheckoutUrl;
+      }
+      return;
+    }
+    
     setIsStripeProcessing(true);
 
     try {
@@ -194,8 +225,19 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       
       // Redirect to Stripe checkout URL
       if (data?.url) {
-        console.log("Redirecting to Stripe checkout URL:", data.url);
-        window.location.href = data.url;
+        console.log("Stripe checkout URL obtenue:", data.url);
+        
+        // Stocker l'URL pour pouvoir la réutiliser si nécessaire
+        setStripeCheckoutUrl(data.url);
+        
+        // Rediriger vers Stripe dans un nouvel onglet si possible
+        const newWindow = window.open(data.url, '_blank');
+        
+        // Si le popup est bloqué, rediriger la fenêtre actuelle
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+          console.log("Impossible d'ouvrir dans un nouvel onglet, redirection de la fenêtre actuelle");
+          window.location.href = data.url;
+        }
       } else {
         throw new Error("Aucune URL de paiement retournée");
       }

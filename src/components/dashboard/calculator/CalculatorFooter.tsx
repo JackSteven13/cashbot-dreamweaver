@@ -31,10 +31,19 @@ const CalculatorFooter: React.FC<CalculatorFooterProps> = ({
   const handleClick = () => {
     if (session) {
       // Already logged in, redirect to payment page with selected plan
-      navigate(`/payment?plan=${selectedPlan}`, { state: { plan: selectedPlan } });
+      console.log("Redirection vers la page de paiement avec plan:", selectedPlan);
+      
+      // Utiliser setTimeout pour éviter les problèmes potentiels de navigate sur mobile
+      setTimeout(() => {
+        navigate(`/payment?plan=${selectedPlan}`, { 
+          state: { plan: selectedPlan },
+          replace: false // Ne pas remplacer l'historique pour permettre de revenir
+        });
+      }, 50);
     } else {
       // Not logged in, redirect to register page
-      navigate('/register');
+      console.log("Redirection vers la page d'inscription");
+      navigate('/register', { replace: false });
     }
   };
 
