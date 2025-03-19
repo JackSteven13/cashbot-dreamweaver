@@ -51,8 +51,7 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
   
   if (currentSubscription && currentSubscription !== 'freemium') {
     return (
-      <div className="mt-6 p-4 bg-gradient-to-r rounded-lg shadow-inner border border-white/10 animate-fadeIn relative overflow-hidden"
-           className={`mt-6 p-4 bg-gradient-to-r ${getGradient(currentSubscription)} rounded-lg shadow-inner border border-white/10`}>
+      <div className={`mt-6 p-4 bg-gradient-to-r ${getGradient(currentSubscription)} rounded-lg shadow-inner border border-white/10 animate-fadeIn relative overflow-hidden`}>
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-white/5 to-transparent opacity-60"></div>
         <p className="text-[#a0e4ff] font-semibold relative z-10">
           Votre abonnement actuel: <span className="text-white font-bold ml-1">
