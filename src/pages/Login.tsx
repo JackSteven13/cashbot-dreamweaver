@@ -1,13 +1,14 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
 import { verifyAuth } from '@/utils/auth/verificationUtils';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
@@ -42,17 +44,25 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(null);
     
     try {
+      console.log("Attempting login with email:", email);
+      
       // Utiliser la persistance par défaut (localStorage)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase login error:", error);
+        throw error;
+      }
       
       if (data && data.user) {
+        console.log("Login successful, user:", data.user);
+        
         // Attendre que l'authentification soit entièrement établie
         setTimeout(async () => {
           // Vérifier que la session est bien établie
@@ -67,19 +77,34 @@ const Login = () => {
             // Simple redirect
             navigate('/dashboard', { replace: true });
           } else {
+            console.error("Session not established after login");
             throw new Error("Session non établie après connexion");
           }
         }, 800);
       }
     } catch (error: any) {
-      console.error("Login error:", error);
+      console.error("Login error details:", error);
+      
+      let errorMsg = "Une erreur est survenue lors de la connexion";
+      
+      if (error.message === "Invalid login credentials") {
+        errorMsg = "Email ou mot de passe incorrect";
+      } else if (error.message === "Email not confirmed") {
+        errorMsg = "Email non confirmé. Veuillez vérifier votre boîte de réception pour confirmer votre adresse email.";
+      } else if (error.message.includes("requested path is invalid")) {
+        errorMsg = "Erreur de configuration - URL de redirection invalide. Contactez l'administrateur.";
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
+      setErrorMessage(errorMsg);
+      
       toast({
         title: "Erreur de connexion",
-        description: error.message === "Invalid login credentials" 
-          ? "Email ou mot de passe incorrect" 
-          : (error.message || "Une erreur est survenue lors de la connexion"),
+        description: errorMsg,
         variant: "destructive",
       });
+      
       setIsLoading(false);
     }
   };
@@ -113,6 +138,14 @@ const Login = () => {
           </div>
           
           <div className="glass-panel p-6 rounded-xl">
+            {errorMessage && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Erreur</AlertTitle>
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium mb-1">
