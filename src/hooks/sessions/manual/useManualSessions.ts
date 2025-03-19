@@ -15,6 +15,7 @@ export const useManualSessions = ({
   setShowLimitAlert
 }: UseManualSessionsProps): UseManualSessionsReturn => {
   const [isStartingSession, setIsStartingSession] = useState(false);
+  const [localBalance, setLocalBalance] = useState(userData.balance);
   
   // Maintain a local reference to the current balance to avoid race conditions
   const currentBalanceRef = useRef<number>(userData.balance);
@@ -24,6 +25,7 @@ export const useManualSessions = ({
     if (currentBalanceRef.current !== userData.balance) {
       console.log("Updating balance reference from", currentBalanceRef.current, "to", userData.balance);
       currentBalanceRef.current = userData.balance;
+      setLocalBalance(userData.balance);
     }
   }, [userData.balance]);
   
@@ -79,13 +81,17 @@ export const useManualSessions = ({
       if (success && finalGain > 0) {
         console.log("Session successful, updating UI balance from", currentBalanceRef.current, "to", newBalance);
         
+        // Update local state immediately to reflect change in UI
+        setLocalBalance(newBalance);
+        
         // Update local reference before API call
         currentBalanceRef.current = newBalance;
         
-        // Update user balance in database and immediately update UI
+        // Update user balance in database with forceful UI update flag
         await updateBalance(
           finalGain,
-          `Session manuelle : Notre technologie a optimisé le processus et généré ${finalGain.toFixed(2)}€ de revenus pour votre compte ${userData.subscription}.`
+          `Session manuelle : Notre technologie a optimisé le processus et généré ${finalGain.toFixed(2)}€ de revenus pour votre compte ${userData.subscription}.`,
+          true // Force UI update flag
         );
         
         // Update boost count for rate limiting
@@ -114,7 +120,8 @@ export const useManualSessions = ({
 
   return {
     isStartingSession,
-    handleStartSession
+    handleStartSession,
+    localBalance // Export local balance for direct UI updates
   };
 };
 

@@ -29,13 +29,14 @@ export const updateUserBalance = async (
       console.log(`Updating balance from ${currentBalance} to ${newBalance} for user ${userId} (attempt ${retryCount + 1}/${maxRetries})`);
       
       // Use standard update instead of RPC to avoid TypeScript errors
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from('user_balances')
         .update({ 
           balance: newBalance,
           updated_at: new Date().toISOString()
         })
-        .eq('id', userId);
+        .eq('id', userId)
+        .select('balance');
       
       if (updateError) {
         console.error("Error updating balance:", updateError);
@@ -54,8 +55,12 @@ export const updateUserBalance = async (
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 500));
       } else {
         success = true;
-        console.log("Balance updated successfully to", newBalance);
-        return { success: true, newBalance, limitReached };
+        console.log("Balance updated successfully to", newBalance, "DB returned:", data?.[0]?.balance);
+        return { 
+          success: true, 
+          newBalance: data?.[0]?.balance || newBalance, // Use DB value if available
+          limitReached 
+        };
       }
     } catch (error) {
       console.error("Error in updateBalance (attempt " + (retryCount + 1) + "):", error);

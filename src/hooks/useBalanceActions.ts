@@ -3,7 +3,7 @@ import { UserData } from "@/types/userData";
 import { useUserSession } from './useUserSession';
 
 interface BalanceActionsResult {
-  updateBalance: (gain: number, report: string) => Promise<void>;
+  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>;
   resetBalance: () => Promise<void>;
   incrementSessionCount: () => Promise<void>;
 }
@@ -40,15 +40,31 @@ export const useBalanceActions = ({
     }
   };
 
-  const updateBalance = async (gain: number, report: string) => {
+  const updateBalance = async (gain: number, report: string, forceUpdate = false) => {
     try {
-      console.log("Updating balance with gain:", gain);
+      console.log("Updating balance with gain:", gain, "force update:", forceUpdate);
+      
+      // If force update is set, update local state immediately before API call
+      if (forceUpdate) {
+        const calculatedNewBalance = userData.balance + gain;
+        console.log("Force updating UI before API call. New balance:", calculatedNewBalance);
+        
+        setUserData(prevData => {
+          const updatedData = {
+            ...prevData,
+            balance: calculatedNewBalance
+          };
+          console.log("Updated userData state (pre-API):", updatedData);
+          return updatedData;
+        });
+      }
+      
       const result = await updateUserBalance(gain, report);
       
       if (result.success) {
-        console.log("Balance update successful. New balance:", result.newBalance);
+        console.log("Balance update successful. New balance from API:", result.newBalance);
         
-        // Update local state immediately with new balance
+        // Always update state after API call to ensure consistency
         setUserData(prevData => {
           const newBalance = result.newBalance !== undefined ? result.newBalance : prevData.balance;
           const updatedData = {
@@ -59,7 +75,7 @@ export const useBalanceActions = ({
               ...prevData.transactions
             ] : prevData.transactions
           };
-          console.log("Updated userData state:", updatedData);
+          console.log("Updated userData state (post-API):", updatedData);
           return updatedData;
         });
         
@@ -68,9 +84,25 @@ export const useBalanceActions = ({
         }
       } else {
         console.error("Balance update failed");
+        // If API call fails and we had force updated, revert to original balance
+        if (forceUpdate) {
+          console.log("API call failed, reverting to original balance:", userData.balance);
+          setUserData(prevData => ({
+            ...prevData,
+            balance: userData.balance
+          }));
+        }
       }
     } catch (error) {
       console.error("Error in updateBalance:", error);
+      // If error occurs and we had force updated, revert to original balance
+      if (forceUpdate) {
+        console.log("Error occurred, reverting to original balance:", userData.balance);
+        setUserData(prevData => ({
+          ...prevData,
+          balance: userData.balance
+        }));
+      }
     }
   };
 

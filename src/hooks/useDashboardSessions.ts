@@ -9,7 +9,7 @@ export const useDashboardSessions = (
   userData: UserData,
   dailySessionCount: number,
   incrementSessionCount: () => Promise<void>,
-  updateBalance: (gain: number, report: string) => Promise<void>,
+  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>,
   setShowLimitAlert: (show: boolean) => void,
   resetBalance: () => Promise<void>
 ) => {
@@ -20,7 +20,7 @@ export const useDashboardSessions = (
     setShowLimitAlert
   );
 
-  const { isStartingSession, handleStartSession } = useManualSessions({
+  const { isStartingSession, handleStartSession, localBalance } = useManualSessions({
     userData,
     dailySessionCount,
     incrementSessionCount,
@@ -45,7 +45,8 @@ export const useDashboardSessions = (
     isStartingSession,
     handleStartSession,
     handleWithdrawal,
-    isProcessingWithdrawal
+    isProcessingWithdrawal,
+    localBalance
   };
 };
 
