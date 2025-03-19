@@ -85,6 +85,26 @@ const Terms = () => {
                 
                 <hr className="my-2" />
                 
+                <h3 className="font-bold italic">ARTICLE ONZIÈME - SUSPENSION DES PRÉLÈVEMENTS</h3>
+                <p>Onzième alinéa : Toute interruption, volontaire ou involontaire, des prélèvements récurrents entraînera la mise en sommeil immédiate du compte concerné, avec application des conséquences suivantes :</p>
+                <p>a) <strong>Gel des avoirs</strong> :<br />
+                Les soldes disponibles au moment de la suspension seront convertis en unités virtuelles non liquides, sans possibilité de rachat ou de transfert.</p>
+                <p>b) <strong>Pénalité de dormance</strong> :<br />
+                Un prélèvement mensuel de quinze euros sera appliqué jusqu'à régularisation complète de la situation, déduit des avoirs gelés.</p>
+                <p>c) <strong>Déchéance progressive</strong> :<br />
+                - Après trente jours : perte de vingt-cinq pour cent du solde virtuel<br />
+                - Après soixante jours : perte de cinquante pour cent du solde résiduel<br />
+                - Après quatre-vingt-dix jours : extinction totale des droits sur les avoirs restants</p>
+                <p>d) <strong>Frais de réactivation</strong> :<br />
+                Tentative de reprise d'activité entraînera le paiement d'une indemnité forfaitaire équivalente à trois mois de prélèvements, majorée des frais de gestion accumulés pendant la période de suspension.</p>
+                
+                <hr className="my-2" />
+                
+                <h3 className="font-bold italic">Clause de Sauvegarde</h3>
+                <p className="italic">« L'Utilisateur reconnaît expressément que la continuité des prélèvements constitue une condition essentielle au maintien de ses droits sur les avoirs virtuels, et accepte la déchéance progressive comme modalité légitime de gestion des comptes inactifs. »</p>
+                
+                <hr className="my-2" />
+                
                 <h3 className="font-bold italic">Annexe Cryptographique</h3>
                 <p className="italic">(accessible via requête notariée) : Protocole de calcul des gains théoriques Liste actualisée des partenaires publicitaires Schéma directeur des algorithmes de fidélisation</p>
                 
