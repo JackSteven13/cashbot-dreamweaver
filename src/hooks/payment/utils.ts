@@ -1,10 +1,20 @@
 
-export const getReferralCodeFromURL = () => {
+import { toast } from "@/components/ui/use-toast";
+import { PlanType } from "./types";
+import { supabase } from "@/integrations/supabase/client";
+
+/**
+ * Récupère le code de parrainage à partir de l'URL
+ */
+export const getReferralCodeFromURL = (): string | null => {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('ref');
 };
 
-export const formatErrorMessage = (error: any) => {
+/**
+ * Formatte un message d'erreur de paiement pour l'utilisateur
+ */
+export const formatErrorMessage = (error: any): string => {
   // Check for specific error patterns
   if (error.message?.includes('No such price')) {
     return "La configuration des prix n'est pas encore terminée. Veuillez réessayer ultérieurement.";
@@ -18,30 +28,105 @@ export const formatErrorMessage = (error: any) => {
     return "Erreur technique dans le format de la requête. Veuillez réessayer.";
   } else if (error.message?.includes('Invalid integer')) {
     return "Erreur de formatage du prix. Notre équipe a été informée et résoudra ce problème rapidement.";
-  } else {
-    // Use the original error message or a generic one
-    return error.message || "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.";
+  }
+  
+  // Use the original error message or a generic one
+  return error.message || "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.";
+};
+
+/**
+ * Met à jour l'abonnement à la fois dans localStorage et vérifie avec Supabase
+ */
+export const updateLocalSubscription = async (subscription: PlanType): Promise<void> => {
+  // Mise à jour immédiate dans localStorage
+  localStorage.setItem('subscription', subscription);
+  console.log(`Abonnement mis à jour localement: ${subscription}`);
+  
+  // Signaler qu'une actualisation forcée est nécessaire au retour sur le dashboard
+  localStorage.setItem('forceRefreshBalance', 'true');
+  
+  try {
+    // Vérifier si la mise à jour est correctement enregistrée dans Supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session) {
+      // Attendre un court délai pour que la base de données ait le temps de se mettre à jour
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Vérifier que l'abonnement est bien mis à jour dans Supabase
+      const { data: userBalance, error } = await supabase
+        .from('user_balances')
+        .select('subscription')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (!error && userBalance) {
+        if (userBalance.subscription !== subscription) {
+          console.warn(`Désynchronisation détectée: Supabase (${userBalance.subscription}) vs Local (${subscription})`);
+          
+          // Tentative de mise à jour directe
+          const { error: updateError } = await supabase
+            .from('user_balances')
+            .update({ 
+              subscription: subscription,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', session.user.id);
+            
+          if (updateError) {
+            console.error("Erreur lors de la correction de la désynchronisation:", updateError);
+          } else {
+            console.log("Synchronisation corrigée avec succès");
+          }
+        } else {
+          console.log("Synchronisation vérifiée: abonnement cohérent entre Supabase et localStorage");
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Erreur lors de la vérification de synchronisation:", error);
   }
 };
 
-export const validateCardPayment = (cardNumber: string, expiry: string, cvc: string): boolean => {
-  // Basic form validation
-  if (!cardNumber || cardNumber.replace(/\s/g, '').length !== 16) {
-    return false;
+/**
+ * Valide les informations de carte bancaire
+ */
+export const validateCardPayment = (
+  cardNumber: string,
+  expiry: string,
+  cvc: string
+): boolean => {
+  let isValid = true;
+  
+  // Validation simplifiée du numéro de carte
+  if (!cardNumber || cardNumber.replace(/\s/g, '').length < 16) {
+    toast({
+      title: "Numéro de carte invalide",
+      description: "Veuillez saisir un numéro de carte valide",
+      variant: "destructive"
+    });
+    isValid = false;
   }
-
-  if (!expiry || expiry.length !== 5) {
-    return false;
+  
+  // Validation simplifiée de la date d'expiration
+  if (!expiry || !expiry.includes('/')) {
+    toast({
+      title: "Date d'expiration invalide",
+      description: "Veuillez saisir une date d'expiration valide (MM/AA)",
+      variant: "destructive"
+    });
+    isValid = false;
   }
-
-  if (!cvc || cvc.length !== 3) {
-    return false;
+  
+  // Validation simplifiée du CVC
+  if (!cvc || cvc.length < 3) {
+    toast({
+      title: "CVC invalide",
+      description: "Veuillez saisir un code de sécurité valide",
+      variant: "destructive"
+    });
+    isValid = false;
   }
-
-  return true;
-};
-
-export const updateLocalSubscription = async (plan: string) => {
-  localStorage.setItem('subscription', plan);
-  return true;
+  
+  return isValid;
 };

@@ -21,7 +21,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       return;
     }
 
-    // Vérifier si l'utilisateur est déjà abonné à ce plan
+    // Vérifier si l'utilisateur est déjà abonné à ce plan en interrogeant directement Supabase
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -32,13 +32,18 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
           .eq('id', session.user.id)
           .single();
         
-        if (!error && userBalanceData && userBalanceData.subscription === selectedPlan) {
-          toast({
-            title: "Abonnement déjà actif",
-            description: `Vous êtes déjà abonné au forfait ${selectedPlan}.`,
-          });
-          navigate('/dashboard');
-          return;
+        if (!error && userBalanceData) {
+          // Si l'utilisateur est déjà abonné à ce plan, afficher un message et rediriger
+          if (userBalanceData.subscription === selectedPlan) {
+            toast({
+              title: "Abonnement déjà actif",
+              description: `Vous êtes déjà abonné au forfait ${selectedPlan}.`,
+            });
+            navigate('/dashboard');
+            return;
+          }
+          
+          console.log('Current subscription:', userBalanceData.subscription, 'Selected plan:', selectedPlan);
         }
       }
     } catch (error) {
@@ -73,6 +78,9 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         
         // Mettre à jour localStorage immédiatement
         await updateLocalSubscription(selectedPlan);
+        
+        // Forcer le rafraîchissement des données au retour sur le dashboard
+        localStorage.setItem('forceRefreshBalance', 'true');
         
         toast({
           title: "Abonnement Freemium activé",
@@ -126,6 +134,9 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         // Mettre à jour localStorage immédiatement
         await updateLocalSubscription(selectedPlan);
         
+        // Forcer le rafraîchissement des données au retour sur le dashboard
+        localStorage.setItem('forceRefreshBalance', 'true');
+        
         toast({
           title: "Abonnement activé",
           description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
@@ -136,6 +147,9 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       
       // Update localStorage preemptively to reduce UI flicker
       localStorage.setItem('subscription', selectedPlan);
+      
+      // Force refresh on dashboard return
+      localStorage.setItem('forceRefreshBalance', 'true');
       
       // Redirect to Stripe checkout URL
       if (data?.url) {

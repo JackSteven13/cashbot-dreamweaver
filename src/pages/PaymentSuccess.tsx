@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Button from '@/components/Button';
@@ -9,7 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
     const updateLocalStorageSubscription = async () => {

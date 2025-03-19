@@ -14,7 +14,7 @@ export const useDashboardInitialization = () => {
   const authCheckInProgress = useRef(false);
   const authCheckAttempted = useRef(false);
   
-  // Amélioré pour être plus robuste
+  // Fonction améliorée pour vérifier l'authentification
   const checkAuth = useCallback(async () => {
     if (authCheckInProgress.current) {
       console.log("Auth check already in progress, skipping");
@@ -63,7 +63,7 @@ export const useDashboardInitialization = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session) return;
+      if (!session) return false;
       
       const { data: userBalanceData, error } = await supabase
         .from('user_balances')
@@ -73,14 +73,14 @@ export const useDashboardInitialization = () => {
       
       if (error || !userBalanceData) {
         console.error("Error fetching subscription data:", error);
-        return;
+        return false;
       }
       
       // Mettre à jour le localStorage si nécessaire
       const localSubscription = localStorage.getItem('subscription');
       
       if (localSubscription !== userBalanceData.subscription) {
-        console.log("Syncing subscription:", localSubscription, "->", userBalanceData.subscription);
+        console.log(`Syncing subscription: ${localSubscription} -> ${userBalanceData.subscription}`);
         localStorage.setItem('subscription', userBalanceData.subscription);
       }
       
