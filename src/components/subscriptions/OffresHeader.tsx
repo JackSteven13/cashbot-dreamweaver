@@ -34,15 +34,16 @@ const OffresHeader: React.FC<OffresHeaderProps> = ({
       {/* Synchroniseur invisible pour assurer des données à jour */}
       <SubscriptionSynchronizer onSync={handleSync} forceCheck={true} />
       
-      <div className="space-y-4">
-        <h1 className="text-3xl font-bold text-white">
-          Nos offres
+      <div className="space-y-6 max-w-2xl mx-auto text-center">
+        <h1 className="text-4xl font-bold text-gradient bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
+          Nos offres premium
         </h1>
-        <p className="text-lg text-blue-100 max-w-2xl">
+        <p className="text-lg text-blue-800 dark:text-blue-200 max-w-2xl">
           Choisissez l'offre qui correspond le mieux à vos besoins et maximisez vos revenus.
+          Passez à l'offre <span className="font-bold text-purple-600 dark:text-purple-400">Alpha</span> pour des gains optimaux.
         </p>
         
-        <div className="flex flex-wrap gap-4 mt-4">
+        <div className="flex justify-center gap-4 mt-6">
           <Button 
             onClick={() => navigate('/dashboard')}
             className="bg-blue-600 hover:bg-blue-700 text-white"

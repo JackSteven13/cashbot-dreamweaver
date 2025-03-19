@@ -125,10 +125,10 @@ const Offres = () => {
   }, []);
   
   return (
-    <div className="cyberpunk-bg min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-blue-50 dark:from-gray-900 dark:to-blue-950">
       <Navbar />
       
-      <main className="flex-1 container mx-auto px-4 py-12">
+      <main className="flex-1 container mx-auto px-4 py-24">
         <OffresHeader 
           isLoading={isLoading} 
           currentSubscription={currentSubscription} 

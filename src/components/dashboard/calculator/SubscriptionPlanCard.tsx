@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { PlanType } from '@/hooks/payment/types';
+import { cn } from '@/lib/utils';
 
 interface SubscriptionPlanCardProps {
   title: string;
@@ -44,30 +45,42 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
   profit,
   onClick
 }) => {
-  // Determine the card color based on the props (isCurrent, isSelected, or mostPopular)
+  // Determine the card color based on the props
   const cardBorderClass = isSelected 
-    ? 'border-blue-500 transform scale-105 z-10'
+    ? 'border-purple-500 ring-2 ring-purple-500/40 transform scale-[1.02] z-10'
     : mostPopular 
-      ? 'border-blue-500 transform scale-105 z-10' 
-      : 'border-gray-200 dark:border-gray-700';
+      ? 'border-blue-500 ring-2 ring-blue-500/40 transform scale-[1.02] z-10' 
+      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700';
   
   const cardBgClass = isCurrent || current
     ? 'bg-blue-50 dark:bg-blue-900/30'
-    : 'bg-white dark:bg-gray-800';
+    : isSelected
+      ? 'bg-purple-50/50 dark:bg-purple-900/20'
+      : 'bg-white dark:bg-gray-800';
 
   return (
     <div 
-      className={`relative rounded-lg border-2 shadow-sm overflow-hidden transition-all ${cardBorderClass} ${cardBgClass}`}
+      className={cn(
+        "relative rounded-xl border-2 shadow-md overflow-hidden transition-all duration-200",
+        cardBorderClass,
+        cardBgClass,
+        onClick && "cursor-pointer"
+      )}
       onClick={onClick}
     >
       {mostPopular && (
-        <div className="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1 text-xs font-semibold rounded-bl">
+        <div className="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1 text-xs font-semibold rounded-bl-lg">
           POPULAIRE
         </div>
       )}
       {(isCurrent || current) && (
-        <div className="absolute top-0 left-0 bg-green-500 text-white px-3 py-1 text-xs font-semibold rounded-br">
+        <div className="absolute top-0 left-0 bg-green-500 text-white px-3 py-1 text-xs font-semibold rounded-br-lg">
           ACTUEL
+        </div>
+      )}
+      {isSelected && !(isCurrent || current) && (
+        <div className="absolute top-0 left-0 bg-purple-600 text-white px-3 py-1 text-xs font-semibold rounded-br-lg">
+          SÉLECTIONNÉ
         </div>
       )}
       <div className="p-6">
@@ -80,7 +93,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
           </span>
           {(subscriptionPrice || price) > 0 && <span className="text-gray-500 dark:text-gray-400">/mois</span>}
         </div>
-        <p className="text-gray-500 dark:text-gray-400 mb-4">{description}</p>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">{description}</p>
         
         {/* Display revenue and profit information if available */}
         {revenue !== undefined && profit !== undefined && (
@@ -95,13 +108,13 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
         )}
         
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
             Limite quotidienne: <span className="font-semibold text-blue-600 dark:text-blue-400">{limit}€</span>
           </p>
-          <ul className="space-y-2">
+          <ul className="space-y-2 mt-3">
             {features.map((feature, index) => (
               <li key={index} className="flex items-start">
-                <svg className="h-5 w-5 text-green-500 shrink-0 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className={`h-5 w-5 ${isSelected ? 'text-purple-500' : 'text-green-500'} shrink-0 mr-2`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <span className="text-gray-600 dark:text-gray-300 text-sm">{feature}</span>
