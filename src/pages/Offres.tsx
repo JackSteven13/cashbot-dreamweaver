@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,14 +15,49 @@ const OFFRES = {
   'alpha': { 'prix': 99.99, 'sessions': 'illimitées', 'gain_max': 50, 'avantages': ['Coaching IA', 'Pubs ultra-premium'] }
 };
 
-const isCurrentPlan = (plan: string) => {
-  const localSubscription = localStorage.getItem('subscription') || 'freemium';
-  return plan === localSubscription;
-};
-
 const Offres = () => {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [currentSubscription, setCurrentSubscription] = useState<string>('freemium');
+  
+  // Charger l'abonnement actuel à partir de localStorage et de Supabase
+  useEffect(() => {
+    const loadCurrentSubscription = async () => {
+      // D'abord, essayer de récupérer depuis localStorage
+      const localSubscription = localStorage.getItem('subscription') || 'freemium';
+      setCurrentSubscription(localSubscription);
+      
+      // Ensuite, vérifier avec Supabase pour s'assurer que les données sont à jour
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        try {
+          const { data: userBalanceData, error } = await supabase
+            .from('user_balances')
+            .select('subscription')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (!error && userBalanceData) {
+            // Mettre à jour le state et localStorage si nécessaire
+            if (userBalanceData.subscription !== localSubscription) {
+              setCurrentSubscription(userBalanceData.subscription);
+              localStorage.setItem('subscription', userBalanceData.subscription);
+              console.log('Subscription synced with server:', userBalanceData.subscription);
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching subscription:', err);
+        }
+      }
+    };
+    
+    loadCurrentSubscription();
+  }, []);
+
+  const isCurrentPlan = (plan: string) => {
+    return plan === currentSubscription;
+  };
 
   const handleSubscribe = async (niveau: string) => {
     if (niveau === 'freemium') {
@@ -45,6 +80,7 @@ const Offres = () => {
         }
         
         localStorage.setItem('subscription', niveau);
+        setCurrentSubscription(niveau);
         
         toast({
           title: `Abonnement ${niveau.charAt(0).toUpperCase() + niveau.slice(1)} activé !`,

@@ -5,22 +5,50 @@ import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Button from '@/components/Button';
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
+    const updateLocalStorageSubscription = async () => {
+      // Vérifier si l'utilisateur est connecté
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        try {
+          // Récupérer les données de l'utilisateur depuis Supabase
+          const { data: userBalanceData, error } = await supabase
+            .from('user_balances')
+            .select('subscription')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (!error && userBalanceData) {
+            // Mettre à jour le localStorage avec le nouvel abonnement
+            localStorage.setItem('subscription', userBalanceData.subscription);
+            console.log('Subscription updated in localStorage:', userBalanceData.subscription);
+          }
+        } catch (error) {
+          console.error('Error fetching updated subscription:', error);
+        }
+      }
+    };
+
     // Show success toast
     toast({
       title: "Paiement réussi",
       description: "Votre abonnement a été activé avec succès !",
     });
 
+    // Update localStorage with the new subscription
+    updateLocalStorageSubscription();
+
     // Redirect to dashboard after a delay
     const timer = setTimeout(() => {
-      navigate('/dashboard');
-    }, 5000);
+      navigate('/dashboard', { replace: true });
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [navigate]);
@@ -43,7 +71,7 @@ const PaymentSuccess = () => {
           
           <Button 
             className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/dashboard', { replace: true })}
           >
             Accéder au tableau de bord <ArrowRight className="ml-2 h-4 w-4" />
           </Button>

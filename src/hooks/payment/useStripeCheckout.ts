@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { PlanType } from './types';
-import { getReferralCodeFromURL, formatErrorMessage } from './utils';
+import { getReferralCodeFromURL, formatErrorMessage, updateLocalSubscription } from './utils';
 import { createCheckoutSession } from './paymentService';
 
 export const useStripeCheckout = (selectedPlan: PlanType | null) => {
@@ -21,7 +21,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       return;
     }
 
-    // For freemium, update subscription directly without Stripe
+    // Pour freemium, update subscription directement sans Stripe
     if (selectedPlan === 'freemium') {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -46,7 +46,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
           
         if (error) throw error;
         
-        localStorage.setItem('subscription', selectedPlan);
+        // Mettre à jour localStorage immédiatement
+        await updateLocalSubscription(selectedPlan);
         
         toast({
           title: "Abonnement Freemium activé",
@@ -97,6 +98,9 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       
       // If it's a free plan, we're done
       if (data.free) {
+        // Mettre à jour localStorage immédiatement
+        await updateLocalSubscription(selectedPlan);
+        
         toast({
           title: "Abonnement activé",
           description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
@@ -104,6 +108,10 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         navigate('/payment-success');
         return;
       }
+      
+      // Update localStorage preemptively to reduce UI flicker
+      // (will be confirmed in PaymentSuccess page)
+      await updateLocalSubscription(selectedPlan);
       
       // Redirect to Stripe checkout URL
       if (data?.url) {
