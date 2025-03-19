@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowUpCircle, Clock, PlayCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
+import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscriptionUtils';
 
 interface ActionButtonsProps {
   canStartSession: boolean;
@@ -28,30 +28,18 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   onBoostClick,
   onWithdraw
 }) => {
-  const [tempProEnabled, setTempProEnabled] = useState(false);
+  const [effectiveSubscription, setEffectiveSubscription] = useState(subscription);
   const [effectiveLimit, setEffectiveLimit] = useState(dailyLimit);
   
-  // Vérifier si le mode Pro temporaire est activé
+  // Vérifier l'abonnement effectif et la limite journalière
   useEffect(() => {
-    const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
-    const proTrialExpires = localStorage.getItem('proTrialExpires');
+    const effectiveSub = getEffectiveSubscription(subscription);
+    setEffectiveSubscription(effectiveSub);
     
-    if (proTrialActive && proTrialExpires) {
-      const expiryTime = parseInt(proTrialExpires, 10);
-      const now = Date.now();
-      
-      if (now < expiryTime) {
-        setTempProEnabled(true);
-        // Si en mode d'essai Pro, utiliser la limite Pro
-        setEffectiveLimit(SUBSCRIPTION_LIMITS['pro']);
-      } else {
-        // Si expiré, utiliser la limite normale
-        setEffectiveLimit(dailyLimit);
-      }
-    } else {
-      setEffectiveLimit(dailyLimit);
-    }
-  }, [dailyLimit]);
+    // Utiliser la limite correspondant à l'abonnement effectif
+    const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    setEffectiveLimit(limit);
+  }, [subscription, dailyLimit]);
   
   // Vérifier si la limite est atteinte - check against the actual current balance
   const limitReached = currentBalance >= effectiveLimit;
@@ -59,8 +47,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   // Calculer le pourcentage de la limite atteinte pour l'affichage visuel
   const limitPercentage = Math.min(100, (currentBalance / effectiveLimit) * 100);
   
-  // Vérifier si on peut démarrer une session en tenant compte du mode Pro temporaire
-  const canStartSessionNow = tempProEnabled ? true : canStartSession;
+  // Vérifier si on peut démarrer une session en tenant compte de l'abonnement effectif
+  const canStartSessionNow = effectiveSubscription !== 'freemium' ? !limitReached : canStartSession;
   
   return (
     <div className="grid grid-cols-1 gap-3 mb-6">
@@ -139,19 +127,17 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         </div>
       </div>
 
-      {/* Rangée conditionnelle pour le bouton d'augmentation de limite */}
-      {(subscription === 'freemium' && !tempProEnabled || limitReached) && (
-        <div className="mt-1">
-          <Link to="/offres" className="w-full block">
-            <Button 
-              size="lg" 
-              className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-md"
-            >
-              {limitReached ? "Augmenter votre limite" : "Passer à l'offre Pro"}
-            </Button>
-          </Link>
-        </div>
-      )}
+      {/* Bouton d'accès aux offres toujours visible */}
+      <div className="mt-1">
+        <Link to="/offres" className="w-full block">
+          <Button 
+            size="lg" 
+            className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-md"
+          >
+            {limitReached ? "Augmenter votre limite" : "Voir les offres disponibles"}
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 };

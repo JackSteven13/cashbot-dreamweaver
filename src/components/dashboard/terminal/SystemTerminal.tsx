@@ -8,6 +8,7 @@ import { SessionCountdown } from './SessionCountdown';
 import { NewUserGuide } from './NewUserGuide';
 import { useSessionCountdown } from '@/hooks/useSessionCountdown';
 import { supabase } from '@/integrations/supabase/client';
+import { getEffectiveSubscription, SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
 
 interface SystemTerminalProps {
   isNewUser: boolean;
@@ -33,6 +34,8 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   const [showProTrialInfo, setShowProTrialInfo] = useState(isNewUser);
   const [isPromoActivated, setIsPromoActivated] = useState(false);
   const [tempProEnabled, setTempProEnabled] = useState(false);
+  const [effectiveSubscription, setEffectiveSubscription] = useState(subscription);
+  const [effectiveLimit, setEffectiveLimit] = useState(dailyLimit);
   
   // Utiliser notre hook pour le compte à rebours
   const { timeRemaining, isCountingDown } = useSessionCountdown(
@@ -41,9 +44,17 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   );
   
   // Calculer le pourcentage de progression vers la limite journalière
-  const limitPercentage = Math.min(100, (displayBalance / dailyLimit) * 100);
+  const limitPercentage = Math.min(100, (displayBalance / effectiveLimit) * 100);
   
   useEffect(() => {
+    // Vérifier si le mode Pro temporaire est activé et mettre à jour l'abonnement effectif
+    const effectiveSub = getEffectiveSubscription(subscription);
+    setEffectiveSubscription(effectiveSub);
+    
+    // Mettre à jour la limite quotidienne effective
+    const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    setEffectiveLimit(limit);
+    
     // Vérifier si le mode Pro temporaire est activé dans le localStorage
     const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
     const proTrialExpires = localStorage.getItem('proTrialExpires');
@@ -61,7 +72,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         localStorage.removeItem('proTrialExpires');
       }
     }
-  }, []);
+  }, [subscription]);
   
   const activateProTrial = async () => {
     if (subscription === 'freemium' && !isPromoActivated) {
@@ -100,8 +111,9 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         {/* Progress bar for daily limit */}
         <SystemProgressBar 
           displayBalance={displayBalance} 
-          dailyLimit={dailyLimit} 
-          limitPercentage={limitPercentage} 
+          dailyLimit={effectiveLimit} 
+          limitPercentage={limitPercentage}
+          subscription={subscription}
         />
         
         {/* Countdown timer if applicable */}
@@ -113,7 +125,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         <SystemInfoGrid 
           subscription={subscription}
           tempProEnabled={tempProEnabled}
-          dailyLimit={dailyLimit}
+          dailyLimit={effectiveLimit}
           remainingSessions={remainingSessions}
           referralBonus={referralBonus}
         />

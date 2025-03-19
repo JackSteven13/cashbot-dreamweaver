@@ -39,8 +39,8 @@ export const getEffectiveSubscription = (subscription: string): string => {
  */
 export const checkDailyLimit = (balance: number, subscription: string): boolean => {
   const effectiveSubscription = getEffectiveSubscription(subscription);
-  const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS];
-  return balance >= dailyLimit && effectiveSubscription === 'freemium';
+  const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  return balance >= dailyLimit;
 };
 
 /**
@@ -51,7 +51,7 @@ export const canStartManualSession = (subscription: string, dailySessionCount: n
   
   // Users with Pro trial or higher subscriptions have unlimited sessions
   if (effectiveSubscription !== 'freemium') {
-    return true;
+    return balance < SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS];
   }
   
   // Freemium users are limited to 1 manual session per day

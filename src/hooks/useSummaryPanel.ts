@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
-import { SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
+import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscriptionUtils';
 
 interface UseSummaryPanelProps {
   balance: number;
@@ -33,28 +33,13 @@ export const useSummaryPanel = ({
   }, [balance]);
   
   useEffect(() => {
-    // Vérifier si le mode Pro temporaire est activé
-    const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
-    const proTrialExpires = localStorage.getItem('proTrialExpires');
+    // Vérifier l'abonnement effectif (avec essai Pro)
+    const effectiveSub = getEffectiveSubscription(subscription);
+    setEffectiveSubscription(effectiveSub);
     
-    if (proTrialActive && proTrialExpires) {
-      const expiryTime = parseInt(proTrialExpires, 10);
-      const now = Date.now();
-      
-      if (now < expiryTime) {
-        setEffectiveSubscription('pro');
-        setEffectiveDailyLimit(SUBSCRIPTION_LIMITS['pro']);
-      } else {
-        // Si expiré, nettoyer le localStorage
-        localStorage.removeItem('proTrialActive');
-        localStorage.removeItem('proTrialExpires');
-        setEffectiveSubscription(subscription);
-        setEffectiveDailyLimit(SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
-      }
-    } else {
-      setEffectiveSubscription(subscription);
-      setEffectiveDailyLimit(SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
-    }
+    // Mettre à jour la limite journalière effective
+    const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    setEffectiveDailyLimit(limit);
     
     return () => {
       if (clickTimeoutRef.current) {
@@ -112,11 +97,11 @@ export const useSummaryPanel = ({
   };
 
   const onBoostClick = (canStartSession: boolean) => {
+    // Utiliser la limite effective pour la vérification
     const currentlyCanStartSession = canStartSession && (latestBalanceRef.current < effectiveDailyLimit);
     
     if (isButtonDisabled || isWithdrawing || !currentlyCanStartSession) return;
     
-    // Utiliser la limite effective pour la vérification
     if (latestBalanceRef.current >= effectiveDailyLimit) {
       toast({
         title: "Limite journalière atteinte",

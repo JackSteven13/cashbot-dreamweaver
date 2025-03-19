@@ -3,7 +3,7 @@ import { FC, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
+import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscriptionUtils';
 
 interface DailyLimitAlertProps {
   show: boolean;
@@ -17,27 +17,12 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
   
   // Vérifier si le mode Pro temporaire est activé
   useEffect(() => {
-    const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
-    const proTrialExpires = localStorage.getItem('proTrialExpires');
+    const effectiveSub = getEffectiveSubscription(subscription);
+    setEffectiveSubscription(effectiveSub);
     
-    if (proTrialActive && proTrialExpires) {
-      const expiryTime = parseInt(proTrialExpires, 10);
-      const now = Date.now();
-      
-      if (now < expiryTime) {
-        setEffectiveSubscription('pro');
-      } else {
-        setEffectiveSubscription(subscription);
-      }
-    } else {
-      setEffectiveSubscription(subscription);
-    }
+    // Mettre à jour la limite effective
+    setEffectiveLimit(SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
   }, [subscription]);
-  
-  // Mettre à jour la limite effective
-  useEffect(() => {
-    setEffectiveLimit(SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
-  }, [effectiveSubscription]);
   
   if (!show) {
     return null;
@@ -46,11 +31,6 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
   const isLimitReached = currentBalance >= effectiveLimit;
   const limitPercentage = Math.min(100, (currentBalance / effectiveLimit) * 100);
   const isNearLimit = limitPercentage >= 90;
-
-  // Si l'utilisateur est en mode Pro temporaire, ne pas afficher l'alerte s'il n'a pas vraiment atteint la limite Pro
-  if (effectiveSubscription === 'pro' && subscription === 'freemium' && currentBalance < effectiveLimit) {
-    return null;
-  }
 
   return (
     <Alert className={`mb-6 ${isLimitReached ? 'bg-amber-50 border-amber-300' : 'bg-yellow-50 border-yellow-200'}`}>
