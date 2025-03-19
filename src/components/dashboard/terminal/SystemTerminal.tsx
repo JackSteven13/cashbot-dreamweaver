@@ -89,8 +89,11 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   };
 
   return (
-    <div className="w-full lg:w-1/2">
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-lg border border-slate-700 p-5 text-white">
+    <div className="w-full h-full">
+      <div className="bg-gradient-to-br from-indigo-900 to-blue-900 rounded-xl shadow-xl border border-indigo-700/50 p-6 text-white overflow-hidden relative">
+        {/* Subtle background pattern */}
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMxLjIgMCAyLjEuOSAyLjEgMi4xdjI3LjhjMCAxLjItLjkgMi4xLTIuMSAyLjFIOFYxOGgyOHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjA0Ii8+PC9nPjwvc3ZnPg==')] opacity-10"></div>
+
         {/* Header with system status and feedback button */}
         <SystemInfo 
           isNewUser={isNewUser} 

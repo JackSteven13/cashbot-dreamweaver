@@ -8,11 +8,11 @@ interface MetricsLayoutProps {
 
 const MetricsLayout = ({ mainContent, sideContent }: MetricsLayoutProps) => {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="lg:col-span-2 space-y-8">
         {mainContent}
       </div>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {sideContent}
       </div>
     </div>
