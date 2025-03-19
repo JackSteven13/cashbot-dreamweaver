@@ -1,43 +1,39 @@
 
 import React from 'react';
-import MetricsLayout from './metrics/MetricsLayout';
-import MainContent from './metrics/MainContent';
-import SideContent from './metrics/SideContent';
-import { Transaction } from '@/types/userData';
+import { calculateReferralBonus } from '@/utils/referralUtils';
+import { MetricsLayout, MainContent, SideContent } from '@/components/dashboard/metrics';
+import { Transaction, Referral } from '@/types/userData';
 
-export interface DashboardMetricsProps {
+interface DashboardMetricsProps {
   balance: number;
   referralLink: string;
   isStartingSession: boolean;
-  handleStartSession: () => Promise<void>;
-  handleWithdrawal: () => Promise<void>;
+  handleStartSession: () => void;
+  handleWithdrawal: () => void;
   transactions: Transaction[];
   isNewUser?: boolean;
   subscription: string;
-  dailySessionCount: number;
+  dailySessionCount?: number;
   canStartSession?: boolean;
-  referralCount: number;
-  referralBonus: number;
-  dailyLimit: number;
-  onActivateProTrial: () => void;
+  referrals?: Referral[];
 }
 
-const DashboardMetrics = ({
-  balance,
-  referralLink,
-  isStartingSession,
+const DashboardMetrics = ({ 
+  balance, 
+  referralLink, 
+  isStartingSession, 
   handleStartSession,
   handleWithdrawal,
   transactions,
   isNewUser = false,
   subscription,
-  dailySessionCount,
+  dailySessionCount = 0,
   canStartSession = true,
-  referralCount,
-  referralBonus,
-  dailyLimit
+  referrals = []
 }: DashboardMetricsProps) => {
-  
+  // Calculate referral bonus for display
+  const referralBonus = calculateReferralBonus(referrals.length);
+
   return (
     <MetricsLayout
       mainContent={
@@ -52,7 +48,7 @@ const DashboardMetrics = ({
           subscription={subscription}
           dailySessionCount={dailySessionCount}
           canStartSession={canStartSession}
-          referralCount={referralCount}
+          referralCount={referrals.length}
           referralBonus={referralBonus}
         />
       }
@@ -60,13 +56,9 @@ const DashboardMetrics = ({
         <SideContent
           balance={balance}
           isNewUser={isNewUser}
-          referralCount={referralCount}
           referralBonus={referralBonus}
-          dailyLimit={dailyLimit}
         />
       }
-      subscription={subscription}
-      onActivateProTrial={() => {}}
     />
   );
 };

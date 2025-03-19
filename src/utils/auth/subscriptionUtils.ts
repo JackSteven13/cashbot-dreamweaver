@@ -1,46 +1,15 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
-
 /**
- * Handles user subscription-related utilities
+ * Checks if a user is at their daily limit based on subscription and balance
  */
-
-/**
- * Performs a proper logout, clearing both Supabase session and local storage
- * @returns Promise<boolean> true if successful, false otherwise
- */
-export const logoutUser = async (): Promise<boolean> => {
-  try {
-    // First, sign out from Supabase
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      console.error("Error during sign out:", error);
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue lors de la déconnexion",
-        variant: "destructive"
-      });
-      return false;
-    }
-    
-    // Clear relevant localStorage items
-    localStorage.removeItem('user_registered');
-    localStorage.removeItem('username');
-    localStorage.removeItem('user_balance');
-    localStorage.removeItem('daily_session_count');
-    localStorage.removeItem('subscription');
-    
-    console.log("User signed out successfully");
-    return true;
-  } catch (error) {
-    console.error("Logout error:", error);
-    toast({
-      title: "Erreur",
-      description: "Une erreur est survenue lors de la déconnexion",
-      variant: "destructive"
-    });
-    return false;
-  }
+export const checkDailyLimit = (balance: number, subscription: string) => {
+  // Import this from subscriptionUtils if needed
+  const SUBSCRIPTION_LIMITS: Record<string, number> = {
+    'freemium': 0.5,
+    'pro': 5,
+    'visionnaire': 20,
+    'alpha': 50
+  };
+  
+  return balance >= (SUBSCRIPTION_LIMITS[subscription] || 0.5);
 };

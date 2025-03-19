@@ -15,20 +15,20 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
 }) => {
   return (
     <div className="mb-5">
-      <div className="flex justify-between items-center mb-2">
-        <div className="text-sm font-medium text-blue-100">
+      <div className="flex justify-between items-center mb-1">
+        <div className="text-xs font-medium text-gray-300">
           Progression de la limite journalière
         </div>
-        <div className="text-sm font-bold text-blue-100">
-          {displayBalance.toFixed(2)}€ / {dailyLimit.toFixed(1)}€
+        <div className="text-xs font-medium text-gray-300">
+          {displayBalance.toFixed(2)}€ / {dailyLimit}€
         </div>
       </div>
-      <div className="h-2.5 rounded-full bg-blue-800/50 overflow-hidden">
+      <Progress value={limitPercentage} className="h-2 bg-slate-700">
         <div 
-          className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full transition-all duration-500 ease-out"
+          className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"
           style={{ width: `${limitPercentage}%` }}
         />
-      </div>
+      </Progress>
     </div>
   );
 };

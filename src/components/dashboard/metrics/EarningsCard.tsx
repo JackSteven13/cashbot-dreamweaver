@@ -11,17 +11,17 @@ interface EarningsCardProps {
 
 const EarningsCard = ({ balance, isNewUser, referralBonus = 0 }: EarningsCardProps) => {
   return (
-    <Card className="shadow-md border-slate-200 dark:border-slate-700 overflow-hidden">
-      <CardHeader className="pb-2 bg-gradient-to-r from-indigo-800 to-blue-900 text-white">
-        <CardTitle className="text-xl font-semibold">
+    <Card className="shadow-md border-slate-200 dark:border-slate-700">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-200">
           Tableau de bord des gains
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 p-5">
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-800/20 p-4 rounded-lg flex justify-between items-center">
+      <CardContent className="space-y-4">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg flex justify-between items-center">
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Aujourd'hui</p>
-            <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-400">
+            <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
               {isNewUser ? "0.00€" : `+${balance.toFixed(2)}€`}
             </p>
             {referralBonus > 0 && (
@@ -30,33 +30,27 @@ const EarningsCard = ({ balance, isNewUser, referralBonus = 0 }: EarningsCardPro
               </p>
             )}
           </div>
-          <div className="h-10 w-10 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center">
-            <TrendingUp className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-          </div>
+          <TrendingUp className="h-8 w-8 text-blue-500 dark:text-blue-400" />
         </div>
         
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-800/20 p-4 rounded-lg flex justify-between items-center">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg flex justify-between items-center">
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Cette semaine</p>
-            <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-400">
+            <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
               {isNewUser ? "0.00€" : `+${(balance * 1.5).toFixed(2)}€`}
             </p>
           </div>
-          <div className="h-10 w-10 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center">
-            <Calendar className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-          </div>
+          <Calendar className="h-8 w-8 text-blue-500 dark:text-blue-400" />
         </div>
         
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-800/20 p-4 rounded-lg flex justify-between items-center">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg flex justify-between items-center">
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Ce mois</p>
-            <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-400">
+            <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
               {isNewUser ? "0.00€" : `+${(balance * 3).toFixed(2)}€`}
             </p>
           </div>
-          <div className="h-10 w-10 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center">
-            <PieChart className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-          </div>
+          <PieChart className="h-8 w-8 text-blue-500 dark:text-blue-400" />
         </div>
       </CardContent>
     </Card>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -8,12 +7,9 @@ import {
   LogOut, 
   Settings, 
   Share2,
-  Home,
-  LayoutDashboard
+  Home
 } from 'lucide-react';
 import Button from '@/components/Button';
-import { logoutUser } from '@/utils/auth/index';
-import { toast } from '@/components/ui/use-toast';
 
 interface SidebarProps {
   selectedNavItem: string;
@@ -23,20 +19,14 @@ interface SidebarProps {
 const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
   const navigate = useNavigate();
   
-  // Updated function to handle logout properly
-  const handleLogout = async () => {
-    // Show loading toast
-    toast({
-      title: "Déconnexion en cours",
-      description: "Veuillez patienter...",
-    });
-    
-    const success = await logoutUser();
-    
-    if (success) {
-      // Redirect to home page after logout
-      navigate('/', { replace: true });
-    }
+  // Function to handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('user_registered');
+    localStorage.removeItem('username');
+    localStorage.removeItem('user_balance');
+    localStorage.removeItem('daily_session_count');
+    localStorage.removeItem('subscription');
+    navigate('/');
   };
   
   // Function to handle both setting the selected item and navigation
@@ -48,24 +38,14 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
   };
   
   return (
-    <div className="hidden md:flex w-64 flex-col bg-gradient-to-b from-blue-900 to-indigo-950 border-r border-indigo-800/30">
-      <div className="p-6 flex items-center">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center mr-3">
-          <span className="text-white font-bold text-xl">C</span>
-        </div>
-        <Link to="/" className="text-2xl font-bold tracking-tight text-white">
+    <div className="hidden md:flex w-64 flex-col bg-[#1e3a5f] border-r border-[#2d5f8a]/30">
+      <div className="p-6">
+        <Link to="/" className="text-2xl font-semibold tracking-tight text-white">
           CashBot
         </Link>
       </div>
       
-      <div className="flex-1 px-3 py-4 space-y-2">
-        <NavItem 
-          icon={<LayoutDashboard size={18} className="mr-3" />}
-          label="Tableau de bord"
-          id="dashboard"
-          selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("dashboard")}
-        />
+      <div className="flex-1 px-3 py-4 space-y-1">
         <NavItem 
           icon={<History size={18} className="mr-3" />}
           label="Historique"
@@ -107,9 +87,9 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
         <Button 
           variant="outline" 
           fullWidth 
-          className="justify-start border-indigo-600/50 text-white hover:bg-indigo-800/50"
+          className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50"
           onClick={() => {
-            // Navigate to the home page
+            // Naviguez d'abord vers la page d'accueil
             navigate('/');
           }}
         >
@@ -119,7 +99,7 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
         <Button 
           variant="outline" 
           fullWidth 
-          className="justify-start border-indigo-600/50 text-white hover:bg-indigo-800/50"
+          className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50"
           onClick={handleLogout}
         >
           <LogOut size={18} className="mr-3" />
@@ -140,10 +120,10 @@ interface NavItemProps {
 
 const NavItem = ({ icon, label, id, selectedNavItem, onClick }: NavItemProps) => (
   <button
-    className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
+    className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
       selectedNavItem === id 
-        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
-        : 'hover:bg-blue-800/40 text-blue-100'
+        ? 'bg-[#2d5f8a] text-white' 
+        : 'hover:bg-[#334e68]/50 text-blue-100'
     }`}
     onClick={onClick}
   >

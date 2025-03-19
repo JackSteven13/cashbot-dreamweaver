@@ -9,7 +9,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { MessageCircle } from 'lucide-react';
 
 interface FeedbackDialogProps {
   open: boolean;
@@ -40,10 +39,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5" />
-            Partagez votre expérience
-          </DialogTitle>
+          <DialogTitle>Partagez votre expérience</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <p className="text-sm text-gray-500">

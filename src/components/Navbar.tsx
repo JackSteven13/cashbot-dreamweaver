@@ -1,13 +1,10 @@
 
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, LogOut } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 import Button from './Button';
 import DarkModeToggle from './DarkModeToggle';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { logoutUser } from '@/utils/auth/index';
-import { toast } from '@/components/ui/use-toast';
-import { supabase } from "@/integrations/supabase/client";
 import {
   Sheet,
   SheetContent,
@@ -19,9 +16,7 @@ import {
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -32,39 +27,6 @@ const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  // Check if user is logged in
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      setIsLoggedIn(!!data.session);
-    };
-    
-    checkAuth();
-    
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsLoggedIn(!!session);
-    });
-    
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleLogout = async () => {
-    toast({
-      title: "Déconnexion en cours",
-      description: "Veuillez patienter...",
-    });
-    
-    const success = await logoutUser();
-    
-    if (success) {
-      // Redirect to home page after logout
-      navigate('/', { replace: true });
-    }
-  };
 
   return (
     <nav
@@ -114,31 +76,16 @@ const Navbar = () => {
             
             <div className="flex items-center space-x-3">
               <DarkModeToggle />
-              {isLoggedIn ? (
-                <>
-                  <Link to="/dashboard">
-                    <Button variant="outline" size="sm">
-                      Tableau de bord
-                    </Button>
-                  </Link>
-                  <Button size="sm" onClick={handleLogout}>
-                    Déconnexion
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login">
-                    <Button variant="outline" size="sm">
-                      Connexion
-                    </Button>
-                  </Link>
-                  <Link to="/register">
-                    <Button size="sm">
-                      S'inscrire
-                    </Button>
-                  </Link>
-                </>
-              )}
+              <Link to="/login">
+                <Button variant="outline" size="sm">
+                  Connexion
+                </Button>
+              </Link>
+              <Link to="/register">
+                <Button size="sm">
+                  S'inscrire
+                </Button>
+              </Link>
             </div>
           </div>
 
@@ -184,40 +131,20 @@ const Navbar = () => {
                     </Link>
                   </SheetClose>
                   <div className="pt-4 flex flex-col space-y-3 border-t border-border mt-2">
-                    {isLoggedIn ? (
-                      <>
-                        <SheetClose asChild>
-                          <Link to="/dashboard">
-                            <Button variant="outline" fullWidth>
-                              Tableau de bord
-                            </Button>
-                          </Link>
-                        </SheetClose>
-                        <SheetClose asChild>
-                          <Button fullWidth onClick={handleLogout}>
-                            <LogOut size={18} className="mr-2" />
-                            Déconnexion
-                          </Button>
-                        </SheetClose>
-                      </>
-                    ) : (
-                      <>
-                        <SheetClose asChild>
-                          <Link to="/login">
-                            <Button variant="outline" fullWidth>
-                              Connexion
-                            </Button>
-                          </Link>
-                        </SheetClose>
-                        <SheetClose asChild>
-                          <Link to="/register">
-                            <Button fullWidth>
-                              S'inscrire
-                            </Button>
-                          </Link>
-                        </SheetClose>
-                      </>
-                    )}
+                    <SheetClose asChild>
+                      <Link to="/login">
+                        <Button variant="outline" fullWidth>
+                          Connexion
+                        </Button>
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link to="/register">
+                        <Button fullWidth>
+                          S'inscrire
+                        </Button>
+                      </Link>
+                    </SheetClose>
                   </div>
                 </div>
               </SheetContent>

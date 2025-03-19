@@ -54,25 +54,4 @@
   .dark-transition {
     @apply transition-colors duration-300;
   }
-  
-  /* New gradient card styles */
-  .gradient-card-blue {
-    @apply bg-gradient-to-br from-blue-800 to-indigo-900 text-white;
-  }
-  
-  .gradient-card-indigo {
-    @apply bg-gradient-to-br from-indigo-800 to-blue-900 text-white;
-  }
-  
-  .gradient-bg-sidebar {
-    @apply bg-gradient-to-b from-blue-900 to-indigo-950;
-  }
-  
-  .glass-effect {
-    @apply backdrop-blur-sm bg-white/10 border border-white/5;
-  }
-  
-  .hover-scale-subtle {
-    @apply transition-transform duration-200 hover:scale-[1.02];
-  }
 }

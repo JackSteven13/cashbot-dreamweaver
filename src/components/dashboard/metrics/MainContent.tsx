@@ -3,14 +3,14 @@ import React from 'react';
 import { SummaryPanel } from '@/components/dashboard/summary';
 import TransactionsList from '@/components/dashboard/TransactionsList';
 import RevenueCalculator from '@/components/dashboard/RevenueCalculator';
-import { Transaction } from '@/types/userData';
+import { Transaction, Referral } from '@/types/userData';
 
 interface MainContentProps {
   balance: number;
   referralLink: string;
   isStartingSession: boolean;
-  handleStartSession: () => Promise<void>;
-  handleWithdrawal: () => Promise<void>;
+  handleStartSession: () => void;
+  handleWithdrawal: () => void;
   transactions: Transaction[];
   isNewUser: boolean;
   subscription: string;
