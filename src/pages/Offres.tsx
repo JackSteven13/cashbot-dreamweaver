@@ -21,19 +21,17 @@ const Offres = () => {
         
         if (session) {
           // Désactiver complètement le cache pour cette requête critique
-          const headers = new Headers();
-          headers.append('cache-control', 'no-cache');
-          headers.append('pragma', 'no-cache');
+          const options = { 
+            head: false, // Contourner le cache
+            count: 'exact' as const
+          };
           
           try {
             // 1. Essayer d'abord la fonction RPC pour une réponse plus fiable
             const { data: rpcData, error: rpcError } = await supabase
               .rpc('get_current_subscription', { 
                 user_id: session.user.id 
-              }, { 
-                headers,
-                head: false // Contourner le cache
-              }) as { data: string | null, error: any };
+              }, options) as { data: string | null, error: any };
               
             if (!rpcError && rpcData) {
               console.log("Abonnement récupéré via RPC:", rpcData);

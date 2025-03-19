@@ -26,10 +26,17 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
           const { data: rpcData, error: rpcError } = await supabase
             .rpc('get_current_subscription', { 
               user_id: session.user.id 
+            }, {
+              head: false, // Contourner le cache
+              count: 'exact' as const
             }) as { data: string | null, error: any };
             
           if (!rpcError && rpcData) {
             setVerifiedSubscription(rpcData);
+            // Force la mise à jour du localStorage pour cohérence
+            if (rpcData !== localStorage.getItem('subscription')) {
+              localStorage.setItem('subscription', rpcData);
+            }
           } else {
             // Fallback sur requête directe
             const { data: userData, error: directError } = await supabase
@@ -40,6 +47,10 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
               
             if (!directError && userData && userData.subscription) {
               setVerifiedSubscription(userData.subscription);
+              // Force aussi la mise à jour du localStorage
+              if (userData.subscription !== localStorage.getItem('subscription')) {
+                localStorage.setItem('subscription', userData.subscription);
+              }
             }
           }
         }

@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import SubscriptionStatusIndicator from '@/components/subscriptions/SubscriptionStatusIndicator';
 import SubscriptionSynchronizer from './SubscriptionSynchronizer';
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 interface OffresHeaderProps {
   isLoading: boolean;
@@ -34,6 +35,11 @@ const OffresHeader: React.FC<OffresHeaderProps> = ({
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     try {
+      toast({
+        title: "Rafraîchissement en cours",
+        description: "Vérification de l'état de votre abonnement...",
+      });
+      
       // Force une vérification directe avec Supabase
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -43,19 +49,40 @@ const OffresHeader: React.FC<OffresHeaderProps> = ({
           .rpc('get_current_subscription', { 
             user_id: session.user.id 
           }, { 
-            head: false // Désactiver le cache
+            head: false, // Désactiver le cache
+            count: 'exact' as const
           }) as { data: string | null, error: any };
           
         if (!error && data) {
           setSyncedSubscription(data);
           localStorage.setItem('subscription', data);
+          toast({
+            title: "Abonnement rafraîchi",
+            description: `Votre abonnement actuel est: ${data.charAt(0).toUpperCase() + data.slice(1)}`,
+          });
           console.log("Abonnement rafraîchi manuellement:", data);
+          
+          // Forcer un rafraîchissement de la page après une courte pause
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+          
         } else {
           console.error("Erreur lors du rafraîchissement manuel:", error);
+          toast({
+            title: "Erreur de synchronisation",
+            description: "Impossible de récupérer votre abonnement. Veuillez réessayer.",
+            variant: "destructive"
+          });
         }
       }
     } catch (error) {
       console.error("Erreur lors du rafraîchissement manuel:", error);
+      toast({
+        title: "Erreur",
+        description: "Un problème est survenu lors de la vérification de votre abonnement.",
+        variant: "destructive"
+      });
     } finally {
       setIsRefreshing(false);
     }
