@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { FeedbackDialog } from './FeedbackDialog';
 import { SystemInfo, SystemInfoGrid } from './SystemInfo';
-import { ProTrialBanner, ProTrialActive } from './ProTrialBanner';
+import { ProTrialBanner } from './ProTrialBanner';
 import { SystemProgressBar } from './SystemProgressBar';
 import { SessionCountdown } from './SessionCountdown';
 import { NewUserGuide } from './NewUserGuide';
@@ -125,9 +125,6 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         {subscription === 'freemium' && !isPromoActivated && (
           <ProTrialBanner onClick={activateProTrial} />
         )}
-        
-        {/* Active pro trial banner */}
-        {isPromoActivated && <ProTrialActive />}
       </div>
       
       {/* Feedback dialog */}
