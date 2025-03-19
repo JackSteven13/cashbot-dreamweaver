@@ -27,6 +27,7 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
   currentSubscription 
 }) => {
   const navigate = useNavigate();
+  // Initialize selectedPlan to 'alpha' by default
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('alpha');
   
   const handleSelectPlan = (planId: PlanType) => {

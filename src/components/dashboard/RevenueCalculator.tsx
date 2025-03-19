@@ -71,7 +71,8 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
   isNewUser,
   isHomePage = false
 }) => {
-  const [selectedPlan, setSelectedPlan] = useState(currentSubscription === 'freemium' ? 'pro' : currentSubscription);
+  // Initialize selectedPlan to 'alpha' instead of dynamically based on currentSubscription
+  const [selectedPlan, setSelectedPlan] = useState('alpha');
   const [calculatedResults, setCalculatedResults] = useState<Record<string, { revenue: number, profit: number }>>({});
 
   const form = useForm<FormValues>({
