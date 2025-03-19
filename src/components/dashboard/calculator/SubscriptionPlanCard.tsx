@@ -1,81 +1,66 @@
 
 import React from 'react';
+import { PlanType } from '@/hooks/payment/types';
 
 interface SubscriptionPlanCardProps {
-  plan: string;
-  isSelected: boolean;
-  isHomePage: boolean;
-  isCurrent: boolean;
-  isFreemium: boolean;
-  subscriptionLabel: string;
-  subscriptionPrice: number;
-  revenue: number;
-  profit: number;
-  onClick: () => void;
+  title: string;
+  price: number;
+  description: string;
+  features: string[];
+  limit: number;
+  current?: boolean;
+  mostPopular?: boolean;
+  action: React.ReactNode;
 }
 
 const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
-  plan,
-  isSelected,
-  isHomePage,
-  isCurrent,
-  isFreemium,
-  subscriptionLabel,
-  subscriptionPrice,
-  revenue,
-  profit,
-  onClick
+  title,
+  price,
+  description,
+  features,
+  limit,
+  current = false,
+  mostPopular = false,
+  action
 }) => {
-  // Dark mode compatible background colors
-  const bgColorClass = isHomePage 
-    ? isSelected ? 'bg-blue-900/40 border-blue-500 dark:bg-blue-800/60 dark:border-blue-400' : 'bg-blue-950/40 border-blue-800/50 dark:bg-blue-900/50 dark:border-blue-700/50' 
-    : isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-500' : 'border-gray-200 dark:border-gray-700 dark:bg-gray-800/50';
-  
-  // Dark mode compatible text colors
-  const titleClass = isHomePage 
-    ? (isCurrent ? 'text-blue-300 dark:text-blue-200' : 'text-white') 
-    : (isCurrent ? 'text-blue-700 dark:text-blue-300' : 'text-gray-800 dark:text-gray-100');
-  
-  const smallTextClass = isHomePage 
-    ? 'text-blue-300 dark:text-blue-200' 
-    : 'text-gray-500 dark:text-gray-400';
-  
-  const revenueClass = isHomePage 
-    ? 'text-green-400 dark:text-green-300' 
-    : 'text-green-600 dark:text-green-400';
-  
-  const profitClass = profit > 0 
-    ? (isHomePage ? 'text-green-400 dark:text-green-300' : 'text-green-600 dark:text-green-400') 
-    : 'text-red-500 dark:text-red-400';
-
   return (
-    <div 
-      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${bgColorClass} hover:shadow-md`}
-      onClick={onClick}
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <span className={`font-medium ${titleClass}`}>
-            {subscriptionLabel}
-            {isFreemium && 
-              <span className="ml-2 text-xs opacity-75">(Limité à 1 session/jour)</span>
-            }
-          </span>
-          <div className={`text-xs ${smallTextClass} mt-1`}>
-            {subscriptionPrice > 0 
-              ? `${subscriptionPrice.toFixed(2)}€/mois` 
-              : 'Gratuit'}
-          </div>
+    <div className={`relative rounded-lg border-2 shadow-sm overflow-hidden transition-all ${
+      mostPopular ? 'border-blue-500 transform scale-105 z-10' : 'border-gray-200 dark:border-gray-700'
+    } ${current ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-gray-800'}`}>
+      {mostPopular && (
+        <div className="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1 text-xs font-semibold rounded-bl">
+          POPULAIRE
         </div>
-        <div className="text-right">
-          <div className={`text-lg font-bold ${revenueClass}`}>
-            {revenue.toFixed(2)}€
-          </div>
-          <div className={`text-xs ${smallTextClass}`}>
-            Profit: <span className={profitClass}>
-              {profit.toFixed(2)}€
-            </span>
-          </div>
+      )}
+      {current && (
+        <div className="absolute top-0 left-0 bg-green-500 text-white px-3 py-1 text-xs font-semibold rounded-br">
+          ACTUEL
+        </div>
+      )}
+      <div className="p-6">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h3>
+        <div className="mb-4">
+          <span className="text-3xl font-bold text-gray-900 dark:text-white">{price}€</span>
+          {price > 0 && <span className="text-gray-500 dark:text-gray-400">/mois</span>}
+        </div>
+        <p className="text-gray-500 dark:text-gray-400 mb-4">{description}</p>
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+            Limite quotidienne: <span className="font-semibold text-blue-600 dark:text-blue-400">{limit}€</span>
+          </p>
+          <ul className="space-y-2">
+            {features.map((feature, index) => (
+              <li key={index} className="flex items-start">
+                <svg className="h-5 w-5 text-green-500 shrink-0 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-gray-600 dark:text-gray-300 text-sm">{feature}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          {action}
         </div>
       </div>
     </div>
