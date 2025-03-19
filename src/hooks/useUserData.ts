@@ -75,10 +75,17 @@ export const useUserData = () => {
   }, [setFetchedShowLimitAlert]);
 
   // Add a function to refresh the user data from the backend
-  const refreshUserData = useCallback(async () => {
+  const refreshUserData = useCallback(async (): Promise<boolean> => {
     if (refetchUserData) {
-      await refetchUserData();
+      try {
+        await refetchUserData();
+        return true;
+      } catch (error) {
+        console.error("Error in refreshUserData:", error);
+        return false;
+      }
     }
+    return false;
   }, [refetchUserData]);
 
   return {

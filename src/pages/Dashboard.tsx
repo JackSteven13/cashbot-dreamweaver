@@ -59,7 +59,7 @@ const Dashboard = () => {
   // Callback to force refresh when needed
   const forceRefresh = useCallback(() => {
     setRenderKey(Date.now());
-    refreshUserData();
+    refreshUserData().catch(error => console.error("Error refreshing user data:", error));
   }, [refreshUserData]);
 
   // One-time check on initial render to detect stale data
