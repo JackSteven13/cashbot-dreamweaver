@@ -7,11 +7,6 @@ import DashboardLoading from '@/components/dashboard/DashboardLoading';
 import DashboardError from '@/components/dashboard/DashboardError';
 import DailyLimitAlert from '@/components/dashboard/DailyLimitAlert';
 import DormancyAlert from '@/components/dashboard/DormancyAlert';
-import TransactionsPage from '@/pages/dashboard/TransactionsPage';
-import AnalyticsPage from '@/pages/dashboard/AnalyticsPage';
-import WalletPage from '@/pages/dashboard/WalletPage';
-import ReferralsPage from '@/pages/dashboard/ReferralsPage';
-import SettingsPage from '@/pages/dashboard/SettingsPage';
 import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
 import { useDormancyCheck } from '@/hooks/useDormancyCheck';
@@ -136,7 +131,7 @@ const Dashboard = () => {
     </>
   );
 
-  // Enfin, afficher le tableau de bord avec le routage
+  // Simplifié pour supprimer les routes inutiles
   return (
     <DashboardLayout
       key={renderKey}
@@ -147,11 +142,6 @@ const Dashboard = () => {
     >
       <Routes>
         <Route index element={renderDashboardContent()} />
-        <Route path="transactions" element={<TransactionsPage />} />
-        <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="wallet" element={<WalletPage />} />
-        <Route path="referrals" element={<ReferralsPage />} />
-        <Route path="settings" element={<SettingsPage />} />
       </Routes>
     </DashboardLayout>
   );

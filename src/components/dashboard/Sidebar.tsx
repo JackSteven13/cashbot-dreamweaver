@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -45,41 +44,7 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
       </div>
       
       <div className="flex-1 px-3 py-4 space-y-1">
-        <NavItem 
-          icon={<History size={18} className="mr-3" />}
-          label="Historique"
-          id="transactions"
-          selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("transactions", "/dashboard/transactions")}
-        />
-        <NavItem 
-          icon={<LineChart size={18} className="mr-3" />}
-          label="Analyses"
-          id="analytics"
-          selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("analytics", "/dashboard/analytics")}
-        />
-        <NavItem 
-          icon={<CreditCard size={18} className="mr-3" />}
-          label="Portefeuille"
-          id="wallet"
-          selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("wallet", "/dashboard/wallet")}
-        />
-        <NavItem 
-          icon={<Share2 size={18} className="mr-3" />}
-          label="Parrainage"
-          id="referrals"
-          selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("referrals", "/dashboard/referrals")}
-        />
-        <NavItem 
-          icon={<Settings size={18} className="mr-3" />}
-          label="Paramètres"
-          id="settings"
-          selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("settings", "/dashboard/settings")}
-        />
+        
       </div>
       
       <div className="p-4 mt-auto space-y-2">
@@ -107,27 +72,5 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
     </div>
   );
 };
-
-interface NavItemProps {
-  icon: React.ReactNode;
-  label: string;
-  id: string;
-  selectedNavItem: string;
-  onClick: () => void;
-}
-
-const NavItem = ({ icon, label, id, selectedNavItem, onClick }: NavItemProps) => (
-  <button
-    className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
-      selectedNavItem === id 
-        ? 'bg-[#2d5f8a] text-white' 
-        : 'hover:bg-[#334e68]/50 text-blue-100'
-    }`}
-    onClick={onClick}
-  >
-    {icon}
-    {label}
-  </button>
-);
 
 export default Sidebar;
