@@ -13,6 +13,7 @@ import Register from "./pages/Register";
 import Login from "./pages/Login";
 import About from "./pages/About";
 import Terms from "./pages/Terms";
+import Contact from "./pages/Contact";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Payment from './pages/Payment';
 import PaymentSuccess from './pages/PaymentSuccess';
@@ -51,6 +52,10 @@ const routes = [
   {
     path: '/terms',
     element: <Terms />,
+  },
+  {
+    path: '/contact',
+    element: <Contact />,
   },
   {
     path: '/payment',
