@@ -43,28 +43,45 @@ export const ProTrialActive: React.FC = () => {
     
     if (remainingMs <= 0) return "Expiré";
     
-    const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+    // Calcul plus précis avec jours, heures et minutes
+    const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
     
-    return `${hours}h ${minutes}m`;
+    if (days > 0) {
+      return `${days}j ${hours}h ${minutes}m`;
+    } else {
+      return `${hours}h ${minutes}m`;
+    }
   };
   
   useEffect(() => {
     // Set initial value
     setRemainingTime(calculateRemainingProTime());
     
-    // Update every minute
-    const intervalId = setInterval(() => {
+    // Vérifier immédiatement si l'essai est expiré
+    const checkExpiration = () => {
       const newTime = calculateRemainingProTime();
       setRemainingTime(newTime);
       
-      // If expired, remove the Pro trial status and reload
+      // Si expiré, remove the Pro trial status and reload
       if (newTime === "Expiré") {
         localStorage.removeItem('proTrialActive');
+        localStorage.removeItem('proTrialExpires');
         localStorage.setItem('proTrialUsed', 'true');
         window.location.reload();
+        return true;
       }
-    }, 60000); // Update every minute
+      return false;
+    };
+    
+    // Si déjà expiré, ne pas configurer l'intervalle
+    if (checkExpiration()) {
+      return;
+    }
+    
+    // Update every minute
+    const intervalId = setInterval(checkExpiration, 30000); // Vérifier toutes les 30 secondes
     
     return () => clearInterval(intervalId);
   }, []);

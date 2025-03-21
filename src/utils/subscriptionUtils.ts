@@ -26,14 +26,21 @@ export const getEffectiveSubscription = (subscription: string): string => {
     const expiryTime = parseInt(proTrialExpires, 10);
     const now = Date.now();
     
+    // Vérification stricte de l'expiration
     if (now < expiryTime) {
       console.log("Mode Pro temporaire actif, retourne 'pro' au lieu de", subscription);
       return 'pro';
     } else {
-      // Si expiré, supprimer du localStorage et ne pas appliquer l'upgrade
+      // Si expiré, nettoyer le localStorage et marquer comme utilisé
+      console.log("Essai Pro expiré. Nettoyage des données d'essai.");
       localStorage.removeItem('proTrialActive');
       localStorage.removeItem('proTrialExpires');
       localStorage.setItem('proTrialUsed', 'true');
+      
+      // Forcer le rechargement de la page si l'essai vient d'expirer
+      if (proTrialActive) {
+        window.location.reload();
+      }
     }
   }
   

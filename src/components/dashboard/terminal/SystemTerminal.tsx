@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { FeedbackDialog } from './FeedbackDialog';
 import { SystemInfo, SystemInfoGrid } from './SystemInfo';
@@ -37,27 +36,22 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   const [effectiveSubscription, setEffectiveSubscription] = useState(subscription);
   const [effectiveLimit, setEffectiveLimit] = useState(dailyLimit);
   
-  // Utiliser notre hook pour le compte à rebours
   const { timeRemaining, isCountingDown } = useSessionCountdown(
     typeof remainingSessions === 'number' ? 1 - remainingSessions : 0, 
     subscription
   );
   
-  // Calculer le pourcentage de progression vers la limite journalière
   const limitPercentage = Math.min(100, (displayBalance / effectiveLimit) * 100);
   
   useEffect(() => {
-    // Vérifier si le mode Pro temporaire est activé et mettre à jour l'abonnement effectif
     const effectiveSub = getEffectiveSubscription(subscription);
     setEffectiveSubscription(effectiveSub);
     console.log("SystemTerminal - Abonnement effectif:", effectiveSub);
     
-    // Mettre à jour la limite quotidienne effective
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     console.log("SystemTerminal - Limite effective:", limit);
     setEffectiveLimit(limit);
     
-    // Vérifier si le mode Pro temporaire est activé dans le localStorage
     const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
     const proTrialExpires = localStorage.getItem('proTrialExpires');
     
@@ -69,9 +63,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         setTempProEnabled(true);
         setIsPromoActivated(true);
       } else {
-        // Marquer comme utilisé lorsque l'essai expire
         localStorage.setItem('proTrialUsed', 'true');
-        // Si expiré, supprimer du localStorage
         localStorage.removeItem('proTrialActive');
         localStorage.removeItem('proTrialExpires');
       }
@@ -80,41 +72,41 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   
   const activateProTrial = async () => {
     if (subscription === 'freemium' && !isPromoActivated) {
-      // Définir l'expiration à exactement 48h à partir de maintenant
-      const expiryTime = Date.now() + (48 * 60 * 60 * 1000);
-      
-      // Stocker dans localStorage
-      localStorage.setItem('proTrialActive', 'true');
-      localStorage.setItem('proTrialExpires', expiryTime.toString());
-      // Marquer comme utilisé pour empêcher de futures offres
-      localStorage.setItem('proTrialUsed', 'true');
-      
-      // Mettre à jour l'état
-      setTempProEnabled(true);
-      setIsPromoActivated(true);
-      
-      // Session utilisateur
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // Mise à jour temporaire de la base de données pour indiquer l'essai pro
-        // Note: Ceci n'est pas persistant, c'est juste visuel pour l'interface
-        localStorage.setItem('tempProDisplay', 'true');
+      try {
+        const now = Date.now();
+        
+        const expiryTime = now + (48 * 60 * 60 * 1000);
+        
+        console.log(`Activation de l'essai Pro: ${new Date(now).toISOString()} jusqu'à ${new Date(expiryTime).toISOString()}`);
+        
+        localStorage.setItem('proTrialActive', 'true');
+        localStorage.setItem('proTrialExpires', expiryTime.toString());
+        localStorage.setItem('proTrialActivatedAt', now.toString());
+        localStorage.setItem('proTrialUsed', 'true');
+        
+        setTempProEnabled(true);
+        setIsPromoActivated(true);
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          localStorage.setItem('tempProDisplay', 'true');
+        }
+        
+        window.location.reload();
+      } catch (error) {
+        console.error("Erreur lors de l'activation de l'essai Pro:", error);
       }
-      
-      window.location.reload(); // Rafraîchir pour appliquer immédiatement les changements
     }
   };
 
   return (
     <div className="w-full lg:w-1/2">
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-lg border border-slate-700 p-5 text-white">
-        {/* Header with system status and feedback button */}
         <SystemInfo 
           isNewUser={isNewUser} 
           onFeedbackClick={() => setShowFeedbackDialog(true)} 
         />
         
-        {/* Progress bar for daily limit */}
         <SystemProgressBar 
           displayBalance={displayBalance} 
           dailyLimit={effectiveLimit} 
@@ -122,12 +114,10 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           subscription={subscription}
         />
         
-        {/* Countdown timer if applicable */}
         {isCountingDown && (
           <SessionCountdown timeRemaining={timeRemaining} />
         )}
         
-        {/* System information grid */}
         <SystemInfoGrid 
           subscription={subscription}
           tempProEnabled={tempProEnabled}
@@ -136,19 +126,15 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           referralBonus={referralBonus}
         />
         
-        {/* New user guide */}
         {isNewUser && <NewUserGuide />}
         
-        {/* Pro trial activation banner - ne pas afficher si utilisateur a déjà utilisé l'offre */}
         {subscription === 'freemium' && !isPromoActivated && (
           <ProTrialBanner onClick={activateProTrial} />
         )}
         
-        {/* Active pro trial banner */}
         {isPromoActivated && <ProTrialActive />}
       </div>
       
-      {/* Feedback dialog */}
       <FeedbackDialog
         open={showFeedbackDialog}
         feedback={feedback}
