@@ -54,9 +54,9 @@ const LocationFeed = () => {
   }, []);
 
   return (
-    <div className="bg-gradient-to-b from-background/50 to-background/10 backdrop-blur-sm rounded-xl shadow-lg p-3 overflow-hidden">
-      <h3 className="text-sm font-medium mb-2 text-primary">Publicités en cours d'analyse</h3>
-      <div className="space-y-2 max-h-[180px] md:max-h-[240px] overflow-y-auto">
+    <div className="bg-white dark:bg-slate-900 backdrop-blur-sm rounded-xl shadow-lg p-4 overflow-hidden">
+      <h3 className="text-md font-medium mb-3 text-center">Publicités en cours d'analyse</h3>
+      <div className="space-y-2 max-h-[240px] overflow-y-auto">
         {locations.length === 0 ? (
           <div className="text-center text-muted-foreground text-sm py-3">
             Chargement des données...
@@ -65,28 +65,28 @@ const LocationFeed = () => {
           locations.map((location, index) => (
             <div 
               key={index}
-              className={`flex items-center p-2 border-l-2 border-green-500 rounded bg-green-500/5 transition-opacity ${
+              className={`flex items-center justify-between p-3 border-l-2 border-green-500 rounded bg-green-50 dark:bg-green-900/10 transition-opacity ${
                 index === 0 ? 'animate-pulse' : ''
               }`}
             >
-              <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>
-              <div className="flex-1">
-                <div className="flex justify-between">
+              <div className="flex items-center">
+                <span className="h-2 w-2 rounded-full bg-green-500 mr-3"></span>
+                <div>
                   <p className="text-sm font-medium">
                     {location.ipRange} | {location.country}
                   </p>
-                  <p className="text-xs text-muted-foreground ml-1">
-                    {location.latency}ms
-                  </p>
-                </div>
-                <div className="flex justify-between">
                   <p className="text-xs text-muted-foreground">
                     {location.protocol} | {location.serverType}
                   </p>
-                  <p className="text-xs text-muted-foreground ml-1">
-                    {index === 0 ? "À l'instant" : `Il y a ${index + 1} minute${index > 0 ? 's' : ''}`}
-                  </p>
                 </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground mb-1">
+                  {location.latency}ms
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {index === 0 ? "À l'instant" : `Il y a ${index + 1} minute${index > 0 ? 's' : ''}`}
+                </p>
               </div>
             </div>
           ))

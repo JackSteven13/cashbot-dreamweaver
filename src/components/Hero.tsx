@@ -19,8 +19,8 @@ const Hero = () => {
             Générez des revenus passifs simplement et automatiquement
           </h1>
           
-          {/* LocationFeed for both mobile and desktop */}
-          <div className="w-full max-w-lg mb-6 md:mb-8 animate-fade-in">
+          {/* LocationFeed with increased width on desktop */}
+          <div className="w-full max-w-lg md:max-w-2xl lg:max-w-3xl mb-6 md:mb-8 animate-fade-in">
             <LocationFeed />
           </div>
           

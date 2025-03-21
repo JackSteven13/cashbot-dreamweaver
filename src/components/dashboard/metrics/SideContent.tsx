@@ -17,7 +17,9 @@ const SideContent = ({ balance, isNewUser, referralBonus }: SideContentProps) =>
         isNewUser={isNewUser} 
         referralBonus={referralBonus} 
       />
-      <LocationFeed />
+      <div className="mt-4">
+        <LocationFeed />
+      </div>
     </>
   );
 };
