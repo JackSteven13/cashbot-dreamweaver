@@ -80,7 +80,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   
   const activateProTrial = async () => {
     if (subscription === 'freemium' && !isPromoActivated) {
-      // Définir l'expiration à 48h à partir de maintenant
+      // Définir l'expiration à exactement 48h à partir de maintenant
       const expiryTime = Date.now() + (48 * 60 * 60 * 1000);
       
       // Stocker dans localStorage

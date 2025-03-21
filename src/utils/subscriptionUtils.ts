@@ -30,9 +30,10 @@ export const getEffectiveSubscription = (subscription: string): string => {
       console.log("Mode Pro temporaire actif, retourne 'pro' au lieu de", subscription);
       return 'pro';
     } else {
-      // Si expiré, supprimer du localStorage
+      // Si expiré, supprimer du localStorage et ne pas appliquer l'upgrade
       localStorage.removeItem('proTrialActive');
       localStorage.removeItem('proTrialExpires');
+      localStorage.setItem('proTrialUsed', 'true');
     }
   }
   
