@@ -54,7 +54,7 @@ const Index = () => {
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-3xl mx-auto">
               <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center text-white">
-                Simulez vos revenus potentiels avec cashbot.beta
+                Simulez vos revenus potentiels avec Cashbot beta
               </h2>
               <RevenueCalculator 
                 currentSubscription="freemium" 
@@ -66,7 +66,7 @@ const Index = () => {
         
         <FeaturesGrid 
           title="Une Plateforme de Monétisation Révolutionnaire"
-          subtitle="cashbot.beta combine intelligence artificielle et analyse de publicités pour créer un système de revenus passifs unique."
+          subtitle="Cashbot beta combine intelligence artificielle et analyse de publicités pour créer un système de revenus passifs unique."
           features={features}
         />
         
