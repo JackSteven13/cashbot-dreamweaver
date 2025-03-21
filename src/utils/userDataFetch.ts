@@ -158,7 +158,14 @@ export const fetchUserTransactions = async (userId: string): Promise<Transaction
       return [];
     }
     
-    return transactionsData || [];
+    // Map database transactions to our Transaction interface
+    return (transactionsData || []).map(t => ({
+      date: t.date,
+      amount: t.gain, // Map 'gain' to 'amount'
+      type: t.report, // Use 'report' as transaction type
+      report: t.report,
+      gain: t.gain // Keep original gain for backward compatibility
+    }));
   } catch (error) {
     console.error("Error in fetchUserTransactions:", error);
     return [];

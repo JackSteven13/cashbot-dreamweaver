@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
 import { fetchUserTransactions, fetchCompleteUserData } from '@/utils/userDataFetch';
-import { UserData } from '@/types/userData';
+import { UserData, Transaction } from '@/types/userData';
 import { getCurrentSession, checkDailyLimit } from '@/utils/authUtils';
 import { initialUserData } from '@/utils/userDataInitializer';
 import { useProfileLoader } from './useProfileLoader';
@@ -82,13 +82,7 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
         referrals: userData.referrals || [],
         referralLink: userData.referralLink || generateReferralLink(session.user.id),
         email: session.user.email || undefined,
-        transactions: transactionsData ? transactionsData.map(t => ({
-          date: t.date,
-          amount: t.gain, // Map 'gain' to 'amount'
-          type: t.report, // Use 'report' as transaction type
-          report: t.report,
-          gain: t.gain // Keep original gain for backward compatibility
-        })) : []
+        transactions: transactionsData
       };
       
       const newDailySessionCount = balanceData?.daily_session_count || 0;

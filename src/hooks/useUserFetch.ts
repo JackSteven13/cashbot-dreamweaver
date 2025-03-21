@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { useUserDataFetcher } from './useUserDataFetcher';
 import { toast } from "@/components/ui/use-toast";
@@ -7,6 +8,16 @@ import { refreshSession } from "@/utils/auth/sessionUtils";
 import { ensureZeroBalanceForNewUser } from '@/utils/userDataInitializer';
 
 export type { UserData };
+
+export interface UserFetchResult {
+  userData: UserData;
+  isNewUser: boolean;
+  dailySessionCount: number;
+  showLimitAlert: boolean;
+  isLoading: boolean;
+  setShowLimitAlert: (show: boolean) => void;
+  refetchUserData: () => Promise<boolean>;
+}
 
 export const useUserFetch = (): UserFetchResult => {
   const isMounted = useRef(true);
@@ -127,7 +138,7 @@ export const useUserFetch = (): UserFetchResult => {
 
   const refetchUserData = useCallback(async () => {
     if (!isMounted.current || fetchInProgress.current) {
-      return;
+      return false;
     }
     
     console.log("Manual refetch requested");
@@ -136,12 +147,14 @@ export const useUserFetch = (): UserFetchResult => {
     
     if (isAuthValid) {
       await fetchData();
+      return true;
     } else {
       toast({
         title: "Problème d'authentification",
         description: "Impossible de rafraîchir vos données. Veuillez vous reconnecter.",
         variant: "destructive"
       });
+      return false;
     }
   }, [fetchData]);
 

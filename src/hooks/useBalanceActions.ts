@@ -1,5 +1,5 @@
 
-import { UserData } from "@/types/userData";
+import { UserData, Transaction } from "@/types/userData";
 import { useUserSession } from './useUserSession';
 
 interface BalanceActionsResult {
@@ -49,14 +49,10 @@ export const useBalanceActions = ({
         const calculatedNewBalance = userData.balance + gain;
         console.log("Force updating UI before API call. New balance:", calculatedNewBalance);
         
-        setUserData(prevData => {
-          const updatedData = {
-            ...prevData,
-            balance: calculatedNewBalance
-          };
-          console.log("Updated userData state (pre-API):", updatedData);
-          return updatedData;
-        });
+        setUserData(prevData => ({
+          ...prevData,
+          balance: calculatedNewBalance
+        }));
       }
       
       const result = await updateUserBalance(gain, report);
@@ -67,16 +63,24 @@ export const useBalanceActions = ({
         // Always update state after API call to ensure consistency
         setUserData(prevData => {
           const newBalance = result.newBalance !== undefined ? result.newBalance : prevData.balance;
-          const updatedData = {
+          
+          // Create a properly formatted Transaction object
+          const newTransaction = result.transaction ? {
+            date: result.transaction.date,
+            amount: result.transaction.gain,
+            type: result.transaction.report,
+            report: result.transaction.report,
+            gain: result.transaction.gain
+          } : null;
+          
+          return {
             ...prevData,
             balance: newBalance,
-            transactions: result.transaction ? [
-              result.transaction,
+            transactions: newTransaction ? [
+              newTransaction,
               ...prevData.transactions
             ] : prevData.transactions
           };
-          console.log("Updated userData state (post-API):", updatedData);
-          return updatedData;
         });
         
         if (result.limitReached) {
@@ -111,15 +115,25 @@ export const useBalanceActions = ({
       const result = await resetUserBalance();
       
       if (result.success) {
-        // Safely update state regardless of whether transaction exists
-        setUserData(prev => ({
-          ...prev,
-          balance: 0,
-          transactions: result.transaction ? [
-            result.transaction,
-            ...prev.transactions
-          ] : prev.transactions
-        }));
+        setUserData(prev => {
+          // Create a properly formatted Transaction object if a transaction exists
+          const newTransaction = result.transaction ? {
+            date: result.transaction.date,
+            amount: -result.transaction.gain, // Negative amount for withdrawals
+            type: "Retrait",
+            report: result.transaction.report,
+            gain: -result.transaction.gain
+          } : null;
+          
+          return {
+            ...prev,
+            balance: 0,
+            transactions: newTransaction ? [
+              newTransaction,
+              ...prev.transactions
+            ] : prev.transactions
+          };
+        });
       }
     } catch (error) {
       console.error("Error in resetBalance:", error);
