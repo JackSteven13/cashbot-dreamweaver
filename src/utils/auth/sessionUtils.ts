@@ -85,16 +85,28 @@ export const forceSignOut = async (): Promise<boolean> => {
   try {
     console.log("Performing complete sign out...");
     
-    // Clear local storage (without removing all items, just auth-related ones)
-    localStorage.removeItem('supabase.auth.token');
-    localStorage.removeItem('supabase.auth.expires_at');
-    localStorage.removeItem('supabase.auth.refresh_token');
+    // Clear all Supabase-related items from localStorage
+    const keysToRemove = [
+      'supabase.auth.token',
+      'supabase.auth.expires_at',
+      'supabase.auth.refresh_token',
+      'sb-cfjibduhagxiwqkiyhqd-auth-token',
+      'sb-cfjibduhagxiwqkiyhqd-auth-refresh',
+      'supabase.auth.expires_at',
+      'user_registered',
+      'username',
+      'user_balance',
+      'daily_session_count', 
+      'subscription'
+    ];
+    
+    keysToRemove.forEach(key => localStorage.removeItem(key));
     
     // Pause pour permettre aux opérations locales de se terminer
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Perform more stable sign out
-    await supabase.auth.signOut({ scope: 'local' });
+    // Perform more stable sign out with local and global scope
+    await supabase.auth.signOut({ scope: 'global' });
     
     // Short delay for sign out to process
     await new Promise(resolve => setTimeout(resolve, 400));

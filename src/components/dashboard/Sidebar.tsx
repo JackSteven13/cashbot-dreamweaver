@@ -1,15 +1,12 @@
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  CreditCard, 
-  History, 
-  LineChart, 
   LogOut, 
-  Settings, 
-  Share2,
   Home
 } from 'lucide-react';
 import Button from '@/components/Button';
+import { forceSignOut } from "@/utils/auth/sessionUtils";
 
 interface SidebarProps {
   selectedNavItem: string;
@@ -19,20 +16,26 @@ interface SidebarProps {
 const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
   const navigate = useNavigate();
   
-  // Function to handle logout
-  const handleLogout = () => {
-    localStorage.removeItem('user_registered');
-    localStorage.removeItem('username');
-    localStorage.removeItem('user_balance');
-    localStorage.removeItem('daily_session_count');
-    localStorage.removeItem('subscription');
-    navigate('/');
-  };
-  
-  // Function to handle both setting the selected item and navigation
-  const handleNavigation = (id: string, path: string) => {
-    setSelectedNavItem(id);
-    navigate(path);
+  // Function to handle logout with proper cleanup
+  const handleLogout = async () => {
+    try {
+      // Use forceSignOut to completely clear all auth data
+      await forceSignOut();
+      
+      // Clear any additional stored user data
+      localStorage.removeItem('user_registered');
+      localStorage.removeItem('username');
+      localStorage.removeItem('user_balance');
+      localStorage.removeItem('daily_session_count');
+      localStorage.removeItem('subscription');
+      
+      // Navigate to login page instead of home page
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.error("Error during logout:", error);
+      // If error during logout, still try to navigate away
+      navigate('/login', { replace: true });
+    }
   };
   
   return (

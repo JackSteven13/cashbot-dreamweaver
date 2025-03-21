@@ -7,7 +7,6 @@ import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
-import { verifyAuth } from '@/utils/auth/verificationUtils';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,29 +14,20 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isCheckingSession, setIsCheckingSession] = useState(false);
+  const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);
   
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
-  // Check if user is already logged in
+  // Check if we have a recent email to suggest, but don't auto-login
   useEffect(() => {
-    const checkExistingSession = async () => {
-      try {
-        const isAuthenticated = await verifyAuth();
-        
-        if (isAuthenticated) {
-          console.log("User already authenticated, redirecting to dashboard");
-          navigate('/dashboard', { replace: true });
-        }
-      } catch (error) {
-        console.error("Error checking authentication:", error);
-      } finally {
-        setIsCheckingSession(false);
-      }
-    };
-    
-    checkExistingSession();
-  }, [navigate]);
+    // Get last email but don't use it for auto-login
+    const savedEmail = localStorage.getItem('last_logged_in_email');
+    if (savedEmail) {
+      setLastLoggedInEmail(savedEmail);
+      setEmail(savedEmail); // Pre-fill the email field as a suggestion
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,22 +43,18 @@ const Login = () => {
       if (error) throw error;
       
       if (data && data.user) {
+        // Save the email for future suggestions
+        localStorage.setItem('last_logged_in_email', email);
+        
         // Attendre que l'authentification soit entièrement établie
         setTimeout(async () => {
-          // Vérifier que la session est bien établie
-          const isAuth = await verifyAuth();
+          toast({
+            title: "Connexion réussie",
+            description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
+          });
           
-          if (isAuth) {
-            toast({
-              title: "Connexion réussie",
-              description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
-            });
-            
-            // Simple redirect
-            navigate('/dashboard', { replace: true });
-          } else {
-            throw new Error("Session non établie après connexion");
-          }
+          // Simple redirect
+          navigate('/dashboard', { replace: true });
         }, 800);
       }
     } catch (error: any) {
@@ -113,6 +99,17 @@ const Login = () => {
           </div>
           
           <div className="glass-panel p-6 rounded-xl">
+            {lastLoggedInEmail && (
+              <div className="mb-4 p-3 bg-blue-900/20 rounded-lg">
+                <p className="text-sm text-blue-300">
+                  Dernière connexion avec: <strong>{lastLoggedInEmail}</strong>
+                </p>
+                <p className="text-xs text-blue-300/80 mt-1">
+                  Vous pouvez vous connecter avec ce compte ou utiliser un autre compte.
+                </p>
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium mb-1">
