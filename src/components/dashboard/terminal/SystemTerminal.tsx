@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { FeedbackDialog } from './FeedbackDialog';
 import { SystemInfo, SystemInfoGrid } from './SystemInfo';
@@ -68,6 +69,8 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         setTempProEnabled(true);
         setIsPromoActivated(true);
       } else {
+        // Marquer comme utilisé lorsque l'essai expire
+        localStorage.setItem('proTrialUsed', 'true');
         // Si expiré, supprimer du localStorage
         localStorage.removeItem('proTrialActive');
         localStorage.removeItem('proTrialExpires');
@@ -83,6 +86,8 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
       // Stocker dans localStorage
       localStorage.setItem('proTrialActive', 'true');
       localStorage.setItem('proTrialExpires', expiryTime.toString());
+      // Marquer comme utilisé pour empêcher de futures offres
+      localStorage.setItem('proTrialUsed', 'true');
       
       // Mettre à jour l'état
       setTempProEnabled(true);
@@ -134,7 +139,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         {/* New user guide */}
         {isNewUser && <NewUserGuide />}
         
-        {/* Pro trial activation banner */}
+        {/* Pro trial activation banner - ne pas afficher si utilisateur a déjà utilisé l'offre */}
         {subscription === 'freemium' && !isPromoActivated && (
           <ProTrialBanner onClick={activateProTrial} />
         )}

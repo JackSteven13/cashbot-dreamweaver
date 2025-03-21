@@ -1,11 +1,26 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface ProTrialBannerProps {
   onClick: () => void;
 }
 
 export const ProTrialBanner: React.FC<ProTrialBannerProps> = ({ onClick }) => {
+  const [hasUsedProTrial, setHasUsedProTrial] = useState(false);
+  
+  useEffect(() => {
+    // Vérifier si l'utilisateur a déjà utilisé l'offre Pro gratuite
+    const proTrialUsed = localStorage.getItem('proTrialUsed');
+    if (proTrialUsed === 'true') {
+      setHasUsedProTrial(true);
+    }
+  }, []);
+  
+  // Ne pas afficher la bannière si l'utilisateur a déjà utilisé l'offre
+  if (hasUsedProTrial) {
+    return null;
+  }
+
   return (
     <div onClick={onClick} className="cursor-pointer mb-4">
       <div className="bg-gradient-to-r from-blue-900/40 to-blue-700/20 p-3 rounded-lg border border-blue-700/50 hover:bg-blue-800/30 transition-colors">
