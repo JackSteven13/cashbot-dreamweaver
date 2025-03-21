@@ -42,7 +42,7 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
     <div className="hidden md:flex w-64 flex-col bg-[#1e3a5f] border-r border-[#2d5f8a]/30">
       <div className="p-6">
         <Link to="/" className="text-2xl font-semibold tracking-tight text-white">
-          CashBot
+          cashbot.beta
         </Link>
       </div>
       

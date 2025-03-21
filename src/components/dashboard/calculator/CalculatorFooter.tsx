@@ -25,7 +25,7 @@ const CalculatorFooter: React.FC<CalculatorFooterProps> = ({
   
   // Button text based on context
   const buttonText = isHomePage 
-    ? "Démarrer et gagner avec CashBot" 
+    ? "Démarrer et gagner avec cashbot.beta" 
     : `Passer à l'offre ${subscriptionLabels[selectedPlan]}`;
 
   const handleClick = () => {

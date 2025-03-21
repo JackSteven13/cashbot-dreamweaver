@@ -54,7 +54,7 @@ const Index = () => {
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-3xl mx-auto">
               <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center text-white">
-                Simulez vos revenus potentiels avec CashBot
+                Simulez vos revenus potentiels avec cashbot.beta
               </h2>
               <RevenueCalculator 
                 currentSubscription="freemium" 
@@ -66,7 +66,7 @@ const Index = () => {
         
         <FeaturesGrid 
           title="Une Plateforme de Monétisation Révolutionnaire"
-          subtitle="CashBot combine intelligence artificielle et analyse de publicités pour créer un système de revenus passifs unique."
+          subtitle="cashbot.beta combine intelligence artificielle et analyse de publicités pour créer un système de revenus passifs unique."
           features={features}
         />
         
@@ -75,7 +75,7 @@ const Index = () => {
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-8 md:mb-16">
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">Ce que nos utilisateurs disent</h2>
-              <p className="text-base md:text-lg text-muted-foreground">Des milliers d'utilisateurs font confiance à CashBot pour générer des revenus passifs.</p>
+              <p className="text-base md:text-lg text-muted-foreground">Des milliers d'utilisateurs font confiance à cashbot.beta pour générer des revenus passifs.</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -87,7 +87,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Utilisateur depuis 3 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"CashBot a complètement changé ma vision des revenus passifs. Je génère maintenant plus en une semaine qu'avec mes placements bancaires en un an."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"cashbot.beta a complètement changé ma vision des revenus passifs. Je génère maintenant plus en une semaine qu'avec mes placements bancaires en un an."</p>
               </div>
               
               <div className="glass-card p-4 md:p-6 rounded-xl">
@@ -98,7 +98,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Utilisatrice depuis 1 an</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"Je n'ai aucune connaissance technique, mais grâce à CashBot, j'ai pu créer un flux de revenus passifs stable qui a transformé ma vie financière."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"Je n'ai aucune connaissance technique, mais grâce à cashbot.beta, j'ai pu créer un flux de revenus passifs stable qui a transformé ma vie financière."</p>
               </div>
               
               <div className="glass-card p-4 md:p-6 rounded-xl">
@@ -109,7 +109,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Utilisateur depuis 6 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"Les rapports détaillés et la transparence de CashBot m'ont convaincu. Je peux suivre chaque centime généré et comprendre les annonces analysées."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"Les rapports détaillés et la transparence de cashbot.beta m'ont convaincu. Je peux suivre chaque centime généré et comprendre les annonces analysées."</p>
               </div>
             </div>
           </div>
@@ -120,11 +120,11 @@ const Index = () => {
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-3xl mx-auto text-center">
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 md:mb-6">Prêt à transformer votre avenir financier ?</h2>
-              <p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8">Rejoignez plus de 5000 utilisateurs qui génèrent déjà des revenus passifs avec CashBot.</p>
+              <p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8">Rejoignez plus de 5000 utilisateurs qui génèrent déjà des revenus passifs avec cashbot.beta.</p>
               
               <Link to="/register">
                 <Button size="lg" className="group">
-                  Démarrer avec CashBot gratuitement
+                  Démarrer avec cashbot.beta gratuitement
                   <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
