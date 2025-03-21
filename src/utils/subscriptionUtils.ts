@@ -1,4 +1,3 @@
-
 // Subscription plans and their limits
 export const SUBSCRIPTION_LIMITS = {
   'freemium': 0.5,
@@ -28,7 +27,6 @@ export const getEffectiveSubscription = (subscription: string): string => {
     
     // Vérification stricte de l'expiration
     if (now < expiryTime) {
-      console.log("Mode Pro temporaire actif, retourne 'pro' au lieu de", subscription);
       return 'pro';
     } else {
       // Si expiré, nettoyer le localStorage et marquer comme utilisé
@@ -36,11 +34,6 @@ export const getEffectiveSubscription = (subscription: string): string => {
       localStorage.removeItem('proTrialActive');
       localStorage.removeItem('proTrialExpires');
       localStorage.setItem('proTrialUsed', 'true');
-      
-      // Forcer le rechargement de la page si l'essai vient d'expirer
-      if (proTrialActive) {
-        window.location.reload();
-      }
     }
   }
   
@@ -73,10 +66,6 @@ export const canStartManualSession = (subscription: string, dailySessionCount: n
 
 /**
  * Calculate the gain for a manual session
- * @param subscription User's subscription level
- * @param currentBalance Current user balance
- * @param referralCount Number of active referrals (default 0)
- * @returns The calculated gain amount
  */
 export const calculateManualSessionGain = (
   subscription: string, 
@@ -125,10 +114,6 @@ export const calculateManualSessionGain = (
 
 /**
  * Calculate the gain for an automatic session
- * @param subscription User's subscription level
- * @param currentBalance Current user balance
- * @param referralCount Number of active referrals (default 0)
- * @returns The calculated gain amount
  */
 export const calculateAutoSessionGain = (
   subscription: string, 
