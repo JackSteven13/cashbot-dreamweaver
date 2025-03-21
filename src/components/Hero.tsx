@@ -3,7 +3,6 @@ import { useIsMobile } from '../hooks/use-mobile';
 import LocationFeed from './LocationFeed';
 import BackgroundElements from './hero/BackgroundElements';
 import HeroCallToAction from './hero/HeroCallToAction';
-import MapComponent from './hero/MapComponent';
 import StatsCounter from './hero/StatsCounter';
 
 const Hero = () => {
@@ -20,14 +19,10 @@ const Hero = () => {
             Générez des revenus passifs simplement et automatiquement
           </h1>
           
-          {/* Map for desktop, LocationFeed for mobile */}
-          {isMobile ? (
-            <div className="w-full max-w-lg mb-6 md:mb-8 animate-fade-in">
-              <LocationFeed />
-            </div>
-          ) : (
-            <MapComponent />
-          )}
+          {/* LocationFeed for both mobile and desktop */}
+          <div className="w-full max-w-lg mb-6 md:mb-8 animate-fade-in">
+            <LocationFeed />
+          </div>
           
           {/* Counters - Using dramatically increased targets */}
           <StatsCounter 
