@@ -50,22 +50,13 @@ export const ProTrialActive: React.FC = () => {
         return;
       }
       
-      // Calculate remaining time
-      const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      // Calculate remaining time (without days)
+      const totalHours = Math.floor(remainingMs / (1000 * 60 * 60));
       const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
       
-      let timeString = "";
-      
-      if (days > 0) {
-        timeString = `${days}j ${hours}h ${minutes}m ${seconds}s`;
-      } else if (hours > 0) {
-        timeString = `${hours}h ${minutes}m ${seconds}s`;
-      } else {
-        timeString = `${minutes}m ${seconds}s`;
-      }
-      
+      // Format as hours:minutes:seconds
+      const timeString = `${totalHours}h ${minutes}m ${seconds}s`;
       setRemainingTime(timeString);
     };
     
