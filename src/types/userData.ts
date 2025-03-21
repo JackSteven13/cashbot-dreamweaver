@@ -1,8 +1,10 @@
 
 export interface Transaction {
   date: string;
-  gain: number;
+  amount: number;
+  type: string;
   report: string;
+  gain?: number; // Keep the original 'gain' for backward compatibility
 }
 
 export interface Referral {
@@ -14,6 +16,9 @@ export interface Referral {
   commission_rate: number;
   created_at: string;
   updated_at: string;
+  username?: string; // Add this for display purposes
+  joinDate?: string; // Add this for display purposes
+  active?: boolean; // Add this for status checking
 }
 
 export interface UserData {
@@ -24,4 +29,9 @@ export interface UserData {
   referralLink: string;
   transactions: Transaction[];
   registeredAt?: Date;
+  email?: string; // Add email property
+  paymentMethods?: Array<{
+    type: string;
+    lastFour: string;
+  }>;
 }

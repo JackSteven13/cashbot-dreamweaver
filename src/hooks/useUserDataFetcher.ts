@@ -81,10 +81,13 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
         subscription: balanceData?.subscription || 'freemium',
         referrals: userData.referrals || [],
         referralLink: userData.referralLink || generateReferralLink(session.user.id),
+        email: session.user.email || undefined,
         transactions: transactionsData ? transactionsData.map(t => ({
           date: t.date,
-          gain: t.gain,
-          report: t.report
+          amount: t.gain, // Map 'gain' to 'amount'
+          type: t.report, // Use 'report' as transaction type
+          report: t.report,
+          gain: t.gain // Keep original gain for backward compatibility
         })) : []
       };
       

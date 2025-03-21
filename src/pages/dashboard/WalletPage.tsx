@@ -8,6 +8,9 @@ import { CreditCard, Wallet, ArrowDownToLine, ArrowUpToLine } from 'lucide-react
 const WalletPage = () => {
   const { userData, isLoading } = useUserData();
 
+  // Default payment methods if none exist
+  const paymentMethods = userData?.paymentMethods || [];
+
   return (
     <div className="w-full">
       <h1 className="text-2xl font-bold mb-6">Portefeuille</h1>
@@ -45,9 +48,9 @@ const WalletPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {userData?.paymentMethods?.length > 0 ? (
+            {paymentMethods.length > 0 ? (
               <div className="space-y-3">
-                {userData.paymentMethods.map((method, index) => (
+                {paymentMethods.map((method, index) => (
                   <div key={index} className="flex justify-between items-center p-3 border rounded-lg">
                     <div className="flex items-center">
                       <CreditCard className="mr-3 h-4 w-4" />

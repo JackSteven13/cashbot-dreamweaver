@@ -1,5 +1,4 @@
-
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { UserData } from '@/types/userData';
 import { useUserDataFetcher } from './useUserDataFetcher';
 import { toast } from "@/components/ui/use-toast";
@@ -7,15 +6,7 @@ import { verifyAuth } from "@/utils/auth/verificationUtils";
 import { refreshSession } from "@/utils/auth/sessionUtils";
 import { ensureZeroBalanceForNewUser } from '@/utils/userDataInitializer';
 
-interface UserFetchResult {
-  userData: UserData;
-  isNewUser: boolean;
-  dailySessionCount: number;
-  showLimitAlert: boolean;
-  isLoading: boolean;
-  setShowLimitAlert: (show: boolean) => void;
-  refetchUserData?: () => Promise<void>;
-}
+export type { UserData };
 
 export const useUserFetch = (): UserFetchResult => {
   const isMounted = useRef(true);
@@ -32,7 +23,6 @@ export const useUserFetch = (): UserFetchResult => {
   const { setShowLimitAlert, fetchUserData } = fetcherActions;
   
   const fetchData = useCallback(async () => {
-    // Prevent multiple fetches within a short timeframe (debounce)
     const now = Date.now();
     if (now - lastFetchTimestamp.current < 2000) {
       console.log("Skipping fetch - too soon after last fetch");
@@ -48,10 +38,8 @@ export const useUserFetch = (): UserFetchResult => {
       fetchInProgress.current = true;
       lastFetchTimestamp.current = now;
       
-      // Ajout d'un délai court pour éviter les conflits de requêtes
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Vérification de l'authentification
       const isAuthValid = await verifyAuth();
       
       if (!isMounted.current) {
@@ -70,7 +58,6 @@ export const useUserFetch = (): UserFetchResult => {
           return;
         }
         
-        // Attendre un peu après le rafraîchissement
         await new Promise(resolve => setTimeout(resolve, 400));
       }
       
@@ -101,7 +88,6 @@ export const useUserFetch = (): UserFetchResult => {
         }, delay);
       } else if (isMounted.current) {
         initialFetchAttempted.current = true;
-        // Notification visuelle en cas d'échecs répétés
         toast({
           title: "Problème de connexion",
           description: "Impossible de charger vos données. Veuillez rafraîchir la page.",
@@ -118,12 +104,10 @@ export const useUserFetch = (): UserFetchResult => {
     isMounted.current = true;
     fetchInProgress.current = false;
     
-    // Only reset these on initial mount, not on re-renders
     if (!initialFetchAttempted.current) {
       retryCount.current = 0;
       initialFetchAttempted.current = false;
       
-      // Delay initial fetch to avoid race conditions
       initialFetchDelayRef.current = setTimeout(() => {
         if (isMounted.current) {
           console.log("Starting initial data fetch");
@@ -148,7 +132,6 @@ export const useUserFetch = (): UserFetchResult => {
     
     console.log("Manual refetch requested");
     
-    // Vérification de l'état d'authentification avant la récupération
     const isAuthValid = await verifyAuth();
     
     if (isAuthValid) {
@@ -162,7 +145,6 @@ export const useUserFetch = (): UserFetchResult => {
     }
   }, [fetchData]);
 
-  // Ensure new users have zero balance
   const correctedUserData = ensureZeroBalanceForNewUser(isNewUser, fetchedUserData);
 
   return {

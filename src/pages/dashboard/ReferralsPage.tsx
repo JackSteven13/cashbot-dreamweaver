@@ -22,6 +22,18 @@ const ReferralsPage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Process referrals to make sure they have the 'active' property
+  const processedReferrals = React.useMemo(() => {
+    if (!userData?.referrals) return [];
+    
+    return userData.referrals.map(referral => ({
+      ...referral,
+      active: referral.status === 'active',
+      username: referral.username || `User-${referral.referred_user_id.substring(0, 6)}`,
+      joinDate: referral.joinDate || referral.created_at
+    }));
+  }, [userData?.referrals]);
+
   return (
     <div className="w-full">
       <h1 className="text-2xl font-bold mb-6">Programme de parrainage</h1>
@@ -51,7 +63,7 @@ const ReferralsPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {isLoading ? "..." : `${calculateReferralBonus(userData?.referrals).toFixed(2)} €`}
+              {isLoading ? "..." : `${calculateReferralBonus(processedReferrals).toFixed(2)} €`}
             </div>
             <p className="text-sm text-muted-foreground">Gains totaux</p>
           </CardContent>
@@ -108,9 +120,9 @@ const ReferralsPage = () => {
         <CardContent>
           {isLoading ? (
             <div className="py-8 text-center">Chargement des données...</div>
-          ) : userData?.referrals && userData.referrals.length > 0 ? (
+          ) : processedReferrals.length > 0 ? (
             <div className="space-y-4">
-              {userData.referrals.map((referral, index) => (
+              {processedReferrals.map((referral, index) => (
                 <div key={index} className="flex justify-between items-center p-3 border rounded-lg">
                   <div>
                     <p className="font-medium">{referral.username}</p>
@@ -134,7 +146,7 @@ const ReferralsPage = () => {
 };
 
 // Calculer le bonus total de parrainage
-const calculateReferralBonus = (referrals?: { active: boolean }[]) => {
+const calculateReferralBonus = (referrals: Array<{ active: boolean }>) => {
   if (!referrals || referrals.length === 0) return 0;
   
   // Compter les parrainages actifs uniquement

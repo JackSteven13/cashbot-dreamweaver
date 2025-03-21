@@ -99,7 +99,7 @@ const StatCard = ({ title, value }: { title: string, value: string }) => (
   </div>
 );
 
-const calculateAverage = (transactions?: { amount: number }[]) => {
+const calculateAverage = (transactions?: Transaction[]) => {
   if (!transactions || transactions.length === 0) return '0.00 €';
   
   const total = transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
