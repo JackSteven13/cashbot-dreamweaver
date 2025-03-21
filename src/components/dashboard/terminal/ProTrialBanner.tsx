@@ -37,33 +37,45 @@ export const ProTrialActive: React.FC = () => {
   
   useEffect(() => {
     const updateRemainingTime = () => {
+      // Récupérer le timestamp d'expiration
       const expiryTime = parseInt(localStorage.getItem('proTrialExpires') || '0', 10);
+      
+      // Récupérer le timestamp d'activation (pour vérification)
+      const activatedAt = parseInt(localStorage.getItem('proTrialActivatedAt') || '0', 10);
+      
       const now = Date.now();
       const remainingMs = expiryTime - now;
       
+      // Vérifier si l'essai est expiré
       if (remainingMs <= 0) {
         // Trial expired
         localStorage.removeItem('proTrialActive');
         localStorage.removeItem('proTrialExpires');
+        localStorage.removeItem('proTrialActivatedAt');
         localStorage.setItem('proTrialUsed', 'true');
         window.location.reload();
         return;
       }
       
-      // Calculate remaining time (without days)
+      // Calculer le nombre total d'heures (y compris les jours convertis en heures)
       const totalHours = Math.floor(remainingMs / (1000 * 60 * 60));
       const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
       
-      // Format as hours:minutes:seconds
+      // Formater comme heures:minutes:secondes
       const timeString = `${totalHours}h ${minutes}m ${seconds}s`;
       setRemainingTime(timeString);
+      
+      // Log pour débogage (sera supprimé en production)
+      console.log(`Temps restant Pro Trial: ${timeString}`);
+      console.log(`Activé le: ${new Date(activatedAt).toLocaleString()}`);
+      console.log(`Expire le: ${new Date(expiryTime).toLocaleString()}`);
     };
     
-    // Update immediately on first render
+    // Mettre à jour immédiatement au premier rendu
     updateRemainingTime();
     
-    // Then update every second
+    // Puis mettre à jour toutes les secondes
     const intervalId = setInterval(updateRemainingTime, 1000);
     
     return () => clearInterval(intervalId);

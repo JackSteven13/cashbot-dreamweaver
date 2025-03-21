@@ -46,10 +46,8 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   useEffect(() => {
     const effectiveSub = getEffectiveSubscription(subscription);
     setEffectiveSubscription(effectiveSub);
-    console.log("SystemTerminal - Abonnement effectif:", effectiveSub);
     
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    console.log("SystemTerminal - Limite effective:", limit);
     setEffectiveLimit(limit);
     
     const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
@@ -66,6 +64,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         localStorage.setItem('proTrialUsed', 'true');
         localStorage.removeItem('proTrialActive');
         localStorage.removeItem('proTrialExpires');
+        localStorage.removeItem('proTrialActivatedAt');
       }
     }
   }, [subscription]);
@@ -77,7 +76,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         
         const expiryTime = now + (48 * 60 * 60 * 1000);
         
-        console.log(`Activation de l'essai Pro: ${new Date(now).toISOString()} jusqu'à ${new Date(expiryTime).toISOString()}`);
+        console.log(`Activation de l'essai Pro: ${new Date(now).toLocaleString()} jusqu'à ${new Date(expiryTime).toLocaleString()}`);
         
         localStorage.setItem('proTrialActive', 'true');
         localStorage.setItem('proTrialExpires', expiryTime.toString());

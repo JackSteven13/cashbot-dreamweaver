@@ -18,6 +18,7 @@ export const MANUAL_SESSION_GAIN_PERCENTAGES = {
  * Vérifie le mode Pro temporaire et retourne la souscription effective
  */
 export const getEffectiveSubscription = (subscription: string): string => {
+  // Vérifier si l'utilisateur a un essai Pro actif
   const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
   const proTrialExpires = localStorage.getItem('proTrialExpires');
   
@@ -25,14 +26,16 @@ export const getEffectiveSubscription = (subscription: string): string => {
     const expiryTime = parseInt(proTrialExpires, 10);
     const now = Date.now();
     
-    // Vérification stricte de l'expiration
+    // Vérification de l'expiration
     if (now < expiryTime) {
+      console.log("Essai Pro actif, retourne 'pro'");
       return 'pro';
     } else {
       // Si expiré, nettoyer le localStorage et marquer comme utilisé
       console.log("Essai Pro expiré. Nettoyage des données d'essai.");
       localStorage.removeItem('proTrialActive');
       localStorage.removeItem('proTrialExpires');
+      localStorage.removeItem('proTrialActivatedAt');
       localStorage.setItem('proTrialUsed', 'true');
     }
   }
