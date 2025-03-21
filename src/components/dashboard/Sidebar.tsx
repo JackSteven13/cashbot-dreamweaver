@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -30,11 +31,9 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
   };
   
   // Function to handle both setting the selected item and navigation
-  const handleNavigation = (id: string, path: string = '') => {
+  const handleNavigation = (id: string, path: string) => {
     setSelectedNavItem(id);
-    if (path) {
-      navigate(path);
-    }
+    navigate(path);
   };
   
   return (
@@ -51,35 +50,35 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
           label="Historique"
           id="transactions"
           selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("transactions")}
+          onClick={() => handleNavigation("transactions", "/dashboard/transactions")}
         />
         <NavItem 
           icon={<LineChart size={18} className="mr-3" />}
           label="Analyses"
           id="analytics"
           selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("analytics")}
+          onClick={() => handleNavigation("analytics", "/dashboard/analytics")}
         />
         <NavItem 
           icon={<CreditCard size={18} className="mr-3" />}
           label="Portefeuille"
           id="wallet"
           selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("wallet")}
+          onClick={() => handleNavigation("wallet", "/dashboard/wallet")}
         />
         <NavItem 
           icon={<Share2 size={18} className="mr-3" />}
           label="Parrainage"
           id="referrals"
           selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("referrals")}
+          onClick={() => handleNavigation("referrals", "/dashboard/referrals")}
         />
         <NavItem 
           icon={<Settings size={18} className="mr-3" />}
           label="Paramètres"
           id="settings"
           selectedNavItem={selectedNavItem}
-          onClick={() => handleNavigation("settings")}
+          onClick={() => handleNavigation("settings", "/dashboard/settings")}
         />
       </div>
       
@@ -89,7 +88,6 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
           fullWidth 
           className="justify-start border-[#486581] text-white hover:bg-[#334e68]/50"
           onClick={() => {
-            // Naviguez d'abord vers la page d'accueil
             navigate('/');
           }}
         >

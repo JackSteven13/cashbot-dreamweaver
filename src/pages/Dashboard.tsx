@@ -1,11 +1,17 @@
 
 import { useState, useCallback, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import DashboardLoading from '@/components/dashboard/DashboardLoading';
 import DashboardError from '@/components/dashboard/DashboardError';
 import DailyLimitAlert from '@/components/dashboard/DailyLimitAlert';
 import DormancyAlert from '@/components/dashboard/DormancyAlert';
+import TransactionsPage from '@/pages/dashboard/TransactionsPage';
+import AnalyticsPage from '@/pages/dashboard/AnalyticsPage';
+import WalletPage from '@/pages/dashboard/WalletPage';
+import ReferralsPage from '@/pages/dashboard/ReferralsPage';
+import SettingsPage from '@/pages/dashboard/SettingsPage';
 import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
 import { useDormancyCheck } from '@/hooks/useDormancyCheck';
@@ -13,8 +19,9 @@ import { canStartManualSession } from '@/utils/subscriptionUtils';
 import { useDashboardInitialization } from '@/hooks/useDashboardInitialization';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
-  const [renderKey, setRenderKey] = useState(Date.now()); // Force re-renders when needed
+  const [renderKey, setRenderKey] = useState(Date.now());
   
   const {
     isAuthChecking,
@@ -69,6 +76,13 @@ const Dashboard = () => {
     }
   }, [isAuthChecking, isLoading, userData]);
 
+  // Rediriger vers le tableau de bord principal si l'URL est exactement /dashboard sans sous-route
+  useEffect(() => {
+    if (window.location.pathname === "/dashboard") {
+      setSelectedNavItem('dashboard');
+    }
+  }, []);
+
   // Afficher un loader plus robuste pendant le chargement
   if (isAuthChecking || isLoading || !isReady || isChecking) {
     return <DashboardLoading />;
@@ -84,15 +98,9 @@ const Dashboard = () => {
     return <DashboardError errorType="data" onRefresh={forceRefresh} />;
   }
 
-  // Enfin, afficher le tableau de bord
-  return (
-    <DashboardLayout
-      key={renderKey}
-      username={userData.username}
-      subscription={userData.subscription}
-      selectedNavItem={selectedNavItem}
-      setSelectedNavItem={setSelectedNavItem}
-    >
+  // Contenu principal du tableau de bord
+  const renderDashboardContent = () => (
+    <>
       {/* Display dormancy alert if applicable */}
       {isDormant && dormancyData && (
         <DormancyAlert 
@@ -125,6 +133,26 @@ const Dashboard = () => {
         canStartSession={!isDormant && canStartManualSession(userData.subscription, dailySessionCount, userData.balance)}
         referrals={userData.referrals}
       />
+    </>
+  );
+
+  // Enfin, afficher le tableau de bord avec le routage
+  return (
+    <DashboardLayout
+      key={renderKey}
+      username={userData.username}
+      subscription={userData.subscription}
+      selectedNavItem={selectedNavItem}
+      setSelectedNavItem={setSelectedNavItem}
+    >
+      <Routes>
+        <Route index element={renderDashboardContent()} />
+        <Route path="transactions" element={<TransactionsPage />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="wallet" element={<WalletPage />} />
+        <Route path="referrals" element={<ReferralsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Routes>
     </DashboardLayout>
   );
 };
