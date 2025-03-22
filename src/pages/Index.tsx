@@ -49,31 +49,33 @@ const Index = () => {
       <main className="flex-1">
         <Hero />
         
-        {/* Revenue Calculator Section */}
-        <section className="py-10 md:py-16 bg-gradient-to-b from-slate-900 to-slate-950">
+        {/* Revenue Calculator Section - Moved up and reduced padding */}
+        <section className="py-6 md:py-10 bg-gradient-to-b from-slate-900 to-slate-950">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="max-w-3xl mx-auto">
-              <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center text-white">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center text-white">
                 Simulez vos revenus potentiels avec Cashbot beta
               </h2>
               <RevenueCalculator 
                 currentSubscription="freemium" 
-                isNewUser={true} 
+                isNewUser={true}
+                isHomePage={true}
               />
             </div>
           </div>
         </section>
         
+        {/* Features section - Smaller padding to make page more compact */}
         <FeaturesGrid 
           title="Une Plateforme de Monétisation Révolutionnaire"
           subtitle="Cashbot beta combine intelligence artificielle et analyse de publicités pour créer un système de revenus passifs unique."
           features={features}
         />
         
-        {/* Testimonials Section */}
-        <section className="py-12 md:py-20 bg-gradient-subtle">
+        {/* Testimonials Section - Reduced padding */}
+        <section className="py-8 md:py-14 bg-gradient-subtle">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center max-w-3xl mx-auto mb-8 md:mb-16">
+            <div className="text-center max-w-3xl mx-auto mb-6 md:mb-10">
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">Ce que nos utilisateurs disent</h2>
               <p className="text-base md:text-lg text-muted-foreground">Des milliers d'utilisateurs font confiance à cashbot.beta pour générer des revenus passifs.</p>
             </div>
@@ -115,8 +117,8 @@ const Index = () => {
           </div>
         </section>
         
-        {/* CTA Section */}
-        <section className="py-12 md:py-20">
+        {/* CTA Section - Reduced padding */}
+        <section className="py-8 md:py-14">
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-3xl mx-auto text-center">
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 md:mb-6">Prêt à transformer votre avenir financier ?</h2>

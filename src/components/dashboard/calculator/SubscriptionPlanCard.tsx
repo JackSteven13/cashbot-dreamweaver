@@ -83,21 +83,21 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
           SÉLECTIONNÉ
         </div>
       )}
-      <div className="p-6">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+      <div className="p-4 md:p-5">
+        <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-2">
           {subscriptionLabel || title}
         </h3>
-        <div className="mb-4">
-          <span className="text-3xl font-bold text-gray-900 dark:text-white">
+        <div className="mb-3">
+          <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
             {subscriptionPrice || price}€
           </span>
           {(subscriptionPrice || price) > 0 && <span className="text-gray-500 dark:text-gray-400">/mois</span>}
         </div>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">{description}</p>
+        <p className="text-gray-600 dark:text-gray-400 mb-3 text-sm">{description}</p>
         
         {/* Display revenue and profit information if available */}
         {revenue !== undefined && profit !== undefined && (
-          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+          <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
             <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
               Revenu: <span className="font-bold">{revenue.toFixed(2)}€</span>
             </p>
@@ -107,17 +107,17 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
           </div>
         )}
         
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mb-4">
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
             Limite quotidienne: <span className="font-semibold text-blue-600 dark:text-blue-400">{limit}€</span>
           </p>
-          <ul className="space-y-2 mt-3">
-            {features.map((feature, index) => (
+          <ul className="space-y-1 mt-2">
+            {features.slice(0, isHomePage ? 2 : features.length).map((feature, index) => (
               <li key={index} className="flex items-start">
-                <svg className={`h-5 w-5 ${isSelected ? 'text-purple-500' : 'text-green-500'} shrink-0 mr-2`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className={`h-4 w-4 ${isSelected ? 'text-purple-500' : 'text-green-500'} shrink-0 mr-2 mt-0.5`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600 dark:text-gray-300 text-sm">{feature}</span>
+                <span className="text-gray-600 dark:text-gray-300 text-xs md:text-sm">{feature}</span>
               </li>
             ))}
           </ul>

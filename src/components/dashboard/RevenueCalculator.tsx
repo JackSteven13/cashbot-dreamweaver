@@ -115,17 +115,17 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
             : "Comparez vos revenus potentiels selon différents abonnements"}
         </CardDescription>
       </CardHeader>
-      <CardContent className={`pt-6 ${isHomePage ? 'text-white dark:text-white' : 'dark:text-gray-100'}`}>
+      <CardContent className={`pt-4 ${isHomePage ? 'text-white dark:text-white' : 'dark:text-gray-100'}`}>
         <Form {...form}>
           {/* Contrôles du simulateur */}
           <CalculatorControls control={control} isHomePage={isHomePage} />
         </Form>
 
-        <div className="mt-8 space-y-3">
+        <div className="mt-6 space-y-3">
           <h3 className={`text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
             Revenus mensuels estimés
           </h3>
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {Object.keys(SUBSCRIPTION_LIMITS).map((plan) => {
               // Ne pas afficher freemium sur la page d'accueil
               if (plan === 'freemium' && isHomePage) return null;
