@@ -20,7 +20,10 @@ const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
   const handleManualRedirect = () => {
     if (stripeUrl) {
       console.log("Redirection manuelle vers:", stripeUrl);
-      window.open(stripeUrl, '_blank') || window.location.href = stripeUrl;
+      const newWindow = window.open(stripeUrl, '_blank');
+      if (!newWindow) {
+        window.location.href = stripeUrl;
+      }
     } else {
       console.log("Aucune URL Stripe disponible pour la redirection manuelle");
       onCheckout(); // Essayer à nouveau via le flux normal
