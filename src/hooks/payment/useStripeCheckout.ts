@@ -73,7 +73,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
                    onClick={openStripeWindow}>
                 Ouvrir le paiement
               </div>
-            ),
+            )
           });
         }
       }, 2000);

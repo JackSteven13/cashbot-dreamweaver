@@ -45,12 +45,12 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
       if (navigator.share) {
         await navigator.share({
           title: 'Mon lien de parrainage CashBot',
-          text: 'Rejoins CashBot et gagne de l'argent avec l'analyse publicitaire! Utilise mon lien de parrainage:',
-          url: referralLink,
+          text: 'Rejoins CashBot et gagne de l\'argent avec l\'analyse publicitaire! Utilise mon lien de parrainage:',
+          url: referralLink
         });
         toast({
           title: "Partage réussi",
-          description: "Merci d'avoir partagé votre lien!",
+          description: "Merci d'avoir partagé votre lien!"
         });
       } else {
         handleCopyReferralLink();
