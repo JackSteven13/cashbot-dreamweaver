@@ -41,7 +41,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
         <h3 className="text-lg font-semibold text-[#1e3a5f]">Programme de parrainage</h3>
       </div>
       
-      <p className="text-sm text-[#486581] mb-3">Partagez ce lien avec vos amis et gagnez <span className="font-bold text-green-600">70% de commission</span> sur leurs revenus !</p>
+      <p className="text-sm text-[#486581] mb-3">Partagez ce lien avec vos amis et gagnez <span className="font-bold text-green-600">35% de commission</span> sur leurs abonnements !</p>
       
       <div className="flex flex-col sm:flex-row mb-3">
         <div className="relative flex-1 mb-2 sm:mb-0">
@@ -65,7 +65,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
       
       <div className="bg-amber-50 p-3 rounded-md border border-amber-100 mb-4">
         <p className="text-sm text-amber-800 font-medium">
-          💰 Gagnez <span className="font-bold">70%</span> sur les revenus de chaque personne qui s'inscrit avec votre lien !
+          💰 Gagnez <span className="font-bold">35%</span> sur les abonnements de chaque personne qui s'inscrit avec votre lien !
         </p>
       </div>
       
@@ -112,8 +112,8 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
         <ol className="list-decimal ml-4 mt-1 space-y-1">
           <li>Partagez votre lien de parrainage avec vos amis</li>
           <li>Ils créent un compte avec votre lien et souscrivent à un abonnement</li>
-          <li>Vous recevez automatiquement 70% de leurs revenus</li>
-          <li>Les commissions sont ajoutées à votre solde disponible</li>
+          <li>Vous recevez automatiquement 35% de leurs abonnements mensuels</li>
+          <li>Les commissions sont ajoutées à votre solde disponible chaque mois</li>
         </ol>
       </div>
     </div>
