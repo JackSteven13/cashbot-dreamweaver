@@ -14,25 +14,25 @@ export const useStatsAnimation = ({
   setDisplayedAdsCount,
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
-  // Animation redesignée pour être plus crédible
+  // Animation redesignée pour être plus impressionnante
   const animateCounters = useCallback(() => {
-    // Mise à jour du compteur d'annonces
+    // Mise à jour du compteur d'annonces - accélérée
     setDisplayedAdsCount((prevCount) => {
       // Si nous avons atteint la cible, ne pas changer
       if (prevCount >= adsCount) return adsCount;
       
-      // Incrémentation progressive plus réaliste
-      const increment = Math.max(5, Math.floor((adsCount - prevCount) * 0.02));
+      // Incrémentation progressive plus dynamique
+      const increment = Math.max(50, Math.floor((adsCount - prevCount) * 0.05));
       return Math.min(prevCount + increment, adsCount);
     });
 
-    // Mise à jour des revenus de manière indépendante
+    // Mise à jour des revenus de manière indépendante - accélérée
     setDisplayedRevenueCount((prevRevCount) => {
       // Si nous avons atteint la cible, ne pas changer
       if (prevRevCount >= revenueCount) return revenueCount;
       
-      // Incrémentation progressive plus réaliste
-      const increment = Math.max(10, Math.floor((revenueCount - prevRevCount) * 0.02));
+      // Incrémentation progressive plus dynamique
+      const increment = Math.max(100, Math.floor((revenueCount - prevRevCount) * 0.05));
       return Math.min(prevRevCount + increment, revenueCount);
     });
 
