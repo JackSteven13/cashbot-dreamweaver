@@ -22,9 +22,7 @@ const Footer = () => {
               <Link to="/terms" className="text-sm text-gray-300 hover:text-white transition-colors">
                 Conditions d'utilisation
               </Link>
-              <Link to="/privacy" className="text-sm text-gray-300 hover:text-white transition-colors">
-                Politique de confidentialité
-              </Link>
+              {/* Suppression du lien de politique de confidentialité */}
             </div>
           </div>
           
