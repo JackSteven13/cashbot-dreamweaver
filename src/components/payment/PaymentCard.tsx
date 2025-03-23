@@ -15,7 +15,7 @@ interface PaymentCardProps {
   onToggleMethod: () => void;
   onCardFormSubmit: (cardData: PaymentFormData) => void;
   onStripeCheckout: () => void;
-  stripeCheckoutUrl?: string;
+  stripeCheckoutUrl?: string | null;
 }
 
 const PaymentCard = ({
