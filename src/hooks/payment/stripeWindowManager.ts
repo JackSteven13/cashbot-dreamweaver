@@ -40,6 +40,6 @@ export const showStripeManualOpenToast = (url: string): void => {
       >
         Ouvrir le paiement
       </ToastAction>
-    )
+    ),
   });
 };
