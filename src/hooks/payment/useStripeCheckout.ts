@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -68,10 +69,10 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
             title: "Paiement en attente",
             description: "Utilisez le bouton ci-dessous si la page de paiement ne s'est pas ouverte automatiquement.",
             action: {
-              children: "Ouvrir le paiement",
               altText: "Ouvrir le paiement",
               onClick: openStripeWindow,
-              className: "bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md cursor-pointer text-sm"
+              className: "bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md cursor-pointer text-sm",
+              children: "Ouvrir le paiement"
             }
           });
         }
