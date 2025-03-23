@@ -37,6 +37,7 @@ export const showStripeManualOpenToast = (url: string): void => {
       <ToastAction 
         onClick={() => openStripeWindow(url)}
         className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md cursor-pointer text-sm"
+        altText="Ouvrir la page de paiement"
       >
         Ouvrir le paiement
       </ToastAction>
