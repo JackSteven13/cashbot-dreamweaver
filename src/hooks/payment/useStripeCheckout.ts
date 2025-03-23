@@ -69,15 +69,11 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
           toast({
             title: "Paiement en attente",
             description: "Utilisez le bouton ci-dessous si la page de paiement ne s'est pas ouverte automatiquement.",
-            action: (
-              <ToastAction 
-                altText="Ouvrir le paiement"
-                onClick={openStripeWindow}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md cursor-pointer text-sm"
-              >
-                Ouvrir le paiement
-              </ToastAction>
-            )
+            action: {
+              altText: "Ouvrir le paiement",
+              onClick: openStripeWindow,
+              className: "bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md cursor-pointer text-sm"
+            } as any // Type assertion to satisfy TypeScript
           });
         }
       }, 2000);
@@ -211,7 +207,10 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     if (isStripeProcessing) {
       console.log("Paiement déjà en cours, utilisation de l'URL stockée si disponible");
       if (stripeCheckoutUrl) {
-        window.open(stripeCheckoutUrl, '_blank') || window.location.replace(stripeCheckoutUrl);
+        const newWindow = window.open(stripeCheckoutUrl, '_blank');
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+          window.location.replace(stripeCheckoutUrl);
+        }
       }
       return;
     }
