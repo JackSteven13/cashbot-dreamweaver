@@ -163,11 +163,11 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
           if (rpcError) throw rpcError;
           
           console.log("Abonnement mis à jour avec succès via RPC");
-        } catch (error) {
-          console.error("Erreur RPC:", error);
+        } catch (rpcError) {
+          console.error("Erreur RPC:", rpcError);
           
           // Fallback sur méthode directe
-          const { error } = await supabase
+          const { error: updateError } = await supabase
             .from('user_balances')
             .update({ 
               subscription: selectedPlan,
@@ -175,7 +175,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
             })
             .eq('id', session.user.id);
             
-          if (error) throw error;
+          if (updateError) throw updateError;
         }
         
         // Mettre à jour localStorage immédiatement
