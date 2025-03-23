@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -18,6 +18,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const [actualSubscription, setActualSubscription] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const [stripeCheckoutUrl, setStripeCheckoutUrl] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Vérifier l'abonnement actuel depuis Supabase au chargement
   useEffect(() => {
@@ -47,21 +48,71 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       // Ouvrir l'URL de Stripe dans une nouvelle fenêtre ou onglet
       console.log("Ouverture de l'URL Stripe:", stripeCheckoutUrl);
       
-      // Essayer d'ouvrir dans un nouvel onglet d'abord
-      const newWindow = window.open(stripeCheckoutUrl, '_blank');
-      
-      // Si l'ouverture dans un nouvel onglet échoue (bloqueurs de popups), rediriger la fenêtre actuelle
-      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-        console.log("Impossible d'ouvrir dans un nouvel onglet, redirection de la fenêtre actuelle");
-        setTimeout(() => {
+      const openStripeWindow = () => {
+        // Essayer d'ouvrir dans un nouvel onglet d'abord
+        const newWindow = window.open(stripeCheckoutUrl, '_blank');
+        
+        // Si l'ouverture dans un nouvel onglet échoue (bloqueurs de popups), rediriger la fenêtre actuelle
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+          console.log("Impossible d'ouvrir dans un nouvel onglet, redirection de la fenêtre actuelle");
           window.location.href = stripeCheckoutUrl;
-        }, 500);
-      }
+        }
+      };
       
-      // Réinitialiser l'URL après tentative d'ouverture
-      setStripeCheckoutUrl(null);
+      // Première tentative immédiate
+      openStripeWindow();
+      
+      // Si toujours en traitement après 2 secondes, proposer un bouton visible
+      const timeoutId = setTimeout(() => {
+        if (isStripeProcessing) {
+          toast({
+            title: "Paiement en attente",
+            description: "Utilisez le bouton ci-dessous si la page de paiement ne s'est pas ouverte automatiquement.",
+            action: (
+              <div className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md cursor-pointer text-sm"
+                   onClick={openStripeWindow}>
+                Ouvrir le paiement
+              </div>
+            ),
+          });
+        }
+      }, 2000);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [stripeCheckoutUrl]);
+  }, [stripeCheckoutUrl, isStripeProcessing]);
+
+  // Fonction pour créer une session de checkout
+  const createStripeSession = useCallback(async (plan: PlanType, referralCode: string | null) => {
+    try {
+      console.log(`Création d'une session Stripe pour le plan ${plan}${referralCode ? ` avec code parrain ${referralCode}` : ''}`);
+      
+      const data = await createCheckoutSession(
+        plan,
+        `${window.location.origin}/payment-success`,
+        `${window.location.origin}/offres`,
+        referralCode
+      );
+      
+      if (data?.url) {
+        console.log("URL de checkout Stripe obtenue:", data.url);
+        setStripeCheckoutUrl(data.url);
+        return { success: true, url: data.url };
+      } else {
+        throw new Error("Aucune URL de paiement retournée");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la création de la session Stripe:", error);
+      if (retryCount < 2) {
+        console.log(`Nouvelle tentative (${retryCount + 1}/3)...`);
+        setRetryCount(retryCount + 1);
+        // Petite attente avant la nouvelle tentative
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return createStripeSession(plan, referralCode);
+      }
+      throw error;
+    }
+  }, [retryCount]);
 
   const handleStripeCheckout = async () => {
     if (!selectedPlan) {
@@ -103,7 +154,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
           return;
         }
         
-        // Mise à jour via RPC
+        // Mise à jour via RPC qui est plus fiable
         try {
           const { error: rpcError } = await supabase
             .rpc('update_user_subscription', { 
@@ -111,25 +162,14 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
               new_subscription: selectedPlan 
             }) as { error: any };
             
-          if (!rpcError) {
-            console.log("Abonnement mis à jour avec succès via RPC");
-          } else {
-            // Si l'appel RPC échoue, essayer la méthode directe
-            const { error } = await supabase
-              .from('user_balances')
-              .update({ 
-                subscription: selectedPlan,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', session.user.id);
-              
-            if (error) throw error;
-          }
-        } catch (error) {
-          console.error("Error updating subscription:", error);
+          if (rpcError) throw rpcError;
           
-          // Dernière tentative - méthode directe
-          const { error: directError } = await supabase
+          console.log("Abonnement mis à jour avec succès via RPC");
+        } catch (error) {
+          console.error("Erreur RPC:", error);
+          
+          // Fallback sur méthode directe
+          const { error } = await supabase
             .from('user_balances')
             .update({ 
               subscription: selectedPlan,
@@ -137,7 +177,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
             })
             .eq('id', session.user.id);
             
-          if (directError) throw directError;
+          if (error) throw error;
         }
         
         // Mettre à jour localStorage immédiatement
@@ -167,12 +207,13 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     if (isStripeProcessing) {
       console.log("Paiement déjà en cours, utilisation de l'URL stockée si disponible");
       if (stripeCheckoutUrl) {
-        window.location.href = stripeCheckoutUrl;
+        window.open(stripeCheckoutUrl, '_blank') || window.location.replace(stripeCheckoutUrl);
       }
       return;
     }
     
     setIsStripeProcessing(true);
+    setRetryCount(0);
 
     try {
       // Get user session
@@ -190,32 +231,6 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
 
       // Get referral code from URL parameter
       const effectiveReferralCode = getReferralCodeFromURL();
-
-      // Call Supabase Edge Function to create a Stripe checkout session
-      console.log("Calling Stripe checkout for", selectedPlan, "plan", effectiveReferralCode ? `with referral: ${effectiveReferralCode}` : "without referral");
-      
-      const data = await createCheckoutSession(
-        selectedPlan,
-        `${window.location.origin}/payment-success`,
-        `${window.location.origin}/offres`,
-        effectiveReferralCode
-      );
-      
-      // If it's a free plan, we're done
-      if (data.free) {
-        // Mettre à jour localStorage immédiatement
-        await updateLocalSubscription(selectedPlan);
-        
-        // Forcer le rafraîchissement des données au retour sur le dashboard
-        localStorage.setItem('forceRefreshBalance', 'true');
-        
-        toast({
-          title: "Abonnement activé",
-          description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
-        });
-        navigate('/payment-success');
-        return;
-      }
       
       // Update localStorage preemptively to reduce UI flicker
       localStorage.setItem('subscription', selectedPlan);
@@ -223,24 +238,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       // Force refresh on dashboard return
       localStorage.setItem('forceRefreshBalance', 'true');
       
-      // Redirect to Stripe checkout URL
-      if (data?.url) {
-        console.log("Stripe checkout URL obtenue:", data.url);
-        
-        // Stocker l'URL pour pouvoir la réutiliser si nécessaire
-        setStripeCheckoutUrl(data.url);
-        
-        // Rediriger vers Stripe dans un nouvel onglet si possible
-        const newWindow = window.open(data.url, '_blank');
-        
-        // Si le popup est bloqué, rediriger la fenêtre actuelle
-        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-          console.log("Impossible d'ouvrir dans un nouvel onglet, redirection de la fenêtre actuelle");
-          window.location.href = data.url;
-        }
-      } else {
-        throw new Error("Aucune URL de paiement retournée");
-      }
+      // Create and handle Stripe checkout session
+      await createStripeSession(selectedPlan, effectiveReferralCode);
 
     } catch (error: any) {
       console.error("Payment error:", error);
@@ -260,6 +259,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     isStripeProcessing,
     handleStripeCheckout,
     actualSubscription,
-    isChecking
+    isChecking,
+    stripeCheckoutUrl  // Export l'URL pour permettre la redirection manuelle
   };
 };

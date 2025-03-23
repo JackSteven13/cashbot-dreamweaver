@@ -15,6 +15,7 @@ interface PaymentCardProps {
   onToggleMethod: () => void;
   onCardFormSubmit: (cardData: PaymentFormData) => void;
   onStripeCheckout: () => void;
+  stripeCheckoutUrl?: string;
 }
 
 const PaymentCard = ({
@@ -24,7 +25,8 @@ const PaymentCard = ({
   isProcessing,
   onToggleMethod,
   onCardFormSubmit,
-  onStripeCheckout
+  onStripeCheckout,
+  stripeCheckoutUrl
 }: PaymentCardProps) => {
   return (
     <Card className="cyber-card">
@@ -41,6 +43,7 @@ const PaymentCard = ({
             selectedPlan={selectedPlan}
             isStripeProcessing={isStripeProcessing}
             onCheckout={onStripeCheckout}
+            stripeUrl={stripeCheckoutUrl}
           />
         ) : (
           <ManualPaymentForm 

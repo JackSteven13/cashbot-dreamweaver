@@ -19,15 +19,15 @@ const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
 }) => {
   const handleManualRedirect = () => {
     if (stripeUrl) {
-      console.log("Manually redirecting to:", stripeUrl);
-      window.location.href = stripeUrl;
+      console.log("Redirection manuelle vers:", stripeUrl);
+      window.open(stripeUrl, '_blank') || window.location.href = stripeUrl;
     } else {
-      console.log("No Stripe URL available for manual redirect");
-      onCheckout(); // Try again through the normal flow
+      console.log("Aucune URL Stripe disponible pour la redirection manuelle");
+      onCheckout(); // Essayer à nouveau via le flux normal
     }
   };
   
-  // Get the appropriate button text and styling based on the plan
+  // Obtenir le texte et le style appropriés du bouton en fonction du plan
   const buttonText = (() => {
     if (isStripeProcessing) return "Redirection en cours...";
     
@@ -43,11 +43,10 @@ const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
     }
   })();
   
-  // Button color classes based on plan
+  // Classes de couleur du bouton en fonction du plan
   const buttonClasses = (() => {
     const baseClasses = "w-full p-3 font-medium rounded-md flex items-center justify-center gap-2 mt-4 transition-all";
     
-    // Fixing the error - make sure to use correct type check
     if (!selectedPlan || selectedPlan === "freemium") {
       return `${baseClasses} bg-gray-500 text-white`;
     }

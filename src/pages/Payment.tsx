@@ -22,7 +22,11 @@ const Payment = () => {
   
   // Get the processing state from the payment hooks
   const { isProcessing, processPayment } = usePaymentProcessing(selectedPlan);
-  const { isStripeProcessing, handleStripeCheckout } = useStripeCheckout(selectedPlan);
+  const { 
+    isStripeProcessing, 
+    handleStripeCheckout, 
+    stripeCheckoutUrl 
+  } = useStripeCheckout(selectedPlan);
 
   // Get plan from state or URL parameters
   useEffect(() => {
@@ -77,16 +81,30 @@ const Payment = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        const { error } = await supabase
-          .from('user_balances')
-          .update({ 
-            subscription: 'freemium',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', session.user.id);
+        // Tenter d'abord avec une fonction RPC
+        try {
+          const { error: rpcError } = await supabase
+            .rpc('update_user_subscription', { 
+              user_id: session.user.id, 
+              new_subscription: 'freemium' 
+            }) as { error: any };
+            
+          if (rpcError) throw rpcError;
           
-        if (error) {
-          throw error;
+          console.log("Abonnement mis à jour avec succès via RPC");
+        } catch (rpcError) {
+          console.error("Erreur RPC:", rpcError);
+          
+          // Fallback sur méthode directe
+          const { error } = await supabase
+            .from('user_balances')
+            .update({ 
+              subscription: 'freemium',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', session.user.id);
+            
+          if (error) throw error;
         }
         
         localStorage.setItem('subscription', 'freemium');
@@ -148,6 +166,7 @@ const Payment = () => {
             onToggleMethod={togglePaymentMethod}
             onCardFormSubmit={handleCardFormSubmit}
             onStripeCheckout={initiateStripeCheckout}
+            stripeCheckoutUrl={stripeCheckoutUrl}
           />
           
           <SecurityNote />

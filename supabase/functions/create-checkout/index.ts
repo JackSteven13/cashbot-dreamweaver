@@ -1,7 +1,7 @@
 
 import { corsHeaders } from './helpers/corsHeaders.ts';
 import { isStripeConfigured } from './helpers/stripeClient.ts';
-import { findReferrer } from './services/referralService.ts';
+import { findReferrer, trackReferral } from './services/referralService.ts';
 import { createCheckoutSession } from './services/stripeService.ts';
 import { updateFreeSubscription } from './services/subscriptionService.ts';
 import { supabase } from './helpers/supabaseClient.ts';
@@ -47,12 +47,32 @@ Deno.serve(async (req) => {
     }
     
     // Parse request body
-    const { plan, successUrl, cancelUrl, referralCode } = await req.json();
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (parseError) {
+      console.error('Error parsing request body:', parseError);
+      return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    const { plan, successUrl, cancelUrl, referralCode } = requestData;
     console.log('Received plan:', plan, 'Referral code:', referralCode || 'none');
     
     // Find referrer if referral code provided
-    const referrerId = await findReferrer(referralCode);
-    console.log('Referrer ID:', referrerId || 'none');
+    let referrerId = null;
+    if (referralCode) {
+      console.log('Recherche du parrain pour le code:', referralCode);
+      referrerId = await findReferrer(referralCode);
+      console.log('Parrain trouvé:', referrerId || 'aucun');
+      
+      if (referrerId === user.id) {
+        console.log('Auto-parrainage détecté, ignoré');
+        referrerId = null;
+      }
+    }
     
     // Validate plan
     if (!plan || !['freemium', 'pro', 'visionnaire', 'alpha'].includes(plan)) {
@@ -72,7 +92,8 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
+        console.error('Error updating subscription:', error);
+        return new Response(JSON.stringify({ error: String(error) }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -92,13 +113,25 @@ Deno.serve(async (req) => {
         referrerId
       });
       
+      // If referral code is provided, track it even before payment completion
+      // This ensures we don't lose the referral data
+      if (referrerId) {
+        console.log(`Pre-tracking referral: ${referrerId} -> ${user.id} for plan ${plan}`);
+        try {
+          await trackReferral(referrerId, user.id, plan);
+        } catch (refError) {
+          console.error('Error pre-tracking referral:', refError);
+          // Continue anyway as this is just a pre-tracking
+        }
+      }
+      
       return new Response(JSON.stringify({ success: true, url: session.url }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } catch (stripeError) {
       console.error('Stripe error:', stripeError);
       return new Response(JSON.stringify({ 
-        error: `Payment processing error: ${stripeError.message}`
+        error: `Payment processing error: ${String(stripeError)}`
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -107,7 +140,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error creating checkout session:', error);
     return new Response(JSON.stringify({ 
-      error: `General error: ${error.message}`
+      error: `General error: ${String(error)}`
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
