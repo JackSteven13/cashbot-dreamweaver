@@ -21,102 +21,108 @@ const Terms = () => {
           
           <div className="mb-16">
             <h1 className="text-3xl md:text-4xl font-bold mb-2">CONDITIONS GÉNÉRALES D'UTILISATION</h1>
+            <p className="text-sm text-muted-foreground mb-6">Dernière mise à jour: 1 Juillet 2023</p>
+            
             <div className="mt-6 p-6 border border-gray-300 rounded bg-white">
-              <div className="cgv-container" style={{ 
-                fontSize: '8.5pt', 
-                fontFamily: 'Times New Roman, serif', 
-                fontStyle: 'italic',
-                color: '#787878',
-                lineHeight: '1.0',
-                textAlign: 'justify'
-              }}>
-                <h2 className="font-semibold italic">Plateforme CashBot</h2>
-                <p className="italic mb-2">Édition consolidée sous réserve de modifications unilatérales</p>
+              <div className="cgv-container space-y-6 text-sm text-gray-700 leading-relaxed">
+                <section>
+                  <h2 className="font-bold text-lg mb-3">1. PRÉAMBULE</h2>
+                  <p>La société CashBot SAS (ci-après "le Prestataire"), immatriculée au RCS de Paris sous le numéro 123456789, propose une plateforme d'optimisation publicitaire utilisant des technologies d'analyse automatisée (ci-après "le Service").</p>
+                  <p className="mt-2">Les présentes conditions générales d'utilisation définissent les modalités d'accès et d'utilisation du Service.</p>
+                </section>
                 
-                <hr className="my-2" />
+                <section>
+                  <h2 className="font-bold text-lg mb-3">2. ACCEPTATION DES CONDITIONS</h2>
+                  <p>L'utilisation du Service est soumise à l'acceptation préalable et sans réserve des présentes conditions générales.</p>
+                  <p className="mt-2">Conformément aux dispositions légales en vigueur, l'Utilisateur bénéficie d'un délai de rétractation de 14 jours à compter de la souscription à un abonnement payant, sauf si l'exécution du Service a commencé avec son accord avant la fin de ce délai.</p>
+                </section>
                 
-                <h3 className="font-bold italic">ARTICLE PREMIER - OBJET</h3>
-                <p>Les présentes conditions encadrent exclusivement l'accès aux fonctionnalités automatisées de monétisation passive proposées par l'entité gestionnaire, ci-après dénommée "l'Opérateur".</p>
+                <section>
+                  <h2 className="font-bold text-lg mb-3">3. DESCRIPTION DU SERVICE</h2>
+                  <p>Le Service propose des fonctionnalités d'analyse publicitaire et de génération de revenus via un système d'abonnement à plusieurs niveaux.</p>
+                  <p className="mt-2">Le Prestataire s'engage à mettre en œuvre tous les moyens raisonnables pour assurer la continuité du Service, sans toutefois garantir un résultat financier spécifique qui dépend de nombreux facteurs externes.</p>
+                </section>
                 
-                <hr className="my-2" />
+                <section>
+                  <h2 className="font-bold text-lg mb-3">4. OBLIGATIONS DE L'UTILISATEUR</h2>
+                  <p>L'Utilisateur s'engage à :</p>
+                  <ul className="list-disc pl-6 mt-2 space-y-1">
+                    <li>Fournir des informations exactes lors de son inscription</li>
+                    <li>Utiliser le Service conformément à sa destination et aux lois en vigueur</li>
+                    <li>Ne pas tenter de contourner les limitations techniques de la plateforme</li>
+                    <li>Régler les abonnements souscrits selon les modalités prévues</li>
+                  </ul>
+                </section>
                 
-                <h3 className="font-bold italic">ARTICLE DEUXIÈME - ADHÉSION CONTRACTUELLE</h3>
-                <p>Deuxième alinéa : La poursuite de la navigation au-delà de trois secondes sur l'interface utilisateur vaut renonciation irrévocable aux droits de rétractation prévus par les dispositions légales communes.</p>
+                <section>
+                  <h2 className="font-bold text-lg mb-3">5. ABONNEMENTS ET FACTURATION</h2>
+                  <p>Le Service propose plusieurs formules d'abonnement dont les caractéristiques et tarifs sont détaillés sur la page "Offres".</p>
+                  <p className="mt-2">Les abonnements sont facturés mensuellement et renouvelés par tacite reconduction, sauf résiliation par l'Utilisateur au moins 5 jours avant l'échéance.</p>
+                  <p className="mt-2">En cas de non-paiement, le Prestataire se réserve le droit de suspendre l'accès au Service après relance.</p>
+                </section>
                 
-                <hr className="my-2" />
+                <section>
+                  <h2 className="font-bold text-lg mb-3">6. LIMITATIONS DE RESPONSABILITÉ</h2>
+                  <p>Le Prestataire ne saurait être tenu responsable :</p>
+                  <ul className="list-disc pl-6 mt-2 space-y-1">
+                    <li>Des fluctuations de revenus générés via la plateforme</li>
+                    <li>Des interruptions temporaires du Service pour maintenance</li>
+                    <li>Des dommages indirects résultant de l'utilisation du Service</li>
+                  </ul>
+                  <p className="mt-2">La responsabilité du Prestataire est expressément limitée au montant des 3 derniers mois d'abonnement réglés par l'Utilisateur.</p>
+                </section>
                 
-                <h3 className="font-bold italic">ARTICLE TROISIÈME - RÉGIME FINANCIER</h3>
-                <p>Troisième section : Les prélèvements applicables aux demandes de liquidité obéissent à une échelle dégressive temporelle : Pour les requêtes formulées avant l'écoulement de trois mois pleins : soixante pour cent du montant brut majorés de quinze euros au titre de frais de gestion irrévocables Entre le quatrième et le sixième mois révolu : cinquante pour cent assortis de douze euros de contributions techniques Au-delà de six mois mais avant douze mois calendaires complets : quarante pour cent avec application d'un forfait fixe de dix euros Passé une année entière de fidélisation continue : vingt pour cent prélevés sur le capital virtuel, plus vingt euros de charges administratives.</p>
+                <section>
+                  <h2 className="font-bold text-lg mb-3">7. PROPRIÉTÉ INTELLECTUELLE</h2>
+                  <p>L'ensemble des éléments composant le Service (algorithmes, textes, visuels, marques) reste la propriété exclusive du Prestataire.</p>
+                  <p className="mt-2">Les données d'usage anonymisées pourront être utilisées par le Prestataire pour améliorer les performances du Service.</p>
+                </section>
                 
-                <hr className="my-2" />
+                <section>
+                  <h2 className="font-bold text-lg mb-3">8. PROTECTION DES DONNÉES PERSONNELLES</h2>
+                  <p>Le Prestataire s'engage à respecter la réglementation en vigueur applicable au traitement de données à caractère personnel (RGPD).</p>
+                  <p className="mt-2">Les conditions de collecte et de traitement des données personnelles sont détaillées dans la Politique de Confidentialité accessible sur le site.</p>
+                </section>
                 
-                <h3 className="font-bold italic">ARTICLE QUATRIÈME - RESTRICTIONS OPÉRATIONNELLES</h3>
-                <p>Quatrième disposition : Aucun retrait ne pourra excéder une occurrence mensuelle pendant toute la durée d'engagement, cette limite étant portée à deux occurrences mensuelles après accomplissement intégral de la période de fidélisation minimale de un an.</p>
+                <section>
+                  <h2 className="font-bold text-lg mb-3">9. RÉSILIATION</h2>
+                  <p>L'Utilisateur peut résilier son abonnement à tout moment depuis son espace personnel, la résiliation prenant effet à la fin de la période d'abonnement en cours.</p>
+                  <p className="mt-2">En cas de manquement grave aux présentes conditions, le Prestataire se réserve le droit de suspendre ou résilier l'accès au Service, après mise en demeure restée sans effet pendant 15 jours.</p>
+                </section>
                 
-                <hr className="my-2" />
+                <section>
+                  <h2 className="font-bold text-lg mb-3">10. COMPTES INACTIFS</h2>
+                  <p>Un compte est considéré comme inactif après 30 jours sans connexion. Dans ce cas :</p>
+                  <ul className="list-disc pl-6 mt-2 space-y-1">
+                    <li>Les fonctionnalités d'analyse automatique sont suspendues</li>
+                    <li>Des frais de maintenance de 5€ par mois peuvent être appliqués pour les comptes avec solde positif</li>
+                    <li>Après 90 jours d'inactivité, le compte peut être clôturé après notification</li>
+                  </ul>
+                  <p className="mt-2">La réactivation d'un compte est possible moyennant des frais administratifs équivalant à un mois d'abonnement.</p>
+                </section>
                 
-                <h3 className="font-bold italic">ARTICLE CINQUIÈME - SANCTIONS PÉCUNIAIRES</h3>
-                <p>Cinquième stipulation : Toute publication de nature critique ou diffamatoire entraînera : a) La confiscation intégrale des avoirs numériques b) Le versement immédiat d'une indemnité forfaitaire de deux mille cinq cents euros par propos litigieux c) Une astreinte journalière de cent euros jusqu'à suppression totale du contenu incriminé</p>
+                <section>
+                  <h2 className="font-bold text-lg mb-3">11. MODIFICATION DES CONDITIONS</h2>
+                  <p>Le Prestataire se réserve le droit de modifier les présentes conditions. Les modifications seront portées à la connaissance de l'Utilisateur par notification et entreront en vigueur 30 jours après leur publication.</p>
+                  <p className="mt-2">En cas de désaccord avec les nouvelles conditions, l'Utilisateur peut résilier son abonnement sans frais.</p>
+                </section>
                 
-                <hr className="my-2" />
+                <section>
+                  <h2 className="font-bold text-lg mb-3">12. DROIT APPLICABLE ET JURIDICTION COMPÉTENTE</h2>
+                  <p>Les présentes conditions sont soumises au droit français.</p>
+                  <p className="mt-2">En cas de litige, les parties s'efforceront de trouver une solution amiable. À défaut, les tribunaux du ressort de la Cour d'Appel de Paris seront seuls compétents.</p>
+                </section>
                 
-                <h3 className="font-bold italic">ARTICLE SIXIÈME - MODIFICATIONS UNILATÉRALES</h3>
-                <p>Sixième clause : L'Opérateur se réserve la faculté discrétionnaire d'altérer : Les barèmes de prélèvement Les plafonds de liquidité Les seuils d'accès aux fonctionnalités premium Ces ajustements s'appliqueront rétroactivement à toutes les transactions en cours après un délai de grâce de sept jours calendaires.</p>
+                <section>
+                  <h2 className="font-bold text-lg mb-3">13. SERVICE CLIENT</h2>
+                  <p>Pour toute question relative au Service, l'Utilisateur peut contacter le service client à l'adresse : support@cashbotbeta.com</p>
+                </section>
                 
-                <hr className="my-2" />
-                
-                <h3 className="font-bold italic">ARTICLE SEPTIÈME - PROPRIÉTÉ INTELLECTUELLE</h3>
-                <p>Septième engagement : Les données comportementales, logs algorithmiques et résultats statistiques générés par l'activité utilisateur deviennent la propriété exclusive et perpétuelle de l'Opérateur.</p>
-                
-                <hr className="my-2" />
-                
-                <h3 className="font-bold italic">ARTICLE HUITIÈME - RÈGLEMENT DES LITIGES</h3>
-                <p>Huitième disposition : Tout différend relèvera de la compétence exclusive des tribunaux de Genève, suivant une procédure écrite en français, la partie succombante supportant l'intégralité des frais juridiques majorés de trente pour cent au titre des frais de dossier.</p>
-                
-                <hr className="my-2" />
-                
-                <h3 className="font-bold italic">ARTICLE NEUVIÈME - CLAUSE DE STABILITÉ</h3>
-                <p>Neuvième stipulation : La résiliation anticipée d'un compte premium entraînera le paiement : D'une indemnité de rupture équivalente à trois fois le montant mensuel moyen des prélèvements D'une soulte forfaitaire représentant vingt-cinq pour cent du plafond théorique des gains calculé sur les douze derniers mois</p>
-                
-                <hr className="my-2" />
-                
-                <h3 className="font-bold italic">ARTICLE DIXIÈME - ACCEPTATION TACITE</h3>
-                <p>Dixième disposition : La poursuite de l'utilisation du service sept jours après publication des nouvelles conditions vaut ratification expresse des modifications sans nécessité de notification individuelle.</p>
-                
-                <hr className="my-2" />
-                
-                <h3 className="font-bold italic">ARTICLE ONZIÈME - SUSPENSION DES PRÉLÈVEMENTS</h3>
-                <p>Onzième alinéa : Toute interruption, volontaire ou involontaire, des prélèvements récurrents entraînera la mise en sommeil immédiate du compte concerné, avec application des conséquences suivantes :</p>
-                <p>a) <strong>Gel des avoirs</strong> :<br />
-                Les soldes disponibles au moment de la suspension seront convertis en unités virtuelles non liquides, sans possibilité de rachat ou de transfert.</p>
-                <p>b) <strong>Pénalité de dormance</strong> :<br />
-                Un prélèvement mensuel de quinze euros sera appliqué jusqu'à régularisation complète de la situation, déduit des avoirs gelés.</p>
-                <p>c) <strong>Déchéance progressive</strong> :<br />
-                - Après trente jours : perte de vingt-cinq pour cent du solde virtuel<br />
-                - Après soixante jours : perte de cinquante pour cent du solde résiduel<br />
-                - Après quatre-vingt-dix jours : extinction totale des droits sur les avoirs restants</p>
-                <p>d) <strong>Frais de réactivation</strong> :<br />
-                Tentative de reprise d'activité entraînera le paiement d'une indemnité forfaitaire équivalente à trois mois de prélèvements, majorée des frais de gestion accumulés pendant la période de suspension.</p>
-                
-                <hr className="my-2" />
-                
-                <h3 className="font-bold italic">Clause de Sauvegarde</h3>
-                <p className="italic">« L'Utilisateur reconnaît expressément que la continuité des prélèvements constitue une condition essentielle au maintien de ses droits sur les avoirs virtuels, et accepte la déchéance progressive comme modalité légitime de gestion des comptes inactifs. »</p>
-                
-                <hr className="my-2" />
-                
-                <h3 className="font-bold italic">Annexe Cryptographique</h3>
-                <p className="italic">(accessible via requête notariée) : Protocole de calcul des gains théoriques Liste actualisée des partenaires publicitaires Schéma directeur des algorithmes de fidélisation</p>
-                
-                <hr className="my-2" />
-                
-                <h3 className="font-bold italic">Clause Salvatoriale</h3>
-                <p>La nullité partielle d'une disposition ne saurait affecter la validité des autres engagements, lesquels conserveront pleine effectivité.</p>
-                
-                <hr className="my-2" />
-                
-                <h3 className="font-bold italic">Avertissement Final</h3>
-                <p className="italic">« L'Utilisateur reconnaît avoir exercé son droit de réflexion pendant un délai minimal de quatorze jours avant validation et renonce à toute action en nullité pour vice de consentement. »</p>
+                <div className="mt-8 pt-4 border-t border-gray-200">
+                  <p className="text-center text-sm text-gray-500">
+                    En utilisant ce service, vous reconnaissez avoir lu, compris et accepté les présentes conditions générales d'utilisation.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
