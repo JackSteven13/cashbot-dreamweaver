@@ -69,11 +69,13 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
           toast({
             title: "Paiement en attente",
             description: "Utilisez le bouton ci-dessous si la page de paiement ne s'est pas ouverte automatiquement.",
-            action: {
-              altText: "Ouvrir le paiement",
-              onClick: openStripeWindow,
-              className: "bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md cursor-pointer text-sm"
-            } as any // Type assertion to satisfy TypeScript
+            action: <ToastAction 
+                      altText="Ouvrir le paiement" 
+                      onClick={openStripeWindow}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md cursor-pointer text-sm"
+                    >
+                      Ouvrir le paiement
+                    </ToastAction>
           });
         }
       }, 2000);
@@ -165,8 +167,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
           if (rpcError) throw rpcError;
           
           console.log("Abonnement mis à jour avec succès via RPC");
-        } catch (rpcError) {
-          console.error("Erreur RPC:", rpcError);
+        } catch (rpcCatchError) {
+          console.error("Erreur RPC:", rpcCatchError);
           
           // Fallback sur méthode directe
           const { error: updateError } = await supabase
