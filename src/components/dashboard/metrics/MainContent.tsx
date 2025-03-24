@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { SummaryPanel } from '@/components/dashboard/summary';
 import TransactionsList from '@/components/dashboard/TransactionsList';
 import RevenueCalculator from '@/components/dashboard/RevenueCalculator';
-import { Transaction, Referral } from '@/types/userData';
+import { Transaction } from '@/types/userData';
 
 interface MainContentProps {
   balance: number;
