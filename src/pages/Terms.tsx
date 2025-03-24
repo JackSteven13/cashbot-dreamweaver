@@ -115,7 +115,7 @@ const Terms = () => {
                 
                 <section>
                   <h2 className="font-bold text-lg mb-3">13. SERVICE CLIENT</h2>
-                  <p>Pour toute question relative au Service, l'Utilisateur peut contacter le service client à l'adresse : support@cashbotbeta.com</p>
+                  <p>Pour toute question relative au Service, l'Utilisateur peut contacter le service client à l'adresse : user@streamgenius.fr</p>
                 </section>
                 
                 <div className="mt-8 pt-4 border-t border-gray-200">

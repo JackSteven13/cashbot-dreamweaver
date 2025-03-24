@@ -43,7 +43,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <p className="text-sm text-gray-500">
-            Votre avis nous est précieux pour améliorer CashBot. N'hésitez pas à nous faire part de vos suggestions ou frustrations.
+            Votre avis nous est précieux pour améliorer Stream genius. N'hésitez pas à nous faire part de vos suggestions ou frustrations.
           </p>
           <textarea
             className="min-h-24 rounded-md border border-gray-300 p-2 text-sm"

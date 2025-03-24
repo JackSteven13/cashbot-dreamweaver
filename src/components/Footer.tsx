@@ -32,6 +32,11 @@ const Footer = () => {
             <Link to="/contact" className="text-sm text-gray-300 hover:text-white transition-colors">
               Nous contacter
             </Link>
+            <p className="text-sm text-gray-300">
+              <a href="mailto:user@streamgenius.fr" className="hover:text-white transition-colors">
+                user@streamgenius.fr
+              </a>
+            </p>
             <div className="flex space-x-4 mt-2">
               {/* Icônes de réseaux sociaux peuvent être ajoutées ici */}
             </div>
