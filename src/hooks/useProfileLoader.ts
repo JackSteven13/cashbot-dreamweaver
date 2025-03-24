@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { fetchUserProfile } from '@/utils/userDataFetch';
+import { fetchUserProfile } from '@/utils/user/profileUtils';
 import { toast } from "@/components/ui/use-toast";
 
 export const useProfileLoader = () => {

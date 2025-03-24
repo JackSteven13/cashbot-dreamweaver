@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
-import { fetchUserTransactions, fetchCompleteUserData } from '@/utils/userDataFetch';
+import { fetchUserTransactions, fetchCompleteUserData } from '@/utils/user/userDataFetch';
 import { UserData, Transaction } from '@/types/userData';
 import { getCurrentSession, checkDailyLimit } from '@/utils/authUtils';
 import { initialUserData } from '@/utils/userDataInitializer';

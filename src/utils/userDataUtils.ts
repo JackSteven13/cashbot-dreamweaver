@@ -5,7 +5,7 @@ export {
   fetchUserBalance,
   fetchUserTransactions,
   fetchCompleteUserData
-} from './userDataFetch';
+} from './user/userDataFetch';
 
 export {
   updateUserBalance,

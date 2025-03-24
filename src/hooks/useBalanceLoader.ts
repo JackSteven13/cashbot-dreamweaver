@@ -1,7 +1,7 @@
 
 import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { fetchUserBalance } from '@/utils/userDataFetch';
+import { fetchUserBalance } from '@/utils/user/balanceUtils';
 import { toast } from "@/components/ui/use-toast";
 
 export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
