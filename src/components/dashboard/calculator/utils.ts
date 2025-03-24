@@ -11,7 +11,7 @@ export const calculateRevenueForAllPlans = (
 ): Record<string, { revenue: number, profit: number }> => {
   const results: Record<string, { revenue: number, profit: number }> = {};
   
-  // Facteurs d'efficacité pour chaque plan (plus performant pour les plans supérieurs)
+  // Efficiency factors for each plan (more efficient for higher plans)
   const efficiencyFactors = {
     'freemium': 0.35,
     'pro': 0.68,
@@ -19,31 +19,31 @@ export const calculateRevenueForAllPlans = (
     'alpha': 0.94
   };
   
-  // Variabilité pour rendre les chiffres moins ronds (±5%)
+  // Add variability to make numbers less round (±5%)
   const getRandomVariation = () => 1 + ((Math.random() * 10) - 5) / 100;
   
   Object.entries(SUBSCRIPTION_LIMITS).forEach(([plan, dailyLimit]) => {
-    // Pour le mode freemium, on ne peut faire qu'une session par jour
+    // For freemium mode, only one session per day is allowed
     const effectiveSessions = plan === 'freemium' ? Math.min(1, sessionsPerDay) : sessionsPerDay;
     
-    // Calcul avec facteur d'efficacité spécifique au plan
+    // Calculate with plan-specific efficiency factor
     const efficiency = efficiencyFactors[plan as keyof typeof efficiencyFactors];
     
-    // Calcul du rendement par session (plus élevé pour les plans supérieurs)
+    // Calculate yield per session (higher for premium plans)
     const sessionYield = dailyLimit * efficiency * getRandomVariation();
     
-    // Les plans supérieurs ont une meilleure optimisation lors de sessions multiples
+    // Higher plans have better optimization for multiple sessions
     const sessionMultiplier = plan === 'freemium' ? 1 : 
                              plan === 'pro' ? 1.05 : 
                              plan === 'visionnaire' ? 1.12 : 1.18;
     
-    // Application du multiplicateur pour sessions multiples (pour les plans non-freemium)
+    // Apply multiplier for multiple sessions (for non-freemium plans)
     const dailyRevenue = Math.min(
       sessionYield * effectiveSessions * (effectiveSessions > 1 ? sessionMultiplier : 1),
-      dailyLimit // Toujours limité par le plafond quotidien
+      dailyLimit // Always limited by daily ceiling
     );
     
-    // Ajout d'une légère variabilité par jour pour éviter les chiffres trop ronds
+    // Add slight daily variability to avoid round numbers
     const monthlyRevenue = dailyRevenue * daysPerMonth * getRandomVariation();
     
     const subscriptionPrice = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] || 0;

@@ -72,7 +72,7 @@ const Index = () => {
           features={features}
         />
         
-        {/* Testimonials Section - Mis à jour avec des témoignages plus impressionnants et différenciés */}
+        {/* Testimonials Section - Updated with more impressive and differentiated testimonials */}
         <section className="py-8 md:py-14 bg-gradient-subtle">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-6 md:mb-10">
