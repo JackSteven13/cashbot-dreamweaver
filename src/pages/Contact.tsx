@@ -1,15 +1,17 @@
 
 import React from 'react';
-import { Mail, Copy, CheckCircle2 } from 'lucide-react';
+import { Mail, Copy, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from '@/components/ui/button';
 import Footer from '@/components/Footer';
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Contact = () => {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const contactEmail = "user@streamgenius.fr";
+  const navigate = useNavigate();
 
   const handleCopyEmail = () => {
     navigator.clipboard.writeText(contactEmail)
@@ -31,11 +33,26 @@ const Contact = () => {
       });
   };
 
+  const handleGoBack = () => {
+    navigate(-1);
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow flex items-center justify-center py-20 px-4">
-        <div className="max-w-md w-full bg-white dark:bg-slate-900 shadow-lg rounded-xl p-8">
-          <div className="text-center mb-8">
+        <div className="max-w-md w-full bg-white dark:bg-slate-900 shadow-lg rounded-xl p-8 relative">
+          {/* Bouton de retour */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleGoBack}
+            className="absolute top-4 left-4 flex items-center gap-1 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Retour</span>
+          </Button>
+          
+          <div className="text-center mb-8 mt-6">
             <h1 className="text-2xl font-bold mb-3">Contactez-nous</h1>
             <p className="text-muted-foreground">
               Pour toute question ou assistance, n'hésitez pas à nous écrire
