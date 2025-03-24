@@ -72,46 +72,46 @@ const Index = () => {
           features={features}
         />
         
-        {/* Testimonials Section - Reduced padding and updated testimonials */}
+        {/* Testimonials Section - Mis à jour avec des témoignages plus impressionnants */}
         <section className="py-8 md:py-14 bg-gradient-subtle">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-6 md:mb-10">
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">Témoignages d'utilisateurs</h2>
-              <p className="text-base md:text-lg text-muted-foreground">Découvrez ce que nos premiers utilisateurs disent de Stream genius.</p>
+              <p className="text-base md:text-lg text-muted-foreground">Découvrez ce que nos utilisateurs disent de Stream genius.</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="glass-card p-4 md:p-6 rounded-xl">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">MB</div>
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">JL</div>
                   <div>
-                    <p className="font-medium">Marc B.</p>
-                    <p className="text-xs md:text-sm text-muted-foreground">Paris, utilisateur depuis 3 mois</p>
+                    <p className="font-medium">Jean L.</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">Paris, utilisateur depuis 6 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"Après deux mois d'utilisation, j'ai généré environ 120€ de revenus complémentaires. Le système est vraiment facile à utiliser."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro et j'ai généré plus de 1200€ le mois dernier. L'interface est intuitive et le système fonctionne vraiment comme promis."</p>
               </div>
               
               <div className="glass-card p-4 md:p-6 rounded-xl">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">SL</div>
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">CM</div>
                   <div>
-                    <p className="font-medium">Sophie L.</p>
-                    <p className="text-xs md:text-sm text-muted-foreground">Lyon, utilisatrice depuis 2 mois</p>
+                    <p className="font-medium">Caroline M.</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">Lyon, utilisatrice depuis 4 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"J'apprécie particulièrement les rapports détaillés qui me permettent de comprendre d'où viennent mes revenus. J'ai généré 85€ le mois dernier."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"Grâce à l'abonnement Visionnaire, j'ai pu générer près de 1500€ en un seul mois. Les rapports détaillés me permettent d'optimiser constamment mes performances."</p>
               </div>
               
               <div className="glass-card p-4 md:p-6 rounded-xl">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">TM</div>
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">PD</div>
                   <div>
-                    <p className="font-medium">Thomas M.</p>
-                    <p className="text-xs md:text-sm text-muted-foreground">Bordeaux, utilisateur depuis 1 mois</p>
+                    <p className="font-medium">Philippe D.</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">Marseille, utilisateur depuis 3 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"Débutant avec seulement 30€ générés pour l'instant, mais je vois une progression régulière. Le support client a été très réactif à mes questions."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro et je suis passé à Alpha après avoir vu les résultats. Je génère maintenant plus de 1300€ par mois avec très peu d'effort de ma part."</p>
               </div>
             </div>
           </div>
