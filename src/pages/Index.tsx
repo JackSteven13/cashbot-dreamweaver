@@ -72,7 +72,7 @@ const Index = () => {
           features={features}
         />
         
-        {/* Testimonials Section - Mis à jour avec des témoignages plus impressionnants */}
+        {/* Testimonials Section - Témoignages améliorés et plus cohérents avec le simulateur */}
         <section className="py-8 md:py-14 bg-gradient-subtle">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-6 md:mb-10">
@@ -89,7 +89,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Paris, utilisateur depuis 6 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro et j'ai généré plus de 1200€ le mois dernier. L'interface est intuitive et le système fonctionne vraiment comme promis."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"Avec l'abonnement Pro, je génère environ 1200€ mensuels. La différence avec Freemium est spectaculaire, et la plateforme est très facile à utiliser."</p>
               </div>
               
               <div className="glass-card p-4 md:p-6 rounded-xl">
@@ -100,7 +100,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Lyon, utilisatrice depuis 4 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"Grâce à l'abonnement Visionnaire, j'ai pu générer près de 1500€ en un seul mois. Les rapports détaillés me permettent d'optimiser constamment mes performances."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"Après 2 mois avec l'abonnement Visionnaire, je génère 1500€ mensuels. Les outils d'analyse avancés permettent de maximiser les performances quotidiennement."</p>
               </div>
               
               <div className="glass-card p-4 md:p-6 rounded-xl">
@@ -111,7 +111,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Marseille, utilisateur depuis 3 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro et je suis passé à Alpha après avoir vu les résultats. Je génère maintenant plus de 1300€ par mois avec très peu d'effort de ma part."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec Pro puis je suis passé à Alpha. Je génère maintenant plus de 2200€ par mois avec très peu d'effort. L'investissement en vaut vraiment la peine."</p>
               </div>
             </div>
           </div>
