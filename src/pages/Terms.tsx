@@ -26,96 +26,119 @@ const Terms = () => {
             <div className="mt-6 p-6 border border-gray-300 rounded bg-white">
               <div className="cgv-container space-y-6 text-sm text-gray-700 leading-relaxed">
                 <section>
-                  <h2 className="font-bold text-lg mb-3">1. PRÉAMBULE</h2>
-                  <p>La société CashBot SAS (ci-après "le Prestataire"), immatriculée au RCS de Paris sous le numéro 123456789, propose une plateforme d'optimisation publicitaire utilisant des technologies d'analyse automatisée (ci-après "le Service").</p>
-                  <p className="mt-2">Les présentes conditions générales d'utilisation définissent les modalités d'accès et d'utilisation du Service.</p>
+                  <h2 className="font-bold text-lg mb-3">1. Objet des Présentes Conditions Générales de Vente</h2>
+                  <p>Les présentes Conditions Générales de Vente, ci-après désignées par l'abréviation « CGV », ont pour objet de définir les modalités et conditions dans lesquelles les services proposés par la plateforme <strong>Stream Genius</strong>, propriété de la société Quantum Crawler sont fournis aux utilisateurs, qu'ils soient des particuliers ou des professionnels, ci-après désignés par le terme « Utilisateur » ou « Utilisateurs ». Les présentes CGV s'appliquent sans restriction ni réserve à l'ensemble des services offerts par <strong>Stream Genius</strong>, y compris mais sans s'y limiter : l'accès à un bot d'intelligence artificielle, les abonnements payants, le programme de parrainage, ainsi que tout autre service accessoire ou complémentaire.</p>
                 </section>
                 
                 <section>
-                  <h2 className="font-bold text-lg mb-3">2. ACCEPTATION DES CONDITIONS</h2>
-                  <p>L'utilisation du Service est soumise à l'acceptation préalable et sans réserve des présentes conditions générales.</p>
-                  <p className="mt-2">Conformément aux dispositions légales en vigueur, l'Utilisateur bénéficie d'un délai de rétractation de 14 jours à compter de la souscription à un abonnement payant, sauf si l'exécution du Service a commencé avec son accord avant la fin de ce délai.</p>
+                  <h2 className="font-bold text-lg mb-3">2. Acceptation des Conditions Générales de Vente</h2>
+                  <p>L'Utilisateur reconnaît et accepte expressément que l'accès à la plateforme <strong>Stream Genius</strong>, la souscription à un abonnement, ou l'utilisation de tout service proposé, implique l'acceptation intégrale et sans réserve des présentes Conditions Générales de Vente. En cas de désaccord avec tout ou partie des dispositions des présentes CGV, l'Utilisateur est tenu de renoncer à l'utilisation des services proposés par <strong>Stream Genius</strong>. L'Utilisateur reconnaît en outre avoir pris connaissance des présentes CGV avant toute utilisation de la plateforme et déclare en avoir compris la teneur et la portée.</p>
                 </section>
                 
                 <section>
-                  <h2 className="font-bold text-lg mb-3">3. DESCRIPTION DU SERVICE</h2>
-                  <p>Le Service propose des fonctionnalités d'analyse publicitaire et de génération de revenus via un système d'abonnement à plusieurs niveaux.</p>
-                  <p className="mt-2">Le Prestataire s'engage à mettre en œuvre tous les moyens raisonnables pour assurer la continuité du Service, sans toutefois garantir un résultat financier spécifique qui dépend de nombreux facteurs externes.</p>
+                  <h2 className="font-bold text-lg mb-3">3. Description des Services Proposés</h2>
+                  <p>La plateforme <strong>Stream Genius</strong> propose à ses Utilisateurs un ensemble de services, dont les principales caractéristiques sont les suivantes :</p>
+                  <ol className="list-decimal pl-6 mt-2 space-y-1">
+                    <li><strong>Accès à un bot d'intelligence artificielle</strong> : Ce bot est conçu pour visionner des publicités rémunératrices de manière automatisée, permettant ainsi à l'Utilisateur de générer des revenus passifs.</li>
+                    <li><strong>Abonnements payants</strong> : <strong>Stream Genius</strong> propose des abonnements mensuels ou annuels, donnant accès à des fonctionnalités premium et à des avantages exclusifs.</li>
+                    <li><strong>Programme de parrainage</strong> : Les Utilisateurs ont la possibilité de participer à un programme de parrainage leur permettant de gagner des commissions en parrainant de nouveaux membres.</li>
+                    <li><strong>Support technique et client</strong> : Un service d'assistance est disponible pour répondre aux questions et résoudre les problèmes techniques rencontrés par les Utilisateurs.</li>
+                  </ol>
                 </section>
                 
                 <section>
-                  <h2 className="font-bold text-lg mb-3">4. OBLIGATIONS DE L'UTILISATEUR</h2>
-                  <p>L'Utilisateur s'engage à :</p>
-                  <ul className="list-disc pl-6 mt-2 space-y-1">
-                    <li>Fournir des informations exactes lors de son inscription</li>
-                    <li>Utiliser le Service conformément à sa destination et aux lois en vigueur</li>
-                    <li>Ne pas tenter de contourner les limitations techniques de la plateforme</li>
-                    <li>Régler les abonnements souscrits selon les modalités prévues</li>
+                  <h2 className="font-bold text-lg mb-3">4. Inscription et Gestion du Compte Utilisateur</h2>
+                  <p className="font-medium">1. Création du Compte :</p>
+                  <p className="ml-4">Pour accéder aux services proposés par <strong>Stream Genius</strong>, l'Utilisateur doit créer un compte en fournissant des informations exactes, complètes et à jour. L'Utilisateur s'engage à maintenir ces informations à jour tout au long de son utilisation de la plateforme.</p>
+                  
+                  <p className="font-medium mt-2">2. Confidentialité des Identifiants :</p>
+                  <p className="ml-4">L'Utilisateur est seul responsable de la confidentialité de ses identifiants de connexion (nom d'utilisateur et mot de passe) et s'engage à ne pas les divulguer à des tiers. Toute utilisation du compte, qu'elle soit autorisée ou non, engage la responsabilité de l'Utilisateur.</p>
+                  
+                  <p className="font-medium mt-2">3. Suspension ou Fermeture du Compte :</p>
+                  <p className="ml-4"><strong>Stream Genius</strong> se réserve le droit de suspendre ou de fermer tout compte en cas de violation des présentes CGV, de comportement frauduleux, ou de tout autre motif légitime. L'Utilisateur peut également fermer son compte à tout moment via les paramètres de son profil.</p>
+                </section>
+                
+                <section>
+                  <h2 className="font-bold text-lg mb-3">5. Abonnements et Modalités de Paiement</h2>
+                  <p className="font-medium">1. Types d'Abonnements :</p>
+                  <p className="ml-4"><strong>Stream Genius</strong> propose des abonnements mensuels et annuels, dont les caractéristiques et tarifs sont détaillés sur la plateforme. L'Utilisateur s'engage à choisir l'abonnement correspondant à ses besoins et à en respecter les conditions.</p>
+                  
+                  <p className="font-medium mt-2">2. Paiement :</p>
+                  <p className="ml-4">Le paiement des abonnements s'effectue par carte bancaire, PayPal ou tout autre moyen de paiement accepté par <strong>Stream Genius</strong>. Le prélèvement est effectué automatiquement à la date d'échéance.</p>
+                  
+                  <p className="font-medium mt-2">3. Renouvellement Automatique :</p>
+                  <p className="ml-4">Les abonnements sont reconduits tacitement pour une durée identique à la période initiale. L'Utilisateur peut résilier son abonnement avant la date de renouvellement en suivant la procédure prévue à cet effet.</p>
+                  
+                  <p className="font-medium mt-2">4. Remboursements :</p>
+                  <p className="ml-4">Aucun remboursement ne sera accordé pour les abonnements déjà entamés, sauf en cas d'erreur technique imputable à <strong>Stream Genius</strong>.</p>
+                </section>
+                
+                <section>
+                  <h2 className="font-bold text-lg mb-3">6. Programme de Parrainage Simplifié</h2>
+                  <p className="font-medium">1. Adhésion au Programme :</p>
+                  <p className="ml-4">Tout Utilisateur actif peut participer au programme de parrainage en générant un lien de parrainage unique depuis son compte.</p>
+                  
+                  <p className="font-medium mt-2">2. Gains pour le Parrain :</p>
+                  <ul className="list-disc ml-8 mt-1">
+                    <li>Le parrain reçoit une commission de vingt pour cent du montant des abonnements payés par chaque filleul, et ce, à vie.</li>
+                    <li>Un bonus de cinquante euros est accordé au parrain pour chaque filleul restant actif pendant une période minimale de trois mois.</li>
                   </ul>
+                  
+                  <p className="font-medium mt-2">3. Conditions de Paiement :</p>
+                  <p className="ml-4">Les gains sont accumulés dans un portefeuille virtuel et sont payés lorsque le seuil de cent euros est atteint. Les paiements s'effectuent par virement bancaire, PayPal ou crédit sur le compte <strong>Stream Genius</strong>.</p>
+                  
+                  <p className="font-medium mt-2">4. Interdiction de Fraude :</p>
+                  <p className="ml-4">Tout comportement frauduleux, y compris mais sans s'y limiter les fausses inscriptions ou l'utilisation de bots, entraîne la suspension immédiate du compte et la confiscation des gains non payés.</p>
                 </section>
                 
                 <section>
-                  <h2 className="font-bold text-lg mb-3">5. ABONNEMENTS ET FACTURATION</h2>
-                  <p>Le Service propose plusieurs formules d'abonnement dont les caractéristiques et tarifs sont détaillés sur la page "Offres".</p>
-                  <p className="mt-2">Les abonnements sont facturés mensuellement et renouvelés par tacite reconduction, sauf résiliation par l'Utilisateur au moins 5 jours avant l'échéance.</p>
-                  <p className="mt-2">En cas de non-paiement, le Prestataire se réserve le droit de suspendre l'accès au Service après relance.</p>
+                  <h2 className="font-bold text-lg mb-3">7. Responsabilités</h2>
+                  <p className="font-medium">1. Responsabilité de l'Utilisateur :</p>
+                  <p className="ml-4">L'Utilisateur s'engage à utiliser la plateforme de manière légale et éthique. Il est responsable de tout contenu qu'il publie ou partage sur la plateforme.</p>
+                  
+                  <p className="font-medium mt-2">2. Responsabilité de Stream Genius :</p>
+                  <p className="ml-4"><strong>Stream Genius</strong> s'efforce de fournir un service de qualité mais ne garantit pas une disponibilité ininterrompue ou exempte d'erreurs. <strong>Stream Genius</strong> décline toute responsabilité en cas de dommages indirects, pertes de données ou interruptions de service.</p>
                 </section>
                 
                 <section>
-                  <h2 className="font-bold text-lg mb-3">6. LIMITATIONS DE RESPONSABILITÉ</h2>
-                  <p>Le Prestataire ne saurait être tenu responsable :</p>
-                  <ul className="list-disc pl-6 mt-2 space-y-1">
-                    <li>Des fluctuations de revenus générés via la plateforme</li>
-                    <li>Des interruptions temporaires du Service pour maintenance</li>
-                    <li>Des dommages indirects résultant de l'utilisation du Service</li>
-                  </ul>
-                  <p className="mt-2">La responsabilité du Prestataire est expressément limitée au montant des 3 derniers mois d'abonnement réglés par l'Utilisateur.</p>
+                  <h2 className="font-bold text-lg mb-3">8. Données Personnelles</h2>
+                  <p>Les données personnelles des Utilisateurs sont collectées et traitées conformément à la politique de confidentialité de <strong>Stream Genius</strong>, accessible sur le site web. Les Utilisateurs sont invités à consulter cette politique pour en comprendre les modalités.</p>
                 </section>
                 
                 <section>
-                  <h2 className="font-bold text-lg mb-3">7. PROPRIÉTÉ INTELLECTUELLE</h2>
-                  <p>L'ensemble des éléments composant le Service (algorithmes, textes, visuels, marques) reste la propriété exclusive du Prestataire.</p>
-                  <p className="mt-2">Les données d'usage anonymisées pourront être utilisées par le Prestataire pour améliorer les performances du Service.</p>
+                  <h2 className="font-bold text-lg mb-3">9. Propriété Intellectuelle</h2>
+                  <p>La plateforme <strong>Stream Genius</strong>, son contenu et ses fonctionnalités sont protégés par des droits de propriété intellectuelle. L'Utilisateur s'interdit de copier, modifier ou distribuer le contenu sans autorisation préalable.</p>
                 </section>
                 
                 <section>
-                  <h2 className="font-bold text-lg mb-3">8. PROTECTION DES DONNÉES PERSONNELLES</h2>
-                  <p>Le Prestataire s'engage à respecter la réglementation en vigueur applicable au traitement de données à caractère personnel (RGPD).</p>
-                  <p className="mt-2">Les conditions de collecte et de traitement des données personnelles sont détaillées dans la Politique de Confidentialité accessible sur le site.</p>
+                  <h2 className="font-bold text-lg mb-3">10. Modification des CGV</h2>
+                  <p><strong>Stream Genius</strong> se réserve le droit de modifier les présentes CGV à tout moment. Les Utilisateurs seront informés par email, et leur silence vaudra acceptation des nouvelles conditions.</p>
                 </section>
                 
                 <section>
-                  <h2 className="font-bold text-lg mb-3">9. RÉSILIATION</h2>
-                  <p>L'Utilisateur peut résilier son abonnement à tout moment depuis son espace personnel, la résiliation prenant effet à la fin de la période d'abonnement en cours.</p>
-                  <p className="mt-2">En cas de manquement grave aux présentes conditions, le Prestataire se réserve le droit de suspendre ou résilier l'accès au Service, après mise en demeure restée sans effet pendant 15 jours.</p>
+                  <h2 className="font-bold text-lg mb-3">11. Résiliation</h2>
+                  <p className="font-medium">1. Par l'Utilisateur :</p>
+                  <p className="ml-4">L'Utilisateur peut résilier son abonnement à tout moment via les paramètres de son compte. Les gains accumulés dans le programme de parrainage seront payés si le seuil de cent euros est atteint.</p>
+                  
+                  <p className="font-medium mt-2">2. Par Stream Genius :</p>
+                  <p className="ml-4"><strong>Stream Genius</strong> peut résilier un abonnement en cas de violation des CGV. Les gains non payés seront confisqués.</p>
                 </section>
                 
                 <section>
-                  <h2 className="font-bold text-lg mb-3">10. COMPTES INACTIFS</h2>
-                  <p>Un compte est considéré comme inactif après 30 jours sans connexion. Dans ce cas :</p>
-                  <ul className="list-disc pl-6 mt-2 space-y-1">
-                    <li>Les fonctionnalités d'analyse automatique sont suspendues</li>
-                    <li>Des frais de maintenance de 5€ par mois peuvent être appliqués pour les comptes avec solde positif</li>
-                    <li>Après 90 jours d'inactivité, le compte peut être clôturé après notification</li>
-                  </ul>
-                  <p className="mt-2">La réactivation d'un compte est possible moyennant des frais administratifs équivalant à un mois d'abonnement.</p>
+                  <h2 className="font-bold text-lg mb-3">12. Dispositions Diverses</h2>
+                  <p className="font-medium">1. Force Majeure :</p>
+                  <p className="ml-4"><strong>Stream Genius</strong> n'est pas responsable des retards ou interruptions de service dus à des événements de force majeure.</p>
+                  
+                  <p className="font-medium mt-2">2. Non-Cession :</p>
+                  <p className="ml-4">Les droits et obligations des Utilisateurs ne peuvent pas être cédés à des tiers sans l'accord écrit de <strong>Stream Genius</strong>.</p>
+                  
+                  <p className="font-medium mt-2">3. Entente Intégrale :</p>
+                  <p className="ml-4">Les présentes CGV constituent l'intégralité de l'accord entre l'Utilisateur et <strong>Stream Genius</strong>.</p>
                 </section>
                 
                 <section>
-                  <h2 className="font-bold text-lg mb-3">11. MODIFICATION DES CONDITIONS</h2>
-                  <p>Le Prestataire se réserve le droit de modifier les présentes conditions. Les modifications seront portées à la connaissance de l'Utilisateur par notification et entreront en vigueur 30 jours après leur publication.</p>
-                  <p className="mt-2">En cas de désaccord avec les nouvelles conditions, l'Utilisateur peut résilier son abonnement sans frais.</p>
-                </section>
-                
-                <section>
-                  <h2 className="font-bold text-lg mb-3">12. DROIT APPLICABLE ET JURIDICTION COMPÉTENTE</h2>
-                  <p>Les présentes conditions sont soumises au droit français.</p>
-                  <p className="mt-2">En cas de litige, les parties s'efforceront de trouver une solution amiable. À défaut, les tribunaux du ressort de la Cour d'Appel de Paris seront seuls compétents.</p>
-                </section>
-                
-                <section>
-                  <h2 className="font-bold text-lg mb-3">13. SERVICE CLIENT</h2>
-                  <p>Pour toute question relative au Service, l'Utilisateur peut contacter le service client à l'adresse : user@streamgenius.fr</p>
+                  <h2 className="font-bold text-lg mb-3">13. Juridiction Compétente</h2>
+                  <p>Tout litige relatif à l'interprétation ou à l'exécution des présentes CGV sera soumis aux tribunaux.</p>
                 </section>
                 
                 <div className="mt-8 pt-4 border-t border-gray-200">
