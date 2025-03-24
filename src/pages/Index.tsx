@@ -72,7 +72,7 @@ const Index = () => {
           features={features}
         />
         
-        {/* Testimonials Section - Mis à jour avec des témoignages plus impressionnants */}
+        {/* Testimonials Section - Mis à jour avec des témoignages plus impressionnants et différenciés */}
         <section className="py-8 md:py-14 bg-gradient-subtle">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-6 md:mb-10">
@@ -89,7 +89,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Paris, utilisateur depuis 6 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro et j'ai généré plus de 1200€ le mois dernier. L'interface est intuitive et le système fonctionne vraiment comme promis."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro et j'ai généré 678,43€ le premier mois. Au fil du temps, j'ai atteint 1247,92€ mensuels. L'interface est intuitive et le système fonctionne vraiment comme promis."</p>
               </div>
               
               <div className="glass-card p-4 md:p-6 rounded-xl">
@@ -100,7 +100,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Lyon, utilisatrice depuis 4 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"Grâce à l'abonnement Visionnaire, j'ai pu générer près de 1500€ en un seul mois. Les rapports détaillés me permettent d'optimiser constamment mes performances."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"Grâce à l'abonnement Visionnaire, j'ai pu générer 2183,57€ dès le deuxième mois. Les rapports détaillés me permettent d'optimiser constamment mes performances et j'ai noté une progression régulière de mes revenus."</p>
               </div>
               
               <div className="glass-card p-4 md:p-6 rounded-xl">
@@ -111,7 +111,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Marseille, utilisateur depuis 3 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro et je suis passé à Alpha après avoir vu les résultats. Je génère maintenant plus de 1300€ par mois avec très peu d'effort de ma part."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro puis je suis passé à Alpha après avoir vu les résultats. Je génère maintenant 3426,89€ par mois avec très peu d'effort. L'algorithme d'Alpha est vraiment supérieur aux autres offres."</p>
               </div>
             </div>
           </div>
