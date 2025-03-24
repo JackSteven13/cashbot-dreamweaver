@@ -77,8 +77,8 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
 
   const form = useForm<FormValues>({
     defaultValues: {
-      sessionsPerDay: 3, // Augmenté à 3 sessions par jour par défaut
-      daysPerMonth: 22  // Augmenté à 22 jours par mois par défaut
+      sessionsPerDay: 2,
+      daysPerMonth: 20
     }
   });
 
