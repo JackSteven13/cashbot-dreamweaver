@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -66,7 +67,7 @@ const Register = () => {
         // Afficher un message de bienvenue personnalisé
         toast({
           title: `Bienvenue, ${name} !`,
-          description: "Votre compte a été créé avec succès. Vous êtes maintenant connecté à CashBot.",
+          description: "Votre compte a été créé avec succès. Vous êtes maintenant connecté à Stream genius.",
         });
         
         // Sign in to ensure authenticated session

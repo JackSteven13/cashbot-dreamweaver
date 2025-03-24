@@ -14,7 +14,7 @@ export const SystemInfo: React.FC<SystemInfoProps> = ({ isNewUser, onFeedbackCli
       <div className="flex items-center">
         <div className="h-3 w-3 bg-green-500 rounded-full mr-2 animate-pulse"></div>
         <h3 className="text-lg font-medium text-white">
-          {isNewUser ? "CashBot • Bienvenue" : "CashBot • Système actif"}
+          {isNewUser ? "Stream genius • Bienvenue" : "Stream genius • Système actif"}
         </h3>
       </div>
       <Button 

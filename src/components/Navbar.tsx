@@ -43,7 +43,7 @@ const Navbar = () => {
             to="/" 
             className="text-2xl font-semibold tracking-tight transition-opacity hover:opacity-80"
           >
-            Cashbot beta
+            Stream genius
           </Link>
 
           {/* Desktop Navigation */}

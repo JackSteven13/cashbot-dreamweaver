@@ -9,7 +9,7 @@ import { useState } from 'react';
 const Contact = () => {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
-  const contactEmail = "steven@cashbotbeta.com";
+  const contactEmail = "contact@streamgenius.com";
 
   const handleCopyEmail = () => {
     navigator.clipboard.writeText(contactEmail)

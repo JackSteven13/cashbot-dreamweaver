@@ -54,7 +54,7 @@ const Index = () => {
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-4xl mx-auto">
               <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center text-white">
-                Simulez vos revenus potentiels avec Cashbot beta
+                Simulez vos revenus potentiels avec Stream genius
               </h2>
               <RevenueCalculator 
                 currentSubscription="freemium" 
@@ -68,7 +68,7 @@ const Index = () => {
         {/* Features section - Smaller padding to make page more compact */}
         <FeaturesGrid 
           title="Une Plateforme d'Analyse Publicitaire Innovante"
-          subtitle="Cashbot beta utilise des technologies d'analyse avancées pour optimiser les campagnes publicitaires et générer des revenus complémentaires."
+          subtitle="Stream genius utilise des technologies d'analyse avancées pour optimiser les campagnes publicitaires et générer des revenus complémentaires."
           features={features}
         />
         
@@ -77,7 +77,7 @@ const Index = () => {
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-6 md:mb-10">
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">Témoignages d'utilisateurs</h2>
-              <p className="text-base md:text-lg text-muted-foreground">Découvrez ce que nos premiers utilisateurs disent de la version beta.</p>
+              <p className="text-base md:text-lg text-muted-foreground">Découvrez ce que nos premiers utilisateurs disent de Stream genius.</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -122,11 +122,11 @@ const Index = () => {
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-3xl mx-auto text-center">
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 md:mb-6">Prêt à générer des revenus complémentaires ?</h2>
-              <p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8">Rejoignez notre communauté d'utilisateurs et commencez à explorer le potentiel de cashbot.beta.</p>
+              <p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8">Rejoignez notre communauté d'utilisateurs et commencez à explorer le potentiel de Stream genius.</p>
               
               <Link to="/register">
                 <Button size="lg" className="group">
-                  Démarrer avec cashbot.beta gratuitement
+                  Démarrer avec Stream genius gratuitement
                   <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
