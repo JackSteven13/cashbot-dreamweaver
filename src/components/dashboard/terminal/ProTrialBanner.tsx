@@ -1,5 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProTrialBannerProps {
   onClick: () => void;
@@ -10,10 +10,35 @@ export const ProTrialBanner: React.FC<ProTrialBannerProps> = ({ onClick }) => {
   
   useEffect(() => {
     // Vérifier si l'utilisateur a déjà utilisé l'offre Pro gratuite
-    const proTrialUsed = localStorage.getItem('proTrialUsed');
-    if (proTrialUsed === 'true') {
-      setHasUsedProTrial(true);
-    }
+    const checkProTrialStatus = async () => {
+      const proTrialUsed = localStorage.getItem('proTrialUsed');
+      
+      if (proTrialUsed === 'true') {
+        setHasUsedProTrial(true);
+        return;
+      }
+      
+      // Vérification supplémentaire côté serveur pour plus de sécurité
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data, error } = await supabase
+            .from('user_balances')
+            .select('id, pro_trial_used')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (!error && data && data.pro_trial_used) {
+            localStorage.setItem('proTrialUsed', 'true');
+            setHasUsedProTrial(true);
+          }
+        }
+      } catch (error) {
+        console.error("Erreur lors de la vérification du statut de l'essai Pro:", error);
+      }
+    };
+    
+    checkProTrialStatus();
   }, []);
   
   // Ne pas afficher la bannière si l'utilisateur a déjà utilisé l'offre

@@ -9,6 +9,7 @@ import { NewUserGuide } from './NewUserGuide';
 import { useSessionCountdown } from '@/hooks/useSessionCountdown';
 import { supabase } from '@/integrations/supabase/client';
 import { getEffectiveSubscription, SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
+import { toast } from "@/components/ui/use-toast";
 
 interface SystemTerminalProps {
   isNewUser: boolean;
@@ -73,28 +74,79 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   const activateProTrial = async () => {
     if (subscription === 'freemium' && !isPromoActivated) {
       try {
-        const now = Date.now();
-        
-        const expiryTime = now + (48 * 60 * 60 * 1000);
-        
-        console.log(`Activation de l'essai Pro: ${new Date(now).toLocaleString()} jusqu'à ${new Date(expiryTime).toLocaleString()}`);
-        
-        localStorage.setItem('proTrialActive', 'true');
-        localStorage.setItem('proTrialExpires', expiryTime.toString());
-        localStorage.setItem('proTrialActivatedAt', now.toString());
-        localStorage.setItem('proTrialUsed', 'true');
-        
-        setTempProEnabled(true);
-        setIsPromoActivated(true);
+        // Vérifier d'abord si l'utilisateur a déjà utilisé l'offre
+        if (localStorage.getItem('proTrialUsed') === 'true') {
+          toast({
+            title: "Offre déjà utilisée",
+            description: "Vous avez déjà profité de l'offre d'essai Pro gratuite.",
+            variant: "destructive"
+          });
+          return;
+        }
         
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
+          // Vérification côté serveur si l'essai a déjà été utilisé
+          const { data, error } = await supabase
+            .from('user_balances')
+            .select('id, pro_trial_used')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (!error && data && data.pro_trial_used) {
+            localStorage.setItem('proTrialUsed', 'true');
+            toast({
+              title: "Offre déjà utilisée",
+              description: "Vous avez déjà profité de l'offre d'essai Pro gratuite.",
+              variant: "destructive"
+            });
+            return;
+          }
+          
+          // Si l'utilisateur n'a pas encore utilisé l'offre, l'activer
+          const now = Date.now();
+          const expiryTime = now + (48 * 60 * 60 * 1000);
+          
+          console.log(`Activation de l'essai Pro: ${new Date(now).toLocaleString()} jusqu'à ${new Date(expiryTime).toLocaleString()}`);
+          
+          // Mise à jour des données locales
+          localStorage.setItem('proTrialActive', 'true');
+          localStorage.setItem('proTrialExpires', expiryTime.toString());
+          localStorage.setItem('proTrialActivatedAt', now.toString());
+          localStorage.setItem('proTrialUsed', 'true');
+          
+          // Mise à jour dans la base de données
+          const { error: updateError } = await supabase
+            .from('user_balances')
+            .update({ 
+              pro_trial_used: true,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', session.user.id);
+            
+          if (updateError) {
+            console.error("Erreur lors de la mise à jour du statut de l'essai Pro:", updateError);
+          }
+          
+          setTempProEnabled(true);
+          setIsPromoActivated(true);
+          
           localStorage.setItem('tempProDisplay', 'true');
+          
+          toast({
+            title: "Offre activée !",
+            description: "Votre période d'essai Pro de 48h est maintenant active.",
+          });
+          
+          window.location.reload();
         }
-        
-        window.location.reload();
       } catch (error) {
         console.error("Erreur lors de l'activation de l'essai Pro:", error);
+        toast({
+          title: "Erreur d'activation",
+          description: "Une erreur est survenue lors de l'activation de l'offre. Veuillez réessayer.",
+          variant: "destructive"
+        });
       }
     }
   };

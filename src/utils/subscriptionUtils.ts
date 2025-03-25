@@ -1,3 +1,4 @@
+
 // Subscription plans and their limits
 export const SUBSCRIPTION_LIMITS = {
   'freemium': 0.5,
@@ -37,6 +38,26 @@ export const getEffectiveSubscription = (subscription: string): string => {
       localStorage.removeItem('proTrialExpires');
       localStorage.removeItem('proTrialActivatedAt');
       localStorage.setItem('proTrialUsed', 'true');
+      
+      // Essayer de mettre à jour la base de données
+      try {
+        const updateProTrialStatus = async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            await supabase
+              .from('user_balances')
+              .update({ 
+                pro_trial_used: true,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', session.user.id);
+          }
+        };
+        
+        updateProTrialStatus();
+      } catch (error) {
+        console.error("Erreur lors de la mise à jour du statut de l'essai Pro:", error);
+      }
     }
   }
   
