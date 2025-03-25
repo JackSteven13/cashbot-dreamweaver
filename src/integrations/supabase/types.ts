@@ -95,6 +95,7 @@ export type Database = {
           balance: number
           daily_session_count: number
           id: string
+          pro_trial_used: boolean | null
           subscription: string
           updated_at: string
         }
@@ -102,6 +103,7 @@ export type Database = {
           balance?: number
           daily_session_count?: number
           id: string
+          pro_trial_used?: boolean | null
           subscription?: string
           updated_at?: string
         }
@@ -109,6 +111,7 @@ export type Database = {
           balance?: number
           daily_session_count?: number
           id?: string
+          pro_trial_used?: boolean | null
           subscription?: string
           updated_at?: string
         }
@@ -135,6 +138,7 @@ export type Database = {
           balance: number
           daily_session_count: number
           id: string
+          pro_trial_used: boolean | null
           subscription: string
           updated_at: string
         }[]

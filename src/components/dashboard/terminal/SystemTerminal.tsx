@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { FeedbackDialog } from './FeedbackDialog';
 import { SystemInfo, SystemInfoGrid } from './SystemInfo';
@@ -74,7 +73,6 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   const activateProTrial = async () => {
     if (subscription === 'freemium' && !isPromoActivated) {
       try {
-        // Vérifier d'abord si l'utilisateur a déjà utilisé l'offre
         if (localStorage.getItem('proTrialUsed') === 'true') {
           toast({
             title: "Offre déjà utilisée",
@@ -86,7 +84,6 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          // Vérification côté serveur si l'essai a déjà été utilisé
           const { data, error } = await supabase
             .from('user_balances')
             .select('id, pro_trial_used')
@@ -103,19 +100,16 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
             return;
           }
           
-          // Si l'utilisateur n'a pas encore utilisé l'offre, l'activer
           const now = Date.now();
           const expiryTime = now + (48 * 60 * 60 * 1000);
           
           console.log(`Activation de l'essai Pro: ${new Date(now).toLocaleString()} jusqu'à ${new Date(expiryTime).toLocaleString()}`);
           
-          // Mise à jour des données locales
           localStorage.setItem('proTrialActive', 'true');
           localStorage.setItem('proTrialExpires', expiryTime.toString());
           localStorage.setItem('proTrialActivatedAt', now.toString());
           localStorage.setItem('proTrialUsed', 'true');
           
-          // Mise à jour dans la base de données
           const { error: updateError } = await supabase
             .from('user_balances')
             .update({ 

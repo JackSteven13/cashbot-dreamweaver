@@ -15,6 +15,8 @@ export const MANUAL_SESSION_GAIN_PERCENTAGES = {
   'alpha': { min: 0.02, max: 0.08 }      // 2-8% of daily limit
 };
 
+import { supabase } from "@/integrations/supabase/client";
+
 /**
  * Vérifie le mode Pro temporaire et retourne la souscription effective
  */
