@@ -1,4 +1,6 @@
 
+import { supabase } from "@/integrations/supabase/client";
+
 // Subscription plans and their limits
 export const SUBSCRIPTION_LIMITS = {
   'freemium': 0.5,
@@ -14,8 +16,6 @@ export const MANUAL_SESSION_GAIN_PERCENTAGES = {
   'visionnaire': { min: 0.03, max: 0.10 }, // 3-10% of daily limit
   'alpha': { min: 0.02, max: 0.08 }      // 2-8% of daily limit
 };
-
-import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Vérifie le mode Pro temporaire et retourne la souscription effective
