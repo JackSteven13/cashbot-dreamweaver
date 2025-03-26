@@ -12,12 +12,12 @@ const Index = () => {
   const features = [
     {
       title: 'Technologies d\'Analyse',
-      description: 'Notre moteur d\'analyse traite les publicités en ligne pour optimiser leur visibilité et leur rentabilité.',
+      description: 'Notre bot d\'analyse traite les vidéos publicitaires en ligne pour générer des revenus grâce à leur visionnage automatique.',
       icon: <Cpu className="w-6 h-6" />
     },
     {
       title: 'Processus Automatisé',
-      description: 'Générez des revenus complémentaires grâce à notre système d\'analyse entièrement automatisé.',
+      description: 'Générez des revenus complémentaires grâce à notre bot qui visionne automatiquement des vidéos publicitaires sponsorisées.',
       icon: <Zap className="w-6 h-6" />
     },
     {
@@ -32,7 +32,7 @@ const Index = () => {
     },
     {
       title: 'Optimisation Continue',
-      description: 'Nos algorithmes s\'améliorent constamment pour maintenir des performances optimales.',
+      description: 'Notre bot s\'améliore constamment pour maintenir des performances optimales de visionnage.',
       icon: <TrendingUp className="w-6 h-6" />
     },
     {
@@ -67,8 +67,8 @@ const Index = () => {
         
         {/* Features section - Smaller padding to make page more compact */}
         <FeaturesGrid 
-          title="Une Plateforme d'Analyse Publicitaire Innovante"
-          subtitle="Stream genius utilise des technologies d'analyse avancées pour optimiser les campagnes publicitaires et générer des revenus complémentaires."
+          title="Une Plateforme de Visionnage Automatique Innovante"
+          subtitle="Stream genius utilise un bot avancé pour visionner des vidéos publicitaires sponsorisées et générer des revenus complémentaires pour vous."
           features={features}
         />
         
