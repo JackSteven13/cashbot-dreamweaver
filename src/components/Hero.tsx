@@ -30,8 +30,8 @@ const Hero = () => {
           {/* Network Effect Message - Updated messaging for credibility */}
           <div className="text-sm text-center bg-blue-900/30 dark:bg-blue-900/30 dark:text-blue-200 text-blue-800 
             p-3 rounded-lg mb-4 max-w-2xl border border-blue-200/20 shadow-sm">
-            <p className="font-medium">Optimisation collaborative : Notre bot s'améliore avec chaque utilisateur.</p>
-            <p>Plus notre communauté s'agrandit, plus nos algorithmes de visionnage deviennent performants pour tous.</p>
+            <p className="font-medium">Optimisation collaborative : Notre technologie évolue avec chaque nouvel utilisateur.</p>
+            <p>Plus notre communauté s'agrandit, plus notre système de visionnage devient performant pour tous.</p>
           </div>
           
           {/* CTA Button */}

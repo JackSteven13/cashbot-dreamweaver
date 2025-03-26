@@ -23,8 +23,8 @@ const About = () => {
             
             <h2 className="text-2xl font-semibold mt-12 mb-4">Comment ça fonctionne ?</h2>
             <p>
-              Stream genius utilise un bot intelligent qui visionne des vidéos publicitaires sponsorisées à travers le monde entier. 
-              Pendant que vous vaquez à vos occupations, notre bot visionne automatiquement des annonces sponsorisées pour générer des revenus.
+              Stream genius utilise une technologie intelligente qui travaille pour vous 24h/24. 
+              Pendant que vous vaquez à vos occupations, notre bot parcourt le web et visionne des annonces sponsorisées, convertissant ce temps de visionnage en revenus réels.
             </p>
             
             {/* Nouveau bloc sur l'effet réseau */}
