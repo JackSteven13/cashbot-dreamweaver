@@ -6,6 +6,7 @@ import StripeCheckoutForm from '@/components/payment/StripeCheckoutForm';
 import ManualPaymentForm from '@/components/payment/ManualPaymentForm';
 import PaymentMethodToggle from '@/components/payment/PaymentMethodToggle';
 import { PaymentFormData, PlanType } from '@/hooks/payment/types';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PaymentCardProps {
   selectedPlan: PlanType | null;
@@ -28,14 +29,16 @@ const PaymentCard = ({
   onStripeCheckout,
   stripeCheckoutUrl
 }: PaymentCardProps) => {
+  const isMobile = useIsMobile();
+
   return (
-    <Card className="cyber-card">
-      <CardHeader>
-        <CardTitle className="text-xl text-[#1e3a5f]">
+    <Card className="cyber-card max-w-[95vw] md:max-w-full mx-auto">
+      <CardHeader className="py-3 px-4 md:p-6">
+        <CardTitle className="text-base md:text-xl text-[#1e3a5f]">
           Finaliser votre abonnement {selectedPlan && (selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1))}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 md:space-y-4 px-4 md:px-6">
         <PlanSummary selectedPlan={selectedPlan} />
         
         {useStripeCheckout ? (
@@ -52,7 +55,7 @@ const PaymentCard = ({
           />
         )}
       </CardContent>
-      <CardFooter className="flex flex-col">
+      <CardFooter className="flex flex-col px-4 py-3 md:p-6">
         <PaymentMethodToggle 
           useStripeCheckout={useStripeCheckout}
           onToggle={onToggleMethod}

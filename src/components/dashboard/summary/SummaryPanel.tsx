@@ -6,6 +6,7 @@ import ReferralLink from './ReferralLink';
 import { SystemTerminal } from '@/components/dashboard/terminal';
 import WelcomeMessage from './WelcomeMessage';
 import { useSummaryPanel } from '@/hooks/useSummaryPanel';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SummaryPanelProps {
   balance: number;
@@ -34,6 +35,7 @@ const SummaryPanel = ({
   referralCount = 0,
   referralBonus = 0
 }: SummaryPanelProps) => {
+  const isMobile = useIsMobile();
   
   const {
     displayBalance,
@@ -56,10 +58,10 @@ const SummaryPanel = ({
   const remainingSessions = calculateRemainingSessions(subscription, dailySessionCount);
 
   return (
-    <div className="bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-8">
+    <div className="bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-3 md:p-6 mb-4 md:mb-8">
       <WelcomeMessage isNewUser={isNewUser} />
       
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
         <div className="flex-1">
           <UserBalanceCard 
             displayBalance={displayBalance}

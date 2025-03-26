@@ -5,6 +5,7 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Home } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -22,6 +23,7 @@ const DashboardLayout = ({
   setSelectedNavItem
 }: DashboardLayoutProps) => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
@@ -36,7 +38,7 @@ const DashboardLayout = ({
           subscription={subscription} 
         />
         
-        <main className="flex-1 p-4 md:p-6">
+        <main className="flex-1 p-3 md:p-6 overflow-x-hidden">
           {children}
         </main>
 

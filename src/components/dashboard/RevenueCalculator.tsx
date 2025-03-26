@@ -13,6 +13,7 @@ import { useForm } from 'react-hook-form';
 import { SUBSCRIPTION_LIMITS } from '@/components/dashboard/summary/constants';
 import { SUBSCRIPTION_LABELS, SUBSCRIPTION_PRICES } from './calculator/constants';
 import { calculateRevenueForAllPlans } from './calculator/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Import des composants refactorisés
 import CalculatorControls from './calculator/CalculatorControls';
@@ -71,9 +72,9 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
   isNewUser,
   isHomePage = false
 }) => {
-  // Initialize selectedPlan to 'alpha' instead of dynamically based on currentSubscription
   const [selectedPlan, setSelectedPlan] = useState('alpha');
   const [calculatedResults, setCalculatedResults] = useState<Record<string, { revenue: number, profit: number }>>({});
+  const isMobile = useIsMobile();
 
   const form = useForm<FormValues>({
     defaultValues: {
@@ -94,7 +95,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
   // Adapter les styles selon l'endroit où le composant est affiché et le mode sombre
   const cardClassName = isHomePage 
     ? "w-full bg-white/5 backdrop-blur-lg border border-white/10 shadow-xl dark:bg-gray-900/30 dark:border-gray-800/50" 
-    : "w-full mt-8 bg-white shadow-md border border-blue-100 dark:bg-gray-800 dark:border-gray-700";
+    : "w-full mt-6 md:mt-8 bg-white shadow-md border border-blue-100 dark:bg-gray-800 dark:border-gray-700";
 
   const headerClassName = isHomePage
     ? "bg-gradient-to-r from-blue-900/50 to-indigo-900/50 border-b border-white/10 dark:from-blue-950/70 dark:to-indigo-950/70 dark:border-gray-800"
@@ -105,27 +106,27 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
 
   return (
     <Card className={cardClassName}>
-      <CardHeader className={headerClassName}>
-        <CardTitle className={`text-xl font-semibold ${textColorClass}`}>
+      <CardHeader className={`py-3 px-4 md:p-6 ${headerClassName}`}>
+        <CardTitle className={`text-lg md:text-xl font-semibold ${textColorClass}`}>
           Simulateur de Revenus
         </CardTitle>
-        <CardDescription className={descriptionColorClass}>
+        <CardDescription className={`text-xs md:text-sm ${descriptionColorClass}`}>
           {isNewUser 
             ? "Découvrez votre potentiel de gains avec différents abonnements" 
             : "Comparez vos revenus potentiels selon différents abonnements"}
         </CardDescription>
       </CardHeader>
-      <CardContent className={`pt-4 ${isHomePage ? 'text-white dark:text-white' : 'dark:text-gray-100'}`}>
+      <CardContent className={`pt-3 px-3 md:pt-4 md:px-6 ${isHomePage ? 'text-white dark:text-white' : 'dark:text-gray-100'}`}>
         <Form {...form}>
           {/* Contrôles du simulateur */}
           <CalculatorControls control={control} isHomePage={isHomePage} />
         </Form>
 
-        <div className="mt-6 space-y-3">
-          <h3 className={`text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
+        <div className="mt-4 md:mt-6 space-y-2 md:space-y-3">
+          <h3 className={`text-sm md:text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
             Revenus mensuels estimés
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3 overflow-hidden">
             {Object.keys(SUBSCRIPTION_LIMITS).map((plan) => {
               // Ne pas afficher freemium sur la page d'accueil
               if (plan === 'freemium' && isHomePage) return null;
@@ -135,7 +136,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
               const results = calculatedResults[plan] || { revenue: 0, profit: 0 };
               
               return (
-                <div key={plan} className="max-h-[500px] overflow-y-auto">
+                <div key={plan} className="max-h-[350px] md:max-h-[500px] overflow-y-auto">
                   <SubscriptionPlanCard
                     key={plan}
                     title={SUBSCRIPTION_LABELS[plan] || plan}
@@ -160,7 +161,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
           </div>
         </div>
       </CardContent>
-      <CardFooter className={isHomePage ? "bg-blue-950/50 border-t border-white/10 pt-4 dark:bg-gray-900/70 dark:border-gray-800" : "bg-gray-50 border-t pt-4 dark:bg-gray-800 dark:border-gray-700"}>
+      <CardFooter className={`py-3 px-4 md:p-6 ${isHomePage ? "bg-blue-950/50 border-t border-white/10 pt-4 dark:bg-gray-900/70 dark:border-gray-800" : "bg-gray-50 border-t pt-4 dark:bg-gray-800 dark:border-gray-700"}`}>
         <CalculatorFooter 
           isHomePage={isHomePage} 
           selectedPlan={selectedPlan}
