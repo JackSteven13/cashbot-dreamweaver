@@ -39,10 +39,11 @@ const MainContent: React.FC<MainContentProps> = ({
   
   // Afficher le badge Alpha seulement pour les abonnements Alpha
   const showAlphaBadge = subscription === 'alpha';
+  const userName = localStorage.getItem('username') || undefined;
 
   return (
     <>
-      {showAlphaBadge && <AlphaBadge />}
+      {showAlphaBadge && <AlphaBadge userName={userName} />}
       
       <SummaryPanel
         balance={balance}

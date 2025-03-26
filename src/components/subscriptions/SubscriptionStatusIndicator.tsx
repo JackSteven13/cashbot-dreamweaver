@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, Sparkles, Zap } from 'lucide-react';
+import { Loader2, Sparkles, Zap, Crown } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 
 interface SubscriptionStatusIndicatorProps {
@@ -73,7 +73,7 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
       'freemium': 'Freemium',
       'pro': 'Pro',
       'visionnaire': 'Visionnaire',
-      'alpha': 'Alpha'
+      'alpha': 'Alpha Premium'
     };
     return names[code] || code.charAt(0).toUpperCase() + code.slice(1);
   };
@@ -123,12 +123,13 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
               <div className="flex items-center space-x-2">
                 <span className="text-purple-200 font-bold text-lg">Abonnement</span>
                 <span className="text-white font-bold text-xl flex items-center">
-                  {getDisplayName(displaySubscription)}
+                  <Crown className="h-4 w-4 mr-1 text-purple-100" />
+                  Alpha Premium
                   <Sparkles className="h-4 w-4 ml-1 text-purple-200 animate-pulse" />
                 </span>
               </div>
               <p className="text-purple-200 text-sm mt-1">
-                Accès illimité à toutes les fonctionnalités premium
+                Accès illimité à toutes les fonctionnalités premium et exclusives
               </p>
             </div>
             <div className="flex items-center bg-violet-800/40 backdrop-blur-sm rounded-full px-3 py-1.5 border border-purple-500/30">
