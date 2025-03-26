@@ -1,41 +1,50 @@
+
 import React from 'react';
-import { SummaryPanel } from '@/components/dashboard/summary';
-import TransactionsList from '@/components/dashboard/TransactionsList';
-import RevenueCalculator from '@/components/dashboard/RevenueCalculator';
+import SummaryPanel from '../summary/SummaryPanel';
+import TransactionsPanel from '../transactions/TransactionsPanel';
+import AlphaBadge from '@/components/subscriptions/AlphaBadge';
 import { Transaction } from '@/types/userData';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MainContentProps {
   balance: number;
   referralLink: string;
   isStartingSession: boolean;
   handleStartSession: () => void;
-  handleWithdrawal: () => void;
+  handleWithdrawal?: () => void;
   transactions: Transaction[];
-  isNewUser: boolean;
+  isNewUser?: boolean;
   subscription: string;
-  dailySessionCount: number;
-  canStartSession: boolean;
-  referralCount: number;
-  referralBonus: number;
+  dailySessionCount?: number;
+  canStartSession?: boolean;
+  referralCount?: number;
+  referralBonus?: number;
 }
 
-const MainContent = ({
+const MainContent: React.FC<MainContentProps> = ({
   balance,
   referralLink,
   isStartingSession,
   handleStartSession,
   handleWithdrawal,
   transactions,
-  isNewUser,
+  isNewUser = false,
   subscription,
-  dailySessionCount,
-  canStartSession,
-  referralCount,
-  referralBonus
-}: MainContentProps) => {
+  dailySessionCount = 0,
+  canStartSession = true,
+  referralCount = 0,
+  referralBonus = 0
+}) => {
+  const isMobile = useIsMobile();
+  
+  // Afficher le badge Alpha seulement pour les abonnements Alpha
+  const showAlphaBadge = subscription === 'alpha';
+
   return (
     <>
-      <SummaryPanel 
+      {showAlphaBadge && <AlphaBadge />}
+      
+      <SummaryPanel
         balance={balance}
         referralLink={referralLink}
         isStartingSession={isStartingSession}
@@ -49,18 +58,7 @@ const MainContent = ({
         referralBonus={referralBonus}
       />
       
-      {/* Uniquement pour les nouveaux utilisateurs ou ceux qui ont un abonnement freemium */}
-      {(isNewUser || subscription === 'freemium') && (
-        <RevenueCalculator 
-          currentSubscription={subscription}
-          isNewUser={isNewUser}
-        />
-      )}
-      
-      <TransactionsList 
-        transactions={transactions} 
-        isNewUser={isNewUser} 
-      />
+      <TransactionsPanel transactions={transactions} />
     </>
   );
 };

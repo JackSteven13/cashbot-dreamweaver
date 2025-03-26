@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles, Zap } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 
 interface SubscriptionStatusIndicatorProps {
@@ -88,7 +88,7 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
       case 'visionnaire':
         return 'from-purple-900/60 to-purple-700/60';
       case 'alpha':
-        return 'from-violet-900/70 to-violet-700/70';
+        return 'from-violet-900/70 via-fuchsia-800/60 to-violet-700/70';
       default:
         return 'from-blue-900/50 to-blue-800/50';
     }
@@ -108,6 +108,39 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
   const displaySubscription = verifiedSubscription || currentSubscription;
   
   if (displaySubscription && displaySubscription !== 'freemium') {
+    // Version spéciale pour Alpha avec animation et effets visuels plus marqués
+    if (displaySubscription === 'alpha') {
+      return (
+        <div className="mt-6 p-4 bg-gradient-to-r from-violet-900/80 via-fuchsia-800/70 to-violet-700/80 rounded-lg shadow-inner border border-purple-400/20 animate-fadeIn relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTZtMyAzbS02IDBoLTZtMTIgMGgtNiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+          <div className="absolute top-0 right-0 opacity-20">
+            <svg width="86" height="86" viewBox="0 0 86 86" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M43 0L50.5 36.5L86 43L50.5 50.5L43 86L36.5 50.5L0 43L36.5 36.5L43 0Z" fill="white"/>
+            </svg>
+          </div>
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-purple-200 font-bold text-lg">Abonnement</span>
+                <span className="text-white font-bold text-xl flex items-center">
+                  {getDisplayName(displaySubscription)}
+                  <Sparkles className="h-4 w-4 ml-1 text-purple-200 animate-pulse" />
+                </span>
+              </div>
+              <p className="text-purple-200 text-sm mt-1">
+                Accès illimité à toutes les fonctionnalités premium
+              </p>
+            </div>
+            <div className="flex items-center bg-violet-800/40 backdrop-blur-sm rounded-full px-3 py-1.5 border border-purple-500/30">
+              <Zap className="h-4 w-4 text-purple-200 mr-1.5" />
+              <span className="text-white font-semibold">50€/jour</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Version standard pour les autres abonnements
     return (
       <div className={`mt-6 p-4 bg-gradient-to-r ${getGradient(displaySubscription)} rounded-lg shadow-inner border border-white/10 animate-fadeIn relative overflow-hidden`}>
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-white/5 to-transparent opacity-60"></div>
