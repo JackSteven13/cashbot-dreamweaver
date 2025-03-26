@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { ArrowUpCircle, Clock, PlayCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -111,18 +112,18 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           <Button 
             size="lg" 
             variant="outline"
-            className="w-full border-slate-500 text-slate-600 hover:bg-slate-50 shadow-sm"
+            className="w-full border-slate-500 text-slate-600 hover:bg-slate-50 shadow-sm whitespace-normal h-auto py-2"
             disabled={isWithdrawing || isButtonDisabled}
             onClick={onWithdraw}
           >
-            <ArrowUpCircle className="mr-2 h-4 w-4" />
+            <ArrowUpCircle className="mr-2 h-4 w-4 flex-shrink-0" />
             {isWithdrawing ? (
               <span className="flex items-center">
                 <span className="animate-spin h-4 w-4 mr-2 border-2 border-slate-500 border-t-transparent rounded-full"></span>
                 Traitement...
               </span>
             ) : (
-              "Retirer les fonds"
+              <span>Retirer les fonds</span>
             )}
           </Button>
         </div>

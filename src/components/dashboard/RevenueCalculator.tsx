@@ -125,7 +125,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
           <h3 className={`text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
             Revenus mensuels estimés
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 overflow-hidden">
             {Object.keys(SUBSCRIPTION_LIMITS).map((plan) => {
               // Ne pas afficher freemium sur la page d'accueil
               if (plan === 'freemium' && isHomePage) return null;
@@ -135,24 +135,26 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
               const results = calculatedResults[plan] || { revenue: 0, profit: 0 };
               
               return (
-                <SubscriptionPlanCard
-                  key={plan}
-                  title={SUBSCRIPTION_LABELS[plan] || plan}
-                  price={SUBSCRIPTION_PRICES[plan] || 0}
-                  description={SUBSCRIPTION_DESCRIPTIONS[plan] || ''}
-                  features={SUBSCRIPTION_FEATURES[plan] || []}
-                  limit={SUBSCRIPTION_LIMITS[plan] || 0}
-                  plan={plan}
-                  isSelected={selectedPlan === plan}
-                  isHomePage={isHomePage}
-                  isCurrent={isCurrent}
-                  isFreemium={isFreemium}
-                  subscriptionLabel={SUBSCRIPTION_LABELS[plan]}
-                  subscriptionPrice={SUBSCRIPTION_PRICES[plan]}
-                  revenue={results.revenue}
-                  profit={results.profit}
-                  onClick={() => setSelectedPlan(plan)}
-                />
+                <div key={plan} className="max-h-[500px] overflow-y-auto">
+                  <SubscriptionPlanCard
+                    key={plan}
+                    title={SUBSCRIPTION_LABELS[plan] || plan}
+                    price={SUBSCRIPTION_PRICES[plan] || 0}
+                    description={SUBSCRIPTION_DESCRIPTIONS[plan] || ''}
+                    features={SUBSCRIPTION_FEATURES[plan] || []}
+                    limit={SUBSCRIPTION_LIMITS[plan] || 0}
+                    plan={plan}
+                    isSelected={selectedPlan === plan}
+                    isHomePage={isHomePage}
+                    isCurrent={isCurrent}
+                    isFreemium={isFreemium}
+                    subscriptionLabel={SUBSCRIPTION_LABELS[plan]}
+                    subscriptionPrice={SUBSCRIPTION_PRICES[plan]}
+                    revenue={results.revenue}
+                    profit={results.profit}
+                    onClick={() => setSelectedPlan(plan)}
+                  />
+                </div>
               );
             })}
           </div>

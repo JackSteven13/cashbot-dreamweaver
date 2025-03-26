@@ -57,11 +57,11 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
           </div>
         </div>
         
-        <Link to="/offres" className="whitespace-nowrap">
+        <Link to="/offres" className="whitespace-normal">
           <Button 
             variant="default" 
             size="sm" 
-            className={`whitespace-nowrap ${isLimitReached ? 'bg-amber-600 hover:bg-amber-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white`}
+            className={`w-full sm:w-auto whitespace-normal h-auto py-2 px-3 ${isLimitReached ? 'bg-amber-600 hover:bg-amber-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white`}
           >
             Augmenter ma limite
           </Button>

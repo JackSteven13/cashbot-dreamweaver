@@ -36,6 +36,7 @@ const Navbar = () => {
           ? 'py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-sm'
           : 'py-5 bg-transparent'
       }`}
+      style={{ zIndex: 100 }} // Augmenter le z-index pour s'assurer que la navbar est au-dessus des autres éléments
     >
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex justify-between items-center">
@@ -103,7 +104,7 @@ const Navbar = () => {
                   <Menu size={24} />
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[85%] sm:w-[350px] pt-16">
+              <SheetContent side="right" className="w-[85%] sm:w-[350px] pt-16 z-[150]"> {/* Z-index augmenté */}
                 <SheetHeader>
                   <SheetTitle className="text-left text-xl font-bold mb-4">Menu</SheetTitle>
                 </SheetHeader>

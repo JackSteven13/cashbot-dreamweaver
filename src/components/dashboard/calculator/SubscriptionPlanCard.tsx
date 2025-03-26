@@ -67,6 +67,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
         onClick && "cursor-pointer"
       )}
       onClick={onClick}
+      style={{ maxHeight: '100%', zIndex: 30 }} // Ajout d'une hauteur maximale et z-index
     >
       {mostPopular && (
         <div className="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1 text-xs font-semibold rounded-bl-lg">
@@ -83,7 +84,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
           SÉLECTIONNÉ
         </div>
       )}
-      <div className="p-4 md:p-5">
+      <div className="p-4 md:p-5 overflow-auto">
         <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-2">
           {subscriptionLabel || title}
         </h3>
@@ -111,7 +112,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
             Limite quotidienne: <span className="font-semibold text-blue-600 dark:text-blue-400">{limit}€</span>
           </p>
-          <ul className="space-y-1 mt-2">
+          <ul className="space-y-1 mt-2 overflow-y-auto max-h-[150px]"> {/* Ajout de limitation de hauteur avec scroll */}
             {features.slice(0, isHomePage ? 2 : features.length).map((feature, index) => (
               <li key={index} className="flex items-start">
                 <svg className={`h-4 w-4 ${isSelected ? 'text-purple-500' : 'text-green-500'} shrink-0 mr-2 mt-0.5`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
