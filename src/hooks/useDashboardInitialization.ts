@@ -69,7 +69,9 @@ export const useDashboardInitialization = () => {
         return;
       }
       
+      authCheckAttempted.current = true;
       setIsAuthChecking(true);
+      
       try {
         // Get cached subscription for faster UI rendering
         const cachedSubscription = localStorage.getItem('subscription');

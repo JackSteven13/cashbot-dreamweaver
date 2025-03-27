@@ -22,6 +22,8 @@ export const useAuthVerification = () => {
   });
 
   const checkAuth = useCallback(async (isManualRetry = false) => {
+    console.log("Checking auth, isManualRetry:", isManualRetry);
+    
     if (isManualRetry) {
       setIsRetrying(true);
       setAuthCheckFailed(false);
@@ -33,6 +35,7 @@ export const useAuthVerification = () => {
     if (!isMounted.current) return;
     
     if (!isAuthValid) {
+      console.log("Auth check failed, setting authCheckFailed to true");
       setAuthCheckFailed(true);
       setIsAuthenticated(false);
       return;
@@ -43,6 +46,7 @@ export const useAuthVerification = () => {
     const user = data.user;
     
     if (!user) {
+      console.log("No user found after auth check, setting authCheckFailed to true");
       setAuthCheckFailed(true);
       setIsAuthenticated(false);
       return;
@@ -52,6 +56,7 @@ export const useAuthVerification = () => {
     await fetchProfileData(user.id);
     
     if (isMounted.current) {
+      console.log("Auth check successful, setting isAuthenticated to true");
       setIsAuthenticated(true);
     }
   }, [performAuthCheck, fetchProfileData, setIsRetrying]);
@@ -75,6 +80,7 @@ export const useAuthVerification = () => {
     // Set timeout for initial auth check with longer delay
     const initTimeout = setTimeout(() => {
       if (isMounted.current) {
+        console.log("Initial auth check starting after delay");
         checkAuth();
       }
     }, 800);

@@ -7,10 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const getCurrentSession = async () => {
   try {
-    // Léger délai pour éviter les problèmes de concurrence
-    await new Promise(resolve => setTimeout(resolve, 150));
+    console.log("Getting current session");
     
-    // Utiliser getSession avec la persistance locale activée par défaut
+    // Use getSession with local persistence enabled by default
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
@@ -20,7 +19,7 @@ export const getCurrentSession = async () => {
     
     // Add extra validation to ensure session is complete
     if (data.session && data.session.user && data.session.user.id) {
-      // Vérifier si la session n'a pas expiré
+      // Check if the session hasn't expired
       const tokenExpiry = new Date((data.session.expires_at || 0) * 1000);
       const now = new Date();
       
@@ -30,9 +29,11 @@ export const getCurrentSession = async () => {
         return refreshed;
       }
       
+      console.log("Valid session found for user:", data.session.user.id);
       return data.session;
     }
     
+    console.log("No session found");
     return null;
   } catch (error) {
     console.error("Error getting session:", error);
@@ -42,12 +43,13 @@ export const getCurrentSession = async () => {
 
 /**
  * Refreshes the current session with improved persistence
+ * @returns The refreshed session or null if refresh failed
  */
 export const refreshSession = async () => {
   try {
     console.log("Attempting to refresh the session");
     
-    // Utiliser refreshSession avec persistance
+    // Use refreshSession with persistence
     const { data, error } = await supabase.auth.refreshSession();
     
     if (error) {
@@ -57,7 +59,7 @@ export const refreshSession = async () => {
     
     // Validate the refreshed session
     if (data.session && data.session.user && data.session.user.id) {
-      // Vérification supplémentaire du token rafraîchi
+      // Additional check of refreshed token
       const newTokenExpiry = new Date((data.session.expires_at || 0) * 1000);
       const now = new Date();
       
@@ -70,6 +72,7 @@ export const refreshSession = async () => {
       return data.session;
     }
     
+    console.log("No valid session after refresh");
     return null;
   } catch (error) {
     console.error("Error refreshing session:", error);
@@ -102,7 +105,7 @@ export const forceSignOut = async (): Promise<boolean> => {
     
     keysToRemove.forEach(key => localStorage.removeItem(key));
     
-    // Pause pour permettre aux opérations locales de se terminer
+    // Pause to allow local operations to complete
     await new Promise(resolve => setTimeout(resolve, 300));
     
     // Perform more stable sign out with local and global scope

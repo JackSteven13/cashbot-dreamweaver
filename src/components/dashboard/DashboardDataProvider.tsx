@@ -37,6 +37,7 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
   const [forcedSubscription, setForcedSubscription] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  const initAttempted = useRef(false);
   
   console.log("DashboardDataProvider rendering, renderKey:", renderKey);
   
@@ -113,7 +114,11 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    console.log("DashboardDataProvider mounted");
+    return () => { 
+      console.log("DashboardDataProvider unmounting");
+      mountedRef.current = false; 
+    };
   }, []);
 
   useEffect(() => {

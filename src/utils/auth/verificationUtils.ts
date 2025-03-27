@@ -7,10 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
-    // Small delay to allow auth context to properly initialize
-    await new Promise(resolve => setTimeout(resolve, 300));
+    console.log("Performing auth verification");
     
-    // Check current session with persistence enabled
+    // Get current session with persistence enabled
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
