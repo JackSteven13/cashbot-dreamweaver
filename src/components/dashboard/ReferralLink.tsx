@@ -44,8 +44,8 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
     try {
       if (navigator.share) {
         await navigator.share({
-          title: 'Mon lien de parrainage CashBot',
-          text: 'Rejoins CashBot et gagne de l\'argent avec l\'analyse publicitaire! Utilise mon lien de parrainage:',
+          title: 'Mon lien de parrainage Stream Genius',
+          text: 'Rejoins Stream Genius et gagne de l\'argent avec l\'analyse publicitaire! Utilise mon lien de parrainage:',
           url: referralLink
         });
         toast({
@@ -71,7 +71,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
         
         <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-100">
           <p className="text-sm text-[#486581] mb-3 font-medium">
-            Partagez ce lien avec vos amis et gagnez <span className="font-bold text-green-600">35% de commission</span> sur les revenus de leurs abonnements !
+            Partagez ce lien avec vos amis et gagnez <span className="font-bold text-green-600">70% de commission</span> sur les revenus de leurs abonnements !
           </p>
           
           <div className="flex flex-col sm:flex-row gap-2">
@@ -108,7 +108,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
             <div className="bg-amber-50 p-3 rounded-md border border-amber-100 flex items-start gap-2">
               <DollarSign className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm text-amber-800 font-medium">Gagnez 35% de commission</p>
+                <p className="text-sm text-amber-800 font-medium">Gagnez 70% de commission</p>
                 <p className="text-xs text-amber-700">Sans limite de filleuls ni plafond de gains!</p>
               </div>
             </div>
@@ -170,7 +170,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
               <ol className="list-decimal ml-4 space-y-1">
                 <li>Partagez votre lien de parrainage avec vos amis</li>
                 <li>Ils créent un compte avec votre lien et souscrivent à un abonnement</li>
-                <li>Vous recevez automatiquement 35% de leur abonnement mensuel (après frais Stripe)</li>
+                <li>Vous recevez automatiquement 70% de leur abonnement mensuel (après frais Stripe)</li>
                 <li>Les commissions sont ajoutées à votre solde disponible chaque mois</li>
                 <li>Votre revenu passif augmente avec chaque nouveau filleul</li>
               </ol>

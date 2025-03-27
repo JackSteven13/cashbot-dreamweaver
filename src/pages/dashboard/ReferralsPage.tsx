@@ -77,7 +77,7 @@ const ReferralsPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">5.00 €</div>
+            <div className="text-3xl font-bold">10.00 €</div>
             <p className="text-sm text-muted-foreground">Par parrainage actif</p>
           </CardContent>
         </Card>
@@ -87,7 +87,7 @@ const ReferralsPage = () => {
         <CardHeader>
           <CardTitle>Votre lien de parrainage</CardTitle>
           <CardDescription>
-            Partagez ce lien avec vos amis et gagnez 5 € pour chaque inscription
+            Partagez ce lien avec vos amis et gagnez jusqu'à 70% de commission sur leurs abonnements
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -103,7 +103,7 @@ const ReferralsPage = () => {
           </div>
           
           <div className="mt-4 flex space-x-2">
-            <Button variant="outline" onClick={() => window.open(`https://twitter.com/intent/tweet?text=Rejoignez-moi sur CashBot et gagnez de l'argent ! ${encodeURIComponent(referralLink)}`, '_blank')}>
+            <Button variant="outline" onClick={() => window.open(`https://twitter.com/intent/tweet?text=Rejoignez-moi sur Stream Genius et gagnez de l'argent ! ${encodeURIComponent(referralLink)}`, '_blank')}>
               Partager sur Twitter
             </Button>
             <Button variant="outline" onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`, '_blank')}>
@@ -151,7 +151,7 @@ const calculateReferralBonus = (referrals: Array<{ active: boolean }>) => {
   
   // Compter les parrainages actifs uniquement
   const activeReferrals = referrals.filter(ref => ref.active).length;
-  return activeReferrals * 5; // 5€ par parrainage actif
+  return activeReferrals * 10; // 10€ par parrainage actif (ajusté pour refléter la commission de 70%)
 };
 
 export default ReferralsPage;

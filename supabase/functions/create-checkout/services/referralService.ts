@@ -114,7 +114,7 @@ export async function trackReferral(referrerId: string | null, newUserId: string
       return;
     }
     
-    // Create a new referral with 35% commission rate (updated from 70%)
+    // Create a new referral with 70% commission rate (was updated from 35% to 70%)
     const { error } = await supabase
       .from('referrals')
       .insert({
@@ -122,7 +122,7 @@ export async function trackReferral(referrerId: string | null, newUserId: string
         referred_user_id: newUserId,
         plan_type: planType,
         status: 'active',
-        commission_rate: 0.35, // 35% commission (updated from 0.7)
+        commission_rate: 0.7, // 70% commission (updated from 0.35)
       });
       
     if (error) {
@@ -137,7 +137,7 @@ export async function trackReferral(referrerId: string | null, newUserId: string
             referred_user_id: newUserId,
             plan_type: planType,
             status: 'active',
-            commission_rate: 0.35, // 35% commission (updated from 0.7)
+            commission_rate: 0.7, // 70% commission (updated from 0.35)
           });
           
         if (retryError) {
