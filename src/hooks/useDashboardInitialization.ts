@@ -5,6 +5,7 @@ import { useAuthSessionCheck } from './auth/useAuthSessionCheck';
 import { useUserDataSync } from './session/useUserDataSync';
 import { useAuthStateListener } from './dashboard/useAuthStateListener';
 import { useUserDataRefresh } from './session/useUserDataRefresh';
+import { toast } from '@/components/ui/use-toast';
 
 export const useDashboardInitialization = () => {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ export const useDashboardInitialization = () => {
     const initDashboard = async () => {
       setIsAuthChecking(true);
       try {
+        console.log("Starting dashboard auth check");
         const isAuthenticated = await checkAuth();
         
         if (!mountedRef.current) return;
@@ -42,28 +44,30 @@ export const useDashboardInitialization = () => {
               await refreshUserData().catch(err => {
                 console.warn("Background sync failed:", err);
               });
+              
+              if (mountedRef.current && !isReady) {
+                setIsReady(true);
+              }
             }
-          }, 1000);
+          }, 500);
           
           setIsAuthChecking(false);
-          
-          // Force setting ready state after a delay
-          initTimeoutRef.current = setTimeout(() => {
-            if (mountedRef.current) {
-              console.log("Dashboard ready (forced)");
-              setIsReady(true);
-            }
-          }, 2000);
         } else {
           console.log("Authentication failed, redirecting to login");
           if (mountedRef.current) {
             setIsAuthChecking(false);
             
+            toast({
+              title: "Authentification nécessaire",
+              description: "Veuillez vous connecter pour accéder au tableau de bord",
+              variant: "destructive",
+            });
+            
             setTimeout(() => {
               if (mountedRef.current) {
                 navigate('/login', { replace: true });
               }
-            }, 400);
+            }, 300);
           }
         }
       } catch (err) {
@@ -71,6 +75,12 @@ export const useDashboardInitialization = () => {
         if (mountedRef.current) {
           setAuthError(true);
           setIsAuthChecking(false);
+          
+          toast({
+            title: "Erreur de chargement",
+            description: "Une erreur est survenue lors du chargement du tableau de bord",
+            variant: "destructive",
+          });
         }
       }
     };

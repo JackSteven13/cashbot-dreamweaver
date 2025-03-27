@@ -7,6 +7,8 @@ export const useAuthStateListener = () => {
   const navigate = useNavigate();
   
   const setupAuthListener = useCallback(() => {
+    console.log("Setting up auth state listener");
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {

@@ -47,7 +47,7 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
     isAuthChecking,
     isReady,
     authError,
-    syncUserData // This property now exists in the return value
+    syncUserData
   } = useDashboardInitialization();
   
   const {
