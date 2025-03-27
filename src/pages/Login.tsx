@@ -23,14 +23,34 @@ const Login = () => {
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          console.log("Active session found, redirecting to dashboard");
-          navigate('/dashboard', { replace: true });
+        // Clear any stale auth state
+        localStorage.removeItem('user_data');
+        localStorage.removeItem('user_session_count');
+        localStorage.removeItem('user_balance');
+        
+        // Check if there's an active session
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error checking session:", error);
+          setIsCheckingSession(false);
+          return;
         }
+        
+        if (data.session && data.session.user) {
+          console.log("Active session found, redirecting to dashboard");
+          
+          // Small delay to ensure session is properly established
+          setTimeout(() => {
+            navigate('/dashboard', { replace: true });
+          }, 500);
+          return;
+        }
+        
+        console.log("No active session found");
+        setIsCheckingSession(false);
       } catch (error) {
         console.error("Error checking session:", error);
-      } finally {
         setIsCheckingSession(false);
       }
     };
@@ -50,12 +70,23 @@ const Login = () => {
     setIsLoading(true);
     
     try {
+      // First, ensure we're logged out to prevent session conflicts
+      await supabase.auth.signOut();
+      
+      // Clear any cached user data
+      localStorage.removeItem('user_data');
+      localStorage.removeItem('user_session_count');
+      localStorage.removeItem('user_balance');
+      
+      // Sign in with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
       
       if (data && data.user) {
         // Save the email for future suggestions
@@ -69,7 +100,9 @@ const Login = () => {
         // Redirect to dashboard with a slight delay to allow session to be established
         setTimeout(() => {
           navigate('/dashboard', { replace: true });
-        }, 500);
+        }, 800);
+      } else {
+        throw new Error("Échec de connexion");
       }
     } catch (error: any) {
       console.error("Login error:", error);

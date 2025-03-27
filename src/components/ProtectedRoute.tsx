@@ -1,9 +1,8 @@
 
-import { ReactNode, useCallback, useEffect, useRef } from 'react';
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
-import { forceSignOut } from "@/utils/auth/sessionUtils";
-import { useAuthVerification } from '@/hooks/useAuthVerification';
+import { supabase } from "@/integrations/supabase/client";
 import AuthRecoveryScreen from './auth/AuthRecoveryScreen';
 import AuthLoadingScreen from './auth/AuthLoadingScreen';
 
@@ -14,102 +13,147 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [authCheckFailed, setAuthCheckFailed] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const redirectInProgress = useRef(false);
-  const initialCheckComplete = useRef(false);
-  const autoRetryCount = useRef(0);
-  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const maxRetries = 3;
+  const retryCount = useRef(0);
   
-  const { 
-    isAuthenticated, 
-    authCheckFailed, 
-    isRetrying, 
-    checkAuth
-  } = useAuthVerification();
-
-  // Improved auto-retry function
-  useEffect(() => {
-    if (authCheckFailed && autoRetryCount.current < 2) {
-      console.log(`Auto-retry authentication attempt ${autoRetryCount.current + 1}`);
-      const timer = setTimeout(() => {
-        checkAuth(true);
-        autoRetryCount.current += 1;
-      }, 1500);
-      
-      return () => clearTimeout(timer);
+  // Simple auth check function
+  const checkAuth = useCallback(async (isRetry = false) => {
+    if (isRetry) {
+      setIsRetrying(true);
     }
-  }, [authCheckFailed, checkAuth]);
+    
+    try {
+      console.log(`Checking auth (${isRetry ? 'manual retry' : 'initial check'})`);
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error("Error checking session:", error);
+        setIsAuthenticated(false);
+        setAuthCheckFailed(true);
+        setIsRetrying(false);
+        return;
+      }
+      
+      if (!data.session || !data.session.user) {
+        console.log("No valid session found");
+        setIsAuthenticated(false);
+        setAuthCheckFailed(false); // Not a failure, just not authenticated
+        setIsRetrying(false);
+        return;
+      }
+      
+      console.log("Valid session found, user authenticated");
+      setIsAuthenticated(true);
+      setAuthCheckFailed(false);
+      setIsRetrying(false);
+    } catch (error) {
+      console.error("Error during auth check:", error);
+      setIsAuthenticated(false);
+      setAuthCheckFailed(true);
+      setIsRetrying(false);
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  }, []);
 
-  // Handle clean login function
+  // Handle clean logout
   const handleCleanLogin = useCallback(() => {
     if (redirectInProgress.current) return;
     
     redirectInProgress.current = true;
-    console.log("Clean logout initiated");
+    console.log("Redirecting to login page");
     
-    Promise.resolve(forceSignOut())
-      .then(() => {
-        console.log("Redirecting to login page");
-        // Small delay to allow logout to complete
-        setTimeout(() => {
-          navigate('/login', { replace: true });
-          redirectInProgress.current = false;
-        }, 300);
-      })
-      .catch((error) => {
-        console.error("Error during clean logout:", error);
-        setTimeout(() => {
-          navigate('/login', { replace: true });
-          redirectInProgress.current = false;
-        }, 300);
-      });
+    // Clear any cached user data
+    localStorage.removeItem('user_data');
+    localStorage.removeItem('user_session_count');
+    localStorage.removeItem('user_balance');
+    
+    // Sign out and redirect
+    supabase.auth.signOut().then(() => {
+      setTimeout(() => {
+        navigate('/login', { replace: true });
+        redirectInProgress.current = false;
+      }, 300);
+    }).catch(() => {
+      setTimeout(() => {
+        navigate('/login', { replace: true });
+        redirectInProgress.current = false;
+      }, 300);
+    });
   }, [navigate]);
 
-  // Effect to prevent infinite redirects - use a longer timeout
+  // Set up auth state listener
   useEffect(() => {
-    // Set a timeout to ensure we don't wait forever
-    if (!initialCheckComplete.current && isAuthenticated === null) {
-      redirectTimeoutRef.current = setTimeout(() => {
-        console.log("Auth check timeout reached, forcing redirect to login");
-        handleCleanLogin();
-      }, 30000); // 30 seconds timeout (increased from 15)
-    } else if (initialCheckComplete.current || isAuthenticated !== null) {
-      if (redirectTimeoutRef.current) {
-        clearTimeout(redirectTimeoutRef.current);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        console.log("Auth state change: signed out");
+        setIsAuthenticated(false);
+      } else if (event === 'SIGNED_IN') {
+        console.log("Auth state change: signed in");
+        setIsAuthenticated(true);
       }
-    }
-
+    });
+    
     return () => {
-      if (redirectTimeoutRef.current) {
-        clearTimeout(redirectTimeoutRef.current);
-      }
+      subscription.unsubscribe();
     };
-  }, [handleCleanLogin, isAuthenticated]);
+  }, []);
 
-  // Mark initial check as complete when we get a definitive answer
+  // Initial auth check
   useEffect(() => {
-    if (isAuthenticated !== null && !initialCheckComplete.current) {
-      initialCheckComplete.current = true;
-      console.log("Initial auth check complete, authenticated:", isAuthenticated);
-      
-      if (redirectTimeoutRef.current) {
-        clearTimeout(redirectTimeoutRef.current);
+    setIsCheckingAuth(true);
+    checkAuth();
+    
+    // Set timeout for auth check
+    const timeoutId = setTimeout(() => {
+      if (isCheckingAuth) {
+        console.log("Auth check timeout reached");
+        setIsCheckingAuth(false);
+        setAuthCheckFailed(true);
       }
-    }
-  }, [isAuthenticated]);
+    }, 10000);
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [checkAuth]);
 
-  // Show recovery screen if auth check failed
-  if (authCheckFailed) {
+  // Auto-retry logic
+  useEffect(() => {
+    if (authCheckFailed && retryCount.current < maxRetries) {
+      const timeoutId = setTimeout(() => {
+        console.log(`Auto-retry auth check (${retryCount.current + 1}/${maxRetries})`);
+        retryCount.current++;
+        checkAuth(true);
+      }, 2000);
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }
+  }, [authCheckFailed, checkAuth]);
+
+  // Show recovery screen if auth check failed after retries
+  if (authCheckFailed && retryCount.current >= maxRetries) {
     return (
       <AuthRecoveryScreen 
         isRetrying={isRetrying}
-        onRetry={() => checkAuth(true)}
+        onRetry={() => {
+          retryCount.current = 0;
+          checkAuth(true);
+        }}
         onCleanLogin={handleCleanLogin}
       />
     );
   }
   
   // Show loading screen while checking auth
-  if (isAuthenticated === null) {
+  if (isCheckingAuth || isAuthenticated === null) {
     return <AuthLoadingScreen />;
   }
 
@@ -125,6 +169,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         variant: "destructive"
       });
     }
+    
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 

@@ -2,7 +2,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
-import { verifyAuth, refreshSession } from "@/utils/auth/index";
+import { toast } from '@/components/ui/use-toast';
+import { useAuthStateListener } from './dashboard/useAuthStateListener';
+import { useUserDataRefresh } from './session/useUserDataRefresh';
 
 export const useDashboardInitialization = () => {
   const navigate = useNavigate();
@@ -10,137 +12,161 @@ export const useDashboardInitialization = () => {
   const [isReady, setIsReady] = useState(false);
   const [authError, setAuthError] = useState(false);
   const mountedRef = useRef(true);
-  const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const authCheckInProgress = useRef(false);
-  const authCheckAttempted = useRef(false);
+  const authCheckAttemptRef = useRef(0);
+  const maxAuthCheckAttempts = 3;
   
-  // Amélioré pour être plus robuste
+  const { refreshUserData } = useUserDataRefresh();
+  const { setupAuthListener } = useAuthStateListener();
+  
+  // Simplified auth check function with retry logic
   const checkAuth = useCallback(async () => {
-    if (authCheckInProgress.current) {
-      console.log("Auth check already in progress, skipping");
-      return false;
-    }
-    
     try {
-      authCheckInProgress.current = true;
-      authCheckAttempted.current = true;
+      console.log(`Performing auth check (attempt ${authCheckAttemptRef.current + 1}/${maxAuthCheckAttempts})`);
       
-      // Essayer de rafraîchir la session avant tout
-      await refreshSession();
+      // Get current session
+      const { data, error } = await supabase.auth.getSession();
       
-      // Petit délai pour permettre au rafraîchissement de se propager
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const isAuthenticated = await verifyAuth();
-      
-      if (!mountedRef.current) {
-        authCheckInProgress.current = false;
+      if (error) {
+        console.error("Error checking session:", error);
         return false;
       }
       
-      if (!isAuthenticated) {
-        console.log("No active session found, redirecting to login");
-        setAuthError(true);
-        authCheckInProgress.current = false;
+      if (!data.session || !data.session.user) {
+        console.log("No valid session found");
         return false;
       }
       
-      console.log("Active session found, initializing dashboard");
-      authCheckInProgress.current = false;
+      console.log("Valid session found, user authenticated");
       return true;
     } catch (error) {
-      console.error("Authentication error:", error);
-      if (mountedRef.current) {
-        setAuthError(true);
-      }
-      authCheckInProgress.current = false;
+      console.error("Error during auth check:", error);
       return false;
     }
   }, []);
+
+  // Sync user data (simple wrapper that doesn't do much)
+  const syncUserData = useCallback(async () => {
+    try {
+      await refreshUserData();
+      return true;
+    } catch (error) {
+      console.error("Error syncing user data:", error);
+      return false;
+    }
+  }, [refreshUserData]);
   
+  // Main initialization effect
   useEffect(() => {
     mountedRef.current = true;
+    authCheckAttemptRef.current = 0;
     
     const initDashboard = async () => {
-      if (authCheckAttempted.current) {
-        console.log("Auth check already attempted, skipping duplicate initialization");
-        return;
-      }
+      if (!mountedRef.current) return;
       
       setIsAuthChecking(true);
+      setAuthError(false);
+      
       try {
-        const isAuthenticated = await checkAuth();
+        // Try auth check with limited retries
+        let isAuthenticated = false;
         
-        if (!mountedRef.current) return;
+        while (authCheckAttemptRef.current < maxAuthCheckAttempts && !isAuthenticated) {
+          isAuthenticated = await checkAuth();
+          
+          if (!mountedRef.current) return;
+          
+          if (!isAuthenticated) {
+            authCheckAttemptRef.current++;
+            if (authCheckAttemptRef.current < maxAuthCheckAttempts) {
+              console.log(`Auth check failed, retrying (${authCheckAttemptRef.current}/${maxAuthCheckAttempts})...`);
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
+            }
+          }
+        }
         
         if (isAuthenticated) {
           console.log("User authenticated, initializing dashboard");
-          setIsAuthChecking(false);
           
-          // Délai court pour éviter les problèmes de rendu
-          initTimeoutRef.current = setTimeout(() => {
-            if (mountedRef.current) {
-              console.log("Dashboard ready");
-              setIsReady(true);
-            }
-          }, 500);
+          // Sync user data
+          await syncUserData();
+          
+          if (!mountedRef.current) return;
+          
+          setIsAuthChecking(false);
+          setIsReady(true);
         } else {
-          // Redirection vers la page de login avec un délai pour éviter les problèmes
-          console.log("Authentication failed, redirecting to login");
+          console.log("Authentication failed after retries, redirecting to login");
+          
           if (mountedRef.current) {
+            setIsAuthChecking(false);
+            setAuthError(false); // Not really an error, just not authenticated
+            
+            toast({
+              title: "Authentification nécessaire",
+              description: "Veuillez vous connecter pour accéder au tableau de bord",
+              variant: "destructive",
+            });
+            
+            // Redirect to login
             setTimeout(() => {
               if (mountedRef.current) {
                 navigate('/login', { replace: true });
               }
-            }, 400);
+            }, 300);
           }
         }
       } catch (err) {
         console.error("Error during dashboard initialization:", err);
+        
         if (mountedRef.current) {
           setAuthError(true);
           setIsAuthChecking(false);
+          
+          toast({
+            title: "Erreur de chargement",
+            description: "Une erreur est survenue lors du chargement du tableau de bord",
+            variant: "destructive",
+          });
         }
       }
     };
     
     console.log("Dashboard initialization started");
-    // Démarrer avec un léger délai pour éviter les conflits d'initialisation
+    
+    // Set up auth state listener
+    const subscription = setupAuthListener();
+    
+    // Start initialization with a small delay to avoid race conditions
     setTimeout(() => {
       if (mountedRef.current) {
         initDashboard();
       }
-    }, 300);
+    }, 500);
     
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (!mountedRef.current) return;
-      
-      if (event === 'SIGNED_OUT') {
-        console.log("Auth state change: signed out");
-        navigate('/login', { replace: true });
-      } else if (event === 'TOKEN_REFRESHED') {
-        console.log("Auth state change: token refreshed");
-        // No need to reinitialize here, just acknowledge the refresh
+    // Force ready state after timeout as fallback
+    const forceReadyTimeout = setTimeout(() => {
+      if (mountedRef.current && !isReady) {
+        console.log("Forcing dashboard ready state after timeout");
+        setIsAuthChecking(false);
+        setIsReady(true);
       }
-    });
+    }, 10000);
     
     return () => { 
       console.log("Dashboard initialization cleanup");
       mountedRef.current = false;
-      if (initTimeoutRef.current) {
-        clearTimeout(initTimeoutRef.current);
-      }
       subscription.unsubscribe();
+      clearTimeout(forceReadyTimeout);
     };
-  }, [checkAuth, navigate]);
+  }, [checkAuth, navigate, syncUserData, isReady, setupAuthListener]);
 
   return {
     isAuthChecking,
     isReady,
     authError,
     setAuthError,
-    setIsAuthChecking
+    setIsAuthChecking,
+    syncUserData
   };
 };
 
