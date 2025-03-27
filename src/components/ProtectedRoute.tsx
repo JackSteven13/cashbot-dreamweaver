@@ -63,23 +63,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       });
   }, [navigate]);
 
-  // Effect to prevent infinite redirects
-  useEffect(() => {
-    // Set a timeout to ensure we don't wait forever
-    const timeoutId = setTimeout(() => {
-      if (!initialCheckComplete.current && isAuthenticated === null) {
-        console.log("Auth check timeout reached, forcing redirect to login");
-        handleCleanLogin();
-      }
-    }, 8000); // 8 seconds timeout
-
-    return () => clearTimeout(timeoutId);
-  }, [handleCleanLogin, isAuthenticated]);
-
   // Mark initial check as complete when we get a definitive answer
   useEffect(() => {
     if (isAuthenticated !== null && !initialCheckComplete.current) {
       initialCheckComplete.current = true;
+      console.log("Initial auth check complete, authenticated:", isAuthenticated);
     }
   }, [isAuthenticated]);
 
@@ -113,6 +101,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   // If authenticated, show protected content
+  console.log("Authentication confirmed, rendering protected content");
   return <>{children}</>;
 };
 

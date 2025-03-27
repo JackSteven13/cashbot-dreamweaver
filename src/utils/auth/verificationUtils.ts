@@ -20,6 +20,8 @@ export const verifyAuth = async (): Promise<boolean> => {
     
     // More strict verification of session validity
     if (data.session && data.session.user && data.session.user.id) {
+      console.log("Session found, checking if valid");
+      
       // Check if session hasn't expired
       const tokenExpiry = new Date((data.session.expires_at || 0) * 1000);
       const now = new Date();

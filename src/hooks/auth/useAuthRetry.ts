@@ -32,7 +32,7 @@ export const useAuthRetry = ({
       console.log(`Auth verification ${isManualRetry ? "manual" : "automatic"} (attempt ${retryAttempts + 1})`);
       
       // Try refreshing the session first for better persistence
-      if (retryAttempts > 0) {
+      if (retryAttempts > 0 || isManualRetry) {
         console.log("Trying to refresh session before auth check");
         await refreshSession();
         
@@ -73,6 +73,7 @@ export const useAuthRetry = ({
       }
       
       // Auth check successful
+      console.log("Auth check successful");
       setRetryAttempts(0); // Reset retry counter on success
       setIsRetrying(false);
       authCheckInProgress.current = false;

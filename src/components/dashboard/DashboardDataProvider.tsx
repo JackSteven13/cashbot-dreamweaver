@@ -1,3 +1,4 @@
+
 import React, { ReactNode, useState, useCallback, useEffect, useRef } from 'react';
 import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
@@ -36,6 +37,8 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
   const [forcedSubscription, setForcedSubscription] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  
+  console.log("DashboardDataProvider rendering, renderKey:", renderKey);
   
   const {
     isAuthChecking,
@@ -80,6 +83,7 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
   const forceRefresh = useCallback(() => {
     if (!mountedRef.current) return;
     
+    console.log("Forcing dashboard refresh");
     setRenderKey(Date.now());
     refreshUserData().catch(error => console.error("Error refreshing user data:", error));
   }, [refreshUserData]);
@@ -104,10 +108,8 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
         console.log(`Subscription mismatch: localStorage=${storedSubscription}, userData=${userData.subscription}`);
         setForcedSubscription(storedSubscription);
       }
-      
-      setTimeout(forceRefresh, 1000);
     }
-  }, [isAuthChecking, isLoading, userData, forceRefresh]);
+  }, [isAuthChecking, isLoading, userData]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -135,17 +137,22 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
   }, [authError, isAuthChecking, syncUserData]);
 
   if (isAuthChecking || isLoading || !isReady || isChecking) {
+    console.log("Dashboard loading state:", { isAuthChecking, isLoading, isReady, isChecking });
     return <DashboardLoading />;
   }
 
   if (authError || initError) {
+    console.log("Dashboard error state:", { authError, initError });
     return <DashboardError errorType="auth" />;
   }
 
   if (!userData || !userData.username) {
+    console.log("Missing user data, showing error");
     return <DashboardError errorType="data" onRefresh={forceRefresh} />;
   }
 
+  console.log("Dashboard ready to render with user:", userData.username);
+  
   const effectiveSubscription = forcedSubscription || userData.subscription || 'freemium';
   
   const canStartSession = !isDormant && canStartManualSession(effectiveSubscription, dailySessionCount, userData.balance);
