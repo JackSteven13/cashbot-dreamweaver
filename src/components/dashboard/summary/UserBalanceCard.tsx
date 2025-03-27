@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Sparkles, Users } from 'lucide-react';
 
 interface UserBalanceCardProps {
@@ -19,11 +19,23 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   referralCount = 0,
   referralBonus = 0
 }) => {
-  // Formater l'affichage de l'abonnement avec une majuscule
-  const formattedSubscription = subscription === 'alpha' 
-    ? 'Alpha Premium' 
-    : subscription.charAt(0).toUpperCase() + subscription.slice(1);
+  // Memoize subscription formatting to avoid unnecessary recalculations
+  const formattedSubscription = useMemo(() => {
+    if (!subscription) return 'Freemium'; // Fallback if subscription is undefined
     
+    if (subscription === 'alpha') return 'Alpha Premium';
+    if (subscription === 'pro') return 'Pro';
+    return subscription.charAt(0).toUpperCase() + subscription.slice(1);
+  }, [subscription]);
+  
+  // Determine if this is a premium subscription
+  const isPremium = useMemo(() => {
+    return subscription === 'alpha' || subscription === 'pro';
+  }, [subscription]);
+  
+  // Handle alpha-specific styling
+  const isAlpha = subscription === 'alpha';
+  
   return (
     <div className="mb-6">
       <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white">
@@ -45,9 +57,18 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         </div>
         
         <div className="grid grid-cols-2 gap-4 mt-5">
-          <div className={`${subscription === 'alpha' ? 'bg-violet-800/50' : 'bg-slate-800/70'} backdrop-blur-sm rounded-lg p-3 border ${subscription === 'alpha' ? 'border-purple-500/30' : 'border-white/5'}`}>
+          <div className={`${
+            isAlpha 
+              ? 'bg-violet-800/50 border-purple-500/30' 
+              : isPremium 
+                ? 'bg-blue-800/50 border-blue-500/30' 
+                : 'bg-slate-800/70 border-white/5'
+            } backdrop-blur-sm rounded-lg p-3 border`}>
             <div className="text-xs text-white/70 mb-1">Abonnement</div>
-            <div className="font-medium">{formattedSubscription}</div>
+            <div className="font-medium flex items-center">
+              {formattedSubscription}
+              {isAlpha && <Sparkles className="h-3 w-3 ml-1.5 text-purple-300" />}
+            </div>
           </div>
           
           <div className="bg-slate-800/70 backdrop-blur-sm rounded-lg p-3 border border-white/5">

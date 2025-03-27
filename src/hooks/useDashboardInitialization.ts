@@ -13,8 +13,9 @@ export const useDashboardInitialization = () => {
   const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const authCheckInProgress = useRef(false);
   const authCheckAttempted = useRef(false);
+  const retryCount = useRef(0);
   
-  // Fonction améliorée pour vérifier l'authentification
+  // Fonction améliorée pour vérifier l'authentification avec gestion de retries
   const checkAuth = useCallback(async () => {
     if (authCheckInProgress.current) {
       console.log("Auth check already in progress, skipping");
@@ -26,28 +27,64 @@ export const useDashboardInitialization = () => {
       authCheckAttempted.current = true;
       
       // Essayer de rafraîchir la session avant tout
-      await refreshSession();
+      try {
+        await refreshSession();
+        // Petit délai pour permettre au rafraîchissement de se propager
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch (refreshError) {
+        console.log("Session refresh failed, continuing with auth check:", refreshError);
+      }
       
-      // Petit délai pour permettre au rafraîchissement de se propager
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Check localStorage first for a faster response
+      const storedSession = localStorage.getItem('supabase.auth.token');
+      if (!storedSession && retryCount.current > 0) {
+        console.log("No stored session found after retry, likely logged out");
+        if (mountedRef.current) {
+          setAuthError(true);
+          authCheckInProgress.current = false;
+          return false;
+        }
+      }
       
-      const isAuthenticated = await verifyAuth();
-      
-      if (!mountedRef.current) {
+      try {
+        const isAuthenticated = await verifyAuth();
+        
+        if (!mountedRef.current) {
+          authCheckInProgress.current = false;
+          return false;
+        }
+        
+        if (!isAuthenticated) {
+          console.log("No active session found, redirecting to login");
+          setAuthError(true);
+          authCheckInProgress.current = false;
+          return false;
+        }
+        
+        console.log("Active session found, initializing dashboard");
+        retryCount.current = 0;
+        authCheckInProgress.current = false;
+        return true;
+      } catch (verifyError) {
+        console.error("Error during auth verification:", verifyError);
+        
+        // Retry logic for transient errors
+        if (retryCount.current < 2 && mountedRef.current) {
+          retryCount.current++;
+          console.log(`Auth check failed, retrying (${retryCount.current}/2)...`);
+          authCheckInProgress.current = false;
+          
+          // Retry after a delay
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return await checkAuth();
+        }
+        
+        if (mountedRef.current) {
+          setAuthError(true);
+        }
         authCheckInProgress.current = false;
         return false;
       }
-      
-      if (!isAuthenticated) {
-        console.log("No active session found, redirecting to login");
-        setAuthError(true);
-        authCheckInProgress.current = false;
-        return false;
-      }
-      
-      console.log("Active session found, initializing dashboard");
-      authCheckInProgress.current = false;
-      return true;
     } catch (error) {
       console.error("Authentication error:", error);
       if (mountedRef.current) {
@@ -65,23 +102,30 @@ export const useDashboardInitialization = () => {
       
       if (!session) return false;
       
-      const { data: userBalanceData, error } = await supabase
-        .from('user_balances')
-        .select('subscription')
-        .eq('id', session.user.id)
-        .single();
-      
-      if (error || !userBalanceData) {
-        console.error("Error fetching subscription data:", error);
-        return false;
-      }
-      
-      // Mettre à jour le localStorage si nécessaire
-      const localSubscription = localStorage.getItem('subscription');
-      
-      if (localSubscription !== userBalanceData.subscription) {
-        console.log(`Syncing subscription: ${localSubscription} -> ${userBalanceData.subscription}`);
-        localStorage.setItem('subscription', userBalanceData.subscription);
+      try {
+        const { data: userBalanceData, error } = await supabase
+          .from('user_balances')
+          .select('subscription')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        
+        if (error) {
+          console.error("Error fetching subscription data:", error);
+          return false;
+        }
+        
+        if (userBalanceData && userBalanceData.subscription) {
+          // Mettre à jour le localStorage si nécessaire
+          const localSubscription = localStorage.getItem('subscription');
+          
+          if (localSubscription !== userBalanceData.subscription) {
+            console.log(`Syncing subscription: ${localSubscription || 'none'} -> ${userBalanceData.subscription}`);
+            localStorage.setItem('subscription', userBalanceData.subscription);
+            return true;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
       }
       
       // Vérifier si une actualisation forcée a été demandée (par exemple après un paiement réussi)
@@ -111,6 +155,12 @@ export const useDashboardInitialization = () => {
       
       setIsAuthChecking(true);
       try {
+        // Try to get subscription from localStorage first for faster UI display
+        const cachedSubscription = localStorage.getItem('subscription');
+        if (cachedSubscription) {
+          console.log("Using cached subscription for initial render:", cachedSubscription);
+        }
+        
         const isAuthenticated = await checkAuth();
         
         if (!mountedRef.current) return;
@@ -118,8 +168,14 @@ export const useDashboardInitialization = () => {
         if (isAuthenticated) {
           console.log("User authenticated, initializing dashboard");
           
-          // Synchroniser les données utilisateur
-          await syncUserData();
+          // Try to synchronize user data but don't block rendering
+          setTimeout(async () => {
+            if (mountedRef.current) {
+              await syncUserData().catch(err => {
+                console.warn("Background sync failed, will retry later:", err);
+              });
+            }
+          }, 1000);
           
           setIsAuthChecking(false);
           
