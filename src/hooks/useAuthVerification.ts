@@ -9,6 +9,7 @@ export const useAuthVerification = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [authCheckFailed, setAuthCheckFailed] = useState(false);
   const isMounted = useRef(true);
+  const initialCheckPerformed = useRef(false);
   
   const { username, setUsername, fetchProfileData } = useProfileData();
   
@@ -34,6 +35,8 @@ export const useAuthVerification = () => {
       const isAuthValid = await performAuthCheck(isManualRetry);
       
       if (!isMounted.current) return;
+      
+      initialCheckPerformed.current = true;
       
       if (!isAuthValid) {
         console.log("Auth check failed, setting authCheckFailed to true");
@@ -61,6 +64,7 @@ export const useAuthVerification = () => {
       }
     } catch (error) {
       console.error("Error during auth check:", error);
+      initialCheckPerformed.current = true;
       if (isMounted.current) {
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
@@ -84,12 +88,13 @@ export const useAuthVerification = () => {
 
   useEffect(() => {
     isMounted.current = true;
+    initialCheckPerformed.current = false;
     
     console.log("useAuthVerification hook mounting");
     
     // Set timeout for initial auth check with longer delay
     const initTimeout = setTimeout(() => {
-      if (isMounted.current) {
+      if (isMounted.current && !initialCheckPerformed.current) {
         console.log("Initial auth check starting after delay");
         checkAuth();
       }

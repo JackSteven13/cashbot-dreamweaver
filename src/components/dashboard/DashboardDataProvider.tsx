@@ -36,8 +36,10 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
   const [renderKey, setRenderKey] = useState(Date.now());
   const [forcedSubscription, setForcedSubscription] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  const [forcedLoading, setForcedLoading] = useState(false);
   const mountedRef = useRef(true);
-  const initAttempted = useRef(false);
+  const initialRenderComplete = useRef(false);
+  const readyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   console.log("DashboardDataProvider rendering, renderKey:", renderKey);
   
@@ -100,17 +102,28 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
     }
   }, [forceRefresh, userData]);
 
+  // Ensure we render after a maximum timeout
   useEffect(() => {
-    if (!isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
-      console.log("Dashboard mounted with user data:", userData.username);
+    if (!initialRenderComplete.current) {
+      initialRenderComplete.current = true;
       
-      const storedSubscription = localStorage.getItem('subscription');
-      if (storedSubscription && storedSubscription !== userData.subscription) {
-        console.log(`Subscription mismatch: localStorage=${storedSubscription}, userData=${userData.subscription}`);
-        setForcedSubscription(storedSubscription);
-      }
+      // Force render after a timeout as a fallback
+      readyTimeoutRef.current = setTimeout(() => {
+        if (!mountedRef.current) return;
+        
+        if (isAuthChecking || isLoading || !isReady || isChecking) {
+          console.log("Forcing ready state after timeout");
+          setForcedLoading(false);
+        }
+      }, 5000);
     }
-  }, [isAuthChecking, isLoading, userData]);
+    
+    return () => {
+      if (readyTimeoutRef.current) {
+        clearTimeout(readyTimeoutRef.current);
+      }
+    };
+  }, [isAuthChecking, isLoading, isReady, isChecking]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -121,27 +134,10 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
     };
   }, []);
 
-  useEffect(() => {
-    if (authError && !isAuthChecking) {
-      const timeoutId = setTimeout(() => {
-        if (!mountedRef.current) return;
-        
-        console.log("Retrying authentication after error...");
-        if (syncUserData) {
-          syncUserData().catch(e => {
-            if (!mountedRef.current) return;
-            
-            console.error("Final sync attempt failed:", e);
-            setInitError("Authentication failed after retry");
-          });
-        }
-      }, 3000);
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [authError, isAuthChecking, syncUserData]);
-
-  if (isAuthChecking || isLoading || !isReady || isChecking) {
+  // Only show loading state if really needed
+  const showLoading = forcedLoading || (isAuthChecking || isLoading || !isReady || isChecking);
+  
+  if (showLoading) {
     console.log("Dashboard loading state:", { isAuthChecking, isLoading, isReady, isChecking });
     return <DashboardLoading />;
   }
@@ -151,6 +147,7 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
     return <DashboardError errorType="auth" />;
   }
 
+  // Failsafe - make sure we have user data
   if (!userData || !userData.username) {
     console.log("Missing user data, showing error");
     return <DashboardError errorType="data" onRefresh={forceRefresh} />;

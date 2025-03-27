@@ -71,9 +71,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       redirectTimeoutRef.current = setTimeout(() => {
         console.log("Auth check timeout reached, forcing redirect to login");
         handleCleanLogin();
-      }, 15000); // 15 seconds timeout
-    } else if (redirectTimeoutRef.current) {
-      clearTimeout(redirectTimeoutRef.current);
+      }, 30000); // 30 seconds timeout (increased from 15)
+    } else if (initialCheckComplete.current || isAuthenticated !== null) {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
     }
 
     return () => {

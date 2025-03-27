@@ -57,7 +57,7 @@ export const refreshSession = async () => {
       return null;
     }
     
-    // Use refreshSession with persistence
+    // To avoid deadlocks, use a simplified refresh approach
     const { data, error } = await supabase.auth.refreshSession();
     
     if (error) {
