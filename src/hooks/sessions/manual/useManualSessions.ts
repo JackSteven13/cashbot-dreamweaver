@@ -15,19 +15,24 @@ export const useManualSessions = ({
   setShowLimitAlert
 }: UseManualSessionsProps): UseManualSessionsReturn => {
   const [isStartingSession, setIsStartingSession] = useState(false);
-  const [localBalance, setLocalBalance] = useState(userData.balance);
+  const [localBalance, setLocalBalance] = useState(userData?.balance || 0);
   
   // Maintain a local reference to the current balance to avoid race conditions
-  const currentBalanceRef = useRef<number>(userData.balance);
+  const currentBalanceRef = useRef<number>(userData?.balance || 0);
   
   // Update the balance reference when userData changes
   useEffect(() => {
-    if (currentBalanceRef.current !== userData.balance) {
-      console.log("Updating balance reference from", currentBalanceRef.current, "to", userData.balance);
-      currentBalanceRef.current = userData.balance;
-      setLocalBalance(userData.balance);
+    // Make sure userData is defined and has a valid balance
+    if (userData && typeof userData.balance === 'number' && !isNaN(userData.balance)) {
+      if (currentBalanceRef.current !== userData.balance) {
+        console.log("Updating balance reference from", currentBalanceRef.current, "to", userData.balance);
+        currentBalanceRef.current = userData.balance;
+        setLocalBalance(userData.balance);
+      }
+    } else {
+      console.warn("Invalid userData or balance detected", userData);
     }
-  }, [userData.balance]);
+  }, [userData]);
   
   // Hooks for session management
   const { 
@@ -43,6 +48,16 @@ export const useManualSessions = ({
   const { calculateSessionGain } = useSessionGain();
 
   const handleStartSession = async () => {
+    // Early validation of userData
+    if (!userData || typeof userData.balance !== 'number') {
+      toast({
+        title: "Erreur de données",
+        description: "Impossible de démarrer la session. Veuillez rafraîchir la page.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Check if we can start a new session
     if (!canStartNewSession()) {
       return;
@@ -98,8 +113,8 @@ export const useManualSessions = ({
         updateBoostCount();
         
         // Check if limit is now reached
-        const effectiveSub = getEffectiveSubscription(userData.subscription);
-        const effectiveLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS];
+        const effectiveSub = getEffectiveSubscription(userData.subscription || 'freemium');
+        const effectiveLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
         
         if (newBalance >= effectiveLimit) {
           setShowLimitAlert(true);

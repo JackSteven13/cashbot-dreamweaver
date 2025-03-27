@@ -46,6 +46,13 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
     return 'bg-slate-800/70 border-white/5';
   };
   
+  // Ensure displayBalance is a valid number
+  const safeBalance = useMemo(() => {
+    return typeof displayBalance === 'number' && !isNaN(displayBalance) 
+      ? displayBalance 
+      : 0;
+  }, [displayBalance]);
+  
   return (
     <div className="mb-6">
       <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white">
@@ -57,7 +64,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         </div>
         
         <div className="flex items-center space-x-2">
-          <span className="text-3xl font-bold">{displayBalance.toFixed(2)}€</span>
+          <span className="text-3xl font-bold">{safeBalance.toFixed(2)}€</span>
           {referralBonus > 0 && (
             <div className="bg-green-500/30 text-green-200 text-xs px-2 py-1 rounded-full flex items-center">
               <Sparkles className="h-3 w-3 mr-1" />

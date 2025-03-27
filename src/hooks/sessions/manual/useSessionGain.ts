@@ -16,11 +16,26 @@ export const useSessionGain = () => {
     currentBalance: number,
     setShowLimitAlert: (show: boolean) => void
   ): Promise<{ success: boolean; finalGain: number; newBalance: number }> => {
+    if (!userData || currentBalance === undefined) {
+      console.error("Invalid userData or balance in calculateSessionGain", {
+        userData: !!userData,
+        balance: currentBalance
+      });
+      
+      toast({
+        title: "Erreur technique",
+        description: "Une erreur est survenue lors du calcul du gain. Veuillez rafraîchir la page.",
+        variant: "destructive"
+      });
+      
+      return { success: false, finalGain: 0, newBalance: currentBalance || 0 };
+    }
+    
     // Simulate session processing delay
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Get effective subscription
-    const effectiveSub = getEffectiveSubscription(userData.subscription);
+    const effectiveSub = getEffectiveSubscription(userData.subscription || 'freemium');
     
     // Calculate daily limit based on effective subscription
     const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
@@ -38,10 +53,11 @@ export const useSessionGain = () => {
     }
     
     // Calculate gain using utility function
+    const referralCount = Array.isArray(userData.referrals) ? userData.referrals.length : 0;
     const randomGain = calculateManualSessionGain(
       effectiveSub, 
       currentBalance, 
-      userData.referrals.length
+      referralCount
     );
     
     // Final check to ensure we don't exceed limit

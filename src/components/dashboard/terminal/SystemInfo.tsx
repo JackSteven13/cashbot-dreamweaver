@@ -45,7 +45,7 @@ export const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
   remainingSessions,
   referralBonus = 0
 }) => {
-  // Handle the case when subscription might be null or undefined
+  // Ensure subscription is always a string
   const effectiveSubscription = subscription || 'freemium';
   const isAlphaPlan = effectiveSubscription === 'alpha';
   const isProPlan = effectiveSubscription === 'pro' || tempProEnabled;
@@ -71,6 +71,16 @@ export const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
     return 'bg-slate-700/30';
   };
   
+  // Handle display for sessions
+  const sessionsDisplay = () => {
+    if (tempProEnabled) return 'Illimitées (Essai)';
+    if (effectiveSubscription !== 'freemium') return 'Illimitées';
+    
+    const sessionsRemaining = typeof remainingSessions === 'number' ? remainingSessions : 0;
+    const suffix = sessionsRemaining !== 1 ? 's' : '';
+    return `${sessionsRemaining} session${suffix} restante${suffix}`;
+  };
+  
   return (
     <div className="space-y-3 mb-4 font-mono text-sm">
       <div className="grid grid-cols-2 gap-3">
@@ -90,11 +100,7 @@ export const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
         <div className={`${getBackgroundClass()} p-2 rounded-lg border ${getBorderClass()}`}>
           <div className="text-xs text-gray-400">Sessions</div>
           <div className="text-sm font-medium text-white">
-            {tempProEnabled 
-              ? 'Illimitées (Essai)' 
-              : (effectiveSubscription === 'freemium' 
-                ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}` 
-                : 'Illimitées')}
+            {sessionsDisplay()}
           </div>
         </div>
         <div className={`${getBackgroundClass()} p-2 rounded-lg border ${getBorderClass()}`}>

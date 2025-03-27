@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
@@ -7,6 +7,7 @@ import DashboardLoading from '@/components/dashboard/DashboardLoading';
 import DashboardError from '@/components/dashboard/DashboardError';
 import DailyLimitAlert from '@/components/dashboard/DailyLimitAlert';
 import DormancyAlert from '@/components/dashboard/DormancyAlert';
+import ToastProvider from '@/components/ToastProvider';
 import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
 import { useDormancyCheck } from '@/hooks/useDormancyCheck';
@@ -20,6 +21,7 @@ const Dashboard = () => {
   const [renderKey, setRenderKey] = useState(Date.now());
   const [forcedSubscription, setForcedSubscription] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
   
   const {
     isAuthChecking,
@@ -64,12 +66,16 @@ const Dashboard = () => {
 
   // Callback to force refresh when needed
   const forceRefresh = useCallback(() => {
+    if (!mountedRef.current) return;
+    
     setRenderKey(Date.now());
     refreshUserData().catch(error => console.error("Error refreshing user data:", error));
   }, [refreshUserData]);
 
   // Handle subscription updates from synchronizer
   const handleSubscriptionSync = useCallback((newSubscription: string) => {
+    if (!mountedRef.current) return;
+    
     console.log("Subscription synchronized:", newSubscription);
     setForcedSubscription(newSubscription);
     if (userData && userData.subscription !== newSubscription) {
@@ -95,6 +101,12 @@ const Dashboard = () => {
     }
   }, [isAuthChecking, isLoading, userData, forceRefresh]);
 
+  // Set mounted flag
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   // Rediriger vers le tableau de bord principal si l'URL est exactement /dashboard sans sous-route
   useEffect(() => {
     if (window.location.pathname === "/dashboard") {
@@ -107,9 +119,13 @@ const Dashboard = () => {
     if (authError && !isAuthChecking) {
       // Wait and retry authentication once more
       const timeoutId = setTimeout(() => {
+        if (!mountedRef.current) return;
+        
         console.log("Retrying authentication after error...");
         if (syncUserData) {
           syncUserData().catch(e => {
+            if (!mountedRef.current) return;
+            
             console.error("Final sync attempt failed:", e);
             setInitError("Authentication failed after retry");
           });
@@ -122,21 +138,36 @@ const Dashboard = () => {
 
   // Afficher un loader plus robuste pendant le chargement
   if (isAuthChecking || isLoading || !isReady || isChecking) {
-    return <DashboardLoading />;
+    return (
+      <>
+        <ToastProvider />
+        <DashboardLoading />
+      </>
+    );
   }
 
   // Afficher une page d'erreur si l'authentification échoue
   if (authError || initError) {
-    return <DashboardError errorType="auth" />;
+    return (
+      <>
+        <ToastProvider />
+        <DashboardError errorType="auth" />
+      </>
+    );
   }
 
   // Vérification supplémentaire pour userData
   if (!userData || !userData.username) {
-    return <DashboardError errorType="data" onRefresh={forceRefresh} />;
+    return (
+      <>
+        <ToastProvider />
+        <DashboardError errorType="data" onRefresh={forceRefresh} />
+      </>
+    );
   }
 
   // Use forced subscription if available, otherwise use userData.subscription
-  const effectiveSubscription = forcedSubscription || userData.subscription;
+  const effectiveSubscription = forcedSubscription || userData.subscription || 'freemium';
 
   // Contenu principal du tableau de bord
   const renderDashboardContent = () => (
@@ -184,17 +215,20 @@ const Dashboard = () => {
 
   // Simplifié pour supprimer les routes inutiles
   return (
-    <DashboardLayout
-      key={renderKey}
-      username={userData.username}
-      subscription={effectiveSubscription}
-      selectedNavItem={selectedNavItem}
-      setSelectedNavItem={setSelectedNavItem}
-    >
-      <Routes>
-        <Route index element={renderDashboardContent()} />
-      </Routes>
-    </DashboardLayout>
+    <>
+      <ToastProvider />
+      <DashboardLayout
+        key={renderKey}
+        username={userData.username}
+        subscription={effectiveSubscription}
+        selectedNavItem={selectedNavItem}
+        setSelectedNavItem={setSelectedNavItem}
+      >
+        <Routes>
+          <Route index element={renderDashboardContent()} />
+        </Routes>
+      </DashboardLayout>
+    </>
   );
 };
 
