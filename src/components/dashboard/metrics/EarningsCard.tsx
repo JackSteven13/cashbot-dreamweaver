@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { TrendingUp, Calendar, PieChart } from 'lucide-react';
+import { formatRevenue } from '@/utils/formatters';
 
 interface EarningsCardProps {
   balance: number;
@@ -22,7 +23,7 @@ const EarningsCard = ({ balance, isNewUser, referralBonus = 0 }: EarningsCardPro
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Aujourd'hui</p>
             <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-              {isNewUser ? "0.00€" : `+${balance.toFixed(2)}€`}
+              {isNewUser ? "0€" : `+${formatRevenue(balance)}`}
             </p>
             {referralBonus > 0 && (
               <p className="text-xs text-green-600 dark:text-green-400 mt-1">
@@ -37,7 +38,7 @@ const EarningsCard = ({ balance, isNewUser, referralBonus = 0 }: EarningsCardPro
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Cette semaine</p>
             <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-              {isNewUser ? "0.00€" : `+${(balance * 1.5).toFixed(2)}€`}
+              {isNewUser ? "0€" : `+${formatRevenue(balance * 1.5)}`}
             </p>
           </div>
           <Calendar className="h-8 w-8 text-blue-500 dark:text-blue-400" />
@@ -47,7 +48,7 @@ const EarningsCard = ({ balance, isNewUser, referralBonus = 0 }: EarningsCardPro
           <div>
             <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Ce mois</p>
             <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-              {isNewUser ? "0.00€" : `+${(balance * 3).toFixed(2)}€`}
+              {isNewUser ? "0€" : `+${formatRevenue(balance * 3)}`}
             </p>
           </div>
           <PieChart className="h-8 w-8 text-blue-500 dark:text-blue-400" />

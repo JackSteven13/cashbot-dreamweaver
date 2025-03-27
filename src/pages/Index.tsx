@@ -89,7 +89,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Paris, utilisateur depuis 6 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro et j'ai généré 678,43€ le premier mois. Au fil du temps, j'ai atteint 1247,92€ mensuels. L'interface est intuitive et le système fonctionne vraiment comme promis."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro et j'ai généré 678€ le premier mois. Au fil du temps, j'ai atteint 1248€ mensuels. L'interface est intuitive et le système fonctionne vraiment comme promis."</p>
               </div>
               
               <div className="glass-card p-4 md:p-6 rounded-xl">
@@ -100,7 +100,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Lyon, utilisatrice depuis 4 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"Grâce à l'abonnement Visionnaire, j'ai pu générer 2183,57€ dès le deuxième mois. Les rapports détaillés me permettent d'optimiser constamment mes performances et j'ai noté une progression régulière de mes revenus."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"Grâce à l'abonnement Visionnaire, j'ai pu générer 2184€ dès le deuxième mois. Les rapports détaillés me permettent d'optimiser constamment mes performances et j'ai noté une progression régulière de mes revenus."</p>
               </div>
               
               <div className="glass-card p-4 md:p-6 rounded-xl">
@@ -111,7 +111,7 @@ const Index = () => {
                     <p className="text-xs md:text-sm text-muted-foreground">Marseille, utilisateur depuis 3 mois</p>
                   </div>
                 </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro puis je suis passé à Alpha après avoir vu les résultats. Je génère maintenant 3426,89€ par mois avec très peu d'effort. L'algorithme d'Alpha est vraiment supérieur aux autres offres."</p>
+                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro puis je suis passé à Alpha après avoir vu les résultats. Je génère maintenant 3427€ par mois avec très peu d'effort. L'algorithme d'Alpha est vraiment supérieur aux autres offres."</p>
               </div>
             </div>
           </div>
