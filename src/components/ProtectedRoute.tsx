@@ -17,6 +17,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const redirectInProgress = useRef(false);
   const initialCheckComplete = useRef(false);
   const autoRetryCount = useRef(0);
+  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const { 
     isAuthenticated, 
@@ -63,17 +64,23 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       });
   }, [navigate]);
 
-  // Effect to prevent infinite redirects
+  // Effect to prevent infinite redirects - use a longer timeout
   useEffect(() => {
     // Set a timeout to ensure we don't wait forever
-    const timeoutId = setTimeout(() => {
-      if (!initialCheckComplete.current && isAuthenticated === null) {
+    if (!initialCheckComplete.current && isAuthenticated === null) {
+      redirectTimeoutRef.current = setTimeout(() => {
         console.log("Auth check timeout reached, forcing redirect to login");
         handleCleanLogin();
-      }
-    }, 8000); // 8 seconds timeout
+      }, 15000); // 15 seconds timeout
+    } else if (redirectTimeoutRef.current) {
+      clearTimeout(redirectTimeoutRef.current);
+    }
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
   }, [handleCleanLogin, isAuthenticated]);
 
   // Mark initial check as complete when we get a definitive answer
@@ -81,6 +88,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     if (isAuthenticated !== null && !initialCheckComplete.current) {
       initialCheckComplete.current = true;
       console.log("Initial auth check complete, authenticated:", isAuthenticated);
+      
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
     }
   }, [isAuthenticated]);
 
@@ -102,6 +113,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   // Redirect to login if not authenticated
   if (isAuthenticated === false) {
+    console.log("User is not authenticated, redirecting to login page");
+    
     if (!redirectInProgress.current) {
       redirectInProgress.current = true;
       toast({

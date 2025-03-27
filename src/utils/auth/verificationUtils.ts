@@ -45,6 +45,14 @@ export const verifyAuth = async (): Promise<boolean> => {
         return true;
       }
       
+      // Make an extra verification check with the API to ensure the session is valid
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !userData.user) {
+        console.error("Invalid user data despite valid session token:", userError);
+        return false;
+      }
+      
       console.log("Valid session found for user:", data.session.user.id);
       return true;
     }

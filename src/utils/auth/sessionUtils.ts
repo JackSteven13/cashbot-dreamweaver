@@ -49,6 +49,14 @@ export const refreshSession = async () => {
   try {
     console.log("Attempting to refresh the session");
     
+    // First check if there is a session to refresh
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    if (!sessionData.session) {
+      console.log("No session to refresh");
+      return null;
+    }
+    
     // Use refreshSession with persistence
     const { data, error } = await supabase.auth.refreshSession();
     
@@ -109,7 +117,12 @@ export const forceSignOut = async (): Promise<boolean> => {
     await new Promise(resolve => setTimeout(resolve, 300));
     
     // Perform more stable sign out with local and global scope
-    await supabase.auth.signOut({ scope: 'global' });
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
+    
+    if (error) {
+      console.error("Error during signOut API call:", error);
+      return false;
+    }
     
     // Short delay for sign out to process
     await new Promise(resolve => setTimeout(resolve, 400));

@@ -1,5 +1,5 @@
 
-import { useCallback, useRef, useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { refreshSession, verifyAuth } from "@/utils/auth/index";
 
 interface UseAuthRetryOptions {
@@ -7,10 +7,20 @@ interface UseAuthRetryOptions {
   isMounted: React.RefObject<boolean>;
 }
 
+interface UseAuthRetryResult {
+  retryAttempts: number;
+  isRetrying: boolean;
+  setIsRetrying: (value: boolean) => void;
+  performAuthCheck: (isManualRetry?: boolean) => Promise<boolean>;
+}
+
+/**
+ * Hook to handle authentication retry logic with improved persistence
+ */
 export const useAuthRetry = ({ 
   maxRetries = 3,
   isMounted
-}: UseAuthRetryOptions) => {
+}: UseAuthRetryOptions): UseAuthRetryResult => {
   const [retryAttempts, setRetryAttempts] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
   const authCheckInProgress = useRef(false);
@@ -29,18 +39,22 @@ export const useAuthRetry = ({
         setIsRetrying(true);
       }
       
-      console.log(`Auth verification ${isManualRetry ? "manual" : "automatic"} (attempt ${retryAttempts + 1})`);
+      console.log(`Vérification d'authentification ${isManualRetry ? "manuelle" : "automatique"} (tentative ${retryAttempts + 1})`);
       
-      // Try refreshing the session first for better persistence
-      if (retryAttempts > 0 || isManualRetry) {
-        console.log("Trying to refresh session before auth check");
-        await refreshSession();
-        
-        // Small delay to allow refresh to propagate
-        await new Promise(resolve => setTimeout(resolve, 200));
+      // Always try to refresh the session first for better resilience
+      console.log("Trying to refresh session before auth check");
+      const refreshResult = await refreshSession();
+      
+      if (refreshResult) {
+        console.log("Session refreshed successfully before auth check");
+      } else {
+        console.log("Session refresh failed or wasn't needed, continuing with verification");
       }
       
-      // Verification with improved persistence
+      // Petit délai pour permettre au rafraîchissement de se propager
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Vérification avec persistance améliorée
       const isAuthValid = await verifyAuth();
       
       if (!isMounted.current) {
@@ -49,12 +63,12 @@ export const useAuthRetry = ({
       }
       
       if (!isAuthValid) {
-        console.log("Authentication failed");
+        console.log("Échec d'authentification");
         
         if (retryAttempts < maxRetries && !isManualRetry) {
           // Auto-retry with exponential backoff
           const delay = Math.min(1000 * Math.pow(1.5, retryAttempts), 5000);
-          console.log(`Automatic retry in ${delay}ms`);
+          console.log(`Nouvelle tentative automatique dans ${delay}ms`);
           
           setRetryAttempts(prev => prev + 1);
           authCheckInProgress.current = false;
@@ -73,19 +87,19 @@ export const useAuthRetry = ({
       }
       
       // Auth check successful
-      console.log("Auth check successful");
+      console.log("Authentication verification successful");
       setRetryAttempts(0); // Reset retry counter on success
       setIsRetrying(false);
       authCheckInProgress.current = false;
       return true;
       
     } catch (error) {
-      console.error("Error during authentication check:", error);
+      console.error("Erreur lors de la vérification d'authentification:", error);
       
       if (retryAttempts < maxRetries && !isManualRetry && isMounted.current) {
         // Auto-retry with exponential backoff
         const delay = Math.min(1000 * Math.pow(1.5, retryAttempts), 5000);
-        console.log(`Retry after error in ${delay}ms`);
+        console.log(`Nouvelle tentative après erreur dans ${delay}ms`);
         
         setRetryAttempts(prev => prev + 1);
         authCheckInProgress.current = false;

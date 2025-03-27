@@ -30,40 +30,48 @@ export const useAuthVerification = () => {
       setIsAuthenticated(null);
     }
     
-    const isAuthValid = await performAuthCheck(isManualRetry);
-    
-    if (!isMounted.current) return;
-    
-    if (!isAuthValid) {
-      console.log("Auth check failed, setting authCheckFailed to true");
-      setAuthCheckFailed(true);
-      setIsAuthenticated(false);
-      return;
-    }
-    
-    // Get user data for welcome message
-    const { data } = await supabase.auth.getUser();
-    const user = data.user;
-    
-    if (!user) {
-      console.log("No user found after auth check, setting authCheckFailed to true");
-      setAuthCheckFailed(true);
-      setIsAuthenticated(false);
-      return;
-    }
-    
-    // Fetch profile data for username
-    await fetchProfileData(user.id);
-    
-    if (isMounted.current) {
-      console.log("Auth check successful, setting isAuthenticated to true");
-      setIsAuthenticated(true);
+    try {
+      const isAuthValid = await performAuthCheck(isManualRetry);
+      
+      if (!isMounted.current) return;
+      
+      if (!isAuthValid) {
+        console.log("Auth check failed, setting authCheckFailed to true");
+        setAuthCheckFailed(true);
+        setIsAuthenticated(false);
+        return;
+      }
+      
+      // Get user data for welcome message
+      const { data, error } = await supabase.auth.getUser();
+      
+      if (error || !data.user) {
+        console.log("No user found after auth check, setting authCheckFailed to true", error);
+        setAuthCheckFailed(true);
+        setIsAuthenticated(false);
+        return;
+      }
+      
+      // Fetch profile data for username
+      await fetchProfileData(data.user.id);
+      
+      if (isMounted.current) {
+        console.log("Auth check successful, setting isAuthenticated to true");
+        setIsAuthenticated(true);
+      }
+    } catch (error) {
+      console.error("Error during auth check:", error);
+      if (isMounted.current) {
+        setAuthCheckFailed(true);
+        setIsAuthenticated(false);
+      }
     }
   }, [performAuthCheck, fetchProfileData, setIsRetrying]);
 
   // Handle auth state changes
   useAuthStateListener({
     onSignOut: () => {
+      console.log("Auth state change: user signed out");
       setIsAuthenticated(false);
       setUsername(null);
     },
@@ -77,13 +85,15 @@ export const useAuthVerification = () => {
   useEffect(() => {
     isMounted.current = true;
     
+    console.log("useAuthVerification hook mounting");
+    
     // Set timeout for initial auth check with longer delay
     const initTimeout = setTimeout(() => {
       if (isMounted.current) {
         console.log("Initial auth check starting after delay");
         checkAuth();
       }
-    }, 800);
+    }, 500);
     
     return () => {
       console.log("useAuthVerification hook unmounting");
