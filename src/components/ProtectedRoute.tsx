@@ -25,7 +25,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     checkAuth
   } = useAuthVerification();
 
-  // Fonction pour retry automatique améliorée
+  // Improved auto-retry function
   useEffect(() => {
     if (authCheckFailed && autoRetryCount.current < 2) {
       console.log(`Auto-retry authentication attempt ${autoRetryCount.current + 1}`);
@@ -43,19 +43,19 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     if (redirectInProgress.current) return;
     
     redirectInProgress.current = true;
-    console.log("Déconnexion propre initiée");
+    console.log("Clean logout initiated");
     
     Promise.resolve(forceSignOut())
       .then(() => {
-        console.log("Redirection vers la page de connexion");
-        // Petit délai pour permettre à la déconnexion de se terminer
+        console.log("Redirecting to login page");
+        // Small delay to allow logout to complete
         setTimeout(() => {
           navigate('/login', { replace: true });
           redirectInProgress.current = false;
         }, 300);
       })
       .catch((error) => {
-        console.error("Erreur pendant la déconnexion propre:", error);
+        console.error("Error during clean logout:", error);
         setTimeout(() => {
           navigate('/login', { replace: true });
           redirectInProgress.current = false;

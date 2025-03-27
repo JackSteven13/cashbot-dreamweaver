@@ -14,27 +14,42 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);
   
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
-  // Check if we have a recent email to suggest, but don't auto-login
+  // Check if already logged in
   useEffect(() => {
+    const checkExistingSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          console.log("Active session found, redirecting to dashboard");
+          navigate('/dashboard', { replace: true });
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
+      } finally {
+        setIsCheckingSession(false);
+      }
+    };
+    
+    checkExistingSession();
+    
     // Get last email but don't use it for auto-login
     const savedEmail = localStorage.getItem('last_logged_in_email');
     if (savedEmail) {
       setLastLoggedInEmail(savedEmail);
       setEmail(savedEmail); // Pre-fill the email field as a suggestion
     }
-  }, []);
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      // Utiliser la persistance par défaut (localStorage)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -46,16 +61,15 @@ const Login = () => {
         // Save the email for future suggestions
         localStorage.setItem('last_logged_in_email', email);
         
-        // Attendre que l'authentification soit entièrement établie
-        setTimeout(async () => {
-          toast({
-            title: "Connexion réussie",
-            description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
-          });
-          
-          // Simple redirect
+        toast({
+          title: "Connexion réussie",
+          description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
+        });
+        
+        // Redirect to dashboard with a slight delay to allow session to be established
+        setTimeout(() => {
           navigate('/dashboard', { replace: true });
-        }, 800);
+        }, 500);
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -70,7 +84,7 @@ const Login = () => {
     }
   };
 
-  // Si on vérifie encore la session, afficher un loader
+  // If checking session, display a loader
   if (isCheckingSession) {
     return (
       <div className="flex flex-col min-h-screen">

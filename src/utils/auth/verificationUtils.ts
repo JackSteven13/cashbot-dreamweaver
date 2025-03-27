@@ -2,15 +2,15 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Vérifie l'état d'authentification de manière stable avec persistance améliorée
- * @returns Une promesse qui résout à true si l'utilisateur est authentifié, false sinon
+ * Verify authentication state with improved persistence
+ * @returns A promise that resolves to true if authenticated, false otherwise
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
-    // Petit délai pour permettre au contexte d'authentification de s'initialiser correctement
+    // Small delay to allow auth context to properly initialize
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Vérifier la session actuelle avec persistance activée
+    // Check current session with persistence enabled
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
@@ -18,29 +18,29 @@ export const verifyAuth = async (): Promise<boolean> => {
       return false;
     }
     
-    // Vérification plus stricte de la validité de la session
+    // More strict verification of session validity
     if (data.session && data.session.user && data.session.user.id) {
-      // Vérifier si la session n'a pas expiré
+      // Check if session hasn't expired
       const tokenExpiry = new Date((data.session.expires_at || 0) * 1000);
       const now = new Date();
       
       if (now > tokenExpiry) {
-        console.log("Session expirée, tentative de rafraîchissement automatique...");
-        // Tentative de rafraîchissement automatique
+        console.log("Session expired, attempting automatic refresh...");
+        // Attempt automatic refresh
         const refreshResult = await supabase.auth.refreshSession();
         if (refreshResult.error || !refreshResult.data.session) {
-          console.error("Échec du rafraîchissement de session:", refreshResult.error);
+          console.error("Failed to refresh session:", refreshResult.error);
           return false;
         }
         
-        // Vérification supplémentaire du token rafraîchi
+        // Additional check of refreshed token
         const newTokenExpiry = new Date((refreshResult.data.session.expires_at || 0) * 1000);
         if (now > newTokenExpiry) {
-          console.error("Token rafraîchi déjà expiré");
+          console.error("Refreshed token already expired");
           return false;
         }
         
-        console.log("Session rafraîchie avec succès");
+        console.log("Session refreshed successfully");
         return true;
       }
       
