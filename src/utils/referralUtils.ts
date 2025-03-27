@@ -88,3 +88,26 @@ export const validateReferralCode = async (code: string) => {
     return false;
   }
 };
+
+// Get the commission rate for a user (helpers to display correct information)
+export const getCommissionRate = async (userId: string) => {
+  try {
+    // Check if this user was referred by someone (check if they have a referrer)
+    const { data: referralData, error: referralError } = await supabase
+      .from('referrals')
+      .select('commission_rate')
+      .eq('referred_user_id', userId)
+      .maybeSingle();
+      
+    if (!referralError && referralData && referralData.commission_rate === 0.7) {
+      // If this user was referred by someone with 70% commission, they also get 70%
+      return 0.7;
+    }
+    
+    // Default rate is 35% if no special conditions are met
+    return 0.35;
+  } catch (error) {
+    console.error('Error in getCommissionRate:', error);
+    return 0.35; // Default in case of error
+  }
+};

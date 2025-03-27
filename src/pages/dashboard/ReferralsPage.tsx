@@ -102,6 +102,12 @@ const ReferralsPage = () => {
             </Button>
           </div>
           
+          <div className="bg-amber-50 rounded-lg p-3 border border-amber-100 mt-4">
+            <p className="text-sm font-medium text-amber-800">
+              ✨ Avantage exclusif : Les personnes parrainées avec votre lien bénéficient également du taux de 70% de commission pour leurs propres parrainages !
+            </p>
+          </div>
+          
           <div className="mt-4 flex space-x-2">
             <Button variant="outline" onClick={() => window.open(`https://twitter.com/intent/tweet?text=Rejoignez-moi sur Stream Genius et gagnez de l'argent ! ${encodeURIComponent(referralLink)}`, '_blank')}>
               Partager sur Twitter

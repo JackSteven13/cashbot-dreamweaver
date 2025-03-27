@@ -142,7 +142,7 @@ async function processAllCommissions() {
           referral.commission_rate
         );
         
-        console.log(`Commission calculée pour le parrain ${referral.referrer_id}: ${commissionAmount}€`);
+        console.log(`Commission calculée pour le parrain ${referral.referrer_id}: ${commissionAmount}€ (taux: ${referral.commission_rate * 100}%)`);
         
         // Ajouter la transaction
         const transactionAdded = await addCommissionTransaction(

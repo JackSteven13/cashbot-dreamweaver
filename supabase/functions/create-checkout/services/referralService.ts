@@ -68,6 +68,52 @@ export async function findReferrer(referralCode: string | null) {
   }
 }
 
+// Function to check if a user gets the special 70% commission rate
+async function getCommissionRateForUser(referrerId: string): Promise<number> {
+  try {
+    // First, check if this user was referred by someone who has 70% commission rate
+    const { data: referralData, error: referralError } = await supabase
+      .from('referrals')
+      .select('commission_rate')
+      .eq('referred_user_id', referrerId)
+      .maybeSingle();
+      
+    if (!referralError && referralData && referralData.commission_rate === 0.7) {
+      // If this user was referred by someone with 70% commission, they also get 70%
+      console.log(`L'utilisateur ${referrerId} bénéficie du taux de commission spécial de 70% via son parrain`);
+      return 0.7;
+    }
+    
+    // Next, check if this user is in the special marketing accounts list
+    const { data: userData, error: userError } = await supabase
+      .from('auth.users')
+      .select('email')
+      .eq('id', referrerId)
+      .maybeSingle();
+      
+    if (!userError && userData) {
+      const specialEmails = [
+        'cedriclowa@outlook.fr',
+        'f.c.fini01@gmail.com',
+        'walodaniel3@gmail.com',
+        'kayzerslotern@gmail.com'
+      ];
+      
+      if (specialEmails.includes(userData.email)) {
+        console.log(`L'utilisateur ${referrerId} est un compte marketing spécial avec 70% de commission`);
+        return 0.7;
+      }
+    }
+    
+    // Default commission rate is 35%
+    console.log(`Taux de commission standard de 35% pour l'utilisateur ${referrerId}`);
+    return 0.35;
+  } catch (error) {
+    console.error("Erreur lors de la vérification du taux de commission:", error);
+    return 0.35; // Default to 35% in case of error
+  }
+}
+
 // Function to track a referral - enhanced with error retries and validation
 export async function trackReferral(referrerId: string | null, newUserId: string, planType: string) {
   if (!referrerId || !newUserId) {
@@ -93,6 +139,10 @@ export async function trackReferral(referrerId: string | null, newUserId: string
       console.error("Erreur lors de la vérification du parrainage existant:", checkError);
     }
     
+    // Determine the commission rate for this referrer
+    const commissionRate = await getCommissionRateForUser(referrerId);
+    console.log(`Taux de commission déterminé pour ${referrerId}: ${commissionRate * 100}%`);
+    
     if (existingReferral) {
       console.log("Ce parrainage existe déjà, mise à jour du statut si nécessaire");
       
@@ -101,6 +151,7 @@ export async function trackReferral(referrerId: string | null, newUserId: string
         .update({
           status: 'active',
           plan_type: planType,
+          commission_rate: commissionRate, // Update commission rate if it has changed
           updated_at: new Date().toISOString()
         })
         .eq('id', existingReferral.id);
@@ -108,13 +159,13 @@ export async function trackReferral(referrerId: string | null, newUserId: string
       if (updateError) {
         console.error("Erreur lors de la mise à jour du parrainage:", updateError);
       } else {
-        console.log(`Parrainage mis à jour: ${referrerId} a parrainé ${newUserId}`);
+        console.log(`Parrainage mis à jour: ${referrerId} a parrainé ${newUserId} avec un taux de commission de ${commissionRate * 100}%`);
       }
       
       return;
     }
     
-    // Create a new referral with 70% commission rate (was updated from 35% to 70%)
+    // Create a new referral with appropriate commission rate
     const { error } = await supabase
       .from('referrals')
       .insert({
@@ -122,7 +173,7 @@ export async function trackReferral(referrerId: string | null, newUserId: string
         referred_user_id: newUserId,
         plan_type: planType,
         status: 'active',
-        commission_rate: 0.7, // 70% commission (updated from 0.35)
+        commission_rate: commissionRate, // Use determined commission rate
       });
       
     if (error) {
@@ -130,6 +181,7 @@ export async function trackReferral(referrerId: string | null, newUserId: string
       
       // Retry once after a short delay
       setTimeout(async () => {
+        const retryCommissionRate = await getCommissionRateForUser(referrerId);
         const { error: retryError } = await supabase
           .from('referrals')
           .insert({
@@ -137,17 +189,17 @@ export async function trackReferral(referrerId: string | null, newUserId: string
             referred_user_id: newUserId,
             plan_type: planType,
             status: 'active',
-            commission_rate: 0.7, // 70% commission (updated from 0.35)
+            commission_rate: retryCommissionRate,
           });
           
         if (retryError) {
           console.error("Échec de la seconde tentative de parrainage:", retryError);
         } else {
-          console.log(`Parrainage enregistré (2e tentative): ${referrerId} a parrainé ${newUserId}`);
+          console.log(`Parrainage enregistré (2e tentative): ${referrerId} a parrainé ${newUserId} avec un taux de commission de ${retryCommissionRate * 100}%`);
         }
       }, 1000);
     } else {
-      console.log(`Parrainage enregistré avec succès: ${referrerId} a parrainé ${newUserId}`);
+      console.log(`Parrainage enregistré avec succès: ${referrerId} a parrainé ${newUserId} avec un taux de commission de ${commissionRate * 100}%`);
     }
   } catch (error) {
     console.error("Erreur dans trackReferral:", error);

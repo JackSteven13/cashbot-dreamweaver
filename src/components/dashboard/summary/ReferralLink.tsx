@@ -67,6 +67,9 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
         <p className="text-sm text-amber-800 font-medium">
           💰 Gagnez <span className="font-bold">70%</span> sur les abonnements de chaque personne qui s'inscrit avec votre lien !
         </p>
+        <p className="text-xs text-amber-700 mt-1">
+          ✨ Bonus exclusif : vos filleuls bénéficient également du taux de commission de 70% pour leurs propres parrainages !
+        </p>
       </div>
       
       {referrals.length > 0 ? (
@@ -113,6 +116,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
           <li>Partagez votre lien de parrainage avec vos amis</li>
           <li>Ils créent un compte avec votre lien et souscrivent à un abonnement</li>
           <li>Vous recevez automatiquement 70% de leurs abonnements mensuels</li>
+          <li>Vos filleuls bénéficient également du taux de 70% pour leurs propres parrainages</li>
           <li>Les commissions sont ajoutées à votre solde disponible chaque mois</li>
         </ol>
       </div>
