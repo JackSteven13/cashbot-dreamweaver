@@ -12,11 +12,13 @@ import { useDashboardSessions } from '@/hooks/useDashboardSessions';
 import { useDormancyCheck } from '@/hooks/useDormancyCheck';
 import { canStartManualSession } from '@/utils/subscriptionUtils';
 import { useDashboardInitialization } from '@/hooks/useDashboardInitialization';
+import SubscriptionSynchronizer from '@/components/subscriptions/SubscriptionSynchronizer';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
   const [renderKey, setRenderKey] = useState(Date.now());
+  const [forcedSubscription, setForcedSubscription] = useState<string | null>(null);
   
   const {
     isAuthChecking,
@@ -64,12 +66,21 @@ const Dashboard = () => {
     refreshUserData().catch(error => console.error("Error refreshing user data:", error));
   }, [refreshUserData]);
 
+  // Handle subscription updates from synchronizer
+  const handleSubscriptionSync = useCallback((newSubscription: string) => {
+    console.log("Subscription synchronized:", newSubscription);
+    setForcedSubscription(newSubscription);
+    forceRefresh();
+  }, [forceRefresh]);
+
   // One-time check on initial render to detect stale data
   useEffect(() => {
     if (!isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
       console.log("Dashboard mounted with user data:", userData.username);
+      // Force refresh after first load to ensure we have latest data
+      setTimeout(forceRefresh, 1000);
     }
-  }, [isAuthChecking, isLoading, userData]);
+  }, [isAuthChecking, isLoading, userData, forceRefresh]);
 
   // Rediriger vers le tableau de bord principal si l'URL est exactement /dashboard sans sous-route
   useEffect(() => {
@@ -93,9 +104,18 @@ const Dashboard = () => {
     return <DashboardError errorType="data" onRefresh={forceRefresh} />;
   }
 
+  // Use forced subscription if available, otherwise use userData.subscription
+  const effectiveSubscription = forcedSubscription || userData.subscription;
+
   // Contenu principal du tableau de bord
   const renderDashboardContent = () => (
     <>
+      {/* Synchroniseur d'abonnement forcé pour s'assurer que l'UI est à jour */}
+      <SubscriptionSynchronizer 
+        onSync={handleSubscriptionSync} 
+        forceCheck={true} 
+      />
+      
       {/* Display dormancy alert if applicable */}
       {isDormant && dormancyData && (
         <DormancyAlert 
@@ -111,7 +131,7 @@ const Dashboard = () => {
       
       <DailyLimitAlert 
         show={showLimitAlert && !isDormant} 
-        subscription={userData.subscription}
+        subscription={effectiveSubscription}
         currentBalance={userData.balance}
       />
       
@@ -123,9 +143,9 @@ const Dashboard = () => {
         handleWithdrawal={handleWithdrawal}
         transactions={userData.transactions}
         isNewUser={isNewUser}
-        subscription={userData.subscription}
+        subscription={effectiveSubscription}
         dailySessionCount={dailySessionCount}
-        canStartSession={!isDormant && canStartManualSession(userData.subscription, dailySessionCount, userData.balance)}
+        canStartSession={!isDormant && canStartManualSession(effectiveSubscription, dailySessionCount, userData.balance)}
         referrals={userData.referrals}
       />
     </>
@@ -136,7 +156,7 @@ const Dashboard = () => {
     <DashboardLayout
       key={renderKey}
       username={userData.username}
-      subscription={userData.subscription}
+      subscription={effectiveSubscription}
       selectedNavItem={selectedNavItem}
       setSelectedNavItem={setSelectedNavItem}
     >

@@ -19,6 +19,11 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   referralCount = 0,
   referralBonus = 0
 }) => {
+  // Formater l'affichage de l'abonnement avec une majuscule
+  const formattedSubscription = subscription === 'alpha' 
+    ? 'Alpha Premium' 
+    : subscription.charAt(0).toUpperCase() + subscription.slice(1);
+    
   return (
     <div className="mb-6">
       <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white">
@@ -40,9 +45,9 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         </div>
         
         <div className="grid grid-cols-2 gap-4 mt-5">
-          <div className="bg-slate-800/70 backdrop-blur-sm rounded-lg p-3 border border-white/5">
+          <div className={`${subscription === 'alpha' ? 'bg-violet-800/50' : 'bg-slate-800/70'} backdrop-blur-sm rounded-lg p-3 border ${subscription === 'alpha' ? 'border-purple-500/30' : 'border-white/5'}`}>
             <div className="text-xs text-white/70 mb-1">Abonnement</div>
-            <div className="font-medium capitalize">{subscription}</div>
+            <div className="font-medium">{formattedSubscription}</div>
           </div>
           
           <div className="bg-slate-800/70 backdrop-blur-sm rounded-lg p-3 border border-white/5">

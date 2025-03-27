@@ -28,7 +28,7 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
       
       // Déterminer si on doit forcer une synchronisation
       const now = Date.now();
-      const shouldForceSync = force || forceCheck || (now - lastChecked > 30000); // 30 secondes
+      const shouldForceSync = force || forceCheck || (now - lastChecked > 10000); // 10 secondes
       
       if (!shouldForceSync && !forceCheck) {
         return;
@@ -37,54 +37,54 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
       setLastChecked(now);
       console.log("Synchronisation de l'abonnement depuis Supabase...");
       
-      // Essayer d'abord la fonction RPC avec options pour désactiver le cache
-      const { data: rpcData, error: rpcError } = await supabase
-        .rpc('get_current_subscription', { 
-          user_id: session.user.id 
-        }, { 
-          head: false, // Désactiver le cache
-          count: 'exact' as const
-        }) as { data: string | null, error: any };
-        
-      if (!rpcError && rpcData) {
-        // Vérifier si l'abonnement a changé
+      // Essayer d'abord avec une requête directe pour éviter les problèmes de cache
+      const { data: userData, error: directError } = await supabase
+        .from('user_balances')
+        .select('subscription')
+        .eq('id', session.user.id)
+        .single();
+          
+      if (!directError && userData && userData.subscription) {
         const currentLocalSub = localStorage.getItem('subscription');
-        if (currentLocalSub !== rpcData) {
-          console.log(`Mise à jour de l'abonnement: ${currentLocalSub} -> ${rpcData}`);
-          localStorage.setItem('subscription', rpcData);
+        if (currentLocalSub !== userData.subscription) {
+          console.log(`Mise à jour directe de l'abonnement: ${currentLocalSub} -> ${userData.subscription}`);
+          localStorage.setItem('subscription', userData.subscription);
           
           if (onSync) {
-            onSync(rpcData);
+            onSync(userData.subscription);
           }
           
           // Notification seulement si l'abonnement change d'un niveau non freemium à un autre
-          if (currentLocalSub && currentLocalSub !== 'freemium' && currentLocalSub !== rpcData) {
+          if (currentLocalSub && currentLocalSub !== 'freemium' && currentLocalSub !== userData.subscription) {
             toast({
               title: "Abonnement mis à jour",
-              description: `Votre abonnement est maintenant: ${rpcData.charAt(0).toUpperCase() + rpcData.slice(1)}`,
+              description: `Votre abonnement est maintenant: ${userData.subscription === 'alpha' ? 'Alpha Premium' : userData.subscription.charAt(0).toUpperCase() + userData.subscription.slice(1)}`,
             });
           }
         } else {
-          console.log("Abonnement déjà synchronisé:", rpcData);
+          console.log("Abonnement déjà synchronisé:", userData.subscription);
         }
       } else {
-        // Fallback sur requête directe
-        console.log("Échec RPC, tentative directe:", rpcError);
+        console.error("Erreur lors de la récupération directe:", directError);
         
-        const { data: userData, error: directError } = await supabase
-          .from('user_balances')
-          .select('subscription')
-          .eq('id', session.user.id)
-          .single();
+        // Fallback sur la fonction RPC avec options pour désactiver le cache
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('get_current_subscription', { 
+            user_id: session.user.id 
+          }, { 
+            head: false, // Désactiver le cache
+            count: 'exact' as const
+          }) as { data: string | null, error: any };
           
-        if (!directError && userData && userData.subscription) {
+        if (!rpcError && rpcData) {
+          // Vérifier si l'abonnement a changé
           const currentLocalSub = localStorage.getItem('subscription');
-          if (currentLocalSub !== userData.subscription) {
-            console.log(`Mise à jour directe de l'abonnement: ${currentLocalSub} -> ${userData.subscription}`);
-            localStorage.setItem('subscription', userData.subscription);
+          if (currentLocalSub !== rpcData) {
+            console.log(`Mise à jour de l'abonnement via RPC: ${currentLocalSub} -> ${rpcData}`);
+            localStorage.setItem('subscription', rpcData);
             
             if (onSync) {
-              onSync(userData.subscription);
+              onSync(rpcData);
             }
           }
         }

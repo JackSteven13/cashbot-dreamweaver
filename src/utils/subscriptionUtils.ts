@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Subscription plans and their limits
@@ -21,7 +20,12 @@ export const MANUAL_SESSION_GAIN_PERCENTAGES = {
  * Vérifie le mode Pro temporaire et retourne la souscription effective
  */
 export const getEffectiveSubscription = (subscription: string): string => {
-  // Vérifier si l'utilisateur a un essai Pro actif
+  // Si l'utilisateur a déjà Alpha, on conserve ce plan qui est prioritaire
+  if (subscription === 'alpha') {
+    return 'alpha';
+  }
+  
+  // Vérifier si l'utilisateur a un essai Pro actif (mais pas si c'est déjà alpha)
   const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
   const proTrialExpires = localStorage.getItem('proTrialExpires');
   
