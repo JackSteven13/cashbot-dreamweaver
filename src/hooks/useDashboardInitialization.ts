@@ -18,7 +18,7 @@ export const useDashboardInitialization = () => {
   
   const { refreshUserData } = useUserDataRefresh();
   
-  // Amélioré pour être plus robuste et gérer les échecs
+  // Improved to be more robust and handle failures
   const checkAuth = useCallback(async () => {
     if (authCheckInProgress.current) {
       console.log("Auth check already in progress, skipping");
@@ -28,7 +28,7 @@ export const useDashboardInitialization = () => {
     try {
       authCheckInProgress.current = true;
       
-      // Essayer de rafraîchir la session avant tout
+      // Try to refresh the session first
       const refreshed = await refreshSession();
       
       if (refreshed) {
@@ -37,7 +37,7 @@ export const useDashboardInitialization = () => {
         console.log("Session refresh failed or wasn't needed, continuing with verification");
       }
       
-      // Petit délai pour permettre au rafraîchissement de se propager
+      // Short delay to allow the refresh to propagate
       await new Promise(resolve => setTimeout(resolve, 500));
       
       const isAuthenticated = await verifyAuth();
@@ -87,6 +87,20 @@ export const useDashboardInitialization = () => {
       return false;
     }
   }, []);
+  
+  // Function to sync user data - adding this to fix the missing property
+  const syncUserData = useCallback(async () => {
+    try {
+      if (!mountedRef.current) return false;
+      
+      console.log("Syncing user data in background");
+      const result = await refreshUserData();
+      return result;
+    } catch (error) {
+      console.error("Error syncing user data:", error);
+      return false;
+    }
+  }, [refreshUserData]);
   
   useEffect(() => {
     mountedRef.current = true;
@@ -187,7 +201,8 @@ export const useDashboardInitialization = () => {
     isReady,
     authError,
     setAuthError,
-    setIsAuthChecking
+    setIsAuthChecking,
+    syncUserData  // Explicitly adding this to the returned object
   };
 };
 

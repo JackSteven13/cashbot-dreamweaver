@@ -47,7 +47,7 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
     isAuthChecking,
     isReady,
     authError,
-    syncUserData
+    // Remove the syncUserData reference that's causing the error
   } = useDashboardInitialization();
   
   const {
