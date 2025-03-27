@@ -1,4 +1,3 @@
-
 import React, { ReactNode, useState, useCallback, useEffect, useRef } from 'react';
 import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
@@ -47,7 +46,7 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
     isAuthChecking,
     isReady,
     authError,
-    // Remove the syncUserData reference that's causing the error
+    syncUserData // Now this property exists in the return value
   } = useDashboardInitialization();
   
   const {
