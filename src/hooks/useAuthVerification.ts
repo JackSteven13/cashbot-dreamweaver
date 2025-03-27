@@ -5,16 +5,7 @@ import { useAuthRetry } from './auth/useAuthRetry';
 import { useProfileData } from './auth/useProfileData';
 import { supabase } from "@/integrations/supabase/client";
 
-interface UseAuthVerificationResult {
-  isAuthenticated: boolean | null;
-  username: string | null;
-  authCheckFailed: boolean;
-  isRetrying: boolean;
-  retryAttempts: number;
-  checkAuth: (isManualRetry?: boolean) => Promise<void>;
-}
-
-export const useAuthVerification = (): UseAuthVerificationResult => {
+export const useAuthVerification = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [authCheckFailed, setAuthCheckFailed] = useState(false);
   const isMounted = useRef(true);

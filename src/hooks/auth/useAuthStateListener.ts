@@ -1,40 +1,34 @@
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 
-interface UseAuthStateListenerProps {
-  onSignOut: () => void;
-  onTokenRefresh: () => void;
+interface UseAuthStateListenerOptions {
+  onSignOut?: () => void;
+  onTokenRefresh?: () => void;
   isMounted: React.RefObject<boolean>;
 }
 
-/**
- * Hook to listen to Supabase auth state changes
- */
-export const useAuthStateListener = ({
-  onSignOut,
+export const useAuthStateListener = ({ 
+  onSignOut, 
   onTokenRefresh,
   isMounted
-}: UseAuthStateListenerProps) => {
+}: UseAuthStateListenerOptions) => {
   
   useEffect(() => {
-    console.log("Setting up auth state listener");
-    
-    // Listen for auth state changes
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (!isMounted.current) return;
       
-      console.log(`Changement d'état d'authentification:`, event);
-      
       if (event === 'SIGNED_OUT') {
-        onSignOut();
+        console.log("Auth state change: signed out");
+        onSignOut?.();
       } else if (event === 'TOKEN_REFRESHED') {
-        onTokenRefresh();
+        console.log("Auth state change: token refreshed");
+        onTokenRefresh?.();
       }
     });
-
-    return () => {
-      console.log("Cleaning up auth state listener");
+    
+    return () => { 
       subscription.unsubscribe();
     };
   }, [onSignOut, onTokenRefresh, isMounted]);

@@ -1,4 +1,3 @@
-
 import React, { ReactNode, useState, useCallback, useEffect, useRef } from 'react';
 import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
@@ -23,6 +22,7 @@ interface DashboardDataContextValue {
   canStartSession: boolean;
   renderKey: number;
   forceRefresh: () => void;
+  showLimitAlert: boolean;
 }
 
 export const DashboardDataContext = React.createContext<DashboardDataContextValue | null>(null);
@@ -57,7 +57,6 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
     refreshUserData
   } = useUserData();
   
-  // Add dormancy check
   const {
     isDormant,
     dormancyData,
@@ -78,7 +77,6 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
     resetBalance
   );
 
-  // Callback to force refresh when needed
   const forceRefresh = useCallback(() => {
     if (!mountedRef.current) return;
     
@@ -86,7 +84,6 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
     refreshUserData().catch(error => console.error("Error refreshing user data:", error));
   }, [refreshUserData]);
 
-  // Handle subscription updates from synchronizer
   const handleSubscriptionSync = useCallback((newSubscription: string) => {
     if (!mountedRef.current) return;
     
@@ -98,33 +95,27 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
     }
   }, [forceRefresh, userData]);
 
-  // One-time check on initial render to detect stale data
   useEffect(() => {
     if (!isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
       console.log("Dashboard mounted with user data:", userData.username);
       
-      // Check if subscription from localStorage matches userData
       const storedSubscription = localStorage.getItem('subscription');
       if (storedSubscription && storedSubscription !== userData.subscription) {
         console.log(`Subscription mismatch: localStorage=${storedSubscription}, userData=${userData.subscription}`);
         setForcedSubscription(storedSubscription);
       }
       
-      // Force refresh after first load to ensure we have latest data
       setTimeout(forceRefresh, 1000);
     }
   }, [isAuthChecking, isLoading, userData, forceRefresh]);
 
-  // Set mounted flag
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
 
-  // Retry mechanism for persistent errors
   useEffect(() => {
     if (authError && !isAuthChecking) {
-      // Wait and retry authentication once more
       const timeoutId = setTimeout(() => {
         if (!mountedRef.current) return;
         
@@ -143,25 +134,20 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
     }
   }, [authError, isAuthChecking, syncUserData]);
 
-  // Afficher un loader plus robuste pendant le chargement
   if (isAuthChecking || isLoading || !isReady || isChecking) {
     return <DashboardLoading />;
   }
 
-  // Afficher une page d'erreur si l'authentification échoue
   if (authError || initError) {
     return <DashboardError errorType="auth" />;
   }
 
-  // Vérification supplémentaire pour userData
   if (!userData || !userData.username) {
     return <DashboardError errorType="data" onRefresh={forceRefresh} />;
   }
 
-  // Use forced subscription if available, otherwise use userData.subscription
   const effectiveSubscription = forcedSubscription || userData.subscription || 'freemium';
   
-  // Check if user can start a session
   const canStartSession = !isDormant && canStartManualSession(effectiveSubscription, dailySessionCount, userData.balance);
 
   const contextValue: DashboardDataContextValue = {
@@ -177,7 +163,8 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
     handleReactivate,
     canStartSession,
     renderKey,
-    forceRefresh
+    forceRefresh,
+    showLimitAlert
   };
 
   return (
@@ -193,7 +180,6 @@ export const DashboardDataProvider = ({ children }: DashboardDataProviderProps) 
   );
 };
 
-// Hook to use the Dashboard data
 export const useDashboardData = () => {
   const context = React.useContext(DashboardDataContext);
   if (!context) {
