@@ -19,11 +19,13 @@ const Dashboard = () => {
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
   const [renderKey, setRenderKey] = useState(Date.now());
   const [forcedSubscription, setForcedSubscription] = useState<string | null>(null);
+  const [initError, setInitError] = useState<string | null>(null);
   
   const {
     isAuthChecking,
     isReady,
-    authError
+    authError,
+    syncUserData
   } = useDashboardInitialization();
   
   const {
@@ -70,13 +72,24 @@ const Dashboard = () => {
   const handleSubscriptionSync = useCallback((newSubscription: string) => {
     console.log("Subscription synchronized:", newSubscription);
     setForcedSubscription(newSubscription);
-    forceRefresh();
-  }, [forceRefresh]);
+    if (userData && userData.subscription !== newSubscription) {
+      console.log(`Forcing refresh due to subscription change: ${userData.subscription} -> ${newSubscription}`);
+      forceRefresh();
+    }
+  }, [forceRefresh, userData]);
 
   // One-time check on initial render to detect stale data
   useEffect(() => {
     if (!isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
       console.log("Dashboard mounted with user data:", userData.username);
+      
+      // Check if subscription from localStorage matches userData
+      const storedSubscription = localStorage.getItem('subscription');
+      if (storedSubscription && storedSubscription !== userData.subscription) {
+        console.log(`Subscription mismatch: localStorage=${storedSubscription}, userData=${userData.subscription}`);
+        setForcedSubscription(storedSubscription);
+      }
+      
       // Force refresh after first load to ensure we have latest data
       setTimeout(forceRefresh, 1000);
     }
@@ -89,13 +102,31 @@ const Dashboard = () => {
     }
   }, []);
 
+  // Retry mechanism for persistent errors
+  useEffect(() => {
+    if (authError && !isAuthChecking) {
+      // Wait and retry authentication once more
+      const timeoutId = setTimeout(() => {
+        console.log("Retrying authentication after error...");
+        if (syncUserData) {
+          syncUserData().catch(e => {
+            console.error("Final sync attempt failed:", e);
+            setInitError("Authentication failed after retry");
+          });
+        }
+      }, 3000);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [authError, isAuthChecking, syncUserData]);
+
   // Afficher un loader plus robuste pendant le chargement
   if (isAuthChecking || isLoading || !isReady || isChecking) {
     return <DashboardLoading />;
   }
 
   // Afficher une page d'erreur si l'authentification échoue
-  if (authError) {
+  if (authError || initError) {
     return <DashboardError errorType="auth" />;
   }
 

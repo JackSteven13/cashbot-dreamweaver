@@ -36,6 +36,16 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   // Handle alpha-specific styling
   const isAlpha = subscription === 'alpha';
   
+  // Get badge and border styling based on subscription
+  const getBadgeStyle = () => {
+    if (isAlpha) {
+      return 'bg-violet-800/50 border-purple-500/30';
+    } else if (isPremium) {
+      return 'bg-blue-800/50 border-blue-500/30';
+    }
+    return 'bg-slate-800/70 border-white/5';
+  };
+  
   return (
     <div className="mb-6">
       <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white">
@@ -57,13 +67,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         </div>
         
         <div className="grid grid-cols-2 gap-4 mt-5">
-          <div className={`${
-            isAlpha 
-              ? 'bg-violet-800/50 border-purple-500/30' 
-              : isPremium 
-                ? 'bg-blue-800/50 border-blue-500/30' 
-                : 'bg-slate-800/70 border-white/5'
-            } backdrop-blur-sm rounded-lg p-3 border`}>
+          <div className={`${getBadgeStyle()} backdrop-blur-sm rounded-lg p-3 border`}>
             <div className="text-xs text-white/70 mb-1">Abonnement</div>
             <div className="font-medium flex items-center">
               {formattedSubscription}

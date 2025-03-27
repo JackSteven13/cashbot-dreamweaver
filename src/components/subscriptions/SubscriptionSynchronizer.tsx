@@ -16,32 +16,31 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
   const [lastChecked, setLastChecked] = useState(0);
   const [isChecking, setIsChecking] = useState(false);
   const [errorCount, setErrorCount] = useState(0);
+  const [syncAttempts, setSyncAttempts] = useState(0);
   
   // Fonction de synchronisation extraite pour pouvoir l'utiliser dans le cleanup
   const syncSubscription = useCallback(async (force: boolean = false) => {
     // Prevent multiple simultaneous checks
     if (isChecking) return;
     
+    // Limit frequency of checks to reduce API load
+    const now = Date.now();
+    if (!force && !forceCheck && now - lastChecked < 30000 && syncAttempts > 3) {
+      return;
+    }
+    
     try {
       // Vérifier si l'utilisateur est connecté
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        // Si pas de session, on utilise ce qu'il y a en localStorage
         console.log("Pas de session active, utilisation des données locales");
-        return;
-      }
-      
-      // Déterminer si on doit forcer une synchronisation
-      const now = Date.now();
-      const shouldForceSync = force || forceCheck || (now - lastChecked > 15000); // 15 secondes
-      
-      if (!shouldForceSync && !forceCheck) {
         return;
       }
       
       setIsChecking(true);
       setLastChecked(now);
+      setSyncAttempts(prev => prev + 1);
       
       // Get cached subscription from localStorage
       const cachedSubscription = localStorage.getItem('subscription');
@@ -54,7 +53,7 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
           }, { 
             head: false, // Désactiver le cache
             count: 'exact' as const
-          }) as { data: string | null, error: any };
+          });
         
         if (!rpcError && rpcData) {
           // Si on a réussi à obtenir l'abonnement, on vérifie s'il a changé
@@ -71,6 +70,7 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
           } else {
             console.log("Abonnement déjà synchronisé:", rpcData);
           }
+          setIsChecking(false);
           return;
         }
         
@@ -130,15 +130,22 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
     } finally {
       setIsChecking(false);
     }
-  }, [onSync, forceCheck, lastChecked, isChecking, errorCount]);
+  }, [onSync, forceCheck, lastChecked, isChecking, errorCount, syncAttempts]);
   
   useEffect(() => {
+    // On first render, clear any stale force refresh flag
+    const forceRefresh = localStorage.getItem('forceRefreshBalance');
+    if (forceRefresh === 'true') {
+      console.log("Force refresh flag detected on mount, clearing");
+      localStorage.removeItem('forceRefreshBalance');
+    }
+    
     // Synchroniser immédiatement au montage
     syncSubscription(true);
     
     // Configurer un intervalle pour synchroniser périodiquement
     // Utilisez un intervalle plus long pour réduire les appels API
-    const intervalId = setInterval(() => syncSubscription(), 30000); // 30 secondes
+    const intervalId = setInterval(() => syncSubscription(), 60000); // 60 secondes
     
     // Ajouter un event listener pour les changements de focus
     const handleVisibilityChange = () => {

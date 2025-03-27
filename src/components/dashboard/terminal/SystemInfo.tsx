@@ -52,12 +52,13 @@ export const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
   
   // Format d'affichage de l'abonnement
   const displaySubscription = () => {
+    if (isAlphaPlan) return 'Alpha Premium';
     if (tempProEnabled) return 'Pro (Essai)';
-    if (effectiveSubscription === 'alpha') return 'Alpha Premium';
     if (effectiveSubscription === 'pro') return 'Pro';
     return effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1);
   };
   
+  // Get appropriate styling based on subscription
   const getBorderClass = () => {
     if (isAlphaPlan) return 'border-purple-500/30';
     if (isProPlan) return 'border-blue-500/30';
