@@ -1,9 +1,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthSessionCheck } from '@/hooks/auth/useAuthSessionCheck';
-import { useUserDataSync } from '@/hooks/session/useUserDataSync';
-import { useAuthStateListener } from '@/hooks/dashboard/useAuthStateListener';
+import { useAuthSessionCheck } from './auth/useAuthSessionCheck';
+import { useUserDataSync } from './session/useUserDataSync';
+import { useAuthStateListener } from './dashboard/useAuthStateListener';
 import { useUserDataRefresh } from './session/useUserDataRefresh';
 
 export const useDashboardInitialization = () => {

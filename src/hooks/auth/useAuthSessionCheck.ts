@@ -12,7 +12,6 @@ export const useAuthSessionCheck = ({ maxRetries = 3 }: UseAuthSessionCheckOptio
   const initAttempts = useRef(0);
   const mountedRef = useRef(true);
   
-  // Improved to be more robust and handle failures
   const checkAuth = useCallback(async () => {
     if (authCheckInProgress.current) {
       console.log("Auth check already in progress, skipping");
