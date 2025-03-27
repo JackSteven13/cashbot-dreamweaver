@@ -52,13 +52,7 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
           .from('user_balances')
           .select('subscription')
           .eq('id', session.user.id)
-          .maybeSingle({
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0'
-            }
-          });
+          .maybeSingle();
           
         if (!isMounted.current) return;
           
@@ -86,9 +80,6 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
           const { data: rpcData, error: rpcError } = await supabase
             .rpc('get_current_subscription', { 
               user_id: session.user.id 
-            }, { 
-              head: false, // Disable cache
-              count: 'exact' as const
             });
           
           if (!isMounted.current) return;
