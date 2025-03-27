@@ -88,7 +88,7 @@ export const useDashboardInitialization = () => {
     }
   }, []);
   
-  // Function to sync user data - adding this to fix the missing property
+  // Function to sync user data
   const syncUserData = useCallback(async () => {
     try {
       if (!mountedRef.current) return false;
