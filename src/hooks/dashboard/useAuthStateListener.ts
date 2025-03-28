@@ -18,13 +18,14 @@ export const useAuthStateListener = () => {
         localStorage.removeItem('user_data');
         localStorage.removeItem('user_session_count');
         localStorage.removeItem('user_balance');
+        localStorage.removeItem('supabase.auth.token');
+        localStorage.removeItem('supabase.auth.expires_at');
+        localStorage.removeItem('supabase.auth.refresh_token');
         
         // Only redirect if we're not already on the login page
         if (window.location.pathname !== '/login') {
           console.log("Redirecting to login page after sign out");
-          setTimeout(() => {
-            navigate('/login', { replace: true });
-          }, 100);
+          navigate('/login', { replace: true });
         }
       } else if (event === 'SIGNED_IN') {
         console.log("Auth state change: signed in");
