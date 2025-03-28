@@ -1,0 +1,21 @@
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Custom 404 page
+[[redirects]]
+  from = "/*"
+  to = "/404.html"
+  status = 404
+
+# Custom error page for 500 responses
+[[redirects]]
+  from = "/*"
+  to = "/404.html"
+  status = 500
