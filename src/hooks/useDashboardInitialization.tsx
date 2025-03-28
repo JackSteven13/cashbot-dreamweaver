@@ -19,31 +19,41 @@ export const useDashboardInitialization = () => {
   const { refreshUserData } = useUserDataRefresh();
   const { setupAuthListener } = useAuthStateListener();
   
-  // Simplified auth check function with retry logic
+  // Check auth function with retry logic
   const checkAuth = useCallback(async () => {
     try {
-      console.log(`Performing auth check (attempt ${authCheckAttemptRef.current + 1}/${maxAuthCheckAttempts})`);
+      console.log(`useDashboardInitialization: Auth check (attempt ${authCheckAttemptRef.current + 1}/${maxAuthCheckAttempts})`);
       
-      return await verifyAuth();
+      // Verify authentication
+      const isAuthenticated = await verifyAuth();
+      
+      if (isAuthenticated) {
+        console.log("useDashboardInitialization: Authentication successful");
+        return true;
+      } else {
+        console.log("useDashboardInitialization: Authentication failed");
+        return false;
+      }
     } catch (error) {
-      console.error("Error during auth check:", error);
+      console.error("useDashboardInitialization: Error during auth check:", error);
       return false;
     }
   }, []);
 
-  // Sync user data (simple wrapper that doesn't do much)
+  // Sync user data
   const syncUserData = useCallback(async () => {
     try {
       await refreshUserData();
       return true;
     } catch (error) {
-      console.error("Error syncing user data:", error);
+      console.error("useDashboardInitialization: Error syncing user data:", error);
       return false;
     }
   }, [refreshUserData]);
   
   // Main initialization effect
   useEffect(() => {
+    console.log("useDashboardInitialization: Mount effect running");
     mountedRef.current = true;
     authCheckAttemptRef.current = 0;
     
@@ -65,14 +75,14 @@ export const useDashboardInitialization = () => {
           if (!isAuthenticated) {
             authCheckAttemptRef.current++;
             if (authCheckAttemptRef.current < maxAuthCheckAttempts) {
-              console.log(`Auth check failed, retrying (${authCheckAttemptRef.current}/${maxAuthCheckAttempts})...`);
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
+              console.log(`useDashboardInitialization: Retrying (${authCheckAttemptRef.current}/${maxAuthCheckAttempts})...`);
+              await new Promise(resolve => setTimeout(resolve, 1000));
             }
           }
         }
         
         if (isAuthenticated) {
-          console.log("User authenticated, initializing dashboard");
+          console.log("useDashboardInitialization: User authenticated, initializing dashboard");
           
           // Sync user data
           await syncUserData();
@@ -82,19 +92,19 @@ export const useDashboardInitialization = () => {
           setIsAuthChecking(false);
           setIsReady(true);
         } else {
-          console.log("Authentication failed after retries, redirecting to login");
+          console.log("useDashboardInitialization: Authentication failed after retries, redirecting to login");
           
           if (mountedRef.current) {
             setIsAuthChecking(false);
-            setAuthError(false); // Not really an error, just not authenticated
             
+            // Display error toast
             toast({
-              title: "Authentification nécessaire",
+              title: "Authentication nécessaire",
               description: "Veuillez vous connecter pour accéder au tableau de bord",
               variant: "destructive",
             });
             
-            // Redirect to login after a short delay
+            // Redirect to login
             setTimeout(() => {
               if (mountedRef.current) {
                 navigate('/login', { replace: true });
@@ -103,7 +113,7 @@ export const useDashboardInitialization = () => {
           }
         }
       } catch (err) {
-        console.error("Error during dashboard initialization:", err);
+        console.error("useDashboardInitialization: Error during initialization:", err);
         
         if (mountedRef.current) {
           setAuthError(true);
@@ -118,12 +128,12 @@ export const useDashboardInitialization = () => {
       }
     };
     
-    console.log("Dashboard initialization started");
+    console.log("useDashboardInitialization: Starting dashboard initialization");
     
     // Set up auth state listener
     const subscription = setupAuthListener();
     
-    // Start initialization with a slightly longer delay to avoid race conditions
+    // Start initialization with a delay to allow auth state to stabilize
     setTimeout(() => {
       if (mountedRef.current) {
         initDashboard();
@@ -132,20 +142,20 @@ export const useDashboardInitialization = () => {
     
     // Force ready state after timeout as fallback
     const forceReadyTimeout = setTimeout(() => {
-      if (mountedRef.current && !isReady) {
-        console.log("Forcing dashboard ready state after timeout");
+      if (mountedRef.current && isAuthChecking) {
+        console.log("useDashboardInitialization: Forcing dashboard ready state after timeout");
         setIsAuthChecking(false);
         setIsReady(true);
       }
     }, 10000);
     
     return () => { 
-      console.log("Dashboard initialization cleanup");
+      console.log("useDashboardInitialization: Cleanup");
       mountedRef.current = false;
       subscription.unsubscribe();
       clearTimeout(forceReadyTimeout);
     };
-  }, [checkAuth, navigate, syncUserData, isReady, setupAuthListener]);
+  }, [checkAuth, navigate, syncUserData, setupAuthListener, isAuthChecking]);
 
   return {
     isAuthChecking,

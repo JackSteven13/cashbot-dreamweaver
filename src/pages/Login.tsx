@@ -20,25 +20,24 @@ const Login = () => {
   
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
-  // Check if already logged in
+  // Check if already logged in and set up auth state listener
   useEffect(() => {
     let isMounted = true;
     
     const checkExistingSession = async () => {
       try {
-        // First ensure we're completely signed out to start fresh
+        // Ensure we're starting fresh by signing out
         await forceSignOut();
         
-        // Reset session checking state
         if (isMounted) {
           setIsCheckingSession(false);
         }
         
-        // Get last email but don't use it for auto-login
+        // Get last email used
         const savedEmail = localStorage.getItem('last_logged_in_email');
         if (savedEmail && isMounted) {
           setLastLoggedInEmail(savedEmail);
-          setEmail(savedEmail); // Pre-fill the email field
+          setEmail(savedEmail);
         }
       } catch (error) {
         console.error("Error checking session:", error);
@@ -48,10 +47,19 @@ const Login = () => {
       }
     };
     
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session && isMounted) {
+        console.log("Login page detected SIGNED_IN event, redirecting to dashboard");
+        navigate('/dashboard', { replace: true });
+      }
+    });
+    
     checkExistingSession();
     
     return () => {
       isMounted = false;
+      subscription.unsubscribe();
     };
   }, [navigate]);
 
@@ -60,14 +68,6 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // First, ensure we're logged out to prevent session conflicts
-      await supabase.auth.signOut();
-      
-      // Clear any cached user data
-      localStorage.removeItem('user_data');
-      localStorage.removeItem('user_session_count');
-      localStorage.removeItem('user_balance');
-      
       // Sign in with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -87,10 +87,8 @@ const Login = () => {
           description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
         });
         
-        // Redirect to dashboard with a slight delay to allow session to be established
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true });
-        }, 1000);
+        // Let auth state listener handle navigation
+        // The navigation happens in the auth state change listener
       } else {
         throw new Error("Échec de connexion");
       }
