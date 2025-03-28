@@ -62,7 +62,7 @@ const TransactionsList = ({ transactions, isNewUser = false }: TransactionsListP
         <div className="text-center p-8 bg-blue-50 rounded-lg border border-blue-100">
           {isNewUser ? (
             <>
-              <p className="text-[#334e68] font-medium">Bienvenue sur CashBot !</p>
+              <p className="text-[#334e68] font-medium">Bienvenue sur Stream Genius !</p>
               <p className="text-[#334e68] mt-2">Le système commencera bientôt à générer des revenus pour vous.</p>
               <p className="text-sm text-[#486581] mt-2">Votre première session sera automatiquement lancée.</p>
             </>

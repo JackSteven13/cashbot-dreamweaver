@@ -67,7 +67,7 @@ const Register = () => {
         // Afficher un message de bienvenue personnalisé
         toast({
           title: `Bienvenue, ${name} !`,
-          description: "Votre compte a été créé avec succès. Vous êtes maintenant connecté à Stream genius.",
+          description: "Votre compte a été créé avec succès. Vous êtes maintenant connecté à Stream Genius.",
         });
         
         // Sign in to ensure authenticated session

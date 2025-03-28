@@ -43,7 +43,7 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
     if (isUserNew) {
       onNewUser(true);
       toast({
-        title: "Bienvenue sur CashBot !",
+        title: "Bienvenue sur Stream Genius !",
         description: "Votre compte a été créé avec succès. Notre système est maintenant actif pour vous.",
       });
     }
