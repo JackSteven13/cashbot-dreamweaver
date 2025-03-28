@@ -21,7 +21,7 @@ export const useAuthStateListener = () => {
         // Use setTimeout to avoid race conditions in auth state
         setTimeout(() => {
           navigate('/login', { replace: true });
-        }, 300);
+        }, 500);
       } else if (event === 'TOKEN_REFRESHED') {
         console.log("Auth state change: token refreshed");
         // No need to navigate, just log the event
@@ -31,7 +31,7 @@ export const useAuthStateListener = () => {
         if (window.location.pathname === '/login') {
           setTimeout(() => {
             navigate('/dashboard', { replace: true });
-          }, 500);
+          }, 800);
         }
       }
     });

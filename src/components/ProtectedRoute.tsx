@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AuthRecoveryScreen from './auth/AuthRecoveryScreen';
 import AuthLoadingScreen from './auth/AuthLoadingScreen';
 import { forceSignOut } from '@/utils/auth/sessionUtils';
+import { verifyAuth } from '@/utils/auth/verificationUtils';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -32,18 +33,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       try {
         console.log(`Checking auth (attempt ${authCheckAttempt.current + 1}/${maxRetries})`);
         
-        const { data, error } = await supabase.auth.getSession();
+        // Use verifyAuth for improved verification
+        const isAuthValid = await verifyAuth();
         
-        if (error) {
-          console.error("Session error:", error);
-          if (isMounted) {
-            setIsAuthenticated(false);
-            setAuthCheckFailed(true);
-          }
-          return;
-        }
-        
-        if (!data.session || !data.session.user) {
+        if (!isAuthValid) {
           console.log("No valid session found");
           if (isMounted) {
             setIsAuthenticated(false);
@@ -116,23 +109,18 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         authCheckAttempt.current++;
         setIsCheckingAuth(true);
         
-        try {
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error || !data.session) {
-            setIsAuthenticated(false);
-            setAuthCheckFailed(true);
-          } else {
-            setIsAuthenticated(true);
-            setAuthCheckFailed(false);
-          }
-        } catch (error) {
+        const isAuthValid = await verifyAuth();
+        
+        if (!isAuthValid) {
           setIsAuthenticated(false);
           setAuthCheckFailed(true);
-        } finally {
-          setIsCheckingAuth(false);
-          setIsRetrying(false);
+        } else {
+          setIsAuthenticated(true);
+          setAuthCheckFailed(false);
         }
+        
+        setIsCheckingAuth(false);
+        setIsRetrying(false);
       }, 1500);
     }
     
@@ -172,13 +160,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
           setAuthCheckFailed(false);
           
           setTimeout(async () => {
-            try {
-              const { data } = await supabase.auth.getSession();
-              setIsAuthenticated(!!data.session);
-              setIsCheckingAuth(false);
-            } catch {
-              setIsAuthenticated(false);
-              setIsCheckingAuth(false);
+            const isAuthValid = await verifyAuth();
+            setIsAuthenticated(isAuthValid);
+            setIsCheckingAuth(false);
+            if (!isAuthValid) {
               setAuthCheckFailed(true);
             }
           }, 300);

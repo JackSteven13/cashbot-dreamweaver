@@ -126,7 +126,7 @@ export const forceSignOut = async (): Promise<boolean> => {
     }
     
     // Short delay for sign out to process
-    await new Promise(resolve => setTimeout(resolve, 400));
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     console.log("User signed out successfully");
     return true;

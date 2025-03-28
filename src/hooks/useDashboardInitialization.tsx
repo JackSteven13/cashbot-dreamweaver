@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from '@/components/ui/use-toast';
 import { useAuthStateListener } from './dashboard/useAuthStateListener';
 import { useUserDataRefresh } from './session/useUserDataRefresh';
+import { verifyAuth } from '@/utils/auth/verificationUtils';
 
 export const useDashboardInitialization = () => {
   const navigate = useNavigate();
@@ -23,21 +24,7 @@ export const useDashboardInitialization = () => {
     try {
       console.log(`Performing auth check (attempt ${authCheckAttemptRef.current + 1}/${maxAuthCheckAttempts})`);
       
-      // Get current session
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error("Error checking session:", error);
-        return false;
-      }
-      
-      if (!data.session || !data.session.user) {
-        console.log("No valid session found");
-        return false;
-      }
-      
-      console.log("Valid session found, user authenticated");
-      return true;
+      return await verifyAuth();
     } catch (error) {
       console.error("Error during auth check:", error);
       return false;
@@ -107,12 +94,12 @@ export const useDashboardInitialization = () => {
               variant: "destructive",
             });
             
-            // Redirect to login
+            // Redirect to login after a short delay
             setTimeout(() => {
               if (mountedRef.current) {
                 navigate('/login', { replace: true });
               }
-            }, 300);
+            }, 500);
           }
         }
       } catch (err) {
@@ -136,12 +123,12 @@ export const useDashboardInitialization = () => {
     // Set up auth state listener
     const subscription = setupAuthListener();
     
-    // Start initialization with a small delay to avoid race conditions
+    // Start initialization with a slightly longer delay to avoid race conditions
     setTimeout(() => {
       if (mountedRef.current) {
         initDashboard();
       }
-    }, 500);
+    }, 800);
     
     // Force ready state after timeout as fallback
     const forceReadyTimeout = setTimeout(() => {

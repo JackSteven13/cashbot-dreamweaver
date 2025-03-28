@@ -90,7 +90,7 @@ const Login = () => {
         // Redirect to dashboard with a slight delay to allow session to be established
         setTimeout(() => {
           navigate('/dashboard', { replace: true });
-        }, 800);
+        }, 1000);
       } else {
         throw new Error("Échec de connexion");
       }
