@@ -14,7 +14,7 @@ export const SystemInfo: React.FC<SystemInfoProps> = ({ isNewUser, onFeedbackCli
       <div className="flex items-center">
         <div className="h-3 w-3 bg-green-500 rounded-full mr-2 animate-pulse"></div>
         <h3 className="text-lg font-medium text-white">
-          {isNewUser ? "Stream Genius • Bienvenue" : "Stream Genius • Système actif"}
+          {isNewUser ? "Stream genius • Bienvenue" : "Stream genius • Système actif"}
         </h3>
       </div>
       <Button 
@@ -45,65 +45,35 @@ export const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
   remainingSessions,
   referralBonus = 0
 }) => {
-  // Ensure subscription is always a string
-  const effectiveSubscription = subscription || 'freemium';
-  const isAlphaPlan = effectiveSubscription === 'alpha';
-  const isProPlan = effectiveSubscription === 'pro' || tempProEnabled;
-  
-  // Format d'affichage de l'abonnement
-  const displaySubscription = () => {
-    if (isAlphaPlan) return 'Alpha Premium';
-    if (tempProEnabled) return 'Pro (Essai)';
-    if (effectiveSubscription === 'pro') return 'Pro';
-    return effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1);
-  };
-  
-  // Get appropriate styling based on subscription
-  const getBorderClass = () => {
-    if (isAlphaPlan) return 'border-purple-500/30';
-    if (isProPlan) return 'border-blue-500/30';
-    return 'border-slate-600/50';
-  };
-  
-  const getBackgroundClass = () => {
-    if (isAlphaPlan) return 'bg-violet-800/40';
-    if (isProPlan) return 'bg-blue-800/40';
-    return 'bg-slate-700/30';
-  };
-  
-  // Handle display for sessions
-  const sessionsDisplay = () => {
-    if (tempProEnabled) return 'Illimitées (Essai)';
-    if (effectiveSubscription !== 'freemium') return 'Illimitées';
-    
-    const sessionsRemaining = typeof remainingSessions === 'number' ? remainingSessions : 0;
-    const suffix = sessionsRemaining !== 1 ? 's' : '';
-    return `${sessionsRemaining} session${suffix} restante${suffix}`;
-  };
+  const isAlphaPlan = subscription === 'alpha';
   
   return (
     <div className="space-y-3 mb-4 font-mono text-sm">
       <div className="grid grid-cols-2 gap-3">
-        <div className={`${getBackgroundClass()} p-2 rounded-lg border ${getBorderClass()}`}>
+        <div className={`${isAlphaPlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isAlphaPlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
           <div className="text-xs text-gray-400">Abonnement</div>
           <div className="text-sm font-medium text-white capitalize flex items-center">
-            {displaySubscription()}
+            {tempProEnabled ? 'Pro (Essai)' : subscription}
             {isAlphaPlan && <Sparkles className="h-3 w-3 text-purple-300 ml-1" />}
           </div>
         </div>
-        <div className={`${getBackgroundClass()} p-2 rounded-lg border ${getBorderClass()}`}>
+        <div className={`${isAlphaPlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isAlphaPlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
           <div className="text-xs text-gray-400">Limite journalière</div>
           <div className="text-sm font-medium text-white">
             {tempProEnabled ? '5€' : `${dailyLimit}€`}
           </div>
         </div>
-        <div className={`${getBackgroundClass()} p-2 rounded-lg border ${getBorderClass()}`}>
+        <div className={`${isAlphaPlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isAlphaPlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
           <div className="text-xs text-gray-400">Sessions</div>
           <div className="text-sm font-medium text-white">
-            {sessionsDisplay()}
+            {tempProEnabled 
+              ? 'Illimitées (Essai)' 
+              : (subscription === 'freemium' 
+                ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}` 
+                : 'Illimitées')}
           </div>
         </div>
-        <div className={`${getBackgroundClass()} p-2 rounded-lg border ${getBorderClass()}`}>
+        <div className={`${isAlphaPlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isAlphaPlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
           <div className="text-xs text-gray-400">Bonus parrainage</div>
           <div className="text-sm font-medium text-white">
             {referralBonus > 0 ? `+${referralBonus}%` : '0%'}

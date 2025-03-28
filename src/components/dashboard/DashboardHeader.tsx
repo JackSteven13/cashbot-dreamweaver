@@ -24,18 +24,6 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
     return cleanName.length > 20 ? cleanName.substring(0, 20) + '...' : cleanName;
   }, [username]);
   
-  // Format the subscription display
-  const formattedSubscription = useMemo(() => {
-    const subscriptions = {
-      'freemium': 'Freemium',
-      'pro': 'Pro',
-      'visionnaire': 'Visionnaire',
-      'alpha': 'Alpha Premium'
-    };
-    
-    return subscriptions[subscription as keyof typeof subscriptions] || subscription;
-  }, [subscription]);
-  
   return (
     <header className="sticky top-0 z-10 bg-[#1e3a5f] border-b border-[#2d5f8a]/30">
       <div className="flex items-center justify-between p-4">
@@ -45,7 +33,7 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
         
         <div className="text-sm text-right hidden sm:block">
           <p className="font-medium text-white">{displayName}</p>
-          <p className="text-blue-200">Abonnement {formattedSubscription}</p>
+          <p className="text-blue-200">Abonnement {subscription || 'freemium'}</p>
         </div>
       </div>
     </header>

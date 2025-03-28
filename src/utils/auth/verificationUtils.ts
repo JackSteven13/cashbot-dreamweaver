@@ -2,14 +2,15 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Verify authentication state
- * @returns A promise that resolves to true if authenticated, false otherwise
+ * Vérifie l'état d'authentification de manière stable avec persistance améliorée
+ * @returns Une promesse qui résout à true si l'utilisateur est authentifié, false sinon
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
-    console.log("Performing auth verification");
+    // Petit délai pour permettre au contexte d'authentification de s'initialiser correctement
+    await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Get current session
+    // Vérifier la session actuelle avec persistance activée
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
@@ -17,26 +18,29 @@ export const verifyAuth = async (): Promise<boolean> => {
       return false;
     }
     
-    // Verify session validity
+    // Vérification plus stricte de la validité de la session
     if (data.session && data.session.user && data.session.user.id) {
-      console.log("Session found, checking if valid");
-      
-      // Check if session hasn't expired
+      // Vérifier si la session n'a pas expiré
       const tokenExpiry = new Date((data.session.expires_at || 0) * 1000);
       const now = new Date();
       
       if (now > tokenExpiry) {
-        console.log("Session expired, attempting automatic refresh");
-        
-        // Try to refresh the session
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        
-        if (refreshError || !refreshData.session) {
-          console.error("Failed to refresh session:", refreshError);
+        console.log("Session expirée, tentative de rafraîchissement automatique...");
+        // Tentative de rafraîchissement automatique
+        const refreshResult = await supabase.auth.refreshSession();
+        if (refreshResult.error || !refreshResult.data.session) {
+          console.error("Échec du rafraîchissement de session:", refreshResult.error);
           return false;
         }
         
-        console.log("Session refreshed successfully");
+        // Vérification supplémentaire du token rafraîchi
+        const newTokenExpiry = new Date((refreshResult.data.session.expires_at || 0) * 1000);
+        if (now > newTokenExpiry) {
+          console.error("Token rafraîchi déjà expiré");
+          return false;
+        }
+        
+        console.log("Session rafraîchie avec succès");
         return true;
       }
       

@@ -15,7 +15,7 @@ interface UseAuthRetryResult {
 }
 
 /**
- * Hook to handle authentication retry logic with improved persistence
+ * Hook to handle authentication retry logic
  */
 export const useAuthRetry = ({ 
   maxRetries = 3,
@@ -41,20 +41,15 @@ export const useAuthRetry = ({
       
       console.log(`Vérification d'authentification ${isManualRetry ? "manuelle" : "automatique"} (tentative ${retryAttempts + 1})`);
       
-      // Always try to refresh the session first for better resilience
-      console.log("Trying to refresh session before auth check");
-      const refreshResult = await refreshSession();
-      
-      if (refreshResult) {
-        console.log("Session refreshed successfully before auth check");
-      } else {
-        console.log("Session refresh failed or wasn't needed, continuing with verification");
+      // Try refreshing the session first for better stability
+      if (retryAttempts > 0) {
+        console.log("Trying to refresh session before auth check");
+        await refreshSession();
+        
+        // Petit délai pour permettre au rafraîchissement de se propager
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
       
-      // Petit délai pour permettre au rafraîchissement de se propager
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Vérification avec persistance améliorée
       const isAuthValid = await verifyAuth();
       
       if (!isMounted.current) {
@@ -87,7 +82,6 @@ export const useAuthRetry = ({
       }
       
       // Auth check successful
-      console.log("Authentication verification successful");
       setRetryAttempts(0); // Reset retry counter on success
       setIsRetrying(false);
       authCheckInProgress.current = false;

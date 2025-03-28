@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -10,161 +10,100 @@ interface SubscriptionSynchronizerProps {
 
 /**
  * Composant invisible qui synchronise l'abonnement entre Supabase et le localStorage
- * avec une option pour forcer la vérification et une meilleure gestion des erreurs
+ * avec une option pour forcer la vérification
  */
 const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSynchronizerProps) => {
   const [lastChecked, setLastChecked] = useState(0);
-  const [isChecking, setIsChecking] = useState(false);
-  const [errorCount, setErrorCount] = useState(0);
-  const [syncAttempts, setSyncAttempts] = useState(0);
-  const isMounted = useRef(true);
   
   // Fonction de synchronisation extraite pour pouvoir l'utiliser dans le cleanup
   const syncSubscription = useCallback(async (force: boolean = false) => {
-    // Prevent multiple simultaneous checks
-    if (isChecking || !isMounted.current) return;
-    
-    // Limit frequency of checks to reduce API load
-    const now = Date.now();
-    if (!force && !forceCheck && now - lastChecked < 30000 && syncAttempts > 3) {
-      return;
-    }
-    
     try {
       // Vérifier si l'utilisateur est connecté
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session || !isMounted.current) {
-        console.log("Pas de session active, utilisation des données locales");
+      if (!session) {
+        console.log("Pas de session active, synchronisation ignorée");
         return;
       }
       
-      setIsChecking(true);
+      // Déterminer si on doit forcer une synchronisation
+      const now = Date.now();
+      const shouldForceSync = force || forceCheck || (now - lastChecked > 30000); // 30 secondes
+      
+      if (!shouldForceSync && !forceCheck) {
+        return;
+      }
+      
       setLastChecked(now);
-      setSyncAttempts(prev => prev + 1);
+      console.log("Synchronisation de l'abonnement depuis Supabase...");
       
-      // Get cached subscription from localStorage
-      const cachedSubscription = localStorage.getItem('subscription');
-      
-      try {
-        // Try getting the subscription directly first using a direct query with no-cache headers
+      // Essayer d'abord la fonction RPC avec options pour désactiver le cache
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('get_current_subscription', { 
+          user_id: session.user.id 
+        }, { 
+          head: false, // Désactiver le cache
+          count: 'exact' as const
+        }) as { data: string | null, error: any };
+        
+      if (!rpcError && rpcData) {
+        // Vérifier si l'abonnement a changé
+        const currentLocalSub = localStorage.getItem('subscription');
+        if (currentLocalSub !== rpcData) {
+          console.log(`Mise à jour de l'abonnement: ${currentLocalSub} -> ${rpcData}`);
+          localStorage.setItem('subscription', rpcData);
+          
+          if (onSync) {
+            onSync(rpcData);
+          }
+          
+          // Notification seulement si l'abonnement change d'un niveau non freemium à un autre
+          if (currentLocalSub && currentLocalSub !== 'freemium' && currentLocalSub !== rpcData) {
+            toast({
+              title: "Abonnement mis à jour",
+              description: `Votre abonnement est maintenant: ${rpcData.charAt(0).toUpperCase() + rpcData.slice(1)}`,
+            });
+          }
+        } else {
+          console.log("Abonnement déjà synchronisé:", rpcData);
+        }
+      } else {
+        // Fallback sur requête directe
+        console.log("Échec RPC, tentative directe:", rpcError);
+        
         const { data: userData, error: directError } = await supabase
           .from('user_balances')
           .select('subscription')
           .eq('id', session.user.id)
-          .maybeSingle();
-          
-        if (!isMounted.current) return;
+          .single();
           
         if (!directError && userData && userData.subscription) {
-          if (cachedSubscription !== userData.subscription) {
-            console.log(`Mise à jour directe de l'abonnement: ${cachedSubscription || 'aucun'} -> ${userData.subscription}`);
+          const currentLocalSub = localStorage.getItem('subscription');
+          if (currentLocalSub !== userData.subscription) {
+            console.log(`Mise à jour directe de l'abonnement: ${currentLocalSub} -> ${userData.subscription}`);
             localStorage.setItem('subscription', userData.subscription);
             
-            if (onSync && isMounted.current) {
+            if (onSync) {
               onSync(userData.subscription);
             }
-            
-            // Reset error count on success
-            setErrorCount(0);
-          } else {
-            console.log("Abonnement déjà synchronisé:", userData.subscription);
-          }
-          setIsChecking(false);
-          return;
-        }
-        
-        // If direct query fails, try with RPC as fallback
-        if (directError && isMounted.current) {
-          console.log("Fallback on RPC for subscription sync");
-          const { data: rpcData, error: rpcError } = await supabase
-            .rpc('get_current_subscription', { 
-              user_id: session.user.id 
-            });
-          
-          if (!isMounted.current) return;
-          
-          if (!rpcError && rpcData) {
-            // If we succeeded in getting the subscription, check if it has changed
-            if (cachedSubscription !== rpcData) {
-              console.log(`Mise à jour de l'abonnement: ${cachedSubscription || 'aucun'} -> ${rpcData}`);
-              localStorage.setItem('subscription', rpcData);
-              
-              if (onSync && isMounted.current) {
-                onSync(rpcData);
-              }
-              
-              // Reset error count on success
-              setErrorCount(0);
-            } else {
-              console.log("Abonnement déjà synchronisé:", rpcData);
-            }
-          } else if (rpcError && isMounted.current) {
-            // Increment error count
-            const newErrorCount = errorCount + 1;
-            setErrorCount(newErrorCount);
-            
-            // Only log detailed error if it's repeated
-            if (newErrorCount > 2) {
-              console.error("Erreur lors de la récupération RPC:", rpcError);
-            }
-            
-            // If we have a cached subscription, use it
-            if (cachedSubscription && isMounted.current) {
-              console.log("Utilisation de l'abonnement en cache:", cachedSubscription);
-              if (onSync) {
-                onSync(cachedSubscription);
-              }
-            }
-          }
-        }
-      } catch (error) {
-        if (!isMounted.current) return;
-        
-        console.error("Erreur de synchronisation:", error);
-        
-        // Use cached value if we have network errors
-        if (cachedSubscription && isMounted.current) {
-          console.log("Utilisation de l'abonnement en cache après erreur:", cachedSubscription);
-          if (onSync) {
-            onSync(cachedSubscription);
           }
         }
       }
     } catch (error) {
-      if (!isMounted.current) return;
-      console.error("Erreur générale de synchronisation:", error);
-    } finally {
-      if (isMounted.current) {
-        setIsChecking(false);
-      }
+      console.error("Erreur de synchronisation:", error);
     }
-  }, [onSync, forceCheck, lastChecked, isChecking, errorCount, syncAttempts]);
+  }, [onSync, forceCheck, lastChecked]);
   
   useEffect(() => {
-    isMounted.current = true;
-    
-    // On first render, clear any stale force refresh flag
-    const forceRefresh = localStorage.getItem('forceRefreshBalance');
-    if (forceRefresh === 'true') {
-      console.log("Force refresh flag detected on mount, clearing");
-      localStorage.removeItem('forceRefreshBalance');
-    }
-    
     // Synchroniser immédiatement au montage
     syncSubscription(true);
     
     // Configurer un intervalle pour synchroniser périodiquement
-    // Utilisez un intervalle plus long pour réduire les appels API
-    const intervalId = setInterval(() => {
-      if (isMounted.current) {
-        syncSubscription();
-      }
-    }, 60000); // 60 secondes
+    const intervalId = setInterval(() => syncSubscription(), 15000); // Vérifier toutes les 15 secondes
     
     // Ajouter un event listener pour les changements de focus
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isMounted.current) {
+      if (document.visibilityState === 'visible') {
         // Re-synchroniser quand l'utilisateur revient sur la page
         syncSubscription(true);
       }
@@ -173,7 +112,6 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
-      isMounted.current = false;
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };

@@ -7,9 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const getCurrentSession = async () => {
   try {
-    console.log("Getting current session");
+    // Léger délai pour éviter les problèmes de concurrence
+    await new Promise(resolve => setTimeout(resolve, 150));
     
-    // Get the session from Supabase
+    // Utiliser getSession avec la persistance locale activée par défaut
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
@@ -17,13 +18,21 @@ export const getCurrentSession = async () => {
       return null;
     }
     
-    // Validate the session
+    // Add extra validation to ensure session is complete
     if (data.session && data.session.user && data.session.user.id) {
-      console.log("Valid session found for user:", data.session.user.id);
+      // Vérifier si la session n'a pas expiré
+      const tokenExpiry = new Date((data.session.expires_at || 0) * 1000);
+      const now = new Date();
+      
+      if (now > tokenExpiry) {
+        console.log("Session expired, attempting automatic refresh...");
+        const refreshed = await refreshSession();
+        return refreshed;
+      }
+      
       return data.session;
     }
     
-    console.log("No session found");
     return null;
   } catch (error) {
     console.error("Error getting session:", error);
@@ -32,13 +41,13 @@ export const getCurrentSession = async () => {
 };
 
 /**
- * Refreshes the current session
- * @returns The refreshed session or null if refresh failed
+ * Refreshes the current session with improved persistence
  */
 export const refreshSession = async () => {
   try {
     console.log("Attempting to refresh the session");
     
+    // Utiliser refreshSession avec persistance
     const { data, error } = await supabase.auth.refreshSession();
     
     if (error) {
@@ -46,12 +55,21 @@ export const refreshSession = async () => {
       return null;
     }
     
-    if (data.session) {
+    // Validate the refreshed session
+    if (data.session && data.session.user && data.session.user.id) {
+      // Vérification supplémentaire du token rafraîchi
+      const newTokenExpiry = new Date((data.session.expires_at || 0) * 1000);
+      const now = new Date();
+      
+      if (now > newTokenExpiry) {
+        console.error("Refreshed token already expired");
+        return null;
+      }
+      
       console.log("Session refreshed successfully");
       return data.session;
     }
     
-    console.log("No valid session after refresh");
     return null;
   } catch (error) {
     console.error("Error refreshing session:", error);
@@ -67,31 +85,31 @@ export const forceSignOut = async (): Promise<boolean> => {
   try {
     console.log("Performing complete sign out...");
     
-    // Clear all localStorage items
+    // Clear all Supabase-related items from localStorage
     const keysToRemove = [
       'supabase.auth.token',
       'supabase.auth.expires_at',
       'supabase.auth.refresh_token',
       'sb-cfjibduhagxiwqkiyhqd-auth-token',
       'sb-cfjibduhagxiwqkiyhqd-auth-refresh',
+      'supabase.auth.expires_at',
       'user_registered',
       'username',
       'user_balance',
       'daily_session_count', 
-      'subscription',
-      'user_data',
-      'last_logged_in_email'
+      'subscription'
     ];
     
     keysToRemove.forEach(key => localStorage.removeItem(key));
     
-    // Perform sign out with Supabase
-    const { error } = await supabase.auth.signOut({ scope: 'global' });
+    // Pause pour permettre aux opérations locales de se terminer
+    await new Promise(resolve => setTimeout(resolve, 300));
     
-    if (error) {
-      console.error("Error during signOut API call:", error);
-      return false;
-    }
+    // Perform more stable sign out with local and global scope
+    await supabase.auth.signOut({ scope: 'global' });
+    
+    // Short delay for sign out to process
+    await new Promise(resolve => setTimeout(resolve, 400));
     
     console.log("User signed out successfully");
     return true;

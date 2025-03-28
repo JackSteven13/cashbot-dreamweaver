@@ -7,7 +7,6 @@ import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
-import { forceSignOut } from '@/utils/auth/sessionUtils';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,82 +14,48 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isCheckingSession, setIsCheckingSession] = useState(false);
   const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);
   
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
-  // Check if already logged in and set up auth state listener
+  // Check if we have a recent email to suggest, but don't auto-login
   useEffect(() => {
-    let isMounted = true;
-    
-    const checkExistingSession = async () => {
-      try {
-        // Ensure we're starting fresh by signing out
-        await forceSignOut();
-        
-        if (isMounted) {
-          setIsCheckingSession(false);
-        }
-        
-        // Get last email used
-        const savedEmail = localStorage.getItem('last_logged_in_email');
-        if (savedEmail && isMounted) {
-          setLastLoggedInEmail(savedEmail);
-          setEmail(savedEmail);
-        }
-      } catch (error) {
-        console.error("Error checking session:", error);
-        if (isMounted) {
-          setIsCheckingSession(false);
-        }
-      }
-    };
-    
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session && isMounted) {
-        console.log("Login page detected SIGNED_IN event, redirecting to dashboard");
-        navigate('/dashboard', { replace: true });
-      }
-    });
-    
-    checkExistingSession();
-    
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
-  }, [navigate]);
+    // Get last email but don't use it for auto-login
+    const savedEmail = localStorage.getItem('last_logged_in_email');
+    if (savedEmail) {
+      setLastLoggedInEmail(savedEmail);
+      setEmail(savedEmail); // Pre-fill the email field as a suggestion
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      // Sign in with email and password
+      // Utiliser la persistance par défaut (localStorage)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       if (data && data.user) {
         // Save the email for future suggestions
         localStorage.setItem('last_logged_in_email', email);
         
-        toast({
-          title: "Connexion réussie",
-          description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
-        });
-        
-        // Let auth state listener handle navigation
-        // The navigation happens in the auth state change listener
-      } else {
-        throw new Error("Échec de connexion");
+        // Attendre que l'authentification soit entièrement établie
+        setTimeout(async () => {
+          toast({
+            title: "Connexion réussie",
+            description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
+          });
+          
+          // Simple redirect
+          navigate('/dashboard', { replace: true });
+        }, 800);
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -105,7 +70,7 @@ const Login = () => {
     }
   };
 
-  // If checking session, display a loader
+  // Si on vérifie encore la session, afficher un loader
   if (isCheckingSession) {
     return (
       <div className="flex flex-col min-h-screen">
