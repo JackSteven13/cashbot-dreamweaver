@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -33,8 +32,13 @@ export const generateReferralLink = (userId: string) => {
 
 // Calculate referral bonus percentage based on number of active referrals
 export const calculateReferralBonus = (referralsCount: number) => {
+  if (referralsCount <= 0) return 0;
+  
   // 5% bonus per referral, up to 25% maximum
-  return Math.min(referralsCount * 5, 25);
+  const bonus = Math.min(referralsCount * 5, 25);
+  
+  // Return as integer for cleaner UI display
+  return Math.floor(bonus);
 };
 
 // Apply referral bonus to a value

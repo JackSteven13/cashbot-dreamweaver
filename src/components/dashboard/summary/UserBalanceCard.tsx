@@ -51,13 +51,24 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
           </div>
         </div>
         
-        {referralCount > 0 && (
+        {referralCount > 0 ? (
           <div className="mt-4 bg-slate-800/70 backdrop-blur-sm rounded-lg p-3 border border-white/5 flex justify-between items-center">
             <div>
               <div className="text-xs text-white/70 mb-1">Filleuls actifs</div>
-              <div className="font-medium">{referralCount}</div>
+              <div className="font-medium flex items-center">
+                {referralCount} {referralCount > 1 ? 'personnes' : 'personne'}
+                <span className="text-green-400 ml-2 text-xs">(+{referralBonus}% de gains)</span>
+              </div>
             </div>
             <Users className="h-5 w-5 text-white/70" />
+          </div>
+        ) : (
+          <div className="mt-4 bg-slate-800/70 backdrop-blur-sm rounded-lg p-3 border border-white/5 flex justify-between items-center opacity-80">
+            <div>
+              <div className="text-xs text-white/70 mb-1">Filleuls actifs</div>
+              <div className="font-medium text-white/80">Aucun filleul</div>
+            </div>
+            <Users className="h-5 w-5 text-white/50" />
           </div>
         )}
       </div>

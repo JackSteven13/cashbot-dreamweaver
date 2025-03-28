@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AlertCircle, Sparkles } from 'lucide-react';
+import { AlertCircle, Sparkles, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface SystemInfoProps {
@@ -75,8 +75,17 @@ export const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
         </div>
         <div className={`${isAlphaPlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isAlphaPlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
           <div className="text-xs text-gray-400">Bonus parrainage</div>
-          <div className="text-sm font-medium text-white">
-            {referralBonus > 0 ? `+${referralBonus}%` : '0%'}
+          <div className="text-sm font-medium text-white flex items-center">
+            {referralBonus > 0 ? (
+              <>
+                <span>+{referralBonus}%</span>
+                <Users className="h-3 w-3 ml-1 text-green-300" />
+              </>
+            ) : (
+              <span className="flex items-center">
+                0% <span className="text-xs ml-1 text-gray-400">(aucun filleul)</span>
+              </span>
+            )}
           </div>
         </div>
       </div>
