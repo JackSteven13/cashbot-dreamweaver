@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -7,6 +6,7 @@ import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
+import { forceSignOut } from '@/utils/auth/sessionUtils';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -21,48 +21,37 @@ const Login = () => {
 
   // Check if already logged in
   useEffect(() => {
+    let isMounted = true;
+    
     const checkExistingSession = async () => {
       try {
-        // Clear any stale auth state
-        localStorage.removeItem('user_data');
-        localStorage.removeItem('user_session_count');
-        localStorage.removeItem('user_balance');
+        // First ensure we're completely signed out to start fresh
+        await forceSignOut();
         
-        // Check if there's an active session
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Error checking session:", error);
+        // Reset session checking state
+        if (isMounted) {
           setIsCheckingSession(false);
-          return;
         }
         
-        if (data.session && data.session.user) {
-          console.log("Active session found, redirecting to dashboard");
-          
-          // Small delay to ensure session is properly established
-          setTimeout(() => {
-            navigate('/dashboard', { replace: true });
-          }, 500);
-          return;
+        // Get last email but don't use it for auto-login
+        const savedEmail = localStorage.getItem('last_logged_in_email');
+        if (savedEmail && isMounted) {
+          setLastLoggedInEmail(savedEmail);
+          setEmail(savedEmail); // Pre-fill the email field
         }
-        
-        console.log("No active session found");
-        setIsCheckingSession(false);
       } catch (error) {
         console.error("Error checking session:", error);
-        setIsCheckingSession(false);
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
       }
     };
     
     checkExistingSession();
     
-    // Get last email but don't use it for auto-login
-    const savedEmail = localStorage.getItem('last_logged_in_email');
-    if (savedEmail) {
-      setLastLoggedInEmail(savedEmail);
-      setEmail(savedEmail); // Pre-fill the email field as a suggestion
-    }
+    return () => {
+      isMounted = false;
+    };
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {

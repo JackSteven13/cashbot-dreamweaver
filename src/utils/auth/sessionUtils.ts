@@ -108,7 +108,8 @@ export const forceSignOut = async (): Promise<boolean> => {
       'username',
       'user_balance',
       'daily_session_count', 
-      'subscription'
+      'subscription',
+      'user_data'
     ];
     
     keysToRemove.forEach(key => localStorage.removeItem(key));

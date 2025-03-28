@@ -9,7 +9,7 @@ export const useAuthStateListener = () => {
   const setupAuthListener = useCallback(() => {
     console.log("Setting up auth state listener");
     
-    // Set up auth state listener
+    // Set up auth state listener with improved error handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         console.log("Auth state change: signed out");
@@ -18,13 +18,21 @@ export const useAuthStateListener = () => {
         localStorage.removeItem('user_session_count');
         localStorage.removeItem('user_balance');
         
-        navigate('/login', { replace: true });
+        // Use setTimeout to avoid race conditions in auth state
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+        }, 300);
       } else if (event === 'TOKEN_REFRESHED') {
         console.log("Auth state change: token refreshed");
-        // No need to reinitialize here, just acknowledge the refresh
+        // No need to navigate, just log the event
       } else if (event === 'SIGNED_IN') {
         console.log("Auth state change: signed in");
-        // Don't navigate here, let the normal flow handle it
+        // Check if we're already on the dashboard to avoid redirect loops
+        if (window.location.pathname === '/login') {
+          setTimeout(() => {
+            navigate('/dashboard', { replace: true });
+          }, 500);
+        }
       }
     });
     

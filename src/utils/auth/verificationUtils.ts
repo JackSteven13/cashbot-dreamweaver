@@ -2,12 +2,15 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Verify authentication state with improved persistence
+ * Verify authentication state more reliably
  * @returns A promise that resolves to true if authenticated, false otherwise
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
     console.log("Performing auth verification");
+    
+    // Clear auth check state
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     // Get current session with persistence enabled
     const { data, error } = await supabase.auth.getSession();
@@ -45,8 +48,6 @@ export const verifyAuth = async (): Promise<boolean> => {
         return true;
       }
       
-      // Simple validation - trust the session data without extra API call
-      // This reduces chance of deadlocks or circular dependencies
       console.log("Valid session found for user:", data.session.user.id);
       return true;
     }
