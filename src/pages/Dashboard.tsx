@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -37,7 +36,6 @@ const Dashboard = () => {
     refreshUserData
   } = useUserData();
   
-  // Add dormancy check
   const {
     isDormant,
     dormancyData,
@@ -58,45 +56,37 @@ const Dashboard = () => {
     resetBalance
   );
 
-  // Callback to force refresh when needed
   const forceRefresh = useCallback(() => {
     setRenderKey(Date.now());
     refreshUserData().catch(error => console.error("Error refreshing user data:", error));
   }, [refreshUserData]);
 
-  // One-time check on initial render to detect stale data
   useEffect(() => {
     if (!isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
       console.log("Dashboard mounted with user data:", userData.username);
     }
   }, [isAuthChecking, isLoading, userData]);
 
-  // Rediriger vers le tableau de bord principal si l'URL est exactement /dashboard sans sous-route
   useEffect(() => {
     if (window.location.pathname === "/dashboard") {
       setSelectedNavItem('dashboard');
     }
   }, []);
 
-  // Afficher un loader plus robuste pendant le chargement
   if (isAuthChecking || isLoading || !isReady || isChecking) {
     return <DashboardLoading />;
   }
 
-  // Afficher une page d'erreur si l'authentification échoue
   if (authError) {
     return <DashboardError errorType="auth" />;
   }
 
-  // Vérification supplémentaire pour userData
   if (!userData || !userData.username) {
     return <DashboardError errorType="data" onRefresh={forceRefresh} />;
   }
 
-  // Contenu principal du tableau de bord
   const renderDashboardContent = () => (
     <>
-      {/* Display dormancy alert if applicable */}
       {isDormant && dormancyData && (
         <DormancyAlert 
           show={isDormant}
@@ -110,7 +100,7 @@ const Dashboard = () => {
       )}
       
       <DailyLimitAlert 
-        show={showLimitAlert && !isDormant} 
+        show={showLimitAlert && !isDormant && !isNewUser} 
         subscription={userData.subscription}
         currentBalance={userData.balance}
       />
@@ -131,7 +121,6 @@ const Dashboard = () => {
     </>
   );
 
-  // Simplifié pour supprimer les routes inutiles
   return (
     <DashboardLayout
       key={renderKey}

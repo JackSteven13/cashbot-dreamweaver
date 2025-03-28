@@ -15,6 +15,12 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
     if (balanceResult) {
       balanceData = balanceResult.data;
       isUserNew = balanceResult.isNewUser;
+      
+      // Pour les nouveaux utilisateurs, on s'assure que le solde et le nombre de sessions sont à 0
+      if (isUserNew && balanceData) {
+        balanceData.balance = 0;
+        balanceData.daily_session_count = 0;
+      }
     } else {
       // Create new balance if needed
       try {
@@ -29,6 +35,11 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
         
         if (newBalance) {
           balanceData = Array.isArray(newBalance) ? newBalance[0] : newBalance;
+          // S'assurer que le solde est à 0 pour les nouveaux utilisateurs
+          if (balanceData) {
+            balanceData.balance = 0;
+            balanceData.daily_session_count = 0;
+          }
           isUserNew = true;
         } else {
           throw new Error("Failed to create balance");

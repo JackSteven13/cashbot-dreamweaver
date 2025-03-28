@@ -19,13 +19,13 @@ export const useUserData = () => {
     refetchUserData
   } = useUserFetch();
 
-  // Make sure new users have zero balance
+  // Make sure new users have zero balance and no limit alert
   const sanitizedUserData = ensureZeroBalanceForNewUser(isNewUser, fetchedUserData);
 
   // Create state variables to be managed by balance actions
   const [userData, setUserData] = useState<UserData>(sanitizedUserData);
   const [dailySessionCount, setDailySessionCount] = useState<number>(fetchedDailySessionCount);
-  const [showLimitAlert, setShowLimitAlert] = useState<boolean>(initialShowLimitAlert);
+  const [showLimitAlert, setShowLimitAlert] = useState<boolean>(isNewUser ? false : initialShowLimitAlert);
 
   // Update local state when fetched data changes
   useEffect(() => {
@@ -48,11 +48,12 @@ export const useUserData = () => {
   }, [fetchedDailySessionCount, dailySessionCount]);
 
   useEffect(() => {
-    if (initialShowLimitAlert !== showLimitAlert) {
+    // Ne pas montrer l'alerte de limite pour les nouveaux utilisateurs
+    if (initialShowLimitAlert !== showLimitAlert && !isNewUser) {
       console.log("Updating showLimitAlert from", showLimitAlert, "to", initialShowLimitAlert);
       setShowLimitAlert(initialShowLimitAlert);
     }
-  }, [initialShowLimitAlert, showLimitAlert]);
+  }, [initialShowLimitAlert, showLimitAlert, isNewUser]);
   
   // Get balance and session action handlers
   const { 
@@ -69,10 +70,13 @@ export const useUserData = () => {
 
   // Memoize setShowLimitAlert to prevent infinite re-renders
   const handleSetShowLimitAlert = useCallback((show: boolean) => {
-    console.log("Setting showLimitAlert to", show);
-    setShowLimitAlert(show);
-    setFetchedShowLimitAlert(show);
-  }, [setFetchedShowLimitAlert]);
+    // Ne pas montrer l'alerte de limite pour les nouveaux utilisateurs
+    if (!isNewUser) {
+      console.log("Setting showLimitAlert to", show);
+      setShowLimitAlert(show);
+      setFetchedShowLimitAlert(show);
+    }
+  }, [setFetchedShowLimitAlert, isNewUser]);
 
   // Add a function to refresh the user data from the backend
   const refreshUserData = useCallback(async (): Promise<boolean> => {
@@ -92,7 +96,7 @@ export const useUserData = () => {
     userData,
     isNewUser,
     dailySessionCount,
-    showLimitAlert,
+    showLimitAlert: isNewUser ? false : showLimitAlert, // Toujours false pour les nouveaux utilisateurs
     setShowLimitAlert: handleSetShowLimitAlert,
     updateBalance,
     resetBalance,
