@@ -21,6 +21,8 @@ export const useAuthStateListener = () => {
         localStorage.removeItem('supabase.auth.token');
         localStorage.removeItem('supabase.auth.expires_at');
         localStorage.removeItem('supabase.auth.refresh_token');
+        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
         
         // Only redirect if we're not already on the login page
         if (window.location.pathname !== '/login') {
