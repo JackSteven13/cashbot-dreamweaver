@@ -17,43 +17,37 @@ export const openStripeWindow = (url: string): void => {
   
   console.log("Opening Stripe URL:", url);
   
-  // On mobile devices, use direct navigation
-  if (window.innerWidth < 768) {
+  // Force direct redirect for all mobile devices
+  if (window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
     console.log("Mobile device detected, using direct navigation");
     window.location.href = url;
     return;
   }
   
-  // Try to open in a new tab first - with specific focus on popup allowance
+  // Force direct redirect if on Safari (mobile or desktop)
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  if (isSafari) {
+    console.log("Safari browser detected, using direct navigation");
+    window.location.href = url;
+    return;
+  }
+  
+  // For desktop browsers other than Safari, try opening in new window
   try {
-    // Force direct redirect if on Safari mobile
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // First attempt - simple window.open
+    const newWindow = window.open(url, '_blank');
     
-    if (isSafari && isMobile) {
-      console.log("Safari mobile detected, using direct navigation");
-      window.location.href = url;
-      return;
-    }
-    
-    // Try opening in new window with more permissive options
-    const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
-    
-    // Check if popup was blocked and redirect current window if needed
+    // Check if popup was blocked
     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      console.log("Failed to open in new tab, redirecting current window");
+      console.log("Popup appears to be blocked, falling back to direct navigation");
       window.location.href = url;
     } else {
-      // Try to focus the new window
-      try {
-        newWindow.focus();
-      } catch (focusError) {
-        console.log("Could not focus new window:", focusError);
-      }
+      console.log("Successfully opened new window");
+      newWindow.focus();
     }
   } catch (error) {
     console.error("Error opening window:", error);
-    // Fallback to direct navigation
+    // Final fallback to direct navigation
     window.location.href = url;
   }
 };
@@ -69,16 +63,16 @@ export const showStripeManualOpenToast = (url: string): void => {
   
   toast({
     title: "Paiement en attente",
-    description: "Utilisez le bouton ci-dessous si la page de paiement ne s'est pas ouverte automatiquement.",
+    description: "Si la page de paiement ne s'est pas ouverte, cliquez sur le bouton ci-dessous.",
     action: (
       <ToastAction 
-        onClick={() => openStripeWindow(url)}
+        onClick={() => window.location.href = url}
         className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md cursor-pointer text-sm"
         altText="Ouvrir la page de paiement"
       >
         Ouvrir le paiement
       </ToastAction>
     ),
-    duration: 15000, // Increase duration to give user more time to click
+    duration: 30000, // Increased duration to give user more time
   });
 };

@@ -21,34 +21,21 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   // Effect to open Stripe page as soon as URL is available
   useEffect(() => {
     if (stripeCheckoutUrl && isStripeProcessing) {
-      console.log("Opening Stripe URL:", stripeCheckoutUrl);
+      console.log("Stripe URL available, preparing to open:", stripeCheckoutUrl);
       
-      // Ensure we're not in a test environment
-      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        // Try to open in new window, with a delay to prevent popup blocking
-        setTimeout(() => {
-          try {
-            openStripeWindow(stripeCheckoutUrl);
-            
-            // Show a toast with a button to manually open in case popup was blocked
-            setTimeout(() => {
-              showStripeManualOpenToast(stripeCheckoutUrl);
-            }, 800);
-          } catch (err) {
-            console.error("Error opening Stripe window:", err);
-            // Fallback to direct redirect
-            window.location.href = stripeCheckoutUrl;
-          }
-        }, 300); // Increased delay to avoid popup blockers
-      } else {
-        // For local development, just log the URL
-        console.log("Local development detected, would open URL:", stripeCheckoutUrl);
-        toast({
-          title: "Mode développement",
-          description: "En environnement local, l'URL Stripe est affichée dans la console",
-        });
-        showStripeManualOpenToast(stripeCheckoutUrl);
-      }
+      // First show the toast to ensure the user always has a way to access the payment page
+      showStripeManualOpenToast(stripeCheckoutUrl);
+      
+      // Delay the automatic opening to avoid race conditions
+      setTimeout(() => {
+        try {
+          console.log("Attempting to open Stripe window");
+          openStripeWindow(stripeCheckoutUrl);
+        } catch (err) {
+          console.error("Error opening Stripe window:", err);
+          // The toast is already showing so user can click to open manually
+        }
+      }, 500);
     }
   }, [stripeCheckoutUrl, isStripeProcessing]);
 
@@ -87,8 +74,9 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     }
 
     if (isStripeProcessing) {
-      console.log("Payment already in progress, using stored URL if available");
+      console.log("Payment already in progress");
       if (stripeCheckoutUrl) {
+        // If we already have a URL, just open it again
         openStripeWindow(stripeCheckoutUrl);
       }
       return;

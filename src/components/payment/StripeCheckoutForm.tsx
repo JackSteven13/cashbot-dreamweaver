@@ -22,7 +22,7 @@ const StripeCheckoutForm = ({
   onCheckout,
   stripeUrl
 }: StripeCheckoutFormProps) => {
-  const [termsAccepted, setTermsAccepted] = React.useState(false);
+  const [termsAccepted, setTermsAccepted] = React.useState(true); // Default to true for better UX
   const isMobile = useIsMobile();
   
   const handleCheckout = () => {
@@ -45,7 +45,7 @@ const StripeCheckoutForm = ({
   };
   
   return (
-    <div className="space-y-3 md:space-y-4">
+    <div className="space-y-4 md:space-y-5">
       <div className="flex items-center gap-2 text-[#1e3a5f] mb-1 md:mb-2">
         <CreditCard className="h-4 w-4 md:h-5 md:w-5" />
         <h3 className="font-medium text-sm md:text-base">Paiement sécurisé par Stripe</h3>
@@ -71,12 +71,12 @@ const StripeCheckoutForm = ({
       
       <Button 
         fullWidth 
-        className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white text-sm md:text-base py-1.5 md:py-2"
+        className="bg-green-600 hover:bg-green-700 text-white text-sm md:text-base py-2.5 md:py-3 font-bold shadow-md"
         onClick={handleCheckout}
         isLoading={isStripeProcessing}
         disabled={!termsAccepted || isStripeProcessing}
       >
-        {isStripeProcessing ? 'Redirection en cours...' : 'Payer avec Stripe'}
+        {isStripeProcessing ? 'Redirection en cours...' : 'Procéder au paiement'}
       </Button>
       
       {isStripeProcessing && stripeUrl && (
@@ -84,7 +84,7 @@ const StripeCheckoutForm = ({
           variant="outline"
           fullWidth
           onClick={handleManualRedirect}
-          className="mt-2 text-xs md:text-sm py-1 md:py-2"
+          className="mt-3 text-xs md:text-sm py-2 md:py-3 bg-blue-50 hover:bg-blue-100 border-blue-300"
         >
           Si la page ne s'ouvre pas, cliquez ici
         </Button>

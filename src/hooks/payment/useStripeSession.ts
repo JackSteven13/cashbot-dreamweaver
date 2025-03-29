@@ -15,10 +15,18 @@ export const useStripeSession = () => {
     try {
       console.log(`Creating Stripe session for plan ${plan}${referralCode ? ` with referral code ${referralCode}` : ''}`);
       
+      // Ensure we have full URLs for success and cancel
+      const baseUrl = window.location.origin;
+      const successUrl = `${baseUrl}/payment-success`;
+      const cancelUrl = `${baseUrl}/offres`;
+      
+      console.log("Success URL:", successUrl);
+      console.log("Cancel URL:", cancelUrl);
+      
       const data = await createCheckoutSession(
         plan,
-        `${window.location.origin}/payment-success`,
-        `${window.location.origin}/offres`,
+        successUrl,
+        cancelUrl,
         referralCode
       );
       

@@ -31,21 +31,18 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
     setSelectedPlan(planId);
     console.log("Plan sélectionné:", planId);
     
-    // Prevent any race conditions that might affect navigation
-    setTimeout(() => {
-      try {
-        console.log("Navigating to payment page with plan:", planId);
-        // Use navigate with state and no replace to ensure history is maintained
-        navigate('/payment', { 
-          state: { plan: planId },
-          replace: false 
-        });
-      } catch (error) {
-        console.error("Navigation error:", error);
-        // Fallback to a simpler navigation approach
-        window.location.href = `/payment?plan=${planId}`;
-      }
-    }, 100);
+    // Navigate to payment page immediately
+    try {
+      console.log("Navigating to payment page with plan:", planId);
+      // Use direct navigation to avoid potential race conditions
+      window.location.href = `/payment?plan=${planId}`;
+    } catch (error) {
+      console.error("Navigation error:", error);
+      // Fallback in case the above fails
+      navigate('/payment', { 
+        state: { plan: planId }
+      });
+    }
   };
   
   // Get subscription plans data

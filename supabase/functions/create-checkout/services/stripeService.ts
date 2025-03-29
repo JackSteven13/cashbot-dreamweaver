@@ -121,7 +121,11 @@ export async function createCheckoutSession({
         submit: {
           message: 'Merci de compléter votre paiement pour activer votre abonnement'
         }
-      }
+      },
+      // Set locale to French for better user experience
+      locale: 'fr',
+      // Ensure checkout uses a popup/redirect method
+      ui_mode: 'hosted',
     });
     
     if (!session) {

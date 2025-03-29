@@ -49,7 +49,7 @@ const Payment = () => {
       return;
     }
     
-    if (plan && ['pro', 'visionnaire', 'alpha'].includes(plan)) {
+    if (plan && ['starter', 'gold', 'elite'].includes(plan)) {
       setSelectedPlan(plan as PlanType);
     } else {
       // If no valid plan is specified, redirect back to offers
@@ -97,7 +97,7 @@ const Payment = () => {
       // Short delay to ensure UI is ready
       const timer = setTimeout(() => {
         handleStripeCheckout();
-      }, 500);
+      }, 800);
       
       return () => clearTimeout(timer);
     }
