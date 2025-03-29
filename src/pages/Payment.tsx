@@ -30,7 +30,17 @@ const Payment = () => {
 
   // Get plan from state or URL parameters
   useEffect(() => {
-    const plan = location.state?.plan || new URLSearchParams(location.search).get('plan');
+    // Extract plan from state or URL params
+    let plan: string | null = null;
+    
+    if (location.state && location.state.plan) {
+      plan = location.state.plan;
+      console.log("Plan from state:", plan);
+    } else {
+      plan = new URLSearchParams(location.search).get('plan');
+      console.log("Plan from URL params:", plan);
+    }
+    
     console.log("Payment page initialized with plan:", plan);
     
     // Redirect freemium users back to dashboard or offers
@@ -43,6 +53,11 @@ const Payment = () => {
       setSelectedPlan(plan as PlanType);
     } else {
       // If no valid plan is specified, redirect back to offers
+      toast({
+        title: "Plan non valide",
+        description: "Veuillez sélectionner un plan valide.",
+        variant: "destructive"
+      });
       navigate('/offres');
     }
 
@@ -74,6 +89,19 @@ const Payment = () => {
     
     checkAuth();
   }, [location, navigate]);
+
+  // Automatically initiate Stripe checkout when the page loads and plan is selected
+  useEffect(() => {
+    if (selectedPlan && !isAuthChecking && !isStripeProcessing && useStripePayment) {
+      console.log("Auto-initiating Stripe checkout for plan:", selectedPlan);
+      // Short delay to ensure UI is ready
+      const timer = setTimeout(() => {
+        handleStripeCheckout();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [selectedPlan, isAuthChecking, isStripeProcessing, useStripePayment, handleStripeCheckout]);
 
   // Handle freemium subscription
   const handleFreemiumSubscription = async () => {
@@ -141,6 +169,11 @@ const Payment = () => {
       handleStripeCheckout();
     } catch (error) {
       console.error("Error initiating Stripe checkout:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors du paiement. Veuillez réessayer.",
+        variant: "destructive"
+      });
     }
   };
 

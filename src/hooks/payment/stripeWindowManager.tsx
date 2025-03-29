@@ -24,14 +24,32 @@ export const openStripeWindow = (url: string): void => {
     return;
   }
   
-  // Try to open in a new tab first
+  // Try to open in a new tab first - with specific focus on popup allowance
   try {
+    // Force direct redirect if on Safari mobile
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (isSafari && isMobile) {
+      console.log("Safari mobile detected, using direct navigation");
+      window.location.href = url;
+      return;
+    }
+    
+    // Try opening in new window with more permissive options
     const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
     
-    // If that fails, redirect the current window
+    // Check if popup was blocked and redirect current window if needed
     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
       console.log("Failed to open in new tab, redirecting current window");
       window.location.href = url;
+    } else {
+      // Try to focus the new window
+      try {
+        newWindow.focus();
+      } catch (focusError) {
+        console.log("Could not focus new window:", focusError);
+      }
     }
   } catch (error) {
     console.error("Error opening window:", error);
@@ -61,6 +79,6 @@ export const showStripeManualOpenToast = (url: string): void => {
         Ouvrir le paiement
       </ToastAction>
     ),
-    duration: 10000, // Increase duration to give user time to click
+    duration: 15000, // Increase duration to give user more time to click
   });
 };

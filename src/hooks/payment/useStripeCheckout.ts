@@ -23,21 +23,31 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     if (stripeCheckoutUrl && isStripeProcessing) {
       console.log("Opening Stripe URL:", stripeCheckoutUrl);
       
-      // Try to open in new window first
-      try {
-        // Short delay to make sure the browser doesn't block the popup
+      // Ensure we're not in a test environment
+      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        // Try to open in new window, with a delay to prevent popup blocking
         setTimeout(() => {
-          openStripeWindow(stripeCheckoutUrl);
-          
-          // Show a toast with a button to manually open in case popup was blocked
-          setTimeout(() => {
-            showStripeManualOpenToast(stripeCheckoutUrl);
-          }, 500);
-        }, 100);
-      } catch (err) {
-        console.error("Error opening Stripe window:", err);
-        // Fallback to direct redirect
-        window.location.href = stripeCheckoutUrl;
+          try {
+            openStripeWindow(stripeCheckoutUrl);
+            
+            // Show a toast with a button to manually open in case popup was blocked
+            setTimeout(() => {
+              showStripeManualOpenToast(stripeCheckoutUrl);
+            }, 800);
+          } catch (err) {
+            console.error("Error opening Stripe window:", err);
+            // Fallback to direct redirect
+            window.location.href = stripeCheckoutUrl;
+          }
+        }, 300); // Increased delay to avoid popup blockers
+      } else {
+        // For local development, just log the URL
+        console.log("Local development detected, would open URL:", stripeCheckoutUrl);
+        toast({
+          title: "Mode développement",
+          description: "En environnement local, l'URL Stripe est affichée dans la console",
+        });
+        showStripeManualOpenToast(stripeCheckoutUrl);
       }
     }
   }, [stripeCheckoutUrl, isStripeProcessing]);
