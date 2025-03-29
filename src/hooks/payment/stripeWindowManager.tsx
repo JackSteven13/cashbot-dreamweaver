@@ -17,16 +17,21 @@ export const openStripeWindow = (url: string): void => {
   
   console.log("Opening Stripe URL:", url);
   
-  // Simplify for maximum reliability - direct navigation always works
+  // Force direct navigation for maximum compatibility, especially on mobile
   try {
-    // Use direct window.location for reliability
-    window.location.href = url;
+    console.log("Redirecting to:", url);
+    // First show toast before navigation
+    showStripeManualOpenToast(url);
+    
+    // Short timeout to ensure the toast is visible
+    setTimeout(() => {
+      // Use location.assign for most reliable cross-browser behavior
+      window.location.assign(url);
+    }, 300);
   } catch (error) {
     console.error("Error during redirection:", error);
     // Fallback if somehow the direct navigation fails
-    setTimeout(() => {
-      window.location.replace(url);
-    }, 100);
+    window.location.href = url;
   }
 };
 
@@ -44,7 +49,7 @@ export const showStripeManualOpenToast = (url: string): void => {
     description: "Si la page de paiement ne s'est pas ouverte, cliquez sur le bouton ci-dessous.",
     action: (
       <ToastAction 
-        onClick={() => window.location.href = url}
+        onClick={() => window.location.assign(url)}
         className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md cursor-pointer text-sm"
         altText="Ouvrir la page de paiement"
       >

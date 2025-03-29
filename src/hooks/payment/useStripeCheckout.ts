@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -18,24 +17,12 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const { stripeCheckoutUrl, createStripeSession, getEffectiveReferralCode } = useStripeSession();
   const { updateToFreemium } = useFreemiumUpdate();
 
-  // Effect to handle Stripe URL when available - simplified for reliability
+  // Effect to handle Stripe URL when available - use openStripeWindow manager
   useEffect(() => {
     if (stripeCheckoutUrl && isStripeProcessing) {
       console.log("Stripe URL available, preparing to open:", stripeCheckoutUrl);
-      
-      // First show the toast to ensure the user always has a way to access the payment page
-      showStripeManualOpenToast(stripeCheckoutUrl);
-      
-      // Direct redirection is more reliable across browsers
-      try {
-        // Short delay to ensure the toast is visible before possibly navigating away
-        setTimeout(() => {
-          window.location.href = stripeCheckoutUrl;
-        }, 500);
-      } catch (err) {
-        console.error("Error redirecting to Stripe:", err);
-        // Toast is already showing so user can click manually
-      }
+      // Use the dedicated window manager for better cross-platform compatibility
+      openStripeWindow(stripeCheckoutUrl);
     }
   }, [stripeCheckoutUrl, isStripeProcessing]);
 
@@ -76,8 +63,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     if (isStripeProcessing) {
       console.log("Payment already in progress");
       if (stripeCheckoutUrl) {
-        // If we already have a URL, just redirect to it
-        window.location.href = stripeCheckoutUrl;
+        // If we already have a URL, just redirect to it again
+        openStripeWindow(stripeCheckoutUrl);
       }
       return;
     }

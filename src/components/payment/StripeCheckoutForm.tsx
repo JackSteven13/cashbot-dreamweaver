@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
 import { useIsMobile } from '@/hooks/use-mobile';
+import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;
@@ -40,7 +41,7 @@ const StripeCheckoutForm = ({
   
   const handleManualRedirect = () => {
     if (stripeUrl) {
-      window.location.href = stripeUrl;
+      openStripeWindow(stripeUrl);
     }
   };
   
@@ -84,9 +85,9 @@ const StripeCheckoutForm = ({
           variant="outline"
           fullWidth
           onClick={handleManualRedirect}
-          className="mt-3 text-xs md:text-sm py-2 md:py-3 bg-blue-50 hover:bg-blue-100 border-blue-300"
+          className="mt-3 text-xs md:text-sm py-2 md:py-3 bg-blue-50 hover:bg-blue-100 border-blue-300 font-medium"
         >
-          Si la page ne s'ouvre pas, cliquez ici
+          Ouvrir la page de paiement manuellement
         </Button>
       )}
     </div>
