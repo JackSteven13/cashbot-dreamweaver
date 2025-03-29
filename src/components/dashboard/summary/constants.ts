@@ -1,5 +1,5 @@
 
-// Plans et leurs limites de gains (updated for new plan structure)
+// Plans et leurs limites de gains
 export const SUBSCRIPTION_LIMITS = {
   'freemium': 0.5,
   'starter': 5,
@@ -7,12 +7,12 @@ export const SUBSCRIPTION_LIMITS = {
   'elite': 50
 };
 
-// Commission rates for referrals by plan type
+// Commission rates for referrals by plan type (standard rates)
 export const COMMISSION_RATES = {
-  'freemium': 0.4,    // 40% on first subscription
-  'starter': 0.6,     // 60% + 10% recurring
-  'gold': 0.8,        // 80% + 20% recurring + 5% level 2
-  'elite': 1.0        // 100% + 30% recurring + 10% level 2
+  'freemium': 0.35,    // 35% on first subscription
+  'starter': 0.35,     // 35% + 10% recurring
+  'gold': 0.35,        // 35% + 20% recurring + 5% level 2
+  'elite': 0.35        // 35% + 30% recurring + 10% level 2
 };
 
 // Recurring commission rates

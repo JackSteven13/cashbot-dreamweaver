@@ -43,7 +43,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
   };
 
   // Get commission rates based on subscription
-  const directCommission = COMMISSION_RATES[subscription as keyof typeof COMMISSION_RATES] || 0.4;
+  const directCommission = COMMISSION_RATES[subscription as keyof typeof COMMISSION_RATES] || 0.35;
   const recurringCommission = RECURRING_COMMISSION_RATES[subscription as keyof typeof RECURRING_COMMISSION_RATES] || 0;
   const level2Commission = LEVEL2_COMMISSION_RATES[subscription as keyof typeof LEVEL2_COMMISSION_RATES] || 0;
 
@@ -58,7 +58,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
         {isTopReferrer && (
           <div className="bg-amber-500/20 border border-amber-500/30 text-amber-700 text-xs font-medium py-1 px-2 rounded-full flex items-center">
             <Users className="h-3 w-3 mr-1" />
-            Top 1% Parrains
+            Top Parrain
           </div>
         )}
       </div>

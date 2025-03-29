@@ -7,13 +7,8 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
-  // Amélioré pour être plus robuste et stable
+  // Simplifié pour traiter tous les utilisateurs de la même façon
   const displayName = useMemo(() => {
-    // Gestion spéciale pour ce compte
-    if (username === "kayzerslotern@gmail.com") {
-      return "Dickerson";
-    }
-    
     // Nettoyage du nom avec remplacement par défaut
     if (!username || username.trim() === '') {
       return 'Utilisateur';
