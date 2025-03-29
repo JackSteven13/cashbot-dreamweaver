@@ -9,7 +9,7 @@ interface PaymentLayoutProps {
 
 const PaymentLayout = ({ children }: PaymentLayoutProps) => {
   return (
-    <div className="cyberpunk-bg min-h-screen">
+    <div className="cyberpunk-bg min-h-screen bg-[#0f0f23]">
       <PaymentHeader />
       
       <main className="container mx-auto py-12 px-4">
