@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Share2, Copy, Users, Gift } from 'lucide-react';
 import { useUserData } from '@/hooks/useUserData';
 import { toast } from 'sonner';
+import { COMMISSION_RATES } from '@/components/dashboard/summary/constants';
 
 const ReferralsPage = () => {
   const { userData, isLoading } = useUserData();
@@ -33,6 +34,13 @@ const ReferralsPage = () => {
       joinDate: referral.joinDate || referral.created_at
     }));
   }, [userData?.referrals]);
+
+  // Get commission rate based on subscription
+  const commissionRate = userData?.subscription ? 
+    COMMISSION_RATES[userData.subscription as keyof typeof COMMISSION_RATES] || 0.4 : 
+    0.4;
+  
+  const commissionPercentage = Math.round(commissionRate * 100);
 
   return (
     <div className="w-full">
@@ -77,8 +85,8 @@ const ReferralsPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">10.00 €</div>
-            <p className="text-sm text-muted-foreground">Par parrainage actif</p>
+            <div className="text-3xl font-bold">{commissionPercentage}%</div>
+            <p className="text-sm text-muted-foreground">Commission par parrainage</p>
           </CardContent>
         </Card>
       </div>
@@ -87,7 +95,7 @@ const ReferralsPage = () => {
         <CardHeader>
           <CardTitle>Votre lien de parrainage</CardTitle>
           <CardDescription>
-            Partagez ce lien avec vos amis et gagnez jusqu'à 70% de commission sur leurs abonnements
+            Partagez ce lien avec vos amis et gagnez jusqu'à {commissionPercentage}% de commission sur leurs abonnements
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,7 +112,7 @@ const ReferralsPage = () => {
           
           <div className="bg-amber-50 rounded-lg p-3 border border-amber-100 mt-4">
             <p className="text-sm font-medium text-amber-800">
-              ✨ Avantage exclusif : Les personnes parrainées avec votre lien bénéficient également du taux de 70% de commission pour leurs propres parrainages !
+              ✨ Avantage exclusif : Augmentez votre taux de commission en souscrivant à un forfait supérieur !
             </p>
           </div>
           
@@ -157,7 +165,7 @@ const calculateReferralBonus = (referrals: Array<{ active: boolean }>) => {
   
   // Compter les parrainages actifs uniquement
   const activeReferrals = referrals.filter(ref => ref.active).length;
-  return activeReferrals * 10; // 10€ par parrainage actif (ajusté pour refléter la commission de 70%)
+  return activeReferrals * 10; // Valeur moyenne pour l'affichage (ajustable)
 };
 
 export default ReferralsPage;

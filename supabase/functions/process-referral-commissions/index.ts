@@ -13,14 +13,23 @@ const corsHeaders = {
 const STRIPE_PERCENTAGE_FEE = 0.029;
 const STRIPE_FIXED_FEE = 0.30;
 
-// Plans et leurs prix mensuels
+// Plans et leurs prix annuels
 const PLAN_PRICES = {
-  'basic': 19.99,
-  'pro': 39.99,
-  'premium': 79.99,
-  'enterprise': 149.99,
+  'freemium': 0,
+  'starter': 99,
+  'gold': 349,
+  'elite': 549,
   // Valeur par défaut pour les plans non reconnus
-  'default': 19.99
+  'default': 99
+};
+
+// Taux de commission par plan
+const COMMISSION_RATES = {
+  'freemium': 0.4,    // 40%
+  'starter': 0.6,     // 60%
+  'gold': 0.8,        // 80%
+  'elite': 1.0,       // 100%
+  'default': 0.4      // 40% par défaut
 };
 
 // Créer un client Supabase
@@ -31,13 +40,19 @@ const supabaseServiceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const supabase = createClient(supabaseUrl, supabaseServiceRole);
 
 // Calculer le montant de commission après frais Stripe
-function calculateCommission(planType: string, commissionRate: number): number {
+function calculateCommission(planType: string, referrerPlan: string): number {
   // Récupérer le prix du plan
   const planPrice = PLAN_PRICES[planType as keyof typeof PLAN_PRICES] || PLAN_PRICES.default;
+  
+  // Si c'est un plan gratuit, pas de commission
+  if (planPrice === 0) return 0;
   
   // Calculer le montant net après frais Stripe
   const stripeFees = planPrice * STRIPE_PERCENTAGE_FEE + STRIPE_FIXED_FEE;
   const netAmount = planPrice - stripeFees;
+  
+  // Récupérer le taux de commission basé sur le plan du parrain
+  const commissionRate = COMMISSION_RATES[referrerPlan as keyof typeof COMMISSION_RATES] || COMMISSION_RATES.default;
   
   // Calculer la commission
   const commission = netAmount * commissionRate;
@@ -116,7 +131,7 @@ async function processAllCommissions() {
     // Récupérer tous les parrainages actifs
     const { data: activeReferrals, error: referralsError } = await supabase
       .from('referrals')
-      .select('*')
+      .select('*, user_balances!referrer_id(subscription)')
       .eq('status', 'active');
       
     if (referralsError) {
@@ -136,13 +151,16 @@ async function processAllCommissions() {
     
     for (const referral of activeReferrals) {
       try {
-        // Calculer la commission en tenant compte des frais Stripe
+        // Récupérer le plan du parrain pour calculer la commission
+        const referrerPlan = referral.user_balances?.subscription || 'freemium';
+        
+        // Calculer la commission en tenant compte des frais Stripe et du plan du parrain
         const commissionAmount = calculateCommission(
           referral.plan_type, 
-          referral.commission_rate
+          referrerPlan
         );
         
-        console.log(`Commission calculée pour le parrain ${referral.referrer_id}: ${commissionAmount}€ (taux: ${referral.commission_rate * 100}%)`);
+        console.log(`Commission calculée pour le parrain ${referral.referrer_id}: ${commissionAmount}€ (plan: ${referrerPlan}, taux: ${COMMISSION_RATES[referrerPlan as keyof typeof COMMISSION_RATES] * 100}%)`);
         
         // Ajouter la transaction
         const transactionAdded = await addCommissionTransaction(

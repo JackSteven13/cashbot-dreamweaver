@@ -68,10 +68,36 @@ export async function findReferrer(referralCode: string | null) {
   }
 }
 
-// Standard commission rate for all users is 35%
+// Get commission rate based on subscription - updated for new structure
 async function getCommissionRateForUser(referrerId: string): Promise<number> {
-  console.log(`Taux de commission standard de 35% pour l'utilisateur ${referrerId}`);
-  return 0.35; // Standard 35% commission for all users
+  try {
+    // Get the user's subscription
+    const { data: userData, error: userError } = await supabase
+      .from('user_balances')
+      .select('subscription')
+      .eq('id', referrerId)
+      .maybeSingle();
+      
+    if (userError || !userData) {
+      console.error("Erreur lors de la récupération de l'abonnement:", userError);
+      return 0.4; // Default to freemium rate (40%)
+    }
+    
+    // Return commission rate based on subscription
+    switch (userData.subscription) {
+      case 'starter':
+        return 0.6; // 60%
+      case 'gold':
+        return 0.8; // 80%
+      case 'elite':
+        return 1.0; // 100%
+      default:
+        return 0.4; // 40% for freemium
+    }
+  } catch (error) {
+    console.error("Erreur lors de la récupération du taux de commission:", error);
+    return 0.4; // Default to freemium rate (40%)
+  }
 }
 
 // Function to track a referral - enhanced with error retries and validation
