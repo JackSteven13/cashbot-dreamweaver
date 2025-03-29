@@ -40,7 +40,7 @@ const OffresHeader: React.FC<OffresHeaderProps> = ({
         </h1>
         <p className="text-base md:text-lg text-blue-800 dark:text-blue-200 max-w-2xl">
           Choisissez l'offre qui correspond le mieux à vos besoins et maximisez vos revenus.
-          Passez à l'offre <span className="font-bold text-purple-600 dark:text-purple-400">Alpha</span> pour des gains optimaux.
+          Passez à l'offre <span className="font-bold text-purple-600 dark:text-purple-400">Élite</span> pour des gains optimaux.
         </p>
         
         <div className="flex justify-center gap-4 mt-6">
