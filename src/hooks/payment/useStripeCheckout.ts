@@ -28,7 +28,10 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       
       // Direct redirection is more reliable across browsers
       try {
-        window.location.href = stripeCheckoutUrl;
+        // Short delay to ensure the toast is visible before possibly navigating away
+        setTimeout(() => {
+          window.location.href = stripeCheckoutUrl;
+        }, 500);
       } catch (err) {
         console.error("Error redirecting to Stripe:", err);
         // Toast is already showing so user can click manually

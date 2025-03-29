@@ -17,29 +17,16 @@ export const openStripeWindow = (url: string): void => {
   
   console.log("Opening Stripe URL:", url);
   
-  // Force direct redirect for all mobile devices and small screens
-  if (window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-    console.log("Mobile device detected, using direct navigation");
-    window.location.href = url;
-    return;
-  }
-  
-  // Force direct redirect if on Safari (mobile or desktop)
-  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  if (isSafari) {
-    console.log("Safari browser detected, using direct navigation");
-    window.location.href = url;
-    return;
-  }
-  
-  // For desktop browsers other than Safari, try opening in new window
+  // Simplify for maximum reliability - direct navigation always works
   try {
-    // First attempt - direct navigation for simplicity and reliability
+    // Use direct window.location for reliability
     window.location.href = url;
   } catch (error) {
-    console.error("Error opening window:", error);
-    // Final fallback to direct navigation
-    window.location.href = url;
+    console.error("Error during redirection:", error);
+    // Fallback if somehow the direct navigation fails
+    setTimeout(() => {
+      window.location.replace(url);
+    }, 100);
   }
 };
 
