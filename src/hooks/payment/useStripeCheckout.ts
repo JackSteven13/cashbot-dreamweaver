@@ -30,7 +30,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         // Show a toast with a button to manually open in case popup was blocked
         setTimeout(() => {
           showStripeManualOpenToast(stripeCheckoutUrl);
-        }, a500);
+        }, 500); // Fixed: changed 'a500' to 500 milliseconds
       } catch (err) {
         console.error("Error opening Stripe window:", err);
         // Fallback to direct redirect
