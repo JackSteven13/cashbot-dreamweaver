@@ -1,66 +1,45 @@
-
 import React from 'react';
-import SummaryPanel from '../summary/SummaryPanel';
-import TransactionsPanel from '../transactions/TransactionsPanel';
-import AlphaBadge from '@/components/subscriptions/AlphaBadge';
-import { Transaction } from '@/types/userData';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EarningsCard } from './index';
+import { RevenueCalculator } from '@/components/dashboard';
+// Correction: EliteBadge au lieu de AlphaBadge
+import EliteBadge from '@/components/subscriptions/EliteBadge';
 
 interface MainContentProps {
   balance: number;
-  referralLink: string;
-  isStartingSession: boolean;
-  handleStartSession: () => void;
-  handleWithdrawal?: () => void;
-  transactions: Transaction[];
-  isNewUser?: boolean;
   subscription: string;
-  dailySessionCount?: number;
-  canStartSession?: boolean;
-  referralCount?: number;
-  referralBonus?: number;
+  isNewUser: boolean;
+  referrals?: any[];
+  isTopReferrer?: boolean;
 }
 
-const MainContent: React.FC<MainContentProps> = ({
-  balance,
-  referralLink,
-  isStartingSession,
-  handleStartSession,
-  handleWithdrawal,
-  transactions,
-  isNewUser = false,
+const MainContent: React.FC<MainContentProps> = ({ 
+  balance, 
   subscription,
-  dailySessionCount = 0,
-  canStartSession = true,
-  referralCount = 0,
-  referralBonus = 0
+  isNewUser,
+  referrals,
+  isTopReferrer
 }) => {
-  const isMobile = useIsMobile();
-  
-  // Afficher le badge Alpha seulement pour les abonnements Alpha
-  const showAlphaBadge = subscription === 'alpha';
-  const userName = localStorage.getItem('username') || undefined;
-
   return (
-    <>
-      {showAlphaBadge && <AlphaBadge userName={userName} />}
+    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+      <Card className="col-span-1 md:col-span-2">
+        <CardHeader>
+          <CardTitle>Aperçu du compte</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <EarningsCard title="Solde actuel" amount={balance} />
+            <EarningsCard title="Abonnement actuel" badge={subscription === 'elite' ? <EliteBadge /> : null} amount={subscription} />
+            {isTopReferrer && <EarningsCard title="Top Parrain" amount="Félicitations !" />}
+          </div>
+        </CardContent>
+      </Card>
       
-      <SummaryPanel
-        balance={balance}
-        referralLink={referralLink}
-        isStartingSession={isStartingSession}
-        handleStartSession={handleStartSession}
-        handleWithdrawal={handleWithdrawal}
+      <RevenueCalculator 
+        currentSubscription={subscription} 
         isNewUser={isNewUser}
-        subscription={subscription}
-        dailySessionCount={dailySessionCount}
-        canStartSession={canStartSession}
-        referralCount={referralCount}
-        referralBonus={referralBonus}
       />
-      
-      <TransactionsPanel transactions={transactions} />
-    </>
+    </div>
   );
 };
 
