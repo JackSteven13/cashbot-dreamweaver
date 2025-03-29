@@ -14,12 +14,25 @@ export const openStripeWindow = (url: string): void => {
   
   console.log("Opening Stripe URL:", url);
   
-  // Try to open in a new tab first
-  const newWindow = window.open(url, '_blank');
+  // On mobile devices, use direct navigation
+  if (window.innerWidth < 768) {
+    console.log("Mobile device detected, using direct navigation");
+    window.location.href = url;
+    return;
+  }
   
-  // If that fails, redirect the current window
-  if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-    console.log("Failed to open in new tab, redirecting current window");
+  // Try to open in a new tab first
+  try {
+    const newWindow = window.open(url, '_blank');
+    
+    // If that fails, redirect the current window
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      console.log("Failed to open in new tab, redirecting current window");
+      window.location.href = url;
+    }
+  } catch (error) {
+    console.error("Error opening window:", error);
+    // Fallback to direct navigation
     window.location.href = url;
   }
 };

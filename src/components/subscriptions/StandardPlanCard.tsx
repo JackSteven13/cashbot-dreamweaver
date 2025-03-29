@@ -43,6 +43,7 @@ const StandardPlanCard: React.FC<PlanProps> = ({
       current={current}
       mostPopular={mostPopular}
       isSelected={selectedPlan === id && !current}
+      subscriptionLabel="/an"
       action={
         <Button
           variant={current ? "secondary" : "primary"}

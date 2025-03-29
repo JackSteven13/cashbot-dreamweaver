@@ -8,6 +8,7 @@ import { formatErrorMessage, updateLocalSubscription } from './utils';
 import { useSubscriptionCheck } from './useSubscriptionCheck';
 import { useStripeSession } from './useStripeSession';
 import { useFreemiumUpdate } from './useFreemiumUpdate';
+import { openStripeWindow, showStripeManualOpenToast } from './stripeWindowManager';
 
 export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
@@ -20,11 +21,21 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   // Effect to open Stripe page as soon as URL is available
   useEffect(() => {
     if (stripeCheckoutUrl && isStripeProcessing) {
-      // Open the Stripe URL in a new window or tab
       console.log("Opening Stripe URL:", stripeCheckoutUrl);
       
-      // Direct window location change is more reliable than opening in new tab
-      window.location.href = stripeCheckoutUrl;
+      // Try to open in new window first
+      try {
+        openStripeWindow(stripeCheckoutUrl);
+        
+        // Show a toast with a button to manually open in case popup was blocked
+        setTimeout(() => {
+          showStripeManualOpenToast(stripeCheckoutUrl);
+        }, a500);
+      } catch (err) {
+        console.error("Error opening Stripe window:", err);
+        // Fallback to direct redirect
+        window.location.href = stripeCheckoutUrl;
+      }
     }
   }, [stripeCheckoutUrl, isStripeProcessing]);
 
@@ -65,7 +76,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     if (isStripeProcessing) {
       console.log("Payment already in progress, using stored URL if available");
       if (stripeCheckoutUrl) {
-        window.location.href = stripeCheckoutUrl;
+        openStripeWindow(stripeCheckoutUrl);
       }
       return;
     }
