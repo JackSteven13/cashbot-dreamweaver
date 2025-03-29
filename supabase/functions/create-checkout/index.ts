@@ -74,8 +74,8 @@ Deno.serve(async (req) => {
       }
     }
     
-    // Validate plan
-    if (!plan || !['freemium', 'pro', 'visionnaire', 'alpha'].includes(plan)) {
+    // Validate plan - UPDATED to include new plan types
+    if (!plan || !['freemium', 'starter', 'gold', 'elite'].includes(plan)) {
       console.error('Invalid plan:', plan);
       return new Response(JSON.stringify({ error: 'Invalid plan' }), {
         status: 400,

@@ -20,9 +20,11 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Subscription plan mapping
 const PLANS_BY_PRICE = {
-  'price_1OWlHbPpjKfOPBSRnBzNBRIY': 'starter',
-  'price_1OWlIEPpjKfOPBSROvnx6rKo': 'gold',
-  'price_1OWlJ1PpjKfOPBSRmxkRZmjC': 'elite',
+  // Ces IDs seront générés dynamiquement par Stripe, il faudra les mettre à jour plus tard
+  // en les extrayant des webhooks ou en les configurant manuellement
+  'price_placeholder_starter': 'starter',
+  'price_placeholder_gold': 'gold',
+  'price_placeholder_elite': 'elite',
 }
 
 Deno.serve(async (req) => {

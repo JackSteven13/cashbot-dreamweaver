@@ -40,7 +40,18 @@ export const openStripeWindow = (url: string): void => {
     // Check if popup was blocked
     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
       console.log("Popup appears to be blocked, falling back to direct navigation");
-      window.location.href = url;
+      
+      // Show a toast before redirecting
+      toast({
+        title: "Popup bloqué",
+        description: "Nous allons vous rediriger directement vers la page de paiement.",
+        duration: 3000,
+      });
+      
+      // Short delay before redirecting to allow toast to be seen
+      setTimeout(() => {
+        window.location.href = url;
+      }, 1500);
     } else {
       console.log("Successfully opened new window");
       newWindow.focus();
