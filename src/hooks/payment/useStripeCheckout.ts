@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -17,12 +18,20 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const { stripeCheckoutUrl, createStripeSession, getEffectiveReferralCode } = useStripeSession();
   const { updateToFreemium } = useFreemiumUpdate();
 
-  // Effect to handle Stripe URL when available - use openStripeWindow manager
+  // Immediate redirect to Stripe checkout when URL is available
   useEffect(() => {
     if (stripeCheckoutUrl && isStripeProcessing) {
-      console.log("Stripe URL available, preparing to open:", stripeCheckoutUrl);
-      // Use the dedicated window manager for better cross-platform compatibility
+      console.log("Stripe URL available, redirecting immediately:", stripeCheckoutUrl);
+      
+      // Show toast and initiate redirect
       openStripeWindow(stripeCheckoutUrl);
+      
+      // Also show a toast for the URL in case auto-redirect fails
+      toast({
+        title: "Redirection automatique...",
+        description: "Vous allez être redirigé vers la page de paiement. Si rien ne se passe, utilisez le bouton manuel.",
+        duration: 10000
+      });
     }
   }, [stripeCheckoutUrl, isStripeProcessing]);
 

@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
 import { useIsMobile } from '@/hooks/use-mobile';
-import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;
@@ -41,15 +40,25 @@ const StripeCheckoutForm = ({
   
   const handleManualRedirect = () => {
     if (stripeUrl) {
-      // Use a direct approach for manual redirection
-      console.log("Manual redirect to:", stripeUrl);
-      window.open(stripeUrl, "_self");
+      // Force direct approach for manual redirection
+      console.log("Manual redirect initiated to:", stripeUrl);
       
-      // Show a toast to confirm the action
+      // Show a toast first
       toast({
         title: "Redirection en cours",
-        description: "Vous allez être redirigé vers la page de paiement Stripe."
+        description: "Vous allez être redirigé vers la page de paiement Stripe..."
       });
+      
+      // Short delay to allow toast to show, then forceful redirect
+      setTimeout(() => {
+        try {
+          // Most reliable on mobile
+          window.location.href = stripeUrl;
+        } catch (error) {
+          console.error("Primary redirect method failed:", error);
+          window.open(stripeUrl, "_self"); 
+        }
+      }, 500);
     }
   };
   
@@ -93,10 +102,16 @@ const StripeCheckoutForm = ({
           variant="outline"
           fullWidth
           onClick={handleManualRedirect}
-          className="mt-3 text-xs md:text-sm py-2 md:py-3 bg-blue-50 hover:bg-blue-100 border-blue-300 font-medium"
+          className="mt-3 text-xs md:text-sm py-2 md:py-3 bg-blue-50 hover:bg-blue-100 border-blue-300 font-semibold"
         >
-          Ouvrir la page de paiement manuellement
+          Cliquez ici si la page ne s'ouvre pas
         </Button>
+      )}
+      
+      {isMobile && (
+        <div className="text-xs text-center text-gray-500 mt-2">
+          Sur certains appareils mobiles, vous devrez peut-être autoriser les popups
+        </div>
       )}
     </div>
   );
