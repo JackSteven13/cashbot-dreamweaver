@@ -17,8 +17,11 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
   const navigate = useNavigate();
   // Initialize selectedPlan to 'elite' by default
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('elite');
+  const [isNavigating, setIsNavigating] = useState(false);
   
   const handleSelectPlan = (planId: PlanType) => {
+    if (isNavigating) return; // Prevent multiple clicks
+    
     if (planId === currentSubscription) {
       toast({
         title: "Vous êtes déjà abonné à ce forfait",
@@ -29,20 +32,28 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
     
     // First update the selected plan
     setSelectedPlan(planId);
+    setIsNavigating(true);
     console.log("Plan sélectionné:", planId);
     
-    // Navigate to payment page immediately
-    try {
-      console.log("Navigating to payment page with plan:", planId);
-      // Use direct navigation to avoid potential race conditions
-      window.location.href = `/payment?plan=${planId}`;
-    } catch (error) {
-      console.error("Navigation error:", error);
-      // Fallback in case the above fails
-      navigate('/payment', { 
-        state: { plan: planId }
-      });
-    }
+    // Show feedback to user
+    toast({
+      title: "Redirection vers le paiement",
+      description: "Veuillez patienter pendant que nous préparons votre paiement..."
+    });
+    
+    // Navigate to payment page with a small delay to show the toast
+    setTimeout(() => {
+      try {
+        console.log("Navigating to payment page with plan:", planId);
+        // Use navigate which is more reliable than direct location change
+        navigate(`/payment?plan=${planId}`);
+      } catch (error) {
+        console.error("Navigation error:", error);
+        // Fallback in case the above fails
+        window.location.href = `/payment?plan=${planId}`;
+        setIsNavigating(false);
+      }
+    }, 500);
   };
   
   // Get subscription plans data

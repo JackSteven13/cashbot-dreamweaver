@@ -41,7 +41,15 @@ const StripeCheckoutForm = ({
   
   const handleManualRedirect = () => {
     if (stripeUrl) {
-      openStripeWindow(stripeUrl);
+      // Use a direct approach for manual redirection
+      console.log("Manual redirect to:", stripeUrl);
+      window.open(stripeUrl, "_self");
+      
+      // Show a toast to confirm the action
+      toast({
+        title: "Redirection en cours",
+        description: "Vous allez être redirigé vers la page de paiement Stripe."
+      });
     }
   };
   
@@ -80,7 +88,7 @@ const StripeCheckoutForm = ({
         {isStripeProcessing ? 'Redirection en cours...' : 'Procéder au paiement'}
       </Button>
       
-      {isStripeProcessing && stripeUrl && (
+      {(isStripeProcessing || stripeUrl) && (
         <Button
           variant="outline"
           fullWidth
