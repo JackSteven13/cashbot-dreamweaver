@@ -100,8 +100,8 @@ export const validateReferralCode = async (code: string) => {
   }
 };
 
-// Get the commission rate for a user (helpers to display correct information)
-export const getCommissionRate = async (userId: string) => {
+// Get the user's commission information (helper function to display correct information)
+export const getUserCommissionInfo = async (userId: string) => {
   try {
     // Get the user's subscription first
     const { data: userData, error: userError } = await supabase
@@ -112,14 +112,24 @@ export const getCommissionRate = async (userId: string) => {
       
     if (userError || !userData) {
       console.error('Error getting user subscription:', userError);
-      return 0.4; // Default to freemium rate
+      return {
+        rate: 0.4, // Default to freemium rate
+        subscription: 'freemium'
+      };
     }
     
     // Return the commission rate based on subscription
-    return COMMISSION_RATES[userData.subscription as keyof typeof COMMISSION_RATES] || 0.4;
+    const subscription = userData.subscription;
+    return {
+      rate: COMMISSION_RATES[subscription as keyof typeof COMMISSION_RATES] || 0.4,
+      subscription: subscription
+    };
   } catch (error) {
-    console.error('Error in getCommissionRate:', error);
-    return 0.4; // Default in case of error
+    console.error('Error in getUserCommissionInfo:', error);
+    return {
+      rate: 0.4, // Default in case of error
+      subscription: 'freemium'
+    };
   }
 };
 

@@ -86,7 +86,7 @@ const SummaryPanel = ({
             onWithdraw={onWithdraw}
           />
           
-          <ReferralLink referralLink={referralLink} />
+          <ReferralLink referralLink={referralLink} subscription={subscription} />
         </div>
         
         <SystemTerminal 
