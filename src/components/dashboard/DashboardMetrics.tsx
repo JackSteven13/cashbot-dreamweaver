@@ -33,21 +33,17 @@ const DashboardMetrics = ({
 }: DashboardMetricsProps) => {
   // Calculate referral bonus for display
   const referralBonus = calculateReferralBonus(referrals.length);
+  const isTopReferrer = referrals.length > 5; // Example condition for top referrer
 
   return (
     <MetricsLayout
       mainContent={
         <MainContent
           balance={balance}
-          referralLink={referralLink}
-          isStartingSession={isStartingSession}
-          handleStartSession={handleStartSession}
-          handleWithdrawal={handleWithdrawal}
-          transactions={transactions}
-          isNewUser={isNewUser}
           subscription={subscription}
-          dailySessionCount={dailySessionCount}
-          canStartSession={canStartSession}
+          isNewUser={isNewUser}
+          referrals={referrals}
+          isTopReferrer={isTopReferrer}
           referralCount={referrals.length}
           referralBonus={referralBonus}
         />

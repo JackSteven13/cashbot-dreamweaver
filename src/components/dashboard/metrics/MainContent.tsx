@@ -1,8 +1,8 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EarningsCard } from './index';
-import { RevenueCalculator } from '@/components/dashboard';
-// Correction: EliteBadge au lieu de AlphaBadge
+import RevenueCalculator from '@/components/dashboard/RevenueCalculator';
 import EliteBadge from '@/components/subscriptions/EliteBadge';
 
 interface MainContentProps {
@@ -11,6 +11,13 @@ interface MainContentProps {
   isNewUser: boolean;
   referrals?: any[];
   isTopReferrer?: boolean;
+  canStartSession?: boolean;
+  dailySessionCount?: number;
+  referralCount?: number;
+  referralBonus?: number;
+  handleStartSession?: () => void;
+  handleWithdrawal?: () => void;
+  transactions?: any[];
 }
 
 const MainContent: React.FC<MainContentProps> = ({ 
@@ -18,7 +25,9 @@ const MainContent: React.FC<MainContentProps> = ({
   subscription,
   isNewUser,
   referrals,
-  isTopReferrer
+  isTopReferrer,
+  referralCount = 0,
+  referralBonus = 0
 }) => {
   return (
     <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
@@ -28,9 +37,42 @@ const MainContent: React.FC<MainContentProps> = ({
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            <EarningsCard title="Solde actuel" amount={balance} />
-            <EarningsCard title="Abonnement actuel" badge={subscription === 'elite' ? <EliteBadge /> : null} amount={subscription} />
-            {isTopReferrer && <EarningsCard title="Top Parrain" amount="Félicitations !" />}
+            <EarningsCard 
+              balance={balance} 
+              isNewUser={isNewUser}
+              referralBonus={referralBonus} 
+            />
+            
+            <Card className="shadow-md border-slate-200 dark:border-slate-700">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-200">
+                  Abonnement actuel
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center">
+                  <span className="text-xl font-bold text-gray-800 dark:text-gray-200 mr-2">
+                    {subscription.charAt(0).toUpperCase() + subscription.slice(1)}
+                  </span>
+                  {subscription === 'elite' && <EliteBadge />}
+                </div>
+              </CardContent>
+            </Card>
+            
+            {isTopReferrer && (
+              <Card className="shadow-md border-slate-200 dark:border-slate-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-200">
+                    Top Parrain
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                    Félicitations !
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </CardContent>
       </Card>
