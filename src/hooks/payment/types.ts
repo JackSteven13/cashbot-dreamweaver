@@ -1,12 +1,13 @@
 
-export type PlanType = 'freemium' | 'pro' | 'visionnaire' | 'alpha';
+// Update the plan types to reflect new naming convention
+export type PlanType = 'freemium' | 'starter' | 'gold' | 'elite';
 
-// Plan prices - ensure these match values in Edge Functions
+// Update plan prices to annual pricing structure
 export const PLAN_PRICES = {
   'freemium': 0,
-  'pro': 19.99,
-  'visionnaire': 49.99,
-  'alpha': 99.99
+  'starter': 99,
+  'gold': 349,
+  'elite': 549
 };
 
 export type PaymentFormData = {

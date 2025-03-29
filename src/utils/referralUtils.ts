@@ -1,5 +1,7 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { COMMISSION_RATES } from "@/components/dashboard/summary/constants";
 
 // Fetch user referrals from the database
 export const fetchUserReferrals = async (userId: string) => {
@@ -39,6 +41,11 @@ export const calculateReferralBonus = (referralsCount: number) => {
   
   // Return as integer for cleaner UI display
   return Math.floor(bonus);
+};
+
+// Get commission rate based on subscription type
+export const getCommissionRate = (subscription: string) => {
+  return COMMISSION_RATES[subscription as keyof typeof COMMISSION_RATES] || 0.4; // Default to freemium (40%)
 };
 
 // Apply referral bonus to a value
@@ -96,22 +103,44 @@ export const validateReferralCode = async (code: string) => {
 // Get the commission rate for a user (helpers to display correct information)
 export const getCommissionRate = async (userId: string) => {
   try {
-    // Check if this user was referred by someone (check if they have a referrer)
-    const { data: referralData, error: referralError } = await supabase
-      .from('referrals')
-      .select('commission_rate')
-      .eq('referred_user_id', userId)
-      .maybeSingle();
+    // Get the user's subscription first
+    const { data: userData, error: userError } = await supabase
+      .from('user_balances')
+      .select('subscription')
+      .eq('id', userId)
+      .single();
       
-    if (!referralError && referralData && referralData.commission_rate === 0.7) {
-      // If this user was referred by someone with 70% commission, they also get 70%
-      return 0.7;
+    if (userError || !userData) {
+      console.error('Error getting user subscription:', userError);
+      return 0.4; // Default to freemium rate
     }
     
-    // Default rate is 35% if no special conditions are met
-    return 0.35;
+    // Return the commission rate based on subscription
+    return COMMISSION_RATES[userData.subscription as keyof typeof COMMISSION_RATES] || 0.4;
   } catch (error) {
     console.error('Error in getCommissionRate:', error);
-    return 0.35; // Default in case of error
+    return 0.4; // Default in case of error
   }
+};
+
+// Calculate withdrawal fee based on account age (if withdrawn before 6 months, 50% fee applies)
+export const calculateWithdrawalFee = (accountCreationDate: Date): number => {
+  const now = new Date();
+  const sixMonthsInMs = 6 * 30 * 24 * 60 * 60 * 1000; // Approximate 6 months in milliseconds
+  const accountAgeMs = now.getTime() - accountCreationDate.getTime();
+  
+  // Apply 50% fee if account is less than 6 months old
+  return accountAgeMs < sixMonthsInMs ? 0.5 : 0;
+};
+
+// Get withdrawal threshold based on subscription
+export const getWithdrawalThreshold = (subscription: string): number => {
+  const thresholds = {
+    'freemium': 200,
+    'starter': 400,
+    'gold': 700,
+    'elite': 1000
+  };
+  
+  return thresholds[subscription as keyof typeof thresholds] || 200;
 };

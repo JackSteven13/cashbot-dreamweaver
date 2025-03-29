@@ -14,6 +14,7 @@ interface Plan {
   description: string;
   features: string[];
   limit: number;
+  commission: number;
   mostPopular?: boolean;
   disabled?: boolean;
   current?: boolean;
@@ -27,8 +28,8 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
   currentSubscription 
 }) => {
   const navigate = useNavigate();
-  // Initialize selectedPlan to 'alpha' by default
-  const [selectedPlan, setSelectedPlan] = useState<PlanType>('alpha');
+  // Initialize selectedPlan to 'elite' by default
+  const [selectedPlan, setSelectedPlan] = useState<PlanType>('elite');
   
   const handleSelectPlan = (planId: PlanType) => {
     if (planId === currentSubscription) {
@@ -62,66 +63,79 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
         'Limite de gains de 0,5€ par jour',
         '1 session manuelle par jour',
         '1 session automatique par jour',
+        'Commission de parrainage de 40%',
+        'Seuil de retrait de 200€',
         'Support par email'
       ],
       limit: SUBSCRIPTION_LIMITS['freemium'],
+      commission: 0.4,
       current: currentSubscription === 'freemium',
       disabled: currentSubscription === 'freemium'
     },
     {
-      id: 'pro',
-      title: 'Pro',
-      price: 19.99,
+      id: 'starter',
+      title: 'Starter',
+      price: 99,
       description: 'Pour les utilisateurs sérieux',
       features: [
         'Limite de gains de 5€ par jour',
         'Sessions manuelles illimitées',
         'Sessions automatiques illimitées',
-        'Support prioritaire',
-        'Accès aux fonctionnalités avancées'
+        'Commission de parrainage de 60%',
+        '10% de commission récurrente',
+        'Seuil de retrait de 400€',
+        'Support prioritaire'
       ],
-      limit: SUBSCRIPTION_LIMITS['pro'],
+      limit: SUBSCRIPTION_LIMITS['starter'],
+      commission: 0.6,
       mostPopular: true,
-      current: currentSubscription === 'pro',
-      disabled: currentSubscription === 'pro'
+      current: currentSubscription === 'starter',
+      disabled: currentSubscription === 'starter'
     },
     {
-      id: 'visionnaire',
-      title: 'Visionnaire',
-      price: 49.99,
+      id: 'gold',
+      title: 'Gold',
+      price: 349,
       description: 'Pour maximiser vos gains',
       features: [
         'Limite de gains de 20€ par jour',
         'Sessions manuelles et automatiques illimitées',
-        'Support prioritaire 24/7',
-        'Accès à toutes les fonctionnalités',
-        'Commissions de parrainage augmentées'
+        'Commission de parrainage de 80%',
+        '20% de commission récurrente',
+        '5% de commission niveau 2',
+        'Seuil de retrait de 700€',
+        'Support prioritaire 24/7'
       ],
-      limit: SUBSCRIPTION_LIMITS['visionnaire'],
-      current: currentSubscription === 'visionnaire',
-      disabled: currentSubscription === 'visionnaire'
+      limit: SUBSCRIPTION_LIMITS['gold'],
+      commission: 0.8,
+      current: currentSubscription === 'gold',
+      disabled: currentSubscription === 'gold'
     },
     {
-      id: 'alpha',
-      title: 'Alpha',
-      price: 99.99,
+      id: 'elite',
+      title: 'Elite',
+      price: 549,
       description: 'Pour les professionnels et entreprises',
       features: [
         'Limite de gains de 50€ par jour',
         'Accès illimité à toutes les fonctionnalités',
+        'Commission de parrainage de 100%',
+        '30% de commission récurrente',
+        '10% de commission niveau 2',
+        'Seuil de retrait de 1000€',
         'Support dédié 24/7',
-        'Commissions de parrainage maximales',
         'Fonctionnalités exclusives en avant-première'
       ],
-      limit: SUBSCRIPTION_LIMITS['alpha'],
-      current: currentSubscription === 'alpha',
-      disabled: currentSubscription === 'alpha'
+      limit: SUBSCRIPTION_LIMITS['elite'],
+      commission: 1.0,
+      current: currentSubscription === 'elite',
+      disabled: currentSubscription === 'elite'
     }
   ];
 
   return (
     <div className="flex flex-col items-center space-y-8">
-      {/* Section principale avec le plan Alpha mis en évidence */}
+      {/* Section principale avec le plan Elite mis en évidence */}
       <div className="w-full max-w-4xl bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 p-6 rounded-xl border border-purple-200 dark:border-purple-800 shadow-lg">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-300">Plan Recommandé</h2>
@@ -130,28 +144,31 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
         
         <div className="w-full">
           <SubscriptionPlanCard
-            key="alpha"
-            title="Alpha"
-            price={99.99}
+            key="elite"
+            title="Elite"
+            price={549}
             description="Pour les professionnels et entreprises"
             features={[
               'Limite de gains de 50€ par jour',
               'Accès illimité à toutes les fonctionnalités',
+              'Commission de parrainage de 100%',
+              '30% de commission récurrente',
+              '10% de commission niveau 2',
+              'Seuil de retrait de 1000€',
               'Support dédié 24/7',
-              'Commissions de parrainage maximales',
               'Fonctionnalités exclusives en avant-première'
             ]}
-            limit={SUBSCRIPTION_LIMITS['alpha']}
-            current={currentSubscription === 'alpha'}
-            isSelected={selectedPlan === 'alpha' && currentSubscription !== 'alpha'}
+            limit={SUBSCRIPTION_LIMITS['elite']}
+            current={currentSubscription === 'elite'}
+            isSelected={selectedPlan === 'elite' && currentSubscription !== 'elite'}
             action={
               <Button
-                variant={currentSubscription === 'alpha' ? "secondary" : "primary"}
-                className={`w-full ${currentSubscription === 'alpha' ? 'opacity-50 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}`}
-                disabled={currentSubscription === 'alpha'}
-                onClick={() => handleSelectPlan('alpha')}
+                variant={currentSubscription === 'elite' ? "secondary" : "primary"}
+                className={`w-full ${currentSubscription === 'elite' ? 'opacity-50 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}`}
+                disabled={currentSubscription === 'elite'}
+                onClick={() => handleSelectPlan('elite')}
               >
-                {currentSubscription === 'alpha' ? 'Abonnement actuel' : 'Sélectionner Alpha'}
+                {currentSubscription === 'elite' ? 'Abonnement actuel' : 'Sélectionner Elite'}
               </Button>
             }
           />
@@ -160,7 +177,7 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
       
       {/* Section avec les autres plans */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
-        {plans.filter(plan => plan.id !== 'alpha').map((plan) => (
+        {plans.filter(plan => plan.id !== 'elite').map((plan) => (
           <SubscriptionPlanCard
             key={plan.id}
             title={plan.title}

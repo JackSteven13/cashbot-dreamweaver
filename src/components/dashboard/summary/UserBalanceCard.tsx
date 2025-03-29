@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { Sparkles, Users } from 'lucide-react';
+import { Sparkles, Users, Bot, Network } from 'lucide-react';
+import { WITHDRAWAL_THRESHOLDS } from '@/components/dashboard/summary/constants';
 
 interface UserBalanceCardProps {
   displayBalance: number;
@@ -9,6 +10,8 @@ interface UserBalanceCardProps {
   sessionsDisplay: string;
   referralCount?: number;
   referralBonus?: number;
+  networkGains?: number;
+  botGains?: number;
 }
 
 const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
@@ -17,8 +20,15 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   dailyLimit,
   sessionsDisplay,
   referralCount = 0,
-  referralBonus = 0
+  referralBonus = 0,
+  networkGains = 0,
+  botGains = 0
 }) => {
+  // Calculate how close we are to the withdrawal threshold
+  const withdrawalThreshold = WITHDRAWAL_THRESHOLDS[subscription as keyof typeof WITHDRAWAL_THRESHOLDS] || 200;
+  const progressPercentage = Math.min(Math.floor((displayBalance / withdrawalThreshold) * 100), 95);
+  const isNearThreshold = progressPercentage >= 90;
+  
   return (
     <div className="mb-6">
       <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white">
@@ -39,6 +49,20 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
           )}
         </div>
         
+        {/* Progress bar towards withdrawal threshold */}
+        <div className="mt-3 mb-1">
+          <div className="w-full bg-slate-700/70 rounded-full h-2.5">
+            <div 
+              className={`h-2.5 rounded-full ${isNearThreshold ? 'bg-amber-500' : 'bg-blue-500'}`}
+              style={{ width: `${progressPercentage}%` }}
+            ></div>
+          </div>
+          <div className="flex justify-between text-xs text-white/60 mt-1">
+            <span>{progressPercentage}%</span>
+            <span>Seuil: {withdrawalThreshold}€</span>
+          </div>
+        </div>
+        
         <div className="grid grid-cols-2 gap-4 mt-5">
           <div className="bg-slate-800/70 backdrop-blur-sm rounded-lg p-3 border border-white/5">
             <div className="text-xs text-white/70 mb-1">Abonnement</div>
@@ -48,6 +72,29 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
           <div className="bg-slate-800/70 backdrop-blur-sm rounded-lg p-3 border border-white/5">
             <div className="text-xs text-white/70 mb-1">Sessions</div>
             <div className="font-medium">{sessionsDisplay}</div>
+          </div>
+        </div>
+        
+        {/* Separate network gains vs bot gains */}
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div className="bg-emerald-900/20 backdrop-blur-sm rounded-lg p-3 border border-emerald-800/30 flex justify-between items-center">
+            <div>
+              <div className="text-xs text-white/70 mb-1 flex items-center">
+                <Network className="h-3 w-3 mr-1 text-emerald-400" />
+                Gains réseau
+              </div>
+              <div className="font-medium text-emerald-300">{networkGains.toFixed(2)}€</div>
+            </div>
+          </div>
+          
+          <div className="bg-blue-900/20 backdrop-blur-sm rounded-lg p-3 border border-blue-800/30 flex justify-between items-center">
+            <div>
+              <div className="text-xs text-white/70 mb-1 flex items-center">
+                <Bot className="h-3 w-3 mr-1 text-blue-400" />
+                Gains bots
+              </div>
+              <div className="font-medium text-blue-300">{botGains.toFixed(2)}€</div>
+            </div>
           </div>
         </div>
         

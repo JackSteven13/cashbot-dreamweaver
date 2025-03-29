@@ -13,10 +13,10 @@ const PlanSummary = ({ selectedPlan }: PlanSummaryProps) => {
   
   if (!selectedPlan) return null;
   
-  const isAlphaPlan = selectedPlan === 'alpha';
+  const isElitePlan = selectedPlan === 'elite';
   
-  // Style spécial pour le plan Alpha
-  if (isAlphaPlan) {
+  // Style spécial pour le plan Elite
+  if (isElitePlan) {
     return (
       <div className="bg-gradient-to-r from-violet-900/20 via-fuchsia-800/20 to-purple-800/20 p-3 md:p-4 rounded-md mb-3 md:mb-6 border border-purple-300/20 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDMwaC02bTMgM20tNiAwaC02bTEyIDBoLTYiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-70"></div>
@@ -25,18 +25,18 @@ const PlanSummary = ({ selectedPlan }: PlanSummaryProps) => {
             <div className="flex items-center">
               <Crown className="h-4 w-4 text-purple-500 mr-1.5" />
               <p className="font-bold text-sm md:text-base text-purple-700 dark:text-purple-300">
-                Alpha Premium
+                Elite Premium
               </p>
               <Sparkles className="h-3 w-3 text-purple-500 ml-1" />
             </div>
             <p className="text-xs md:text-sm text-purple-600 dark:text-purple-400">
-              Abonnement Elite
+              Abonnement Elite Annuel
             </p>
           </div>
           <div className="flex items-center">
             <Zap className="h-3.5 w-3.5 text-purple-500 mr-1 hidden md:block" />
             <p className="text-base md:text-lg font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded">
-              {PLAN_PRICES[selectedPlan]}€/mois
+              {PLAN_PRICES[selectedPlan]}€/an
             </p>
           </div>
         </div>
@@ -53,11 +53,11 @@ const PlanSummary = ({ selectedPlan }: PlanSummaryProps) => {
             {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}
           </p>
           <p className="text-xs md:text-sm text-[#486581]">
-            Abonnement mensuel
+            Abonnement annuel
           </p>
         </div>
         <p className="text-base md:text-lg font-bold text-[#2d5f8a]">
-          {PLAN_PRICES[selectedPlan]}€/mois
+          {PLAN_PRICES[selectedPlan]}€/an
         </p>
       </div>
       
