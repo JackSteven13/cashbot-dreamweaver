@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
       }
     }
     
-    // Validate plan - UPDATED to include new plan types
+    // Validate plan
     if (!plan || !['freemium', 'starter', 'gold', 'elite'].includes(plan)) {
       console.error('Invalid plan:', plan);
       return new Response(JSON.stringify({ error: 'Invalid plan' }), {

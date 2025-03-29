@@ -17,7 +17,7 @@ export const openStripeWindow = (url: string): void => {
   
   console.log("Opening Stripe URL:", url);
   
-  // Force direct redirect for all mobile devices
+  // Force direct redirect for all mobile devices and small screens
   if (window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
     console.log("Mobile device detected, using direct navigation");
     window.location.href = url;
@@ -34,28 +34,8 @@ export const openStripeWindow = (url: string): void => {
   
   // For desktop browsers other than Safari, try opening in new window
   try {
-    // First attempt - simple window.open
-    const newWindow = window.open(url, '_blank');
-    
-    // Check if popup was blocked
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      console.log("Popup appears to be blocked, falling back to direct navigation");
-      
-      // Show a toast before redirecting
-      toast({
-        title: "Popup bloqué",
-        description: "Nous allons vous rediriger directement vers la page de paiement.",
-        duration: 3000,
-      });
-      
-      // Short delay before redirecting to allow toast to be seen
-      setTimeout(() => {
-        window.location.href = url;
-      }, 1500);
-    } else {
-      console.log("Successfully opened new window");
-      newWindow.focus();
-    }
+    // First attempt - direct navigation for simplicity and reliability
+    window.location.href = url;
   } catch (error) {
     console.error("Error opening window:", error);
     // Final fallback to direct navigation

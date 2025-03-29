@@ -18,7 +18,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const { stripeCheckoutUrl, createStripeSession, getEffectiveReferralCode } = useStripeSession();
   const { updateToFreemium } = useFreemiumUpdate();
 
-  // Effect to open Stripe page as soon as URL is available
+  // Effect to handle Stripe URL when available - simplified for reliability
   useEffect(() => {
     if (stripeCheckoutUrl && isStripeProcessing) {
       console.log("Stripe URL available, preparing to open:", stripeCheckoutUrl);
@@ -26,16 +26,13 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       // First show the toast to ensure the user always has a way to access the payment page
       showStripeManualOpenToast(stripeCheckoutUrl);
       
-      // Delay the automatic opening to avoid race conditions
-      setTimeout(() => {
-        try {
-          console.log("Attempting to open Stripe window");
-          openStripeWindow(stripeCheckoutUrl);
-        } catch (err) {
-          console.error("Error opening Stripe window:", err);
-          // The toast is already showing so user can click to open manually
-        }
-      }, 500);
+      // Direct redirection is more reliable across browsers
+      try {
+        window.location.href = stripeCheckoutUrl;
+      } catch (err) {
+        console.error("Error redirecting to Stripe:", err);
+        // Toast is already showing so user can click manually
+      }
     }
   }, [stripeCheckoutUrl, isStripeProcessing]);
 
@@ -76,8 +73,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     if (isStripeProcessing) {
       console.log("Payment already in progress");
       if (stripeCheckoutUrl) {
-        // If we already have a URL, just open it again
-        openStripeWindow(stripeCheckoutUrl);
+        // If we already have a URL, just redirect to it
+        window.location.href = stripeCheckoutUrl;
       }
       return;
     }

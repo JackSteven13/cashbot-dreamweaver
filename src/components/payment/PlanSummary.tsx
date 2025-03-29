@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PlanType, PLAN_PRICES } from '@/hooks/payment/types';
+import { PlanType } from '@/hooks/payment/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sparkles, Crown, Zap } from 'lucide-react';
 
@@ -36,7 +36,7 @@ const PlanSummary = ({ selectedPlan }: PlanSummaryProps) => {
           <div className="flex items-center">
             <Zap className="h-3.5 w-3.5 text-purple-500 mr-1 hidden md:block" />
             <p className="text-base md:text-lg font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded">
-              {PLAN_PRICES[selectedPlan]}€/an
+              549€/an
             </p>
           </div>
         </div>
@@ -57,7 +57,7 @@ const PlanSummary = ({ selectedPlan }: PlanSummaryProps) => {
           </p>
         </div>
         <p className="text-base md:text-lg font-bold text-[#2d5f8a]">
-          {PLAN_PRICES[selectedPlan]}€/an
+          {selectedPlan === 'starter' ? '99' : selectedPlan === 'gold' ? '349' : '0'}€/an
         </p>
       </div>
       

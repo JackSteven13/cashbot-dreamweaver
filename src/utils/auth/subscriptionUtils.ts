@@ -6,8 +6,8 @@ export const checkDailyLimit = (balance: number, subscription: string) => {
   // Import this from subscriptionUtils if needed
   const SUBSCRIPTION_LIMITS: Record<string, number> = {
     'freemium': 0.5,
-    'pro': 5,
-    'visionnaire': 20,
+    'starter': 5,
+    'gold': 20,
     'elite': 50
   };
   

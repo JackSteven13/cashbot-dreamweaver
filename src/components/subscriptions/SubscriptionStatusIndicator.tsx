@@ -71,8 +71,8 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
   const getDisplayName = (code: string): string => {
     const names: Record<string, string> = {
       'freemium': 'Freemium',
-      'pro': 'Pro',
-      'visionnaire': 'Visionnaire',
+      'starter': 'Starter',
+      'gold': 'Gold',
       'elite': 'Élite Premium'
     };
     return names[code] || code.charAt(0).toUpperCase() + code.slice(1);
@@ -83,9 +83,9 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
     switch (sub) {
       case 'freemium':
         return 'from-blue-900/50 to-blue-800/50';
-      case 'pro':
+      case 'starter':
         return 'from-indigo-900/60 to-indigo-700/60';
-      case 'visionnaire':
+      case 'gold':
         return 'from-purple-900/60 to-purple-700/60';
       case 'elite':
         return 'from-violet-900/70 via-fuchsia-800/60 to-violet-700/70';
