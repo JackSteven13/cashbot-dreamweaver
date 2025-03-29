@@ -20,9 +20,9 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Subscription plan mapping
 const PLANS_BY_PRICE = {
-  'price_1OWlHbPpjKfOPBSRnBzNBRIY': 'pro',
-  'price_1OWlIEPpjKfOPBSROvnx6rKo': 'visionnaire',
-  'price_1OWlJ1PpjKfOPBSRmxkRZmjC': 'alpha',
+  'price_1OWlHbPpjKfOPBSRnBzNBRIY': 'starter',
+  'price_1OWlIEPpjKfOPBSROvnx6rKo': 'gold',
+  'price_1OWlJ1PpjKfOPBSRmxkRZmjC': 'elite',
 }
 
 Deno.serve(async (req) => {

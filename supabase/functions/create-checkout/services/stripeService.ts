@@ -5,7 +5,7 @@ import { stripe } from '../helpers/stripeClient.ts';
 export async function getOrCreatePrice(planName: string, amount: number) {
   try {
     // Look for existing prices with matching lookup key
-    const lookupKey = `${planName.toLowerCase()}_monthly`;
+    const lookupKey = `${planName.toLowerCase()}_annual`;
     const existingPrices = await stripe?.prices.list({
       active: true,
       lookup_keys: [lookupKey],
@@ -20,8 +20,8 @@ export async function getOrCreatePrice(planName: string, amount: number) {
     // Create a product first
     console.log(`Creating new product for ${planName} plan`);
     const product = await stripe?.products.create({
-      name: `${planName} Monthly Subscription`,
-      description: `${planName} tier monthly subscription`,
+      name: `${planName} Annual Subscription`,
+      description: `${planName} tier annual subscription`,
       metadata: {
         plan_type: planName,
       }
@@ -39,7 +39,7 @@ export async function getOrCreatePrice(planName: string, amount: number) {
     const newPrice = await stripe?.prices.create({
       unit_amount: amountInCents,
       currency: 'eur',
-      recurring: { interval: 'month' },
+      recurring: { interval: 'year' },
       product: product.id,
       lookup_key: lookupKey,
       metadata: {
@@ -78,9 +78,9 @@ export async function createCheckoutSession({
   try {
     // Plan price mapping in euros - ensure these match values in client
     const PLAN_PRICES: Record<string, number> = {
-      'pro': 19.99,
-      'visionnaire': 49.99,
-      'alpha': 99.99
+      'starter': 99,
+      'gold': 349,
+      'elite': 549
     };
     
     // Ensure the plan is valid
