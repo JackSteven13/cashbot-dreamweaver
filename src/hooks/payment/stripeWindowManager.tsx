@@ -10,7 +10,10 @@ import { ToastAction } from "@/components/ui/toast";
  * Opens a Stripe checkout URL in a new window or fallbacks to current window
  */
 export const openStripeWindow = (url: string): void => {
-  if (!url) return;
+  if (!url) {
+    console.error("Attempted to open Stripe window with empty URL");
+    return;
+  }
   
   console.log("Opening Stripe URL:", url);
   
@@ -23,7 +26,7 @@ export const openStripeWindow = (url: string): void => {
   
   // Try to open in a new tab first
   try {
-    const newWindow = window.open(url, '_blank');
+    const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
     
     // If that fails, redirect the current window
     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
@@ -41,7 +44,10 @@ export const openStripeWindow = (url: string): void => {
  * Shows a toast with a button to manually open the Stripe checkout
  */
 export const showStripeManualOpenToast = (url: string): void => {
-  if (!url) return;
+  if (!url) {
+    console.error("Attempted to show toast with empty Stripe URL");
+    return;
+  }
   
   toast({
     title: "Paiement en attente",
@@ -55,5 +61,6 @@ export const showStripeManualOpenToast = (url: string): void => {
         Ouvrir le paiement
       </ToastAction>
     ),
+    duration: 10000, // Increase duration to give user time to click
   });
 };

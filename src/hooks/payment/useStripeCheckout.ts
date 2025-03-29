@@ -25,12 +25,15 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       
       // Try to open in new window first
       try {
-        openStripeWindow(stripeCheckoutUrl);
-        
-        // Show a toast with a button to manually open in case popup was blocked
+        // Short delay to make sure the browser doesn't block the popup
         setTimeout(() => {
-          showStripeManualOpenToast(stripeCheckoutUrl);
-        }, 500); // Fixed: changed 'a500' to 500 milliseconds
+          openStripeWindow(stripeCheckoutUrl);
+          
+          // Show a toast with a button to manually open in case popup was blocked
+          setTimeout(() => {
+            showStripeManualOpenToast(stripeCheckoutUrl);
+          }, 500);
+        }, 100);
       } catch (err) {
         console.error("Error opening Stripe window:", err);
         // Fallback to direct redirect
@@ -81,6 +84,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       return;
     }
     
+    console.log("Starting Stripe checkout process for plan:", selectedPlan);
     setIsStripeProcessing(true);
 
     try {
@@ -99,6 +103,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
 
       // Get referral code from URL parameter
       const effectiveReferralCode = getEffectiveReferralCode();
+      console.log("Referral code for checkout:", effectiveReferralCode || "none");
       
       // Update localStorage preemptively to reduce UI flicker
       localStorage.setItem('subscription', selectedPlan);
@@ -107,7 +112,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       localStorage.setItem('forceRefreshBalance', 'true');
       
       // Create and handle Stripe checkout session
-      await createStripeSession(selectedPlan, effectiveReferralCode);
+      const result = await createStripeSession(selectedPlan, effectiveReferralCode);
+      console.log("Stripe session created:", result);
 
     } catch (error: any) {
       console.error("Payment error:", error);

@@ -29,14 +29,24 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
     
     // First update the selected plan
     setSelectedPlan(planId);
+    console.log("Plan sélectionné:", planId);
     
-    if (planId === 'freemium') {
-      // Rediriger vers le processus de paiement pour freemium (gratuit)
-      navigate('/payment', { state: { plan: 'freemium' } });
-    } else {
-      // Rediriger vers le processus de paiement pour le plan sélectionné
-      navigate('/payment', { state: { plan: planId } });
-    }
+    // Use setTimeout to prevent navigation issues, especially on mobile
+    setTimeout(() => {
+      if (planId === 'freemium') {
+        // Rediriger vers le processus de paiement pour freemium (gratuit)
+        navigate('/payment', { 
+          state: { plan: 'freemium' },
+          replace: false
+        });
+      } else {
+        // Rediriger vers le processus de paiement pour le plan sélectionné
+        navigate('/payment', { 
+          state: { plan: planId },
+          replace: false
+        });
+      }
+    }, 50);
   };
   
   // Get subscription plans data

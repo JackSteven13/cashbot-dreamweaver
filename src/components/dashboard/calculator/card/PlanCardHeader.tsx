@@ -14,7 +14,7 @@ const PlanCardHeader: React.FC<PlanCardHeaderProps> = ({
   title,
   price,
   description,
-  subscriptionLabel = "/an", // Par défaut, on affiche /an au lieu de /mois
+  subscriptionLabel = "/an", // Par défaut, on affiche /an
   subscriptionPrice
 }) => {
   // Determine if we're showing just a regular price or a subscription price with label
