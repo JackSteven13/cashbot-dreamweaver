@@ -1,3 +1,4 @@
+
 // Basic card validation
 export const validateCardPayment = (cardNumber: string, expiry: string, cvc: string) => {
   // Remove spaces from card number
@@ -64,5 +65,56 @@ export const safelyOpenURL = (url: string): void => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+};
+
+// Check the current user subscription from Supabase
+export const checkCurrentSubscription = async (): Promise<string | null> => {
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    
+    // Get current session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      console.log("No active session found for subscription check");
+      return null;
+    }
+    
+    // First try to use the RPC function if available
+    try {
+      const { data: subscription, error: rpcError } = await supabase
+        .rpc('get_current_subscription', { 
+          user_id: session.user.id 
+        }) as { data: string | null, error: any };
+        
+      if (!rpcError && subscription) {
+        console.log("Subscription retrieved via RPC:", subscription);
+        return subscription;
+      }
+      
+      if (rpcError) {
+        console.warn("RPC error:", rpcError);
+      }
+    } catch (rpcErr) {
+      console.warn("RPC function not available:", rpcErr);
+    }
+    
+    // Fallback to direct query
+    const { data, error } = await supabase
+      .from('user_balances')
+      .select('subscription')
+      .eq('id', session.user.id)
+      .single();
+      
+    if (error) {
+      console.error("Error fetching subscription:", error);
+      return null;
+    }
+    
+    return data?.subscription || null;
+  } catch (err) {
+    console.error("Error in checkCurrentSubscription:", err);
+    return null;
   }
 };
