@@ -40,13 +40,7 @@ const StripeCheckoutForm = ({
   
   const handleManualRedirect = () => {
     if (stripeUrl) {
-      // Try to open in new tab first
-      const newWindow = window.open(stripeUrl, '_blank');
-      
-      // If that fails, redirect current window
-      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-        window.location.href = stripeUrl;
-      }
+      window.location.href = stripeUrl;
     }
   };
   

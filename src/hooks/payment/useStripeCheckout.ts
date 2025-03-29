@@ -8,7 +8,6 @@ import { formatErrorMessage, updateLocalSubscription } from './utils';
 import { useSubscriptionCheck } from './useSubscriptionCheck';
 import { useStripeSession } from './useStripeSession';
 import { useFreemiumUpdate } from './useFreemiumUpdate';
-import { openStripeWindow, showStripeManualOpenToast } from './stripeWindowManager';
 
 export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
@@ -24,17 +23,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       // Open the Stripe URL in a new window or tab
       console.log("Opening Stripe URL:", stripeCheckoutUrl);
       
-      // Immediately try to open
-      openStripeWindow(stripeCheckoutUrl);
-      
-      // If still processing after 2 seconds, offer a visible button
-      const timeoutId = setTimeout(() => {
-        if (isStripeProcessing) {
-          showStripeManualOpenToast(stripeCheckoutUrl);
-        }
-      }, 2000);
-      
-      return () => clearTimeout(timeoutId);
+      // Direct window location change is more reliable than opening in new tab
+      window.location.href = stripeCheckoutUrl;
     }
   }, [stripeCheckoutUrl, isStripeProcessing]);
 
@@ -75,7 +65,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     if (isStripeProcessing) {
       console.log("Payment already in progress, using stored URL if available");
       if (stripeCheckoutUrl) {
-        openStripeWindow(stripeCheckoutUrl);
+        window.location.href = stripeCheckoutUrl;
       }
       return;
     }
