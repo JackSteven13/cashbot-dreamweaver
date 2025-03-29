@@ -35,13 +35,13 @@ const AlphaBadge: React.FC<AlphaBadgeProps> = ({ userName }) => {
           <div className="flex-grow">
             <div className="flex items-center">
               <h3 className="text-white font-bold text-base md:text-lg">
-                Plan Alpha {isMobile ? '' : 'Premium'}
+                Plan Élite {isMobile ? '' : 'Premium'}
               </h3>
               <Sparkles className="h-4 w-4 text-purple-200 ml-1 animate-pulse" />
             </div>
             
             <p className="text-purple-200 text-xs md:text-sm">
-              {userName ? `${userName}, v` : 'V'}otre compte bénéficie des avantages Alpha exclusifs
+              {userName ? `${userName}, v` : 'V'}otre compte bénéficie des avantages Élite exclusifs
             </p>
           </div>
           

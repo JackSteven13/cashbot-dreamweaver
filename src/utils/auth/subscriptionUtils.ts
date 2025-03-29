@@ -8,7 +8,7 @@ export const checkDailyLimit = (balance: number, subscription: string) => {
     'freemium': 0.5,
     'pro': 5,
     'visionnaire': 20,
-    'alpha': 50
+    'elite': 50
   };
   
   return balance >= (SUBSCRIPTION_LIMITS[subscription] || 0.5);

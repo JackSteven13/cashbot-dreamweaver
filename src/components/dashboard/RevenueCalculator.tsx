@@ -51,7 +51,7 @@ const SUBSCRIPTION_FEATURES: Record<string, string[]> = {
     'Support prioritaire 24/7',
     'Accès à toutes les fonctionnalités'
   ],
-  'alpha': [
+  'elite': [
     'Limite de gains de 50€ par jour',
     'Accès illimité à toutes les fonctionnalités',
     'Support dédié 24/7',
@@ -64,7 +64,7 @@ const SUBSCRIPTION_DESCRIPTIONS: Record<string, string> = {
   'freemium': 'Pour débuter et explorer la plateforme',
   'pro': 'Pour les utilisateurs sérieux',
   'visionnaire': 'Pour maximiser vos gains',
-  'alpha': 'Pour les professionnels et entreprises'
+  'elite': 'Pour les professionnels et entreprises'
 };
 
 const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({ 
@@ -72,7 +72,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
   isNewUser,
   isHomePage = false
 }) => {
-  const [selectedPlan, setSelectedPlan] = useState('alpha');
+  const [selectedPlan, setSelectedPlan] = useState('elite');
   const [calculatedResults, setCalculatedResults] = useState<Record<string, { revenue: number, profit: number }>>({});
   const isMobile = useIsMobile();
 

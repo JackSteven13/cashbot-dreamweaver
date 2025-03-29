@@ -15,7 +15,7 @@ const PlanSummary = ({ selectedPlan }: PlanSummaryProps) => {
   
   const isElitePlan = selectedPlan === 'elite';
   
-  // Style spécial pour le plan Elite
+  // Style spécial pour le plan Élite
   if (isElitePlan) {
     return (
       <div className="bg-gradient-to-r from-violet-900/20 via-fuchsia-800/20 to-purple-800/20 p-3 md:p-4 rounded-md mb-3 md:mb-6 border border-purple-300/20 relative overflow-hidden">
@@ -25,12 +25,12 @@ const PlanSummary = ({ selectedPlan }: PlanSummaryProps) => {
             <div className="flex items-center">
               <Crown className="h-4 w-4 text-purple-500 mr-1.5" />
               <p className="font-bold text-sm md:text-base text-purple-700 dark:text-purple-300">
-                Elite Premium
+                Élite Premium
               </p>
               <Sparkles className="h-3 w-3 text-purple-500 ml-1" />
             </div>
             <p className="text-xs md:text-sm text-purple-600 dark:text-purple-400">
-              Abonnement Elite Annuel
+              Abonnement Élite Annuel
             </p>
           </div>
           <div className="flex items-center">

@@ -73,7 +73,7 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
       'freemium': 'Freemium',
       'pro': 'Pro',
       'visionnaire': 'Visionnaire',
-      'alpha': 'Alpha Premium'
+      'elite': 'Élite Premium'
     };
     return names[code] || code.charAt(0).toUpperCase() + code.slice(1);
   };
@@ -87,7 +87,7 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
         return 'from-indigo-900/60 to-indigo-700/60';
       case 'visionnaire':
         return 'from-purple-900/60 to-purple-700/60';
-      case 'alpha':
+      case 'elite':
         return 'from-violet-900/70 via-fuchsia-800/60 to-violet-700/70';
       default:
         return 'from-blue-900/50 to-blue-800/50';
@@ -108,8 +108,8 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
   const displaySubscription = verifiedSubscription || currentSubscription;
   
   if (displaySubscription && displaySubscription !== 'freemium') {
-    // Version spéciale pour Alpha avec animation et effets visuels plus marqués
-    if (displaySubscription === 'alpha') {
+    // Version spéciale pour Élite avec animation et effets visuels plus marqués
+    if (displaySubscription === 'elite') {
       return (
         <div className="mt-6 p-4 bg-gradient-to-r from-violet-900/80 via-fuchsia-800/70 to-violet-700/80 rounded-lg shadow-inner border border-purple-400/20 animate-fadeIn relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTZtMyAzbS02IDBoLTZtMTIgMGgtNiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
@@ -124,7 +124,7 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
                 <span className="text-purple-200 font-bold text-lg">Abonnement</span>
                 <span className="text-white font-bold text-xl flex items-center">
                   <Crown className="h-4 w-4 mr-1 text-purple-100" />
-                  Alpha Premium
+                  Élite Premium
                   <Sparkles className="h-4 w-4 ml-1 text-purple-200 animate-pulse" />
                 </span>
               </div>

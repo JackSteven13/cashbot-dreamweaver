@@ -45,25 +45,25 @@ export const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
   remainingSessions,
   referralBonus = 0
 }) => {
-  const isAlphaPlan = subscription === 'alpha';
+  const isElitePlan = subscription === 'elite';
   
   return (
     <div className="space-y-3 mb-4 font-mono text-sm">
       <div className="grid grid-cols-2 gap-3">
-        <div className={`${isAlphaPlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isAlphaPlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
+        <div className={`${isElitePlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isElitePlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
           <div className="text-xs text-gray-400">Abonnement</div>
           <div className="text-sm font-medium text-white capitalize flex items-center">
             {tempProEnabled ? 'Pro (Essai)' : subscription}
-            {isAlphaPlan && <Sparkles className="h-3 w-3 text-purple-300 ml-1" />}
+            {isElitePlan && <Sparkles className="h-3 w-3 text-purple-300 ml-1" />}
           </div>
         </div>
-        <div className={`${isAlphaPlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isAlphaPlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
+        <div className={`${isElitePlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isElitePlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
           <div className="text-xs text-gray-400">Limite journalière</div>
           <div className="text-sm font-medium text-white">
             {tempProEnabled ? '5€' : `${dailyLimit}€`}
           </div>
         </div>
-        <div className={`${isAlphaPlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isAlphaPlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
+        <div className={`${isElitePlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isElitePlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
           <div className="text-xs text-gray-400">Sessions</div>
           <div className="text-sm font-medium text-white">
             {tempProEnabled 
@@ -73,7 +73,7 @@ export const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
                 : 'Illimitées')}
           </div>
         </div>
-        <div className={`${isAlphaPlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isAlphaPlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
+        <div className={`${isElitePlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isElitePlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
           <div className="text-xs text-gray-400">Bonus parrainage</div>
           <div className="text-sm font-medium text-white flex items-center">
             {referralBonus > 0 ? (

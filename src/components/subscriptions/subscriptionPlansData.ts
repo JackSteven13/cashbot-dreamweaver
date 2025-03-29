@@ -64,7 +64,7 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
     },
     {
       id: 'elite',
-      title: 'Elite',
+      title: 'Élite',
       price: 549,
       description: 'Pour les professionnels et entreprises',
       features: [
