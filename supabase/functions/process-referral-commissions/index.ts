@@ -3,6 +3,7 @@
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
 import { corsHeaders } from "./utils/corsHeaders.ts";
 import { processAllCommissions } from "./services/commissionService.ts";
+import { handleError } from "./utils/errorHandler.ts";
 
 // Gérer les requêtes HTTP
 serve(async (req) => {
@@ -29,9 +30,9 @@ serve(async (req) => {
       { status: result.success ? 200 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error("Erreur non gérée:", error);
+    const errorResponse = handleError(error, "Erreur non gérée dans le traitement principal");
     return new Response(
-      JSON.stringify({ error: 'Erreur interne du serveur' }),
+      JSON.stringify(errorResponse),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
