@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
         const customerId = subscription.customer
         
         // Get the price ID from the subscription
-        const priceId = subscription.items.data[0]?.price.id
+        const priceId = subscription.items.data[0]?.price?.id
         
         if (!priceId || !PLANS_BY_PRICE[priceId]) {
           console.error('Unknown price ID:', priceId)

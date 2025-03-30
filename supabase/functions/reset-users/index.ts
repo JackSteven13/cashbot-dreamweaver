@@ -164,38 +164,47 @@ async function resetUserData(supabase, userIds, emails) {
 
   // 2. Réinitialiser les balances utilisateurs - mettre à zéro
   for (const userId of userIds) {
-    const { error: balanceError } = await supabase
+    const { data: balance, error: balanceError } = await supabase
       .from("user_balances")
-      .update({ 
-        balance: 0, 
-        daily_session_count: 0,
-        subscription: 'freemium',
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", userId);
+      .select("id")
+      .eq("id", userId)
+      .single();
 
     if (balanceError) {
-      console.error(`Erreur lors de la réinitialisation de la balance pour ${userId}:`, balanceError);
+      console.error(`Erreur lors de la recherche de balance pour ${userId}:`, balanceError);
       
-      // Si l'entrée n'existe pas, essayons de la créer
-      if (balanceError.code === 'PGRST116') {
-        const { error: insertError } = await supabase
-          .from("user_balances")
-          .insert([{ 
-            id: userId, 
-            balance: 0, 
-            daily_session_count: 0,
-            subscription: 'freemium'
-          }]);
-          
-        if (insertError) {
-          console.error(`Erreur lors de la création de balance pour ${userId}:`, insertError);
-        } else {
-          console.log(`Balance créée avec succès pour ${userId}`);
-        }
+      // Si la balance n'existe pas, la créer
+      const { error: insertError } = await supabase
+        .from("user_balances")
+        .insert({
+          id: userId,
+          balance: 0,
+          subscription: 'freemium',
+          daily_session_count: 0
+        });
+        
+      if (insertError) {
+        console.error(`Erreur lors de la création de balance pour ${userId}:`, insertError);
+      } else {
+        console.log(`Balance créée avec succès pour ${userId}`);
       }
     } else {
-      console.log(`Balance réinitialisée avec succès pour ${userId}`);
+      // La balance existe, la mettre à zéro
+      const { error: updateError } = await supabase
+        .from("user_balances")
+        .update({
+          balance: 0,
+          subscription: 'freemium',
+          daily_session_count: 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", userId);
+        
+      if (updateError) {
+        console.error(`Erreur lors de la mise à jour de la balance pour ${userId}:`, updateError);
+      } else {
+        console.log(`Balance réinitialisée avec succès pour ${userId}`);
+      }
     }
   }
 

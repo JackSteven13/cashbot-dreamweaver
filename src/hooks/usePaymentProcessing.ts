@@ -1,17 +1,15 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-
-export type PlanType = 'freemium' | 'pro' | 'visionnaire' | 'alpha';
+import { PlanType } from '@/hooks/payment/types';
 
 // Plan prices - ensure these match values in Edge Functions
 export const PLAN_PRICES = {
   'freemium': 0,
-  'pro': 19.99,
-  'visionnaire': 49.99,
-  'alpha': 99.99
+  'starter': 99,
+  'gold': 349,
+  'elite': 549
 };
 
 export type PaymentFormData = {
@@ -117,7 +115,6 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
       }
 
       // For paid plans with manual card form, redirect to Stripe checkout
-      // as we don't process cards directly for security reasons
       console.log("Redirecting to Stripe checkout for", selectedPlan);
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
