@@ -1,0 +1,47 @@
+
+/* Particle animation effects */
+@layer utilities {
+  .money-rain {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .money-rain::before {
+    content: "💰";
+    position: absolute;
+    top: -20px;
+    left: 0;
+    font-size: 24px;
+    animation: moneyFall 1.5s linear infinite;
+  }
+}
+
+/* Money particle animations */
+.money-particle {
+  position: absolute;
+  pointer-events: none;
+  animation: moneyParticle 1.5s ease-out forwards;
+  z-index: 1000;
+}
+
+@keyframes moneyParticle {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) rotate(var(--r));
+    opacity: 0;
+  }
+}
+
+@keyframes moneyFall {
+  0% { 
+    transform: translateY(0) rotate(0deg); 
+    opacity: 1;
+  }
+  100% { 
+    transform: translateY(500px) rotate(360deg); 
+    opacity: 0;
+  }
+}

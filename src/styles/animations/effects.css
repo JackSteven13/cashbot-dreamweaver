@@ -1,0 +1,77 @@
+
+/* Visual effect animations */
+@layer utilities {
+  .glow-effect {
+    animation: glow 1.5s ease-in-out infinite alternate;
+  }
+  
+  .boost-button-pulse {
+    animation: boostPulse 3s infinite;
+  }
+  
+  .boost-button-active {
+    animation: boostActive 0.8s ease-out;
+  }
+  
+  .zap-animation {
+    position: relative;
+  }
+  
+  .zap-animation::after {
+    content: "⚡";
+    position: absolute;
+    top: -15px;
+    right: -10px;
+    font-size: 20px;
+    animation: zapBounce 1s ease infinite;
+  }
+  
+  .sparkle-animation {
+    position: relative;
+  }
+  
+  .sparkle-animation::before {
+    content: "✨";
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    font-size: 16px;
+    animation: sparkle 1.2s ease infinite;
+  }
+}
+
+/* Effect animation keyframes */
+@keyframes glow {
+  from {
+    box-shadow: 0 0 5px #9b87f5, 0 0 10px #9b87f5, 0 0 15px #9b87f5;
+  }
+  to {
+    box-shadow: 0 0 10px #f97316, 0 0 20px #f97316, 0 0 30px #f97316;
+  }
+}
+
+@keyframes boostPulse {
+  0% { transform: scale(1); }
+  5% { transform: scale(1.03); }
+  10% { transform: scale(1); }
+  15% { transform: scale(1.02); }
+  20% { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes boostActive {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+@keyframes zapBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes sparkle {
+  0% { opacity: 0; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(0.8); }
+}

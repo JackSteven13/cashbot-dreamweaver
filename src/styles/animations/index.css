@@ -1,0 +1,8 @@
+
+/* Main animations index file - imports all animation categories */
+@import "./base.css";
+@import "./transitions.css";
+@import "./effects.css";
+@import "./particles.css";
+@import "./terminals.css";
+
