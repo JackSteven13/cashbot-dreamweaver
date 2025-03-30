@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Copy, CheckCheck, Award, Users } from 'lucide-react';
+import { Copy, CheckCheck, Award, Users, PercentIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { 
@@ -94,17 +94,20 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
       </div>
       
       <div className="bg-amber-50 p-3 rounded-md border border-amber-100 mb-4">
-        <p className="text-sm text-amber-800 font-medium">
-          💰 Gagnez <span className="font-bold">{Math.round(directCommission * 100)}%</span> sur les abonnements de chaque personne qui s'inscrit avec votre lien !
+        <p className="text-sm text-amber-800 font-medium flex items-center">
+          <PercentIcon className="h-4 w-4 mr-1.5 text-amber-600" />
+          <span>Gagnez <span className="font-bold">{Math.round(directCommission * 100)}%</span> sur les abonnements de chaque personne qui s'inscrit avec votre lien !</span>
         </p>
         {recurringCommission > 0 && (
-          <p className="text-xs text-amber-700 mt-1">
-            ✨ Bonus récurrent : recevez <span className="font-bold">{Math.round(recurringCommission * 100)}%</span> de commission tous les mois !
+          <p className="text-xs text-amber-700 mt-1 flex items-center">
+            <PercentIcon className="h-3.5 w-3.5 mr-1.5 text-amber-600" />
+            <span>Bonus récurrent : recevez <span className="font-bold">{Math.round(recurringCommission * 100)}%</span> de commission tous les mois !</span>
           </p>
         )}
         {level2Commission > 0 && (
-          <p className="text-xs text-amber-700 mt-1">
-            🌟 Bonus niveau 2 : gagnez <span className="font-bold">{Math.round(level2Commission * 100)}%</span> sur les abonnements des filleuls de vos filleuls !
+          <p className="text-xs text-amber-700 mt-1 flex items-center">
+            <Users className="h-3.5 w-3.5 mr-1.5 text-amber-600" />
+            <span>Bonus niveau 2 : gagnez <span className="font-bold">{Math.round(level2Commission * 100)}%</span> sur les abonnements des filleuls de vos filleuls !</span>
           </p>
         )}
       </div>

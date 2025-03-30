@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Crown, ChevronRight } from 'lucide-react';
+import { Sparkles, Crown, ChevronRight, Users, PercentIcon } from 'lucide-react';
 import Button from '@/components/Button';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -78,7 +78,7 @@ const FeaturedPlanCard: React.FC<FeaturedPlanCardProps> = ({
                   Accès illimité à toutes les fonctionnalités
                 </li>
                 <li className="flex items-center text-xs md:text-sm text-purple-800 dark:text-purple-300">
-                  <Sparkles className="h-3.5 w-3.5 mr-2 text-purple-500" />
+                  <PercentIcon className="h-3.5 w-3.5 mr-2 text-purple-500" />
                   Commission de parrainage de 100%
                 </li>
               </ul>
@@ -90,11 +90,11 @@ const FeaturedPlanCard: React.FC<FeaturedPlanCardProps> = ({
               </h4>
               <ul className="space-y-2">
                 <li className="flex items-center text-xs md:text-sm text-purple-800 dark:text-purple-300">
-                  <Sparkles className="h-3.5 w-3.5 mr-2 text-purple-500" />
+                  <PercentIcon className="h-3.5 w-3.5 mr-2 text-purple-500" />
                   30% de commission récurrente
                 </li>
                 <li className="flex items-center text-xs md:text-sm text-purple-800 dark:text-purple-300">
-                  <Sparkles className="h-3.5 w-3.5 mr-2 text-purple-500" />
+                  <Users className="h-3.5 w-3.5 mr-2 text-purple-500" />
                   10% de commission niveau 2
                 </li>
                 <li className="flex items-center text-xs md:text-sm text-purple-800 dark:text-purple-300">
