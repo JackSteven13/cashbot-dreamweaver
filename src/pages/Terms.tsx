@@ -1,10 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, ChevronRight } from 'lucide-react';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
+import { toast } from "@/components/ui/use-toast";
 
 const Terms = () => {
   const navigate = useNavigate();
@@ -12,7 +12,6 @@ const Terms = () => {
   const [showCheckoutButton, setShowCheckoutButton] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   
-  // Extraire le plan sélectionné depuis les paramètres de l'URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const plan = params.get('plan');
@@ -23,10 +22,16 @@ const Terms = () => {
     }
   }, [location]);
   
-  // Fonction pour retourner à la page de paiement avec le plan sélectionné
   const handleContinueToCheckout = () => {
     if (selectedPlan) {
-      navigate(`/payment?plan=${selectedPlan}`);
+      toast({
+        title: "Redirection en cours",
+        description: "Vous allez être redirigé vers la page de paiement...",
+      });
+      
+      setTimeout(() => {
+        navigate(`/payment?plan=${selectedPlan}`);
+      }, 100);
     } else {
       navigate('/offres');
     }

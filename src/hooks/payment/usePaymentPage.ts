@@ -24,7 +24,7 @@ export const usePaymentPage = () => {
 
   // Extract plan from state or URL params
   useEffect(() => {
-    const extractPlanFromRouting = () => {
+    const extractPlanFromRouting = async () => {
       let plan: string | null = null;
       
       if (location.state && location.state.plan) {
@@ -35,18 +35,30 @@ export const usePaymentPage = () => {
         console.log("Plan from URL params:", plan);
       }
       
+      // Si aucun plan n'est spécifié, essayer de récupérer depuis localStorage
+      if (!plan) {
+        const storedPlan = localStorage.getItem('selected_plan');
+        if (storedPlan) {
+          plan = storedPlan;
+          console.log("Plan from localStorage:", plan);
+        }
+      } else {
+        // Stocker le plan sélectionné pour la persistance
+        localStorage.setItem('selected_plan', plan);
+      }
+      
       console.log("Payment page initialized with plan:", plan);
       
-      // Redirect freemium users back to dashboard or offers
+      // Rediriger les utilisateurs freemium vers le tableau de bord ou les offres
       if (plan === 'freemium') {
-        handleFreemiumSubscription();
+        await handleFreemiumSubscription();
         return;
       }
       
       if (plan && ['starter', 'gold', 'elite'].includes(plan)) {
         setSelectedPlan(plan as PlanType);
       } else {
-        // If no valid plan is specified, redirect back to offers
+        // Si aucun plan valide n'est spécifié, rediriger vers les offres
         toast({
           title: "Plan non valide",
           description: "Veuillez sélectionner un plan valide.",
@@ -59,7 +71,7 @@ export const usePaymentPage = () => {
     extractPlanFromRouting();
   }, [location, navigate]);
 
-  // Check if user is authenticated
+  // Vérifier si l'utilisateur est authentifié
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -70,6 +82,10 @@ export const usePaymentPage = () => {
             description: "Vous devez être connecté pour souscrire à un abonnement.",
             variant: "destructive"
           });
+          // Stocker le plan pour le récupérer après connexion
+          if (selectedPlan) {
+            localStorage.setItem('selected_plan', selectedPlan);
+          }
           navigate('/login');
           return;
         }
@@ -87,22 +103,26 @@ export const usePaymentPage = () => {
     };
     
     checkAuth();
-  }, [navigate]);
+  }, [navigate, selectedPlan]);
 
-  // Automatically initiate Stripe checkout when the page loads and plan is selected
+  // Lancer automatiquement le checkout Stripe quand la page est chargée et que le plan est sélectionné
   useEffect(() => {
     if (selectedPlan && !isAuthChecking && !isStripeProcessing && useStripePayment) {
       console.log("Auto-initiating Stripe checkout for plan:", selectedPlan);
-      // Short delay to ensure UI is ready
+      // Léger délai pour s'assurer que l'UI est prête
       const timer = setTimeout(() => {
-        handleStripeCheckout();
-      }, 800);
+        try {
+          handleStripeCheckout();
+        } catch (err) {
+          console.error("Erreur lors de l'initialisation automatique:", err);
+        }
+      }, 600);
       
       return () => clearTimeout(timer);
     }
   }, [selectedPlan, isAuthChecking, isStripeProcessing, useStripePayment, handleStripeCheckout]);
 
-  // Handle freemium subscription
+  // Gérer l'abonnement Freemium
   const handleFreemiumSubscription = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();

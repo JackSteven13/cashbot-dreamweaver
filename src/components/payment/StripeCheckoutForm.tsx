@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Link, useLocation } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
 import { useIsMobile } from '@/hooks/use-mobile';
+import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;
@@ -35,6 +36,13 @@ const StripeCheckoutForm = ({
         setRedirectSeconds(prev => prev - 1);
       }, 1000);
       return () => clearTimeout(timer);
+    }
+  }, [stripeUrl, isStripeProcessing, redirectAttempted, redirectSeconds]);
+  
+  // Tentative de redirection automatique quand URL est disponible
+  useEffect(() => {
+    if (stripeUrl && isStripeProcessing && !redirectAttempted && redirectSeconds === 0) {
+      handleManualRedirect();
     }
   }, [stripeUrl, isStripeProcessing, redirectAttempted, redirectSeconds]);
   
@@ -72,21 +80,8 @@ const StripeCheckoutForm = ({
       duration: 3000
     });
     
-    // Redirection directe - méthode plus agressive
-    try {
-      // Ouvrir dans un nouvel onglet (plus compatible sur mobile)
-      window.open(stripeUrl, "_blank");
-      
-      // Redirection secondaire après un court délai si l'ouverture d'onglet échoue
-      setTimeout(() => {
-        window.location.href = stripeUrl;
-      }, 100);
-    } catch (error) {
-      console.error("Erreur lors de la redirection:", error);
-      
-      // Solution de dernier recours
-      window.location.href = stripeUrl;
-    }
+    // Utiliser la fonction optimisée pour ouvrir Stripe
+    openStripeWindow(stripeUrl);
   };
   
   // Créer le lien vers les CGV avec le plan sélectionné
@@ -112,7 +107,22 @@ const StripeCheckoutForm = ({
         />
         <div className="grid gap-1 leading-none">
           <Label htmlFor="terms" className="text-xs md:text-sm text-gray-700">
-            J'ai lu et j'accepte les <Link to={termsLink} className="text-blue-600 hover:underline" target="_blank">Conditions Générales d'Utilisation</Link> de la plateforme
+            J'ai lu et j'accepte les{' '}
+            <Link 
+              to={termsLink} 
+              className="text-blue-600 hover:underline focus:outline-none focus:underline" 
+              target="_blank"
+              onClick={(e) => {
+                // Empêcher les clics multiples rapides
+                e.currentTarget.style.pointerEvents = 'none';
+                setTimeout(() => {
+                  if (e.currentTarget) e.currentTarget.style.pointerEvents = 'auto';
+                }, 1000);
+              }}
+            >
+              Conditions Générales d'Utilisation
+            </Link>{' '}
+            de la plateforme
           </Label>
         </div>
       </div>
@@ -120,21 +130,15 @@ const StripeCheckoutForm = ({
       {stripeUrl ? (
         <>
           {/* Bouton de redirection principal - grand et très visible */}
-          <a 
-            href={stripeUrl} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="block w-full"
+          <Button 
+            fullWidth 
+            className="bg-green-600 hover:bg-green-700 text-white text-sm md:text-base py-3 md:py-4 font-bold shadow-md flex justify-center items-center gap-2"
+            onClick={handleManualRedirect}
+            isLoading={isStripeProcessing && !redirectAttempted}
           >
-            <Button 
-              fullWidth 
-              className="bg-green-600 hover:bg-green-700 text-white text-sm md:text-base py-3 md:py-4 font-bold shadow-md flex justify-center items-center gap-2"
-              onClick={() => setRedirectAttempted(true)}
-            >
-              <ExternalLink size={20} />
-              Ouvrir la page de paiement Stripe
-            </Button>
-          </a>
+            <ExternalLink size={20} />
+            {redirectAttempted ? 'Ouvrir à nouveau la page de paiement' : 'Ouvrir la page de paiement Stripe'}
+          </Button>
           
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs md:text-sm text-blue-700 mt-2">
             <p className="font-semibold">Important :</p>

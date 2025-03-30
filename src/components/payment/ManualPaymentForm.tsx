@@ -57,7 +57,22 @@ const ManualPaymentForm = ({ isProcessing, onSubmit }: ManualPaymentFormProps) =
         />
         <div className="grid gap-1 leading-none">
           <Label htmlFor="terms-manual" className="text-xs md:text-sm text-gray-700">
-            J'ai lu et j'accepte les <Link to={`/terms${selectedPlan ? `?plan=${selectedPlan}` : ''}`} className="text-blue-600 hover:underline" target="_blank">Conditions Générales d'Utilisation</Link> de la plateforme
+            J'ai lu et j'accepte les{' '}
+            <Link 
+              to={`/terms${selectedPlan ? `?plan=${selectedPlan}` : ''}`} 
+              className="text-blue-600 hover:underline focus:outline-none focus:underline" 
+              target="_blank"
+              onClick={(e) => {
+                // Empêcher les clics multiples rapides
+                e.currentTarget.style.pointerEvents = 'none';
+                setTimeout(() => {
+                  if (e.currentTarget) e.currentTarget.style.pointerEvents = 'auto';
+                }, 1000);
+              }}
+            >
+              Conditions Générales d'Utilisation
+            </Link>{' '}
+            de la plateforme
           </Label>
         </div>
       </div>
@@ -67,7 +82,7 @@ const ManualPaymentForm = ({ isProcessing, onSubmit }: ManualPaymentFormProps) =
         className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white text-sm md:text-base py-1.5 md:py-2"
         onClick={handleFormSubmit}
         isLoading={isProcessing}
-        disabled={!termsAccepted}
+        disabled={!termsAccepted || isProcessing}
       >
         {isProcessing ? 'Traitement en cours...' : 'Payer maintenant'}
       </Button>

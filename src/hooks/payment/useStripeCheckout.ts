@@ -29,15 +29,15 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       setDidInitiateRedirect(true);
       redirectAttemptCount.current += 1;
       
-      // Ne pas utiliser la redirection automatique, laisser l'utilisateur cliquer sur le bouton
+      // Notification à l'utilisateur
       toast({
         title: "Page de paiement prête",
         description: "Cliquez sur le bouton vert pour accéder à la page de paiement Stripe.",
         duration: 10000,
       });
       
-      // Pas de redirection automatique, qui échoue souvent sur mobile
-      // On laisse l'utilisateur cliquer sur le bouton de redirection
+      // Ne pas faire de redirection automatique, problématique sur mobile
+      // L'utilisateur cliquera sur le bouton vert
     }
   }, [stripeCheckoutUrl, isStripeProcessing, didInitiateRedirect]);
 
@@ -84,8 +84,15 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         toast({
           title: "Page de paiement prête",
           description: "Cliquez sur le bouton vert pour accéder à la page de paiement Stripe.",
-          duration: 10000,
+          duration: 6000,
         });
+        
+        // Tenter une redirection directe après un délai
+        setTimeout(() => {
+          if (stripeCheckoutUrl) {
+            openStripeWindow(stripeCheckoutUrl);
+          }
+        }, 500);
       }
       return;
     }
