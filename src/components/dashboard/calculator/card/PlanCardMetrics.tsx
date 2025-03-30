@@ -7,17 +7,22 @@ interface PlanCardMetricsProps {
 }
 
 const PlanCardMetrics: React.FC<PlanCardMetricsProps> = ({ revenue, profit }) => {
-  if (revenue === undefined || profit === undefined) {
+  // Ne pas afficher le composant si les deux valeurs sont undefined
+  if (revenue === undefined && profit === undefined) {
     return null;
   }
+  
+  // Valeurs par défaut pour éviter NaN
+  const displayRevenue = revenue === undefined || isNaN(revenue) ? 0 : revenue;
+  const displayProfit = profit === undefined || isNaN(profit) ? 0 : profit;
   
   return (
     <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
       <p className="text-xs md:text-sm font-medium text-blue-800 dark:text-blue-300">
-        Revenu: <span className="font-bold">{revenue.toFixed(2)}€</span>
+        Revenu: <span className="font-bold">{displayRevenue.toFixed(2)}€</span>
       </p>
       <p className="text-xs md:text-sm font-medium text-blue-800 dark:text-blue-300">
-        Profit: <span className="font-bold">{profit.toFixed(2)}€</span>
+        Profit: <span className="font-bold">{displayProfit.toFixed(2)}€</span>
       </p>
     </div>
   );

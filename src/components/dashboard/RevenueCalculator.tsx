@@ -72,7 +72,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
   isNewUser,
   isHomePage = false
 }) => {
-  const [selectedPlan, setSelectedPlan] = useState('elite');
+  const [selectedPlan, setSelectedPlan] = useState<string>('elite');
   const [calculatedResults, setCalculatedResults] = useState<Record<string, { revenue: number, profit: number }>>({});
   const isMobile = useIsMobile();
 
@@ -86,10 +86,23 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
   const { watch, control } = form;
   const values = watch();
 
+  // Effectuer le calcul initial immédiatement
   useEffect(() => {
     // Calcul des revenus pour tous les abonnements
-    const results = calculateRevenueForAllPlans(values.sessionsPerDay, values.daysPerMonth);
-    setCalculatedResults(results);
+    try {
+      console.log("Calculating results with:", values.sessionsPerDay, values.daysPerMonth);
+      const results = calculateRevenueForAllPlans(values.sessionsPerDay, values.daysPerMonth);
+      console.log("Calculated results:", results);
+      setCalculatedResults(results);
+    } catch (error) {
+      console.error("Error calculating results:", error);
+      // Initialiser avec des valeurs par défaut en cas d'erreur
+      const defaultResults: Record<string, { revenue: number, profit: number }> = {};
+      Object.keys(SUBSCRIPTION_LIMITS).forEach(plan => {
+        defaultResults[plan] = { revenue: 0, profit: -SUBSCRIPTION_PRICES[plan] || 0 };
+      });
+      setCalculatedResults(defaultResults);
+    }
   }, [values.sessionsPerDay, values.daysPerMonth]);
 
   // Adapter les styles selon l'endroit où le composant est affiché et le mode sombre
