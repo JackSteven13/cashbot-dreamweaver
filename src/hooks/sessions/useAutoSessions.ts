@@ -15,6 +15,40 @@ export const useAutoSessions = (
   const [lastAutoSessionTime, setLastAutoSessionTime] = useState(Date.now());
   const sessionInProgress = useRef(false);
   const operationLock = useRef(false);
+  const isUserOnline = useRef(true); // Track user online status
+
+  // Effect for detecting user online/offline status
+  useEffect(() => {
+    const handleOnline = () => {
+      isUserOnline.current = true;
+      console.log("User is online");
+    };
+
+    const handleOffline = () => {
+      isUserOnline.current = false;
+      console.log("User is offline");
+    };
+
+    // Track visibility changes (tab active/inactive)
+    const handleVisibilityChange = () => {
+      isUserOnline.current = document.visibilityState === 'visible';
+      console.log("Visibility changed, user is:", isUserOnline.current ? "active" : "inactive");
+    };
+
+    // Set up event listeners
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Initialize with current status
+    isUserOnline.current = navigator.onLine && document.visibilityState === 'visible';
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // Effect for simulating automatic ad analysis
   useEffect(() => {
@@ -55,17 +89,23 @@ export const useAutoSessions = (
         `Le système a généré ${randomGain.toFixed(2)}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${userData.subscription} vous permet d'accéder à ce niveau de performance.`
       );
 
-      toast({
-        title: "Revenus générés",
-        description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`,
-      });
+      // Only show toast notification if user is online and active on the page
+      if (isUserOnline.current) {
+        toast({
+          title: "Revenus générés",
+          description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`,
+        });
+      }
     } catch (error) {
       console.error("Error generating automatic revenue:", error);
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue. Veuillez réessayer plus tard.",
-        variant: "destructive"
-      });
+      // Only show error toast if user is online
+      if (isUserOnline.current) {
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue. Veuillez réessayer plus tard.",
+          variant: "destructive"
+        });
+      }
     } finally {
       sessionInProgress.current = false;
       // Release lock after a small delay to prevent rapid subsequent calls
