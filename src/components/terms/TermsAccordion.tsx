@@ -10,6 +10,7 @@ import CGVSections from './CGVSections';
 import AdditionalCGVSections from './AdditionalCGVSections';
 import MoreCGVSections from './MoreCGVSections';
 import FinalCGVSections from './FinalCGVSections';
+import ReputationCGVSections from './ReputationCGVSections';
 
 const TermsAccordion = () => {
   return (
@@ -38,6 +39,15 @@ const TermsAccordion = () => {
         </AccordionTrigger>
         <AccordionContent>
           <MoreCGVSections />
+        </AccordionContent>
+      </AccordionItem>
+      
+      <AccordionItem value="section-reputation">
+        <AccordionTrigger className="text-lg font-semibold">
+          Protection de la Réputation (Article 11 bis)
+        </AccordionTrigger>
+        <AccordionContent>
+          <ReputationCGVSections />
         </AccordionContent>
       </AccordionItem>
       

@@ -4,6 +4,7 @@ import CGVSections from './CGVSections';
 import AdditionalCGVSections from './AdditionalCGVSections';
 import MoreCGVSections from './MoreCGVSections';
 import FinalCGVSections from './FinalCGVSections';
+import ReputationCGVSections from './ReputationCGVSections';
 
 const CompleteCGVContent = () => {
   return (
@@ -16,6 +17,7 @@ const CompleteCGVContent = () => {
       <CGVSections />
       <AdditionalCGVSections />
       <MoreCGVSections />
+      <ReputationCGVSections />
       <FinalCGVSections />
     </div>
   );
