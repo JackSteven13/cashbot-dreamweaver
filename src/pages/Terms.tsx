@@ -1,11 +1,37 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
-import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, CheckCircle, ChevronRight } from 'lucide-react';
 import Footer from '@/components/Footer';
+import { Button } from '@/components/ui/button';
 
 const Terms = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [showCheckoutButton, setShowCheckoutButton] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  
+  // Extraire le plan sélectionné depuis les paramètres de l'URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const plan = params.get('plan');
+    
+    if (plan && ['freemium', 'starter', 'gold', 'elite'].includes(plan)) {
+      setSelectedPlan(plan);
+      setShowCheckoutButton(true);
+    }
+  }, [location]);
+  
+  // Fonction pour retourner à la page de paiement avec le plan sélectionné
+  const handleContinueToCheckout = () => {
+    if (selectedPlan) {
+      navigate(`/payment?plan=${selectedPlan}`);
+    } else {
+      navigate('/offres');
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -142,9 +168,38 @@ const Terms = () => {
                 </section>
                 
                 <div className="mt-8 pt-4 border-t border-gray-200">
-                  <p className="text-center text-sm text-gray-500">
+                  <p className="text-center text-sm text-gray-500 mb-4">
                     En utilisant ce service, vous reconnaissez avoir lu, compris et accepté les présentes conditions générales d'utilisation.
                   </p>
+                  
+                  {showCheckoutButton && (
+                    <div className="mt-8 flex flex-col items-center">
+                      <div className="flex items-center mb-4 text-blue-600">
+                        <CheckCircle className="h-6 w-6 mr-2" />
+                        <span className="text-lg font-medium">J'ai lu et j'accepte les Conditions Générales d'Utilisation</span>
+                      </div>
+                      
+                      <Button 
+                        onClick={handleContinueToCheckout}
+                        className="mt-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md flex items-center text-lg shadow-md"
+                      >
+                        Continuer vers le paiement
+                        <ChevronRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {!showCheckoutButton && (
+                    <div className="mt-8 flex justify-center">
+                      <Button 
+                        onClick={() => navigate('/offres')}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md flex items-center"
+                      >
+                        Voir nos offres
+                        <ChevronRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

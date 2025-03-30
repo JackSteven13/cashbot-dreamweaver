@@ -5,7 +5,7 @@ import Button from '@/components/Button';
 import { PlanType } from '@/hooks/payment/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -26,6 +26,7 @@ const StripeCheckoutForm = ({
   const [redirectAttempted, setRedirectAttempted] = React.useState(false);
   const [redirectSeconds, setRedirectSeconds] = useState(3);
   const isMobile = useIsMobile();
+  const location = useLocation();
   
   // Compte à rebours pour la redirection automatique
   useEffect(() => {
@@ -88,6 +89,9 @@ const StripeCheckoutForm = ({
     }
   };
   
+  // Créer le lien vers les CGV avec le plan sélectionné
+  const termsLink = selectedPlan ? `/terms?plan=${selectedPlan}` : '/terms';
+  
   return (
     <div className="space-y-4 md:space-y-5">
       <div className="flex items-center gap-2 text-[#1e3a5f] mb-1 md:mb-2">
@@ -108,7 +112,7 @@ const StripeCheckoutForm = ({
         />
         <div className="grid gap-1 leading-none">
           <Label htmlFor="terms" className="text-xs md:text-sm text-gray-700">
-            J'ai lu et j'accepte les <Link to="/terms" className="text-blue-600 hover:underline" target="_blank">Conditions Générales d'Utilisation</Link> de la plateforme
+            J'ai lu et j'accepte les <Link to={termsLink} className="text-blue-600 hover:underline" target="_blank">Conditions Générales d'Utilisation</Link> de la plateforme
           </Label>
         </div>
       </div>

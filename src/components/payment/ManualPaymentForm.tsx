@@ -6,7 +6,7 @@ import CardPaymentForm from '@/components/payment/CardPaymentForm';
 import { PaymentFormData } from '@/hooks/payment/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -18,6 +18,10 @@ interface ManualPaymentFormProps {
 const ManualPaymentForm = ({ isProcessing, onSubmit }: ManualPaymentFormProps) => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const isMobile = useIsMobile();
+  const location = useLocation();
+  
+  // Extraire le plan depuis les paramètres de l'URL pour le passer au lien des CGV
+  const selectedPlan = new URLSearchParams(location.search).get('plan');
   
   const handleFormSubmit = () => {
     if (!termsAccepted) {
@@ -53,7 +57,7 @@ const ManualPaymentForm = ({ isProcessing, onSubmit }: ManualPaymentFormProps) =
         />
         <div className="grid gap-1 leading-none">
           <Label htmlFor="terms-manual" className="text-xs md:text-sm text-gray-700">
-            J'ai lu et j'accepte les <Link to="/terms" className="text-blue-600 hover:underline" target="_blank">Conditions Générales d'Utilisation</Link> de la plateforme
+            J'ai lu et j'accepte les <Link to={`/terms${selectedPlan ? `?plan=${selectedPlan}` : ''}`} className="text-blue-600 hover:underline" target="_blank">Conditions Générales d'Utilisation</Link> de la plateforme
           </Label>
         </div>
       </div>
