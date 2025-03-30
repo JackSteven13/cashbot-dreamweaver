@@ -105,22 +105,7 @@ export const usePaymentPage = () => {
     checkAuth();
   }, [navigate, selectedPlan]);
 
-  // Lancer automatiquement le checkout Stripe quand la page est chargée et que le plan est sélectionné
-  useEffect(() => {
-    if (selectedPlan && !isAuthChecking && !isStripeProcessing && useStripePayment) {
-      console.log("Auto-initiating Stripe checkout for plan:", selectedPlan);
-      // Léger délai pour s'assurer que l'UI est prête
-      const timer = setTimeout(() => {
-        try {
-          handleStripeCheckout();
-        } catch (err) {
-          console.error("Erreur lors de l'initialisation automatique:", err);
-        }
-      }, 600);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [selectedPlan, isAuthChecking, isStripeProcessing, useStripePayment, handleStripeCheckout]);
+  // SUPPRESSION de l'initialisation automatique du checkout Stripe
 
   // Gérer l'abonnement Freemium
   const handleFreemiumSubscription = async () => {

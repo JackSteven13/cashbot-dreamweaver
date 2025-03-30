@@ -43,3 +43,9 @@ export const isStripeWindowOpen = (): boolean => {
   // Pour l'instant, c'est une implémentation minimaliste
   return false;
 };
+
+/**
+ * IMPORTANT: Ne jamais ouvrir automatiquement la fenêtre Stripe
+ * L'utilisateur doit toujours cliquer sur un bouton pour ouvrir la page de paiement
+ * après avoir explicitement accepté les CGV
+ */

@@ -16,7 +16,7 @@ interface ManualPaymentFormProps {
 }
 
 const ManualPaymentForm = ({ isProcessing, onSubmit }: ManualPaymentFormProps) => {
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false); // Défaut à false pour force l'acceptation explicite
   const isMobile = useIsMobile();
   const location = useLocation();
   

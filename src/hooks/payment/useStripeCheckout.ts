@@ -8,7 +8,6 @@ import { formatErrorMessage, updateLocalSubscription } from './utils';
 import { useSubscriptionCheck } from './useSubscriptionCheck';
 import { useStripeSession } from './useStripeSession';
 import { useFreemiumUpdate } from './useFreemiumUpdate';
-import { openStripeWindow } from './stripeWindowManager';
 
 export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
@@ -20,14 +19,10 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const { stripeCheckoutUrl, createStripeSession, getEffectiveReferralCode } = useStripeSession();
   const { updateToFreemium } = useFreemiumUpdate();
 
-  // Effectuer la redirection vers Stripe dès que l'URL est disponible
+  // Plus de redirection automatique - l'utilisateur doit explicitement cliquer sur le bouton
   useEffect(() => {
-    if (stripeCheckoutUrl && isStripeProcessing && !didInitiateRedirect && redirectAttemptCount.current < 2) {
-      console.log("Redirection vers Stripe URL:", stripeCheckoutUrl);
-      
-      // Suivre la tentative de redirection pour éviter les redirections multiples
-      setDidInitiateRedirect(true);
-      redirectAttemptCount.current += 1;
+    if (stripeCheckoutUrl && isStripeProcessing && !didInitiateRedirect) {
+      console.log("URL de paiement Stripe prête:", stripeCheckoutUrl);
       
       // Notification à l'utilisateur
       toast({
@@ -35,9 +30,6 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         description: "Cliquez sur le bouton vert pour accéder à la page de paiement Stripe.",
         duration: 10000,
       });
-      
-      // Ne pas faire de redirection automatique, problématique sur mobile
-      // L'utilisateur cliquera sur le bouton vert
     }
   }, [stripeCheckoutUrl, isStripeProcessing, didInitiateRedirect]);
 
@@ -86,13 +78,6 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
           description: "Cliquez sur le bouton vert pour accéder à la page de paiement Stripe.",
           duration: 6000,
         });
-        
-        // Tenter une redirection directe après un délai
-        setTimeout(() => {
-          if (stripeCheckoutUrl) {
-            openStripeWindow(stripeCheckoutUrl);
-          }
-        }, 500);
       }
       return;
     }

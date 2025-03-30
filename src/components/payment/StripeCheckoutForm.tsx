@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { CreditCard, ExternalLink } from 'lucide-react';
 import Button from '@/components/Button';
 import { PlanType } from '@/hooks/payment/types';
@@ -23,28 +23,13 @@ const StripeCheckoutForm = ({
   onCheckout,
   stripeUrl
 }: StripeCheckoutFormProps) => {
-  const [termsAccepted, setTermsAccepted] = React.useState(true); // Par défaut à true pour une meilleure UX
+  const [termsAccepted, setTermsAccepted] = React.useState(false); // Défaut à false pour exiger une action explicite
   const [redirectAttempted, setRedirectAttempted] = React.useState(false);
-  const [redirectSeconds, setRedirectSeconds] = useState(3);
   const isMobile = useIsMobile();
   const location = useLocation();
   
-  // Compte à rebours pour la redirection automatique
-  useEffect(() => {
-    if (stripeUrl && isStripeProcessing && !redirectAttempted && redirectSeconds > 0) {
-      const timer = setTimeout(() => {
-        setRedirectSeconds(prev => prev - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [stripeUrl, isStripeProcessing, redirectAttempted, redirectSeconds]);
-  
-  // Tentative de redirection automatique quand URL est disponible
-  useEffect(() => {
-    if (stripeUrl && isStripeProcessing && !redirectAttempted && redirectSeconds === 0) {
-      handleManualRedirect();
-    }
-  }, [stripeUrl, isStripeProcessing, redirectAttempted, redirectSeconds]);
+  // Créer le lien vers les CGV avec le plan sélectionné
+  const termsLink = selectedPlan ? `/terms?plan=${selectedPlan}` : '/terms';
   
   const handleCheckout = () => {
     if (!termsAccepted) {
@@ -57,7 +42,6 @@ const StripeCheckoutForm = ({
     }
     
     setRedirectAttempted(false);
-    setRedirectSeconds(3);
     onCheckout();
   };
   
@@ -83,9 +67,6 @@ const StripeCheckoutForm = ({
     // Utiliser la fonction optimisée pour ouvrir Stripe
     openStripeWindow(stripeUrl);
   };
-  
-  // Créer le lien vers les CGV avec le plan sélectionné
-  const termsLink = selectedPlan ? `/terms?plan=${selectedPlan}` : '/terms';
   
   return (
     <div className="space-y-4 md:space-y-5">
@@ -135,6 +116,7 @@ const StripeCheckoutForm = ({
             className="bg-green-600 hover:bg-green-700 text-white text-sm md:text-base py-3 md:py-4 font-bold shadow-md flex justify-center items-center gap-2"
             onClick={handleManualRedirect}
             isLoading={isStripeProcessing && !redirectAttempted}
+            disabled={!termsAccepted}
           >
             <ExternalLink size={20} />
             {redirectAttempted ? 'Ouvrir à nouveau la page de paiement' : 'Ouvrir la page de paiement Stripe'}
@@ -157,7 +139,7 @@ const StripeCheckoutForm = ({
           isLoading={isStripeProcessing && !stripeUrl}
           disabled={!termsAccepted || (isStripeProcessing && !stripeUrl)}
         >
-          {isStripeProcessing && !stripeUrl ? `Redirection en cours...` : 'Procéder au paiement'}
+          {isStripeProcessing && !stripeUrl ? `Préparation du paiement...` : 'Procéder au paiement'}
         </Button>
       )}
       
