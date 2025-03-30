@@ -1,13 +1,15 @@
+
 import { useRef, useState, useEffect } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
+import { calculateWithdrawalFee } from '@/utils/referral/withdrawalUtils';
 
 interface WithdrawalFees {
-  earlyFee: number; // 35% pour les retraits dans les 3 premiers mois
-  standardFee: number; // 15% après les 3 premiers mois
-  minimumWithdrawalAmount: number; // 100€ au lieu de 20€
+  earlyFee: number; // 50% pour les retraits dans les premiers 6 mois
+  standardFee: number; // 15% après les 6 premiers mois
+  minimumWithdrawalAmount: number; // Maintenu à 100€
   withdrawalFrequency: number; // Nombre de jours entre les retraits autorisés (30 jours)
-  processingDays: string; // Délai de traitement (10-15 jours)
+  processingDays: string; // Délai de traitement (7-30 jours)
 }
 
 export const useWithdrawal = (
@@ -21,11 +23,11 @@ export const useWithdrawal = (
   
   // Nouvelles stratégies de retrait
   const withdrawalRules: WithdrawalFees = {
-    earlyFee: 0.35, // 35% pour les retraits dans les 3 premiers mois
-    standardFee: 0.15, // 15% après les 3 premiers mois
-    minimumWithdrawalAmount: 100, // 100€ au lieu de 20€
+    earlyFee: 0.5, // 50% pour les retraits dans les premiers 6 mois
+    standardFee: 0.15, // 15% après les 6 premiers mois
+    minimumWithdrawalAmount: 100, // Maintenu à 100€
     withdrawalFrequency: 30, // Une fois par mois (30 jours)
-    processingDays: "10-15 jours ouvrables"
+    processingDays: "7-30 jours"
   };
   
   // État pour suivre si l'utilisateur peut faire un retrait (fréquence)
@@ -56,17 +58,6 @@ export const useWithdrawal = (
       }
     }
   }, [userData.username, withdrawalRules.withdrawalFrequency]);
-  
-  // Calculer les frais de retrait en fonction de l'ancienneté de l'utilisateur
-  const calculateWithdrawalFee = () => {
-    // Par défaut, on utilise une date fictive de 3 mois avant aujourd'hui si registeredAt n'existe pas
-    const registerDate = userData.registeredAt || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-    const today = new Date();
-    const diffTime = today.getTime() - registerDate.getTime();
-    const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30));
-    
-    return diffMonths < 3 ? withdrawalRules.earlyFee : withdrawalRules.standardFee;
-  };
 
   const handleWithdrawal = async () => {
     // Prevent multiple concurrent operations
@@ -93,8 +84,9 @@ export const useWithdrawal = (
       
       // Process withdrawal only if sufficient balance (at least 100€) and not freemium account
       if (userData.balance >= withdrawalRules.minimumWithdrawalAmount && userData.subscription !== 'freemium') {
-        // Calculer les frais de retrait
-        const fee = calculateWithdrawalFee();
+        // Calculer les frais selon l'ancienneté du compte
+        const registerDate = userData.registeredAt || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+        const fee = calculateWithdrawalFee(registerDate);
         const feeAmount = userData.balance * fee;
         const netAmount = userData.balance - feeAmount;
         

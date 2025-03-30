@@ -16,13 +16,19 @@ const PlanCardMetrics: React.FC<PlanCardMetricsProps> = ({ revenue, profit }) =>
   const displayRevenue = revenue === undefined || isNaN(revenue) ? 0 : revenue;
   const displayProfit = profit === undefined || isNaN(profit) ? 0 : profit;
   
+  // Afficher un avertissement visuel sous forme d'astérisque pour rappeler
+  // que les gains sont estimatifs (cf. CGV 8.4)
+  
   return (
     <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
       <p className="text-xs md:text-sm font-medium text-blue-800 dark:text-blue-300">
-        Revenu: <span className="font-bold">{displayRevenue.toFixed(2)}€</span>
+        Revenu: <span className="font-bold">{displayRevenue.toFixed(2)}€*</span>
       </p>
       <p className="text-xs md:text-sm font-medium text-blue-800 dark:text-blue-300">
-        Profit: <span className="font-bold">{displayProfit.toFixed(2)}€</span>
+        Profit: <span className="font-bold">{displayProfit.toFixed(2)}€*</span>
+      </p>
+      <p className="text-xs text-blue-500 dark:text-blue-400 mt-1 italic">
+        *Gains estimatifs, non garantis
       </p>
     </div>
   );

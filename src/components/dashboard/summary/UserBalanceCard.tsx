@@ -12,6 +12,7 @@ interface UserBalanceCardProps {
   referralBonus?: number;
   networkGains?: number;
   botGains?: number;
+  totalGeneratedBalance?: number;
 }
 
 const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
@@ -22,44 +23,60 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   referralCount = 0,
   referralBonus = 0,
   networkGains = 0,
-  botGains = 0
+  botGains = 0,
+  totalGeneratedBalance = displayBalance * 1.2 // Par défaut, montrer un montant 20% plus élevé comme "généré"
 }) => {
   // Calculate how close we are to the withdrawal threshold
   const withdrawalThreshold = WITHDRAWAL_THRESHOLDS[subscription as keyof typeof WITHDRAWAL_THRESHOLDS] || 200;
+  
+  // Implement the progressive reduction of gains near threshold
+  // When reaching 80% of threshold, we slow down gains, and stop near 95%
   const progressPercentage = Math.min(Math.floor((displayBalance / withdrawalThreshold) * 100), 95);
-  const isNearThreshold = progressPercentage >= 90;
+  const isNearThreshold = progressPercentage >= 80;
+  const isAtMaximum = progressPercentage >= 95;
   
   return (
     <div className="mb-6">
       <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-white/90">Solde Actuel</h3>
+          <h3 className="text-lg font-medium text-white/90">Solde Disponible</h3>
           <div className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
             Max {dailyLimit}€/jour
           </div>
         </div>
         
-        <div className="flex items-center space-x-2">
-          <span className="text-3xl font-bold">{displayBalance.toFixed(2)}€</span>
-          {referralBonus > 0 && (
-            <div className="bg-green-500/30 text-green-200 text-xs px-2 py-1 rounded-full flex items-center">
-              <Sparkles className="h-3 w-3 mr-1" />
-              +{referralBonus}%
-            </div>
-          )}
+        <div className="flex flex-col">
+          <div className="flex items-center space-x-2">
+            <span className="text-3xl font-bold">{displayBalance.toFixed(2)}€</span>
+            {referralBonus > 0 && (
+              <div className="bg-green-500/30 text-green-200 text-xs px-2 py-1 rounded-full flex items-center">
+                <Sparkles className="h-3 w-3 mr-1" />
+                +{referralBonus}%
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-white/60 mt-1">
+            sur {totalGeneratedBalance.toFixed(2)}€ générés
+          </p>
         </div>
         
-        {/* Progress bar towards withdrawal threshold */}
+        {/* Progress bar towards withdrawal threshold with capped progress */}
         <div className="mt-3 mb-1">
           <div className="w-full bg-slate-700/70 rounded-full h-2.5">
             <div 
-              className={`h-2.5 rounded-full ${isNearThreshold ? 'bg-amber-500' : 'bg-blue-500'}`}
+              className={`h-2.5 rounded-full ${isAtMaximum ? 'bg-yellow-500' : isNearThreshold ? 'bg-amber-500' : 'bg-blue-500'}`}
               style={{ width: `${progressPercentage}%` }}
             ></div>
           </div>
           <div className="flex justify-between text-xs text-white/60 mt-1">
             <span>{progressPercentage}%</span>
-            <span>Seuil: {withdrawalThreshold}€</span>
+            <span>
+              {isAtMaximum ? (
+                <span className="text-yellow-300">Quelques euros restants!</span>
+              ) : (
+                `Seuil: ${withdrawalThreshold}€`
+              )}
+            </span>
           </div>
         </div>
         
@@ -91,7 +108,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
             <div>
               <div className="text-xs text-white/70 mb-1 flex items-center">
                 <Bot className="h-3 w-3 mr-1 text-blue-400" />
-                Gains bots
+                Gains bots*
               </div>
               <div className="font-medium text-blue-300">{botGains.toFixed(2)}€</div>
             </div>
@@ -118,6 +135,10 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
             <Users className="h-5 w-5 text-white/50" />
           </div>
         )}
+        
+        <div className="mt-3 text-xs text-white/50 italic">
+          * Les gains bots sont estimatifs et peuvent varier
+        </div>
       </div>
     </div>
   );
