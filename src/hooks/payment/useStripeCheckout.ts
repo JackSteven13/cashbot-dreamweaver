@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -14,28 +14,30 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
   const [isStripeProcessing, setIsStripeProcessing] = useState(false);
   const [didInitiateRedirect, setDidInitiateRedirect] = useState(false);
+  const redirectAttemptCount = useRef(0);
   
   const { actualSubscription, isChecking, recheckSubscription } = useSubscriptionCheck();
   const { stripeCheckoutUrl, createStripeSession, getEffectiveReferralCode } = useStripeSession();
   const { updateToFreemium } = useFreemiumUpdate();
 
-  // Perform redirect to Stripe checkout as soon as URL is available
+  // Effectuer la redirection vers Stripe dès que l'URL est disponible
   useEffect(() => {
-    if (stripeCheckoutUrl && isStripeProcessing && !didInitiateRedirect) {
-      console.log("stripeWindowManager: Redirecting to Stripe URL:", stripeCheckoutUrl);
+    if (stripeCheckoutUrl && isStripeProcessing && !didInitiateRedirect && redirectAttemptCount.current < 2) {
+      console.log("Redirection vers Stripe URL:", stripeCheckoutUrl);
       
-      // Track that we've initiated a redirect to prevent multiple attempts
+      // Suivre la tentative de redirection pour éviter les redirections multiples
       setDidInitiateRedirect(true);
+      redirectAttemptCount.current += 1;
       
-      // Open the Stripe window using our dedicated module
-      openStripeWindow(stripeCheckoutUrl);
-      
-      // Show a toast notification to ensure users are aware of the redirect
+      // Ne pas utiliser la redirection automatique, laisser l'utilisateur cliquer sur le bouton
       toast({
-        title: "Redirection en cours",
-        description: "Vous allez être redirigé vers la page de paiement Stripe.",
-        duration: 10000, 
+        title: "Page de paiement prête",
+        description: "Cliquez sur le bouton vert pour accéder à la page de paiement Stripe.",
+        duration: 10000,
       });
+      
+      // Pas de redirection automatique, qui échoue souvent sur mobile
+      // On laisse l'utilisateur cliquer sur le bouton de redirection
     }
   }, [stripeCheckoutUrl, isStripeProcessing, didInitiateRedirect]);
 
@@ -49,22 +51,22 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       return;
     }
 
-    // Check current subscription again
+    // Vérifier à nouveau l'abonnement actuel
     const currentSub = await recheckSubscription();
     
-    // If user is already subscribed to this plan, show a message and redirect
+    // Si l'utilisateur est déjà abonné à ce plan, afficher un message et rediriger
     if (currentSub === selectedPlan) {
       toast({
         title: "Abonnement déjà actif",
         description: `Vous êtes déjà abonné au forfait ${selectedPlan}. Vous allez être redirigé vers votre tableau de bord.`,
       });
-      // Force a data refresh
+      // Forcer une actualisation des données
       localStorage.setItem('forceRefreshBalance', 'true');
       navigate('/dashboard');
       return;
     }
 
-    // For freemium, update subscription directly without Stripe
+    // Pour le plan gratuit, mettre à jour l'abonnement directement sans Stripe
     if (selectedPlan === 'freemium') {
       const success = await updateToFreemium();
       if (success) {
@@ -74,28 +76,27 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     }
 
     if (isStripeProcessing) {
-      console.log("Payment already in progress");
+      console.log("Paiement déjà en cours");
       
-      // If we already have a URL and user is trying again, force a redirect
+      // Si nous avons déjà une URL et que l'utilisateur réessaie, reset le didInitiateRedirect
       if (stripeCheckoutUrl) {
-        console.log("Re-attempting redirect to existing URL:", stripeCheckoutUrl);
-        openStripeWindow(stripeCheckoutUrl);
-        
+        setDidInitiateRedirect(false);
         toast({
-          title: "Nouvelle tentative de redirection",
-          description: "Nous essayons à nouveau de vous rediriger vers la page de paiement.",
-          duration: 5000
+          title: "Page de paiement prête",
+          description: "Cliquez sur le bouton vert pour accéder à la page de paiement Stripe.",
+          duration: 10000,
         });
       }
       return;
     }
     
-    console.log("Starting Stripe checkout process for plan:", selectedPlan);
+    console.log("Démarrage du processus de paiement Stripe pour le plan:", selectedPlan);
     setIsStripeProcessing(true);
-    setDidInitiateRedirect(false); // Reset for new checkout attempt
+    setDidInitiateRedirect(false);
+    redirectAttemptCount.current = 0;
 
     try {
-      // Get user session
+      // Obtenir la session utilisateur
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -108,26 +109,26 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         return;
       }
 
-      // Get referral code from URL parameter
+      // Obtenir le code de parrainage du paramètre URL
       const effectiveReferralCode = getEffectiveReferralCode();
-      console.log("Referral code for checkout:", effectiveReferralCode || "none");
+      console.log("Code de parrainage pour le paiement:", effectiveReferralCode || "aucun");
       
-      // Update localStorage preemptively to reduce UI flicker
+      // Mettre à jour localStorage par anticipation pour réduire le scintillement de l'interface
       localStorage.setItem('subscription', selectedPlan);
       
-      // Force refresh on dashboard return
+      // Forcer l'actualisation au retour au tableau de bord
       localStorage.setItem('forceRefreshBalance', 'true');
       
-      // Create and handle Stripe checkout session
+      // Créer et gérer la session de paiement Stripe
       const result = await createStripeSession(selectedPlan, effectiveReferralCode);
-      console.log("Stripe session created:", result);
+      console.log("Session Stripe créée:", result);
       
       if (!result || !result.url) {
         throw new Error("Impossible de créer la session de paiement");
       }
 
     } catch (error: any) {
-      console.error("Payment error:", error);
+      console.error("Erreur de paiement:", error);
       setIsStripeProcessing(false);
       setDidInitiateRedirect(false);
       

@@ -1,82 +1,65 @@
 
 /**
- * Manages the opening and handling of Stripe checkout windows
+ * Gestionnaire simplifié pour la redirection vers Stripe
+ * Utilise une approche minimale pour maximiser la compatibilité mobile
  */
 
 import { toast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 
 /**
- * Opens a Stripe checkout URL in a new window or fallbacks to current window
- * Using the most direct and forceful approach possible for maximum compatibility
+ * Ouvre directement l'URL Stripe sans tentative d'ouverture de nouvelle fenêtre
+ * Cette méthode est la plus compatible avec les appareils mobiles
  */
 export const openStripeWindow = (url: string): void => {
   if (!url) {
-    console.error("Attempted to open Stripe window with empty URL");
+    console.error("URL Stripe manquante");
     return;
   }
   
-  console.log("Opening Stripe URL:", url);
+  console.log("Tentative de redirection vers Stripe:", url);
   
-  // Show toast FIRST, before any redirection attempts
-  showStripeManualOpenToast(url);
+  // Afficher d'abord le toast avec le bouton de secours
+  showManualStripeRedirectToast(url);
   
-  // DIRECT APPROACH - no delays, no fancy methods
-  // This is the most reliable method across devices
+  // Redirection directe - méthode la plus fiable sur mobile
   try {
-    console.log("Executing direct navigation to:", url);
-    window.location.href = url;
+    // Retarder très légèrement pour permettre au toast de s'afficher d'abord
+    setTimeout(() => {
+      window.location.href = url;
+      console.log("Redirection directe effectuée vers:", url);
+    }, 200);
   } catch (error) {
-    console.error("Direct navigation failed:", error);
-    
-    // Fallback options if direct method fails
-    try {
-      console.log("Trying fallback method 1");
-      window.open(url, "_self");
-    } catch (fallbackError) {
-      console.error("Fallback method 1 failed:", fallbackError);
-      
-      try {
-        console.log("Trying fallback method 2");
-        window.location.assign(url);
-      } catch (finalError) {
-        console.error("All automatic methods failed:", finalError);
-        
-        // Force the user to use the manual button in the toast
-        toast({
-          title: "Problème d'ouverture automatique",
-          description: "Veuillez cliquer sur le bouton ci-dessous pour continuer vers le paiement.",
-          variant: "destructive",
-          duration: 60000, // Show for a full minute
-        });
-      }
-    }
+    console.error("Échec de redirection:", error);
+    // Les boutons du toast serviront de solution de secours
   }
 };
 
 /**
- * Shows a toast with a button to manually open the Stripe checkout
- * Enhanced with more visible styling and longer duration
+ * Affiche un toast avec un bouton bien visible pour une redirection manuelle
  */
-export const showStripeManualOpenToast = (url: string): void => {
+export const showManualStripeRedirectToast = (url: string): void => {
   if (!url) {
-    console.error("Attempted to show toast with empty Stripe URL");
+    console.error("URL Stripe manquante pour le toast");
     return;
   }
   
   toast({
     title: "Paiement en attente",
-    description: "Si la page de paiement ne s'ouvre pas automatiquement, cliquez sur le bouton ci-dessous.",
+    description: "Si la page de paiement ne s'ouvre pas dans 3 secondes, cliquez sur le bouton ci-dessous.",
     action: (
       <ToastAction 
         onClick={() => {
-          // Direct and forceful approach for manual click
-          console.log("Manual redirect button clicked for URL:", url);
           try {
-            window.location.href = url;
+            console.log("Redirection manuelle via toast vers:", url);
+            window.open(url, "_blank");
+            
+            // Seconde tentative si la première échoue
+            setTimeout(() => {
+              window.location.href = url;
+            }, 100);
           } catch (error) {
-            console.error("Manual navigation failed, trying alternate method:", error);
-            window.open(url, "_self");
+            console.error("Échec de redirection manuelle:", error);
           }
         }}
         className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md cursor-pointer text-sm font-bold shadow-md"
@@ -85,6 +68,6 @@ export const showStripeManualOpenToast = (url: string): void => {
         Ouvrir le paiement
       </ToastAction>
     ),
-    duration: 60000, // Show for a full minute to give plenty of time
+    duration: 60000, // Afficher pendant une minute complète
   });
 };
