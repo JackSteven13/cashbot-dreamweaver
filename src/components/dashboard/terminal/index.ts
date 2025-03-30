@@ -8,3 +8,5 @@ export { NewUserGuide } from './NewUserGuide';
 export { FeedbackDialog } from './FeedbackDialog';
 export { FeedbackManager } from './FeedbackManager';
 export { ProTrialManager } from './ProTrialManager';
+export { TerminalDisplay } from './TerminalDisplay';
+export { SystemIndicators } from './SystemIndicators';
