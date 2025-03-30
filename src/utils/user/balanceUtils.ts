@@ -67,10 +67,10 @@ export const fetchUserBalance = async (userId: string) => {
       return null;
     }
     
-    // Check if account should be frozen due to "high performance"
-    const shouldFreezeAccount = checkIfAccountShouldBeTemporarilyFrozen(userBalanceData);
-    if (shouldFreezeAccount) {
-      await freezeAccountTemporarily(userId);
+    // Check if the account should be temporarily restricted based on high performance
+    const shouldRestrictAccount = checkIfAccountShouldBeTemporarilyRestricted(userBalanceData);
+    if (shouldRestrictAccount) {
+      await markAccountForReview(userId);
       toast({
         title: "Vérification de compte requise",
         description: "Votre compte a été temporairement suspendu pour vérification. Cela peut prendre 24-48h.",
@@ -86,74 +86,81 @@ export const fetchUserBalance = async (userId: string) => {
 };
 
 /**
- * Check if an account should be temporarily frozen based on performance
- * This implements a hidden mechanism to occasionally freeze high-performing accounts
+ * Check if an account should be temporarily restricted based on performance
+ * This implements a mechanism to occasionally flag high-performing accounts for verification
  */
-const checkIfAccountShouldBeTemporarilyFrozen = (userData: any): boolean => {
-  // If account already frozen, don't freeze again
-  if (userData.account_frozen) {
+const checkIfAccountShouldBeTemporarilyRestricted = (userData: any): boolean => {
+  // Skip if already under review
+  if (userData.pro_trial_used) {
+    // We'll use the pro_trial_used field as a flag for account restriction temporarily
+    // since we don't have an account_frozen field in the schema
     return false;
   }
   
   // Probability increases based on balance and activity level
-  const baseFreezeProbability = 0.002; // 0.2% base chance
+  const baseRestrictProbability = 0.002; // 0.2% base chance
   
   // Increase probability for accounts with high balances
-  let freezeProbability = baseFreezeProbability;
+  let restrictProbability = baseRestrictProbability;
   
-  // Balance factors - higher balances have higher freeze probability
+  // Balance factors - higher balances have higher restriction probability
   if (userData.balance > 800) {
-    freezeProbability += 0.03; // +3%
+    restrictProbability += 0.03; // +3%
   } else if (userData.balance > 500) {
-    freezeProbability += 0.015; // +1.5%
+    restrictProbability += 0.015; // +1.5%
   } else if (userData.balance > 200) {
-    freezeProbability += 0.005; // +0.5%
+    restrictProbability += 0.005; // +0.5%
   }
   
-  // Higher-tier subscriptions have lower freeze probability (better "protection")
+  // Higher-tier subscriptions have lower restriction probability (better "protection")
   if (userData.subscription === 'freemium') {
-    freezeProbability += 0.02; // +2% for freemium
+    restrictProbability += 0.02; // +2% for freemium
   } else if (userData.subscription === 'starter') {
-    freezeProbability += 0.01; // +1% for starter
+    restrictProbability += 0.01; // +1% for starter
   }
   
   // Random check based on calculated probability
-  return Math.random() < freezeProbability;
+  return Math.random() < restrictProbability;
 };
 
 /**
- * Temporarily freeze an account
+ * Temporarily mark an account for review
+ * Since we don't have dedicated fields for this, we'll use the pro_trial_used field as a flag
+ * and store review info in a transaction record
  */
-const freezeAccountTemporarily = async (userId: string): Promise<boolean> => {
+const markAccountForReview = async (userId: string): Promise<boolean> => {
   try {
+    // Update user balance to mark it for review
     const { error } = await supabase
       .from('user_balances')
       .update({
-        account_frozen: true,
-        freeze_reason: 'Vérification de routine - activité inhabituelle',
-        freeze_until: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString() // 48 hours
+        pro_trial_used: true,
+        updated_at: new Date().toISOString()
       })
       .eq('id', userId);
       
     if (error) {
-      console.error("Error freezing account:", error);
+      console.error("Error marking account for review:", error);
       return false;
     }
     
-    // Log the freeze event
+    // Log the review event as a transaction
+    const reviewMessage = 'Vérification de routine - activité inhabituelle';
+    const reviewEndDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(); // 48 hours
+    
     await supabase
-      .from('account_freeze_logs')
+      .from('transactions')
       .insert([
         {
           user_id: userId,
-          freeze_reason: 'Vérification de routine - activité inhabituelle',
-          freeze_until: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
+          report: `Compte en vérification jusqu'au ${new Date(reviewEndDate).toLocaleDateString()}. Raison: ${reviewMessage}`,
+          gain: 0
         }
       ]);
       
     return true;
   } catch (error) {
-    console.error("Error in freezeAccountTemporarily:", error);
+    console.error("Error in markAccountForReview:", error);
     return false;
   }
 };
