@@ -2,7 +2,7 @@
 // Edge function pour traiter les commissions mensuelles des parrainages
 import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
 import { corsHeaders } from "./utils/corsHeaders.ts";
-import { processAllCommissions } from "./services/commissionService.ts";
+import { processAllCommissions } from "./handlers/commissionHandler.ts";
 import { handleError } from "./utils/errorHandler.ts";
 
 // Gérer les requêtes HTTP
