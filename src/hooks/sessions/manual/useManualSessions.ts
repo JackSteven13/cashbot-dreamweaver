@@ -61,6 +61,9 @@ export const useManualSessions = ({
     // Set debounce to prevent rapid clicking
     setClickDebounce();
     
+    // Trigger session start event for UI animations
+    window.dispatchEvent(new CustomEvent('session:start'));
+    
     try {
       // Set all locks and flags
       setLocks();
@@ -86,6 +89,14 @@ export const useManualSessions = ({
         
         // Update local reference before API call
         currentBalanceRef.current = newBalance;
+        
+        // Dispatch balance update event for UI animations
+        window.dispatchEvent(new CustomEvent('balance:update', { 
+          detail: { amount: finalGain } 
+        }));
+        
+        // Add a small delay to allow animations to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Update user balance in database with forceful UI update flag
         await updateBalance(
@@ -113,8 +124,11 @@ export const useManualSessions = ({
         variant: "destructive"
       });
     } finally {
-      setIsStartingSession(false);
-      clearLocks();
+      // Add a slight delay before finishing to allow animations to complete
+      setTimeout(() => {
+        setIsStartingSession(false);
+        clearLocks();
+      }, 500);
     }
   };
 
