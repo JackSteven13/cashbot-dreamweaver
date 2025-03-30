@@ -65,7 +65,7 @@ export const resetUserAccounts = async () => {
 /**
  * Composant pour afficher un bouton de réinitialisation avec tooltip
  */
-export const ResetUserAccountsButton = ({ children }) => {
+export const ResetUserAccountsButton = ({ children }: { children: React.ReactNode }) => {
   const handleReset = async () => {
     const confirmed = window.confirm(
       "Êtes-vous sûr de vouloir réinitialiser ces comptes utilisateurs? Cette action supprimera toutes les transactions et remettra les soldes à zéro."
