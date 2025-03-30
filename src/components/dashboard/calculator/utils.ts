@@ -1,5 +1,6 @@
 
 import { SUBSCRIPTION_LIMITS } from '@/components/dashboard/summary/constants';
+import { SUBSCRIPTION_PRICES } from './constants';
 
 /**
  * Calculate revenue for all subscription plans based on user inputs
@@ -21,9 +22,6 @@ export const calculateRevenueForAllPlans = (
   
   // Add variability to make numbers less round (±5%)
   const getRandomVariation = () => 1 + ((Math.random() * 10) - 5) / 100;
-  
-  // Import subscription prices from constants
-  import { SUBSCRIPTION_PRICES } from './constants';
   
   Object.entries(SUBSCRIPTION_LIMITS).forEach(([plan, dailyLimit]) => {
     try {
