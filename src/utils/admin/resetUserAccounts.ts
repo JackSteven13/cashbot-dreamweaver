@@ -1,6 +1,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import React from "react";
 
 /**
  * Réinitialise les données des comptes utilisateurs spécifiés
@@ -8,6 +10,12 @@ import { toast } from "@/components/ui/use-toast";
  */
 export const resetUserAccounts = async () => {
   try {
+    // Afficher un toast de chargement
+    toast({
+      title: "Réinitialisation en cours",
+      description: "Veuillez patienter pendant la réinitialisation des comptes...",
+    });
+    
     const { data, error } = await supabase.functions.invoke("reset-users", {
       method: "POST",
     });
@@ -28,6 +36,12 @@ export const resetUserAccounts = async () => {
         description: data.message,
         variant: "default",
       });
+      
+      // Pour s'assurer que les changements sont visibles dans l'interface
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
       return true;
     } else {
       toast({
@@ -46,4 +60,32 @@ export const resetUserAccounts = async () => {
     });
     return false;
   }
+};
+
+/**
+ * Composant pour afficher un bouton de réinitialisation avec tooltip
+ */
+export const ResetUserAccountsButton = ({ children }) => {
+  const handleReset = async () => {
+    const confirmed = window.confirm(
+      "Êtes-vous sûr de vouloir réinitialiser ces comptes utilisateurs? Cette action supprimera toutes les transactions et remettra les soldes à zéro."
+    );
+    
+    if (confirmed) {
+      await resetUserAccounts();
+    }
+  };
+  
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild onClick={handleReset}>
+          {children}
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Réinitialise les comptes marketing</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 };
