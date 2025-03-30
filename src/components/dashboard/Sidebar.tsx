@@ -40,7 +40,12 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
   
   return (
     <div className="hidden md:flex w-64 flex-col bg-[#1e3a5f] border-r border-[#2d5f8a]/30">
-      <div className="p-6">
+      <div className="p-6 flex items-center">
+        <img 
+          src="/lovable-uploads/b9f26934-070a-463e-bfe8-438fa9773cf7.png" 
+          alt="Stream Genius Logo"
+          className="h-10 mr-2" 
+        />
         <Link to="/" className="text-2xl font-semibold tracking-tight text-white">
           Stream genius
         </Link>

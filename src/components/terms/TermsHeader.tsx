@@ -13,8 +13,13 @@ const TermsHeader = () => {
         </Link>
       </div>
       
-      <div className="mb-16">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">CONDITIONS GÉNÉRALES D'UTILISATION</h1>
+      <div className="mb-12 flex flex-col items-center">
+        <img 
+          src="/lovable-uploads/b9f26934-070a-463e-bfe8-438fa9773cf7.png" 
+          alt="Stream Genius Logo"
+          className="h-24 mb-6" 
+        />
+        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-center">CONDITIONS GÉNÉRALES D'UTILISATION</h1>
         <p className="text-sm text-muted-foreground mb-6">Dernière mise à jour: 1 Juillet 2023</p>
       </div>
     </>
