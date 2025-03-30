@@ -1,4 +1,3 @@
-
 import { corsHeaders } from './helpers/corsHeaders.ts';
 import { isStripeConfigured } from './helpers/stripeClient.ts';
 import { findReferrer, trackReferral } from './services/referralService.ts';
