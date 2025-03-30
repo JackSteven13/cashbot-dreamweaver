@@ -18,6 +18,9 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
     const cleanName = username.trim();
     return cleanName.length > 20 ? cleanName.substring(0, 20) + '...' : cleanName;
   }, [username]);
+
+  // Convertir "alpha" en "starter" pour l'affichage
+  const displaySubscription = subscription === "alpha" ? "starter" : subscription || "freemium";
   
   return (
     <header className="sticky top-0 z-10 bg-[#1e3a5f] border-b border-[#2d5f8a]/30">
@@ -28,7 +31,7 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
         
         <div className="text-sm text-right hidden sm:block">
           <p className="font-medium text-white">{displayName}</p>
-          <p className="text-blue-200">Abonnement {subscription || 'freemium'}</p>
+          <p className="text-blue-200">Abonnement {displaySubscription || 'freemium'}</p>
         </div>
       </div>
     </header>

@@ -32,10 +32,12 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
             }) as { data: string | null, error: any };
             
           if (!rpcError && rpcData) {
-            setVerifiedSubscription(rpcData);
+            // Si le retour est "alpha", le remplacer par "starter" pour la migration
+            const mappedSubscription = rpcData === "alpha" ? "starter" : rpcData;
+            setVerifiedSubscription(mappedSubscription);
             // Force la mise à jour du localStorage pour cohérence
-            if (rpcData !== localStorage.getItem('subscription')) {
-              localStorage.setItem('subscription', rpcData);
+            if (mappedSubscription !== localStorage.getItem('subscription')) {
+              localStorage.setItem('subscription', mappedSubscription);
             }
           } else {
             // Fallback sur requête directe
@@ -46,10 +48,12 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
               .single();
               
             if (!directError && userData && userData.subscription) {
-              setVerifiedSubscription(userData.subscription);
+              // Si le retour est "alpha", le remplacer par "starter" pour la migration
+              const mappedSubscription = userData.subscription === "alpha" ? "starter" : userData.subscription;
+              setVerifiedSubscription(mappedSubscription);
               // Force aussi la mise à jour du localStorage
-              if (userData.subscription !== localStorage.getItem('subscription')) {
-                localStorage.setItem('subscription', userData.subscription);
+              if (mappedSubscription !== localStorage.getItem('subscription')) {
+                localStorage.setItem('subscription', mappedSubscription);
               }
             }
           }
@@ -62,10 +66,14 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
     // Si l'état local et les props diffèrent, vérifier avec Supabase
     if (currentSubscription !== verifiedSubscription) {
       verifySubscriptionWithSupabase();
+    } else if (currentSubscription === "alpha") {
+      // Si l'abonnement est "alpha", le convertir en "starter"
+      setVerifiedSubscription("starter");
+      localStorage.setItem('subscription', "starter");
     } else {
       setVerifiedSubscription(currentSubscription);
     }
-  }, [currentSubscription]);
+  }, [currentSubscription, verifiedSubscription]);
 
   // Fonction pour obtenir le nom d'affichage de l'abonnement
   const getDisplayName = (code: string): string => {
@@ -105,7 +113,8 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
     );
   }
   
-  const displaySubscription = verifiedSubscription || currentSubscription;
+  // Convertir les abonnements "alpha" en "starter" pour l'affichage
+  const displaySubscription = (verifiedSubscription === "alpha" ? "starter" : verifiedSubscription) || currentSubscription;
   
   if (displaySubscription && displaySubscription !== 'freemium') {
     // Version spéciale pour Élite avec animation et effets visuels plus marqués

@@ -18,9 +18,23 @@ export const MANUAL_SESSION_GAIN_PERCENTAGES = {
 };
 
 /**
+ * Convertit l'ancien abonnement "alpha" en "starter"
+ */
+const normalizeSubscription = (subscription: string): string => {
+  if (subscription === "alpha") {
+    console.log('Normalisation d\'abonnement: alpha -> starter');
+    return "starter";
+  }
+  return subscription;
+};
+
+/**
  * Vérifie le mode Pro temporaire et retourne la souscription effective
  */
 export const getEffectiveSubscription = (subscription: string): string => {
+  // Normaliser d'abord la souscription (convertir "alpha" en "starter")
+  const normalizedSubscription = normalizeSubscription(subscription);
+  
   // Vérifier si l'utilisateur a un essai Pro actif
   const proTrialActive = localStorage.getItem('proTrialActive') === 'true';
   const proTrialExpires = localStorage.getItem('proTrialExpires');
@@ -63,14 +77,15 @@ export const getEffectiveSubscription = (subscription: string): string => {
     }
   }
   
-  return subscription;
+  return normalizedSubscription;
 };
 
 /**
  * Checks if the user has reached the daily gain limit based on their subscription
  */
 export const checkDailyLimit = (balance: number, subscription: string): boolean => {
-  const effectiveSubscription = getEffectiveSubscription(subscription);
+  const normalizedSubscription = normalizeSubscription(subscription);
+  const effectiveSubscription = getEffectiveSubscription(normalizedSubscription);
   const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   return balance >= dailyLimit;
 };
@@ -79,7 +94,8 @@ export const checkDailyLimit = (balance: number, subscription: string): boolean 
  * Checks if the user can start a manual session
  */
 export const canStartManualSession = (subscription: string, dailySessionCount: number, balance: number): boolean => {
-  const effectiveSubscription = getEffectiveSubscription(subscription);
+  const normalizedSubscription = normalizeSubscription(subscription);
+  const effectiveSubscription = getEffectiveSubscription(normalizedSubscription);
   
   // Users with Pro trial or higher subscriptions have unlimited sessions
   if (effectiveSubscription !== 'freemium') {
@@ -98,8 +114,11 @@ export const calculateManualSessionGain = (
   currentBalance: number,
   referralCount: number = 0
 ): number => {
+  // Normalize subscription first
+  const normalizedSubscription = normalizeSubscription(subscription);
+  
   // Use effective subscription for limit calculation
-  const effectiveSubscription = getEffectiveSubscription(subscription);
+  const effectiveSubscription = getEffectiveSubscription(normalizedSubscription);
   
   // Get daily limit for effective subscription
   const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
@@ -146,8 +165,11 @@ export const calculateAutoSessionGain = (
   currentBalance: number,
   referralCount: number = 0
 ): number => {
+  // Normalize subscription first
+  const normalizedSubscription = normalizeSubscription(subscription);
+  
   // Use effective subscription for limit calculation
-  const effectiveSubscription = getEffectiveSubscription(subscription);
+  const effectiveSubscription = getEffectiveSubscription(normalizedSubscription);
   
   // Get daily limit for effective subscription
   const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;

@@ -27,6 +27,15 @@ const PLANS_BY_PRICE = {
   'price_placeholder_elite': 'elite',
 }
 
+// Mapping for legacy "alpha" plan to new "starter" plan
+const normalizeSubscriptionType = (planType: string): string => {
+  if (planType === 'alpha') {
+    console.log('Converting legacy plan "alpha" to "starter"');
+    return 'starter';
+  }
+  return planType;
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -70,12 +79,15 @@ Deno.serve(async (req) => {
         
         // Get user ID from the session
         const userId = session.client_reference_id
-        const planMetadata = session.metadata?.plan
+        let planMetadata = session.metadata?.plan
         
         if (!userId) {
           console.error('No user ID in session:', session.id)
           break
         }
+        
+        // Normalize plan type (convert "alpha" to "starter")
+        planMetadata = normalizeSubscriptionType(planMetadata);
         
         let planType = planMetadata
         
@@ -142,7 +154,7 @@ Deno.serve(async (req) => {
         // Update the subscription status
         const newPlan = event.type === 'customer.subscription.deleted' 
           ? 'freemium' 
-          : PLANS_BY_PRICE[priceId]
+          : normalizeSubscriptionType(PLANS_BY_PRICE[priceId])
         
         const { error: updateError } = await supabase
           .from('user_balances')

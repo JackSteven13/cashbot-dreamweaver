@@ -23,6 +23,15 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Normalize plan type (convert "alpha" to "starter")
+  const normalizePlanType = (planType: string): string => {
+    if (planType === "alpha") {
+      console.log("Converting alpha plan to starter");
+      return "starter";
+    }
+    return planType;
+  };
+
   const validateCardPayment = (cardNumber: string, expiry: string, cvc: string) => {
     // Basic form validation
     if (!cardNumber || cardNumber.replace(/\s/g, '').length !== 16) {
@@ -65,6 +74,9 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
       return;
     }
 
+    // Normalize the selected plan
+    const normalizedPlan = normalizePlanType(selectedPlan);
+
     // Validate card data
     const isValid = validateCardPayment(
       formData.cardNumber, 
@@ -93,11 +105,11 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
       }
 
       // For free plan, update directly without payment
-      if (selectedPlan === 'freemium') {
+      if (normalizedPlan === 'freemium') {
         const { error: updateError } = await supabase
           .from('user_balances')
           .update({ 
-            subscription: selectedPlan,
+            subscription: normalizedPlan,
             updated_at: new Date().toISOString()
           })
           .eq('id', session.user.id);
@@ -109,18 +121,18 @@ export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
         setIsProcessing(false);
         toast({
           title: "Abonnement activé",
-          description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
+          description: `Votre abonnement ${normalizedPlan} a été activé avec succès !`,
         });
         navigate('/dashboard');
         return;
       }
 
       // For paid plans with manual card form, redirect to Stripe checkout
-      console.log("Redirecting to Stripe checkout for", selectedPlan);
+      console.log("Redirecting to Stripe checkout for", normalizedPlan);
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
-          plan: selectedPlan,
+          plan: normalizedPlan,
           successUrl: `${window.location.origin}/payment-success`,
           cancelUrl: `${window.location.origin}/offres`
         }

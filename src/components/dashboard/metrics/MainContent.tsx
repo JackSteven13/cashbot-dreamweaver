@@ -29,6 +29,9 @@ const MainContent: React.FC<MainContentProps> = ({
   referralCount = 0,
   referralBonus = 0
 }) => {
+  // Convert any "alpha" subscription to "starter"
+  const displaySubscription = subscription === "alpha" ? "starter" : subscription;
+
   return (
     <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
       <Card className="col-span-1 md:col-span-2">
@@ -52,9 +55,9 @@ const MainContent: React.FC<MainContentProps> = ({
               <CardContent>
                 <div className="flex items-center">
                   <span className="text-xl font-bold text-gray-800 dark:text-gray-200 mr-2">
-                    {subscription.charAt(0).toUpperCase() + subscription.slice(1)}
+                    {displaySubscription.charAt(0).toUpperCase() + displaySubscription.slice(1)}
                   </span>
-                  {subscription === 'elite' && <EliteBadge />}
+                  {displaySubscription === 'elite' && <EliteBadge />}
                 </div>
               </CardContent>
             </Card>
@@ -78,7 +81,7 @@ const MainContent: React.FC<MainContentProps> = ({
       </Card>
       
       <RevenueCalculator 
-        currentSubscription={subscription} 
+        currentSubscription={displaySubscription} 
         isNewUser={isNewUser}
       />
     </div>
