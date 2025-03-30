@@ -60,18 +60,22 @@ const AppRoutes = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light">
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+// Fix: Create a proper functional component for the app root
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="light">
         <BrowserRouter>
-          <AppRoutes />
+          {/* Fix: Move TooltipProvider inside the React component tree */}
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <AppRoutes />
+          </TooltipProvider>
         </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
