@@ -3,6 +3,10 @@ import { supabase } from '../helpers/supabaseClient.ts';
 import { handleError } from '../utils/errorHandler.ts';
 import { withRetry } from '../utils/retryMechanism.ts';
 
+// Cache for commission rates to reduce database calls
+const commissionRateCache = new Map<string, { rate: number, timestamp: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
+
 /**
  * Find referrer based on a referral code using multiple search strategies
  * @param referralCode The referral code to search for
@@ -12,10 +16,11 @@ export async function findReferrer(referralCode: string | null) {
   if (!referralCode) return null;
   
   try {
-    console.log("Recherche du parrain pour le code:", referralCode);
+    console.log(`[REFERRAL] Searching for referrer with code: ${referralCode}`);
     
     // Strategy 1: Direct UUID match if referral code is a UUID
     if (isUuidLike(referralCode)) {
+      console.log(`[REFERRAL] Code appears to be UUID-like, trying direct match`);
       const directMatch = await findReferrerByDirectUuid(referralCode);
       if (directMatch) return directMatch;
     }
@@ -23,18 +28,20 @@ export async function findReferrer(referralCode: string | null) {
     // Strategy 2: Try to extract and match userId part
     const uuidPart = extractUuidPart(referralCode);
     if (uuidPart) {
+      console.log(`[REFERRAL] Extracted UUID part: ${uuidPart}, trying partial match`);
       const partialMatch = await findReferrerByPartialUuid(uuidPart);
       if (partialMatch) return partialMatch;
     }
     
     // Strategy 3: Use custom function to search in database
+    console.log(`[REFERRAL] Trying specialized RPC function search`);
     const rpcMatch = await findReferrerByRpc(referralCode);
     if (rpcMatch) return rpcMatch;
     
-    console.log("Aucun parrain trouvé pour le code:", referralCode);
+    console.log(`[REFERRAL] No referrer found for code: ${referralCode}`);
     return null;
   } catch (error) {
-    console.error("Erreur lors du traitement du code de parrainage:", error);
+    console.error(`[REFERRAL-ERROR] Error processing referral code:`, error);
     return null;
   }
 }
@@ -58,64 +65,92 @@ function extractUuidPart(referralCode: string): string | null {
  * Find referrer by direct UUID match
  */
 async function findReferrerByDirectUuid(uuid: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('id', uuid)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', uuid)
+      .single();
+      
+    if (!error && data) {
+      console.log(`[REFERRAL] Found referrer by direct UUID match: ${data.id}`);
+      return data.id;
+    }
     
-  if (!error && data) {
-    console.log("Parrain trouvé par correspondance UUID directe:", data.id);
-    return data.id;
+    return null;
+  } catch (error) {
+    console.error(`[REFERRAL-ERROR] Error in direct UUID search:`, error);
+    return null;
   }
-  
-  return null;
 }
 
 /**
  * Find referrer by partial UUID match
  */
 async function findReferrerByPartialUuid(uuidPart: string): Promise<string | null> {
-  // Exact match first
-  const { data: matchWithPrefix, error: prefixError } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('id', uuidPart)
-    .maybeSingle();
+  try {
+    // Exact match first
+    const { data: matchWithPrefix, error: prefixError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', uuidPart)
+      .maybeSingle();
+      
+    if (!prefixError && matchWithPrefix) {
+      console.log(`[REFERRAL] Found referrer by exact UUID part: ${matchWithPrefix.id}`);
+      return matchWithPrefix.id;
+    }
     
-  if (!prefixError && matchWithPrefix) {
-    console.log("Parrain trouvé par partie UUID exacte:", matchWithPrefix.id);
-    return matchWithPrefix.id;
-  }
-  
-  // Partial match as fallback
-  const { data: matchWithPartial, error: partialError } = await supabase
-    .from('profiles')
-    .select('id')
-    .ilike('id', `${uuidPart}%`)
-    .limit(1);
+    // Partial match as fallback
+    const { data: matchWithPartial, error: partialError } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('id', `${uuidPart}%`)
+      .limit(1);
+      
+    if (!partialError && matchWithPartial && matchWithPartial.length > 0) {
+      console.log(`[REFERRAL] Found referrer by partial UUID match: ${matchWithPartial[0].id}`);
+      return matchWithPartial[0].id;
+    }
     
-  if (!partialError && matchWithPartial && matchWithPartial.length > 0) {
-    console.log("Parrain trouvé par UUID partiel:", matchWithPartial[0].id);
-    return matchWithPartial[0].id;
+    console.log(`[REFERRAL] No matches found for UUID part: ${uuidPart}`);
+    return null;
+  } catch (error) {
+    console.error(`[REFERRAL-ERROR] Error in partial UUID search:`, error);
+    return null;
   }
-  
-  return null;
 }
 
 /**
  * Find referrer using the database RPC function
  */
 async function findReferrerByRpc(referralCode: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .rpc('find_referrer_by_code', { code: referralCode });
+  try {
+    const { data, error } = await supabase
+      .rpc('find_referrer_by_code', { code: referralCode });
+      
+    if (!error && data) {
+      console.log(`[REFERRAL] Found referrer via specialized RPC: ${data}`);
+      return data;
+    }
     
-  if (!error && data) {
-    console.log("Parrain trouvé via RPC spécialisée:", data);
-    return data;
+    return null;
+  } catch (error) {
+    console.error(`[REFERRAL-ERROR] Error in RPC search:`, error);
+    return null;
   }
+}
+
+/**
+ * Check if cached commission rate is valid or expired
+ * @param cacheEntry The cache entry to check
+ * @returns Boolean indicating if cache entry is valid
+ */
+function isCacheValid(cacheEntry: { rate: number, timestamp: number } | undefined): boolean {
+  if (!cacheEntry) return false;
   
-  return null;
+  const now = Date.now();
+  return (now - cacheEntry.timestamp) < CACHE_TTL_MS;
 }
 
 /**
@@ -125,6 +160,17 @@ async function findReferrerByRpc(referralCode: string): Promise<string | null> {
  */
 export async function getCommissionRateForUser(referrerId: string): Promise<number> {
   try {
+    // Check cache first
+    const cacheKey = `commission_${referrerId}`;
+    const cachedRate = commissionRateCache.get(cacheKey);
+    
+    if (isCacheValid(cachedRate)) {
+      console.log(`[REFERRAL] Using cached commission rate for ${referrerId}: ${cachedRate!.rate}`);
+      return cachedRate!.rate;
+    }
+    
+    console.log(`[REFERRAL] Fetching commission rate from database for user: ${referrerId}`);
+    
     return await withRetry(async () => {
       // Get the user's subscription
       const { data: userData, error: userError } = await supabase
@@ -133,17 +179,43 @@ export async function getCommissionRateForUser(referrerId: string): Promise<numb
         .eq('id', referrerId)
         .maybeSingle();
         
-      if (userError || !userData) {
-        console.error("Erreur lors de la récupération de l'abonnement:", userError);
+      if (userError) {
+        console.error(`[REFERRAL-ERROR] Error fetching subscription:`, userError);
         return 0.4; // Default to freemium rate (40%)
       }
       
-      // Return commission rate based on subscription
-      return getCommissionRateBySubscription(userData.subscription);
+      if (!userData) {
+        console.warn(`[REFERRAL] No user balance found for ${referrerId}, using default rate`);
+        return 0.4;
+      }
+      
+      // Calculate rate based on subscription
+      const rate = getCommissionRateBySubscription(userData.subscription);
+      
+      // Cache the result
+      commissionRateCache.set(cacheKey, { 
+        rate, 
+        timestamp: Date.now() 
+      });
+      
+      console.log(`[REFERRAL] Commission rate for ${referrerId} (${userData.subscription}): ${rate * 100}%`);
+      return rate;
     }, 3, 1000);
   } catch (error) {
-    console.error("Erreur lors de la récupération du taux de commission:", error);
+    console.error(`[REFERRAL-ERROR] Error getting commission rate:`, error);
     return 0.4; // Default to freemium rate (40%)
+  }
+}
+
+/**
+ * Invalidate commission rate cache for a specific user
+ * @param userId The user ID to invalidate cache for
+ */
+export function invalidateCommissionRateCache(userId: string): void {
+  const cacheKey = `commission_${userId}`;
+  if (commissionRateCache.has(cacheKey)) {
+    console.log(`[REFERRAL] Invalidating commission rate cache for user: ${userId}`);
+    commissionRateCache.delete(cacheKey);
   }
 }
 
@@ -151,16 +223,14 @@ export async function getCommissionRateForUser(referrerId: string): Promise<numb
  * Get commission rate based on subscription type
  */
 function getCommissionRateBySubscription(subscription: string): number {
-  switch (subscription) {
-    case 'starter':
-      return 0.6; // 60%
-    case 'gold':
-      return 0.8; // 80%
-    case 'elite':
-      return 1.0; // 100%
-    default:
-      return 0.4; // 40% for freemium
-  }
+  const rates = {
+    'starter': 0.6, // 60%
+    'gold': 0.8,    // 80%
+    'elite': 1.0,   // 100%
+    'freemium': 0.4 // 40%
+  };
+  
+  return rates[subscription as keyof typeof rates] || 0.4;
 }
 
 /**
@@ -175,12 +245,14 @@ export async function trackReferral(referrerId: string | null, newUserId: string
   }
   
   try {
+    console.log(`[REFERRAL] Processing referral: ${referrerId} -> ${newUserId} (plan: ${planType})`);
+    
     // Check if the referral already exists
     const existingReferral = await findExistingReferral(referrerId, newUserId);
     
-    // Get standard commission rate
+    // Get standard commission rate with caching
     const commissionRate = await getCommissionRateForUser(referrerId as string);
-    console.log(`Taux de commission pour ${referrerId}: ${commissionRate * 100}%`);
+    console.log(`[REFERRAL] Commission rate for ${referrerId}: ${commissionRate * 100}%`);
     
     if (existingReferral) {
       await updateExistingReferral(existingReferral.id, planType, commissionRate);
@@ -190,7 +262,7 @@ export async function trackReferral(referrerId: string | null, newUserId: string
     // Create a new referral with appropriate commission rate
     await createNewReferral(referrerId as string, newUserId, planType, commissionRate);
   } catch (error) {
-    handleError(error, "Erreur dans trackReferral");
+    handleError(error, "[REFERRAL-ERROR] Error in trackReferral");
   }
 }
 
@@ -199,12 +271,12 @@ export async function trackReferral(referrerId: string | null, newUserId: string
  */
 function isValidReferral(referrerId: string | null, newUserId: string): boolean {
   if (!referrerId || !newUserId) {
-    console.log("Impossible de suivre le parrainage : informations manquantes");
+    console.log(`[REFERRAL] Cannot track referral: missing information`);
     return false;
   }
   
   if (referrerId === newUserId) {
-    console.log("Auto-parrainage détecté, ignoré");
+    console.log(`[REFERRAL] Self-referral detected, ignored: ${newUserId}`);
     return false;
   }
   
@@ -224,12 +296,16 @@ async function findExistingReferral(referrerId: string | null, newUserId: string
       .maybeSingle();
     
     if (error) {
-      console.error("Erreur lors de la vérification du parrainage existant:", error);
+      console.error(`[REFERRAL-ERROR] Error checking existing referral:`, error);
+    }
+    
+    if (data) {
+      console.log(`[REFERRAL] Found existing referral with ID: ${data.id}`);
     }
     
     return data;
   } catch (error) {
-    handleError(error, "Erreur lors de la recherche d'un parrainage existant");
+    handleError(error, "[REFERRAL-ERROR] Error searching for existing referral");
     return null;
   }
 }
@@ -239,7 +315,7 @@ async function findExistingReferral(referrerId: string | null, newUserId: string
  */
 async function updateExistingReferral(referralId: string, planType: string, commissionRate: number) {
   return withRetry(async () => {
-    console.log("Ce parrainage existe déjà, mise à jour du statut si nécessaire");
+    console.log(`[REFERRAL] Updating existing referral ID: ${referralId} with rate: ${commissionRate * 100}%`);
     
     const { error } = await supabase
       .from('referrals')
@@ -252,10 +328,10 @@ async function updateExistingReferral(referralId: string, planType: string, comm
       .eq('id', referralId);
       
     if (error) {
-      console.error("Erreur lors de la mise à jour du parrainage:", error);
+      console.error(`[REFERRAL-ERROR] Error updating referral:`, error);
       throw error;
     } else {
-      console.log(`Parrainage mis à jour avec un taux de commission de ${commissionRate * 100}%`);
+      console.log(`[REFERRAL] Referral updated successfully with commission rate: ${commissionRate * 100}%`);
     }
   }, 2, 1000);
 }
@@ -265,6 +341,8 @@ async function updateExistingReferral(referralId: string, planType: string, comm
  */
 async function createNewReferral(referrerId: string, newUserId: string, planType: string, commissionRate: number) {
   try {
+    console.log(`[REFERRAL] Creating new referral: ${referrerId} -> ${newUserId} (plan: ${planType})`);
+    
     const { error } = await supabase
       .from('referrals')
       .insert({
@@ -276,11 +354,16 @@ async function createNewReferral(referrerId: string, newUserId: string, planType
       });
       
     if (error) {
-      console.error("Erreur lors de l'enregistrement du parrainage:", error);
+      console.error(`[REFERRAL-ERROR] Error creating referral:`, error);
       
       // Retry once after a short delay with withRetry mechanism
       await withRetry(async () => {
+        // Get fresh commission rate on retry in case of transient issues
+        invalidateCommissionRateCache(referrerId);
         const retryCommissionRate = await getCommissionRateForUser(referrerId);
+        
+        console.log(`[REFERRAL] Retrying referral creation with rate: ${retryCommissionRate * 100}%`);
+        
         const { error: retryError } = await supabase
           .from('referrals')
           .insert({
@@ -292,17 +375,17 @@ async function createNewReferral(referrerId: string, newUserId: string, planType
           });
           
         if (retryError) {
-          console.error("Échec de la seconde tentative de parrainage:", retryError);
+          console.error(`[REFERRAL-ERROR] Failed retry for referral creation:`, retryError);
           throw retryError;
         } else {
-          console.log(`Parrainage enregistré (2e tentative) avec un taux de commission de ${retryCommissionRate * 100}%`);
+          console.log(`[REFERRAL] Referral created successfully on retry with commission rate: ${retryCommissionRate * 100}%`);
         }
       }, 1, 2000);
     } else {
-      console.log(`Parrainage enregistré avec succès avec un taux de commission de ${commissionRate * 100}%`);
+      console.log(`[REFERRAL] Referral created successfully with commission rate: ${commissionRate * 100}%`);
     }
   } catch (error) {
-    handleError(error, "Erreur lors de la création d'un nouveau parrainage");
+    handleError(error, "[REFERRAL-ERROR] Error creating a new referral");
   }
 }
 
@@ -313,6 +396,8 @@ async function createNewReferral(referrerId: string, newUserId: string, planType
  */
 export async function getReferralsForUser(userId: string) {
   try {
+    console.log(`[REFERRAL] Fetching referrals for user: ${userId}`);
+    
     const { data, error } = await supabase
       .from('referrals')
       .select('*')
@@ -320,13 +405,14 @@ export async function getReferralsForUser(userId: string) {
       .order('created_at', { ascending: false });
       
     if (error) {
-      console.error("Erreur lors de la récupération des parrainages:", error);
+      console.error(`[REFERRAL-ERROR] Error fetching referrals:`, error);
       return [];
     }
     
+    console.log(`[REFERRAL] Found ${data?.length || 0} referrals for user: ${userId}`);
     return data || [];
   } catch (error) {
-    handleError(error, "Erreur dans getReferralsForUser");
+    handleError(error, "[REFERRAL-ERROR] Error in getReferralsForUser");
     return [];
   }
 }
