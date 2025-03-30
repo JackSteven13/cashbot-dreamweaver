@@ -61,9 +61,12 @@ export const createMoneyParticles = (targetElement: HTMLElement, count = 15) => 
     
     particle.style.left = `${startX}px`;
     particle.style.top = `${startY}px`;
+    
+    // Set CSS variables properly using setProperty
     particle.style.setProperty('--tx', `${endX}px`);
     particle.style.setProperty('--ty', `${endY}px`);
     particle.style.setProperty('--r', `${rotation}deg`);
+    
     particle.style.fontSize = `${Math.random() * 10 + 14}px`;
     
     document.body.appendChild(particle);

@@ -4,6 +4,7 @@ import { ArrowUpCircle, Clock, PlayCircle, AlertTriangle, Activity, Zap } from '
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscriptionUtils';
+import { createMoneyParticles } from '@/utils/animations';
 
 interface ActionButtonsProps {
   canStartSession: boolean;
@@ -30,8 +31,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 }) => {
   const [effectiveSubscription, setEffectiveSubscription] = useState(subscription);
   const [effectiveLimit, setEffectiveLimit] = useState(dailyLimit);
-  const [showParticles, setShowParticles] = useState(false);
-  const [particles, setParticles] = useState<Array<{id: number, x: number, y: number, tx: number, ty: number, r: number}>>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const successAudioRef = useRef<HTMLAudioElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -80,26 +79,9 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       audioRef.current.play().catch(e => console.error("Error playing audio:", e));
     }
     
-    // Create particles
+    // Create money particles using the utility function
     if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      
-      const newParticles = Array.from({ length: 15 }, (_, i) => ({
-        id: Date.now() + i,
-        x: centerX,
-        y: centerY,
-        tx: (Math.random() - 0.5) * 200, // Random x translation
-        ty: (Math.random() - 0.5) * 200, // Random y translation
-        r: Math.random() * 360 // Random rotation
-      }));
-      
-      setParticles(newParticles);
-      setShowParticles(true);
-      
-      // Hide particles after animation completes
-      setTimeout(() => setShowParticles(false), 1500);
+      createMoneyParticles(buttonRef.current, 15);
     }
     
     // Play success sound after the process is "complete"
@@ -115,24 +97,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   return (
     <>
-      {/* Money particles for animation */}
-      {showParticles && particles.map(particle => (
-        <div
-          key={particle.id}
-          className="money-particle"
-          style={{
-            left: `${particle.x}px`,
-            top: `${particle.y}px`,
-            '--tx': `${particle.tx}px`,
-            '--ty': `${particle.ty}px`,
-            '--r': `${particle.r}deg`,
-            fontSize: `${Math.random() * 10 + 14}px`
-          }}
-        >
-          {['💰', '💸', '🪙'][Math.floor(Math.random() * 3)]}
-        </div>
-      ))}
-      
       <div className="grid grid-cols-1 gap-3 mb-6">
         {/* Rangée de boutons principale avec layout amélioré */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
