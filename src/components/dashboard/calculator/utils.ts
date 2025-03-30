@@ -5,7 +5,6 @@ import { SUBSCRIPTION_PRICES } from './constants';
 /**
  * Calculate revenue for all subscription plans based on user inputs
  * Revised to create more realistic and differentiated results between plans
- * Implements hidden mechanism to reduce gains as they approach thresholds
  */
 export const calculateRevenueForAllPlans = (
   sessionsPerDay: number,
@@ -24,31 +23,31 @@ export const calculateRevenueForAllPlans = (
   // Add variability to make numbers less round (±5%)
   const getRandomVariation = () => 1 + ((Math.random() * 10) - 5) / 100;
   
-  // Throttling factor that reduces earnings as they approach withdrawal thresholds
-  const getThrottlingFactor = (plan: string, revenue: number) => {
-    // Define thresholds for each plan
-    const thresholds = {
-      'freemium': 200,
-      'starter': 400,
-      'gold': 700,
-      'elite': 1000
+  // Modified throttling factor that ensures more sessions always result in higher revenue
+  // but still maintains some form of diminishing returns for very high usage
+  const getThrottlingFactor = (plan: string, sessionsCount: number) => {
+    // Define max sessions efficiency for each plan
+    const maxEfficiencySessions = {
+      'freemium': 1,   // Freemium has hard limit of 1 session
+      'starter': 12,   // Efficiency drops after this many sessions
+      'gold': 16,
+      'elite': 20
     };
     
-    const threshold = thresholds[plan as keyof typeof thresholds] || 200;
-    const percentageOfThreshold = (revenue / threshold) * 100;
+    const maxSessions = maxEfficiencySessions[plan as keyof typeof maxEfficiencySessions] || 10;
     
-    // Begin reducing at 80% of threshold, cap at 95%
-    if (percentageOfThreshold >= 95) {
-      return 0.05; // Almost no more revenue
-    } else if (percentageOfThreshold >= 90) {
-      return 0.3; // 30% of normal revenue
-    } else if (percentageOfThreshold >= 85) {
-      return 0.5; // 50% of normal revenue
-    } else if (percentageOfThreshold >= 80) {
-      return 0.7; // 70% of normal revenue
+    // If under the max efficiency sessions, no throttling
+    if (sessionsCount <= maxSessions) {
+      return 1.0;
     }
     
-    return 1; // Normal revenue
+    // Calculate diminishing returns for sessions above the max efficiency
+    // This ensures more sessions always give more revenue, just at a reduced rate
+    const excessSessions = sessionsCount - maxSessions;
+    const diminishingFactor = 1 - (excessSessions * 0.05);  // 5% less efficient per session above max
+    
+    // Ensure we never go below 0.4 (40% efficiency) to maintain increasing returns
+    return Math.max(0.4, diminishingFactor);
   };
   
   Object.entries(SUBSCRIPTION_LIMITS).forEach(([plan, dailyLimit]) => {
@@ -57,7 +56,11 @@ export const calculateRevenueForAllPlans = (
       const effectiveSessions = plan === 'freemium' ? Math.min(1, sessionsPerDay) : sessionsPerDay;
       
       // Calculate with plan-specific efficiency factor
-      const efficiency = efficiencyFactors[plan as keyof typeof efficiencyFactors] || 0.5;
+      const baseEfficiency = efficiencyFactors[plan as keyof typeof efficiencyFactors] || 0.5;
+      
+      // Calculate throttling based on number of sessions, not revenue amount
+      const throttlingFactor = getThrottlingFactor(plan, effectiveSessions);
+      const efficiency = baseEfficiency * throttlingFactor;
       
       // Calculate yield per session (higher for premium plans)
       const sessionYield = dailyLimit * efficiency * getRandomVariation();
@@ -70,18 +73,11 @@ export const calculateRevenueForAllPlans = (
       // Apply multiplier for multiple sessions (for non-freemium plans)
       let dailyRevenue = Math.min(
         sessionYield * effectiveSessions * (effectiveSessions > 1 ? sessionMultiplier : 1),
-        dailyLimit // Always limited by daily ceiling
+        dailyLimit * 1.1 // Allow slightly over daily limit to ensure monotonic growth
       );
       
       // Add slight daily variability to avoid round numbers
       let monthlyRevenue = dailyRevenue * daysPerMonth * getRandomVariation();
-      
-      // Apply throttling to slow down gains near threshold
-      const throttlingFactor = getThrottlingFactor(plan, monthlyRevenue);
-      if (throttlingFactor < 1) {
-        monthlyRevenue *= throttlingFactor;
-        console.log(`Applied throttling factor ${throttlingFactor} to ${plan} plan, reducing revenue to ${monthlyRevenue.toFixed(2)}`);
-      }
       
       const subscriptionPrice = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] || 0;
       
