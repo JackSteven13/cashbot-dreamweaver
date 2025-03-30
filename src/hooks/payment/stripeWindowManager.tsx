@@ -21,37 +21,35 @@ export const openStripeWindow = (url: string): void => {
   // Show toast FIRST, before any redirection attempts
   showStripeManualOpenToast(url);
   
-  // Use a try-catch block to ensure we have multiple fallbacks
+  // DIRECT APPROACH - no delays, no fancy methods
+  // This is the most reliable method across devices
   try {
-    console.log("Attempting primary redirect method");
-    
-    // Delay to ensure toast is visible
-    setTimeout(() => {
-      try {
-        // Most direct method - guaranteed to work across all platforms
-        window.location.href = url;
-        console.log("Primary redirect method executed");
-      } catch (error) {
-        console.error("Primary redirect failed, trying alternative:", error);
-        window.open(url, "_self");
-      }
-    }, 800); // Longer delay to ensure toast is visible
+    console.log("Executing direct navigation to:", url);
+    window.location.href = url;
   } catch (error) {
-    console.error("Could not set up delayed redirect:", error);
+    console.error("Direct navigation failed:", error);
     
-    // Immediate fallback if the timeout somehow fails
+    // Fallback options if direct method fails
     try {
-      window.location.href = url;
-    } catch (finalError) {
-      console.error("All redirect methods failed:", finalError);
+      console.log("Trying fallback method 1");
+      window.open(url, "_self");
+    } catch (fallbackError) {
+      console.error("Fallback method 1 failed:", fallbackError);
       
-      // Last resort - update toast with stronger message
-      toast({
-        title: "Problème de redirection",
-        description: "Veuillez cliquer sur le bouton pour ouvrir la page de paiement manuellement.",
-        variant: "destructive",
-        duration: 60000, // Show for a full minute
-      });
+      try {
+        console.log("Trying fallback method 2");
+        window.location.assign(url);
+      } catch (finalError) {
+        console.error("All automatic methods failed:", finalError);
+        
+        // Force the user to use the manual button in the toast
+        toast({
+          title: "Problème d'ouverture automatique",
+          description: "Veuillez cliquer sur le bouton ci-dessous pour continuer vers le paiement.",
+          variant: "destructive",
+          duration: 60000, // Show for a full minute
+        });
+      }
     }
   }
 };
@@ -73,8 +71,13 @@ export const showStripeManualOpenToast = (url: string): void => {
       <ToastAction 
         onClick={() => {
           // Direct and forceful approach for manual click
-          console.log("Manual redirect button clicked");
-          window.location.href = url;
+          console.log("Manual redirect button clicked for URL:", url);
+          try {
+            window.location.href = url;
+          } catch (error) {
+            console.error("Manual navigation failed, trying alternate method:", error);
+            window.open(url, "_self");
+          }
         }}
         className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md cursor-pointer text-sm font-bold shadow-md"
         altText="Ouvrir la page de paiement"

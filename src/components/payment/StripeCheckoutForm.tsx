@@ -23,6 +23,7 @@ const StripeCheckoutForm = ({
   stripeUrl
 }: StripeCheckoutFormProps) => {
   const [termsAccepted, setTermsAccepted] = React.useState(true); // Default to true for better UX
+  const [manualRedirectAttempted, setManualRedirectAttempted] = React.useState(false);
   const isMobile = useIsMobile();
   
   const handleCheckout = () => {
@@ -39,26 +40,41 @@ const StripeCheckoutForm = ({
   };
   
   const handleManualRedirect = () => {
-    if (stripeUrl) {
-      // Force direct approach for manual redirection
-      console.log("Manual redirect initiated to:", stripeUrl);
-      
-      // Show a toast first
+    if (!stripeUrl) {
       toast({
-        title: "Redirection en cours",
-        description: "Vous allez être redirigé vers la page de paiement Stripe..."
+        title: "URL de paiement manquante",
+        description: "Impossible de vous rediriger vers la page de paiement. Veuillez réessayer.",
+        variant: "destructive"
       });
+      return;
+    }
+    
+    setManualRedirectAttempted(true);
+    
+    // Show clear feedback to the user
+    toast({
+      title: "Redirection en cours",
+      description: "Vous allez être redirigé vers la page de paiement Stripe...",
+      duration: 5000
+    });
+    
+    // DIRECT APPROACH - no fancy methods
+    console.log("Manual redirect initiated to:", stripeUrl);
+    
+    try {
+      // Most reliable way
+      window.location.href = stripeUrl;
+    } catch (error) {
+      console.error("Primary redirect method failed:", error);
       
-      // Short delay to allow toast to show, then forceful redirect
-      setTimeout(() => {
-        try {
-          // Most reliable on mobile
-          window.location.href = stripeUrl;
-        } catch (error) {
-          console.error("Primary redirect method failed:", error);
-          window.open(stripeUrl, "_self"); 
-        }
-      }, 500);
+      try {
+        window.open(stripeUrl, "_self");
+      } catch (fallbackError) {
+        console.error("Fallback redirect method failed:", fallbackError);
+        
+        // Last resort
+        window.location.assign(stripeUrl);
+      }
     }
   };
   
@@ -91,26 +107,31 @@ const StripeCheckoutForm = ({
         fullWidth 
         className="bg-green-600 hover:bg-green-700 text-white text-sm md:text-base py-2.5 md:py-3 font-bold shadow-md"
         onClick={handleCheckout}
-        isLoading={isStripeProcessing}
-        disabled={!termsAccepted || isStripeProcessing}
+        isLoading={isStripeProcessing && !stripeUrl}
+        disabled={!termsAccepted || (isStripeProcessing && !stripeUrl)}
       >
-        {isStripeProcessing ? 'Redirection en cours...' : 'Procéder au paiement'}
+        {isStripeProcessing && !stripeUrl ? 'Redirection en cours...' : 'Procéder au paiement'}
       </Button>
       
-      {(isStripeProcessing || stripeUrl) && (
+      {stripeUrl && (
         <Button
           variant="outline"
           fullWidth
           onClick={handleManualRedirect}
-          className="mt-3 text-xs md:text-sm py-2 md:py-3 bg-blue-50 hover:bg-blue-100 border-blue-300 font-semibold"
+          className="mt-3 text-sm md:text-base py-2.5 md:py-3 bg-blue-50 hover:bg-blue-100 border-blue-300 font-semibold"
         >
-          Cliquez ici si la page ne s'ouvre pas
+          {manualRedirectAttempted ? "Cliquez ici à nouveau si nécessaire" : "Cliquez ici pour ouvrir la page de paiement"}
         </Button>
       )}
       
       {isMobile && (
-        <div className="text-xs text-center text-gray-500 mt-2">
-          Sur certains appareils mobiles, vous devrez peut-être autoriser les popups
+        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-xs text-yellow-800 mt-3">
+          <p className="font-semibold">Sur les appareils mobiles :</p>
+          <ul className="list-disc pl-4 mt-1 space-y-1">
+            <li>Assurez-vous que les popups sont autorisés</li>
+            <li>Utilisez le bouton ci-dessus si la redirection ne se fait pas</li>
+            <li>Si rien ne fonctionne, essayez un autre navigateur</li>
+          </ul>
         </div>
       )}
     </div>
