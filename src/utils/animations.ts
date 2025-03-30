@@ -1,131 +1,109 @@
 
-import { useState, useEffect } from 'react';
+import confetti from 'canvas-confetti';
 
-interface IntersectionOptions {
-  threshold?: number;
-  rootMargin?: string;
-  root?: Element | null;
-}
-
-export const useIntersectionObserver = (
-  options: IntersectionOptions = {}
-): [React.RefObject<HTMLElement>, boolean] => {
-  const [ref, setRef] = useState<React.RefObject<HTMLElement>>({ current: null });
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      setIsVisible(entry.isIntersecting);
-    }, {
-      threshold: options.threshold || 0.1,
-      rootMargin: options.rootMargin || '0px',
-      root: options.root || null
-    });
-
-    const currentRef = ref.current;
-    if (currentRef) {
-      observer.observe(currentRef);
-    }
-
-    return () => {
-      if (currentRef) {
-        observer.unobserve(currentRef);
-      }
-    };
-  }, [ref, options.threshold, options.rootMargin, options.root]);
-
-  return [ref, isVisible];
-};
-
-// Create a function to generate money particles on demand
-export const createMoneyParticles = (targetElement: HTMLElement, count = 15) => {
-  if (!targetElement) return;
+/**
+ * Crée un effet de particules de monnaie lorsque l'utilisateur gagne de l'argent
+ * @param element L'élément à partir duquel créer les particules
+ * @param particleCount Nombre de particules à créer
+ */
+export const createMoneyParticles = (element: HTMLElement, particleCount: number = 20) => {
+  const rect = element.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
   
-  const rect = targetElement.getBoundingClientRect();
-  const particles = [];
-  
-  // Create particle elements
-  for (let i = 0; i < count; i++) {
+  // Créer les éléments de particule
+  for (let i = 0; i < particleCount; i++) {
     const particle = document.createElement('div');
-    particle.className = 'money-particle';
-    particle.textContent = ['💰', '💸', '🪙'][Math.floor(Math.random() * 3)];
     
-    // Set random starting position near the target
-    const startX = rect.left + rect.width / 2 + (Math.random() - 0.5) * 20;
-    const startY = rect.top + rect.height / 2 + (Math.random() - 0.5) * 20;
+    // Choix aléatoire entre symbole € et symbole de monnaie 💰
+    const symbol = Math.random() > 0.6 ? '€' : '💰';
     
-    // Set random ending position around the target
-    const endX = (Math.random() - 0.5) * 200;
-    const endY = (Math.random() - 0.5) * 200;
+    // Appliquer le style de la particule
+    particle.textContent = symbol;
+    particle.style.position = 'fixed';
+    particle.style.left = `${centerX}px`;
+    particle.style.top = `${centerY}px`;
+    particle.style.fontSize = symbol === '€' ? `${Math.random() * 10 + 14}px` : `${Math.random() * 10 + 18}px`;
+    particle.style.color = symbol === '€' ? '#9b87f5' : 'inherit';
+    particle.style.fontWeight = 'bold';
+    particle.style.zIndex = '9999';
+    particle.style.pointerEvents = 'none';
+    particle.classList.add('money-particle');
+    
+    // Définir la destination aléatoire
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.random() * 100 + 50;
+    const tx = Math.cos(angle) * distance;
+    const ty = Math.sin(angle) * distance;
     const rotation = Math.random() * 360;
     
-    particle.style.left = `${startX}px`;
-    particle.style.top = `${startY}px`;
-    
-    // Set CSS variables properly using setProperty
-    particle.style.setProperty('--tx', `${endX}px`);
-    particle.style.setProperty('--ty', `${endY}px`);
+    particle.style.setProperty('--tx', `${tx}px`);
+    particle.style.setProperty('--ty', `${ty}px`);
     particle.style.setProperty('--r', `${rotation}deg`);
     
-    particle.style.fontSize = `${Math.random() * 10 + 14}px`;
-    
+    // Ajouter au DOM et supprimer après l'animation
     document.body.appendChild(particle);
-    particles.push(particle);
+    
+    setTimeout(() => {
+      document.body.removeChild(particle);
+    }, 1500);
   }
   
-  // Remove particles after animation completes
+  // Créer un effet confetti pour les gros gains
+  if (particleCount > 10) {
+    const colors = ['#9b87f5', '#f97316', '#22c55e'];
+    
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { 
+        x: centerX / window.innerWidth, 
+        y: centerY / window.innerHeight 
+      },
+      colors: colors,
+      shapes: ['circle', 'square'],
+      scalar: 0.7
+    });
+  }
+};
+
+/**
+ * Ajoute une animation de pulsation au solde lorsqu'il est mis à jour
+ * @param element L'élément contenant le solde
+ * @param amount Le montant ajouté (pour déterminer l'intensité)
+ */
+export const animateBalanceUpdate = (element: HTMLElement, amount: number) => {
+  // Vérifier si l'élément existe
+  if (!element) return;
+  
+  // Créer un nouvel élément pour afficher l'augmentation
+  const increase = document.createElement('span');
+  increase.textContent = `+${amount.toFixed(2)}€`;
+  increase.className = 'absolute -top-6 right-0 text-green-500 font-bold text-lg balance-increase';
+  
+  // Ajouter l'élément au DOM
+  element.style.position = 'relative';
+  element.appendChild(increase);
+  
+  // Ajouter une classe pour l'animation de pulsation
+  element.classList.add('pulse-animation');
+  
+  // Supprimer l'animation après un délai
   setTimeout(() => {
-    particles.forEach(p => p.remove());
-  }, 1500);
+    element.removeChild(increase);
+    element.classList.remove('pulse-animation');
+  }, 3000);
 };
 
-export const slideVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { 
-      duration: 0.6,
-      ease: [0.22, 1, 0.36, 1]
-    }
-  }
-};
-
-export const staggerChildrenVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
-};
-
-export const fadeVariants = {
-  hidden: { opacity: 0 },
-  visible: { 
-    opacity: 1,
-    transition: { 
-      duration: 0.5,
-      ease: "easeInOut"
-    }
-  }
-};
-
-// Sound effect utilities
-export const playSoundEffect = (soundName: 'click' | 'success' | 'error' | 'notification') => {
-  const soundMap = {
-    click: '/sounds/button-click.mp3',
-    success: '/sounds/cash-register.mp3',
-    error: '/sounds/error.mp3',
-    notification: '/sounds/notification.mp3'
-  };
+/**
+ * Déclenche un événement d'animation sur le dashboard
+ * @param type Le type d'événement (session, balance, etc.)
+ * @param data Les données associées à l'événement
+ */
+export const triggerDashboardEvent = (type: string, data?: any) => {
+  const event = new CustomEvent(`dashboard:${type}`, { 
+    detail: data 
+  });
   
-  try {
-    const audio = new Audio(soundMap[soundName]);
-    audio.volume = 0.7;
-    audio.play().catch(e => console.error("Error playing sound:", e));
-  } catch (error) {
-    console.error("Error creating audio element:", error);
-  }
+  window.dispatchEvent(event);
 };
