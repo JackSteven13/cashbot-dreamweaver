@@ -1,8 +1,11 @@
 
 import React from 'react';
 import { calculateReferralBonus } from '@/utils/referralUtils';
-import { MetricsLayout, MainContent, SideContent } from '@/components/dashboard/metrics';
+import { MetricsLayout } from '@/components/dashboard/metrics';
+import { MainContent } from '@/components/dashboard/metrics';
+import { SideContent } from '@/components/dashboard/metrics';
 import { Transaction, Referral } from '@/types/userData';
+import { SummaryPanel } from './summary';
 
 interface DashboardMetricsProps {
   balance: number;
@@ -36,26 +39,47 @@ const DashboardMetrics = ({
   const isTopReferrer = referrals.length > 5; // Example condition for top referrer
 
   return (
-    <MetricsLayout
-      mainContent={
-        <MainContent
-          balance={balance}
-          subscription={subscription}
-          isNewUser={isNewUser}
-          referrals={referrals}
-          isTopReferrer={isTopReferrer}
-          referralCount={referrals.length}
-          referralBonus={referralBonus}
-        />
-      }
-      sideContent={
-        <SideContent
-          balance={balance}
-          isNewUser={isNewUser}
-          referralBonus={referralBonus}
-        />
-      }
-    />
+    <div className="space-y-6">
+      <SummaryPanel 
+        balance={balance}
+        referralLink={referralLink}
+        isStartingSession={isStartingSession}
+        handleStartSession={handleStartSession}
+        isNewUser={isNewUser}
+        subscription={subscription}
+        handleWithdrawal={handleWithdrawal}
+        dailySessionCount={dailySessionCount}
+        canStartSession={canStartSession}
+        referralCount={referrals.length}
+        referralBonus={referralBonus}
+      />
+      
+      <MetricsLayout
+        mainContent={
+          <MainContent
+            balance={balance}
+            subscription={subscription}
+            isNewUser={isNewUser}
+            referrals={referrals}
+            isTopReferrer={isTopReferrer}
+            referralCount={referrals.length}
+            referralBonus={referralBonus}
+            canStartSession={canStartSession}
+            dailySessionCount={dailySessionCount}
+            handleStartSession={handleStartSession}
+            handleWithdrawal={handleWithdrawal}
+            transactions={transactions}
+          />
+        }
+        sideContent={
+          <SideContent
+            balance={balance}
+            isNewUser={isNewUser}
+            referralBonus={referralBonus}
+          />
+        }
+      />
+    </div>
   );
 };
 

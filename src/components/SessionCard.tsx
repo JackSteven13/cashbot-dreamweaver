@@ -16,7 +16,7 @@ const SessionCard = ({ gain, report, date = new Date().toLocaleDateString() }: S
   const isWithdrawal = report.includes("Retrait") || report.includes("retrait");
 
   return (
-    <div className="glass-card rounded-xl overflow-hidden transition-all duration-300">
+    <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:shadow-md">
       <div 
         className="p-6 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -50,9 +50,9 @@ const SessionCard = ({ gain, report, date = new Date().toLocaleDateString() }: S
               {isExpanded ? "Masquer" : "Détails"}
             </span>
             {isExpanded ? (
-              <ChevronUp size={18} />
+              <ChevronUp size={18} className="transition-transform duration-200" />
             ) : (
-              <ChevronDown size={18} />
+              <ChevronDown size={18} className="transition-transform duration-200" />
             )}
           </div>
         </div>
