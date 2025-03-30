@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { CreditCard, ExternalLink } from 'lucide-react';
 import Button from '@/components/Button';
 import { PlanType } from '@/hooks/payment/types';
@@ -23,7 +23,7 @@ const StripeCheckoutForm = ({
   onCheckout,
   stripeUrl
 }: StripeCheckoutFormProps) => {
-  const [termsAccepted, setTermsAccepted] = React.useState(false); // Défaut à false pour exiger une action explicite
+  const [termsAccepted, setTermsAccepted] = React.useState(true); // Pré-cochée par défaut
   const [redirectAttempted, setRedirectAttempted] = React.useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
@@ -45,28 +45,22 @@ const StripeCheckoutForm = ({
     onCheckout();
   };
   
-  const handleManualRedirect = () => {
-    if (!stripeUrl) {
+  // Ouvrir automatiquement la fenêtre Stripe une fois l'URL disponible
+  useEffect(() => {
+    if (stripeUrl && !redirectAttempted && termsAccepted) {
+      setRedirectAttempted(true);
+      
+      // Notification légère
       toast({
-        title: "URL de paiement manquante",
-        description: "Impossible de vous rediriger vers la page de paiement. Veuillez réessayer.",
-        variant: "destructive"
+        title: "Redirection en cours",
+        description: "Vous êtes redirigé vers la page de paiement Stripe...",
+        duration: 3000
       });
-      return;
+      
+      // Ouvrir la fenêtre Stripe automatiquement
+      openStripeWindow(stripeUrl);
     }
-    
-    setRedirectAttempted(true);
-    
-    // Notification claire à l'utilisateur
-    toast({
-      title: "Ouverture de la page de paiement",
-      description: "Vous allez être redirigé vers Stripe...",
-      duration: 3000
-    });
-    
-    // Utiliser la fonction optimisée pour ouvrir Stripe
-    openStripeWindow(stripeUrl);
-  };
+  }, [stripeUrl, redirectAttempted, termsAccepted]);
   
   return (
     <div className="space-y-4 md:space-y-5">
@@ -108,38 +102,24 @@ const StripeCheckoutForm = ({
         </div>
       </div>
       
-      {stripeUrl ? (
-        <>
-          {/* Bouton de redirection principal - grand et très visible */}
-          <Button 
-            fullWidth 
-            className="bg-green-600 hover:bg-green-700 text-white text-sm md:text-base py-3 md:py-4 font-bold shadow-md flex justify-center items-center gap-2"
-            onClick={handleManualRedirect}
-            isLoading={isStripeProcessing && !redirectAttempted}
-            disabled={!termsAccepted}
-          >
-            <ExternalLink size={20} />
-            {redirectAttempted ? 'Ouvrir à nouveau la page de paiement' : 'Ouvrir la page de paiement Stripe'}
-          </Button>
-          
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs md:text-sm text-blue-700 mt-2">
-            <p className="font-semibold">Important :</p>
-            <ul className="list-disc pl-4 mt-1 space-y-1">
-              <li>Cliquez sur le bouton vert ci-dessus pour ouvrir la page de paiement</li>
-              <li>Si rien ne se passe, vérifiez que les popups sont autorisés</li>
-              <li>Vous pouvez aussi essayer en mode navigation privée ou avec un autre navigateur</li>
-            </ul>
-          </div>
-        </>
-      ) : (
+      <Button 
+        fullWidth 
+        className="bg-green-600 hover:bg-green-700 text-white text-sm md:text-base py-3 md:py-4 font-bold shadow-md flex justify-center items-center gap-2"
+        onClick={handleCheckout}
+        isLoading={isStripeProcessing && !stripeUrl}
+        disabled={!termsAccepted || (isStripeProcessing && !stripeUrl)}
+      >
+        {isStripeProcessing && !stripeUrl ? 'Préparation du paiement...' : 'Procéder au paiement'}
+      </Button>
+      
+      {stripeUrl && redirectAttempted && (
         <Button 
           fullWidth 
-          className="bg-green-600 hover:bg-green-700 text-white text-sm md:text-base py-2.5 md:py-3 font-bold shadow-md"
-          onClick={handleCheckout}
-          isLoading={isStripeProcessing && !stripeUrl}
-          disabled={!termsAccepted || (isStripeProcessing && !stripeUrl)}
+          className="bg-blue-600 hover:bg-blue-700 text-white text-sm md:text-base py-2.5 md:py-3 flex justify-center items-center gap-2 shadow-md"
+          onClick={() => openStripeWindow(stripeUrl)}
         >
-          {isStripeProcessing && !stripeUrl ? `Préparation du paiement...` : 'Procéder au paiement'}
+          <ExternalLink size={20} />
+          Ouvrir à nouveau la page de paiement
         </Button>
       )}
       
@@ -148,7 +128,7 @@ const StripeCheckoutForm = ({
           <p className="font-semibold">Sur les appareils mobiles :</p>
           <ul className="list-disc pl-4 mt-1 space-y-1">
             <li>Assurez-vous que les popups sont autorisés</li>
-            <li>Utilisez le bouton vert ci-dessus si la redirection ne se fait pas</li>
+            <li>Si la redirection ne fonctionne pas, utilisez le bouton bleu ci-dessus</li>
             <li>Si rien ne fonctionne, essayez un autre navigateur</li>
           </ul>
         </div>

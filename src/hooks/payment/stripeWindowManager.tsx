@@ -9,7 +9,7 @@
  */
 export const openStripeWindow = (stripeUrl: string): void => {
   // Indiquer au navigateur que l'action provient d'un clic utilisateur
-  console.log("Tentative d'ouverture de l'URL Stripe:", stripeUrl);
+  console.log("Ouverture automatique de l'URL Stripe:", stripeUrl);
   
   try {
     // Première méthode: window.open dans un nouvel onglet
@@ -43,9 +43,3 @@ export const isStripeWindowOpen = (): boolean => {
   // Pour l'instant, c'est une implémentation minimaliste
   return false;
 };
-
-/**
- * IMPORTANT: Ne jamais ouvrir automatiquement la fenêtre Stripe
- * L'utilisateur doit toujours cliquer sur un bouton pour ouvrir la page de paiement
- * après avoir explicitement accepté les CGV
- */
