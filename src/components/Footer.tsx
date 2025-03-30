@@ -9,13 +9,6 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Logo et copyright */}
           <div className="flex flex-col items-center md:items-start space-y-2">
-            <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
-              <img 
-                src="/lovable-uploads/b9f26934-070a-463e-bfe8-438fa9773cf7.png" 
-                alt="Stream Genius Logo"
-                className="h-14 mb-2" 
-              />
-            </Link>
             <Link to="/" className="text-2xl font-semibold tracking-tight hover:opacity-90 transition-opacity">
               Stream genius
             </Link>

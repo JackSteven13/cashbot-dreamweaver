@@ -36,20 +36,15 @@ const Navbar = () => {
           ? 'py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-sm'
           : 'py-5 bg-transparent'
       }`}
-      style={{ zIndex: 100 }}
+      style={{ zIndex: 100 }} // Augmenter le z-index pour s'assurer que la navbar est au-dessus des autres éléments
     >
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex justify-between items-center">
           <Link 
             to="/" 
-            className="flex items-center transition-opacity hover:opacity-80"
+            className="text-2xl font-semibold tracking-tight transition-opacity hover:opacity-80"
           >
-            <img 
-              src="/lovable-uploads/b9f26934-070a-463e-bfe8-438fa9773cf7.png" 
-              alt="Stream Genius Logo" 
-              className="h-10 md:h-12 mr-2" 
-            />
-            <span className="text-2xl font-semibold tracking-tight sr-only md:not-sr-only">Stream genius</span>
+            Stream genius
           </Link>
 
           {/* Desktop Navigation */}
@@ -96,7 +91,7 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Mobile Menu using Sheet component */}
+          {/* Mobile Menu using Sheet component from shadcn/ui */}
           <div className="md:hidden flex items-center gap-2">
             <DarkModeToggle />
             <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
@@ -109,15 +104,8 @@ const Navbar = () => {
                   <Menu size={24} />
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[85%] sm:w-[350px] pt-16 z-[150]">
+              <SheetContent side="right" className="w-[85%] sm:w-[350px] pt-16 z-[150]"> {/* Z-index augmenté */}
                 <SheetHeader>
-                  <div className="flex items-center justify-center mb-6">
-                    <img 
-                      src="/lovable-uploads/b9f26934-070a-463e-bfe8-438fa9773cf7.png" 
-                      alt="Stream Genius Logo" 
-                      className="h-16" 
-                    />
-                  </div>
                   <SheetTitle className="text-left text-xl font-bold mb-4">Menu</SheetTitle>
                 </SheetHeader>
                 <div className="flex flex-col space-y-4">
