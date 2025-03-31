@@ -3,8 +3,8 @@ import { SUBSCRIPTION_LIMITS } from '@/components/dashboard/summary/constants';
 import { SUBSCRIPTION_PRICES } from './constants';
 
 /**
- * Calculate revenue for all subscription plans based on user inputs
- * Using an optimistic approach with enhanced revenue projections
+ * Calcule les revenus pour tous les plans d'abonnement en fonction des entrées utilisateur
+ * Utilise un calcul simple et cohérent pour une meilleure prédictibilité
  */
 export const calculateRevenueForAllPlans = (
   sessionsPerDay: number,
@@ -12,85 +12,48 @@ export const calculateRevenueForAllPlans = (
 ): Record<string, { revenue: number, profit: number }> => {
   const results: Record<string, { revenue: number, profit: number }> = {};
   
-  // Facteurs d'efficacité améliorés pour des projections plus attractives
-  const efficiencyFactors = {
-    'freemium': 0.35,   // Amélioré de 0.25 à 0.35
-    'starter': 0.75,    // Amélioré de 0.55 à 0.75
-    'gold': 0.90,       // Amélioré de 0.75 à 0.90
-    'elite': 1.05       // Amélioré de 0.90 à 1.05 (peut dépasser la limite théorique)
+  // Multiplicateurs de base par plan
+  const planMultipliers = {
+    'freemium': 0.35,  // 35% de la limite quotidienne
+    'starter': 0.50,   // 50% de la limite quotidienne
+    'gold': 0.60,      // 60% de la limite quotidienne
+    'elite': 0.70      // 70% de la limite quotidienne
   };
   
-  // Variation aléatoire mineure (±1%) pour éviter des nombres trop ronds
-  const getRandomVariation = () => 1 + ((Math.random() * 2) - 1) / 100;
-  
+  // Pour chaque plan, calculer les revenus et profits mensuels
   Object.entries(SUBSCRIPTION_LIMITS).forEach(([plan, dailyLimit]) => {
     try {
-      // Limiter les sessions pour le mode freemium
-      const effectiveSessions = plan === 'freemium' ? Math.min(1, sessionsPerDay) : sessionsPerDay;
+      // Obtenir le multiplicateur pour ce plan
+      const planMultiplier = planMultipliers[plan as keyof typeof planMultipliers] || 0.3;
       
-      // Efficacité de base pour ce plan
-      const planEfficiency = efficiencyFactors[plan as keyof typeof efficiencyFactors] || 0.3;
+      // Calcul du revenu quotidien basé sur un pourcentage de la limite quotidienne
+      // Plus de sessions = plus de revenus, mais avec un plafond
+      const baseSessionValue = sessionsPerDay > 0 ? Math.min(sessionsPerDay, 5) / 5 : 0.2;
+      const effectiveMultiplier = planMultiplier * (0.7 + (baseSessionValue * 0.6));
       
-      // Calculer le revenu quotidien avec augmentation progressive pour plus de sessions
-      let dailyRevenue = 0;
+      // Calculer le revenu quotidien (en pourcentage de la limite)
+      const dailyRevenue = dailyLimit * effectiveMultiplier;
       
-      // Pour chaque session, ajouter du revenu avec un effet multiplicateur pour les sessions consécutives
-      for (let i = 0; i < effectiveSessions; i++) {
-        // Multiplicateur de session qui augmente davantage pour les sessions consécutives
-        // Les plans supérieurs bénéficient davantage des sessions supplémentaires
-        const sessionMultiplier = 1 + (i * 0.05 * (  // Augmentation de 0.02 à 0.05
-          plan === 'freemium' ? 0.3 :  // Augmentation de 0.2 à 0.3
-          plan === 'starter' ? 0.9 :   // Augmentation de 0.7 à 0.9
-          plan === 'gold' ? 1.2 :      // Augmentation de 1.0 à 1.2
-          1.8                          // Augmentation de 1.5 à 1.8
-        ));
-        
-        // Contribution de base au revenu en pourcentage de la limite quotidienne
-        // Améliorée pour des projections de revenus plus attractives
-        const baseContribution = dailyLimit * (
-          plan === 'freemium' ? 0.20 :  // Augmentation de 0.15 à 0.20
-          plan === 'starter' ? 0.18 :   // Augmentation de 0.12 à 0.18
-          plan === 'gold' ? 0.15 :      // Augmentation de 0.10 à 0.15
-          0.14                          // Augmentation de 0.095 à 0.14
-        );
-        
-        const sessionContribution = baseContribution * planEfficiency * sessionMultiplier;
-        dailyRevenue += sessionContribution;
-      }
-      
-      // Plafond de revenu quotidien augmenté pour des projections plus attractives
-      const maxDailyMultiplier = 
-        plan === 'freemium' ? 0.40 :  // Augmentation de 0.30 à 0.40
-        plan === 'starter' ? 0.65 :   // Augmentation de 0.45 à 0.65
-        plan === 'gold' ? 0.85 :      // Augmentation de 0.65 à 0.85
-        1.0;                          // Augmentation de 0.80 à 1.0
-        
-      dailyRevenue = Math.min(dailyRevenue, dailyLimit * maxDailyMultiplier);
-      
-      // Appliquer une variation aléatoire pour éviter des résultats trop uniformes
-      let monthlyRevenue = dailyRevenue * daysPerMonth * getRandomVariation();
-      
-      // Augmenter les revenus mensuels pour des projections plus attractives
-      monthlyRevenue *= 1.5;  // Augmentation globale de 50%
+      // Calculer le revenu mensuel (cohérent avec le nombre de jours)
+      const monthlyRevenue = dailyRevenue * daysPerMonth;
       
       // Obtenir le prix de l'abonnement
       const subscriptionPrice = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] || 0;
       
-      // Calculer le profit (revenu - coût de l'abonnement)
-      // Réduire davantage l'impact du coût de l'abonnement
-      const profit = monthlyRevenue - (subscriptionPrice * 0.5);  // Réduction de 0.7 à 0.5
+      // Calculer le profit (revenu - coût)
+      const profit = monthlyRevenue - subscriptionPrice;
       
-      // Stocker les résultats avec 2 décimales
+      // Résultats avec 2 décimales
       results[plan] = {
         revenue: parseFloat(monthlyRevenue.toFixed(2)),
         profit: parseFloat(profit.toFixed(2))
       };
+      
     } catch (error) {
-      console.error(`Error calculating for plan ${plan}:`, error);
-      // Valeurs par défaut sécurisées en cas d'erreur, augmentées pour être plus attractives
+      console.error(`Erreur lors du calcul pour le plan ${plan}:`, error);
       results[plan] = {
-        revenue: SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] * 3,  // Augmenté de 2x à 3x
-        profit: SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] * 0.8   // Augmenté de 0.5 à 0.8
+        revenue: 0,
+        profit: -SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] || 0
       };
     }
   });
