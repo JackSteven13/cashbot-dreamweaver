@@ -19,10 +19,13 @@ const PlanCardMetrics: React.FC<PlanCardMetricsProps> = ({ revenue, profit }) =>
   return (
     <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
       <p className="text-xs md:text-sm font-medium text-blue-800 dark:text-blue-300">
-        Revenu: <span className="font-bold">{displayRevenue.toFixed(2)}€</span>
+        Revenu mensuel: <span className="font-bold">{displayRevenue.toFixed(2)}€</span>
       </p>
       <p className="text-xs md:text-sm font-medium text-blue-800 dark:text-blue-300">
-        Profit: <span className="font-bold">{displayProfit.toFixed(2)}€</span>
+        Profit mensuel: <span className="font-bold">{displayProfit.toFixed(2)}€</span>
+      </p>
+      <p className="text-[10px] mt-1 text-blue-600 dark:text-blue-400 italic">
+        (Basé sur {displayRevenue > 0 ? Math.ceil(displayRevenue / 30) : 0}€/jour en moyenne)
       </p>
     </div>
   );

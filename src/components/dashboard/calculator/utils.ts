@@ -45,16 +45,26 @@ export const calculateRevenueForAllPlans = (
           plan === 'gold' ? 1.5 : 2
         ));
         
-        const sessionContribution = (dailyLimit / 4) * planEfficiency * sessionMultiplier;
+        // Base revenue contribution is a percentage of the daily limit
+        // Lower percentages ensure the monthly total stays realistic
+        const baseContribution = dailyLimit * (
+          plan === 'freemium' ? 0.20 : 
+          plan === 'starter' ? 0.15 : 
+          plan === 'gold' ? 0.10 : 
+          0.08
+        );
+        
+        const sessionContribution = baseContribution * planEfficiency * sessionMultiplier;
         dailyRevenue += sessionContribution;
       }
       
-      // Cap at a reasonable multiple of the daily limit to stay realistic
-      // Higher plans have higher caps
+      // Cap daily revenue to ensure it stays realistic relative to the daily limit
+      // This prevents monthly revenue from being unrealistically high
       const maxDailyMultiplier = 
-        plan === 'freemium' ? 1 :
-        plan === 'starter' ? 1.2 :
-        plan === 'gold' ? 1.5 : 1.8;
+        plan === 'freemium' ? 0.45 :
+        plan === 'starter' ? 0.60 :
+        plan === 'gold' ? 0.75 : 
+        0.85;
         
       dailyRevenue = Math.min(dailyRevenue, dailyLimit * maxDailyMultiplier);
       
