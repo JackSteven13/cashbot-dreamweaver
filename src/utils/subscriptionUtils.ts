@@ -1,11 +1,12 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 // Subscription plans and their limits (updated to match new values)
 export const SUBSCRIPTION_LIMITS = {
-  'freemium': 1,
-  'starter': 7,
-  'gold': 25,
-  'elite': 75
+  'freemium': 0.5,
+  'starter': 5,
+  'gold': 20,
+  'elite': 50
 };
 
 // Base percentages for manual boost sessions

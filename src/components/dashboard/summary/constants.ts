@@ -1,47 +1,32 @@
-// Limites de gains quotidiens par abonnement
+
+// Daily limit per subscription type in euros
 export const SUBSCRIPTION_LIMITS = {
-  'freemium': 1,      // 1€ par jour
-  'starter': 7,       // 7€ par jour
-  'gold': 25,         // 25€ par jour
-  'elite': 75         // 75€ par jour
+  'freemium': 0.5,
+  'starter': 5,
+  'gold': 20,
+  'elite': 50
 };
 
-// Taux de commission directs
-export const COMMISSION_RATES = {
-  'freemium': 0.4,   // 40%
-  'starter': 0.6,    // 60%
-  'gold': 0.8,       // 80%
-  'elite': 1.0       // 100%
+// Withdrawal fees by subscription
+export const WITHDRAWAL_FEES = {
+  'freemium': 0.15, // 15%
+  'starter': 0.10,  // 10%
+  'gold': 0.05,     // 5%
+  'elite': 0.02     // 2%
 };
 
-// Taux de commission récurrents
-export const RECURRING_COMMISSION_RATES = {
-  'freemium': 0,     // 0%
-  'starter': 0.1,    // 10%
-  'gold': 0.2,       // 20%
-  'elite': 0.3       // 30%
-};
-
-// Taux de commission niveau 2
-export const LEVEL2_COMMISSION_RATES = {
-  'freemium': 0,     // 0%
-  'starter': 0,      // 0%
-  'gold': 0.05,      // 5%
-  'elite': 0.1       // 10%
-};
-
-// Seuils de retrait par abonnement
+// Withdrawal threshold by subscription
 export const WITHDRAWAL_THRESHOLDS = {
-  'freemium': 200,   // 200€
-  'starter': 400,    // 400€
-  'gold': 700,       // 700€
-  'elite': 1000      // 1000€
+  'freemium': 200,
+  'starter': 400,
+  'gold': 700,
+  'elite': 1000
 };
 
-// Labels des abonnements
-export const SUBSCRIPTION_LABELS = {
-  'freemium': 'Freemium',
-  'starter': 'Starter',
-  'gold': 'Gold',
-  'elite': 'Élite'
+// Session limits per subscription type
+export const SESSION_LIMITS = {
+  'freemium': 1,
+  'starter': 'unlimited',
+  'gold': 'unlimited',
+  'elite': 'unlimited'
 };
