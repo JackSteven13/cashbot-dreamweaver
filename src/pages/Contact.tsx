@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Mail, CheckCircle2, ArrowLeft, Send } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -40,24 +41,25 @@ const Contact = () => {
     try {
       setIsSubmitting(true);
       
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/contact-messages/submit`, {
+      // Utiliser la méthode invoke de Supabase pour appeler l'Edge Function
+      const { data, error } = await supabase.functions.invoke('contact-messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({
+        body: {
           name: formData.name,
           email: formData.email,
-          message: formData.message
-        })
+          message: formData.message,
+          path: 'submit'
+        },
       });
       
-      const result = await response.json();
+      if (error) {
+        console.error('Erreur lors de l\'appel à l\'Edge Function:', error);
+        throw new Error('Erreur lors de l\'envoi du message');
+      }
       
-      if (!response.ok) {
-        console.error('Erreur détaillée:', result.error);
-        throw new Error(result.error || 'Erreur lors de l\'envoi du message');
+      if (!data || !data.success) {
+        console.error('Réponse invalide de l\'Edge Function:', data);
+        throw new Error(data?.error || 'Erreur lors de l\'envoi du message');
       }
       
       setFormSubmitted(true);
