@@ -24,7 +24,7 @@ const AdditionalCGVSections = () => {
       
       <TermsSection title="7. Limites de Garantie et Exclusion de Responsabilité">
         <p className="font-medium">1. Absence de Garantie de Résultats :</p>
-        <p className="ml-4"><strong>Stream Genius</strong> ne garantit en aucun cas des résultats spécifiques ou des niveaux de gains précis à ses Utilisateurs. Les revenus générés par l'utilisation du bot d'intelligence artificielle et autres services sont variables et dépendent de nombreux facteurs externes, notamment les fluctuations du marché publicitaire, les changements algorithmiques des plateformes tierces, et l'évolution technologique.</p>
+        <p className="ml-4"><strong>Stream Genius</strong> ne garantit en aucun cas des résultats spécifiques ou des niveaux de gains précis à ses Utilisateurs. Les revenus générés par l'utilisation du bot d'intelligence artificielle et autres services sont variables et dépendent de nombreux facteurs externes, notamment les fluctuations du marché publicitaire, les changements algorithmiques des plateformes tierces, et l'évolution technologique. Les projections de revenus affichées représentent des estimations théoriques basées sur des conditions optimales et ne constituent en aucun cas une promesse de gains.</p>
         
         <p className="font-medium mt-2">2. Limitation Stricte de Responsabilité :</p>
         <p className="ml-4">En aucun cas, <strong>Stream Genius</strong> ne pourra être tenu responsable des pertes de revenus, d'opportunités commerciales, de données, de réputation, ou de tout autre dommage indirect, même si <strong>Stream Genius</strong> a été informé de la possibilité de tels dommages. La responsabilité financière totale de <strong>Stream Genius</strong> envers un Utilisateur est strictement limitée au montant payé par celui-ci pour son abonnement au cours des douze derniers mois.</p>
@@ -34,6 +34,9 @@ const AdditionalCGVSections = () => {
         
         <p className="font-medium mt-2">4. Réserve de Modification des Services :</p>
         <p className="ml-4"><strong>Stream Genius</strong> se réserve le droit de modifier, suspendre ou interrompre tout ou partie de ses services, temporairement ou définitivement, sans préavis ni indemnité, afin d'assurer la viabilité et la pérennité de la plateforme.</p>
+        
+        <p className="font-medium mt-2">5. Performances Variables selon les Abonnements :</p>
+        <p className="ml-4">Les performances et résultats peuvent varier significativement selon le type d'abonnement souscrit. Les revenus générés sont directement proportionnels au niveau d'abonnement et aux limites quotidiennes associées. Le retour sur investissement (ROI) n'est pas garanti et varie selon les conditions d'utilisation, le niveau d'engagement et les fluctuations du marché.</p>
       </TermsSection>
       
       <TermsSection title="8. Politique de Retraits et Seuils Financiers">

@@ -15,9 +15,9 @@ export const calculateRevenueForAllPlans = (
   // Base efficiency factors for each plan
   const efficiencyFactors = {
     'freemium': 0.35,
-    'starter': 0.68,
-    'gold': 0.85,
-    'elite': 0.94
+    'starter': 0.65,  // Slightly reduced from 0.68
+    'gold': 0.80,     // Slightly reduced from 0.85
+    'elite': 0.90     // Slightly reduced from 0.94
   };
   
   // Add variability to make numbers less round (±2%)
@@ -46,12 +46,12 @@ export const calculateRevenueForAllPlans = (
         ));
         
         // Base revenue contribution is a percentage of the daily limit
-        // Lower percentages ensure the monthly total stays realistic
+        // Reduce these percentages to lower overall revenue projections
         const baseContribution = dailyLimit * (
-          plan === 'freemium' ? 0.20 : 
-          plan === 'starter' ? 0.15 : 
-          plan === 'gold' ? 0.10 : 
-          0.08
+          plan === 'freemium' ? 0.18 : 
+          plan === 'starter' ? 0.13 : 
+          plan === 'gold' ? 0.09 : 
+          0.075
         );
         
         const sessionContribution = baseContribution * planEfficiency * sessionMultiplier;
@@ -59,12 +59,12 @@ export const calculateRevenueForAllPlans = (
       }
       
       // Cap daily revenue to ensure it stays realistic relative to the daily limit
-      // This prevents monthly revenue from being unrealistically high
+      // Reduced caps to make projected earnings more conservative
       const maxDailyMultiplier = 
-        plan === 'freemium' ? 0.45 :
-        plan === 'starter' ? 0.60 :
-        plan === 'gold' ? 0.75 : 
-        0.85;
+        plan === 'freemium' ? 0.40 :
+        plan === 'starter' ? 0.55 :
+        plan === 'gold' ? 0.70 : 
+        0.80;
         
       dailyRevenue = Math.min(dailyRevenue, dailyLimit * maxDailyMultiplier);
       

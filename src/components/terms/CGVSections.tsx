@@ -16,7 +16,7 @@ const CGVSections = () => {
       <TermsSection title="3. Description des Services Proposés">
         <p>La plateforme <strong>Stream Genius</strong> propose à ses Utilisateurs un ensemble de services, dont les principales caractéristiques sont les suivantes :</p>
         <ol className="list-decimal pl-6 mt-2 space-y-1">
-          <li><strong>Accès à un bot d'intelligence artificielle</strong> : Ce bot est conçu pour visionner des publicités rémunératrices de manière automatisée, permettant ainsi à l'Utilisateur de générer des revenus passifs.</li>
+          <li><strong>Accès à un bot d'intelligence artificielle</strong> : Ce bot est conçu pour visionner des publicités rémunératrices de manière automatisée, permettant ainsi à l'Utilisateur de générer des revenus complémentaires.</li>
           <li><strong>Abonnements payants</strong> : <strong>Stream Genius</strong> propose des abonnements mensuels ou annuels, donnant accès à des fonctionnalités premium et à des avantages exclusifs.</li>
           <li><strong>Programme de parrainage</strong> : Les Utilisateurs ont la possibilité de participer à un programme de parrainage leur permettant de gagner des commissions en parrainant de nouveaux membres.</li>
           <li><strong>Support technique et client</strong> : Un service d'assistance est disponible pour répondre aux questions et résoudre les problèmes techniques rencontrés par les Utilisateurs.</li>
@@ -46,6 +46,9 @@ const CGVSections = () => {
         
         <p className="font-medium mt-2">4. Remboursements :</p>
         <p className="ml-4">Aucun remboursement ne sera accordé pour les abonnements déjà entamés, sauf en cas d'erreur technique imputable à <strong>Stream Genius</strong>.</p>
+        
+        <p className="font-medium mt-2">5. Projections de Revenus :</p>
+        <p className="ml-4">Les estimations de revenus présentées sur la plateforme sont fournies à titre indicatif, basées sur des performances moyennes observées. Ces projections ne constituent en aucun cas une garantie de résultat et peuvent varier selon divers facteurs incluant le marché publicitaire, l'engagement de l'utilisateur, et les conditions générales d'utilisation du service.</p>
       </TermsSection>
     </>
   );
