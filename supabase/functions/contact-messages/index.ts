@@ -45,6 +45,37 @@ serve(async (req) => {
           );
         }
         
+        // Vérifier si l'utilisateur a déjà envoyé un message dans les dernières 24 heures
+        const twentyFourHoursAgo = new Date();
+        twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+        
+        const { data: recentMessages, error: queryError } = await supabase
+          .from('contact_messages')
+          .select('created_at')
+          .eq('email', email)
+          .gte('created_at', twentyFourHoursAgo.toISOString())
+          .order('created_at', { ascending: false });
+          
+        if (queryError) {
+          console.error('Erreur lors de la vérification des messages récents:', queryError);
+          return new Response(
+            JSON.stringify({ error: 'Erreur lors de la vérification des messages récents' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Si l'utilisateur a déjà envoyé un message dans les dernières 24 heures
+        if (recentMessages && recentMessages.length > 0) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Limite de message atteinte', 
+              message: 'Vous ne pouvez envoyer qu\'un message toutes les 24 heures. Veuillez réessayer plus tard.',
+              cooldown: true
+            }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
         const { data, error } = await supabase
           .from('contact_messages')
           .insert([{ name, email, message, is_read: false }])
