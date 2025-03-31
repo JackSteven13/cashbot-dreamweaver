@@ -4,86 +4,67 @@ import { toast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import React from "react";
 
-/**
- * Réinitialise les données des comptes utilisateurs spécifiés
- * pour les utiliser à des fins marketing
- */
-export const resetUserAccounts = async () => {
+// Fonction pour réinitialiser le compte d'un utilisateur
+export const resetUserAccount = async (userId: string) => {
   try {
-    // Afficher un toast de chargement
+    // Mise à jour du solde de l'utilisateur
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ balance: 0 })
+      .eq('id', userId);
+      
+    if (updateError) throw updateError;
+    
+    // Suppression des transactions de l'utilisateur
+    const { error: deleteError } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('user_id', userId);
+      
+    if (deleteError) throw deleteError;
+    
     toast({
-      title: "Réinitialisation en cours",
-      description: "Veuillez patienter pendant la réinitialisation des comptes...",
+      title: "Compte réinitialisé",
+      description: "Le compte a été réinitialisé avec succès",
     });
     
-    const { data, error } = await supabase.functions.invoke("reset-users", {
-      method: "POST",
-    });
-
-    if (error) {
-      console.error("Erreur lors de la réinitialisation des utilisateurs:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de réinitialiser les comptes utilisateurs.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (data.success) {
-      toast({
-        title: "Succès",
-        description: data.message,
-        variant: "default",
-      });
-      
-      // Pour s'assurer que les changements sont visibles dans l'interface
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-      
-      return true;
-    } else {
-      toast({
-        title: "Attention",
-        description: data.message,
-        variant: "destructive",
-      });
-      return false;
-    }
+    return true;
   } catch (error) {
-    console.error("Erreur lors de l'appel à reset-users:", error);
+    console.error("Erreur lors de la réinitialisation du compte:", error);
     toast({
       title: "Erreur",
-      description: "Une erreur s'est produite. Veuillez réessayer.",
+      description: "Une erreur est survenue lors de la réinitialisation du compte",
       variant: "destructive",
     });
     return false;
   }
 };
 
-/**
- * Composant pour afficher un bouton de réinitialisation avec tooltip
- */
-export const ResetUserAccountsButton = ({ children }: { children: React.ReactNode }) => {
+// Composant pour le bouton de réinitialisation avec confirmation
+export const ResetAccountButton = ({ userId, onSuccess }: { userId: string, onSuccess?: () => void }) => {
   const handleReset = async () => {
-    const confirmed = window.confirm(
-      "Êtes-vous sûr de vouloir réinitialiser ces comptes utilisateurs? Cette action supprimera toutes les transactions et remettra les soldes à zéro."
-    );
-    
+    const confirmed = window.confirm("Êtes-vous sûr de vouloir réinitialiser ce compte ? Cette action est irréversible.");
     if (confirmed) {
-      await resetUserAccounts();
+      const success = await resetUserAccount(userId);
+      if (success && onSuccess) {
+        onSuccess();
+      }
     }
   };
   
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild onClick={handleReset}>
-          {children}
+        <TooltipTrigger asChild>
+          <button
+            onClick={handleReset}
+            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs"
+          >
+            Réinitialiser
+          </button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Réinitialise les comptes marketing</p>
+          <p>Réinitialiser le solde et supprimer les transactions</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
