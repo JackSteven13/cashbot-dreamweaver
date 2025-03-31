@@ -41,6 +41,7 @@ const Contact = () => {
     try {
       setIsSubmitting(true);
       
+      // Utiliser l'API publique sans authentification
       const { error } = await supabase
         .from('contact_messages')
         .insert([
