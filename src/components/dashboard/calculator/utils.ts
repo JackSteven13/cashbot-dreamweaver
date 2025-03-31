@@ -4,7 +4,7 @@ import { SUBSCRIPTION_PRICES } from './constants';
 
 /**
  * Calcule les revenus pour tous les plans d'abonnement de manière cohérente
- * avec un ROI fixe de 67% pour tous les plans
+ * et impressionnante pour mettre en valeur notre technologie
  */
 export const calculateRevenueForAllPlans = (
   sessionsPerDay: number,
@@ -12,41 +12,33 @@ export const calculateRevenueForAllPlans = (
 ): Record<string, { revenue: number, profit: number }> => {
   const results: Record<string, { revenue: number, profit: number }> = {};
   
-  // ROI cible cohérent pour tous les plans
-  const targetROI = 0.67; // 67%
-  
   // Pour chaque plan, calculer les revenus et profits mensuels
   Object.entries(SUBSCRIPTION_LIMITS).forEach(([plan, dailyLimit]) => {
     try {
       // Obtenir le prix de l'abonnement
       const subscriptionPrice = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] || 0;
       
-      // Calculer l'utilisation moyenne (entre 70% et 90% de la limite quotidienne)
+      // Calculer l'utilisation moyenne (entre 75% et 95% de la limite quotidienne)
       // Plus de sessions = meilleure utilisation de la limite
-      const baseUtilization = 0.7 + (Math.min(sessionsPerDay, 5) / 5) * 0.2;
+      const baseUtilization = 0.75 + (Math.min(sessionsPerDay, 5) / 5) * 0.20;
       
       // Calculer le revenu mensuel basé sur la limite quotidienne et le nombre de jours
-      const monthlyRevenue = dailyLimit * baseUtilization * daysPerMonth;
+      // Les plans payants ont un multiplicateur de performance supplémentaire
+      let performanceMultiplier = 1.0;
+      if (plan === 'starter') performanceMultiplier = 1.15;
+      if (plan === 'gold') performanceMultiplier = 1.3;
+      if (plan === 'elite') performanceMultiplier = 1.45;
       
-      // Calculer le profit en utilisant le ROI cible
-      // Profit = Revenue - Subscription Cost
-      // Si Revenue = Subscription Cost / (1 - ROI), alors Profit/Subscription Cost = ROI
-      const expectedProfit = monthlyRevenue - subscriptionPrice;
+      // Revenu basé sur la limite journalière, l'utilisation, les jours et le multiplicateur
+      const monthlyRevenue = dailyLimit * baseUtilization * daysPerMonth * performanceMultiplier;
       
-      // Assurer que le rapport profit/revenu est cohérent (ajuster si nécessaire)
-      let finalRevenue = monthlyRevenue;
-      let finalProfit = expectedProfit;
-      
-      // Si le profit est inférieur à ce qui est attendu avec notre ROI cible, ajuster le revenu
-      if (expectedProfit < subscriptionPrice * targetROI) {
-        finalProfit = subscriptionPrice * targetROI;
-        finalRevenue = finalProfit + subscriptionPrice;
-      }
+      // Le profit est le revenu moins le coût de l'abonnement
+      const profit = monthlyRevenue - subscriptionPrice;
       
       // Résultats avec 2 décimales
       results[plan] = {
-        revenue: parseFloat(finalRevenue.toFixed(2)),
-        profit: parseFloat(finalProfit.toFixed(2))
+        revenue: parseFloat(monthlyRevenue.toFixed(2)),
+        profit: parseFloat(profit.toFixed(2))
       };
       
     } catch (error) {
