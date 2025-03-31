@@ -1,10 +1,9 @@
-
 // Limites de gains quotidiens par abonnement
 export const SUBSCRIPTION_LIMITS = {
-  'freemium': 0.5,   // 0.5€ par jour
-  'starter': 5,      // 5€ par jour
-  'gold': 20,        // 20€ par jour
-  'elite': 50        // 50€ par jour
+  'freemium': 1,      // 1€ par jour
+  'starter': 7,       // 7€ par jour
+  'gold': 25,         // 25€ par jour
+  'elite': 75         // 75€ par jour
 };
 
 // Taux de commission directs

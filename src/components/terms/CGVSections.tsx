@@ -47,8 +47,8 @@ const CGVSections = () => {
         <p className="font-medium mt-2">4. Remboursements :</p>
         <p className="ml-4">Aucun remboursement ne sera accordé pour les abonnements déjà entamés, sauf en cas d'erreur technique imputable à <strong>Stream Genius</strong>.</p>
         
-        <p className="font-medium mt-2">5. Projections de Revenus :</p>
-        <p className="ml-4">Les estimations de revenus présentées sur la plateforme sont fournies à titre indicatif, basées sur des performances moyennes observées. Ces projections ne constituent en aucun cas une garantie de résultat et peuvent varier selon divers facteurs incluant le marché publicitaire, l'engagement de l'utilisateur, et les conditions générales d'utilisation du service.</p>
+        <p className="font-medium mt-2">5. Limites de Gains et Performance :</p>
+        <p className="ml-4">Chaque abonnement correspond à un niveau de performance du bot et à une limite quotidienne de gains : Freemium (1€/jour), Starter (7€/jour), Gold (25€/jour) et Elite (75€/jour). Ces limites définissent le potentiel de revenus maximum généré quotidiennement par votre bot. La performance du bot augmente proportionnellement avec le niveau d'abonnement, offrant ainsi un retour sur investissement attractif pour les abonnements supérieurs.</p>
       </TermsSection>
     </>
   );

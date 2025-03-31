@@ -14,13 +14,7 @@ const PlanCardMetrics: React.FC<PlanCardMetricsProps> = ({ revenue, profit }) =>
   
   // Valeurs par défaut pour éviter NaN
   const displayRevenue = revenue === undefined || isNaN(revenue) ? 0 : revenue;
-  
-  // Assurer que le profit est toujours positif
-  let displayProfit = profit === undefined || isNaN(profit) ? 0 : profit;
-  if (displayRevenue > 0 && displayProfit <= 0) {
-    // Si le profit est négatif, on le rend positif
-    displayProfit = displayRevenue * 0.4; // 40% du revenu comme profit
-  }
+  const displayProfit = profit === undefined || isNaN(profit) ? 0 : profit;
   
   // Calcul du ROI (Return on Investment)
   const subscriptionCost = displayRevenue - displayProfit;
@@ -28,9 +22,7 @@ const PlanCardMetrics: React.FC<PlanCardMetricsProps> = ({ revenue, profit }) =>
   
   // Déterminer les classes de couleur
   const profitColorClass = 'text-green-600 dark:text-green-400 font-bold';
-  const roiColorClass = roi === "N/A" 
-    ? 'text-gray-500 dark:text-gray-400'
-    : 'text-green-600 dark:text-green-400 font-bold';
+  const roiColorClass = 'text-green-600 dark:text-green-400 font-bold';
   
   return (
     <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800/30">

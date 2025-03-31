@@ -1,12 +1,11 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
-// Subscription plans and their limits
+// Subscription plans and their limits (updated to match new values)
 export const SUBSCRIPTION_LIMITS = {
-  'freemium': 0.5,
-  'starter': 5,
-  'gold': 20,
-  'elite': 50
+  'freemium': 1,
+  'starter': 7,
+  'gold': 25,
+  'elite': 75
 };
 
 // Base percentages for manual boost sessions
@@ -32,7 +31,7 @@ const normalizeSubscription = (subscription: string): string => {
  * Vérifie le mode Pro temporaire et retourne la souscription effective
  */
 export const getEffectiveSubscription = (subscription: string): string => {
-  // Normaliser d'abord la souscription (convertir "alpha" en "starter")
+  // Normaliser d'abonnement (convertir "alpha" en "starter")
   const normalizedSubscription = normalizeSubscription(subscription);
   
   // Vérifier si l'utilisateur a un essai Pro actif
