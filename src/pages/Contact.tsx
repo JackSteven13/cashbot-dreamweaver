@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Mail, CheckCircle2, ArrowLeft, Send } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -41,19 +40,24 @@ const Contact = () => {
     try {
       setIsSubmitting(true);
       
-      const { error } = await supabase
-        .from('contact_messages')
-        .insert([
-          {
-            name: formData.name,
-            email: formData.email,
-            message: formData.message
-          }
-        ]);
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/contact-messages/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message
+        })
+      });
       
-      if (error) {
-        console.error('Erreur détaillée:', error);
-        throw error;
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('Erreur détaillée:', result.error);
+        throw new Error(result.error || 'Erreur lors de l\'envoi du message');
       }
       
       setFormSubmitted(true);
@@ -83,7 +87,6 @@ const Contact = () => {
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow flex items-center justify-center py-20 px-4">
         <div className="max-w-md w-full bg-white dark:bg-slate-900 shadow-lg rounded-xl p-8 relative">
-          {/* Bouton de retour */}
           <Button
             variant="ghost"
             size="sm"
