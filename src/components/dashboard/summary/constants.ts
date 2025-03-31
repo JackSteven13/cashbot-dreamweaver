@@ -30,3 +30,35 @@ export const SESSION_LIMITS = {
   'gold': 'unlimited',
   'elite': 'unlimited'
 };
+
+// Commission rates for direct referrals
+export const COMMISSION_RATES = {
+  'freemium': 0.4,   // 40%
+  'starter': 0.6,    // 60%
+  'gold': 0.8,       // 80%
+  'elite': 1.0       // 100%
+};
+
+// Recurring commission rates
+export const RECURRING_COMMISSION_RATES = {
+  'freemium': 0,     // 0%
+  'starter': 0.1,    // 10%
+  'gold': 0.2,       // 20%
+  'elite': 0.3       // 30%
+};
+
+// Level 2 commission rates (for referrals of referrals)
+export const LEVEL2_COMMISSION_RATES = {
+  'freemium': 0,     // 0%
+  'starter': 0,      // 0%
+  'gold': 0.05,      // 5%
+  'elite': 0.1       // 10%
+};
+
+// Subscription labels for display
+export const SUBSCRIPTION_LABELS = {
+  'freemium': 'Freemium',
+  'starter': 'Starter',
+  'gold': 'Gold',
+  'elite': 'Élite'
+};
