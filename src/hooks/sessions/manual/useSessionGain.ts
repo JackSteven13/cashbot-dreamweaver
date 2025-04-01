@@ -4,7 +4,7 @@ import {
   SUBSCRIPTION_LIMITS, 
   getEffectiveSubscription,
   calculateManualSessionGain
-} from '@/utils/subscriptionUtils';
+} from '@/utils/subscription';
 import { UserData } from '@/types/userData';
 import { useLimitChecking } from './useLimitChecking';
 

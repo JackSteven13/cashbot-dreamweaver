@@ -4,3 +4,5 @@ export * from './constants';
 export * from './subscriptionStatus';
 export * from './sessionManagement';
 export * from './gainCalculation';
+export * from './sessionGain';
+
