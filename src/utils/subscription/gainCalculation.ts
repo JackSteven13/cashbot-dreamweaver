@@ -1,103 +1,77 @@
 
-import { normalizeSubscription, getEffectiveSubscription } from "./subscriptionStatus";
-import { SUBSCRIPTION_LIMITS, MANUAL_SESSION_GAIN_PERCENTAGES } from "./constants";
+import { SUBSCRIPTION_LIMITS } from './constants';
+import { SUBSCRIPTION_PRICES } from '@/components/dashboard/calculator/constants';
 
 /**
- * Calculate the gain for a manual session
+ * Calcule les gains potentiels en fonction du type d'abonnement et des sessions
  */
-export const calculateManualSessionGain = (
-  subscription: string, 
-  currentBalance: number,
-  referralCount: number = 0
-): number => {
-  // Normalize subscription first
-  const normalizedSubscription = normalizeSubscription(subscription);
+export const calculatePotentialGains = (
+  subscriptionType: string,
+  sessionsPerDay: number = 1,
+  daysPerMonth: number = 20
+): { dailyGain: number; monthlyGain: number; } => {
+  // Obtenir la limite quotidienne selon l'abonnement
+  const dailyLimit = SUBSCRIPTION_LIMITS[subscriptionType as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
-  // Use effective subscription for limit calculation
-  const effectiveSubscription = getEffectiveSubscription(normalizedSubscription);
+  // Facteur d'efficacité basé sur le nombre de sessions (plus de sessions = meilleure efficacité)
+  const efficiencyFactor = Math.min(0.75 + (sessionsPerDay * 0.05), 0.95);
   
-  // Get daily limit for effective subscription
-  const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  // Calcul du gain journalier (limité au maximum quotidien)
+  const rawDailyGain = dailyLimit * efficiencyFactor;
+  const dailyGain = Math.min(rawDailyGain, dailyLimit);
   
-  // Calculate remaining amount before reaching limit
-  const remainingAmount = dailyLimit - currentBalance;
+  // Calcul du gain mensuel
+  const monthlyGain = dailyGain * daysPerMonth;
   
-  // If limit already reached, return 0
-  if (remainingAmount <= 0) {
-    return 0;
-  }
-  
-  // Get base percentage ranges for this subscription
-  const percentages = MANUAL_SESSION_GAIN_PERCENTAGES[effectiveSubscription as keyof typeof MANUAL_SESSION_GAIN_PERCENTAGES];
-  
-  // Base gain is a percentage of the subscription's daily limit
-  const minPercentage = percentages.min;
-  const maxPercentage = percentages.max;
-  
-  // Random percentage within the range
-  const randomPercentage = Math.random() * (maxPercentage - minPercentage) + minPercentage;
-  
-  // Calculate base gain
-  let gain = dailyLimit * randomPercentage;
-  
-  // Referral bonus: each referral adds a small percentage (0.5-2%) to the gain, up to 25% extra
-  if (referralCount > 0) {
-    const referralBonus = Math.min(referralCount * 0.05, 0.25); // Max 25% bonus
-    gain = gain * (1 + referralBonus);
-  }
-  
-  // Ensure gain doesn't exceed remaining amount
-  gain = Math.min(gain, remainingAmount);
-  
-  // Round to 2 decimal places and ensure positive
-  return parseFloat(Math.max(0.01, gain).toFixed(2));
+  return {
+    dailyGain: parseFloat(dailyGain.toFixed(2)),
+    monthlyGain: parseFloat(monthlyGain.toFixed(2))
+  };
 };
 
 /**
- * Calculate the gain for an automatic session
+ * Calcule les revenus pour tous les plans d'abonnement sans référence au ROI
  */
-export const calculateAutoSessionGain = (
-  subscription: string, 
-  currentBalance: number,
-  referralCount: number = 0
-): number => {
-  // Normalize subscription first
-  const normalizedSubscription = normalizeSubscription(subscription);
+export const calculateAllPlansRevenue = (
+  sessionsPerDay: number,
+  daysPerMonth: number
+): Record<string, { revenue: number, profit: number }> => {
+  const results: Record<string, { revenue: number, profit: number }> = {};
   
-  // Use effective subscription for limit calculation
-  const effectiveSubscription = getEffectiveSubscription(normalizedSubscription);
+  // Pour chaque plan, calculer les revenus et profits mensuels
+  Object.entries(SUBSCRIPTION_LIMITS).forEach(([plan, dailyLimit]) => {
+    try {
+      // Obtenir le prix de l'abonnement
+      const subscriptionPrice = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] || 0;
+      
+      // Calculer l'utilisation moyenne (entre 75% et 95% de la limite quotidienne)
+      const baseUtilization = 0.75 + (Math.min(sessionsPerDay, 5) / 5) * 0.20;
+      
+      // Multiplicateur de performance selon le plan
+      let performanceMultiplier = 1.0;
+      if (plan === 'pro') performanceMultiplier = 1.15;
+      if (plan === 'visionnaire') performanceMultiplier = 1.3;
+      if (plan === 'elite') performanceMultiplier = 1.45;
+      
+      // Calcul du revenu mensuel avec le multiplicateur
+      const monthlyRevenue = dailyLimit * baseUtilization * daysPerMonth * performanceMultiplier;
+      
+      // Le profit est le revenu moins le coût de l'abonnement
+      const profit = monthlyRevenue - subscriptionPrice;
+      
+      // Résultats avec 2 décimales
+      results[plan] = {
+        revenue: parseFloat(monthlyRevenue.toFixed(2)),
+        profit: parseFloat(profit.toFixed(2))
+      };
+    } catch (error) {
+      console.error(`Erreur lors du calcul pour le plan ${plan}:`, error);
+      results[plan] = {
+        revenue: 0,
+        profit: -SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] || 0
+      };
+    }
+  });
   
-  // Get daily limit for effective subscription
-  const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-  
-  // Calculate remaining amount before reaching limit
-  const remainingAmount = dailyLimit - currentBalance;
-  
-  // If limit already reached, return 0
-  if (remainingAmount <= 0) {
-    return 0;
-  }
-  
-  // Auto sessions generate smaller gains than manual sessions
-  // They are 10-30% of the manual session gains
-  const minPercentage = 0.01;  // Min 1% of daily limit
-  const maxPercentage = 0.03;  // Max 3% of daily limit
-  
-  // Random percentage within the range
-  const randomPercentage = Math.random() * (maxPercentage - minPercentage) + minPercentage;
-  
-  // Calculate base gain
-  let gain = dailyLimit * randomPercentage;
-  
-  // Referral bonus: each referral adds a small percentage to the gain
-  if (referralCount > 0) {
-    const referralBonus = Math.min(referralCount * 0.02, 0.15); // Max 15% bonus
-    gain = gain * (1 + referralBonus);
-  }
-  
-  // Ensure gain doesn't exceed remaining amount
-  gain = Math.min(gain, remainingAmount);
-  
-  // Round to 2 decimal places and ensure positive
-  return parseFloat(Math.max(0.01, gain).toFixed(2));
+  return results;
 };
