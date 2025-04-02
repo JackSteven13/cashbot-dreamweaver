@@ -5,7 +5,7 @@ import DashboardContent from '@/components/dashboard/DashboardContent';
 import DashboardLoading from '@/components/dashboard/DashboardLoading';
 import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
-import { useDashboardInitialization } from '@/hooks/dashboard/useDashboardInitialization';
+import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
 import { memo, useEffect, useRef } from 'react';
 
