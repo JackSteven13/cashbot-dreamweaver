@@ -48,11 +48,18 @@ export const useUserFetch = (): UserFetchResult => {
     console.log("useUserFetch mounting");
     isMounted.current = true;
     
+    // Trigger initial fetch when component mounts
+    if (!initialFetchAttempted.current) {
+      fetchUserData().catch(error => {
+        console.error("Error during initial fetch:", error);
+      });
+    }
+    
     return () => {
       console.log("useUserFetch unmounting");
       isMounted.current = false;
     };
-  }, []);
+  }, [fetchUserData]);
   
   // Process data for new users
   const sanitizedUserData = ensureZeroBalanceForNewUser(

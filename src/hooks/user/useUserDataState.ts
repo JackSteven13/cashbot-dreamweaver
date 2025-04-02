@@ -10,7 +10,17 @@ export interface UserFetcherState {
   isLoading: boolean;
 }
 
-export const useUserDataState = (initialUserData: UserData = {} as UserData) => {
+// Create a default UserData object to prevent undefined errors
+const defaultUserData: UserData = {
+  username: '',
+  balance: 0,
+  subscription: 'freemium',
+  transactions: [],
+  referrals: [],
+  referralLink: '',
+};
+
+export const useUserDataState = (initialUserData: UserData = defaultUserData) => {
   // State for tracking user data
   const [userData, setUserData] = useState<UserData>(initialUserData);
   const [dailySessionCount, setDailySessionCount] = useState<number>(0);

@@ -2,10 +2,21 @@
 import { useCallback } from 'react';
 import { fetchCompleteUserData } from '@/utils/user/userDataFetch';
 import { fetchUserTransactions } from '@/utils/user/transactionUtils';
-import { checkDailyLimit } from '@/utils/subscription'; // Correction: import depuis le bon dossier
+import { checkDailyLimit } from '@/utils/subscription'; // Import from the correct folder
 import { generateReferralLink } from '@/utils/referralUtils';
 import { UserFetcherState } from './useUserDataState';
 import { getCurrentSession } from '@/utils/auth/sessionUtils';
+import { UserData } from '@/types/userData';
+
+// Initial default user data
+const defaultUserData: UserData = {
+  username: '',
+  balance: 0,
+  subscription: 'freemium',
+  transactions: [],
+  referrals: [],
+  referralLink: '',
+};
 
 export const useUserDataFetching = (
   loadUserProfile: (userId: string, userEmail?: string | null) => Promise<any>,
@@ -14,12 +25,18 @@ export const useUserDataFetching = (
   setIsLoading: (loading: boolean) => void,
   isNewUser: boolean
 ) => {
-  // Fonction pour récupérer les données utilisateur avec protection contre les boucles
+  // Function to fetch user data with protection against loops
   const fetchUserData = useCallback(async () => {
     try {
       setIsLoading(true);
       
-      // Vérifier si une session existe
+      // Update with minimal default data immediately to prevent undefined errors
+      updateUserData({
+        userData: defaultUserData,
+        isLoading: true
+      });
+      
+      // Check if a session exists
       const session = await getCurrentSession();
       
       if (!session) {
@@ -28,35 +45,37 @@ export const useUserDataFetching = (
         return;
       }
 
-      // Récupérer toutes les données utilisateur en incluant les parrainages
+      // Fetch all user data including referrals
       const userData = await fetchCompleteUserData(session.user.id, session.user.email);
       
-      if (!userData || !userData.balance) {
+      if (!userData) {
+        console.log("Could not fetch user data, using defaults");
         setIsLoading(false);
         return;
       }
       
-      // Récupérer le profil utilisateur
+      // Fetch user profile
       const refreshedProfile = await loadUserProfile(session.user.id, session.user.email);
       
-      // Récupérer les données de solde
+      // Fetch balance data
       const balanceResult = await loadUserBalance(session.user.id);
       if (!balanceResult) {
+        console.log("Could not fetch balance data, using defaults");
         setIsLoading(false);
         return;
       }
       
       const { balanceData } = balanceResult;
 
-      // Récupérer les transactions
+      // Fetch transactions
       const transactionsData = await fetchUserTransactions(session.user.id);
 
-      // Déterminer le nom d'affichage de l'utilisateur
+      // Determine display name for user
       const displayName = refreshedProfile?.full_name || 
                          session.user.user_metadata?.full_name || 
                          (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
 
-      // Créer l'objet de données utilisateur
+      // Create user data object
       const newUserData = {
         username: displayName,
         balance: balanceData?.balance || 0,
@@ -64,15 +83,15 @@ export const useUserDataFetching = (
         referrals: userData.referrals || [],
         referralLink: userData.referralLink || generateReferralLink(session.user.id),
         email: session.user.email || undefined,
-        transactions: transactionsData
+        transactions: transactionsData || []
       };
       
       const newDailySessionCount = balanceData?.daily_session_count || 0;
       
-      // Vérifier si la limite quotidienne est atteinte
+      // Check if daily limit is reached
       const limitReached = checkDailyLimit(balanceData?.balance || 0, balanceData?.subscription || 'freemium');
       
-      // Mettre à jour les données avec protection contre les boucles
+      // Update data with protection against loops
       updateUserData({
         userData: newUserData,
         isNewUser: userData.isNewUser || isNewUser,
@@ -82,7 +101,11 @@ export const useUserDataFetching = (
       });
     } catch (error) {
       console.error("Error in fetchUserData:", error);
-      setIsLoading(false);
+      // On error, still update with defaults to prevent undefined errors
+      updateUserData({
+        userData: defaultUserData,
+        isLoading: false
+      });
     }
   }, [loadUserProfile, loadUserBalance, isNewUser, updateUserData, setIsLoading]);
 
