@@ -14,30 +14,22 @@ export interface UserFetcherActions {
 export type { UserFetcherState };
 
 export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => {
-  const userDataState = useUserDataState();
+  const { state, updateUserData, setShowLimitAlert, setIsLoading } = useUserDataState();
   const { loadUserProfile, isNewUser, setIsNewUser } = useProfileLoader();
   const { loadUserBalance } = useBalanceLoader(setIsNewUser);
 
   const { fetchUserData } = useUserDataFetching(
     loadUserProfile,
     loadUserBalance,
-    userDataState.updateUserData,
-    userDataState.setIsLoading,
+    updateUserData,
+    setIsLoading,
     isNewUser
   );
-
-  const state: UserFetcherState = {
-    userData: userDataState.userData,
-    dailySessionCount: userDataState.dailySessionCount,
-    showLimitAlert: userDataState.showLimitAlert,
-    isNewUser: userDataState.isNewUser,
-    isLoading: userDataState.isLoading
-  };
 
   return [
     state,
     {
-      setShowLimitAlert: userDataState.setShowLimitAlert,
+      setShowLimitAlert,
       fetchUserData
     }
   ];

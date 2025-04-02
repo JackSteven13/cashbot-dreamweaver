@@ -7,16 +7,13 @@ import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
 import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
-import { memo, useEffect, useRef, useMemo, useState } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { memo, useEffect, useRef, useMemo } from 'react';
 
 // Composant principal avec memo pour éviter les re-rendus inutiles
 const Dashboard = memo(() => {
   const location = useLocation();
   const renderCountRef = useRef(0);
   const initialRenderCompleteRef = useRef(false);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [forceShowDashboard, setForceShowDashboard] = useState(false);
   
   // Hooks stables avec dépendances minimales
   const {
@@ -25,22 +22,6 @@ const Dashboard = memo(() => {
     authError
   } = useDashboardInitialization();
   
-  const dashboardState = useDashboardState();
-  
-  // Définir un timeout pour afficher le dashboard même si les données ne sont pas complètes
-  useEffect(() => {
-    loadingTimeoutRef.current = setTimeout(() => {
-      setForceShowDashboard(true);
-    }, 2000); // Afficher le dashboard après 2 secondes maximum
-    
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, []);
-  
-  // Protect against undefined userData
   const {
     selectedNavItem,
     setSelectedNavItem,
@@ -59,25 +40,7 @@ const Dashboard = memo(() => {
     lastSessionTimestamp,
     forceRefresh,
     isLoading
-  } = dashboardState || {
-    selectedNavItem: 'dashboard',
-    setSelectedNavItem: () => {},
-    renderKey: Date.now(),
-    userData: null,
-    isNewUser: false,
-    dailySessionCount: 0,
-    showLimitAlert: false,
-    isDormant: false,
-    dormancyData: null,
-    isChecking: false,
-    handleReactivate: () => {},
-    isStartingSession: false,
-    handleStartSession: () => {},
-    handleWithdrawal: () => {},
-    lastSessionTimestamp: undefined,
-    forceRefresh: () => {},
-    isLoading: false
-  };
+  } = useDashboardState();
   
   // Effet de debug avec scope limité
   useEffect(() => {
@@ -87,20 +50,16 @@ const Dashboard = memo(() => {
   
   // Calculs memoizés pour éviter les re-calculs à chaque rendu
   const { isLoading_Combined, hasError, canShowDashboard } = useMemo(() => {
-    const isLoadingCombined = !forceShowDashboard && (isAuthChecking || isLoading || !isReady || isChecking);
-    const hasErrorValue = authError || (!isLoadingCombined && !userData?.username && !forceShowDashboard);
-    const canShowDashboardValue = forceShowDashboard || (!isLoadingCombined && !authError && isReady && userData?.username);
+    const isLoadingCombined = isAuthChecking || isLoading || !isReady || isChecking;
+    const hasErrorValue = authError || (!isLoadingCombined && !userData?.username);
+    const canShowDashboardValue = !isLoadingCombined && !authError && isReady && userData?.username;
     
     return {
       isLoading_Combined: isLoadingCombined,
       hasError: hasErrorValue,
       canShowDashboard: canShowDashboardValue
     };
-  }, [forceShowDashboard, isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
-  
-  // Données sécurisées pour le rendu
-  const safeUsername = userData?.username || 'utilisateur';
-  const safeSubscription = userData?.subscription || 'freemium';
+  }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
   
   return (
     <>
@@ -121,8 +80,8 @@ const Dashboard = memo(() => {
       {canShowDashboard && (
         <DashboardLayout
           key={renderKey}
-          username={safeUsername}
-          subscription={safeSubscription}
+          username={userData.username}
+          subscription={userData.subscription}
           selectedNavItem={selectedNavItem}
           setSelectedNavItem={setSelectedNavItem}
         >
@@ -134,14 +93,7 @@ const Dashboard = memo(() => {
                 dormancyData={dormancyData}
                 showLimitAlert={showLimitAlert}
                 isNewUser={isNewUser}
-                userData={userData || {
-                  username: 'utilisateur',
-                  balance: 0,
-                  subscription: 'freemium',
-                  transactions: [],
-                  referrals: [],
-                  referralLink: ''
-                }}
+                userData={userData}
                 isStartingSession={isStartingSession}
                 handleStartSession={handleStartSession}
                 handleWithdrawal={handleWithdrawal}
