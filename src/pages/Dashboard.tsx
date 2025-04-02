@@ -7,9 +7,16 @@ import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
 import { useDashboardInitialization } from '@/hooks/dashboard/useDashboardInitialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
+import { memo } from 'react';
 
-const Dashboard = () => {
+// Utilisation de memo pour éviter les re-rendus inutiles du composant principal
+const Dashboard = memo(() => {
   const location = useLocation();
+  
+  // Utiliser les hooks pour l'état et l'initialisation
+  const dashboardState = useDashboardState();
+  const initState = useDashboardInitialization();
+  
   const {
     selectedNavItem,
     setSelectedNavItem,
@@ -30,15 +37,20 @@ const Dashboard = () => {
     lastSessionTimestamp,
     forceRefresh,
     isLoading
-  } = useDashboardState();
+  } = dashboardState;
   
   const {
     isAuthChecking,
     isReady,
     authError
-  } = useDashboardInitialization();
+  } = initState;
   
-  // Include the initialization effects
+  // Les conditions d'affichage sont gérées de manière plus robuste
+  const isLoading_Combined = isAuthChecking || isLoading || !isReady || isChecking;
+  const hasError = authError || (!isLoading_Combined && !userData?.username);
+  const canShowDashboard = !isLoading_Combined && !authError && isReady && !isChecking && userData?.username;
+  
+  // Inclure les effets d'initialisation
   return (
     <>
       <DashboardInitializationEffect
@@ -50,7 +62,7 @@ const Dashboard = () => {
         setSelectedNavItem={setSelectedNavItem}
       />
       
-      {(isAuthChecking || isLoading || !isReady || isChecking) && (
+      {isLoading_Combined && (
         <DashboardLoading />
       )}
       
@@ -58,11 +70,11 @@ const Dashboard = () => {
         <DashboardError errorType="auth" />
       )}
       
-      {!isAuthChecking && !isLoading && !authError && !isReady && !isChecking && (!userData || !userData.username) && (
+      {!isLoading_Combined && !authError && !isReady && !isChecking && (!userData || !userData.username) && (
         <DashboardError errorType="data" onRefresh={forceRefresh} />
       )}
       
-      {!isAuthChecking && !isLoading && !authError && isReady && !isChecking && userData && userData.username && (
+      {canShowDashboard && (
         <DashboardLayout
           key={renderKey}
           username={userData.username}
@@ -91,6 +103,7 @@ const Dashboard = () => {
       )}
     </>
   );
-};
+});
 
+Dashboard.displayName = 'Dashboard';
 export default Dashboard;

@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface DashboardInitializationEffectProps {
   initialRenderComplete: React.MutableRefObject<boolean>;
@@ -18,16 +18,21 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
   pathname,
   setSelectedNavItem
 }) => {
-  // Effect for logging initial render
+  const initEffectRan = useRef(false);
+
+  // Effect pour logging initial - optimisé pour éviter les doubles exécutions
   useEffect(() => {
-    // Only log on first successful render with data
-    if (!initialRenderComplete.current && !isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
-      console.log("Dashboard mounted with user data:", userData.username);
+    if (initEffectRan.current) return;
+    
+    // Vérifier que toutes les données sont disponibles avant de marquer l'initialisation
+    if (!isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
+      console.log("Dashboard monté avec les données utilisateur:", userData.username);
       initialRenderComplete.current = true;
+      initEffectRan.current = true;
     }
   }, [isAuthChecking, isLoading, userData, initialRenderComplete]);
 
-  // Effect for setting selected nav item based on pathname
+  // Effect pour définir l'élément de navigation sélectionné en fonction du chemin
   useEffect(() => {
     if (pathname === "/dashboard") {
       setSelectedNavItem('dashboard');

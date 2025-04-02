@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import DailyLimitAlert from '@/components/dashboard/DailyLimitAlert';
 import DormancyAlert from '@/components/dashboard/DormancyAlert';
@@ -19,7 +19,8 @@ interface DashboardContentProps {
   lastSessionTimestamp?: string;
 }
 
-const DashboardContent: React.FC<DashboardContentProps> = ({
+// Utilisation de memo pour éviter les re-rendus inutiles
+const DashboardContent: React.FC<DashboardContentProps> = memo(({
   isDormant,
   dormancyData,
   showLimitAlert,
@@ -33,6 +34,13 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   lastSessionTimestamp
 }) => {
   if (!userData) return null;
+  
+  // Calcul du canStartSession une seule fois
+  const canStartSession = !isDormant && canStartManualSession(
+    userData.subscription, 
+    dailySessionCount, 
+    userData.balance
+  );
   
   return (
     <>
@@ -64,12 +72,13 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         isNewUser={isNewUser}
         subscription={userData.subscription}
         dailySessionCount={dailySessionCount}
-        canStartSession={!isDormant && canStartManualSession(userData.subscription, dailySessionCount, userData.balance)}
+        canStartSession={canStartSession}
         referrals={userData.referrals}
         lastSessionTimestamp={lastSessionTimestamp}
       />
     </>
   );
-};
+});
 
+DashboardContent.displayName = 'DashboardContent';
 export default DashboardContent;

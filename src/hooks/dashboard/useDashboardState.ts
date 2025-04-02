@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
 import { useDormancyCheck } from '@/hooks/useDormancyCheck';
@@ -9,6 +9,7 @@ export const useDashboardState = () => {
   const [renderKey, setRenderKey] = useState(Date.now());
   const initialRenderComplete = useRef(false);
   
+  // Utiliser useMemo pour éviter les re-rendus inutiles
   const {
     userData,
     isNewUser,
@@ -22,6 +23,7 @@ export const useDashboardState = () => {
     refreshUserData
   } = useUserData();
   
+  // Optimiser la vérification de dormance
   const {
     isDormant,
     dormancyData,
@@ -29,6 +31,7 @@ export const useDashboardState = () => {
     handleReactivate
   } = useDormancyCheck(userData?.subscription || 'freemium', refreshUserData);
   
+  // Memoize des sessions pour éviter les recalculs inutiles
   const {
     isStartingSession,
     handleStartSession,
@@ -43,12 +46,15 @@ export const useDashboardState = () => {
     resetBalance
   );
 
+  // Memoize la fonction de rafraîchissement pour éviter les re-rendus
   const forceRefresh = useCallback(() => {
+    console.log("Forçage du rafraîchissement du dashboard");
     setRenderKey(Date.now());
     refreshUserData().catch(error => console.error("Error refreshing user data:", error));
   }, [refreshUserData]);
 
-  return {
+  // Retourner un objet mémorisé pour éviter les références changeantes
+  return useMemo(() => ({
     selectedNavItem,
     setSelectedNavItem,
     renderKey,
@@ -68,5 +74,22 @@ export const useDashboardState = () => {
     lastSessionTimestamp,
     forceRefresh,
     isLoading
-  };
+  }), [
+    selectedNavItem,
+    renderKey,
+    userData,
+    isNewUser,
+    dailySessionCount,
+    showLimitAlert,
+    isDormant,
+    dormancyData,
+    isChecking,
+    handleReactivate,
+    isStartingSession,
+    handleStartSession, 
+    handleWithdrawal,
+    lastSessionTimestamp,
+    forceRefresh,
+    isLoading
+  ]);
 };
