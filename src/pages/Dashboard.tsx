@@ -7,11 +7,18 @@ import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
 import { useDashboardInitialization } from '@/hooks/dashboard/useDashboardInitialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 
 // Utilisation de memo pour éviter les re-rendus inutiles du composant principal
 const Dashboard = memo(() => {
   const location = useLocation();
+  const renderCountRef = useRef(0);
+  
+  // Effet de debug pour compter les rendus
+  useEffect(() => {
+    renderCountRef.current += 1;
+    console.log(`Main Dashboard component render count: ${renderCountRef.current}`);
+  });
   
   // Utiliser les hooks pour l'état et l'initialisation
   const dashboardState = useDashboardState();
@@ -26,7 +33,6 @@ const Dashboard = memo(() => {
     isNewUser,
     dailySessionCount,
     showLimitAlert,
-    setShowLimitAlert,
     isDormant,
     dormancyData,
     isChecking,
@@ -45,10 +51,10 @@ const Dashboard = memo(() => {
     authError
   } = initState;
   
-  // Les conditions d'affichage sont gérées de manière plus robuste
+  // Simplifier les conditions d'affichage pour plus de stabilité
   const isLoading_Combined = isAuthChecking || isLoading || !isReady || isChecking;
   const hasError = authError || (!isLoading_Combined && !userData?.username);
-  const canShowDashboard = !isLoading_Combined && !authError && isReady && !isChecking && userData?.username;
+  const canShowDashboard = !isLoading_Combined && !authError && isReady && userData?.username;
   
   // Inclure les effets d'initialisation
   return (
@@ -62,17 +68,9 @@ const Dashboard = memo(() => {
         setSelectedNavItem={setSelectedNavItem}
       />
       
-      {isLoading_Combined && (
-        <DashboardLoading />
-      )}
+      {isLoading_Combined && <DashboardLoading />}
       
-      {authError && (
-        <DashboardError errorType="auth" />
-      )}
-      
-      {!isLoading_Combined && !authError && !isReady && !isChecking && (!userData || !userData.username) && (
-        <DashboardError errorType="data" onRefresh={forceRefresh} />
-      )}
+      {hasError && <DashboardError errorType={authError ? "auth" : "data"} onRefresh={forceRefresh} />}
       
       {canShowDashboard && (
         <DashboardLayout
@@ -85,6 +83,7 @@ const Dashboard = memo(() => {
           <Routes>
             <Route index element={
               <DashboardContent
+                key={`content-${renderKey}`}
                 isDormant={isDormant}
                 dormancyData={dormancyData}
                 showLimitAlert={showLimitAlert}

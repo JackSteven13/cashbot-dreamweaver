@@ -19,8 +19,9 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
   setSelectedNavItem
 }) => {
   const initEffectRan = useRef(false);
+  const navEffectRan = useRef(false);
 
-  // Effect pour logging initial - optimisé pour éviter les doubles exécutions
+  // Effet pour logging initial - optimisé pour éviter les doubles exécutions
   useEffect(() => {
     if (initEffectRan.current) return;
     
@@ -30,13 +31,25 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
       initialRenderComplete.current = true;
       initEffectRan.current = true;
     }
+    
+    // Nettoyer lors du démontage
+    return () => {
+      console.log("Nettoyage de l'effet d'initialisation du dashboard");
+    };
   }, [isAuthChecking, isLoading, userData, initialRenderComplete]);
 
-  // Effect pour définir l'élément de navigation sélectionné en fonction du chemin
+  // Effet pour définir l'élément de navigation sélectionné en fonction du chemin
   useEffect(() => {
+    if (navEffectRan.current) return;
+    
     if (pathname === "/dashboard") {
       setSelectedNavItem('dashboard');
+      navEffectRan.current = true;
     }
+    
+    return () => {
+      navEffectRan.current = false;
+    };
   }, [pathname, setSelectedNavItem]);
 
   return null;
