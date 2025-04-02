@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Clock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface SessionCountdownProps {
   timeRemaining: string;
@@ -8,15 +9,15 @@ interface SessionCountdownProps {
 
 export const SessionCountdown: React.FC<SessionCountdownProps> = ({ timeRemaining }) => {
   return (
-    <div className="mb-5 bg-slate-800/80 p-4 rounded-lg border border-slate-700">
+    <div className="mb-5 bg-slate-700/50 p-3 rounded-lg border border-slate-600">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Clock className="h-7 w-7 text-blue-400" />
-          <span className="text-lg font-medium text-white">Prochaine session disponible dans :</span>
+        <div className="flex items-center">
+          <Clock className="h-4 w-4 text-blue-400 mr-2" />
+          <span className="text-sm font-medium text-gray-200">Prochaine session disponible dans :</span>
         </div>
-        <div className="bg-blue-900/50 text-blue-300 text-xl font-bold py-2 px-5 rounded-full border border-blue-800">
+        <Badge variant="outline" className="bg-blue-900/30 text-blue-300 border-blue-800">
           {timeRemaining}
-        </div>
+        </Badge>
       </div>
     </div>
   );

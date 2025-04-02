@@ -1,4 +1,3 @@
-
 // Daily limit per subscription type in euros
 export const SUBSCRIPTION_LIMITS = {
   'freemium': 0.5,
