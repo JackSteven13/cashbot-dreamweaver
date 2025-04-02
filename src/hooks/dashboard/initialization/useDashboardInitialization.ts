@@ -43,8 +43,9 @@ export const useDashboardInitialization = () => {
       return;
     }
     
-    // Utiliser un flag local au lieu d'un état global pour éviter les re-rendus
-    if (localStorage.getItem('dashboard_initializing') === 'true') {
+    // Utiliser un flag local pour éviter les initialisations concurrentes
+    const isInitializing = localStorage.getItem('dashboard_initializing');
+    if (isInitializing === 'true') {
       console.log("Initialisation du dashboard déjà en cours depuis un autre composant");
       return;
     }
@@ -173,7 +174,7 @@ export const useDashboardInitialization = () => {
     }
   }, [checkAuth, syncUserData, navigate, shouldRetry, incrementRetryCount, calculateRetryDelay, setAuthError, setIsAuthChecking, setIsReady]);
   
-  // Effet d'initialisation
+  // Effet d'initialisation - modifié pour éviter les boucles
   useEffect(() => {
     // Initialisation des références
     mountedRef.current = true;
@@ -228,7 +229,7 @@ export const useDashboardInitialization = () => {
       }, 800);
     }
     
-    // Configuration du listener d'authentification (toujours, indépendamment de la présence du token)
+    // Configuration du listener d'authentification (toujours)
     const cleanup = setupAuthListener();
     
     // Fonction de nettoyage
@@ -251,8 +252,8 @@ export const useDashboardInitialization = () => {
       
       cleanup();
     };
-  }, [initializeDashboard, setupAuthListener, resetRetryCount, navigate, setAuthError]);
-
+  }, []); // ⚠️ Dépendances vides pour n'exécuter qu'une seule fois
+  
   return {
     isAuthChecking,
     isReady,

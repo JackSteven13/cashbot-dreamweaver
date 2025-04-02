@@ -15,17 +15,13 @@ const Dashboard = memo(() => {
   const renderCountRef = useRef(0);
   const initialRenderCompleteRef = useRef(false);
   
-  // Effet de debug pour compter les rendus
-  useEffect(() => {
-    renderCountRef.current += 1;
-    console.log(`Main Dashboard component render count: ${renderCountRef.current}`);
-  });
-  
   // Déclarer tous les hooks au niveau supérieur, sans condition
-  const dashboardState = useDashboardState();
-  const initState = useDashboardInitialization();
+  const {
+    isAuthChecking,
+    isReady,
+    authError
+  } = useDashboardInitialization();
   
-  // Destructurer toutes les valeurs après l'appel des hooks
   const {
     selectedNavItem,
     setSelectedNavItem,
@@ -44,28 +40,18 @@ const Dashboard = memo(() => {
     lastSessionTimestamp,
     forceRefresh,
     isLoading
-  } = dashboardState;
+  } = useDashboardState();
   
-  const {
-    isAuthChecking,
-    isReady,
-    authError
-  } = initState;
+  // Effet de debug pour compter les rendus
+  useEffect(() => {
+    renderCountRef.current += 1;
+    console.log(`Main Dashboard component render count: ${renderCountRef.current}`);
+  });
   
   // Simplifier les conditions d'affichage
   const isLoading_Combined = isAuthChecking || isLoading || !isReady || isChecking;
   const hasError = authError || (!isLoading_Combined && !userData?.username);
   const canShowDashboard = !isLoading_Combined && !authError && isReady && userData?.username;
-  
-  // Logs de debug pour le rendu
-  useEffect(() => {
-    console.log("Dashboard render count:", renderCountRef.current);
-    console.log("isAuthChecking:", isAuthChecking);
-    console.log("isLoading:", isLoading);
-    console.log("isReady:", isReady);
-    console.log("authError:", authError);
-    console.log("canShowDashboard:", canShowDashboard);
-  }, [isAuthChecking, isLoading, isReady, authError, canShowDashboard]);
   
   return (
     <>

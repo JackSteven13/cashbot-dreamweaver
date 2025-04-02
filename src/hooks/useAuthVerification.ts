@@ -18,7 +18,6 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
   // Always initialize all state variables
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [authCheckFailed, setAuthCheckFailed] = useState(false);
-  const [isRetryingLocal, setIsRetryingLocal] = useState(false);
   const isMounted = useRef(true);
   const checkInProgress = useRef(false);
   const initialCheckComplete = useRef(false);
@@ -149,7 +148,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     }
   }, [performAuthCheck, fetchProfileData, setIsRetrying]);
 
-  // Setup auth state listener hook
+  // Setup auth state listener 
   useAuthStateListener({
     onSignOut: () => {
       if (isMounted.current) {
@@ -167,7 +166,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     isMounted
   });
 
-  // Main effect for initialization
+  // Main initialization effect - stabilisé pour éviter les boucles
   useEffect(() => {
     isMounted.current = true;
     checkInProgress.current = false;
@@ -190,7 +189,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
       }
       clearTimeout(initTimeout);
     };
-  }, [checkAuth]);
+  }, []); // ⚠️ Dépendances vides pour n'exécuter qu'une seule fois
 
   // Always return all values consistently
   return {

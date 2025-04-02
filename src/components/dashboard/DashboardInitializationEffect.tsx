@@ -21,12 +21,12 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
   const initEffectRan = useRef(false);
   const navEffectRan = useRef(false);
 
-  // Effet d'initialisation consolidé et stabilisé
+  // Effet d'initialisation stabilisé avec vérifications de dépendances stables
   useEffect(() => {
-    // Si l'initialisation n'a pas encore été complétée
+    // Prévenir les exécutions multiples
     if (!initEffectRan.current && !initialRenderComplete.current) {
       // Vérifier que toutes les données sont disponibles avant de marquer l'initialisation
-      if (!isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
+      if (!isAuthChecking && !isLoading && userData && userData.username) {
         console.log("Dashboard monté avec les données utilisateur:", userData.username);
         initialRenderComplete.current = true;
         initEffectRan.current = true;
@@ -39,9 +39,9 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
     };
   }, [isAuthChecking, isLoading, userData, initialRenderComplete]);
 
-  // Effet de navigation simplifié
+  // Effet de navigation simplifié et stabilisé
   useEffect(() => {
-    // Mise à jour de l'élément de navigation sélectionné
+    // Mise à jour de l'élément de navigation sélectionné uniquement si nécessaire
     if (pathname === "/dashboard" && !navEffectRan.current) {
       setSelectedNavItem('dashboard');
       navEffectRan.current = true;
