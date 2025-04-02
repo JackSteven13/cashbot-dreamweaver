@@ -87,7 +87,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   if (authStatus === false) {
     if (!redirectInProgress.current) {
       redirectInProgress.current = true;
-      return redirectToLogin();
+      // Fixed: Return the Navigate component instead of calling redirectToLogin
+      return <Navigate to="/login" replace state={{ from: location }} />;
     }
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
