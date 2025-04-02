@@ -23,6 +23,8 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
   const maxRetries = 6;
   const cacheExpiry = 60000; // 1 minute
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initialSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalIdRef = useRef<NodeJS.Timeout | null>(null);
   
   // Fonction de synchronisation extraite pour pouvoir l'utiliser dans le cleanup
   const syncSubscription = useCallback(async (force: boolean = false) => {
@@ -78,31 +80,51 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
       console.log("Synchronisation de l'abonnement depuis Supabase...");
       
       // Ajout d'un délai avant la requête pour éviter les problèmes de course
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Essayer directement la requête
-      const { data: userData, error: directError } = await supabase
-        .from('user_balances')
-        .select('subscription')
-        .eq('id', session.user.id)
-        .single();
-          
-      if (!directError && userData && userData.subscription) {
-        const currentLocalSub = localStorage.getItem('subscription');
-        if (currentLocalSub !== userData.subscription) {
-          console.log(`Mise à jour de l'abonnement: ${currentLocalSub} -> ${userData.subscription}`);
-          localStorage.setItem('subscription', userData.subscription);
-          
-          if (onSync && isMounted.current) {
-            onSync(userData.subscription);
+      // Essayer directement la requête avec un délai de protection
+      let attempt = 0;
+      let success = false;
+      
+      while (attempt < 3 && !success && isMounted.current) {
+        try {
+          const { data: userData, error: directError } = await supabase
+            .from('user_balances')
+            .select('subscription')
+            .eq('id', session.user.id)
+            .single();
+              
+          if (!directError && userData && userData.subscription) {
+            const currentLocalSub = localStorage.getItem('subscription');
+            if (currentLocalSub !== userData.subscription) {
+              console.log(`Mise à jour de l'abonnement: ${currentLocalSub} -> ${userData.subscription}`);
+              localStorage.setItem('subscription', userData.subscription);
+              
+              if (onSync && isMounted.current) {
+                onSync(userData.subscription);
+              }
+            }
+            
+            // Réinitialiser le compteur de tentatives et d'échecs
+            setRetryCount(0);
+            syncFailures.current = 0;
+            setIsInitialized(true);
+            success = true;
+          } else {
+            attempt++;
+            if (attempt < 3) {
+              await new Promise(resolve => setTimeout(resolve, 700 * attempt));
+            }
+          }
+        } catch (err) {
+          attempt++;
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 700 * attempt));
           }
         }
-        
-        // Réinitialiser le compteur de tentatives et d'échecs
-        setRetryCount(0);
-        syncFailures.current = 0;
-        setIsInitialized(true);
-      } else if (retryCount < maxRetries && isMounted.current) {
+      }
+      
+      if (!success && retryCount < maxRetries && isMounted.current) {
         // Si la méthode échoue, réessayer plus tard avec backoff exponentiel
         syncFailures.current++;
         console.log(`Échec de synchronisation (${syncFailures.current}), nouvelle tentative prévue (${retryCount + 1}/${maxRetries})`);
@@ -138,7 +160,7 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
       }
       syncInProgress.current = false;
     }
-  }, [onSync, forceCheck, lastChecked, retryCount, isInitialized, maxRetries]);
+  }, [onSync, forceCheck, lastChecked, retryCount, maxRetries, isInitialized]);
   
   useEffect(() => {
     isMounted.current = true;
@@ -148,18 +170,18 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
     console.log("SubscriptionSynchronizer mounted");
     
     // Synchroniser immédiatement au montage avec un délai pour éviter les conflits d'initialisation
-    const initialSyncTimeout = setTimeout(() => {
+    initialSyncTimeoutRef.current = setTimeout(() => {
       if (isMounted.current && !syncInProgress.current) {
         syncSubscription(true);
       }
-    }, 2000);
+    }, 3000);
     
     // Configurer un intervalle pour synchroniser périodiquement
-    const intervalId = setInterval(() => {
+    intervalIdRef.current = setInterval(() => {
       if (isMounted.current && !syncInProgress.current) {
         syncSubscription();
       }
-    }, 30000); // Vérifier toutes les 30 secondes
+    }, 45000); // Vérifier toutes les 45 secondes
     
     // Ajouter un event listener pour les changements de focus
     const handleVisibilityChange = () => {
@@ -179,8 +201,14 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
         clearTimeout(syncTimeoutRef.current);
       }
       
-      clearTimeout(initialSyncTimeout);
-      clearInterval(intervalId);
+      if (initialSyncTimeoutRef.current) {
+        clearTimeout(initialSyncTimeoutRef.current);
+      }
+      
+      if (intervalIdRef.current) {
+        clearInterval(intervalIdRef.current);
+      }
+      
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [syncSubscription]);

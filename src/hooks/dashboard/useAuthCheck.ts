@@ -11,7 +11,7 @@ interface UseAuthCheckParams {
 export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
   const navigate = useNavigate();
   
-  // Fonction améliorée pour vérifier l'authentification avec stabilité accrue
+  // Improved auth checking function with debounce mechanism
   const checkAuth = useCallback(async () => {
     try {
       console.log("Dashboard initializing: checking auth state");
@@ -22,8 +22,14 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
         console.log("No local session found, redirecting to login");
         
         if (mountedRef.current) {
+          // Set a flag to prevent multiple redirects
+          localStorage.setItem('auth_redirecting', 'true');
+          
           setTimeout(() => {
-            navigate('/login', { replace: true });
+            if (mountedRef.current) {
+              localStorage.removeItem('auth_redirecting');
+              navigate('/login', { replace: true });
+            }
           }, 300);
         }
         
@@ -32,13 +38,28 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
       
       // Essayer de rafraîchir la session avant tout pour une meilleure résilience
       try {
-        await refreshSession();
-        
-        // Petit délai pour permettre au rafraîchissement de se propager
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Check if a refresh is already in progress
+        if (localStorage.getItem('auth_refreshing') === 'true') {
+          console.log("Session refresh already in progress, skipping");
+          await new Promise(resolve => setTimeout(resolve, 800));
+        } else {
+          localStorage.setItem('auth_refreshing', 'true');
+          await refreshSession();
+          localStorage.removeItem('auth_refreshing');
+          
+          // Petit délai pour permettre au rafraîchissement de se propager
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
       } catch (refreshError) {
+        localStorage.removeItem('auth_refreshing');
         console.log("Session refresh failed, will try to verify existing session", refreshError);
         // Continue with verification even if refresh fails
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      if (!mountedRef.current) {
+        console.log("Component unmounted during refresh");
+        return false;
       }
       
       const isAuthenticated = await verifyAuth();
@@ -61,11 +82,23 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
         }
         
         // Show toast for better user feedback
-        toast({
-          title: "Session expirée",
-          description: "Votre session a expiré. Veuillez vous reconnecter.",
-          variant: "destructive"
-        });
+        if (mountedRef.current) {
+          toast({
+            title: "Session expirée",
+            description: "Votre session a expiré. Veuillez vous reconnecter.",
+            variant: "destructive"
+          });
+          
+          // Set a flag to prevent multiple redirects
+          localStorage.setItem('auth_redirecting', 'true');
+          
+          setTimeout(() => {
+            if (mountedRef.current) {
+              localStorage.removeItem('auth_redirecting');
+              navigate('/login', { replace: true });
+            }
+          }, 300);
+        }
         
         return false;
       }
@@ -74,6 +107,7 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
       return true;
     } catch (error) {
       console.error("Authentication error:", error);
+      localStorage.removeItem('auth_refreshing');
       
       if (mountedRef.current) {
         // Show toast for better user feedback
