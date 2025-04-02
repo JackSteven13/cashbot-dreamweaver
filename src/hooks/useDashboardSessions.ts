@@ -16,11 +16,17 @@ export const useDashboardSessions = (
 ) => {
   const [lastSessionTimestamp, setLastSessionTimestamp] = useState<string | undefined>(undefined);
   const hasProcessedTransactions = useRef(false);
+  const previousTransactionsLength = useRef<number | null>(null);
   
   // Extraire le timestamp de la dernière session à partir des transactions sans créer de boucle
   useEffect(() => {
-    // Utiliser une référence pour éviter les traitements multiples des mêmes transactions
-    if (userData?.transactions && userData.transactions.length > 0 && !hasProcessedTransactions.current) {
+    // Vérifier si les transactions ont changé pour éviter les traitements inutiles
+    if (userData?.transactions && 
+        (previousTransactionsLength.current === null || 
+         previousTransactionsLength.current !== userData.transactions.length) && 
+        !hasProcessedTransactions.current) {
+      
+      previousTransactionsLength.current = userData.transactions.length;
       hasProcessedTransactions.current = true;
       
       // Recherche de la dernière transaction de type "Session manuelle"
@@ -46,9 +52,14 @@ export const useDashboardSessions = (
     
     // Réinitialiser lorsque userData change significativement
     return () => {
-      hasProcessedTransactions.current = false;
+      // Ne réinitialiser que lorsque les données utilisateur sont complètement différentes
+      // pas à chaque changement mineur dans les transactions
+      if (!userData || !userData.transactions) {
+        hasProcessedTransactions.current = false;
+        previousTransactionsLength.current = null;
+      }
     };
-  }, [userData?.transactions?.length]);  // Dépendance optimisée à la longueur des transactions
+  }, [userData?.transactions]);  // Dépendance simplifiée
 
   // Utiliser les hooks individuels pour chaque fonctionnalité
   useAutoSessions(
@@ -57,7 +68,7 @@ export const useDashboardSessions = (
     setShowLimitAlert
   );
 
-  const { isStartingSession, handleStartSession } = useManualSessions({
+  const { isStartingSession, handleStartSession, localBalance } = useManualSessions({
     userData,
     dailySessionCount,
     incrementSessionCount,
@@ -82,8 +93,9 @@ export const useDashboardSessions = (
     isStartingSession,
     handleStartSession,
     handleWithdrawal,
-    isProcessingWithdrawal,
-    lastSessionTimestamp
+    isProcessingWithdrawal: isProcessingWithdrawal,
+    lastSessionTimestamp,
+    localBalance  // Exposer le solde local pour éviter les problèmes de synchronisation
   };
 };
 

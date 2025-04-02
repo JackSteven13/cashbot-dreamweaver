@@ -4,8 +4,8 @@ import { UserData } from '@/types/userData';
 import { useUserDataFetcher, UserFetcherState } from './useUserDataFetcher';
 import { toast } from "@/components/ui/use-toast";
 // Utiliser les importations spécifiques pour éviter les conflits
-import { verifyAuth } from "@/utils/auth/index";
-import { refreshSession } from "@/utils/auth/index";
+import { verifyAuth } from "@/utils/auth";
+import { refreshSession } from "@/utils/auth";
 import { ensureZeroBalanceForNewUser } from '@/utils/userDataInitializer';
 
 export type { UserData };
@@ -24,11 +24,12 @@ export const useUserFetch = (): UserFetchResult => {
   const isMounted = useRef(true);
   const fetchInProgress = useRef(false);
   const retryCount = useRef(0);
-  const maxRetries = 5;
+  const maxRetries = 3; // Réduire le nombre de tentatives pour éviter les boucles
   const initialFetchDelayRef = useRef<NodeJS.Timeout | null>(null);
   const initialFetchAttempted = useRef(false);
   const lastFetchTimestamp = useRef(0);
   const fetchQueueRef = useRef<number>(0); // Pour suivre les appels en attente
+  const lastRefreshTimestamp = useRef(0); // Pour éviter les rafraîchissements trop fréquents
   
   const [fetcherState, fetcherActions] = useUserDataFetcher();
   
@@ -36,14 +37,14 @@ export const useUserFetch = (): UserFetchResult => {
   const { setShowLimitAlert, fetchUserData } = fetcherActions;
   
   const fetchData = useCallback(async () => {
-    // Protection contre les appels trop fréquents (<2s)
+    // Protection contre les appels trop fréquents (augmenté à 3s)
     const now = Date.now();
-    if (now - lastFetchTimestamp.current < 2000) {
+    if (now - lastFetchTimestamp.current < 3000) {
       console.log("Skipping fetch - too soon after last fetch");
       return;
     }
     
-    // Protection contre les appels multiples simultanés
+    // Protection encore plus stricte contre les appels multiples simultanés
     if (fetchInProgress.current || !isMounted.current) {
       console.log("Fetch already in progress or component unmounted, skipping");
       return;
@@ -58,7 +59,7 @@ export const useUserFetch = (): UserFetchResult => {
       lastFetchTimestamp.current = now;
       
       // Délai pour éviter les problèmes de course
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Vérifier si le composant est toujours monté et si cette requête est la plus récente
       if (!isMounted.current || currentQueueId !== fetchQueueRef.current) {
@@ -67,7 +68,9 @@ export const useUserFetch = (): UserFetchResult => {
         return;
       }
       
-      const isAuthValid = await verifyAuth();
+      // Vérification de l'authentification avec protection contre les rafraîchissements excessifs
+      const shouldRefresh = now - lastRefreshTimestamp.current > 30000; // 30 secondes entre les refreshes
+      let isAuthValid = await verifyAuth();
       
       if (!isMounted.current || currentQueueId !== fetchQueueRef.current) {
         console.log("Component unmounted during auth check, aborting fetch");
@@ -75,8 +78,9 @@ export const useUserFetch = (): UserFetchResult => {
         return;
       }
       
-      if (!isAuthValid) {
+      if (!isAuthValid && shouldRefresh) {
         console.log("Auth not valid, attempting refresh...");
+        lastRefreshTimestamp.current = now;
         const refreshed = await refreshSession();
         
         if (!refreshed) {
@@ -86,7 +90,15 @@ export const useUserFetch = (): UserFetchResult => {
         }
         
         // Délai après rafraîchissement
-        await new Promise(resolve => setTimeout(resolve, 400));
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Vérifier à nouveau l'authentification après le rafraîchissement
+        isAuthValid = await verifyAuth();
+        if (!isAuthValid) {
+          console.error("Still not authenticated after refresh");
+          fetchInProgress.current = false;
+          return;
+        }
       }
       
       if (!isMounted.current || currentQueueId !== fetchQueueRef.current) {
@@ -105,7 +117,7 @@ export const useUserFetch = (): UserFetchResult => {
       console.error("Error fetching user data:", error);
       
       if (retryCount.current < maxRetries && isMounted.current) {
-        const delay = Math.min(1000 * Math.pow(1.5, retryCount.current), 8000);
+        const delay = Math.min(1000 * Math.pow(2, retryCount.current), 8000);
         console.log(`Retrying in ${delay}ms (attempt ${retryCount.current + 1}/${maxRetries})`);
         
         setTimeout(() => {
@@ -138,13 +150,13 @@ export const useUserFetch = (): UserFetchResult => {
       retryCount.current = 0;
       initialFetchAttempted.current = false;
       
-      // Utiliser un délai pour éviter les conflits d'initialisation
+      // Utiliser un délai plus long pour éviter les conflits d'initialisation
       initialFetchDelayRef.current = setTimeout(() => {
         if (isMounted.current) {
           console.log("Starting initial data fetch");
           fetchData();
         }
-      }, 1500);
+      }, 2000);
     }
     
     return () => {
@@ -156,25 +168,50 @@ export const useUserFetch = (): UserFetchResult => {
     };
   }, [fetchData]);
 
-  // Fonction pour forcer la récupération des données
+  // Fonction pour forcer la récupération des données avec protection améliorée
   const refetchUserData = useCallback(async () => {
+    // Empêcher les rechargements trop fréquents
+    const now = Date.now();
+    if (now - lastFetchTimestamp.current < 5000) {
+      console.log("Manual refetch rejected - too soon after last fetch");
+      return false;
+    }
+    
     if (!isMounted.current || fetchInProgress.current) {
       return false;
     }
     
     console.log("Manual refetch requested");
     
-    const isAuthValid = await verifyAuth();
-    
-    if (isAuthValid) {
-      await fetchData();
-      return true;
-    } else {
-      toast({
-        title: "Problème d'authentification",
-        description: "Impossible de rafraîchir vos données. Veuillez vous reconnecter.",
-        variant: "destructive"
-      });
+    try {
+      const isAuthValid = await verifyAuth();
+      
+      if (isAuthValid) {
+        await fetchData();
+        return true;
+      } else {
+        // Tenter un rafraîchissement avant d'abandonner
+        if (now - lastRefreshTimestamp.current > 30000) {
+          lastRefreshTimestamp.current = now;
+          const refreshed = await refreshSession();
+          
+          if (refreshed) {
+            // Délai après rafraîchissement
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await fetchData();
+            return true;
+          }
+        }
+        
+        toast({
+          title: "Problème d'authentification",
+          description: "Impossible de rafraîchir vos données. Veuillez vous reconnecter.",
+          variant: "destructive"
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error("Error during manual refetch:", error);
       return false;
     }
   }, [fetchData]);

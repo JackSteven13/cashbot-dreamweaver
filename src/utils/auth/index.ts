@@ -6,9 +6,9 @@ export { verifyAuth } from './verificationUtils';
 // Éviter le conflit en n'exportant pas refreshSession de verificationUtils
 // à la place on exportera explicitement à partir du sessionUtils
 
-// Export subscription utils correctly
+// Export subscription utils correctly from the subscription module
 export { 
-  checkDailyLimit, 
+  checkDailyLimit,
   subscribeToAuthChanges, 
   unsubscribeFromAuthChanges 
-} from './subscriptionUtils';
+} from '@/utils/subscription';
