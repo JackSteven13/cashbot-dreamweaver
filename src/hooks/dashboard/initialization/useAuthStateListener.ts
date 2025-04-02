@@ -10,49 +10,85 @@ interface UseAuthStateListenerParams {
 
 export const useAuthStateListener = ({ mountedRef, navigate }: UseAuthStateListenerParams) => {
   const setupAuthListener = useCallback(() => {
-    console.log("Setting up auth state listener for dashboard");
+    console.log("Configuration de l'écouteur d'état d'authentification pour le dashboard");
     
     // Référence pour éviter les redirections multiples
     const redirectingRef = { current: false };
     
-    // Clear any existing subscriptions to prevent duplicates
-    supabase.auth.onAuthStateChange(undefined);
+    // Variable pour stocker la fonction de nettoyage de l'abonnement
+    let cleanupFunction: (() => void) | null = null;
     
-    // Setup auth state listener with improved resilience
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mountedRef.current) return;
+    try {
+      // Nettoyer tout abonnement existant
+      supabase.auth.onAuthStateChange(undefined);
       
-      console.log(`Auth state change: ${event}`);
-      
-      if (event === 'SIGNED_OUT' && !redirectingRef.current) {
-        console.log("User signed out, redirecting to login");
-        redirectingRef.current = true;
+      // Configuration de l'écouteur d'état d'authentification avec résilience améliorée
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!mountedRef.current) return;
         
-        // Mettre un flag dans localStorage pour indiquer qu'une redirection est en cours
-        localStorage.setItem('auth_redirecting', 'true');
+        console.log(`Changement d'état d'authentification: ${event}`);
         
-        // Use a timeout to avoid immediate navigation that could conflict with other processes
-        setTimeout(() => {
-          if (mountedRef.current) {
-            navigate('/login', { replace: true });
-            
-            // Une fois la redirection terminée, on peut réinitialiser notre flag
-            setTimeout(() => {
-              localStorage.removeItem('auth_redirecting');
-              redirectingRef.current = false;
-            }, 500);
+        if (event === 'SIGNED_OUT' && !redirectingRef.current) {
+          console.log("Utilisateur déconnecté, redirection vers login");
+          redirectingRef.current = true;
+          
+          // Enregistrer un flag dans localStorage pour indiquer qu'une redirection est en cours
+          try {
+            localStorage.setItem('auth_redirecting', 'true');
+            localStorage.setItem('auth_redirect_timestamp', Date.now().toString());
+          } catch (e) {
+            console.error("Erreur lors de la définition du flag de redirection:", e);
           }
-        }, 300);
-      } else if (event === 'TOKEN_REFRESHED') {
-        console.log("Token refreshed successfully");
-      }
-    });
-    
-    // Return cleanup function
-    return () => {
-      console.log("Cleaning up auth state listener");
-      subscription.unsubscribe();
-    };
+          
+          // Utiliser un délai pour éviter la navigation immédiate
+          const timeoutId = setTimeout(() => {
+            if (mountedRef.current) {
+              navigate('/login', { replace: true });
+              
+              // Une fois la redirection terminée, réinitialiser le flag
+              setTimeout(() => {
+                try {
+                  localStorage.removeItem('auth_redirecting');
+                  localStorage.removeItem('auth_redirect_timestamp');
+                  redirectingRef.current = false;
+                } catch (e) {
+                  console.error("Erreur lors de la réinitialisation du flag de redirection:", e);
+                }
+              }, 800);
+            }
+          }, 500);
+          
+          // Stocker la fonction de nettoyage pour le timeout
+          const originalCleanup = cleanupFunction;
+          cleanupFunction = () => {
+            clearTimeout(timeoutId);
+            if (originalCleanup) originalCleanup();
+          };
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log("Jeton rafraîchi avec succès");
+        }
+      });
+      
+      // Définir la fonction de nettoyage pour l'abonnement
+      const originalCleanup = cleanupFunction;
+      cleanupFunction = () => {
+        console.log("Nettoyage de l'écouteur d'état d'authentification");
+        subscription.unsubscribe();
+        if (originalCleanup) originalCleanup();
+      };
+      
+      // Retourner la fonction de nettoyage
+      return () => {
+        if (cleanupFunction) cleanupFunction();
+      };
+    } catch (error) {
+      console.error("Erreur lors de la configuration de l'écouteur d'authentification:", error);
+      
+      // En cas d'erreur, toujours retourner une fonction de nettoyage
+      return () => {
+        if (cleanupFunction) cleanupFunction();
+      };
+    }
   }, [mountedRef, navigate]);
   
   return { setupAuthListener };

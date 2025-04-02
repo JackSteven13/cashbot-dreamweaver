@@ -23,7 +23,18 @@ export const calculateReferralBonus = (referralsCount: number) => {
  * @returns Commission rate as decimal
  */
 export const getCommissionRate = (subscription: string) => {
-  return COMMISSION_RATES[subscription as keyof typeof COMMISSION_RATES] || 0.4; // Default to freemium (40%)
+  // Vérification stricte des valeurs possibles pour éviter les erreurs
+  if (!subscription || typeof subscription !== 'string') {
+    console.warn("Type d'abonnement invalide pour le calcul du taux de commission:", subscription);
+    return 0.2; // Valeur par défaut sécurisée
+  }
+  
+  // S'assurer que la clé existe dans notre objet de taux
+  const validSubscription = COMMISSION_RATES.hasOwnProperty(subscription as keyof typeof COMMISSION_RATES) 
+    ? subscription 
+    : 'freemium';
+    
+  return COMMISSION_RATES[validSubscription as keyof typeof COMMISSION_RATES];
 };
 
 /**
@@ -33,6 +44,16 @@ export const getCommissionRate = (subscription: string) => {
  * @returns Value with bonus applied
  */
 export const applyReferralBonus = (value: number, referralsCount: number) => {
+  if (typeof value !== 'number' || isNaN(value)) {
+    console.warn("Valeur invalide pour l'application du bonus de parrainage:", value);
+    return 0;
+  }
+  
+  if (typeof referralsCount !== 'number' || isNaN(referralsCount)) {
+    console.warn("Nombre de parrainages invalide:", referralsCount);
+    return value;
+  }
+  
   const bonusPercentage = calculateReferralBonus(referralsCount);
   const bonusMultiplier = 1 + (bonusPercentage / 100);
   return value * bonusMultiplier;
@@ -44,32 +65,44 @@ export const applyReferralBonus = (value: number, referralsCount: number) => {
  * @returns Object with rate and subscription information
  */
 export const getUserCommissionInfo = async (userId: string) => {
+  if (!userId) {
+    console.warn("ID utilisateur manquant pour getUserCommissionInfo");
+    return {
+      rate: 0.2, // Valeur par défaut
+      subscription: 'freemium'
+    };
+  }
+  
   try {
     // Get the user's subscription first
     const { data: userData, error: userError } = await supabase
       .from('user_balances')
       .select('subscription')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
       
     if (userError || !userData) {
-      console.error('Error getting user subscription:', userError);
+      console.error('Erreur lors de la récupération de l\'abonnement utilisateur:', userError);
       return {
-        rate: 0.4, // Default to freemium rate
+        rate: 0.2, // Valeur par défaut
         subscription: 'freemium'
       };
     }
     
-    // Return the commission rate based on subscription
-    const subscription = userData.subscription;
+    // Vérification et normalisation de l'abonnement
+    const subscription = userData.subscription || 'freemium';
+    
+    // Récupérer le taux de commission en utilisant la fonction centralisée
+    const rate = getCommissionRate(subscription);
+    
     return {
-      rate: COMMISSION_RATES[subscription as keyof typeof COMMISSION_RATES] || 0.4,
-      subscription: subscription
+      rate,
+      subscription
     };
   } catch (error) {
-    console.error('Error in getUserCommissionInfo:', error);
+    console.error('Erreur dans getUserCommissionInfo:', error);
     return {
-      rate: 0.4, // Default in case of error
+      rate: 0.2, // Valeur par défaut en cas d'erreur
       subscription: 'freemium'
     };
   }

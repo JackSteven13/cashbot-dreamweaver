@@ -11,74 +11,114 @@ interface UseAuthCheckParams {
 export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
   const navigate = useNavigate();
   
+  // Fonction améliorée de vérification d'authentification avec meilleure gestion des erreurs
   const checkAuth = useCallback(async () => {
     try {
-      console.log("Dashboard initializing: checking auth state");
+      console.log("Initialisation du dashboard: vérification de l'état d'authentification");
       
-      // Prevent multiple concurrent auth checks
-      const authCheckingFlag = localStorage.getItem('auth_checking');
-      if (authCheckingFlag === 'true') {
-        console.log("Auth check already in progress, waiting");
-        await new Promise(resolve => setTimeout(resolve, 500));
+      // Éviter les vérifications pendant les redirections
+      const isRedirecting = localStorage.getItem('auth_redirecting') === 'true';
+      const redirectTimestamp = parseInt(localStorage.getItem('auth_redirect_timestamp') || '0');
+      const now = Date.now();
+      const isRedirectStale = now - redirectTimestamp > 10000; // 10 secondes
+      
+      // Si une redirection est en cours et n'est pas obsolète, sauter la vérification
+      if (isRedirecting && !isRedirectStale) {
+        console.log("Redirection déjà en cours, vérification d'authentification ignorée");
+        return false;
+      } else if (isRedirecting && isRedirectStale) {
+        // Nettoyer les flags de redirection obsolètes
+        localStorage.removeItem('auth_redirecting');
+        localStorage.removeItem('auth_redirect_timestamp');
       }
       
-      localStorage.setItem('auth_checking', 'true');
-      
-      // Check if a session is present locally first
+      // Vérifier d'abord si une session est présente localement
       const localSession = localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
       if (!localSession) {
-        console.log("No local session found, redirecting to login");
+        console.log("Aucune session locale trouvée, redirection vers login");
         
         if (mountedRef.current) {
-          // Clean up flags
-          localStorage.removeItem('auth_checking');
+          // Définir un flag pour éviter les redirections multiples
+          localStorage.setItem('auth_redirecting', 'true');
+          localStorage.setItem('auth_redirect_timestamp', Date.now().toString());
           
-          // Delay redirect to prevent race conditions
+          // Rediriger après un court délai
           setTimeout(() => {
             if (mountedRef.current) {
               navigate('/login', { replace: true });
+              
+              // Nettoyer le flag après la redirection
+              setTimeout(() => {
+                localStorage.removeItem('auth_redirecting');
+                localStorage.removeItem('auth_redirect_timestamp');
+              }, 800);
             }
-          }, 300);
+          }, 500);
         }
         
         return false;
       }
       
-      // Attempt to refresh the session
-      try {
-        if (localStorage.getItem('auth_refreshing') !== 'true') {
-          localStorage.setItem('auth_refreshing', 'true');
-          await refreshSession();
+      // Éviter le rafraîchissement pendant les redirections
+      if (isRedirecting) {
+        console.log("Redirection en cours, rafraîchissement de session ignoré");
+      } else {
+        // Tenter de rafraîchir la session pour plus de résilience
+        try {
+          // Vérifier si un rafraîchissement est déjà en cours
+          const isRefreshing = localStorage.getItem('auth_refreshing') === 'true';
+          if (isRefreshing) {
+            console.log("Rafraîchissement de session déjà en cours, attente");
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } else {
+            localStorage.setItem('auth_refreshing', 'true');
+            try {
+              console.log("Tentative de rafraîchissement de la session");
+              await refreshSession();
+            } catch (refreshError) {
+              console.error("Échec du rafraîchissement de la session:", refreshError);
+              // Continuer avec la vérification même si le rafraîchissement échoue
+            } finally {
+              localStorage.removeItem('auth_refreshing');
+            }
+            
+            // Petit délai pour permettre la propagation du rafraîchissement
+            await new Promise(resolve => setTimeout(resolve, 800));
+          }
+        } catch (error) {
+          console.error("Erreur générale lors du rafraîchissement:", error);
           localStorage.removeItem('auth_refreshing');
-          
-          // Small delay to allow refresh to propagate
-          await new Promise(resolve => setTimeout(resolve, 200));
         }
-      } catch (refreshError) {
-        localStorage.removeItem('auth_refreshing');
-        console.log("Session refresh failed, will try existing session", refreshError);
       }
       
-      if (!mountedRef.current) {
-        localStorage.removeItem('auth_checking');
-        return false;
+      if (!mountedRef.current) return false;
+      
+      // Vérifier l'authentification avec gestion des erreurs améliorée
+      let isAuthenticated = false;
+      try {
+        console.log("Vérification du statut d'authentification");
+        isAuthenticated = await verifyAuth();
+        console.log("Résultat de la vérification d'authentification:", isAuthenticated);
+      } catch (verifyError) {
+        console.error("Erreur lors de la vérification d'authentification:", verifyError);
+        // En cas d'erreur, considérer l'utilisateur comme non authentifié
+        isAuthenticated = false;
       }
       
-      const isAuthenticated = await verifyAuth();
-      
-      if (!mountedRef.current) {
-        localStorage.removeItem('auth_checking');
-        return false;
-      }
+      if (!mountedRef.current) return false;
       
       if (!isAuthenticated) {
-        console.log("No active session found, redirecting to login");
+        console.log("Aucune session active trouvée, redirection vers login");
         
-        // Force clear auth tokens
-        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
-        localStorage.removeItem('auth_checking');
+        // Forcer la suppression des jetons d'authentification pour garantir un état propre
+        try {
+          localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+          localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
+        } catch (e) {
+          console.error("Erreur lors de la suppression des jetons:", e);
+        }
         
+        // Afficher un toast pour un meilleur retour utilisateur
         if (mountedRef.current) {
           toast({
             title: "Session expirée",
@@ -86,23 +126,31 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
             variant: "destructive"
           });
           
+          // Définir un flag pour éviter les redirections multiples
+          localStorage.setItem('auth_redirecting', 'true');
+          localStorage.setItem('auth_redirect_timestamp', Date.now().toString());
+          
           setTimeout(() => {
             if (mountedRef.current) {
               navigate('/login', { replace: true });
+              
+              // Nettoyer le flag après la redirection
+              setTimeout(() => {
+                localStorage.removeItem('auth_redirecting');
+                localStorage.removeItem('auth_redirect_timestamp');
+              }, 800);
             }
-          }, 300);
+          }, 500);
         }
         
         return false;
       }
       
-      console.log("Active session found, continuing dashboard initialization");
-      localStorage.removeItem('auth_checking');
+      console.log("Session active trouvée, poursuite de l'initialisation du dashboard");
       return true;
     } catch (error) {
-      console.error("Authentication error:", error);
+      console.error("Erreur d'authentification:", error);
       localStorage.removeItem('auth_refreshing');
-      localStorage.removeItem('auth_checking');
       
       if (mountedRef.current) {
         toast({
