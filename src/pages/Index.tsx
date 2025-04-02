@@ -8,6 +8,7 @@ import Button from '@/components/Button';
 import RevenueCalculator from '@/components/dashboard/RevenueCalculator';
 import Footer from '@/components/Footer';
 import { useIsMobile } from '@/hooks/use-mobile';
+import HowItWorks from '@/components/HowItWorks';
 
 const Index = () => {
   const isMobile = useIsMobile();
@@ -72,57 +73,15 @@ const Index = () => {
           </div>
         </section>
         
+        {/* How It Works section - New section that replaces testimonials */}
+        <HowItWorks />
+        
         {/* Features section - Smaller padding to make page more compact */}
         <FeaturesGrid 
           title="Une Plateforme de Visionnage Automatique Innovante"
           subtitle="Stream genius utilise un bot avancé pour visionner des vidéos publicitaires sponsorisées et générer des revenus complémentaires pour vous."
           features={features}
         />
-        
-        {/* Testimonials Section - Updated with more impressive and differentiated testimonials */}
-        <section className={`${sectionPadding} bg-gradient-subtle`}>
-          <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center max-w-3xl mx-auto mb-4 md:mb-10">
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 md:mb-4">Témoignages d'utilisateurs</h2>
-              <p className="text-base md:text-lg text-muted-foreground">Découvrez ce que nos utilisateurs disent de Stream genius.</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-              <div className="glass-card p-3 md:p-6 rounded-xl">
-                <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
-                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">JL</div>
-                  <div>
-                    <p className="font-medium">Jean L.</p>
-                    <p className="text-xs md:text-sm text-muted-foreground">Paris, utilisateur depuis 6 mois</p>
-                  </div>
-                </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro et j'ai généré 678€ le premier mois. Au fil du temps, j'ai atteint 1248€ mensuels. L'interface est intuitive et le système fonctionne vraiment comme promis."</p>
-              </div>
-              
-              <div className="glass-card p-3 md:p-6 rounded-xl">
-                <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
-                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">CM</div>
-                  <div>
-                    <p className="font-medium">Caroline M.</p>
-                    <p className="text-xs md:text-sm text-muted-foreground">Lyon, utilisatrice depuis 4 mois</p>
-                  </div>
-                </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"Grâce à l'abonnement Visionnaire, j'ai pu générer 2184€ dès le deuxième mois. Les rapports détaillés me permettent d'optimiser constamment mes performances et j'ai noté une progression régulière de mes revenus."</p>
-              </div>
-              
-              <div className="glass-card p-3 md:p-6 rounded-xl">
-                <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
-                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">PD</div>
-                  <div>
-                    <p className="font-medium">Philippe D.</p>
-                    <p className="text-xs md:text-sm text-muted-foreground">Marseille, utilisateur depuis 3 mois</p>
-                  </div>
-                </div>
-                <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro puis je suis passé à Alpha après avoir vu les résultats. Je génère maintenant 3427€ par mois avec très peu d'effort. L'algorithme d'Alpha est vraiment supérieur aux autres offres."</p>
-              </div>
-            </div>
-          </div>
-        </section>
         
         {/* CTA Section - Reduced padding */}
         <section className="py-6 md:py-14">
