@@ -1,30 +1,27 @@
 
 import React from 'react';
-import { calculateReferralBonus } from '@/utils/referralUtils';
-import { MetricsLayout } from '@/components/dashboard/metrics';
-import { MainContent } from '@/components/dashboard/metrics';
-import { SideContent } from '@/components/dashboard/metrics';
-import { Transaction, Referral } from '@/types/userData';
-import { SummaryPanel } from './summary';
+import SummaryPanel from './summary/SummaryPanel';
+import TransactionsPanel from './transactions/TransactionsPanel';
 
 interface DashboardMetricsProps {
   balance: number;
   referralLink: string;
   isStartingSession: boolean;
   handleStartSession: () => void;
-  handleWithdrawal: () => void;
-  transactions: Transaction[];
+  handleWithdrawal?: () => void;
+  transactions: any[];
   isNewUser?: boolean;
   subscription: string;
   dailySessionCount?: number;
   canStartSession?: boolean;
-  referrals?: Referral[];
+  referrals?: any[];
+  lastSessionTimestamp?: string;
 }
 
-const DashboardMetrics = ({ 
-  balance, 
-  referralLink, 
-  isStartingSession, 
+const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
+  balance,
+  referralLink,
+  isStartingSession,
   handleStartSession,
   handleWithdrawal,
   transactions,
@@ -32,52 +29,32 @@ const DashboardMetrics = ({
   subscription,
   dailySessionCount = 0,
   canStartSession = true,
-  referrals = []
-}: DashboardMetricsProps) => {
-  // Calculate referral bonus for display
-  const referralBonus = calculateReferralBonus(referrals.length);
-  const isTopReferrer = referrals.length > 5; // Example condition for top referrer
-
+  referrals = [],
+  lastSessionTimestamp
+}) => {
+  // Calculer les gains issus des parrainages
+  const referralBonus = referrals?.reduce((total, ref) => total + (ref.commission_earned || 0), 0) || 0;
+  
   return (
-    <div className="space-y-6">
-      <SummaryPanel 
+    <div className="dashboard-metrics">
+      <SummaryPanel
         balance={balance}
         referralLink={referralLink}
         isStartingSession={isStartingSession}
         handleStartSession={handleStartSession}
+        handleWithdrawal={handleWithdrawal}
         isNewUser={isNewUser}
         subscription={subscription}
-        handleWithdrawal={handleWithdrawal}
         dailySessionCount={dailySessionCount}
         canStartSession={canStartSession}
-        referralCount={referrals.length}
+        referralCount={referrals?.length || 0}
         referralBonus={referralBonus}
+        lastSessionTimestamp={lastSessionTimestamp}
       />
       
-      <MetricsLayout
-        mainContent={
-          <MainContent
-            balance={balance}
-            subscription={subscription}
-            isNewUser={isNewUser}
-            referrals={referrals}
-            isTopReferrer={isTopReferrer}
-            referralCount={referrals.length}
-            referralBonus={referralBonus}
-            canStartSession={canStartSession}
-            dailySessionCount={dailySessionCount}
-            handleStartSession={handleStartSession}
-            handleWithdrawal={handleWithdrawal}
-            transactions={transactions}
-          />
-        }
-        sideContent={
-          <SideContent
-            balance={balance}
-            isNewUser={isNewUser}
-            referralBonus={referralBonus}
-          />
-        }
+      <TransactionsPanel
+        transactions={transactions}
+        subscription={subscription}
       />
     </div>
   );

@@ -21,6 +21,7 @@ interface SystemTerminalProps {
   referralCount: number;
   displayBalance: number;
   referralBonus?: number;
+  lastSessionTimestamp?: string;
 }
 
 const SystemTerminal: React.FC<SystemTerminalProps> = ({
@@ -30,7 +31,8 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   remainingSessions,
   referralCount,
   displayBalance,
-  referralBonus = 0
+  referralBonus = 0,
+  lastSessionTimestamp
 }) => {
   const [showProTrialInfo, setShowProTrialInfo] = useState(isNewUser);
   const [effectiveSubscription, setEffectiveSubscription] = useState(subscription);
@@ -38,7 +40,8 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   
   const { timeRemaining, isCountingDown } = useSessionCountdown(
     typeof remainingSessions === 'number' ? 1 - remainingSessions : 0, 
-    subscription
+    subscription,
+    lastSessionTimestamp
   );
   
   const { isPromoActivated, tempProEnabled, activateProTrial } = useProTrial(subscription);

@@ -1,8 +1,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { calculateTimeUntilMidnight } from '@/utils/timeUtils';
+import { calculateTimeUntilMidnight, getParisTime } from '@/utils/timeUtils';
 
-export const useSessionCountdown = (dailySessionCount: number, subscription: string) => {
+export const useSessionCountdown = (dailySessionCount: number, subscription: string, lastSessionTimestamp?: string) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isCountingDown, setIsCountingDown] = useState<boolean>(false);
 
@@ -24,8 +24,22 @@ export const useSessionCountdown = (dailySessionCount: number, subscription: str
     setIsCountingDown(shouldCountdown);
     
     if (shouldCountdown) {
-      // Initialiser le temps restant jusqu'à minuit
-      setTimeLeft(calculateTimeUntilMidnight());
+      let initialTimeLeft: number;
+      
+      if (lastSessionTimestamp) {
+        // Si nous avons un timestamp de dernière session, calculer le temps restant sur une période de 24h
+        const lastSessionTime = new Date(lastSessionTimestamp).getTime();
+        const currentTime = getParisTime().getTime();
+        const elapsedTime = currentTime - lastSessionTime;
+        const fullDayMs = 24 * 60 * 60 * 1000; // 24 heures en millisecondes
+        
+        initialTimeLeft = Math.max(0, fullDayMs - elapsedTime);
+      } else {
+        // Fallback: Initialiser le temps restant jusqu'à minuit
+        initialTimeLeft = calculateTimeUntilMidnight();
+      }
+      
+      setTimeLeft(initialTimeLeft);
       
       // Mettre à jour le compte à rebours chaque seconde
       const timer = setInterval(() => {
@@ -45,7 +59,7 @@ export const useSessionCountdown = (dailySessionCount: number, subscription: str
       
       return () => clearInterval(timer);
     }
-  }, [dailySessionCount, subscription]);
+  }, [dailySessionCount, subscription, lastSessionTimestamp]);
 
   return {
     timeRemaining: formatTimeLeft(timeLeft),

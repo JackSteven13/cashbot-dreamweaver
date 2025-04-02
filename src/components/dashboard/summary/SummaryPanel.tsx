@@ -20,6 +20,7 @@ interface SummaryPanelProps {
   canStartSession?: boolean;
   referralCount?: number;
   referralBonus?: number;
+  lastSessionTimestamp?: string;
 }
 
 const SummaryPanel = ({ 
@@ -33,7 +34,8 @@ const SummaryPanel = ({
   dailySessionCount = 0,
   canStartSession = true,
   referralCount = 0,
-  referralBonus = 0
+  referralBonus = 0,
+  lastSessionTimestamp
 }: SummaryPanelProps) => {
   const isMobile = useIsMobile();
   
@@ -97,6 +99,7 @@ const SummaryPanel = ({
           referralCount={referralCount}
           displayBalance={displayBalance}
           referralBonus={referralBonus}
+          lastSessionTimestamp={lastSessionTimestamp}
         />
       </div>
     </div>

@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -46,7 +47,8 @@ const Dashboard = () => {
   const {
     isStartingSession,
     handleStartSession,
-    handleWithdrawal
+    handleWithdrawal,
+    lastSessionTimestamp
   } = useDashboardSessions(
     userData,
     dailySessionCount,
@@ -117,6 +119,7 @@ const Dashboard = () => {
         dailySessionCount={dailySessionCount}
         canStartSession={!isDormant && canStartManualSession(userData.subscription, dailySessionCount, userData.balance)}
         referrals={userData.referrals}
+        lastSessionTimestamp={lastSessionTimestamp}
       />
     </>
   );
