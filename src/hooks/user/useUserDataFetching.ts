@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 import { fetchCompleteUserData } from '@/utils/user/userDataFetch';
 import { fetchUserTransactions } from '@/utils/user/transactionUtils';
-import { checkDailyLimit } from '@/utils/auth';
+import { checkDailyLimit } from '@/utils/auth'; // Import corrigé
 import { generateReferralLink } from '@/utils/referralUtils';
 import { UserFetcherState } from './useUserDataState';
 import { getCurrentSession } from '@/utils/auth/sessionUtils';
@@ -14,11 +14,12 @@ export const useUserDataFetching = (
   setIsLoading: (loading: boolean) => void,
   isNewUser: boolean
 ) => {
-
+  // Fonction pour récupérer les données utilisateur avec protection contre les boucles
   const fetchUserData = useCallback(async () => {
     try {
       setIsLoading(true);
       
+      // Vérifier si une session existe
       const session = await getCurrentSession();
       
       if (!session) {
@@ -27,7 +28,7 @@ export const useUserDataFetching = (
         return;
       }
 
-      // Get complete user data including referrals
+      // Récupérer toutes les données utilisateur en incluant les parrainages
       const userData = await fetchCompleteUserData(session.user.id, session.user.email);
       
       if (!userData || !userData.balance) {
@@ -35,10 +36,10 @@ export const useUserDataFetching = (
         return;
       }
       
-      // Get user profile
+      // Récupérer le profil utilisateur
       const refreshedProfile = await loadUserProfile(session.user.id, session.user.email);
       
-      // Get balance data
+      // Récupérer les données de solde
       const balanceResult = await loadUserBalance(session.user.id);
       if (!balanceResult) {
         setIsLoading(false);
@@ -47,13 +48,15 @@ export const useUserDataFetching = (
       
       const { balanceData } = balanceResult;
 
-      // Get transactions
+      // Récupérer les transactions
       const transactionsData = await fetchUserTransactions(session.user.id);
 
+      // Déterminer le nom d'affichage de l'utilisateur
       const displayName = refreshedProfile?.full_name || 
                          session.user.user_metadata?.full_name || 
                          (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
 
+      // Créer l'objet de données utilisateur
       const newUserData = {
         username: displayName,
         balance: balanceData?.balance || 0,
@@ -66,8 +69,10 @@ export const useUserDataFetching = (
       
       const newDailySessionCount = balanceData?.daily_session_count || 0;
       
+      // Vérifier si la limite quotidienne est atteinte
       const limitReached = checkDailyLimit(balanceData?.balance || 0, balanceData?.subscription || 'freemium');
       
+      // Mettre à jour les données avec protection contre les boucles
       updateUserData({
         userData: newUserData,
         isNewUser: userData.isNewUser || isNewUser,

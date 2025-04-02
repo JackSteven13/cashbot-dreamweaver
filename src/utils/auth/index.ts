@@ -7,5 +7,8 @@ export { verifyAuth } from './verificationUtils';
 // à la place on exportera explicitement à partir du sessionUtils
 
 // Export subscription utils correctly
-export { checkDailyLimit } from './subscriptionUtils';
-
+export { 
+  checkDailyLimit, 
+  subscribeToAuthChanges, 
+  unsubscribeFromAuthChanges 
+} from './subscriptionUtils';

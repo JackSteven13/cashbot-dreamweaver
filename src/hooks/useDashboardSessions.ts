@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { useAutoSessions } from './sessions/useAutoSessions';
 import { useManualSessions } from './sessions/useManualSessions';
@@ -15,10 +15,14 @@ export const useDashboardSessions = (
   resetBalance: () => Promise<void>
 ) => {
   const [lastSessionTimestamp, setLastSessionTimestamp] = useState<string | undefined>(undefined);
+  const hasProcessedTransactions = useRef(false);
   
-  // Extraire le timestamp de la dernière session à partir des transactions
+  // Extraire le timestamp de la dernière session à partir des transactions sans créer de boucle
   useEffect(() => {
-    if (userData?.transactions && userData.transactions.length > 0) {
+    // Utiliser une référence pour éviter les traitements multiples des mêmes transactions
+    if (userData?.transactions && userData.transactions.length > 0 && !hasProcessedTransactions.current) {
+      hasProcessedTransactions.current = true;
+      
       // Recherche de la dernière transaction de type "Session manuelle"
       const manualSessions = userData.transactions.filter(
         tx => tx.report && tx.report.includes('Session manuelle')
@@ -39,9 +43,14 @@ export const useDashboardSessions = (
         console.log("Dernière session manuelle détectée:", lastDate.toISOString());
       }
     }
-  }, [userData?.transactions]);
+    
+    // Réinitialiser lorsque userData change significativement
+    return () => {
+      hasProcessedTransactions.current = false;
+    };
+  }, [userData?.transactions?.length]);  // Dépendance optimisée à la longueur des transactions
 
-  // Use the individual hooks for each functionality
+  // Utiliser les hooks individuels pour chaque fonctionnalité
   useAutoSessions(
     userData,
     updateBalance,
@@ -61,7 +70,7 @@ export const useDashboardSessions = (
     resetBalance
   );
 
-  // Set up midnight reset
+  // Configurer la réinitialisation de minuit
   useMidnightReset(
     userData,
     incrementSessionCount,

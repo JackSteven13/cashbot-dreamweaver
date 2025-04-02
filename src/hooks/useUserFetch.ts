@@ -28,6 +28,7 @@ export const useUserFetch = (): UserFetchResult => {
   const initialFetchDelayRef = useRef<NodeJS.Timeout | null>(null);
   const initialFetchAttempted = useRef(false);
   const lastFetchTimestamp = useRef(0);
+  const fetchQueueRef = useRef<number>(0); // Pour suivre les appels en attente
   
   const [fetcherState, fetcherActions] = useUserDataFetcher();
   
@@ -35,26 +36,40 @@ export const useUserFetch = (): UserFetchResult => {
   const { setShowLimitAlert, fetchUserData } = fetcherActions;
   
   const fetchData = useCallback(async () => {
+    // Protection contre les appels trop fréquents (<2s)
     const now = Date.now();
     if (now - lastFetchTimestamp.current < 2000) {
       console.log("Skipping fetch - too soon after last fetch");
       return;
     }
     
+    // Protection contre les appels multiples simultanés
     if (fetchInProgress.current || !isMounted.current) {
       console.log("Fetch already in progress or component unmounted, skipping");
       return;
     }
     
     try {
+      // Incrémenter le compteur de la file d'attente
+      fetchQueueRef.current++;
+      const currentQueueId = fetchQueueRef.current;
+      
       fetchInProgress.current = true;
       lastFetchTimestamp.current = now;
       
+      // Délai pour éviter les problèmes de course
       await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Vérifier si le composant est toujours monté et si cette requête est la plus récente
+      if (!isMounted.current || currentQueueId !== fetchQueueRef.current) {
+        console.log("Component unmounted or newer fetch request exists, aborting");
+        fetchInProgress.current = false;
+        return;
+      }
       
       const isAuthValid = await verifyAuth();
       
-      if (!isMounted.current) {
+      if (!isMounted.current || currentQueueId !== fetchQueueRef.current) {
         console.log("Component unmounted during auth check, aborting fetch");
         fetchInProgress.current = false;
         return;
@@ -70,10 +85,11 @@ export const useUserFetch = (): UserFetchResult => {
           return;
         }
         
+        // Délai après rafraîchissement
         await new Promise(resolve => setTimeout(resolve, 400));
       }
       
-      if (!isMounted.current) {
+      if (!isMounted.current || currentQueueId !== fetchQueueRef.current) {
         console.log("Component unmounted after auth refresh, aborting fetch");
         fetchInProgress.current = false;
         return;
@@ -111,15 +127,18 @@ export const useUserFetch = (): UserFetchResult => {
     }
   }, [fetchUserData]);
 
+  // Effet de montage avec protection améliorée
   useEffect(() => {
     console.log("useUserFetch mounting");
     isMounted.current = true;
     fetchInProgress.current = false;
+    fetchQueueRef.current = 0; // Réinitialiser la file d'attente
     
     if (!initialFetchAttempted.current) {
       retryCount.current = 0;
       initialFetchAttempted.current = false;
       
+      // Utiliser un délai pour éviter les conflits d'initialisation
       initialFetchDelayRef.current = setTimeout(() => {
         if (isMounted.current) {
           console.log("Starting initial data fetch");
@@ -137,6 +156,7 @@ export const useUserFetch = (): UserFetchResult => {
     };
   }, [fetchData]);
 
+  // Fonction pour forcer la récupération des données
   const refetchUserData = useCallback(async () => {
     if (!isMounted.current || fetchInProgress.current) {
       return false;
@@ -159,6 +179,7 @@ export const useUserFetch = (): UserFetchResult => {
     }
   }, [fetchData]);
 
+  // Appliquer la règle des nouveaux utilisateurs (solde zéro)
   const correctedUserData = ensureZeroBalanceForNewUser(isNewUser, fetchedUserData);
 
   return {
