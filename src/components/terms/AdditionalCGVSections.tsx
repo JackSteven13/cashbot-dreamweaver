@@ -11,12 +11,13 @@ const AdditionalCGVSections = () => {
         
         <p className="font-medium mt-2">2. Gains pour le Parrain :</p>
         <ul className="list-disc ml-8 mt-1">
-          <li>Le parrain reçoit une commission de dix pour cent du montant des abonnements payés par chaque filleul, et ce, à vie.</li>
-          <li>Un bonus de cinquante euros est accordé au parrain pour chaque filleul restant actif pendant une période minimale de trois mois.</li>
+          <li>Le parrain reçoit une commission variant de 20% à 50% du montant des abonnements payés par chaque filleul, selon le niveau d'abonnement du parrain.</li>
+          <li>Les commissions sont calculées comme suit : 20% pour l'abonnement Freemium, 30% pour l'abonnement Starter, 40% pour l'abonnement Gold, et 50% pour l'abonnement Elite.</li>
+          <li>Les abonnements Gold et Elite bénéficient également de commissions supplémentaires pour les filleuls de leurs filleuls (niveau 2).</li>
         </ul>
         
         <p className="font-medium mt-2">3. Conditions de Paiement :</p>
-        <p className="ml-4">Les gains sont accumulés dans un portefeuille virtuel et sont payés lorsque le seuil de cent euros est atteint. Les paiements s'effectuent par virement bancaire, PayPal ou crédit sur le compte <strong>Stream Genius</strong>.</p>
+        <p className="ml-4">Les gains sont accumulés dans un portefeuille virtuel et sont payés lorsque le seuil minimum est atteint selon le type d'abonnement. Les paiements s'effectuent par virement bancaire, PayPal ou crédit sur le compte <strong>Stream Genius</strong>.</p>
         
         <p className="font-medium mt-2">4. Interdiction de Fraude :</p>
         <p className="ml-4">Tout comportement frauduleux, y compris mais sans s'y limiter les fausses inscriptions ou l'utilisation de bots, entraîne la suspension immédiate du compte et la confiscation des gains non payés.</p>
