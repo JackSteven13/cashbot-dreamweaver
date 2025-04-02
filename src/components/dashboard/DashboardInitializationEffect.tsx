@@ -18,40 +18,49 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
   pathname,
   setSelectedNavItem
 }) => {
-  const effectsAppliedRef = useRef({
-    initialization: false,
-    navigation: false
-  });
+  // Utiliser des références stables pour éviter les renders en cascade
+  const stablePathRef = useRef(pathname);
+  const initializationDone = useRef(false);
+  const navigationDone = useRef(false);
+  
+  useEffect(() => {
+    stablePathRef.current = pathname;
+  }, [pathname]);
 
   // Initialization effect - runs once only
   useEffect(() => {
-    if (!effectsAppliedRef.current.initialization && !initialRenderComplete.current) {
+    if (!initializationDone.current && !initialRenderComplete.current) {
       if (!isAuthChecking && !isLoading && userData && userData.username) {
         console.log("Dashboard initially mounted with user data:", userData.username);
         initialRenderComplete.current = true;
-        effectsAppliedRef.current.initialization = true;
+        initializationDone.current = true;
       }
     }
     
-    // No cleanup needed as this runs once only
+    // Cleanup function
+    return () => {
+      // Ne pas réinitialiser initialRenderComplete car c'est une ref externe
+    };
   }, [isAuthChecking, isLoading, userData, initialRenderComplete]);
 
-  // Separate navigation effect to avoid conflicts
+  // Separate navigation effect - isolated to prevent conflicts
   useEffect(() => {
-    // Only run once per dashboard visit
-    if (pathname === "/dashboard" && !effectsAppliedRef.current.navigation) {
+    const currentPath = stablePathRef.current;
+    
+    // Only run when path is dashboard and not already done
+    if (currentPath === "/dashboard" && !navigationDone.current) {
       console.log("Setting selected nav item to dashboard");
       setSelectedNavItem('dashboard');
-      effectsAppliedRef.current.navigation = true;
+      navigationDone.current = true;
     }
     
-    // Reset navigation flag when path changes
+    // Reset navigation flag when path changes away from dashboard
     return () => {
-      if (pathname !== "/dashboard") {
-        effectsAppliedRef.current.navigation = false;
+      if (stablePathRef.current !== "/dashboard") {
+        navigationDone.current = false;
       }
     };
-  }, [pathname, setSelectedNavItem]);
+  }, [setSelectedNavItem]);
 
   return null;
 };

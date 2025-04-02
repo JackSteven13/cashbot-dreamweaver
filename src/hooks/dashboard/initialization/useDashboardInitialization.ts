@@ -18,16 +18,24 @@ export const useDashboardInitialization = () => {
   const authCheckInProgress = useRef(false);
   const authCheckAttempted = useRef(false);
   const initializationRetries = useRef(0);
+  const isInitializing = useRef(false);
   
   const navigate = useNavigate();
   
   // Clean up any stale flags immediately to prevent issues
   useEffect(() => {
+    // Vérifier si une redirection est déjà en cours
+    const isRedirecting = localStorage.getItem('auth_redirecting') === 'true';
+    
+    if (isRedirecting) {
+      console.log("Redirection already in progress, skipping initialization");
+      return;
+    }
+    
     localStorage.removeItem('dashboard_initializing');
     localStorage.removeItem('auth_checking');
     localStorage.removeItem('auth_refreshing');
     localStorage.removeItem('data_syncing');
-    localStorage.removeItem('auth_redirecting');
   }, []);
   
   // Hooks with stable dependencies
@@ -38,17 +46,27 @@ export const useDashboardInitialization = () => {
   // Initialization function with stable callback
   const initializeDashboard = useCallback(async () => {
     // Prevent simultaneous initializations
-    if (!mountedRef.current || authCheckInProgress.current) {
+    if (!mountedRef.current || authCheckInProgress.current || isInitializing.current) {
       console.log("Initialization already in progress or component unmounted, skipping");
       return;
     }
+    
+    // Vérifier si une redirection est déjà en cours
+    const isRedirecting = localStorage.getItem('auth_redirecting') === 'true';
+    
+    if (isRedirecting) {
+      console.log("Redirection already in progress, skipping initialization");
+      return;
+    }
+    
+    // Set initialization flag
+    isInitializing.current = true;
     
     // Clean up any stale flags
     localStorage.removeItem('dashboard_initializing');
     localStorage.removeItem('auth_checking');
     localStorage.removeItem('auth_refreshing');
     localStorage.removeItem('data_syncing');
-    localStorage.removeItem('auth_redirecting');
     
     // Mark the beginning of initialization
     authCheckInProgress.current = true;
@@ -65,6 +83,7 @@ export const useDashboardInitialization = () => {
       
       if (!mountedRef.current) {
         authCheckInProgress.current = false;
+        isInitializing.current = false;
         return;
       }
       
@@ -75,6 +94,7 @@ export const useDashboardInitialization = () => {
         
         if (!mountedRef.current) {
           authCheckInProgress.current = false;
+          isInitializing.current = false;
           return;
         }
         
@@ -95,10 +115,18 @@ export const useDashboardInitialization = () => {
             variant: "destructive"
           });
           
+          // Marquer qu'une redirection est en cours
+          localStorage.setItem('auth_redirecting', 'true');
+          
           // Delay redirect to prevent race conditions
           setTimeout(() => {
             if (mountedRef.current) {
               navigate('/login', { replace: true });
+              
+              // Réinitialiser le flag après la redirection
+              setTimeout(() => {
+                localStorage.removeItem('auth_redirecting');
+              }, 500);
             }
           }, 800);
         }
@@ -112,6 +140,7 @@ export const useDashboardInitialization = () => {
       }
     } finally {
       authCheckInProgress.current = false;
+      isInitializing.current = false;
     }
   }, [checkAuth, syncUserData, navigate]);
   
@@ -121,12 +150,21 @@ export const useDashboardInitialization = () => {
     authCheckInProgress.current = false;
     authCheckAttempted.current = false;
     initializationRetries.current = 0;
+    isInitializing.current = false;
     
     console.log("useDashboardInitialization mounted");
     
+    // Vérifier si une redirection est déjà en cours
+    const isRedirecting = localStorage.getItem('auth_redirecting') === 'true';
+    
+    if (isRedirecting) {
+      console.log("Redirection already in progress, skipping initialization");
+      return;
+    }
+    
     // Initialize with a short delay
     const initialTimer = setTimeout(() => {
-      if (mountedRef.current && !authCheckInProgress.current) {
+      if (mountedRef.current && !authCheckInProgress.current && !isInitializing.current) {
         initializeDashboard();
       }
     }, 500);

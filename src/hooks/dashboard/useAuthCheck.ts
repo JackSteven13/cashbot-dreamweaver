@@ -16,6 +16,13 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
     try {
       console.log("Dashboard initializing: checking auth state");
       
+      // Vérifier si une redirection est déjà en cours
+      const isRedirecting = localStorage.getItem('auth_redirecting') === 'true';
+      if (isRedirecting) {
+        console.log("Redirection already in progress, skipping auth check");
+        return false;
+      }
+      
       // Check if a session is present locally first
       const localSession = localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
       if (!localSession) {
@@ -27,8 +34,12 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
           
           setTimeout(() => {
             if (mountedRef.current) {
-              localStorage.removeItem('auth_redirecting');
               navigate('/login', { replace: true });
+              
+              // Nettoyer le flag après redirection
+              setTimeout(() => {
+                localStorage.removeItem('auth_redirecting');
+              }, 500);
             }
           }, 300);
         }
@@ -82,8 +93,12 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
           
           setTimeout(() => {
             if (mountedRef.current) {
-              localStorage.removeItem('auth_redirecting');
               navigate('/login', { replace: true });
+              
+              // Nettoyer le flag après redirection
+              setTimeout(() => {
+                localStorage.removeItem('auth_redirecting');
+              }, 500);
             }
           }, 300);
         }

@@ -12,6 +12,9 @@ export const useAuthStateListener = ({ mountedRef, navigate }: UseAuthStateListe
   const setupAuthListener = useCallback(() => {
     console.log("Setting up auth state listener for dashboard");
     
+    // Référence pour éviter les redirections multiples
+    const redirectingRef = { current: false };
+    
     // Clear any existing subscriptions to prevent duplicates
     supabase.auth.onAuthStateChange(undefined);
     
@@ -21,13 +24,23 @@ export const useAuthStateListener = ({ mountedRef, navigate }: UseAuthStateListe
       
       console.log(`Auth state change: ${event}`);
       
-      if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT' && !redirectingRef.current) {
         console.log("User signed out, redirecting to login");
+        redirectingRef.current = true;
+        
+        // Mettre un flag dans localStorage pour indiquer qu'une redirection est en cours
+        localStorage.setItem('auth_redirecting', 'true');
         
         // Use a timeout to avoid immediate navigation that could conflict with other processes
         setTimeout(() => {
           if (mountedRef.current) {
             navigate('/login', { replace: true });
+            
+            // Une fois la redirection terminée, on peut réinitialiser notre flag
+            setTimeout(() => {
+              localStorage.removeItem('auth_redirecting');
+              redirectingRef.current = false;
+            }, 500);
           }
         }, 300);
       } else if (event === 'TOKEN_REFRESHED') {
