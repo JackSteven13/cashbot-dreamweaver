@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -11,7 +10,7 @@ import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
 import { useDormancyCheck } from '@/hooks/useDormancyCheck';
 import { canStartManualSession } from '@/utils/subscriptionUtils';
-import { useDashboardInitialization } from '@/hooks/useDashboardInitialization';
+import { useDashboardInitialization } from '@/hooks/dashboard/useDashboardInitialization';
 
 const Dashboard = () => {
   const navigate = useNavigate();
