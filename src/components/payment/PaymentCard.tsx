@@ -4,7 +4,6 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import PlanSummary from '@/components/payment/PlanSummary';
 import StripeCheckoutForm from '@/components/payment/StripeCheckoutForm';
 import ManualPaymentForm from '@/components/payment/ManualPaymentForm';
-import PaymentMethodToggle from '@/components/payment/PaymentMethodToggle';
 import { PaymentFormData, PlanType } from '@/hooks/payment/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -38,7 +37,7 @@ const PaymentCard = ({
           Finaliser votre abonnement {selectedPlan && (selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1))}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 md:space-y-4 px-4 md:px-6">
+      <CardContent className="space-y-3 md:space-y-4 px-4 md:px-6 pb-6">
         <PlanSummary selectedPlan={selectedPlan} />
         
         {useStripeCheckout ? (
@@ -55,12 +54,6 @@ const PaymentCard = ({
           />
         )}
       </CardContent>
-      <CardFooter className="flex flex-col px-4 py-3 md:p-6">
-        <PaymentMethodToggle 
-          useStripeCheckout={useStripeCheckout}
-          onToggle={onToggleMethod}
-        />
-      </CardFooter>
     </Card>
   );
 };

@@ -12,7 +12,7 @@ export const usePaymentPage = () => {
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
-  const [useStripePayment, setUseStripePayment] = useState(true);
+  const [useStripePayment, setUseStripePayment] = useState(true); // Toujours utiliser Stripe par défaut
   
   // Get the processing state from the payment hooks
   const { isProcessing, processPayment } = usePaymentProcessing(selectedPlan);
@@ -105,8 +105,6 @@ export const usePaymentPage = () => {
     checkAuth();
   }, [navigate, selectedPlan]);
 
-  // SUPPRESSION de l'initialisation automatique du checkout Stripe
-
   // Gérer l'abonnement Freemium
   const handleFreemiumSubscription = async () => {
     try {
@@ -159,6 +157,7 @@ export const usePaymentPage = () => {
     }
   };
 
+  // Fonction preservée pour la compatibilité mais n'est plus utilisée dans l'interface
   const togglePaymentMethod = () => {
     setUseStripePayment(!useStripePayment);
   };

@@ -122,17 +122,6 @@ const StripeCheckoutForm = ({
           Ouvrir à nouveau la page de paiement
         </Button>
       )}
-      
-      {isMobile && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-xs text-yellow-800 mt-2">
-          <p className="font-semibold">Sur les appareils mobiles :</p>
-          <ul className="list-disc pl-4 mt-1 space-y-1">
-            <li>Assurez-vous que les popups sont autorisés</li>
-            <li>Si la redirection ne fonctionne pas, utilisez le bouton bleu ci-dessus</li>
-            <li>Si rien ne fonctionne, essayez un autre navigateur</li>
-          </ul>
-        </div>
-      )}
     </div>
   );
 };
