@@ -17,6 +17,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const redirectInProgress = useRef(false);
   const initialCheckComplete = useRef(false);
   const autoRetryCount = useRef(0);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const { 
     isAuthenticated, 
@@ -27,14 +28,23 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   // Fonction pour retry automatique améliorée
   useEffect(() => {
-    if (authCheckFailed && autoRetryCount.current < 2) {
+    if (authCheckFailed && autoRetryCount.current < 2 && !redirectInProgress.current) {
       console.log(`Auto-retry authentication attempt ${autoRetryCount.current + 1}`);
-      const timer = setTimeout(() => {
+      
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      timeoutRef.current = setTimeout(() => {
         checkAuth(true);
         autoRetryCount.current += 1;
       }, 1500);
       
-      return () => clearTimeout(timer);
+      return () => {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      };
     }
   }, [authCheckFailed, checkAuth]);
 
@@ -44,6 +54,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     
     redirectInProgress.current = true;
     console.log("Déconnexion propre initiée");
+    
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
     
     Promise.resolve(forceSignOut())
       .then(() => {
@@ -66,14 +80,22 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   // Effect to prevent infinite redirects
   useEffect(() => {
     // Set a timeout to ensure we don't wait forever
-    const timeoutId = setTimeout(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    timeoutRef.current = setTimeout(() => {
       if (!initialCheckComplete.current && isAuthenticated === null) {
         console.log("Auth check timeout reached, forcing redirect to login");
         handleCleanLogin();
       }
     }, 8000); // 8 seconds timeout
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, [handleCleanLogin, isAuthenticated]);
 
   // Mark initial check as complete when we get a definitive answer
@@ -82,6 +104,15 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       initialCheckComplete.current = true;
     }
   }, [isAuthenticated]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   // Show recovery screen if auth check failed
   if (authCheckFailed) {

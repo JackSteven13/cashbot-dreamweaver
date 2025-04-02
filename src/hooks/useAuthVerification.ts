@@ -18,6 +18,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [authCheckFailed, setAuthCheckFailed] = useState(false);
   const isMounted = useRef(true);
+  const checkInProgress = useRef(false);
   
   const { username, setUsername, fetchProfileData } = useProfileData();
   
@@ -31,6 +32,13 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
   });
 
   const checkAuth = useCallback(async (isManualRetry = false) => {
+    if (checkInProgress.current) {
+      console.log("Auth check already in progress, skipping duplicated call");
+      return;
+    }
+    
+    checkInProgress.current = true;
+    
     if (isManualRetry) {
       setIsRetrying(true);
       setAuthCheckFailed(false);
@@ -39,54 +47,83 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     
     const isAuthValid = await performAuthCheck(isManualRetry);
     
-    if (!isMounted.current) return;
+    if (!isMounted.current) {
+      checkInProgress.current = false;
+      return;
+    }
     
     if (!isAuthValid) {
       setAuthCheckFailed(true);
       setIsAuthenticated(false);
+      checkInProgress.current = false;
       return;
     }
     
-    // Get user data for welcome message
-    const { data } = await supabase.auth.getUser();
-    const user = data.user;
-    
-    if (!user) {
-      setAuthCheckFailed(true);
-      setIsAuthenticated(false);
-      return;
-    }
-    
-    // Fetch profile data for username
-    await fetchProfileData(user.id);
-    
-    if (isMounted.current) {
-      setIsAuthenticated(true);
+    try {
+      // Get user data for welcome message with improved error handling
+      const { data, error } = await supabase.auth.getUser();
+      
+      if (error) {
+        console.error("Error fetching user:", error);
+        setAuthCheckFailed(true);
+        setIsAuthenticated(false);
+        checkInProgress.current = false;
+        return;
+      }
+      
+      const user = data.user;
+      
+      if (!user) {
+        setAuthCheckFailed(true);
+        setIsAuthenticated(false);
+        checkInProgress.current = false;
+        return;
+      }
+      
+      // Fetch profile data for username with improved error handling
+      await fetchProfileData(user.id);
+      
+      if (isMounted.current) {
+        setIsAuthenticated(true);
+      }
+    } catch (err) {
+      console.error("Error during auth check:", err);
+      if (isMounted.current) {
+        setAuthCheckFailed(true);
+        setIsAuthenticated(false);
+      }
+    } finally {
+      checkInProgress.current = false;
     }
   }, [performAuthCheck, fetchProfileData, setIsRetrying]);
 
-  // Handle auth state changes
+  // Handle auth state changes with improved stability
   useAuthStateListener({
     onSignOut: () => {
-      setIsAuthenticated(false);
-      setUsername(null);
+      if (isMounted.current) {
+        setIsAuthenticated(false);
+        setUsername(null);
+      }
     },
     onTokenRefresh: () => {
-      console.log("Token refreshed successfully");
-      setIsAuthenticated(true);
+      if (isMounted.current) {
+        console.log("Token refreshed successfully");
+        setIsAuthenticated(true);
+      }
     },
     isMounted
   });
 
   useEffect(() => {
     isMounted.current = true;
+    checkInProgress.current = false;
     
-    // Set timeout for initial auth check with longer delay
+    // Set timeout for initial auth check with longer delay to ensure proper initialization
     const initTimeout = setTimeout(() => {
-      if (isMounted.current) {
+      if (isMounted.current && !checkInProgress.current) {
         checkAuth();
       }
-    }, 800);
+    }, 1000);
     
     return () => {
       console.log("useAuthVerification hook unmounting");
