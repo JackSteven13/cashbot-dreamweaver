@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 import { fetchCompleteUserData } from '@/utils/user/userDataFetch';
 import { fetchUserTransactions } from '@/utils/user/transactionUtils';
-import { checkDailyLimit } from '@/utils/authUtils';
+import { checkDailyLimit } from '@/utils/auth';
 import { generateReferralLink } from '@/utils/referralUtils';
 import { UserFetcherState } from './useUserDataState';
 import { getCurrentSession } from '@/utils/auth/sessionUtils';

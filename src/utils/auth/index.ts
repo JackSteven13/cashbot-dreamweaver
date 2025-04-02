@@ -5,4 +5,6 @@ export { refreshSession } from './sessionUtils'; // Export explicite pour évite
 export { verifyAuth } from './verificationUtils';
 // Éviter le conflit en n'exportant pas refreshSession de verificationUtils
 // à la place on exportera explicitement à partir du sessionUtils
-export { subscribeToAuthChanges, unsubscribeFromAuthChanges } from './subscriptionUtils';
+
+// Export subscription utils correctly
+export { checkDailyLimit } from './subscriptionUtils';
