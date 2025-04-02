@@ -19,15 +19,15 @@ export const useUserData = () => {
     refetchUserData
   } = useUserFetch();
 
-  // Make sure new users have zero balance and no limit alert
+  // Make sure new users have zero balance
   const sanitizedUserData = ensureZeroBalanceForNewUser(isNewUser, fetchedUserData);
-
-  // Create state variables to be managed by balance actions
+  
+  // Create local state variables to be managed by balance actions
   const [userData, setUserData] = useState<UserData>(sanitizedUserData);
   const [dailySessionCount, setDailySessionCount] = useState<number>(fetchedDailySessionCount);
   const [showLimitAlert, setShowLimitAlert] = useState<boolean>(isNewUser ? false : initialShowLimitAlert);
 
-  // Update local state when fetched data changes
+  // Update local state when fetched data changes - stabilisé pour éviter boucles
   useEffect(() => {
     if (fetchedUserData && JSON.stringify(fetchedUserData) !== JSON.stringify(userData)) {
       // Ensure new users start with zero balance
@@ -40,6 +40,7 @@ export const useUserData = () => {
     }
   }, [fetchedUserData, userData, isNewUser]);
 
+  // Update session count when fetched data changes - stabilisé
   useEffect(() => {
     if (fetchedDailySessionCount !== dailySessionCount) {
       console.log("Updating dailySessionCount from", dailySessionCount, "to", fetchedDailySessionCount);
@@ -47,6 +48,7 @@ export const useUserData = () => {
     }
   }, [fetchedDailySessionCount, dailySessionCount]);
 
+  // Update limit alert status when fetched data changes - stabilisé
   useEffect(() => {
     // Ne pas montrer l'alerte de limite pour les nouveaux utilisateurs
     if (initialShowLimitAlert !== showLimitAlert && !isNewUser) {
