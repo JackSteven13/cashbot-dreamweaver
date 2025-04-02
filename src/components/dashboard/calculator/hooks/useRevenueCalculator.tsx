@@ -15,14 +15,14 @@ export function useRevenueCalculator() {
   const [calculatedResults, setCalculatedResults] = useState<Record<string, { revenue: number, profit: number }>>({});
   const [activeTab, setActiveTab] = useState<'controls' | 'results'>('controls');
 
-  const form = useForm<FormValues>({
+  const methods = useForm<FormValues>({
     defaultValues: {
       sessionsPerDay: 2,
       daysPerMonth: 20
     }
   });
 
-  const { watch, control } = form;
+  const { watch, control } = methods;
   const values = watch();
 
   // Calculate results when input values change
@@ -49,7 +49,7 @@ export function useRevenueCalculator() {
     calculatedResults,
     activeTab,
     setActiveTab,
-    form,
+    form: { methods, control },
     control
   };
 }

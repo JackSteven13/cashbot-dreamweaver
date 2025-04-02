@@ -14,6 +14,7 @@ import { SUBSCRIPTION_LABELS } from './calculator/constants';
 import MobileTabs from './calculator/components/MobileTabs';
 import CalculatorBody from './calculator/components/CalculatorBody';
 import CalculatorFooter from './calculator/CalculatorFooter';
+import { FormProvider } from 'react-hook-form';
 
 interface RevenueCalculatorProps {
   currentSubscription: string;
@@ -70,17 +71,19 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
         )}
       </CardHeader>
       <CardContent className={`pt-3 px-3 md:pt-4 md:px-6 ${isHomePage ? 'text-white dark:text-white' : 'dark:text-gray-100'}`}>
-        <CalculatorBody 
-          control={control}
-          isHomePage={isHomePage}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          isMobile={isMobile}
-          selectedPlan={selectedPlan}
-          currentSubscription={currentSubscription}
-          calculatedResults={calculatedResults}
-          onSelectPlan={setSelectedPlan}
-        />
+        <FormProvider {...form.methods}>
+          <CalculatorBody 
+            control={control}
+            isHomePage={isHomePage}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            isMobile={isMobile}
+            selectedPlan={selectedPlan}
+            currentSubscription={currentSubscription}
+            calculatedResults={calculatedResults}
+            onSelectPlan={setSelectedPlan}
+          />
+        </FormProvider>
       </CardContent>
       <CardFooter className={`py-3 px-4 md:p-6 ${isHomePage ? "bg-blue-950/50 border-t border-white/10 pt-4 dark:bg-gray-900/70 dark:border-gray-800" : "bg-gray-50 border-t pt-4 dark:bg-gray-800 dark:border-gray-700"}`}>
         <CalculatorFooter 
