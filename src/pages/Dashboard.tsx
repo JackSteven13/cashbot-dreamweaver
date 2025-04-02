@@ -21,12 +21,11 @@ const Dashboard = memo(() => {
     console.log(`Main Dashboard component render count: ${renderCountRef.current}`);
   });
   
-  // Utiliser les hooks pour l'état et l'initialisation
-  // IMPORTANT: Always declare all hooks at the top level, never conditionally
+  // Déclarer tous les hooks au niveau supérieur, sans condition
   const dashboardState = useDashboardState();
   const initState = useDashboardInitialization();
   
-  // Destructure all values after all hooks have been called
+  // Destructurer toutes les valeurs après l'appel des hooks
   const {
     selectedNavItem,
     setSelectedNavItem,
@@ -53,12 +52,21 @@ const Dashboard = memo(() => {
     authError
   } = initState;
   
-  // Simplify the display conditions for better stability
+  // Simplifier les conditions d'affichage
   const isLoading_Combined = isAuthChecking || isLoading || !isReady || isChecking;
   const hasError = authError || (!isLoading_Combined && !userData?.username);
   const canShowDashboard = !isLoading_Combined && !authError && isReady && userData?.username;
   
-  // Pass everything to the initialization effect
+  // Logs de debug pour le rendu
+  useEffect(() => {
+    console.log("Dashboard render count:", renderCountRef.current);
+    console.log("isAuthChecking:", isAuthChecking);
+    console.log("isLoading:", isLoading);
+    console.log("isReady:", isReady);
+    console.log("authError:", authError);
+    console.log("canShowDashboard:", canShowDashboard);
+  }, [isAuthChecking, isLoading, isReady, authError, canShowDashboard]);
+  
   return (
     <>
       <DashboardInitializationEffect
