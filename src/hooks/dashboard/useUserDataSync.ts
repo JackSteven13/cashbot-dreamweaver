@@ -7,7 +7,7 @@ interface UseUserDataSyncParams {
 }
 
 export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
-  // Improved function to synchronize data between Supabase and the localStorage
+  // Improved function to synchronize data with better stability
   const syncUserData = useCallback(async () => {
     if (!mountedRef.current) return false;
     
@@ -16,7 +16,7 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
       
       // Check if sync is already in progress
       if (localStorage.getItem('data_syncing') === 'true') {
-        console.log("Data sync already in progress, skipping");
+        console.log("Data sync already in progress, waiting");
         await new Promise(resolve => setTimeout(resolve, 600));
         return true;
       }
@@ -48,7 +48,7 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
             .maybeSingle();
           
           if (!error && userBalanceData) {
-            // Mettre à jour le localStorage si nécessaire
+            // Update localStorage if necessary
             const localSubscription = localStorage.getItem('subscription');
             
             if (localSubscription !== userBalanceData.subscription) {
@@ -67,7 +67,7 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
         }
       }
       
-      // Vérifier si une actualisation forcée a été demandée
+      // Check if a forced refresh was requested
       const forceRefresh = localStorage.getItem('forceRefreshBalance');
       if (forceRefresh === 'true') {
         console.log("Force refresh detected, clearing flag");

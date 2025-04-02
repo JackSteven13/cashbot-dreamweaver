@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import DashboardLoading from '@/components/dashboard/DashboardLoading';
@@ -13,9 +14,9 @@ import { canStartManualSession } from '@/utils/subscriptionUtils';
 import { useDashboardInitialization } from '@/hooks/dashboard/useDashboardInitialization';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
   const [renderKey, setRenderKey] = useState(Date.now());
+  const initialRenderComplete = useRef(false);
   
   const {
     isAuthChecking,
@@ -63,8 +64,10 @@ const Dashboard = () => {
   }, [refreshUserData]);
 
   useEffect(() => {
-    if (!isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
+    // Only log on first successful render with data
+    if (!initialRenderComplete.current && !isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
       console.log("Dashboard mounted with user data:", userData.username);
+      initialRenderComplete.current = true;
     }
   }, [isAuthChecking, isLoading, userData]);
 
