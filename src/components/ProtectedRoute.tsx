@@ -1,9 +1,11 @@
 
-import { ReactNode, useEffect, useRef, useState, useCallback } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { ReactNode, useCallback, useEffect, useRef } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { toast } from "@/components/ui/use-toast";
+import { forceSignOut } from "@/utils/auth/sessionUtils";
 import { useAuthVerification } from '@/hooks/useAuthVerification';
+import AuthRecoveryScreen from './auth/AuthRecoveryScreen';
 import AuthLoadingScreen from './auth/AuthLoadingScreen';
-import ProtectedRouteRecovery from './auth/ProtectedRouteRecovery';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -11,13 +13,11 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const redirectInProgress = useRef(false);
   const initialCheckComplete = useRef(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const maxLoadingTime = useRef<NodeJS.Timeout | null>(null);
   const autoRetryCount = useRef(0);
   
-  // Use a stable reference to the auth verification hooks
   const { 
     isAuthenticated, 
     authCheckFailed, 
@@ -25,85 +25,76 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     checkAuth
   } = useAuthVerification();
 
-  // Stable cleanup function to avoid re-renders
-  const clearTimeouts = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    
-    if (maxLoadingTime.current) {
-      clearTimeout(maxLoadingTime.current);
-      maxLoadingTime.current = null;
-    }
-  }, []);
-
-  // Single effect for timeout management with stable dependencies
+  // Fonction pour retry automatique améliorée
   useEffect(() => {
-    // Only set the timeout if authentication hasn't been verified yet
-    if (isAuthenticated === null && !maxLoadingTime.current) {
-      maxLoadingTime.current = setTimeout(() => {
-        if (isAuthenticated === null) {
-          console.log("Maximum loading time reached, forcing verification");
-          checkAuth(true);
-        }
-      }, 8000);
-    }
-    
-    return clearTimeouts;
-  }, [isAuthenticated, checkAuth, clearTimeouts]);
-
-  // Effect for auto-retry with stable dependencies
-  useEffect(() => {
-    if (authCheckFailed && autoRetryCount.current < 3 && !timeoutRef.current) {
-      console.log(`Automatic retry ${autoRetryCount.current + 1}/3`);
-      
-      timeoutRef.current = setTimeout(() => {
-        autoRetryCount.current += 1;
+    if (authCheckFailed && autoRetryCount.current < 2) {
+      console.log(`Auto-retry authentication attempt ${autoRetryCount.current + 1}`);
+      const timer = setTimeout(() => {
         checkAuth(true);
-        timeoutRef.current = null;
-      }, 2000);
+        autoRetryCount.current += 1;
+      }, 1500);
+      
+      return () => clearTimeout(timer);
     }
+  }, [authCheckFailed, checkAuth]);
+
+  // Handle clean login function
+  const handleCleanLogin = useCallback(() => {
+    if (redirectInProgress.current) return;
     
+    redirectInProgress.current = true;
+    console.log("Déconnexion propre initiée");
+    
+    Promise.resolve(forceSignOut())
+      .then(() => {
+        console.log("Redirection vers la page de connexion");
+        // Petit délai pour permettre à la déconnexion de se terminer
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+          redirectInProgress.current = false;
+        }, 300);
+      })
+      .catch((error) => {
+        console.error("Erreur pendant la déconnexion propre:", error);
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+          redirectInProgress.current = false;
+        }, 300);
+      });
+  }, [navigate]);
+
+  // Effect to prevent infinite redirects
+  useEffect(() => {
+    // Set a timeout to ensure we don't wait forever
+    const timeoutId = setTimeout(() => {
+      if (!initialCheckComplete.current && isAuthenticated === null) {
+        console.log("Auth check timeout reached, forcing redirect to login");
+        handleCleanLogin();
+      }
+    }, 8000); // 8 seconds timeout
+
+    return () => clearTimeout(timeoutId);
+  }, [handleCleanLogin, isAuthenticated]);
+
+  // Mark initial check as complete when we get a definitive answer
+  useEffect(() => {
     if (isAuthenticated !== null && !initialCheckComplete.current) {
       initialCheckComplete.current = true;
-      console.log("Initial auth check completed, result:", isAuthenticated);
     }
-    
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-    };
-  }, [authCheckFailed, isAuthenticated, checkAuth]);
-
-  // Cleanup effect
-  useEffect(() => {
-    return () => {
-      console.log("ProtectedRoute unmounting");
-      clearTimeouts();
-    };
-  }, [clearTimeouts]);
+  }, [isAuthenticated]);
 
   // Show recovery screen if auth check failed
   if (authCheckFailed) {
     return (
-      <ProtectedRouteRecovery
+      <AuthRecoveryScreen 
         isRetrying={isRetrying}
-        autoRetryCount={autoRetryCount}
-        maxAutoRetries={3}
         onRetry={() => checkAuth(true)}
-        onCleanLogin={() => {
-          localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-          localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
-          window.location.href = '/login';
-        }}
+        onCleanLogin={handleCleanLogin}
       />
     );
   }
   
-  // Show loading screen during auth verification
+  // Show loading screen while checking auth
   if (isAuthenticated === null) {
     return <AuthLoadingScreen />;
   }
@@ -112,7 +103,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   if (isAuthenticated === false) {
     if (!redirectInProgress.current) {
       redirectInProgress.current = true;
-      return <Navigate to="/login" replace state={{ from: location }} />;
+      toast({
+        title: "Accès refusé",
+        description: "Vous devez être connecté pour accéder à cette page.",
+        variant: "destructive"
+      });
     }
     return <Navigate to="/login" replace state={{ from: location }} />;
   }

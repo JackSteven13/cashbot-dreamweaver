@@ -1,21 +1,23 @@
 
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { useState, useCallback, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import DashboardContent from '@/components/dashboard/DashboardContent';
+import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import DashboardLoading from '@/components/dashboard/DashboardLoading';
 import DashboardError from '@/components/dashboard/DashboardError';
-import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
-import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
-import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
-import { memo, useEffect, useRef, useMemo } from 'react';
+import DailyLimitAlert from '@/components/dashboard/DailyLimitAlert';
+import DormancyAlert from '@/components/dashboard/DormancyAlert';
+import { useUserData } from '@/hooks/useUserData';
+import { useDashboardSessions } from '@/hooks/useDashboardSessions';
+import { useDormancyCheck } from '@/hooks/useDormancyCheck';
+import { canStartManualSession } from '@/utils/subscriptionUtils';
+import { useDashboardInitialization } from '@/hooks/useDashboardInitialization';
 
-// Composant principal avec memo pour éviter les re-rendus inutiles
-const Dashboard = memo(() => {
-  const location = useLocation();
-  const renderCountRef = useRef(0);
-  const initialRenderCompleteRef = useRef(false);
+const Dashboard = () => {
+  const navigate = useNavigate();
+  const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
+  const [renderKey, setRenderKey] = useState(Date.now());
   
-  // Hooks stables avec dépendances minimales
   const {
     isAuthChecking,
     isReady,
@@ -23,91 +25,118 @@ const Dashboard = memo(() => {
   } = useDashboardInitialization();
   
   const {
-    selectedNavItem,
-    setSelectedNavItem,
-    renderKey,
     userData,
     isNewUser,
     dailySessionCount,
     showLimitAlert,
+    setShowLimitAlert,
+    updateBalance,
+    resetBalance,
+    incrementSessionCount,
+    isLoading,
+    refreshUserData
+  } = useUserData();
+  
+  const {
     isDormant,
     dormancyData,
     isChecking,
-    handleReactivate,
+    handleReactivate
+  } = useDormancyCheck(userData?.subscription || 'freemium', refreshUserData);
+  
+  const {
     isStartingSession,
     handleStartSession,
     handleWithdrawal,
-    lastSessionTimestamp,
-    forceRefresh,
-    isLoading
-  } = useDashboardState();
-  
-  // Effet de debug avec scope limité
+    lastSessionTimestamp
+  } = useDashboardSessions(
+    userData,
+    dailySessionCount,
+    incrementSessionCount,
+    updateBalance,
+    setShowLimitAlert,
+    resetBalance
+  );
+
+  const forceRefresh = useCallback(() => {
+    setRenderKey(Date.now());
+    refreshUserData().catch(error => console.error("Error refreshing user data:", error));
+  }, [refreshUserData]);
+
   useEffect(() => {
-    renderCountRef.current += 1;
-    console.log(`Dashboard render count: ${renderCountRef.current}`);
-  });
-  
-  // Calculs memoizés pour éviter les re-calculs à chaque rendu
-  const { isLoading_Combined, hasError, canShowDashboard } = useMemo(() => {
-    const isLoadingCombined = isAuthChecking || isLoading || !isReady || isChecking;
-    const hasErrorValue = authError || (!isLoadingCombined && !userData?.username);
-    const canShowDashboardValue = !isLoadingCombined && !authError && isReady && userData?.username;
-    
-    return {
-      isLoading_Combined: isLoadingCombined,
-      hasError: hasErrorValue,
-      canShowDashboard: canShowDashboardValue
-    };
-  }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
-  
-  return (
+    if (!isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
+      console.log("Dashboard mounted with user data:", userData.username);
+    }
+  }, [isAuthChecking, isLoading, userData]);
+
+  useEffect(() => {
+    if (window.location.pathname === "/dashboard") {
+      setSelectedNavItem('dashboard');
+    }
+  }, []);
+
+  if (isAuthChecking || isLoading || !isReady || isChecking) {
+    return <DashboardLoading />;
+  }
+
+  if (authError) {
+    return <DashboardError errorType="auth" />;
+  }
+
+  if (!userData || !userData.username) {
+    return <DashboardError errorType="data" onRefresh={forceRefresh} />;
+  }
+
+  const renderDashboardContent = () => (
     <>
-      {/* Effet d'initialisation stabilisé et isolé */}
-      <DashboardInitializationEffect
-        initialRenderComplete={initialRenderCompleteRef}
-        isAuthChecking={isAuthChecking}
-        isLoading={isLoading}
-        userData={userData}
-        pathname={location.pathname}
-        setSelectedNavItem={setSelectedNavItem}
+      {isDormant && dormancyData && (
+        <DormancyAlert 
+          show={isDormant}
+          dormancyDays={dormancyData.dormancyDays}
+          penalties={dormancyData.penalties}
+          originalBalance={dormancyData.originalBalance}
+          remainingBalance={dormancyData.remainingBalance}
+          reactivationFee={dormancyData.reactivationFee}
+          onReactivate={handleReactivate}
+        />
+      )}
+      
+      <DailyLimitAlert 
+        show={showLimitAlert && !isDormant && !isNewUser} 
+        subscription={userData.subscription}
+        currentBalance={userData.balance}
       />
       
-      {isLoading_Combined && <DashboardLoading />}
-      
-      {hasError && <DashboardError errorType={authError ? "auth" : "data"} onRefresh={forceRefresh} />}
-      
-      {canShowDashboard && (
-        <DashboardLayout
-          key={renderKey}
-          username={userData.username}
-          subscription={userData.subscription}
-          selectedNavItem={selectedNavItem}
-          setSelectedNavItem={setSelectedNavItem}
-        >
-          <Routes>
-            <Route index element={
-              <DashboardContent
-                key={`content-${renderKey}`}
-                isDormant={isDormant}
-                dormancyData={dormancyData}
-                showLimitAlert={showLimitAlert}
-                isNewUser={isNewUser}
-                userData={userData}
-                isStartingSession={isStartingSession}
-                handleStartSession={handleStartSession}
-                handleWithdrawal={handleWithdrawal}
-                dailySessionCount={dailySessionCount}
-                handleReactivate={handleReactivate}
-                lastSessionTimestamp={lastSessionTimestamp}
-              />
-            } />
-          </Routes>
-        </DashboardLayout>
-      )}
+      <DashboardMetrics
+        balance={userData.balance}
+        referralLink={userData.referralLink}
+        isStartingSession={isStartingSession}
+        handleStartSession={handleStartSession}
+        handleWithdrawal={handleWithdrawal}
+        transactions={userData.transactions}
+        isNewUser={isNewUser}
+        subscription={userData.subscription}
+        dailySessionCount={dailySessionCount}
+        canStartSession={!isDormant && canStartManualSession(userData.subscription, dailySessionCount, userData.balance)}
+        referrals={userData.referrals}
+        lastSessionTimestamp={lastSessionTimestamp}
+      />
     </>
   );
-});
 
-Dashboard.displayName = 'Dashboard';
+  return (
+    <DashboardLayout
+      key={renderKey}
+      username={userData.username}
+      subscription={userData.subscription}
+      selectedNavItem={selectedNavItem}
+      setSelectedNavItem={setSelectedNavItem}
+    >
+      <Routes>
+        <Route index element={renderDashboardContent()} />
+      </Routes>
+    </DashboardLayout>
+  );
+};
+
 export default Dashboard;

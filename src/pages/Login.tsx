@@ -14,61 +14,27 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isCheckingSession, setIsCheckingSession] = useState(false);
   const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);
   
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
-  // Check existing session on mount
+  // Check if we have a recent email to suggest, but don't auto-login
   useEffect(() => {
-    const checkExistingSession = async () => {
-      setIsCheckingSession(true);
-      
-      try {
-        // Force clear problematic stored sessions
-        localStorage.removeItem('supabase.auth.token');
-        
-        // Check for valid session
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Session check error:", error);
-          setIsCheckingSession(false);
-          return;
-        }
-        
-        // If we have a valid session, redirect to dashboard
-        if (data.session) {
-          console.log("Found existing session, redirecting to dashboard");
-          navigate('/dashboard', { replace: true });
-          return;
-        }
-      } catch (err) {
-        console.error("Session check failed:", err);
-      }
-      
-      // Get last email for suggestion
-      const savedEmail = localStorage.getItem('last_logged_in_email');
-      if (savedEmail) {
-        setLastLoggedInEmail(savedEmail);
-        setEmail(savedEmail);
-      }
-      
-      setIsCheckingSession(false);
-    };
-    
-    checkExistingSession();
-  }, [navigate]);
+    // Get last email but don't use it for auto-login
+    const savedEmail = localStorage.getItem('last_logged_in_email');
+    if (savedEmail) {
+      setLastLoggedInEmail(savedEmail);
+      setEmail(savedEmail); // Pre-fill the email field as a suggestion
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      // Force clear problematic stored sessions first
-      localStorage.removeItem('supabase.auth.token');
-      
-      // Use signInWithPassword with explicit config
+      // Utiliser la persistance par défaut (localStorage)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -80,28 +46,14 @@ const Login = () => {
         // Save the email for future suggestions
         localStorage.setItem('last_logged_in_email', email);
         
-        // Pre-fetch user data to avoid loading issues
-        try {
-          const { data: userData } = await supabase
-            .from('user_balances')
-            .select('subscription')
-            .eq('id', data.user.id)
-            .single();
-            
-          if (userData) {
-            localStorage.setItem('subscription', userData.subscription);
-          }
-        } catch (prefetchError) {
-          console.warn("Prefetch warning (non-critical):", prefetchError);
-        }
-        
-        toast({
-          title: "Connexion réussie",
-          description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
-        });
-        
-        // Redirect with a short delay to ensure auth state is fully updated
-        setTimeout(() => {
+        // Attendre que l'authentification soit entièrement établie
+        setTimeout(async () => {
+          toast({
+            title: "Connexion réussie",
+            description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
+          });
+          
+          // Simple redirect
           navigate('/dashboard', { replace: true });
         }, 800);
       }
@@ -114,7 +66,6 @@ const Login = () => {
           : (error.message || "Une erreur est survenue lors de la connexion"),
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
