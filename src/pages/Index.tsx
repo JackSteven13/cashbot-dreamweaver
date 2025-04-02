@@ -13,6 +13,7 @@ import HowItWorks from '@/components/HowItWorks';
 const Index = () => {
   const isMobile = useIsMobile();
   
+  // Réduire le nombre de features pour éviter la duplication d'informations
   const features = [
     {
       title: 'Technologies d\'Analyse',
@@ -28,21 +29,6 @@ const Index = () => {
       title: 'Sécurité Avancée',
       description: 'Vos données sont protégées par des protocoles de chiffrement et de sécurité robustes.',
       icon: <ShieldCheck className="w-6 h-6" />
-    },
-    {
-      title: 'Statistiques Détaillées',
-      description: 'Suivez vos performances avec des rapports détaillés mis à jour en temps réel.',
-      icon: <BarChart3 className="w-6 h-6" />
-    },
-    {
-      title: 'Optimisation Continue',
-      description: 'Notre bot s\'améliore constamment pour maintenir des performances optimales de visionnage.',
-      icon: <TrendingUp className="w-6 h-6" />
-    },
-    {
-      title: 'Confidentialité Garantie',
-      description: 'Nous respectons scrupuleusement la réglementation RGPD pour protéger vos informations.',
-      icon: <Lock className="w-6 h-6" />
     }
   ];
 
@@ -76,7 +62,7 @@ const Index = () => {
         {/* How It Works section - New section that replaces testimonials */}
         <HowItWorks />
         
-        {/* Features section - Smaller padding to make page more compact */}
+        {/* Features section - Contenu réduit pour éviter les doublons */}
         <FeaturesGrid 
           title="Une Plateforme de Visionnage Automatique Innovante"
           subtitle="Stream genius utilise un bot avancé pour visionner des vidéos publicitaires sponsorisées et générer des revenus complémentaires pour vous."
