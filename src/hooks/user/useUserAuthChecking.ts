@@ -1,5 +1,5 @@
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { verifyAuth, refreshSession } from "@/utils/auth";
 import { UserFetcherState } from './useUserDataState';
@@ -134,6 +134,3 @@ export const useUserAuthChecking = (
     setIsLoading
   };
 };
-
-// Add missing import
-import { useState } from 'react';

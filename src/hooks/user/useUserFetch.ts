@@ -23,35 +23,25 @@ export const useUserFetch = (): UserFetchResult => {
   const isMounted = useRef(true);
   const initialFetchAttempted = useRef(false);
   
-  // Use smaller, focused hooks
-  const { 
-    state, 
-    updateUserData, 
-    setShowLimitAlert: setStateShowLimitAlert 
-  } = useUserDataState();
+  // Use the user data state hook to manage local state
+  const userDataState = useUserDataState();
   
+  // Handle authentication checks
   const { 
     fetchUserData, 
     isLoading, 
     setIsLoading 
   } = useUserAuthChecking(
     isMounted, 
-    updateUserData, 
+    userDataState.updateUserData,
     initialFetchAttempted
   );
   
+  // Add refetching capability
   const { refetchUserData } = useUserRefetching(
     isMounted,
     fetchUserData
   );
-  
-  // Extract state values
-  const { 
-    userData: fetchedUserData, 
-    isNewUser, 
-    dailySessionCount, 
-    showLimitAlert 
-  } = state;
   
   // Effect to clean up on unmount
   useEffect(() => {
@@ -65,15 +55,18 @@ export const useUserFetch = (): UserFetchResult => {
   }, []);
   
   // Process data for new users
-  const sanitizedUserData = ensureZeroBalanceForNewUser(isNewUser, fetchedUserData);
+  const sanitizedUserData = ensureZeroBalanceForNewUser(
+    userDataState.isNewUser, 
+    userDataState.userData
+  );
   
   return {
     userData: sanitizedUserData,
-    isNewUser,
-    dailySessionCount,
-    showLimitAlert: isNewUser ? false : showLimitAlert, // Always false for new users
+    isNewUser: userDataState.isNewUser,
+    dailySessionCount: userDataState.dailySessionCount,
+    showLimitAlert: userDataState.isNewUser ? false : userDataState.showLimitAlert, // Always false for new users
     isLoading: isLoading || !initialFetchAttempted.current,
-    setShowLimitAlert: setStateShowLimitAlert,
+    setShowLimitAlert: userDataState.setFetchedShowLimitAlert,
     refetchUserData
   };
 };
