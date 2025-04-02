@@ -1,25 +1,36 @@
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useInitializationState } from './useInitializationState';
+import { useInitializationRefs } from './useInitializationRefs';
+import { useRetryAttempts } from './useRetryAttempts';
 import { useAuthCheck } from './useAuthCheck';
 import { useUserDataSync } from './useUserDataSync';
-import { useRetryLogic } from './useRetryLogic';
 import { useAuthStateListener } from './useAuthStateListener';
 import { toast } from "@/components/ui/use-toast";
 
 export const useDashboardInitialization = () => {
   const navigate = useNavigate();
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
-  const [isReady, setIsReady] = useState(false);
-  const [authError, setAuthError] = useState(false);
-  const mountedRef = useRef(true);
-  const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const authCheckInProgress = useRef(false);
-  const authCheckAttempted = useRef(false);
+  const { 
+    isAuthChecking, setIsAuthChecking, 
+    isReady, setIsReady, 
+    authError, setAuthError 
+  } = useInitializationState();
   
-  const { retryCount, shouldRetry, incrementRetryCount, calculateRetryDelay, resetRetryCount } = 
-    useRetryLogic({ maxRetries: 3 });
-    
+  const {
+    mountedRef,
+    initTimeoutRef,
+    authCheckInProgress,
+    authCheckAttempted
+  } = useInitializationRefs();
+  
+  const {
+    resetRetryCount,
+    incrementRetryCount,
+    shouldRetry,
+    calculateRetryDelay
+  } = useRetryAttempts(3);
+  
   const { checkAuth } = useAuthCheck({ mountedRef });
   const { syncUserData } = useUserDataSync({ mountedRef });
   const { setupAuthListener } = useAuthStateListener({ mountedRef });
@@ -138,7 +149,7 @@ export const useDashboardInitialization = () => {
     } finally {
       authCheckInProgress.current = false;
     }
-  }, [checkAuth, syncUserData, navigate, shouldRetry, incrementRetryCount, calculateRetryDelay]);
+  }, [checkAuth, syncUserData, navigate, shouldRetry, incrementRetryCount, calculateRetryDelay, setAuthError, setIsAuthChecking, setIsReady]);
   
   useEffect(() => {
     mountedRef.current = true;
@@ -187,7 +198,7 @@ export const useDashboardInitialization = () => {
       }
       cleanup();
     };
-  }, [initializeDashboard, setupAuthListener, resetRetryCount, navigate]);
+  }, [initializeDashboard, setupAuthListener, resetRetryCount, navigate, setAuthError]);
 
   return {
     isAuthChecking,
