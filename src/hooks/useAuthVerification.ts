@@ -18,7 +18,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
   // Always initialize all state variables
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [authCheckFailed, setAuthCheckFailed] = useState(false);
-  const [isRetrying, setIsRetryingLocal] = useState(false);
+  const [isRetryingLocal, setIsRetryingLocal] = useState(false);
   const isMounted = useRef(true);
   const checkInProgress = useRef(false);
   const initialCheckComplete = useRef(false);
