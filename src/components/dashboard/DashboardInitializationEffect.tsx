@@ -37,6 +37,7 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
     return () => {
       console.log("Nettoyage de l'effet d'initialisation du dashboard");
     };
+    // Dépendances simplifiées pour éviter les boucles
   }, [isAuthChecking, isLoading, userData, initialRenderComplete]);
 
   // Effet de navigation simplifié et stabilisé
@@ -51,6 +52,7 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
     return () => {
       navEffectRan.current = false;
     };
+    // Dépendances minimales pour éviter les boucles
   }, [pathname, setSelectedNavItem]);
 
   return null;

@@ -15,7 +15,7 @@ interface UseAuthRetryResult {
 }
 
 /**
- * Hook to handle authentication retry logic with improved persistence
+ * Hook to handle authentication retry logic with improved stability
  */
 export const useAuthRetry = ({ 
   maxRetries = 3,

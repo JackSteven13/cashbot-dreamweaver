@@ -42,19 +42,20 @@ const Dashboard = memo(() => {
     isLoading
   } = useDashboardState();
   
-  // Effet de debug pour compter les rendus
+  // Effet de debug pour compter les rendus - ne dépend d'aucune variable
   useEffect(() => {
     renderCountRef.current += 1;
     console.log(`Main Dashboard component render count: ${renderCountRef.current}`);
   });
   
-  // Simplifier les conditions d'affichage
+  // Simplifier les conditions d'affichage pour éviter les re-rendus en cascade
   const isLoading_Combined = isAuthChecking || isLoading || !isReady || isChecking;
   const hasError = authError || (!isLoading_Combined && !userData?.username);
   const canShowDashboard = !isLoading_Combined && !authError && isReady && userData?.username;
   
   return (
     <>
+      {/* Effet d'initialisation optimisé qui ne déclenche pas de re-rendus */}
       <DashboardInitializationEffect
         initialRenderComplete={initialRenderCompleteRef}
         isAuthChecking={isAuthChecking}

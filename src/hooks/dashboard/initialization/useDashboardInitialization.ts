@@ -1,5 +1,5 @@
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useInitializationState } from '../useInitializationState';
 import { useInitializationRefs } from '../useInitializationRefs';
@@ -35,7 +35,7 @@ export const useDashboardInitialization = () => {
   const { syncUserData } = useUserDataSync({ mountedRef });
   const { setupAuthListener } = useAuthStateListener({ mountedRef, navigate });
   
-  // Dashboard initialization function
+  // Dashboard initialization function - stabilisé avec useCallback
   const initializeDashboard = useCallback(async () => {
     // Prévenir les initialisations dupliquées
     if (!mountedRef.current || authCheckInProgress.current) {
@@ -174,8 +174,16 @@ export const useDashboardInitialization = () => {
     }
   }, [checkAuth, syncUserData, navigate, shouldRetry, incrementRetryCount, calculateRetryDelay, setAuthError, setIsAuthChecking, setIsReady]);
   
-  // Effet d'initialisation - modifié pour éviter les boucles
+  // Effet d'initialisation - stabilisé pour éviter les boucles
   useEffect(() => {
+    // Variables locales pour l'effet
+    const cleanupLocalStorage = () => {
+      localStorage.removeItem('dashboard_initializing');
+      localStorage.removeItem('auth_refreshing');
+      localStorage.removeItem('data_syncing');
+      localStorage.removeItem('auth_redirecting');
+    };
+    
     // Initialisation des références
     mountedRef.current = true;
     authCheckInProgress.current = false;
@@ -183,44 +191,34 @@ export const useDashboardInitialization = () => {
     resetRetryCount();
     
     // Nettoyage des flags obsolètes
-    localStorage.removeItem('dashboard_initializing');
-    localStorage.removeItem('auth_refreshing');
-    localStorage.removeItem('data_syncing');
-    localStorage.removeItem('auth_redirecting');
+    cleanupLocalStorage();
     
     console.log("Initialisation du dashboard commencée");
     
     // Vérification initiale des tokens
     const hasLocalToken = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
     
-    // Variable locale pour la logique conditionnelle
+    // Configuration timers
     let initialTimer: NodeJS.Timeout | null = null;
-    let shouldContinue = true;
     
     if (!hasLocalToken) {
       console.log("Aucun token local trouvé, redirection vers login");
       
-      if (mountedRef.current) {
-        setAuthError(true);
-        
-        toast({
-          title: "Session expirée",
-          description: "Veuillez vous reconnecter pour accéder à votre tableau de bord",
-          variant: "destructive"
-        });
-        
-        setTimeout(() => {
-          if (mountedRef.current) {
-            navigate('/login', { replace: true });
-          }
-        }, 500);
-        
-        shouldContinue = false;
-      }
-    }
-    
-    // Configuration des timers uniquement si nous devons continuer
-    if (shouldContinue) {
+      setAuthError(true);
+      
+      toast({
+        title: "Session expirée",
+        description: "Veuillez vous reconnecter pour accéder à votre tableau de bord",
+        variant: "destructive"
+      });
+      
+      setTimeout(() => {
+        if (mountedRef.current) {
+          navigate('/login', { replace: true });
+        }
+      }, 500);
+      
+    } else {
       // Démarrage avec un léger délai pour éviter les conflits
       initialTimer = setTimeout(() => {
         if (mountedRef.current && !authCheckInProgress.current) {
@@ -246,13 +244,11 @@ export const useDashboardInitialization = () => {
         clearTimeout(initialTimer);
       }
       
-      localStorage.removeItem('dashboard_initializing');
-      localStorage.removeItem('auth_refreshing');
-      localStorage.removeItem('data_syncing');
+      cleanupLocalStorage();
       
       cleanup();
     };
-  }, []); // ⚠️ Dépendances vides pour n'exécuter qu'une seule fois
+  }, []); // Dépendances vides pour n'exécuter qu'une seule fois
   
   return {
     isAuthChecking,
