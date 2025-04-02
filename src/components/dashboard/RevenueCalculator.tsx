@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   Card, 
   CardContent, 
@@ -8,16 +8,11 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
-import { Form } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
-import { SUBSCRIPTION_LIMITS } from '@/components/dashboard/summary/constants';
-import { SUBSCRIPTION_LABELS, SUBSCRIPTION_PRICES } from './calculator/constants';
-import { calculateRevenueForAllPlans } from './calculator/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-// Import des composants refactorisés
-import CalculatorControls from './calculator/CalculatorControls';
-import SubscriptionPlanCard from './calculator/SubscriptionPlanCard';
+import { useRevenueCalculator } from './calculator/hooks/useRevenueCalculator';
+import { SUBSCRIPTION_LABELS } from './calculator/constants';
+import MobileTabs from './calculator/components/MobileTabs';
+import CalculatorBody from './calculator/components/CalculatorBody';
 import CalculatorFooter from './calculator/CalculatorFooter';
 
 interface RevenueCalculatorProps {
@@ -26,89 +21,21 @@ interface RevenueCalculatorProps {
   isHomePage?: boolean;
 }
 
-interface FormValues {
-  sessionsPerDay: number;
-  daysPerMonth: number;
-}
-
-// Sample features for each plan
-const SUBSCRIPTION_FEATURES: Record<string, string[]> = {
-  'freemium': [
-    'Limite de gains de 0,5€ par jour',
-    '1 session manuelle par jour',
-    '1 session automatique par jour',
-    'Support par email'
-  ],
-  'pro': [
-    'Limite de gains de 5€ par jour',
-    'Sessions manuelles illimitées',
-    'Sessions automatiques illimitées',
-    'Support prioritaire'
-  ],
-  'visionnaire': [
-    'Limite de gains de 20€ par jour',
-    'Sessions manuelles et automatiques illimitées',
-    'Support prioritaire 24/7',
-    'Accès à toutes les fonctionnalités'
-  ],
-  'elite': [
-    'Limite de gains de 50€ par jour',
-    'Accès illimité à toutes les fonctionnalités',
-    'Support dédié 24/7',
-    'Fonctionnalités exclusives'
-  ]
-};
-
-// Sample descriptions for each plan
-const SUBSCRIPTION_DESCRIPTIONS: Record<string, string> = {
-  'freemium': 'Pour débuter et explorer la plateforme',
-  'pro': 'Pour les utilisateurs sérieux',
-  'visionnaire': 'Pour maximiser vos gains',
-  'elite': 'Pour les professionnels et entreprises'
-};
-
-// Ordre d'affichage personnalisé pour les plans
-// Afficher Elite en premier, puis Gold, puis Starter, puis Freemium
-const DISPLAY_ORDER = ['elite', 'gold', 'starter', 'freemium'];
-
 const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({ 
   currentSubscription, 
   isNewUser,
   isHomePage = false
 }) => {
-  const [selectedPlan, setSelectedPlan] = useState<string>('elite');
-  const [calculatedResults, setCalculatedResults] = useState<Record<string, { revenue: number, profit: number }>>({});
-  const [activeTab, setActiveTab] = useState<'controls' | 'results'>('controls');
   const isMobile = useIsMobile();
-
-  const form = useForm<FormValues>({
-    defaultValues: {
-      sessionsPerDay: 2,
-      daysPerMonth: 20
-    }
-  });
-
-  const { watch, control } = form;
-  const values = watch();
-
-  // Effectuer le calcul initial immédiatement
-  useEffect(() => {
-    // Calcul des revenus pour tous les abonnements
-    try {
-      console.log("Calculating results with:", values.sessionsPerDay, values.daysPerMonth);
-      const results = calculateRevenueForAllPlans(values.sessionsPerDay, values.daysPerMonth);
-      console.log("Calculated results:", results);
-      setCalculatedResults(results);
-    } catch (error) {
-      console.error("Error calculating results:", error);
-      // Initialiser avec des valeurs par défaut en cas d'erreur
-      const defaultResults: Record<string, { revenue: number, profit: number }> = {};
-      Object.keys(SUBSCRIPTION_LIMITS).forEach(plan => {
-        defaultResults[plan] = { revenue: 0, profit: -SUBSCRIPTION_PRICES[plan] || 0 };
-      });
-      setCalculatedResults(defaultResults);
-    }
-  }, [values.sessionsPerDay, values.daysPerMonth]);
+  const { 
+    selectedPlan, 
+    setSelectedPlan, 
+    calculatedResults, 
+    activeTab, 
+    setActiveTab, 
+    form, 
+    control 
+  } = useRevenueCalculator();
 
   // Adapter les styles selon l'endroit où le composant est affiché et le mode sombre
   const cardClassName = isHomePage 
@@ -121,41 +48,6 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
 
   const textColorClass = isHomePage ? "text-white dark:text-white" : "text-[#1e3a5f] dark:text-white";
   const descriptionColorClass = isHomePage ? "text-blue-100 dark:text-blue-200" : "text-gray-500 dark:text-gray-300";
-
-  // Fonction pour afficher les plans selon l'ordre personnalisé
-  const renderPlans = () => {
-    return DISPLAY_ORDER.map((plan) => {
-      // Ne pas afficher freemium sur la page d'accueil
-      if (plan === 'freemium' && isHomePage) return null;
-      
-      const isFreemium = plan === 'freemium';
-      const isCurrent = plan === currentSubscription;
-      const results = calculatedResults[plan] || { revenue: 0, profit: 0 };
-      
-      return (
-        <div key={plan} className={isMobile ? "mb-3" : ""}>
-          <SubscriptionPlanCard
-            key={plan}
-            title={SUBSCRIPTION_LABELS[plan] || plan}
-            price={SUBSCRIPTION_PRICES[plan] || 0}
-            description={SUBSCRIPTION_DESCRIPTIONS[plan] || ''}
-            features={SUBSCRIPTION_FEATURES[plan] || []}
-            limit={SUBSCRIPTION_LIMITS[plan] || 0}
-            plan={plan}
-            isSelected={selectedPlan === plan}
-            isHomePage={isHomePage}
-            isCurrent={isCurrent}
-            isFreemium={isFreemium}
-            subscriptionLabel={SUBSCRIPTION_LABELS[plan]}
-            subscriptionPrice={SUBSCRIPTION_PRICES[plan]}
-            revenue={results.revenue}
-            profit={results.profit}
-            onClick={() => setSelectedPlan(plan)}
-          />
-        </div>
-      );
-    });
-  };
 
   return (
     <Card className={cardClassName}>
@@ -171,82 +63,24 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
         
         {/* Ajouter des onglets de navigation pour mobile */}
         {isMobile && (
-          <div className="flex border-b border-gray-200 dark:border-gray-700 mt-3">
-            <button
-              onClick={() => setActiveTab('controls')}
-              className={`flex-1 py-2 px-4 text-sm font-medium text-center ${
-                activeTab === 'controls'
-                  ? 'border-b-2 border-blue-500 text-blue-500'
-                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-              }`}
-            >
-              Paramètres
-            </button>
-            <button
-              onClick={() => setActiveTab('results')}
-              className={`flex-1 py-2 px-4 text-sm font-medium text-center ${
-                activeTab === 'results'
-                  ? 'border-b-2 border-blue-500 text-blue-500'
-                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-              }`}
-            >
-              Résultats
-            </button>
-          </div>
+          <MobileTabs 
+            activeTab={activeTab} 
+            onTabChange={(tab) => setActiveTab(tab)} 
+          />
         )}
       </CardHeader>
       <CardContent className={`pt-3 px-3 md:pt-4 md:px-6 ${isHomePage ? 'text-white dark:text-white' : 'dark:text-gray-100'}`}>
-        {/* Sur mobile, afficher soit les contrôles, soit les résultats selon l'onglet actif */}
-        {isMobile ? (
-          activeTab === 'controls' ? (
-            <Form {...form}>
-              <CalculatorControls control={control} isHomePage={isHomePage} />
-              <div className="mt-4 text-center">
-                <button 
-                  onClick={() => setActiveTab('results')}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  Voir les résultats
-                </button>
-              </div>
-            </Form>
-          ) : (
-            <>
-              <div className="space-y-2 md:space-y-3">
-                <h3 className={`text-sm md:text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
-                  Revenus mensuels estimés
-                </h3>
-                <div className="overflow-hidden">
-                  {renderPlans()}
-                </div>
-              </div>
-              <div className="mt-4 text-center">
-                <button 
-                  onClick={() => setActiveTab('controls')}
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  Modifier les paramètres
-                </button>
-              </div>
-            </>
-          )
-        ) : (
-          <>
-            {/* Affichage desktop - pas de changement */}
-            <Form {...form}>
-              <CalculatorControls control={control} isHomePage={isHomePage} />
-            </Form>
-
-            <div className="mt-4 md:mt-6 space-y-2 md:space-y-3">
-              <h3 className={`text-sm md:text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
-                Revenus mensuels estimés
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3 overflow-hidden">
-                {renderPlans()}
-              </div>
-            </div>
-          </>
-        )}
+        <CalculatorBody 
+          control={control}
+          isHomePage={isHomePage}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isMobile={isMobile}
+          selectedPlan={selectedPlan}
+          currentSubscription={currentSubscription}
+          calculatedResults={calculatedResults}
+          onSelectPlan={setSelectedPlan}
+        />
       </CardContent>
       <CardFooter className={`py-3 px-4 md:p-6 ${isHomePage ? "bg-blue-950/50 border-t border-white/10 pt-4 dark:bg-gray-900/70 dark:border-gray-800" : "bg-gray-50 border-t pt-4 dark:bg-gray-800 dark:border-gray-700"}`}>
         <CalculatorFooter 

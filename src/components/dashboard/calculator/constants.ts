@@ -16,3 +16,6 @@ export const SUBSCRIPTION_PRICES: Record<string, number> = {
 
 // New annual billing period
 export const BILLING_PERIOD = 'an';
+
+// Order for displaying plans - Elite first, then Gold, Starter, and Freemium
+export const DISPLAY_ORDER = ['elite', 'gold', 'starter', 'freemium'];
