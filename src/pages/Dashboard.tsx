@@ -7,7 +7,7 @@ import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
 import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
-import { memo, useEffect, useRef, useMemo } from 'react';
+import { memo, useEffect, useRef, useMemo, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Composant principal avec memo pour éviter les re-rendus inutiles
