@@ -7,15 +7,15 @@ import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
 import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useRef, useMemo } from 'react';
 
-// Utilisation de memo pour éviter les re-rendus inutiles du composant principal
+// Composant principal avec memo pour éviter les re-rendus inutiles
 const Dashboard = memo(() => {
   const location = useLocation();
   const renderCountRef = useRef(0);
   const initialRenderCompleteRef = useRef(false);
   
-  // Déclarer tous les hooks au niveau supérieur, sans condition
+  // Hooks stables avec dépendances minimales
   const {
     isAuthChecking,
     isReady,
@@ -42,20 +42,28 @@ const Dashboard = memo(() => {
     isLoading
   } = useDashboardState();
   
-  // Effet de debug pour compter les rendus - ne dépend d'aucune variable
+  // Effet de debug avec scope limité
   useEffect(() => {
     renderCountRef.current += 1;
-    console.log(`Main Dashboard component render count: ${renderCountRef.current}`);
+    console.log(`Dashboard render count: ${renderCountRef.current}`);
   });
   
-  // Simplifier les conditions d'affichage pour éviter les re-rendus en cascade
-  const isLoading_Combined = isAuthChecking || isLoading || !isReady || isChecking;
-  const hasError = authError || (!isLoading_Combined && !userData?.username);
-  const canShowDashboard = !isLoading_Combined && !authError && isReady && userData?.username;
+  // Calculs memoizés pour éviter les re-calculs à chaque rendu
+  const { isLoading_Combined, hasError, canShowDashboard } = useMemo(() => {
+    const isLoadingCombined = isAuthChecking || isLoading || !isReady || isChecking;
+    const hasErrorValue = authError || (!isLoadingCombined && !userData?.username);
+    const canShowDashboardValue = !isLoadingCombined && !authError && isReady && userData?.username;
+    
+    return {
+      isLoading_Combined: isLoadingCombined,
+      hasError: hasErrorValue,
+      canShowDashboard: canShowDashboardValue
+    };
+  }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
   
   return (
     <>
-      {/* Effet d'initialisation optimisé qui ne déclenche pas de re-rendus */}
+      {/* Effet d'initialisation stabilisé et isolé */}
       <DashboardInitializationEffect
         initialRenderComplete={initialRenderCompleteRef}
         isAuthChecking={isAuthChecking}

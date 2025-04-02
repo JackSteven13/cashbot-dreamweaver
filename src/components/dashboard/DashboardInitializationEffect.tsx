@@ -21,38 +21,37 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
   const initEffectRan = useRef(false);
   const navEffectRan = useRef(false);
 
-  // Effet d'initialisation stabilisé avec vérifications de dépendances stables
+  // Stabiliser l'effet d'initialisation avec des dépendances minimales
   useEffect(() => {
-    // Prévenir les exécutions multiples
+    // Ne s'exécuter qu'une fois lors du montage initial
     if (!initEffectRan.current && !initialRenderComplete.current) {
-      // Vérifier que toutes les données sont disponibles avant de marquer l'initialisation
+      // Attendre que toutes les données soient disponibles
       if (!isAuthChecking && !isLoading && userData && userData.username) {
-        console.log("Dashboard monté avec les données utilisateur:", userData.username);
+        console.log("Dashboard initialement monté avec données utilisateur:", userData.username);
         initialRenderComplete.current = true;
         initEffectRan.current = true;
       }
     }
     
-    // Nettoyage unifié
+    // Nettoyage
     return () => {
-      console.log("Nettoyage de l'effet d'initialisation du dashboard");
+      // Ne rien faire au démontage pour éviter les réinitialisations
     };
-    // Dépendances simplifiées pour éviter les boucles
   }, [isAuthChecking, isLoading, userData, initialRenderComplete]);
 
-  // Effet de navigation simplifié et stabilisé
+  // Effet de navigation séparé et isolé
   useEffect(() => {
-    // Mise à jour de l'élément de navigation sélectionné uniquement si nécessaire
     if (pathname === "/dashboard" && !navEffectRan.current) {
       setSelectedNavItem('dashboard');
       navEffectRan.current = true;
     }
     
-    // Réinitialisation lors du démontage
     return () => {
-      navEffectRan.current = false;
+      // Réinitialiser seulement lors du démontage complet
+      if (pathname !== "/dashboard") {
+        navEffectRan.current = false;
+      }
     };
-    // Dépendances minimales pour éviter les boucles
   }, [pathname, setSelectedNavItem]);
 
   return null;

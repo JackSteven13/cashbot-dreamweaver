@@ -1,52 +1,56 @@
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useInitializationState } from '../useInitializationState';
-import { useInitializationRefs } from '../useInitializationRefs';
-import { useRetryAttempts } from '../useRetryAttempts';
+import { toast } from "@/components/ui/use-toast";
 import { useAuthCheck } from './useAuthCheck';
 import { useUserDataSync } from './useUserDataSync';
 import { useAuthStateListener } from './useAuthStateListener';
-import { toast } from "@/components/ui/use-toast";
 
 export const useDashboardInitialization = () => {
+  // État stable avec useState pour les valeurs qui doivent déclencher des rendus
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [isReady, setIsReady] = useState(false);
+  const [authError, setAuthError] = useState(false);
+  
+  // Références stables qui ne déclenchent pas de rendus
+  const mountedRef = useRef(true);
+  const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const authCheckInProgress = useRef(false);
+  const authCheckAttempted = useRef(false);
+  const initializationRetries = useRef(0);
+  const maxRetries = 3;
+  
   const navigate = useNavigate();
-  const { 
-    isAuthChecking, setIsAuthChecking, 
-    isReady, setIsReady, 
-    authError, setAuthError 
-  } = useInitializationState();
   
-  const {
-    mountedRef,
-    initTimeoutRef,
-    authCheckInProgress,
-    authCheckAttempted
-  } = useInitializationRefs();
-  
-  const {
-    resetRetryCount,
-    incrementRetryCount,
-    shouldRetry,
-    calculateRetryDelay
-  } = useRetryAttempts(3);
-  
+  // Hooks avec dépendances stabilisées
   const { checkAuth } = useAuthCheck({ mountedRef });
   const { syncUserData } = useUserDataSync({ mountedRef });
   const { setupAuthListener } = useAuthStateListener({ mountedRef, navigate });
   
-  // Dashboard initialization function - stabilisé avec useCallback
+  // Fonctions utilitaires pour les tentatives
+  const resetRetryCount = useCallback(() => {
+    initializationRetries.current = 0;
+  }, []);
+  
+  const shouldRetry = useCallback(() => {
+    return initializationRetries.current < maxRetries;
+  }, [maxRetries]);
+  
+  const calculateRetryDelay = useCallback((retryCount: number) => {
+    return Math.min(1000 * Math.pow(2, retryCount), 8000);
+  }, []);
+  
+  // Fonction d'initialisation avec mémorisation stable
   const initializeDashboard = useCallback(async () => {
-    // Prévenir les initialisations dupliquées
+    // Éviter les initialisations simultanées
     if (!mountedRef.current || authCheckInProgress.current) {
       console.log("Initialisation déjà en cours ou composant démonté, ignorée");
       return;
     }
     
-    // Utiliser un flag local pour éviter les initialisations concurrentes
-    const isInitializing = localStorage.getItem('dashboard_initializing');
-    if (isInitializing === 'true') {
-      console.log("Initialisation du dashboard déjà en cours depuis un autre composant");
+    // Utiliser un flag local pour prévenir les initialisations concurrentes
+    if (localStorage.getItem('dashboard_initializing') === 'true') {
+      console.log("Initialisation déjà en cours, ignorée");
       return;
     }
     
@@ -59,66 +63,37 @@ export const useDashboardInitialization = () => {
     }
     
     try {
-      console.log("Démarrage de l'initialisation du dashboard");
+      console.log("Initialisation du dashboard démarrée");
       authCheckAttempted.current = true;
       
-      // Vérifier d'abord s'il existe un token
-      const hasLocalToken = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-      if (!hasLocalToken) {
-        console.log("Aucun token local trouvé, redirection vers login");
-        
-        if (mountedRef.current) {
-          setAuthError(true);
-          
-          toast({
-            title: "Session expirée",
-            description: "Veuillez vous reconnecter pour accéder à votre tableau de bord",
-            variant: "destructive"
-          });
-          
-          setTimeout(() => {
-            if (mountedRef.current) {
-              navigate('/login', { replace: true });
-            }
-          }, 500);
-        }
-        
-        authCheckInProgress.current = false;
-        localStorage.removeItem('dashboard_initializing');
-        return;
-      }
-      
-      // Tentative d'authentification
       const isAuthenticated = await checkAuth();
       
       if (!mountedRef.current) {
-        console.log("Composant démonté pendant l'initialisation");
-        authCheckInProgress.current = false;
         localStorage.removeItem('dashboard_initializing');
+        authCheckInProgress.current = false;
         return;
       }
       
       if (isAuthenticated) {
-        console.log("Utilisateur authentifié, synchronisation des données");
+        console.log("Authentification réussie, synchronisation des données");
         
-        // Synchronisation des données utilisateur
         const syncSuccess = await syncUserData();
         
         if (!mountedRef.current) {
-          authCheckInProgress.current = false;
           localStorage.removeItem('dashboard_initializing');
+          authCheckInProgress.current = false;
           return;
         }
         
         if (!syncSuccess && shouldRetry()) {
-          // Nouvelle tentative avec backoff exponentiel
-          const currentRetry = incrementRetryCount();
-          const retryDelay = calculateRetryDelay(currentRetry);
+          // Tentative avec délai exponentiel
+          initializationRetries.current += 1;
+          const retryDelay = calculateRetryDelay(initializationRetries.current);
           
-          console.log(`Échec de synchronisation, nouvelle tentative dans ${retryDelay}ms (${currentRetry}/3)`);
+          console.log(`Échec de synchronisation, nouvelle tentative dans ${retryDelay}ms`);
           
-          authCheckInProgress.current = false;
           localStorage.removeItem('dashboard_initializing');
+          authCheckInProgress.current = false;
           
           if (mountedRef.current) {
             initTimeoutRef.current = setTimeout(() => {
@@ -132,131 +107,89 @@ export const useDashboardInitialization = () => {
         
         if (mountedRef.current) {
           setIsAuthChecking(false);
-          
-          // Délai court avant de marquer comme prêt pour éviter les problèmes de rendu
-          setTimeout(() => {
-            if (mountedRef.current) {
-              console.log("Dashboard prêt");
-              setIsReady(true);
-            }
-          }, 300);
+          setIsReady(true);
         }
       } else {
-        // Redirection vers login
         console.log("Authentification échouée, redirection vers login");
         
         if (mountedRef.current) {
           setAuthError(true);
           
+          toast({
+            title: "Session expirée",
+            description: "Veuillez vous reconnecter",
+            variant: "destructive"
+          });
+          
           setTimeout(() => {
             if (mountedRef.current) {
               navigate('/login', { replace: true });
             }
-          }, 500);
+          }, 800);
         }
       }
     } catch (err) {
-      console.error("Erreur pendant l'initialisation du dashboard:", err);
+      console.error("Erreur pendant l'initialisation:", err);
       
       if (mountedRef.current) {
         setAuthError(true);
         setIsAuthChecking(false);
-        
-        toast({
-          title: "Erreur d'initialisation",
-          description: "Une erreur est survenue lors du chargement du tableau de bord",
-          variant: "destructive"
-        });
       }
     } finally {
+      localStorage.removeItem('dashboard_initializing');
       authCheckInProgress.current = false;
-      localStorage.removeItem('dashboard_initializing');
     }
-  }, [checkAuth, syncUserData, navigate, shouldRetry, incrementRetryCount, calculateRetryDelay, setAuthError, setIsAuthChecking, setIsReady]);
+  }, [checkAuth, syncUserData, shouldRetry, calculateRetryDelay, navigate]);
   
-  // Effet d'initialisation - stabilisé pour éviter les boucles
+  // Effet d'initialisation unique au montage
   useEffect(() => {
-    // Variables locales pour l'effet
-    const cleanupLocalStorage = () => {
-      localStorage.removeItem('dashboard_initializing');
-      localStorage.removeItem('auth_refreshing');
-      localStorage.removeItem('data_syncing');
-      localStorage.removeItem('auth_redirecting');
-    };
+    // Nettoyage des flags au montage
+    localStorage.removeItem('dashboard_initializing');
+    localStorage.removeItem('auth_refreshing');
+    localStorage.removeItem('data_syncing');
     
-    // Initialisation des références
     mountedRef.current = true;
     authCheckInProgress.current = false;
     authCheckAttempted.current = false;
     resetRetryCount();
     
-    // Nettoyage des flags obsolètes
-    cleanupLocalStorage();
+    console.log("useDashboardInitialization monté");
     
-    console.log("Initialisation du dashboard commencée");
+    // Initialisation avec délai court pour éviter les conflits
+    const initialTimer = setTimeout(() => {
+      if (mountedRef.current && !authCheckInProgress.current) {
+        initializeDashboard();
+      }
+    }, 500);
     
-    // Vérification initiale des tokens
-    const hasLocalToken = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-    
-    // Configuration timers
-    let initialTimer: NodeJS.Timeout | null = null;
-    
-    if (!hasLocalToken) {
-      console.log("Aucun token local trouvé, redirection vers login");
-      
-      setAuthError(true);
-      
-      toast({
-        title: "Session expirée",
-        description: "Veuillez vous reconnecter pour accéder à votre tableau de bord",
-        variant: "destructive"
-      });
-      
-      setTimeout(() => {
-        if (mountedRef.current) {
-          navigate('/login', { replace: true });
-        }
-      }, 500);
-      
-    } else {
-      // Démarrage avec un léger délai pour éviter les conflits
-      initialTimer = setTimeout(() => {
-        if (mountedRef.current && !authCheckInProgress.current) {
-          initializeDashboard();
-        }
-      }, 800);
-    }
-    
-    // Configuration du listener d'authentification (toujours)
+    // Configuration du listener d'authentification
     const cleanup = setupAuthListener();
     
-    // Fonction de nettoyage
-    return () => { 
-      console.log("Nettoyage de l'initialisation du dashboard");
+    // Nettoyage complet au démontage
+    return () => {
+      console.log("useDashboardInitialization démonté");
       mountedRef.current = false;
       
-      // Nettoyage de tous les timers et flags
       if (initTimeoutRef.current) {
         clearTimeout(initTimeoutRef.current);
       }
       
-      if (initialTimer) {
-        clearTimeout(initialTimer);
-      }
+      clearTimeout(initialTimer);
       
-      cleanupLocalStorage();
+      localStorage.removeItem('dashboard_initializing');
+      localStorage.removeItem('auth_refreshing');
+      localStorage.removeItem('data_syncing');
       
       cleanup();
     };
-  }, []); // Dépendances vides pour n'exécuter qu'une seule fois
+  }, []); // Dépendances vides pour exécution unique
   
   return {
     isAuthChecking,
     isReady,
     authError,
     setAuthError,
-    setIsAuthChecking,
-    syncUserData
+    setIsAuthChecking
   };
 };
 
