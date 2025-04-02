@@ -9,7 +9,7 @@ const Hero = () => {
   const isMobile = useIsMobile();
 
   return (
-    <section className="relative overflow-hidden pt-12 pb-6 md:pt-24 md:pb-10">
+    <section className="relative overflow-hidden pt-32 md:pt-44 pb-6 md:pb-10">
       {/* Background Elements */}
       <BackgroundElements />
       
