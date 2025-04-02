@@ -6,6 +6,7 @@ import { toast } from "@/components/ui/use-toast";
 import { PlanType } from './types';
 import { usePaymentProcessing } from './usePaymentProcessing';
 import { useStripeCheckout } from './useStripeCheckout';
+import { useSubscriptionSync } from './useSubscriptionSync';
 
 export const usePaymentPage = () => {
   const location = useLocation();
@@ -21,6 +22,9 @@ export const usePaymentPage = () => {
     handleStripeCheckout, 
     stripeCheckoutUrl 
   } = useStripeCheckout(selectedPlan);
+  
+  // Synchronisation de l'abonnement
+  const { subscription: currentSubscription, syncSubscription } = useSubscriptionSync();
 
   // Extract plan from state or URL params
   useEffect(() => {
@@ -49,6 +53,18 @@ export const usePaymentPage = () => {
       
       console.log("Payment page initialized with plan:", plan);
       
+      // Vérifier si l'utilisateur est déjà abonné à ce plan
+      if (plan === currentSubscription) {
+        console.log(`L'utilisateur est déjà abonné au plan ${plan}`);
+        toast({
+          title: "Abonnement déjà actif",
+          description: `Vous êtes déjà abonné au forfait ${plan}. Redirection vers le tableau de bord.`,
+          duration: 5000
+        });
+        setTimeout(() => navigate('/dashboard'), 2000);
+        return;
+      }
+      
       // Rediriger les utilisateurs freemium vers le tableau de bord ou les offres
       if (plan === 'freemium') {
         await handleFreemiumSubscription();
@@ -69,7 +85,7 @@ export const usePaymentPage = () => {
     };
 
     extractPlanFromRouting();
-  }, [location, navigate]);
+  }, [location, navigate, currentSubscription]);
 
   // Vérifier si l'utilisateur est authentifié
   useEffect(() => {
@@ -90,6 +106,8 @@ export const usePaymentPage = () => {
           return;
         }
         
+        // Synchroniser l'abonnement après la vérification d'authentification
+        await syncSubscription(true);
         setIsAuthChecking(false);
       } catch (error) {
         console.error("Authentication error:", error);
@@ -103,7 +121,7 @@ export const usePaymentPage = () => {
     };
     
     checkAuth();
-  }, [navigate, selectedPlan]);
+  }, [navigate, selectedPlan, syncSubscription]);
 
   // Gérer l'abonnement Freemium
   const handleFreemiumSubscription = async () => {
@@ -185,6 +203,7 @@ export const usePaymentPage = () => {
     stripeCheckoutUrl,
     togglePaymentMethod,
     handleCardFormSubmit: processPayment,
-    initiateStripeCheckout
+    initiateStripeCheckout,
+    currentSubscription
   };
 };

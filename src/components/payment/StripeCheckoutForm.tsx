@@ -1,6 +1,6 @@
 
-import React, { useEffect } from 'react';
-import { CreditCard, ExternalLink } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { CreditCard, ExternalLink, AlertCircle } from 'lucide-react';
 import Button from '@/components/Button';
 import { PlanType } from '@/hooks/payment/types';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,6 +9,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
+import MobilePaymentHelper from './MobilePaymentHelper';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;
@@ -23,8 +24,9 @@ const StripeCheckoutForm = ({
   onCheckout,
   stripeUrl
 }: StripeCheckoutFormProps) => {
-  const [termsAccepted, setTermsAccepted] = React.useState(true); // Pré-cochée par défaut
-  const [redirectAttempted, setRedirectAttempted] = React.useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(true); // Pré-cochée par défaut
+  const [redirectAttempted, setRedirectAttempted] = useState(false);
+  const [showMobileHelper, setShowMobileHelper] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
   
@@ -59,8 +61,15 @@ const StripeCheckoutForm = ({
       
       // Ouvrir la fenêtre Stripe automatiquement
       openStripeWindow(stripeUrl);
+      
+      // Sur mobile, afficher l'aide après un court délai si nécessaire
+      if (isMobile) {
+        setTimeout(() => {
+          setShowMobileHelper(true);
+        }, 5000);
+      }
     }
-  }, [stripeUrl, redirectAttempted, termsAccepted]);
+  }, [stripeUrl, redirectAttempted, termsAccepted, isMobile]);
   
   return (
     <div className="space-y-4 md:space-y-5">
@@ -122,6 +131,11 @@ const StripeCheckoutForm = ({
           Ouvrir à nouveau la page de paiement
         </Button>
       )}
+      
+      <MobilePaymentHelper 
+        isVisible={showMobileHelper} 
+        onHelp={() => openStripeWindow(stripeUrl || '')}
+      />
     </div>
   );
 };

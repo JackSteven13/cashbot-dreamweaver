@@ -10,10 +10,12 @@ interface SubscriptionSynchronizerProps {
 
 /**
  * Composant invisible qui synchronise l'abonnement entre Supabase et le localStorage
- * avec une option pour forcer la vérification
+ * avec une gestion améliorée de la fiabilité et du cache
  */
 const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSynchronizerProps) => {
   const [lastChecked, setLastChecked] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Fonction de synchronisation extraite pour pouvoir l'utiliser dans le cleanup
   const syncSubscription = useCallback(async (force: boolean = false) => {
@@ -37,12 +39,22 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
       setLastChecked(now);
       console.log("Synchronisation de l'abonnement depuis Supabase...");
       
+      // Options de requête avancées pour éviter les problèmes de cache
+      const fetchOptions = {
+        cache: 'no-cache' as RequestCache,
+        headers: {
+          'cache-control': 'no-cache, no-store, must-revalidate',
+          'pragma': 'no-cache',
+          'expires': '0'
+        }
+      };
+      
       // Essayer d'abord la fonction RPC avec options pour désactiver le cache
       const { data: rpcData, error: rpcError } = await supabase
         .rpc('get_current_subscription', { 
           user_id: session.user.id 
         }, { 
-          head: false, // Désactiver le cache
+          head: false,
           count: 'exact' as const
         }) as { data: string | null, error: any };
         
@@ -58,7 +70,7 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
           }
           
           // Notification seulement si l'abonnement change d'un niveau non freemium à un autre
-          if (currentLocalSub && currentLocalSub !== 'freemium' && currentLocalSub !== rpcData) {
+          if (isInitialized && currentLocalSub && currentLocalSub !== 'freemium' && currentLocalSub !== rpcData) {
             toast({
               title: "Abonnement mis à jour",
               description: `Votre abonnement est maintenant: ${rpcData.charAt(0).toUpperCase() + rpcData.slice(1)}`,
@@ -67,8 +79,12 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
         } else {
           console.log("Abonnement déjà synchronisé:", rpcData);
         }
+        
+        // Réinitialiser le compteur de tentatives
+        setRetryCount(0);
+        setIsInitialized(true);
       } else {
-        // Fallback sur requête directe
+        // Fallback sur requête directe avec options avancées
         console.log("Échec RPC, tentative directe:", rpcError);
         
         const { data: userData, error: directError } = await supabase
@@ -87,12 +103,33 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
               onSync(userData.subscription);
             }
           }
+          
+          // Réinitialiser le compteur de tentatives
+          setRetryCount(0);
+          setIsInitialized(true);
+        } else if (retryCount < 3) {
+          // Si les deux méthodes échouent, réessayer plus tard (max 3 fois)
+          console.log(`Échec de synchronisation, nouvelle tentative prévue (${retryCount + 1}/3)`);
+          setRetryCount(prev => prev + 1);
+          
+          // Tentative avec délai exponentiel
+          setTimeout(() => {
+            syncSubscription(true);
+          }, 2000 * Math.pow(2, retryCount));
         }
       }
     } catch (error) {
       console.error("Erreur de synchronisation:", error);
+      
+      // Réessayer en cas d'erreur réseau ou de connexion
+      if (retryCount < 3) {
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => {
+          syncSubscription(true);
+        }, 3000 * Math.pow(2, retryCount));
+      }
     }
-  }, [onSync, forceCheck, lastChecked]);
+  }, [onSync, forceCheck, lastChecked, retryCount, isInitialized]);
   
   useEffect(() => {
     // Synchroniser immédiatement au montage
@@ -109,11 +146,19 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
       }
     };
     
+    // Ajouter un listener pour les changements de réseau
+    const handleOnline = () => {
+      console.log("Connexion réseau rétablie, tentative de synchronisation");
+      syncSubscription(true);
+    };
+    
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
     
     return () => {
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
     };
   }, [syncSubscription]);
   

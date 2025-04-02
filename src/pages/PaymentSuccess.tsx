@@ -1,7 +1,7 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, ArrowRight } from 'lucide-react';
+import { CheckCircle2, ArrowRight, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Button from '@/components/Button';
 import { toast } from "@/components/ui/use-toast";
@@ -9,10 +9,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
+  const [isUpdating, setIsUpdating] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
+  const [subscription, setSubscription] = useState<string | null>(null);
 
   useEffect(() => {
     const updateLocalStorageSubscription = async () => {
       try {
+        setIsUpdating(true);
+        
         // Vérifier si l'utilisateur est connecté
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -31,6 +36,7 @@ const PaymentSuccess = () => {
             // Mettre à jour le localStorage avec le nouvel abonnement
             localStorage.setItem('subscription', userBalanceData.subscription);
             console.log('Subscription updated in localStorage:', userBalanceData.subscription);
+            setSubscription(userBalanceData.subscription);
             
             // Forcer une actualisation des balances à l'arrivée sur le dashboard
             localStorage.setItem('forceRefreshBalance', 'true');
@@ -45,8 +51,11 @@ const PaymentSuccess = () => {
                 
               if (!refreshError && refreshedData) {
                 localStorage.setItem('subscription', refreshedData.subscription);
+                setSubscription(refreshedData.subscription);
                 console.log('Second check: subscription confirmed as', refreshedData.subscription);
               }
+              
+              setIsUpdating(false);
             }, 3000);
           } else {
             console.error('Error fetching subscription:', error);
@@ -62,16 +71,27 @@ const PaymentSuccess = () => {
               if (!rpcError && freshData) {
                 console.log("Abonnement récupéré via RPC:", freshData);
                 localStorage.setItem('subscription', freshData);
+                setSubscription(freshData);
+                setIsUpdating(false);
+              } else if (retryCount < 3) {
+                // Réessayer si toutes les méthodes échouent
+                setRetryCount(prevCount => prevCount + 1);
+                setTimeout(updateLocalStorageSubscription, 2000);
+              } else {
+                setIsUpdating(false);
               }
             } catch (rpcErr) {
               console.error("Erreur RPC:", rpcErr);
+              setIsUpdating(false);
             }
           }
         } else {
           console.error('No session found');
+          setIsUpdating(false);
         }
       } catch (error) {
         console.error('Error in updateLocalStorageSubscription:', error);
+        setIsUpdating(false);
       }
     };
 
@@ -84,13 +104,25 @@ const PaymentSuccess = () => {
     // Update localStorage with the new subscription
     updateLocalStorageSubscription();
 
-    // Redirect to dashboard after a delay
+    // Redirect to dashboard after a delay or manually
     const timer = setTimeout(() => {
-      navigate('/dashboard', { replace: true });
-    }, 3000);
+      if (!isUpdating || retryCount >= 3) {
+        navigate('/dashboard', { replace: true });
+      }
+    }, 5000);
 
     return () => clearTimeout(timer);
-  }, [navigate]);
+  }, [navigate, retryCount, isUpdating]);
+
+  const handleManualContinue = () => {
+    navigate('/dashboard', { replace: true });
+  };
+
+  const handleRetry = () => {
+    setRetryCount(0);
+    setIsUpdating(true);
+    window.location.reload();
+  };
 
   return (
     <div className="cyberpunk-bg min-h-screen flex items-center justify-center px-4">
@@ -105,15 +137,31 @@ const PaymentSuccess = () => {
           </h1>
           
           <p className="text-[#486581] mb-6">
-            Votre abonnement a été activé avec succès. Vous allez être redirigé vers votre tableau de bord dans quelques instants.
+            {subscription ? 
+              `Votre abonnement ${subscription.charAt(0).toUpperCase() + subscription.slice(1)} a été activé avec succès.` :
+              'Votre abonnement a été activé avec succès.'
+            }
+            {isUpdating ? ' Nous synchronisons vos données...' : ' Vous pouvez maintenant accéder à votre tableau de bord.'}
           </p>
           
-          <Button 
-            className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white"
-            onClick={() => navigate('/dashboard', { replace: true })}
-          >
-            Accéder au tableau de bord <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          <div className="space-y-3">
+            <Button 
+              className="bg-[#2d5f8a] hover:bg-[#1e3a5f] text-white w-full"
+              onClick={handleManualContinue}
+            >
+              Accéder au tableau de bord <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+            
+            {(retryCount > 0 || !isUpdating) && (
+              <Button 
+                variant="outline"
+                className="w-full border-gray-300"
+                onClick={handleRetry}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" /> Actualiser la page
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
