@@ -25,8 +25,8 @@ const PlanCardBadges: React.FC<PlanCardBadgesProps> = ({
         </div>
       )}
       {(isCurrent || current) && (
-        <div className="absolute top-0 right-0 bg-green-500 text-white px-3 py-1 text-xs font-semibold rounded-bl-lg">
-          ACTUEL
+        <div className="absolute top-0 left-0 bg-green-500 text-white px-3 py-1 text-xs font-semibold rounded-br-lg">
+          {isMobile ? "ACTUEL" : "ACTUEL"}
         </div>
       )}
       {isSelected && !(isCurrent || current) && (
