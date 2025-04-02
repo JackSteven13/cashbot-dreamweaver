@@ -1,41 +1,42 @@
 
-import { useState } from 'react';
-import { UserData, Transaction } from '@/types/userData';
-import { initialUserData } from '@/utils/userDataInitializer';
+import { useState, useRef } from 'react';
+import { UserData } from '@/types/userData';
 
-export interface UserFetcherState {
+export interface UserDataState {
   userData: UserData;
-  isNewUser: boolean;
   dailySessionCount: number;
   showLimitAlert: boolean;
-  isLoading: boolean;
+  isNewUser: boolean;
 }
 
-export const useUserDataState = () => {
-  const [state, setState] = useState<UserFetcherState>({
-    userData: initialUserData,
-    isNewUser: false,
-    dailySessionCount: 0,
-    showLimitAlert: false,
-    isLoading: true
-  });
-
-  const updateUserData = (data: Partial<UserFetcherState>) => {
-    setState(prev => ({ ...prev, ...data }));
-  };
-
-  const setShowLimitAlert = (show: boolean) => {
-    setState(prev => ({ ...prev, showLimitAlert: show }));
-  };
-
-  const setIsLoading = (loading: boolean) => {
-    setState(prev => ({ ...prev, isLoading: loading }));
-  };
+export const useUserDataState = (initialUserData: UserData) => {
+  // State for tracking user data
+  const [userData, setUserData] = useState<UserData>(initialUserData);
+  const [dailySessionCount, setDailySessionCount] = useState<number>(0);
+  const [showLimitAlert, setShowLimitAlert] = useState<boolean>(false);
+  const [isNewUser, setIsNewUser] = useState<boolean>(false);
+  
+  // Refs for tracking previous values to prevent unnecessary updates
+  const previousUserDataRef = useRef<string>('');
+  const previousSessionCountRef = useRef<number>(-1);
+  const previousLimitAlertRef = useRef<boolean | null>(null);
 
   return {
-    state,
-    updateUserData,
+    // State values
+    userData,
+    dailySessionCount,
+    showLimitAlert,
+    isNewUser,
+    
+    // State setters
+    setUserData,
+    setDailySessionCount,
     setShowLimitAlert,
-    setIsLoading
+    setIsNewUser,
+    
+    // Refs for tracking previous values
+    previousUserDataRef,
+    previousSessionCountRef,
+    previousLimitAlertRef
   };
 };
