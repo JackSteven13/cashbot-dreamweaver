@@ -1,13 +1,12 @@
 
 import React from 'react';
-import { Form } from '@/components/ui/form';
 import { Control } from 'react-hook-form';
-import CalculatorControls from '../CalculatorControls';
+import { CalculatorControls } from '../CalculatorControls';
 import PlanCards from './PlanCards';
 
 interface CalculatorBodyProps {
   control: Control<any>;
-  isHomePage: boolean;
+  isHomePage?: boolean;
   activeTab: 'controls' | 'results';
   setActiveTab: (tab: 'controls' | 'results') => void;
   isMobile: boolean;
@@ -19,7 +18,7 @@ interface CalculatorBodyProps {
 
 const CalculatorBody: React.FC<CalculatorBodyProps> = ({
   control,
-  isHomePage,
+  isHomePage = false,
   activeTab,
   setActiveTab,
   isMobile,
@@ -28,66 +27,47 @@ const CalculatorBody: React.FC<CalculatorBodyProps> = ({
   calculatedResults,
   onSelectPlan
 }) => {
-  // Based on mobile vs desktop, show different layouts
+  // Adapt the layout based on screen size
   if (isMobile) {
-    return activeTab === 'controls' ? (
-      <Form>
-        <CalculatorControls control={control} isHomePage={isHomePage} />
-        <div className="mt-4 text-center">
-          <button 
-            onClick={() => setActiveTab('results')}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          >
-            Voir les résultats
-          </button>
-        </div>
-      </Form>
-    ) : (
-      <>
-        <div className="space-y-2 md:space-y-3">
-          <h3 className={`text-sm md:text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
-            Revenus mensuels estimés
-          </h3>
+    return (
+      <div className={`${isHomePage ? 'text-white' : ''}`}>
+        {activeTab === 'controls' ? (
+          <CalculatorControls 
+            control={control} 
+            isHomePage={isHomePage} 
+          />
+        ) : (
           <PlanCards 
             selectedPlan={selectedPlan}
             currentSubscription={currentSubscription}
-            isHomePage={isHomePage}
             calculatedResults={calculatedResults}
             onSelectPlan={onSelectPlan}
+            isHomePage={isHomePage}
           />
-        </div>
-        <div className="mt-4 text-center">
-          <button 
-            onClick={() => setActiveTab('controls')}
-            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          >
-            Modifier les paramètres
-          </button>
-        </div>
-      </>
+        )}
+      </div>
     );
   }
 
-  // Desktop layout
+  // Desktop layout with side-by-side controls and results
   return (
-    <>
-      <Form>
-        <CalculatorControls control={control} isHomePage={isHomePage} />
-      </Form>
-
-      <div className="mt-4 md:mt-6 space-y-2 md:space-y-3">
-        <h3 className={`text-sm md:text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
-          Revenus mensuels estimés
-        </h3>
+    <div className="flex flex-col md:flex-row gap-4">
+      <div className="w-full md:w-1/3">
+        <CalculatorControls 
+          control={control} 
+          isHomePage={isHomePage} 
+        />
+      </div>
+      <div className="w-full md:w-2/3">
         <PlanCards 
           selectedPlan={selectedPlan}
           currentSubscription={currentSubscription}
-          isHomePage={isHomePage}
           calculatedResults={calculatedResults}
           onSelectPlan={onSelectPlan}
+          isHomePage={isHomePage}
         />
       </div>
-    </>
+    </div>
   );
 };
 

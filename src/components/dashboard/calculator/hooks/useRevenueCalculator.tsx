@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { calculateRevenueForAllPlans } from '../utils';
+import { SUBSCRIPTION_LIMITS } from '@/components/dashboard/summary/constants';
+import { SUBSCRIPTION_PRICES } from '../constants';
 
 interface FormValues {
   sessionsPerDay: number;
@@ -51,7 +53,3 @@ export function useRevenueCalculator() {
     control
   };
 }
-
-// Import these from the constants file but include them here too to avoid circular dependencies
-import { SUBSCRIPTION_LIMITS } from '@/components/dashboard/summary/constants';
-import { SUBSCRIPTION_PRICES } from '../constants';

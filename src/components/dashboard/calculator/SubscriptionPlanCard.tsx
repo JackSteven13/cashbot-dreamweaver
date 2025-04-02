@@ -55,11 +55,12 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
   const isMobile = useIsMobile();
   
   // Determine the card color based on the props
+  // Fix: Add explicit border-x classes for lateral borders
   const cardBorderClass = isSelected 
-    ? 'border-purple-500 ring-2 ring-purple-500/40 transform scale-[1.02] z-10'
+    ? 'border-2 border-x-2 border-purple-500 ring-2 ring-purple-500/40 transform scale-[1.02] z-10'
     : mostPopular 
-      ? 'border-blue-500 ring-2 ring-blue-500/40 transform scale-[1.02] z-10' 
-      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700';
+      ? 'border-2 border-blue-500 ring-2 ring-blue-500/40 transform scale-[1.02] z-10' 
+      : 'border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700';
   
   const cardBgClass = isCurrent || current
     ? 'bg-blue-50 dark:bg-blue-900/30'
@@ -74,7 +75,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
   return (
     <div 
       className={cn(
-        "relative rounded-xl border-2 shadow-md overflow-hidden transition-all duration-200",
+        "relative rounded-xl shadow-md overflow-hidden transition-all duration-200",
         cardBorderClass,
         cardBgClass,
         onClick && "cursor-pointer"
