@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface DashboardInitializationEffectProps {
   initialRenderComplete: React.MutableRefObject<boolean>;
@@ -22,11 +22,14 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
   pathname,
   setSelectedNavItem
 }) => {
+  // État pour suivre le statut d'initialisation
+  const [isInitialized, setIsInitialized] = useState(false);
+  
   // Références stables pour éviter les changements de dépendances
   const stablePathRef = useRef(pathname);
   const initializationDone = useRef(false);
   const navigationDone = useRef(false);
-  const safeToInitialize = useRef(true);
+  const initializationAttempted = useRef(false);
   
   // Mettre à jour la référence du chemin de façon stable
   useEffect(() => {
@@ -35,10 +38,13 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
 
   // Effet d'initialisation - exécuté une seule fois avec protection contre les boucles
   useEffect(() => {
-    // Vérifier si l'initialisation a déjà été faite ou si nous sommes dans un état transitoire
-    if (!safeToInitialize.current || initializationDone.current) {
+    // Ne jamais réinitialiser si déjà fait
+    if (initializationDone.current || initializationAttempted.current) {
       return;
     }
+    
+    // Marquer que nous avons tenté l'initialisation pour éviter les tentatives multiples
+    initializationAttempted.current = true;
     
     // L'initialisation n'est sécuritaire que lorsque nous avons les données utilisateur
     // ET que les chargements initiaux sont terminés
@@ -48,19 +54,21 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
       // Marquer l'initialisation comme complète pour éviter de futurs re-rendus
       initialRenderComplete.current = true;
       initializationDone.current = true;
+      setIsInitialized(true);
       
-      // Éviter toute autre tentative d'initialisation
-      safeToInitialize.current = false;
-      
-      // Définir un délai pour réinitialiser le flag afin de permettre une actualisation future si nécessaire
+      // Définir un délai pour réinitialiser le flag d'initialisation après un certain temps
+      // pour permettre une potentielle réinitialisation future
       setTimeout(() => {
-        safeToInitialize.current = true;
-      }, 5000);
+        initializationAttempted.current = false;
+      }, 30000); // 30 secondes
     }
   }, [isAuthChecking, isLoading, userData, initialRenderComplete]);
 
-  // Effet de navigation isolé - pour éviter les conflits avec l'initialisation
+  // Effet de navigation isolé - s'exécute uniquement lorsque l'initialisation est terminée
   useEffect(() => {
+    // Ne pas exécuter avant l'initialisation pour éviter les conflits
+    if (!isInitialized) return;
+    
     const currentPath = stablePathRef.current;
     
     // Exécuter uniquement lorsque le chemin est dashboard et pas déjà fait
@@ -83,7 +91,7 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
         navigationDone.current = false;
       }
     };
-  }, [setSelectedNavItem, userData]);
+  }, [isInitialized, userData, setSelectedNavItem]);
 
   return null;
 };

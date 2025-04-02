@@ -7,115 +7,85 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
-    // Petit délai pour permettre au contexte d'authentification de s'initialiser correctement
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Petit délai pour permettre au contexte d'authentification de s'initialiser complètement
+    await new Promise(resolve => setTimeout(resolve, 100));
     
-    console.log("Verifying authentication status");
+    console.log("Vérification du statut d'authentification");
     
-    // Vérifier d'abord si une session est présente dans localStorage
-    const hasLocalSession = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-    
-    if (!hasLocalSession) {
-      console.log("No local session found");
-      return false;
-    }
-    
-    // Vérifier la session actuelle avec persistance activée
+    // Récupérer la session actuelle
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
-      console.error("Error getting session:", error);
+      console.error("Erreur lors de la vérification de l'authentification:", error);
       return false;
     }
     
-    // Vérification plus stricte de la validité de la session
-    if (data.session && data.session.user && data.session.user.id) {
-      // Vérifier si la session n'a pas expiré
-      const tokenExpiry = new Date((data.session.expires_at || 0) * 1000);
-      const now = new Date();
-      
-      if (now > tokenExpiry) {
-        console.log("Session expirée, tentative de rafraîchissement automatique...");
-        
-        try {
-          // Petit délai pour éviter les conflits de rafraîchissement
-          await new Promise(resolve => setTimeout(resolve, 200));
-          
-          // Tentative de rafraîchissement automatique
-          const refreshResult = await supabase.auth.refreshSession();
-          
-          if (refreshResult.error || !refreshResult.data.session) {
-            console.error("Échec du rafraîchissement de session:", refreshResult.error);
-            
-            // Si le token a expiré et le rafraîchissement a échoué, nettoyer le localStorage
-            localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-            localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
-            
-            return false;
-          }
-          
-          // Vérification supplémentaire du token rafraîchi
-          const newTokenExpiry = new Date((refreshResult.data.session.expires_at || 0) * 1000);
-          if (now > newTokenExpiry) {
-            console.error("Token rafraîchi déjà expiré");
-            return false;
-          }
-          
-          console.log("Session rafraîchie avec succès");
-          return true;
-        } catch (refreshError) {
-          console.error("Erreur lors du rafraîchissement:", refreshError);
-          return false;
-        }
-      }
-      
-      console.log("Valid session found for user:", data.session.user.id);
-      return true;
+    if (!data.session) {
+      console.log("Aucune session trouvée");
+      return false;
     }
     
-    console.log("No valid session found");
-    return false;
+    // Vérifier l'expiration du jeton
+    const expiresAt = data.session.expires_at;
+    if (!expiresAt || Date.now() / 1000 >= expiresAt) {
+      console.log("Session expirée, tentative de rafraîchissement");
+      
+      try {
+        // Essayer de rafraîchir la session
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError || !refreshData.session) {
+          console.log("Échec du rafraîchissement de la session:", refreshError);
+          return false;
+        }
+        
+        console.log("Session rafraîchie avec succès");
+        return true;
+      } catch (refreshError) {
+        console.error("Erreur lors du rafraîchissement de la session:", refreshError);
+        return false;
+      }
+    }
+    
+    // La session est valide
+    console.log("Session valide trouvée pour l'utilisateur:", data.session.user.id);
+    
+    return true;
   } catch (error) {
-    console.error("Error verifying authentication:", error);
+    console.error("Erreur lors de la vérification de l'authentification:", error);
     return false;
   }
 };
 
 /**
- * Vérifie périodiquement l'état d'authentification et déclenche des rafraîchissements
- * pour maintenir l'état de session actif
+ * Rafraîchit la session d'authentification
+ * @returns Une promesse qui résout à true si le rafraîchissement a réussi, false sinon
  */
-export const scheduleAuthRefresh = (): (() => void) => {
-  const intervalId = setInterval(async () => {
-    try {
-      console.log("Scheduled auth refresh check running");
-      
-      // Vérifier d'abord si une session est présente localement
-      const hasLocalSession = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-      
-      if (!hasLocalSession) {
-        return; // Ne pas essayer de rafraîchir s'il n'y a pas de session
-      }
-      
-      const { data } = await supabase.auth.getSession();
-      
-      if (data.session) {
-        // Si la session existe, vérifier si elle expire bientôt
-        const tokenExpiry = new Date((data.session.expires_at || 0) * 1000);
-        const now = new Date();
-        const timeUntilExpiry = tokenExpiry.getTime() - now.getTime();
-        
-        // Si le token expire dans moins de 10 minutes, le rafraîchir
-        if (timeUntilExpiry < 10 * 60 * 1000) {
-          console.log("Token expires soon, refreshing...");
-          await supabase.auth.refreshSession();
-        }
-      }
-    } catch (error) {
-      console.error("Error in scheduled auth refresh:", error);
+export const refreshSession = async (): Promise<boolean> => {
+  try {
+    console.log("Tentative de rafraîchissement de la session");
+    
+    // Récupérer la session actuelle d'abord
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    // Si nous n'avons pas de session, pas besoin de rafraîchir
+    if (!sessionData.session) {
+      console.log("Pas de session à rafraîchir");
+      return false;
     }
-  }, 3 * 60 * 1000); // Vérifier toutes les 3 minutes
-  
-  // Retourner une fonction de nettoyage
-  return () => clearInterval(intervalId);
+    
+    // Rafraîchir la session
+    const { data, error } = await supabase.auth.refreshSession();
+    
+    if (error || !data.session) {
+      console.error("Échec du rafraîchissement de la session:", error);
+      return false;
+    }
+    
+    console.log("Session rafraîchie avec succès");
+    return true;
+  } catch (error) {
+    console.error("Erreur lors du rafraîchissement de la session:", error);
+    return false;
+  }
 };

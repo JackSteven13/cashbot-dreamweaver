@@ -11,16 +11,27 @@ interface UseAuthCheckParams {
 export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
   const navigate = useNavigate();
   
-  // Improved auth checking function with better error handling
+  // Improved auth checking function with better error handling and redirect protection
   const checkAuth = useCallback(async () => {
     try {
       console.log("Dashboard initializing: checking auth state");
       
-      // Vérifier si une redirection est déjà en cours
+      // Vérifier si une redirection est déjà en cours pour éviter les boucles
       const isRedirecting = localStorage.getItem('auth_redirecting') === 'true';
+      const redirectTimestamp = localStorage.getItem('auth_redirect_timestamp');
+      const now = Date.now();
+      
       if (isRedirecting) {
-        console.log("Redirection already in progress, skipping auth check");
-        return false;
+        // Vérifier si le flag de redirection est trop ancien (plus de 10 secondes)
+        if (redirectTimestamp && now - parseInt(redirectTimestamp) > 10000) {
+          // Nettoyer les flags obsolètes
+          localStorage.removeItem('auth_redirecting');
+          localStorage.removeItem('auth_redirect_timestamp');
+          console.log("Nettoyage des flags de redirection obsolètes");
+        } else {
+          console.log("Redirection already in progress, skipping auth check");
+          return false;
+        }
       }
       
       // Check if a session is present locally first
@@ -31,6 +42,7 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
         if (mountedRef.current) {
           // Set a flag to prevent multiple redirects
           localStorage.setItem('auth_redirecting', 'true');
+          localStorage.setItem('auth_redirect_timestamp', now.toString());
           
           setTimeout(() => {
             if (mountedRef.current) {
@@ -39,6 +51,7 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
               // Nettoyer le flag après redirection
               setTimeout(() => {
                 localStorage.removeItem('auth_redirecting');
+                localStorage.removeItem('auth_redirect_timestamp');
               }, 500);
             }
           }, 300);
@@ -88,8 +101,9 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
             variant: "destructive"
           });
           
-          // Set a flag to prevent multiple redirects
+          // Set a flag to prevent multiple redirects with timestamp
           localStorage.setItem('auth_redirecting', 'true');
+          localStorage.setItem('auth_redirect_timestamp', now.toString());
           
           setTimeout(() => {
             if (mountedRef.current) {
@@ -98,6 +112,7 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
               // Nettoyer le flag après redirection
               setTimeout(() => {
                 localStorage.removeItem('auth_redirecting');
+                localStorage.removeItem('auth_redirect_timestamp');
               }, 500);
             }
           }, 300);

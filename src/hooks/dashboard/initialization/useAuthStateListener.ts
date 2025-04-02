@@ -19,8 +19,16 @@ export const useAuthStateListener = ({ mountedRef, navigate }: UseAuthStateListe
     let cleanupFunction: (() => void) | null = null;
     
     try {
-      // Nettoyer tout abonnement existant
-      supabase.auth.onAuthStateChange(undefined);
+      // Nettoyer tout abonnement existant pour éviter les doublons
+      // Utiliser unsubscribe au lieu de undefined pour éviter les erreurs
+      try {
+        const { data } = supabase.auth.onAuthStateChange(() => {});
+        if (data && data.subscription && data.subscription.unsubscribe) {
+          data.subscription.unsubscribe();
+        }
+      } catch (e) {
+        console.error("Erreur lors du nettoyage de l'écouteur:", e);
+      }
       
       // Configuration de l'écouteur d'état d'authentification avec résilience améliorée
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

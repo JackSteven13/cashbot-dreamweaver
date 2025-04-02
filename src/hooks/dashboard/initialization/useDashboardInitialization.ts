@@ -14,6 +14,7 @@ export const useDashboardInitialization = () => {
   const mountedRef = useRef(true);
   const initializationAttempted = useRef(false);
   const cleanupFunctionsRef = useRef<Array<() => void>>([]);
+  const initializing = useRef(false);
   
   const navigate = useNavigate();
   
@@ -30,8 +31,31 @@ export const useDashboardInitialization = () => {
   // Fonction d'initialisation principale qui s'exécute une seule fois
   // et gère correctement les erreurs et les transitions d'état
   const initializeDashboard = useCallback(async () => {
-    if (initializationAttempted.current || !mountedRef.current) return;
+    // Vérifier si l'initialisation est déjà en cours ou déjà tentée
+    if (initializing.current || initializationAttempted.current || !mountedRef.current) return;
+    
+    initializing.current = true;
     initializationAttempted.current = true;
+    
+    // Vérifier et nettoyer les flags de redirection obsolètes
+    try {
+      const redirectFlag = localStorage.getItem('auth_redirecting');
+      const redirectTimestamp = localStorage.getItem('auth_redirect_timestamp');
+      
+      if (redirectFlag === 'true' && redirectTimestamp) {
+        const timestamp = parseInt(redirectTimestamp);
+        const now = Date.now();
+        
+        // Nettoyer les flags de redirection si plus de 10 secondes se sont écoulées
+        if (now - timestamp > 10000) {
+          console.log("Nettoyage des flags de redirection obsolètes");
+          localStorage.removeItem('auth_redirecting');
+          localStorage.removeItem('auth_redirect_timestamp');
+        }
+      }
+    } catch (e) {
+      console.error("Erreur lors de la vérification des flags de redirection:", e);
+    }
     
     setIsAuthChecking(true);
     setAuthError(null);
@@ -51,7 +75,10 @@ export const useDashboardInitialization = () => {
       // Étape 1: Vérifier l'authentification
       const isAuthenticated = await checkAuth();
       
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) {
+        initializing.current = false;
+        return;
+      }
       
       // Journaliser le résultat de la vérification initiale
       console.log("Vérification d'authentification initiale terminée, résultat:", isAuthenticated);
@@ -66,7 +93,10 @@ export const useDashboardInitialization = () => {
         console.log("Synchronisation des données utilisateur après authentification");
         await syncUserData();
         
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) {
+          initializing.current = false;
+          return;
+        }
         
         // Tout est prêt, marquer l'initialisation comme terminée
         console.log("Initialisation du dashboard terminée, prêt à afficher");
@@ -94,6 +124,14 @@ export const useDashboardInitialization = () => {
       if (mountedRef.current) {
         setIsAuthChecking(false);
       }
+      
+      // Réinitialiser le verrou d'initialisation
+      initializing.current = false;
+      
+      // Permettre une nouvelle tentative d'initialisation après un certain temps
+      setTimeout(() => {
+        initializationAttempted.current = false;
+      }, 10000); // 10 secondes
     }
   }, [checkAuth, setupAuthListener, syncUserData, addCleanupFunction]);
   
