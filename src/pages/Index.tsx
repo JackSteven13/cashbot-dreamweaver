@@ -1,9 +1,8 @@
 
-import { ArrowRight, BarChart3, Cpu, Lock, ShieldCheck, TrendingUp, Zap } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
-import { FeaturesGrid } from '@/components/Feature';
 import Button from '@/components/Button';
 import RevenueCalculator from '@/components/dashboard/RevenueCalculator';
 import Footer from '@/components/Footer';
@@ -12,25 +11,6 @@ import HowItWorks from '@/components/HowItWorks';
 
 const Index = () => {
   const isMobile = useIsMobile();
-  
-  // Réduire le nombre de features pour éviter la duplication d'informations
-  const features = [
-    {
-      title: 'Technologies d\'Analyse',
-      description: 'Notre bot d\'analyse traite les vidéos publicitaires en ligne pour générer des revenus grâce à leur visionnage automatique.',
-      icon: <Cpu className="w-6 h-6" />
-    },
-    {
-      title: 'Processus Automatisé',
-      description: 'Générez des revenus complémentaires grâce à notre bot qui visionne automatiquement des vidéos publicitaires sponsorisées.',
-      icon: <Zap className="w-6 h-6" />
-    },
-    {
-      title: 'Sécurité Avancée',
-      description: 'Vos données sont protégées par des protocoles de chiffrement et de sécurité robustes.',
-      icon: <ShieldCheck className="w-6 h-6" />
-    }
-  ];
 
   // Ajuster les espacements pour mobile
   const sectionPadding = isMobile ? "py-4 md:py-10" : "py-6 md:py-10";
@@ -61,13 +41,6 @@ const Index = () => {
         
         {/* How It Works section - New section that replaces testimonials */}
         <HowItWorks />
-        
-        {/* Features section - Contenu réduit pour éviter les doublons */}
-        <FeaturesGrid 
-          title="Une Plateforme de Visionnage Automatique Innovante"
-          subtitle="Stream genius utilise un bot avancé pour visionner des vidéos publicitaires sponsorisées et générer des revenus complémentaires pour vous."
-          features={features}
-        />
         
         {/* CTA Section - Reduced padding */}
         <section className="py-6 md:py-14">
