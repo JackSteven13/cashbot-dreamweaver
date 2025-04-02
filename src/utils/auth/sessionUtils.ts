@@ -10,6 +10,14 @@ export const getCurrentSession = async () => {
     // Léger délai pour éviter les problèmes de concurrence
     await new Promise(resolve => setTimeout(resolve, 150));
     
+    // Vérifier d'abord si une session est présente dans localStorage
+    const hasLocalSession = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+    
+    if (!hasLocalSession) {
+      console.log("No local session found");
+      return null;
+    }
+    
     // Utiliser getSession avec la persistance locale activée par défaut
     const { data, error } = await supabase.auth.getSession();
     
@@ -47,11 +55,28 @@ export const refreshSession = async () => {
   try {
     console.log("Attempting to refresh the session");
     
+    // Vérifier d'abord si une session est présente dans localStorage
+    const hasLocalSession = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+    
+    if (!hasLocalSession) {
+      console.log("No local session to refresh");
+      return null;
+    }
+    
     // Utiliser refreshSession avec persistance
     const { data, error } = await supabase.auth.refreshSession();
     
     if (error) {
       console.error("Error refreshing session:", error);
+      
+      // Si le rafraîchissement échoue, nettoyer le localStorage
+      if (error.message.includes("refresh token is expired") || 
+          error.message.includes("invalid refresh token") ||
+          error.message.includes("missing refresh token")) {
+        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
+      }
+      
       return null;
     }
     

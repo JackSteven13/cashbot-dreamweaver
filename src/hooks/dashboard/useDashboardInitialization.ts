@@ -5,6 +5,7 @@ import { useAuthCheck } from './useAuthCheck';
 import { useUserDataSync } from './useUserDataSync';
 import { useRetryLogic } from './useRetryLogic';
 import { useAuthStateListener } from './useAuthStateListener';
+import { toast } from "@/components/ui/use-toast";
 
 export const useDashboardInitialization = () => {
   const navigate = useNavigate();
@@ -41,6 +42,28 @@ export const useDashboardInitialization = () => {
     try {
       console.log("Starting dashboard initialization");
       authCheckAttempted.current = true;
+      
+      // Vérifier si le token local existe
+      const hasLocalToken = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+      if (!hasLocalToken) {
+        console.log("No local token found, redirecting to login");
+        setAuthError(true);
+        authCheckInProgress.current = false;
+        
+        toast({
+          title: "Session expirée",
+          description: "Veuillez vous reconnecter pour accéder à votre tableau de bord",
+          variant: "destructive"
+        });
+        
+        setTimeout(() => {
+          if (mountedRef.current) {
+            navigate('/login', { replace: true });
+          }
+        }, 500);
+        
+        return;
+      }
       
       const isAuthenticated = await checkAuth();
       
@@ -105,6 +128,12 @@ export const useDashboardInitialization = () => {
       if (mountedRef.current) {
         setAuthError(true);
         setIsAuthChecking(false);
+        
+        toast({
+          title: "Erreur d'initialisation",
+          description: "Une erreur est survenue lors du chargement du tableau de bord",
+          variant: "destructive"
+        });
       }
     } finally {
       authCheckInProgress.current = false;
@@ -118,6 +147,28 @@ export const useDashboardInitialization = () => {
     resetRetryCount();
     
     console.log("Dashboard initialization started");
+    
+    // Vérifier d'abord si le token local existe avant de démarrer l'initialisation
+    const hasLocalToken = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+    if (!hasLocalToken) {
+      console.log("No local token found, redirecting to login");
+      setAuthError(true);
+      
+      toast({
+        title: "Session expirée",
+        description: "Veuillez vous reconnecter pour accéder à votre tableau de bord",
+        variant: "destructive"
+      });
+      
+      setTimeout(() => {
+        if (mountedRef.current) {
+          navigate('/login', { replace: true });
+        }
+      }, 500);
+      
+      return;
+    }
+    
     // Démarrer avec un léger délai pour éviter les conflits d'initialisation
     setTimeout(() => {
       if (mountedRef.current) {
@@ -136,7 +187,7 @@ export const useDashboardInitialization = () => {
       }
       cleanup();
     };
-  }, [initializeDashboard, setupAuthListener, resetRetryCount]);
+  }, [initializeDashboard, setupAuthListener, resetRetryCount, navigate]);
 
   return {
     isAuthChecking,

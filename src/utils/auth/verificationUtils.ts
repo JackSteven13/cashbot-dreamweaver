@@ -12,6 +12,14 @@ export const verifyAuth = async (): Promise<boolean> => {
     
     console.log("Verifying authentication status");
     
+    // Vérifier d'abord si une session est présente dans localStorage
+    const hasLocalSession = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+    
+    if (!hasLocalSession) {
+      console.log("No local session found");
+      return false;
+    }
+    
     // Vérifier la session actuelle avec persistance activée
     const { data, error } = await supabase.auth.getSession();
     
@@ -38,6 +46,11 @@ export const verifyAuth = async (): Promise<boolean> => {
           
           if (refreshResult.error || !refreshResult.data.session) {
             console.error("Échec du rafraîchissement de session:", refreshResult.error);
+            
+            // Si le token a expiré et le rafraîchissement a échoué, nettoyer le localStorage
+            localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+            localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
+            
             return false;
           }
           
@@ -76,6 +89,13 @@ export const scheduleAuthRefresh = (): (() => void) => {
   const intervalId = setInterval(async () => {
     try {
       console.log("Scheduled auth refresh check running");
+      
+      // Vérifier d'abord si une session est présente localement
+      const hasLocalSession = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+      
+      if (!hasLocalSession) {
+        return; // Ne pas essayer de rafraîchir s'il n'y a pas de session
+      }
       
       const { data } = await supabase.auth.getSession();
       
