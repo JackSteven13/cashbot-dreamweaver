@@ -35,9 +35,18 @@ export const useUserDataState = (initialUserData: UserData = defaultUserData) =>
 
   // Function to update multiple state values at once
   const updateUserData = useCallback((data: Partial<UserFetcherState>) => {
+    console.log("Updating userData from fetchedUserData:", data.userData);
     if (data.userData !== undefined) setUserData(data.userData);
-    if (data.dailySessionCount !== undefined) setDailySessionCount(data.dailySessionCount);
-    if (data.showLimitAlert !== undefined) setShowLimitAlert(data.showLimitAlert);
+    if (data.dailySessionCount !== undefined) {
+      console.log(`Updating dailySessionCount from ${previousSessionCountRef.current} to ${data.dailySessionCount}`);
+      setDailySessionCount(data.dailySessionCount);
+      previousSessionCountRef.current = data.dailySessionCount;
+    }
+    if (data.showLimitAlert !== undefined) {
+      console.log(`Updating showLimitAlert from ${previousLimitAlertRef.current} to ${data.showLimitAlert}`);
+      setShowLimitAlert(data.showLimitAlert);
+      previousLimitAlertRef.current = data.showLimitAlert;
+    }
     if (data.isNewUser !== undefined) setIsNewUser(data.isNewUser);
     if (data.isLoading !== undefined) setIsLoading(data.isLoading);
   }, []);

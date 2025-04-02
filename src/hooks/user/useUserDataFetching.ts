@@ -119,6 +119,7 @@ export const useUserDataFetching = (
         showLimitAlert: limitReached,
         isLoading: false
       });
+      setIsLoading(false);
     } catch (error) {
       console.error("Error in fetchUserData:", error);
       // On error, still update with defaults to prevent undefined errors

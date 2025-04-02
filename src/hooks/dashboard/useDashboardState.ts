@@ -20,40 +20,56 @@ export const useDashboardState = () => {
   // Utiliser useMemo pour éviter les re-rendus inutiles
   const userData = useUserData();
   
+  // Protection contre les valeurs manquantes
+  const userDataWithDefaults = useMemo(() => {
+    return {
+      userData: userData.userData || {
+        username: '',
+        balance: 0,
+        subscription: 'freemium',
+        transactions: [],
+        referrals: [],
+        referralLink: ''
+      },
+      isNewUser: userData.isNewUser || false,
+      dailySessionCount: userData.dailySessionCount || 0,
+      showLimitAlert: userData.showLimitAlert || false,
+      setShowLimitAlert: userData.setShowLimitAlert || (() => {}),
+      isLoading: userData.isLoading || false,
+      refreshUserData: userData.refreshUserData || (async () => false),
+      updateBalance: userData.updateBalance || (async () => {}),
+      resetBalance: userData.resetBalance || (async () => {}),
+      incrementSessionCount: userData.incrementSessionCount || (async () => {})
+    };
+  }, [userData]);
+  
   // Optimiser la vérification de dormance avec les données mémorisées
   const {
     isDormant,
     dormancyData,
     isChecking,
     handleReactivate
-  } = useDormancyCheck(userData.userData?.subscription || 'freemium', userData.refreshUserData);
+  } = useDormancyCheck(
+    userDataWithDefaults.userData.subscription || 'freemium',
+    userDataWithDefaults.refreshUserData
+  );
   
   // Memoize des sessions pour éviter les recalculs inutiles
   const sessions = useDashboardSessions(
-    userData.userData,
-    userData.dailySessionCount,
-    userData.incrementSessionCount,
-    userData.updateBalance,
-    userData.setShowLimitAlert,
-    userData.resetBalance
+    userDataWithDefaults.userData,
+    userDataWithDefaults.dailySessionCount,
+    userDataWithDefaults.incrementSessionCount,
+    userDataWithDefaults.updateBalance,
+    userDataWithDefaults.setShowLimitAlert,
+    userDataWithDefaults.resetBalance
   );
 
   // Memoize la fonction de rafraîchissement pour éviter les re-rendus
   const forceRefresh = useCallback(() => {
     console.log("Forçage du rafraîchissement du dashboard");
     setRenderKey(Date.now());
-    userData.refreshUserData().catch(error => console.error("Error refreshing user data:", error));
-  }, [userData.refreshUserData]);
-
-  // Extraire les propriétés de userData pour éviter les références qui changent
-  const {
-    userData: userDataObj,
-    isNewUser,
-    dailySessionCount,
-    showLimitAlert,
-    setShowLimitAlert,
-    isLoading
-  } = userData;
+    userDataWithDefaults.refreshUserData().catch(error => console.error("Error refreshing user data:", error));
+  }, [userDataWithDefaults.refreshUserData]);
 
   // Extraire les propriétés de sessions pour éviter les références qui changent
   const {
@@ -69,11 +85,11 @@ export const useDashboardState = () => {
     setSelectedNavItem,
     renderKey,
     initialRenderComplete,
-    userData: userDataObj,
-    isNewUser,
-    dailySessionCount,
-    showLimitAlert,
-    setShowLimitAlert,
+    userData: userDataWithDefaults.userData,
+    isNewUser: userDataWithDefaults.isNewUser,
+    dailySessionCount: userDataWithDefaults.dailySessionCount,
+    showLimitAlert: userDataWithDefaults.showLimitAlert,
+    setShowLimitAlert: userDataWithDefaults.setShowLimitAlert,
     isDormant,
     dormancyData,
     isChecking,
@@ -83,14 +99,14 @@ export const useDashboardState = () => {
     handleWithdrawal,
     lastSessionTimestamp,
     forceRefresh,
-    isLoading
+    isLoading: userDataWithDefaults.isLoading
   }), [
     selectedNavItem,
     renderKey,
-    userDataObj,
-    isNewUser,
-    dailySessionCount,
-    showLimitAlert,
+    userDataWithDefaults.userData,
+    userDataWithDefaults.isNewUser,
+    userDataWithDefaults.dailySessionCount,
+    userDataWithDefaults.showLimitAlert,
     isDormant,
     dormancyData,
     isChecking,
@@ -100,7 +116,7 @@ export const useDashboardState = () => {
     handleWithdrawal,
     lastSessionTimestamp,
     forceRefresh,
-    isLoading,
-    setShowLimitAlert
+    userDataWithDefaults.isLoading,
+    userDataWithDefaults.setShowLimitAlert
   ]);
 };

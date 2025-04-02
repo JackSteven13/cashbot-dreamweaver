@@ -1,132 +1,70 @@
 
-import { useCallback, useRef, useState } from 'react';
-import { toast } from "@/components/ui/use-toast";
-import { verifyAuth, refreshSession } from "@/utils/auth";
+import { useCallback, MutableRefObject } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { UserFetcherState } from './useUserDataState';
+import { useUserDataFetching } from './useUserDataFetching';
+import { useProfileLoader } from '@/hooks/useProfileLoader';
+import { useBalanceLoader } from '@/hooks/useBalanceLoader';
+import { useState } from 'react';
 
 export const useUserAuthChecking = (
-  isMounted: React.MutableRefObject<boolean>,
+  isMounted: MutableRefObject<boolean>,
   updateUserData: (data: Partial<UserFetcherState>) => void,
-  initialFetchAttempted: React.MutableRefObject<boolean>
+  initialFetchAttempted: MutableRefObject<boolean>
 ) => {
   const [isLoading, setIsLoading] = useState(true);
-  const fetchInProgress = useRef(false);
-  const retryCount = useRef(0);
-  const maxRetries = 3;
-  const initialFetchDelayRef = useRef<NodeJS.Timeout | null>(null);
-  const lastFetchTimestamp = useRef(0);
-  const fetchQueueRef = useRef<number>(0);
-  const lastRefreshTimestamp = useRef(0);
+  const { loadUserProfile, isNewUser, setIsNewUser } = useProfileLoader();
+  const { loadUserBalance } = useBalanceLoader(setIsNewUser);
   
+  // Use the userDataFetching hook to handle fetching logic
+  const { fetchUserData: fetchData } = useUserDataFetching(
+    loadUserProfile,
+    loadUserBalance,
+    updateUserData,
+    setIsLoading,
+    isNewUser
+  );
+  
+  // Wrapper function to ensure we're mounted before fetching
   const fetchUserData = useCallback(async () => {
-    // Protection against too frequent calls
-    const now = Date.now();
-    if (now - lastFetchTimestamp.current < 3000) {
-      console.log("Skipping fetch - too soon after last fetch");
-      return;
-    }
-    
-    // Protection against concurrent calls
-    if (fetchInProgress.current || !isMounted.current) {
-      console.log("Fetch already in progress or component unmounted, skipping");
-      return;
-    }
+    if (!isMounted.current) return;
     
     try {
-      // Queue management
-      fetchQueueRef.current++;
-      const currentQueueId = fetchQueueRef.current;
-      
-      fetchInProgress.current = true;
-      lastFetchTimestamp.current = now;
-      
-      // Delay to avoid race conditions
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Check if component is still mounted and this is still the latest request
-      if (!isMounted.current || currentQueueId !== fetchQueueRef.current) {
-        console.log("Component unmounted or newer fetch request exists, aborting");
-        fetchInProgress.current = false;
-        return;
-      }
-      
-      // Auth verification with throttling
-      const shouldRefresh = now - lastRefreshTimestamp.current > 30000; // 30s between refreshes
-      let isAuthValid = await verifyAuth();
-      
-      if (!isMounted.current || currentQueueId !== fetchQueueRef.current) {
-        console.log("Component unmounted during auth check, aborting fetch");
-        fetchInProgress.current = false;
-        return;
-      }
-      
-      if (!isAuthValid && shouldRefresh) {
-        console.log("Auth not valid, attempting refresh...");
-        lastRefreshTimestamp.current = now;
-        const refreshed = await refreshSession();
-        
-        if (!refreshed) {
-          console.error("Failed to refresh session");
-          fetchInProgress.current = false;
-          return;
-        }
-        
-        // Delay after refresh
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Verify auth again after refresh
-        isAuthValid = await verifyAuth();
-        if (!isAuthValid) {
-          console.error("Still not authenticated after refresh");
-          fetchInProgress.current = false;
-          return;
-        }
-      }
-      
-      if (!isMounted.current || currentQueueId !== fetchQueueRef.current) {
-        console.log("Component unmounted after auth refresh, aborting fetch");
-        fetchInProgress.current = false;
-        return;
-      }
-      
       console.log("Fetching user data...");
-      // Here we would call the actual data fetching, but it's been extracted to a separate hook
-      // We're just updating state here
-      updateUserData({
-        isLoading: false
-      });
-      
-      retryCount.current = 0;
       initialFetchAttempted.current = true;
-      console.log("User data fetched successfully");
+      
+      // Check if we have a valid session first
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        console.error("No valid session found");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Attempt to refresh token if needed
+      try {
+        const { error } = await supabase.auth.refreshSession();
+        if (error) {
+          console.log("Session refresh error:", error);
+        } else {
+          console.log("User data fetched successfully");
+        }
+      } catch (refreshErr) {
+        console.error("Error refreshing session:", refreshErr);
+      }
+      
+      if (!isMounted.current) return;
+      
+      // Fetch the actual user data
+      await fetchData();
       
     } catch (error) {
-      console.error("Error fetching user data:", error);
-      
-      if (retryCount.current < maxRetries && isMounted.current) {
-        const delay = Math.min(1000 * Math.pow(2, retryCount.current), 8000);
-        console.log(`Retrying in ${delay}ms (attempt ${retryCount.current + 1}/${maxRetries})`);
-        
-        setTimeout(() => {
-          if (isMounted.current) {
-            retryCount.current++;
-            fetchUserData();
-          }
-        }, delay);
-      } else if (isMounted.current) {
-        initialFetchAttempted.current = true;
-        toast({
-          title: "Problème de connexion",
-          description: "Impossible de charger vos données. Veuillez rafraîchir la page.",
-          variant: "destructive"
-        });
+      console.error("Error in fetchUserData:", error);
+      if (isMounted.current) {
+        setIsLoading(false);
       }
-    } finally {
-      fetchInProgress.current = false;
     }
-  }, [isMounted, updateUserData, initialFetchAttempted]);
-
-  // Don't include the initialization effect here as it belongs in the main hook
+  }, [isMounted, fetchData, initialFetchAttempted]);
   
   return {
     fetchUserData,

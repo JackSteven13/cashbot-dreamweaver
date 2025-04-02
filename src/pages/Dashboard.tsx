@@ -8,6 +8,7 @@ import DashboardInitializationEffect from '@/components/dashboard/DashboardIniti
 import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
 import { memo, useEffect, useRef, useMemo } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Composant principal avec memo pour éviter les re-rendus inutiles
 const Dashboard = memo(() => {
@@ -22,6 +23,9 @@ const Dashboard = memo(() => {
     authError
   } = useDashboardInitialization();
   
+  const dashboardState = useDashboardState();
+  
+  // Protect against undefined userData
   const {
     selectedNavItem,
     setSelectedNavItem,
@@ -40,7 +44,25 @@ const Dashboard = memo(() => {
     lastSessionTimestamp,
     forceRefresh,
     isLoading
-  } = useDashboardState();
+  } = dashboardState || {
+    selectedNavItem: 'dashboard',
+    setSelectedNavItem: () => {},
+    renderKey: Date.now(),
+    userData: null,
+    isNewUser: false,
+    dailySessionCount: 0,
+    showLimitAlert: false,
+    isDormant: false,
+    dormancyData: null,
+    isChecking: false,
+    handleReactivate: () => {},
+    isStartingSession: false,
+    handleStartSession: () => {},
+    handleWithdrawal: () => {},
+    lastSessionTimestamp: undefined,
+    forceRefresh: () => {},
+    isLoading: true
+  };
   
   // Effet de debug avec scope limité
   useEffect(() => {
@@ -77,7 +99,7 @@ const Dashboard = memo(() => {
       
       {hasError && <DashboardError errorType={authError ? "auth" : "data"} onRefresh={forceRefresh} />}
       
-      {canShowDashboard && (
+      {canShowDashboard && userData && (
         <DashboardLayout
           key={renderKey}
           username={userData.username}

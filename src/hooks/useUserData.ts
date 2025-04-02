@@ -7,8 +7,19 @@ import { useUserDataState } from './user/useUserDataState';
 import { useUserDataSynchronization } from './user/useUserDataSynchronization';
 import { useUserLimitAlert } from './user/useUserLimitAlert';
 import { useUserDataRefresher } from './user/useUserDataRefresher';
+import { useMemo } from 'react';
 
 export type { UserData };
+
+// Create a default UserData object to prevent undefined errors
+const defaultUserData: UserData = {
+  username: '',
+  balance: 0,
+  subscription: 'freemium',
+  transactions: [],
+  referrals: [],
+  referralLink: '',
+};
 
 export const useUserData = () => {
   // Get data and loading state from the fetch hook
@@ -22,8 +33,13 @@ export const useUserData = () => {
     refetchUserData
   } = useUserFetch();
 
+  // Ensure we always have valid data by providing defaults when needed
+  const safeUserData = useMemo(() => {
+    return fetchedUserData || defaultUserData;
+  }, [fetchedUserData]);
+
   // Ensure new users have zero balance
-  const sanitizedUserData = ensureZeroBalanceForNewUser(isNewUser, fetchedUserData);
+  const sanitizedUserData = ensureZeroBalanceForNewUser(isNewUser, safeUserData);
   
   // Use the user data state hook to manage local state
   const {
@@ -42,7 +58,7 @@ export const useUserData = () => {
 
   // Synchronize state with fetched data
   useUserDataSynchronization(
-    fetchedUserData,
+    sanitizedUserData,
     isNewUser,
     fetchedDailySessionCount,
     initialShowLimitAlert,

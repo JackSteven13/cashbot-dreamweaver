@@ -34,7 +34,7 @@ export const useUserFetch = (): UserFetchResult => {
   const initialFetchAttempted = useRef(false);
   
   // Use the user data state hook to manage local state
-  const userDataState = useUserDataState();
+  const userDataState = useUserDataState(defaultUserData);
   
   // Handle authentication checks
   const { 
@@ -80,7 +80,7 @@ export const useUserFetch = (): UserFetchResult => {
   // Process data for new users
   const sanitizedUserData = ensureZeroBalanceForNewUser(
     userDataState.isNewUser, 
-    userDataState.userData
+    userDataState.userData || defaultUserData
   );
   
   return {
