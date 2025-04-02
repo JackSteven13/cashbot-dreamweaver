@@ -21,18 +21,20 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
   const initEffectRan = useRef(false);
   const navEffectRan = useRef(false);
 
-  // Effet d'initialisation unique et simplifié
+  // Initialization effect - runs once only
   useEffect(() => {
     if (!initEffectRan.current && !initialRenderComplete.current) {
       if (!isAuthChecking && !isLoading && userData && userData.username) {
-        console.log("Dashboard initialement monté avec données utilisateur:", userData.username);
+        console.log("Dashboard initially mounted with user data:", userData.username);
         initialRenderComplete.current = true;
         initEffectRan.current = true;
       }
     }
+    
+    // No cleanup or dependencies that could cause re-runs
   }, [isAuthChecking, isLoading, userData, initialRenderComplete]);
 
-  // Effet de navigation simplifié et indépendant
+  // Navigation effect - separated for clarity
   useEffect(() => {
     if (pathname === "/dashboard" && !navEffectRan.current) {
       setSelectedNavItem('dashboard');
