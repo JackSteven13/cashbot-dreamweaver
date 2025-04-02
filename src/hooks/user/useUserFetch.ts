@@ -18,6 +18,16 @@ export interface UserFetchResult {
   refetchUserData: () => Promise<boolean>;
 }
 
+// Create a default UserData object to prevent undefined errors
+const defaultUserData: UserData = {
+  username: '',
+  balance: 0,
+  subscription: 'freemium',
+  transactions: [],
+  referrals: [],
+  referralLink: '',
+};
+
 export const useUserFetch = (): UserFetchResult => {
   // Tracking references for state updates
   const isMounted = useRef(true);
@@ -48,6 +58,12 @@ export const useUserFetch = (): UserFetchResult => {
     console.log("useUserFetch mounting");
     isMounted.current = true;
     
+    // Immediately update with default user data to prevent undefined errors
+    userDataState.updateUserData({
+      userData: defaultUserData,
+      isLoading: true
+    });
+    
     // Trigger initial fetch when component mounts
     if (!initialFetchAttempted.current) {
       fetchUserData().catch(error => {
@@ -59,7 +75,7 @@ export const useUserFetch = (): UserFetchResult => {
       console.log("useUserFetch unmounting");
       isMounted.current = false;
     };
-  }, [fetchUserData]);
+  }, [fetchUserData, userDataState.updateUserData]);
   
   // Process data for new users
   const sanitizedUserData = ensureZeroBalanceForNewUser(

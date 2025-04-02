@@ -41,6 +41,11 @@ export const useUserDataFetching = (
       
       if (!session) {
         console.error("No session found");
+        // Even when no session is found, ensure we have valid data objects
+        updateUserData({
+          userData: defaultUserData,
+          isLoading: false
+        });
         setIsLoading(false);
         return;
       }
@@ -50,6 +55,10 @@ export const useUserDataFetching = (
       
       if (!userData) {
         console.log("Could not fetch user data, using defaults");
+        updateUserData({
+          userData: defaultUserData,
+          isLoading: false
+        });
         setIsLoading(false);
         return;
       }
@@ -61,6 +70,17 @@ export const useUserDataFetching = (
       const balanceResult = await loadUserBalance(session.user.id);
       if (!balanceResult) {
         console.log("Could not fetch balance data, using defaults");
+        updateUserData({
+          userData: {
+            ...defaultUserData,
+            username: refreshedProfile?.full_name || 
+                     session.user.user_metadata?.full_name || 
+                     (session.user.email ? session.user.email.split('@')[0] : 'utilisateur'),
+            referralLink: userData.referralLink || generateReferralLink(session.user.id),
+            email: session.user.email || undefined,
+          },
+          isLoading: false
+        });
         setIsLoading(false);
         return;
       }
@@ -106,6 +126,7 @@ export const useUserDataFetching = (
         userData: defaultUserData,
         isLoading: false
       });
+      setIsLoading(false);
     }
   }, [loadUserProfile, loadUserBalance, isNewUser, updateUserData, setIsLoading]);
 
