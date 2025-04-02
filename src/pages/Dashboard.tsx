@@ -15,6 +15,8 @@ const Dashboard = memo(() => {
   const location = useLocation();
   const renderCountRef = useRef(0);
   const initialRenderCompleteRef = useRef(false);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [forceShowDashboard, setForceShowDashboard] = useState(false);
   
   // Hooks stables avec dépendances minimales
   const {
@@ -24,6 +26,19 @@ const Dashboard = memo(() => {
   } = useDashboardInitialization();
   
   const dashboardState = useDashboardState();
+  
+  // Définir un timeout pour afficher le dashboard même si les données ne sont pas complètes
+  useEffect(() => {
+    loadingTimeoutRef.current = setTimeout(() => {
+      setForceShowDashboard(true);
+    }, 2000); // Afficher le dashboard après 2 secondes maximum
+    
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // Protect against undefined userData
   const {
@@ -61,7 +76,7 @@ const Dashboard = memo(() => {
     handleWithdrawal: () => {},
     lastSessionTimestamp: undefined,
     forceRefresh: () => {},
-    isLoading: true
+    isLoading: false
   };
   
   // Effet de debug avec scope limité
@@ -72,16 +87,20 @@ const Dashboard = memo(() => {
   
   // Calculs memoizés pour éviter les re-calculs à chaque rendu
   const { isLoading_Combined, hasError, canShowDashboard } = useMemo(() => {
-    const isLoadingCombined = isAuthChecking || isLoading || !isReady || isChecking;
-    const hasErrorValue = authError || (!isLoadingCombined && !userData?.username);
-    const canShowDashboardValue = !isLoadingCombined && !authError && isReady && userData?.username;
+    const isLoadingCombined = !forceShowDashboard && (isAuthChecking || isLoading || !isReady || isChecking);
+    const hasErrorValue = authError || (!isLoadingCombined && !userData?.username && !forceShowDashboard);
+    const canShowDashboardValue = forceShowDashboard || (!isLoadingCombined && !authError && isReady && userData?.username);
     
     return {
       isLoading_Combined: isLoadingCombined,
       hasError: hasErrorValue,
       canShowDashboard: canShowDashboardValue
     };
-  }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
+  }, [forceShowDashboard, isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
+  
+  // Données sécurisées pour le rendu
+  const safeUsername = userData?.username || 'utilisateur';
+  const safeSubscription = userData?.subscription || 'freemium';
   
   return (
     <>
@@ -99,11 +118,11 @@ const Dashboard = memo(() => {
       
       {hasError && <DashboardError errorType={authError ? "auth" : "data"} onRefresh={forceRefresh} />}
       
-      {canShowDashboard && userData && (
+      {canShowDashboard && (
         <DashboardLayout
           key={renderKey}
-          username={userData.username}
-          subscription={userData.subscription}
+          username={safeUsername}
+          subscription={safeSubscription}
           selectedNavItem={selectedNavItem}
           setSelectedNavItem={setSelectedNavItem}
         >
@@ -115,7 +134,14 @@ const Dashboard = memo(() => {
                 dormancyData={dormancyData}
                 showLimitAlert={showLimitAlert}
                 isNewUser={isNewUser}
-                userData={userData}
+                userData={userData || {
+                  username: 'utilisateur',
+                  balance: 0,
+                  subscription: 'freemium',
+                  transactions: [],
+                  referrals: [],
+                  referralLink: ''
+                }}
                 isStartingSession={isStartingSession}
                 handleStartSession={handleStartSession}
                 handleWithdrawal={handleWithdrawal}

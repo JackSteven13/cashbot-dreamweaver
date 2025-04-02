@@ -80,7 +80,7 @@ export const useUserFetch = (): UserFetchResult => {
         }
       });
       
-      // Set a timeout to ensure we don't get stuck in loading state
+      // Set a shorter timeout to ensure we don't get stuck in loading state (reduced from 8s to 3s)
       fetchTimeoutRef.current = setTimeout(() => {
         if (isMounted.current && isLoading) {
           console.log("Fetch timeout reached, using default data");
@@ -90,7 +90,7 @@ export const useUserFetch = (): UserFetchResult => {
             isLoading: false
           });
         }
-      }, 8000); // 8 second timeout
+      }, 3000); // 3 second timeout (reduced from 8s)
     }
     
     return () => {
@@ -116,7 +116,7 @@ export const useUserFetch = (): UserFetchResult => {
     isNewUser: userDataState.isNewUser,
     dailySessionCount: userDataState.dailySessionCount,
     showLimitAlert: userDataState.isNewUser ? false : userDataState.showLimitAlert, // Always false for new users
-    isLoading: isLoading || (!initialFetchAttempted.current && !userDataState.userData?.username),
+    isLoading: isLoading && (!userDataState.userData?.username || userDataState.userData.username === ''),
     setShowLimitAlert: userDataState.setFetchedShowLimitAlert,
     refetchUserData
   };

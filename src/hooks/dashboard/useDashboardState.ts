@@ -21,15 +21,11 @@ export const useDashboardState = () => {
   // Utiliser useMemo pour éviter les re-rendus inutiles
   const userData = useUserData();
   
-  // Protection contre les valeurs manquantes
+  // Protection contre les valeurs manquantes avec des valeurs par défaut explicites
   const userDataWithDefaults = useMemo(() => {
-    // Si les données n'ont pas changé et qu'on a déjà initialisé, ne pas refaire l'opération
-    if (dataInitialized.current && userData && userData.userData && userData.userData.username) {
-      return userData;
-    }
-    
-    const defaultData = {
-      userData: userData.userData || {
+    // Valeurs par défaut complètes
+    const defaultState = {
+      userData: {
         username: 'utilisateur',
         balance: 0,
         subscription: 'freemium',
@@ -37,23 +33,37 @@ export const useDashboardState = () => {
         referrals: [],
         referralLink: ''
       },
-      isNewUser: userData.isNewUser || false,
-      dailySessionCount: userData.dailySessionCount || 0,
-      showLimitAlert: userData.showLimitAlert || false,
-      setShowLimitAlert: userData.setShowLimitAlert || (() => {}),
-      isLoading: userData.isLoading === undefined ? false : userData.isLoading,
-      refreshUserData: userData.refreshUserData || (async () => false),
-      updateBalance: userData.updateBalance || (async () => {}),
-      resetBalance: userData.resetBalance || (async () => {}),
-      incrementSessionCount: userData.incrementSessionCount || (async () => {})
+      isNewUser: false,
+      dailySessionCount: 0,
+      showLimitAlert: false,
+      setShowLimitAlert: () => {},
+      isLoading: false,
+      refreshUserData: async () => false,
+      updateBalance: async () => {},
+      resetBalance: async () => {},
+      incrementSessionCount: async () => {}
     };
     
-    // Marquer comme initialisé si on a un nom d'utilisateur
+    // Utiliser les valeurs existantes ou les valeurs par défaut
+    const result = {
+      userData: userData.userData || defaultState.userData,
+      isNewUser: userData.isNewUser || defaultState.isNewUser,
+      dailySessionCount: userData.dailySessionCount || defaultState.dailySessionCount,
+      showLimitAlert: userData.showLimitAlert || defaultState.showLimitAlert,
+      setShowLimitAlert: userData.setShowLimitAlert || defaultState.setShowLimitAlert,
+      isLoading: userData.isLoading === undefined ? defaultState.isLoading : userData.isLoading,
+      refreshUserData: userData.refreshUserData || defaultState.refreshUserData,
+      updateBalance: userData.updateBalance || defaultState.updateBalance,
+      resetBalance: userData.resetBalance || defaultState.resetBalance,
+      incrementSessionCount: userData.incrementSessionCount || defaultState.incrementSessionCount
+    };
+    
+    // Marquer comme initialisé dès qu'on a un nom d'utilisateur
     if (userData.userData && userData.userData.username) {
       dataInitialized.current = true;
     }
     
-    return defaultData;
+    return result;
   }, [userData]);
   
   // Optimiser la vérification de dormance avec les données mémorisées
@@ -113,7 +123,7 @@ export const useDashboardState = () => {
     handleWithdrawal,
     lastSessionTimestamp,
     forceRefresh,
-    isLoading: userDataWithDefaults.isLoading,
+    isLoading: false, // Forcer isLoading à false pour afficher le tableau de bord immédiatement
     localBalance
   }), [
     selectedNavItem,
@@ -123,15 +133,14 @@ export const useDashboardState = () => {
     userDataWithDefaults.dailySessionCount,
     userDataWithDefaults.showLimitAlert,
     isDormant,
-    dormancyData,
+    dormancyData, 
     isChecking,
     handleReactivate,
     isStartingSession,
-    handleStartSession, 
+    handleStartSession,
     handleWithdrawal,
     lastSessionTimestamp,
     forceRefresh,
-    userDataWithDefaults.isLoading,
     userDataWithDefaults.setShowLimitAlert,
     localBalance
   ]);

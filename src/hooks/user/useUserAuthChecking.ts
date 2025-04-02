@@ -22,7 +22,7 @@ export const useUserAuthChecking = (
   updateUserData: (data: Partial<UserFetcherState>) => void,
   initialFetchAttempted: MutableRefObject<boolean>
 ) => {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const { loadUserProfile, isNewUser, setIsNewUser } = useProfileLoader();
   const { loadUserBalance } = useBalanceLoader(setIsNewUser);
   
@@ -42,6 +42,12 @@ export const useUserAuthChecking = (
     try {
       console.log("Fetching user data...");
       initialFetchAttempted.current = true;
+      
+      // Provide default data immediately to avoid blank screen
+      updateUserData({
+        userData: defaultUserData,
+        isLoading: true
+      });
       
       // Check if we have a valid session first
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();

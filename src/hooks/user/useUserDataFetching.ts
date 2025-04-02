@@ -28,8 +28,6 @@ export const useUserDataFetching = (
   // Function to fetch user data with protection against loops
   const fetchUserData = useCallback(async () => {
     try {
-      setIsLoading(true);
-      
       // Update with minimal default data immediately to prevent undefined errors
       updateUserData({
         userData: defaultUserData,
@@ -50,110 +48,88 @@ export const useUserDataFetching = (
         return;
       }
 
-      // Fetch all user data including referrals
-      const userData = await fetchCompleteUserData(session.user.id, session.user.email);
+      // Generate a default referral link to show something immediately
+      const defaultRefLink = generateReferralLink(session.user.id);
+      const initialUsername = session.user.email ? session.user.email.split('@')[0] : 'utilisateur';
       
-      if (!userData) {
-        console.log("Could not fetch user data, using defaults");
-        // Generate a default referral link at least
-        const defaultRefLink = generateReferralLink(session.user.id);
-        
-        updateUserData({
-          userData: {
-            ...defaultUserData,
-            referralLink: defaultRefLink,
-            username: session.user.email ? session.user.email.split('@')[0] : 'utilisateur'
-          },
-          isLoading: false
-        });
-        setIsLoading(false);
-        return;
-      }
+      // Update with quick minimal data to show something to the user
+      updateUserData({
+        userData: {
+          ...defaultUserData,
+          username: initialUsername,
+          referralLink: defaultRefLink,
+          email: session.user.email
+        },
+        isLoading: true
+      });
+
+      // Fetch all user data including referrals in parallel
+      const userDataPromise = fetchCompleteUserData(session.user.id, session.user.email);
       
-      // Try to fetch user profile - if this fails, we'll still have something to show
+      // Try to fetch user profile in parallel - if this fails, we'll still have something to show
+      const profilePromise = loadUserProfile(session.user.id, session.user.email);
+      const balancePromise = loadUserBalance(session.user.id);
+      
+      // Wait for the data to arrive
+      const [userData, refreshedProfile, balanceResult] = await Promise.allSettled([
+        userDataPromise, 
+        profilePromise, 
+        balancePromise
+      ]);
+      
+      // Now process results, showing the best data we have
+      
+      // Create a merged userData with whatever data we have
+      const mergedUserData = {
+        ...defaultUserData,
+        username: refreshedProfile.status === 'fulfilled' && refreshedProfile.value?.full_name ? 
+                  refreshedProfile.value.full_name : 
+                  (session.user.user_metadata?.full_name || initialUsername),
+        email: session.user.email,
+        referralLink: userData.status === 'fulfilled' && userData.value?.referralLink ? 
+                      userData.value.referralLink : defaultRefLink,
+        referrals: userData.status === 'fulfilled' && userData.value?.referrals ? 
+                   userData.value.referrals : [],
+        balance: balanceResult.status === 'fulfilled' && balanceResult.value?.balanceData?.balance !== undefined ? 
+                 balanceResult.value.balanceData.balance : 0,
+        subscription: balanceResult.status === 'fulfilled' && balanceResult.value?.balanceData?.subscription ? 
+                     balanceResult.value.balanceData.subscription : 'freemium'
+      };
+      
+      // Try to fetch transactions - if this fails, just use empty array
+      let transactionsData = [];
       try {
-        // Fetch user profile
-        const refreshedProfile = await loadUserProfile(session.user.id, session.user.email);
-        
-        // Fetch balance data
-        const balanceResult = await loadUserBalance(session.user.id);
-        
-        if (!balanceResult) {
-          // If balance fetch fails, use profile info with zero balance
-          const displayName = refreshedProfile?.full_name || 
-                            session.user.user_metadata?.full_name || 
-                            (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
-          
-          updateUserData({
-            userData: {
-              ...defaultUserData,
-              username: displayName,
-              referralLink: userData.referralLink || generateReferralLink(session.user.id),
-              email: session.user.email || undefined,
-              referrals: userData.referrals || []
-            },
-            isNewUser: userData.isNewUser || isNewUser,
-            isLoading: false
-          });
-          setIsLoading(false);
-          return;
-        }
-        
-        const { balanceData } = balanceResult;
-
-        // Try to fetch transactions - if this fails, just use empty array
-        let transactionsData = [];
-        try {
-          transactionsData = await fetchUserTransactions(session.user.id) || [];
-        } catch (txError) {
-          console.error("Error fetching transactions:", txError);
-        }
-
-        // Determine display name for user
-        const displayName = refreshedProfile?.full_name || 
-                          session.user.user_metadata?.full_name || 
-                          (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
-
-        // Create user data object
-        const newUserData = {
-          username: displayName,
-          balance: balanceData?.balance || 0,
-          subscription: balanceData?.subscription || 'freemium',
-          referrals: userData.referrals || [],
-          referralLink: userData.referralLink || generateReferralLink(session.user.id),
-          email: session.user.email || undefined,
-          transactions: transactionsData
-        };
-        
-        const newDailySessionCount = balanceData?.daily_session_count || 0;
-        
-        // Check if daily limit is reached
-        const limitReached = checkDailyLimit(balanceData?.balance || 0, balanceData?.subscription || 'freemium');
-        
-        // Update data with protection against loops
-        updateUserData({
-          userData: newUserData,
-          isNewUser: userData.isNewUser || isNewUser,
-          dailySessionCount: newDailySessionCount,
-          showLimitAlert: limitReached,
-          isLoading: false
-        });
-        
-      } catch (profileLoadError) {
-        console.error("Error loading profile:", profileLoadError);
-        
-        // Even if profile fetch fails, we can still show basic user data
-        updateUserData({
-          userData: {
-            ...defaultUserData,
-            username: session.user.email ? session.user.email.split('@')[0] : 'utilisateur',
-            referralLink: userData.referralLink || generateReferralLink(session.user.id),
-            referrals: userData.referrals || []
-          },
-          isNewUser: userData.isNewUser || isNewUser,
-          isLoading: false
-        });
+        transactionsData = await fetchUserTransactions(session.user.id) || [];
+      } catch (txError) {
+        console.error("Error fetching transactions:", txError);
       }
+      
+      mergedUserData.transactions = transactionsData;
+      
+      // Determine session count
+      const newDailySessionCount = balanceResult.status === 'fulfilled' && 
+                                 balanceResult.value?.balanceData?.daily_session_count !== undefined ? 
+                                 balanceResult.value.balanceData.daily_session_count : 0;
+      
+      // Check if daily limit is reached
+      const limitReached = checkDailyLimit(
+        mergedUserData.balance, 
+        mergedUserData.subscription
+      );
+      
+      // Determine if this is a new user
+      const isUserNew = (userData.status === 'fulfilled' && userData.value?.isNewUser) || 
+                       (balanceResult.status === 'fulfilled' && balanceResult.value?.isUserNew) || 
+                       isNewUser;
+      
+      // Update data with protection against loops
+      updateUserData({
+        userData: mergedUserData,
+        isNewUser: isUserNew,
+        dailySessionCount: newDailySessionCount,
+        showLimitAlert: limitReached,
+        isLoading: false
+      });
       
       setIsLoading(false);
     } catch (error) {
