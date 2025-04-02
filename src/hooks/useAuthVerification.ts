@@ -15,13 +15,16 @@ interface UseAuthVerificationResult {
 }
 
 export const useAuthVerification = (): UseAuthVerificationResult => {
+  // Always initialize all state variables
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [authCheckFailed, setAuthCheckFailed] = useState(false);
+  const [isRetrying, setIsRetryingLocal] = useState(false);
   const isMounted = useRef(true);
   const checkInProgress = useRef(false);
   const initialCheckComplete = useRef(false);
   const authTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Always call hooks at the top level
   const { username, setUsername, fetchProfileData } = useProfileData();
   
   const { 
@@ -34,7 +37,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     maxRetries: 5
   });
 
-  // Fonction améliorée avec timeout de sécurité
+  // Cleaned up auth check function with improved stability
   const checkAuth = useCallback(async (isManualRetry = false) => {
     if (checkInProgress.current) {
       console.log("Auth check already in progress, skipping duplicated call");
@@ -51,7 +54,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     
     console.log("Starting auth verification check");
     
-    // Mise en place d'un timeout de sécurité pour éviter les blocages infinis
+    // Set safety timeout
     if (authTimeoutRef.current) {
       clearTimeout(authTimeoutRef.current);
     }
@@ -63,11 +66,12 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
         setIsAuthenticated(false);
         checkInProgress.current = false;
       }
-    }, 15000); // 15 secondes de timeout maximal
+    }, 15000);
     
     try {
       const isAuthValid = await performAuthCheck(isManualRetry);
       
+      // Check for component unmount - don't update state if unmounted
       if (!isMounted.current) {
         if (authTimeoutRef.current) {
           clearTimeout(authTimeoutRef.current);
@@ -89,13 +93,15 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
         return;
       }
       
-      // Get user data for welcome message with improved error handling
+      // Get user data with improved error handling
       const { data, error } = await supabase.auth.getUser();
       
-      if (error) {
+      if (error || !isMounted.current) {
         console.error("Error fetching user:", error);
-        setAuthCheckFailed(true);
-        setIsAuthenticated(false);
+        if (isMounted.current) {
+          setAuthCheckFailed(true);
+          setIsAuthenticated(false);
+        }
         
         if (authTimeoutRef.current) {
           clearTimeout(authTimeoutRef.current);
@@ -108,8 +114,10 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
       const user = data.user;
       
       if (!user) {
-        setAuthCheckFailed(true);
-        setIsAuthenticated(false);
+        if (isMounted.current) {
+          setAuthCheckFailed(true);
+          setIsAuthenticated(false);
+        }
         
         if (authTimeoutRef.current) {
           clearTimeout(authTimeoutRef.current);
@@ -119,7 +127,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
         return;
       }
       
-      // Fetch profile data for username with improved error handling
+      // Fetch profile data
       await fetchProfileData(user.id);
       
       if (isMounted.current) {
@@ -141,7 +149,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     }
   }, [performAuthCheck, fetchProfileData, setIsRetrying]);
 
-  // Handle auth state changes with improved stability
+  // Setup auth state listener hook
   useAuthStateListener({
     onSignOut: () => {
       if (isMounted.current) {
@@ -159,6 +167,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     isMounted
   });
 
+  // Main effect for initialization
   useEffect(() => {
     isMounted.current = true;
     checkInProgress.current = false;
@@ -166,7 +175,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     
     console.log("Initial auth check starting with stable delay");
     
-    // Set timeout for initial auth check with longer delay to ensure proper initialization
+    // Set timeout for initial auth check
     const initTimeout = setTimeout(() => {
       if (isMounted.current && !checkInProgress.current) {
         checkAuth();
@@ -183,11 +192,12 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     };
   }, [checkAuth]);
 
+  // Always return all values consistently
   return {
     isAuthenticated,
     username,
     authCheckFailed,
-    isRetrying,
+    isRetrying, 
     retryAttempts,
     checkAuth
   };

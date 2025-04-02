@@ -21,32 +21,35 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
   const initEffectRan = useRef(false);
   const navEffectRan = useRef(false);
 
-  // Effet pour logging initial - optimisé pour éviter les doubles exécutions
+  // Init effect - FIXED: no early returns that could skip cleanup
   useEffect(() => {
-    if (initEffectRan.current) return;
-    
-    // Vérifier que toutes les données sont disponibles avant de marquer l'initialisation
-    if (!isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
-      console.log("Dashboard monté avec les données utilisateur:", userData.username);
-      initialRenderComplete.current = true;
-      initEffectRan.current = true;
+    // Instead of returning early, use a condition to execute the initialization code
+    if (!initEffectRan.current) {
+      // Vérifier que toutes les données sont disponibles avant de marquer l'initialisation
+      if (!isAuthChecking && !isLoading && userData && userData.balance !== undefined) {
+        console.log("Dashboard monté avec les données utilisateur:", userData.username);
+        initialRenderComplete.current = true;
+        initEffectRan.current = true;
+      }
     }
     
-    // Nettoyer lors du démontage
+    // Always include the cleanup function
     return () => {
       console.log("Nettoyage de l'effet d'initialisation du dashboard");
     };
   }, [isAuthChecking, isLoading, userData, initialRenderComplete]);
 
-  // Effet pour définir l'élément de navigation sélectionné en fonction du chemin
+  // Navigation effect - FIXED: no early returns that could skip cleanup
   useEffect(() => {
-    if (navEffectRan.current) return;
-    
-    if (pathname === "/dashboard") {
-      setSelectedNavItem('dashboard');
-      navEffectRan.current = true;
+    // Instead of returning early, use a condition to execute the code
+    if (!navEffectRan.current) {
+      if (pathname === "/dashboard") {
+        setSelectedNavItem('dashboard');
+        navEffectRan.current = true;
+      }
     }
     
+    // Always include the cleanup function
     return () => {
       navEffectRan.current = false;
     };

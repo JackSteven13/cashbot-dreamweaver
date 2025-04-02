@@ -167,7 +167,7 @@ export const useDashboardInitialization = () => {
     }
   }, [checkAuth, syncUserData, navigate, shouldRetry, incrementRetryCount, calculateRetryDelay, setAuthError, setIsAuthChecking, setIsReady]);
   
-  // Effect for initialization
+  // Effect for initialization - FIX: Always call hooks at the top level, never conditionally
   useEffect(() => {
     mountedRef.current = true;
     authCheckInProgress.current = false;
@@ -184,6 +184,10 @@ export const useDashboardInitialization = () => {
     
     // Vérifier d'abord si le token local existe avant de démarrer l'initialisation
     const hasLocalToken = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+    
+    // Important: Use a local variable for conditional logic instead of early returns
+    let shouldContinue = true;
+    
     if (!hasLocalToken) {
       console.log("No local token found, redirecting to login");
       setAuthError(true);
@@ -200,17 +204,21 @@ export const useDashboardInitialization = () => {
         }
       }, 500);
       
-      return;
+      shouldContinue = false;
     }
     
-    // Démarrer avec un léger délai pour éviter les conflits d'initialisation
-    const initialTimer = setTimeout(() => {
-      if (mountedRef.current) {
-        initializeDashboard();
-      }
-    }, 800);
+    // Setup timers only if we should continue
+    let initialTimer: NodeJS.Timeout | null = null;
+    if (shouldContinue) {
+      // Démarrer avec un léger délai pour éviter les conflits d'initialisation
+      initialTimer = setTimeout(() => {
+        if (mountedRef.current) {
+          initializeDashboard();
+        }
+      }, 800);
+    }
     
-    // Set up auth state listener
+    // Set up auth state listener - always do this regardless of token presence
     const cleanup = setupAuthListener();
     
     return () => { 
@@ -222,7 +230,10 @@ export const useDashboardInitialization = () => {
         clearTimeout(initTimeoutRef.current);
       }
       
-      clearTimeout(initialTimer);
+      if (initialTimer) {
+        clearTimeout(initialTimer);
+      }
+      
       localStorage.removeItem('dashboard_initializing');
       localStorage.removeItem('auth_refreshing');
       localStorage.removeItem('data_syncing');

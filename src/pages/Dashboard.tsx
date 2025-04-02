@@ -13,6 +13,7 @@ import { memo, useEffect, useRef } from 'react';
 const Dashboard = memo(() => {
   const location = useLocation();
   const renderCountRef = useRef(0);
+  const initialRenderCompleteRef = useRef(false);
   
   // Effet de debug pour compter les rendus
   useEffect(() => {
@@ -21,14 +22,15 @@ const Dashboard = memo(() => {
   });
   
   // Utiliser les hooks pour l'état et l'initialisation
+  // IMPORTANT: Always declare all hooks at the top level, never conditionally
   const dashboardState = useDashboardState();
   const initState = useDashboardInitialization();
   
+  // Destructure all values after all hooks have been called
   const {
     selectedNavItem,
     setSelectedNavItem,
     renderKey,
-    initialRenderComplete,
     userData,
     isNewUser,
     dailySessionCount,
@@ -51,16 +53,16 @@ const Dashboard = memo(() => {
     authError
   } = initState;
   
-  // Simplifier les conditions d'affichage pour plus de stabilité
+  // Simplify the display conditions for better stability
   const isLoading_Combined = isAuthChecking || isLoading || !isReady || isChecking;
   const hasError = authError || (!isLoading_Combined && !userData?.username);
   const canShowDashboard = !isLoading_Combined && !authError && isReady && userData?.username;
   
-  // Inclure les effets d'initialisation
+  // Pass everything to the initialization effect
   return (
     <>
       <DashboardInitializationEffect
-        initialRenderComplete={initialRenderComplete}
+        initialRenderComplete={initialRenderCompleteRef}
         isAuthChecking={isAuthChecking}
         isLoading={isLoading}
         userData={userData}
