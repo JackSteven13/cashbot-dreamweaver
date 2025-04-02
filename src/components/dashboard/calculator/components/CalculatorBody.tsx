@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Control } from 'react-hook-form';
-import { CalculatorControls } from '../CalculatorControls';
+import CalculatorControls from '../CalculatorControls';
 import PlanCards from './PlanCards';
 
 interface CalculatorBodyProps {
