@@ -67,6 +67,10 @@ const SUBSCRIPTION_DESCRIPTIONS: Record<string, string> = {
   'elite': 'Pour les professionnels et entreprises'
 };
 
+// Ordre d'affichage personnalisé pour les plans
+// Afficher Elite en premier, puis Gold, puis Starter, puis Freemium
+const DISPLAY_ORDER = ['elite', 'gold', 'starter', 'freemium'];
+
 const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({ 
   currentSubscription, 
   isNewUser,
@@ -117,6 +121,41 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
 
   const textColorClass = isHomePage ? "text-white dark:text-white" : "text-[#1e3a5f] dark:text-white";
   const descriptionColorClass = isHomePage ? "text-blue-100 dark:text-blue-200" : "text-gray-500 dark:text-gray-300";
+
+  // Fonction pour afficher les plans selon l'ordre personnalisé
+  const renderPlans = () => {
+    return DISPLAY_ORDER.map((plan) => {
+      // Ne pas afficher freemium sur la page d'accueil
+      if (plan === 'freemium' && isHomePage) return null;
+      
+      const isFreemium = plan === 'freemium';
+      const isCurrent = plan === currentSubscription;
+      const results = calculatedResults[plan] || { revenue: 0, profit: 0 };
+      
+      return (
+        <div key={plan} className={isMobile ? "mb-3" : ""}>
+          <SubscriptionPlanCard
+            key={plan}
+            title={SUBSCRIPTION_LABELS[plan] || plan}
+            price={SUBSCRIPTION_PRICES[plan] || 0}
+            description={SUBSCRIPTION_DESCRIPTIONS[plan] || ''}
+            features={SUBSCRIPTION_FEATURES[plan] || []}
+            limit={SUBSCRIPTION_LIMITS[plan] || 0}
+            plan={plan}
+            isSelected={selectedPlan === plan}
+            isHomePage={isHomePage}
+            isCurrent={isCurrent}
+            isFreemium={isFreemium}
+            subscriptionLabel={SUBSCRIPTION_LABELS[plan]}
+            subscriptionPrice={SUBSCRIPTION_PRICES[plan]}
+            revenue={results.revenue}
+            profit={results.profit}
+            onClick={() => setSelectedPlan(plan)}
+          />
+        </div>
+      );
+    });
+  };
 
   return (
     <Card className={cardClassName}>
@@ -178,37 +217,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
                   Revenus mensuels estimés
                 </h3>
                 <div className="overflow-hidden">
-                  {Object.keys(SUBSCRIPTION_LIMITS).map((plan) => {
-                    // Ne pas afficher freemium sur la page d'accueil
-                    if (plan === 'freemium' && isHomePage) return null;
-                    
-                    const isFreemium = plan === 'freemium';
-                    const isCurrent = plan === currentSubscription;
-                    const results = calculatedResults[plan] || { revenue: 0, profit: 0 };
-                    
-                    return (
-                      <div key={plan} className="mb-3">
-                        <SubscriptionPlanCard
-                          key={plan}
-                          title={SUBSCRIPTION_LABELS[plan] || plan}
-                          price={SUBSCRIPTION_PRICES[plan] || 0}
-                          description={SUBSCRIPTION_DESCRIPTIONS[plan] || ''}
-                          features={SUBSCRIPTION_FEATURES[plan] || []}
-                          limit={SUBSCRIPTION_LIMITS[plan] || 0}
-                          plan={plan}
-                          isSelected={selectedPlan === plan}
-                          isHomePage={isHomePage}
-                          isCurrent={isCurrent}
-                          isFreemium={isFreemium}
-                          subscriptionLabel={SUBSCRIPTION_LABELS[plan]}
-                          subscriptionPrice={SUBSCRIPTION_PRICES[plan]}
-                          revenue={results.revenue}
-                          profit={results.profit}
-                          onClick={() => setSelectedPlan(plan)}
-                        />
-                      </div>
-                    );
-                  })}
+                  {renderPlans()}
                 </div>
               </div>
               <div className="mt-4 text-center">
@@ -233,37 +242,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
                 Revenus mensuels estimés
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3 overflow-hidden">
-                {Object.keys(SUBSCRIPTION_LIMITS).map((plan) => {
-                  // Ne pas afficher freemium sur la page d'accueil
-                  if (plan === 'freemium' && isHomePage) return null;
-                  
-                  const isFreemium = plan === 'freemium';
-                  const isCurrent = plan === currentSubscription;
-                  const results = calculatedResults[plan] || { revenue: 0, profit: 0 };
-                  
-                  return (
-                    <div key={plan} className="max-h-[350px] md:max-h-[500px] overflow-y-auto">
-                      <SubscriptionPlanCard
-                        key={plan}
-                        title={SUBSCRIPTION_LABELS[plan] || plan}
-                        price={SUBSCRIPTION_PRICES[plan] || 0}
-                        description={SUBSCRIPTION_DESCRIPTIONS[plan] || ''}
-                        features={SUBSCRIPTION_FEATURES[plan] || []}
-                        limit={SUBSCRIPTION_LIMITS[plan] || 0}
-                        plan={plan}
-                        isSelected={selectedPlan === plan}
-                        isHomePage={isHomePage}
-                        isCurrent={isCurrent}
-                        isFreemium={isFreemium}
-                        subscriptionLabel={SUBSCRIPTION_LABELS[plan]}
-                        subscriptionPrice={SUBSCRIPTION_PRICES[plan]}
-                        revenue={results.revenue}
-                        profit={results.profit}
-                        onClick={() => setSelectedPlan(plan)}
-                      />
-                    </div>
-                  );
-                })}
+                {renderPlans()}
               </div>
             </div>
           </>

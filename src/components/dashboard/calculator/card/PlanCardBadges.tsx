@@ -30,7 +30,7 @@ const PlanCardBadges: React.FC<PlanCardBadgesProps> = ({
         </div>
       )}
       {isSelected && !(isCurrent || current) && (
-        <div className="absolute top-0 left-0 bg-purple-600 text-white px-3 py-1 text-xs font-semibold rounded-br-lg">
+        <div className="absolute top-0 right-0 bg-purple-600 text-white px-3 py-1 text-xs font-semibold rounded-bl-lg">
           SÉLECTIONNÉ
         </div>
       )}
