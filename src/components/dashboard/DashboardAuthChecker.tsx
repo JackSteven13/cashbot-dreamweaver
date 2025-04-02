@@ -1,6 +1,7 @@
 
 import { FC, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+// Utiliser les importations spécifiques pour éviter les conflits
 import { verifyAuth, refreshSession } from "@/utils/auth/index";
 
 interface DashboardAuthCheckerProps {

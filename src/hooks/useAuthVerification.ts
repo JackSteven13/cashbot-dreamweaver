@@ -1,6 +1,8 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
+// Utiliser les importations spécifiques pour éviter les conflits
+import { verifyAuth, refreshSession } from "@/utils/auth/index";
 
 interface UseAuthVerificationResult {
   isAuthenticated: boolean | null;

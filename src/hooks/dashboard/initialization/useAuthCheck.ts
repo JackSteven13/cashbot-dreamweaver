@@ -1,6 +1,7 @@
 
 import { useCallback } from 'react';
-import { verifyAuth, refreshSession } from "@/utils/auth/index";
+import { verifyAuth } from "@/utils/auth/index";
+import { refreshSession } from "@/utils/auth/index";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from 'react-router-dom';
 

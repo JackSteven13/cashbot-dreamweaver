@@ -1,5 +1,6 @@
 
 import { useCallback } from 'react';
+// Utiliser les importations spécifiques pour éviter les conflits
 import { verifyAuth, refreshSession } from "@/utils/auth/index";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from 'react-router-dom';

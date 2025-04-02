@@ -3,8 +3,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { useUserDataFetcher, UserFetcherState } from './useUserDataFetcher';
 import { toast } from "@/components/ui/use-toast";
-import { verifyAuth } from "@/utils/auth/verificationUtils";
-import { refreshSession } from "@/utils/auth/sessionUtils";
+// Utiliser les importations spécifiques pour éviter les conflits
+import { verifyAuth } from "@/utils/auth/index";
+import { refreshSession } from "@/utils/auth/index";
 import { ensureZeroBalanceForNewUser } from '@/utils/userDataInitializer';
 
 export type { UserData };

@@ -1,5 +1,8 @@
 
-// Export all auth utilities from this index file
-export * from './sessionUtils';
-export * from './verificationUtils';
-export * from './subscriptionUtils';
+// Export auth utilities with explicit exports pour éviter les conflits
+export { getCurrentSession, forceSignOut } from './sessionUtils';
+export { refreshSession } from './sessionUtils'; // Export explicite pour éviter le conflit
+export { verifyAuth } from './verificationUtils';
+// Éviter le conflit en n'exportant pas refreshSession de verificationUtils
+// à la place on exportera explicitement à partir du sessionUtils
+export { subscribeToAuthChanges, unsubscribeFromAuthChanges } from './subscriptionUtils';

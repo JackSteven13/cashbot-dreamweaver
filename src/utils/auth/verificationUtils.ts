@@ -57,11 +57,9 @@ export const verifyAuth = async (): Promise<boolean> => {
   }
 };
 
-/**
- * Rafraîchit la session d'authentification
- * @returns Une promesse qui résout à true si le rafraîchissement a réussi, false sinon
- */
-export const refreshSession = async (): Promise<boolean> => {
+// Nous n'exportons plus cette fonction ici pour éviter le conflit
+// Elle sera disponible via sessionUtils
+const refreshSessionInternal = async (): Promise<boolean> => {
   try {
     console.log("Tentative de rafraîchissement de la session");
     
