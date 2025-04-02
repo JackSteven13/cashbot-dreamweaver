@@ -1,9 +1,9 @@
 
 import { useCallback } from 'react';
-import { verifyAuth } from "@/utils/auth/index";
-import { refreshSession } from "@/utils/auth/index";
-import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from 'react-router-dom';
+// Importer explicitement depuis index.ts pour éviter les conflits
+import { verifyAuth, refreshSession } from '@/utils/auth/index';
+import { toast } from "@/components/ui/use-toast";
 
 interface UseAuthCheckParams {
   mountedRef: React.RefObject<boolean>;

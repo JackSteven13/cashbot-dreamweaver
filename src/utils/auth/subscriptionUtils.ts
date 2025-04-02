@@ -20,3 +20,4 @@ export const subscribeToAuthChanges = () => {
 export const unsubscribeFromAuthChanges = () => {
   console.log("Auth change unsubscription function called - deprecated");
 };
+
