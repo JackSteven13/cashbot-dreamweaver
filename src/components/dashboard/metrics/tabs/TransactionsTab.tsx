@@ -5,8 +5,8 @@ import SessionCard from '@/components/SessionCard';
 
 interface TransactionsTabProps {
   transactions: Array<{
-    gain: number;
-    report: string;
+    gain?: number;
+    report?: string;
     date: string;
     amount?: number;
     type?: string;
@@ -25,8 +25,8 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
           {transactions.slice(0, 5).map((transaction, index) => (
             <SessionCard 
               key={index}
-              gain={transaction.gain || transaction.amount}
-              report={transaction.report || transaction.type}
+              gain={transaction.gain || transaction.amount || 0}
+              report={transaction.report || transaction.type || ''}
               date={new Date(transaction.date).toLocaleDateString()}
             />
           ))}

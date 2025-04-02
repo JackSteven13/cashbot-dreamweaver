@@ -74,7 +74,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
       
       <TabsContent value="transactions">
         <TransactionsTab 
-          transactions={transactions}
+          transactions={transactions || []}
           isNewUser={isNewUser}
         />
       </TabsContent>
