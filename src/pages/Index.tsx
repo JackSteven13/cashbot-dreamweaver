@@ -7,8 +7,11 @@ import { FeaturesGrid } from '@/components/Feature';
 import Button from '@/components/Button';
 import RevenueCalculator from '@/components/dashboard/RevenueCalculator';
 import Footer from '@/components/Footer';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Index = () => {
+  const isMobile = useIsMobile();
+  
   const features = [
     {
       title: 'Technologies d\'Analyse',
@@ -42,6 +45,10 @@ const Index = () => {
     }
   ];
 
+  // Ajuster les espacements pour mobile
+  const sectionPadding = isMobile ? "py-4 md:py-10" : "py-6 md:py-10";
+  const calculatorTopPadding = isMobile ? "pt-2 pb-4" : "py-6 md:py-10";
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -50,10 +57,10 @@ const Index = () => {
         <Hero />
         
         {/* Revenue Calculator Section - Moved up and reduced padding */}
-        <section className="py-6 md:py-10 bg-gradient-to-b from-slate-900 to-slate-950">
-          <div className="container mx-auto px-4 md:px-6">
+        <section className={`${calculatorTopPadding} bg-gradient-to-b from-slate-900 to-slate-950`}>
+          <div className="container mx-auto px-3 md:px-6">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center text-white">
+              <h2 className={`text-xl md:text-3xl font-bold mb-3 md:mb-6 text-center text-white ${isMobile ? 'px-2' : ''}`}>
                 Simulez vos revenus potentiels avec Stream genius
               </h2>
               <RevenueCalculator 
@@ -73,16 +80,16 @@ const Index = () => {
         />
         
         {/* Testimonials Section - Updated with more impressive and differentiated testimonials */}
-        <section className="py-8 md:py-14 bg-gradient-subtle">
+        <section className={`${sectionPadding} bg-gradient-subtle`}>
           <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center max-w-3xl mx-auto mb-6 md:mb-10">
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">Témoignages d'utilisateurs</h2>
+            <div className="text-center max-w-3xl mx-auto mb-4 md:mb-10">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 md:mb-4">Témoignages d'utilisateurs</h2>
               <p className="text-base md:text-lg text-muted-foreground">Découvrez ce que nos utilisateurs disent de Stream genius.</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="glass-card p-4 md:p-6 rounded-xl">
-                <div className="flex items-center gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+              <div className="glass-card p-3 md:p-6 rounded-xl">
+                <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
                   <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">JL</div>
                   <div>
                     <p className="font-medium">Jean L.</p>
@@ -92,8 +99,8 @@ const Index = () => {
                 <p className="italic text-sm md:text-base text-muted-foreground">"J'ai commencé avec l'abonnement Pro et j'ai généré 678€ le premier mois. Au fil du temps, j'ai atteint 1248€ mensuels. L'interface est intuitive et le système fonctionne vraiment comme promis."</p>
               </div>
               
-              <div className="glass-card p-4 md:p-6 rounded-xl">
-                <div className="flex items-center gap-4 mb-4">
+              <div className="glass-card p-3 md:p-6 rounded-xl">
+                <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
                   <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">CM</div>
                   <div>
                     <p className="font-medium">Caroline M.</p>
@@ -103,8 +110,8 @@ const Index = () => {
                 <p className="italic text-sm md:text-base text-muted-foreground">"Grâce à l'abonnement Visionnaire, j'ai pu générer 2184€ dès le deuxième mois. Les rapports détaillés me permettent d'optimiser constamment mes performances et j'ai noté une progression régulière de mes revenus."</p>
               </div>
               
-              <div className="glass-card p-4 md:p-6 rounded-xl">
-                <div className="flex items-center gap-4 mb-4">
+              <div className="glass-card p-3 md:p-6 rounded-xl">
+                <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
                   <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">PD</div>
                   <div>
                     <p className="font-medium">Philippe D.</p>
@@ -118,11 +125,11 @@ const Index = () => {
         </section>
         
         {/* CTA Section - Reduced padding */}
-        <section className="py-8 md:py-14">
+        <section className="py-6 md:py-14">
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-3xl mx-auto text-center">
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 md:mb-6">Prêt à générer des revenus complémentaires ?</h2>
-              <p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8">Rejoignez notre communauté d'utilisateurs et commencez à explorer le potentiel de Stream genius.</p>
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 md:mb-6">Prêt à générer des revenus complémentaires ?</h2>
+              <p className="text-base md:text-lg text-muted-foreground mb-4 md:mb-8">Rejoignez notre communauté d'utilisateurs et commencez à explorer le potentiel de Stream genius.</p>
               
               <Link to="/register">
                 <Button size="lg" className="group">

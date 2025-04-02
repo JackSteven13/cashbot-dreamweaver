@@ -66,6 +66,10 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
     : isSelected
       ? 'bg-purple-50/50 dark:bg-purple-900/20'
       : 'bg-white dark:bg-gray-800';
+      
+  // Ajustements pour l'affichage mobile
+  const paddingClass = isMobile ? "p-2 md:p-5" : "p-3 md:p-5";
+  const maxHeightClass = isMobile ? "max-h-[300px] md:max-h-[500px]" : "max-height: 100%";
 
   return (
     <div 
@@ -77,7 +81,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
       )}
       onClick={onClick}
       style={{ 
-        maxHeight: isMobile ? '400px' : '100%', 
+        maxHeight: isMobile ? '300px' : '100%', 
         zIndex: 30,
         width: '100%'
       }}
@@ -89,7 +93,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
         isSelected={isSelected} 
       />
       
-      <div className="p-3 md:p-5 overflow-auto">
+      <div className={`${paddingClass} overflow-auto`}>
         <PlanCardHeader 
           title={title}
           price={price}

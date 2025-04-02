@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/form';
 import { Slider } from '@/components/ui/slider';
 import { Control } from 'react-hook-form';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface FormValues {
   sessionsPerDay: number;
@@ -24,6 +25,8 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
   control, 
   isHomePage 
 }) => {
+  const isMobile = useIsMobile();
+  
   // Updated these classes to work better in both light and dark modes
   const labelClass = isHomePage 
     ? "text-white font-medium dark:text-blue-100" 
@@ -38,17 +41,22 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
       : 'text-blue-700 dark:text-white bg-blue-50 dark:bg-blue-900/50 rounded px-2 py-1'
   }`;
 
+  // Ajustements pour mobile - réduire l'espace vertical
+  const mobileSpacing = isMobile ? "space-y-3" : "space-y-5";
+  const mobileTextClass = isMobile ? "text-sm" : "";
+  const mobileDescriptionClass = isMobile ? "text-xs" : "";
+
   return (
-    <div className="space-y-5">
+    <div className={mobileSpacing}>
       <FormField
         control={control}
         name="sessionsPerDay"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className={labelClass}>
+            <FormLabel className={`${labelClass} ${mobileTextClass}`}>
               Sessions par jour
             </FormLabel>
-            <FormDescription className={descriptionClass}>
+            <FormDescription className={`${descriptionClass} ${mobileDescriptionClass}`}>
               Nombre de sessions de gain que vous souhaitez lancer quotidiennement
             </FormDescription>
             <div className="flex items-center space-x-4">
@@ -75,10 +83,10 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
         name="daysPerMonth"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className={labelClass}>
+            <FormLabel className={`${labelClass} ${mobileTextClass}`}>
               Jours d'activité par mois
             </FormLabel>
-            <FormDescription className={descriptionClass}>
+            <FormDescription className={`${descriptionClass} ${mobileDescriptionClass}`}>
               Combien de jours par mois utiliserez-vous l'application?
             </FormDescription>
             <div className="flex items-center space-x-4">

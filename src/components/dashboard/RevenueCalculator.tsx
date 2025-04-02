@@ -74,6 +74,7 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
 }) => {
   const [selectedPlan, setSelectedPlan] = useState<string>('elite');
   const [calculatedResults, setCalculatedResults] = useState<Record<string, { revenue: number, profit: number }>>({});
+  const [activeTab, setActiveTab] = useState<'controls' | 'results'>('controls');
   const isMobile = useIsMobile();
 
   const form = useForm<FormValues>({
@@ -128,51 +129,145 @@ const RevenueCalculator: React.FC<RevenueCalculatorProps> = ({
             ? "Découvrez votre potentiel de gains avec différents abonnements" 
             : "Comparez vos revenus potentiels selon différents abonnements"}
         </CardDescription>
+        
+        {/* Ajouter des onglets de navigation pour mobile */}
+        {isMobile && (
+          <div className="flex border-b border-gray-200 dark:border-gray-700 mt-3">
+            <button
+              onClick={() => setActiveTab('controls')}
+              className={`flex-1 py-2 px-4 text-sm font-medium text-center ${
+                activeTab === 'controls'
+                  ? 'border-b-2 border-blue-500 text-blue-500'
+                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
+            >
+              Paramètres
+            </button>
+            <button
+              onClick={() => setActiveTab('results')}
+              className={`flex-1 py-2 px-4 text-sm font-medium text-center ${
+                activeTab === 'results'
+                  ? 'border-b-2 border-blue-500 text-blue-500'
+                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
+            >
+              Résultats
+            </button>
+          </div>
+        )}
       </CardHeader>
       <CardContent className={`pt-3 px-3 md:pt-4 md:px-6 ${isHomePage ? 'text-white dark:text-white' : 'dark:text-gray-100'}`}>
-        <Form {...form}>
-          {/* Contrôles du simulateur */}
-          <CalculatorControls control={control} isHomePage={isHomePage} />
-        </Form>
-
-        <div className="mt-4 md:mt-6 space-y-2 md:space-y-3">
-          <h3 className={`text-sm md:text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
-            Revenus mensuels estimés
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3 overflow-hidden">
-            {Object.keys(SUBSCRIPTION_LIMITS).map((plan) => {
-              // Ne pas afficher freemium sur la page d'accueil
-              if (plan === 'freemium' && isHomePage) return null;
-              
-              const isFreemium = plan === 'freemium';
-              const isCurrent = plan === currentSubscription;
-              const results = calculatedResults[plan] || { revenue: 0, profit: 0 };
-              
-              return (
-                <div key={plan} className="max-h-[350px] md:max-h-[500px] overflow-y-auto">
-                  <SubscriptionPlanCard
-                    key={plan}
-                    title={SUBSCRIPTION_LABELS[plan] || plan}
-                    price={SUBSCRIPTION_PRICES[plan] || 0}
-                    description={SUBSCRIPTION_DESCRIPTIONS[plan] || ''}
-                    features={SUBSCRIPTION_FEATURES[plan] || []}
-                    limit={SUBSCRIPTION_LIMITS[plan] || 0}
-                    plan={plan}
-                    isSelected={selectedPlan === plan}
-                    isHomePage={isHomePage}
-                    isCurrent={isCurrent}
-                    isFreemium={isFreemium}
-                    subscriptionLabel={SUBSCRIPTION_LABELS[plan]}
-                    subscriptionPrice={SUBSCRIPTION_PRICES[plan]}
-                    revenue={results.revenue}
-                    profit={results.profit}
-                    onClick={() => setSelectedPlan(plan)}
-                  />
+        {/* Sur mobile, afficher soit les contrôles, soit les résultats selon l'onglet actif */}
+        {isMobile ? (
+          activeTab === 'controls' ? (
+            <Form {...form}>
+              <CalculatorControls control={control} isHomePage={isHomePage} />
+              <div className="mt-4 text-center">
+                <button 
+                  onClick={() => setActiveTab('results')}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                >
+                  Voir les résultats
+                </button>
+              </div>
+            </Form>
+          ) : (
+            <>
+              <div className="space-y-2 md:space-y-3">
+                <h3 className={`text-sm md:text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
+                  Revenus mensuels estimés
+                </h3>
+                <div className="overflow-hidden">
+                  {Object.keys(SUBSCRIPTION_LIMITS).map((plan) => {
+                    // Ne pas afficher freemium sur la page d'accueil
+                    if (plan === 'freemium' && isHomePage) return null;
+                    
+                    const isFreemium = plan === 'freemium';
+                    const isCurrent = plan === currentSubscription;
+                    const results = calculatedResults[plan] || { revenue: 0, profit: 0 };
+                    
+                    return (
+                      <div key={plan} className="mb-3">
+                        <SubscriptionPlanCard
+                          key={plan}
+                          title={SUBSCRIPTION_LABELS[plan] || plan}
+                          price={SUBSCRIPTION_PRICES[plan] || 0}
+                          description={SUBSCRIPTION_DESCRIPTIONS[plan] || ''}
+                          features={SUBSCRIPTION_FEATURES[plan] || []}
+                          limit={SUBSCRIPTION_LIMITS[plan] || 0}
+                          plan={plan}
+                          isSelected={selectedPlan === plan}
+                          isHomePage={isHomePage}
+                          isCurrent={isCurrent}
+                          isFreemium={isFreemium}
+                          subscriptionLabel={SUBSCRIPTION_LABELS[plan]}
+                          subscriptionPrice={SUBSCRIPTION_PRICES[plan]}
+                          revenue={results.revenue}
+                          profit={results.profit}
+                          onClick={() => setSelectedPlan(plan)}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              </div>
+              <div className="mt-4 text-center">
+                <button 
+                  onClick={() => setActiveTab('controls')}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                >
+                  Modifier les paramètres
+                </button>
+              </div>
+            </>
+          )
+        ) : (
+          <>
+            {/* Affichage desktop - pas de changement */}
+            <Form {...form}>
+              <CalculatorControls control={control} isHomePage={isHomePage} />
+            </Form>
+
+            <div className="mt-4 md:mt-6 space-y-2 md:space-y-3">
+              <h3 className={`text-sm md:text-md font-semibold ${isHomePage ? 'text-white dark:text-white' : 'text-[#1e3a5f] dark:text-gray-100'}`}>
+                Revenus mensuels estimés
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3 overflow-hidden">
+                {Object.keys(SUBSCRIPTION_LIMITS).map((plan) => {
+                  // Ne pas afficher freemium sur la page d'accueil
+                  if (plan === 'freemium' && isHomePage) return null;
+                  
+                  const isFreemium = plan === 'freemium';
+                  const isCurrent = plan === currentSubscription;
+                  const results = calculatedResults[plan] || { revenue: 0, profit: 0 };
+                  
+                  return (
+                    <div key={plan} className="max-h-[350px] md:max-h-[500px] overflow-y-auto">
+                      <SubscriptionPlanCard
+                        key={plan}
+                        title={SUBSCRIPTION_LABELS[plan] || plan}
+                        price={SUBSCRIPTION_PRICES[plan] || 0}
+                        description={SUBSCRIPTION_DESCRIPTIONS[plan] || ''}
+                        features={SUBSCRIPTION_FEATURES[plan] || []}
+                        limit={SUBSCRIPTION_LIMITS[plan] || 0}
+                        plan={plan}
+                        isSelected={selectedPlan === plan}
+                        isHomePage={isHomePage}
+                        isCurrent={isCurrent}
+                        isFreemium={isFreemium}
+                        subscriptionLabel={SUBSCRIPTION_LABELS[plan]}
+                        subscriptionPrice={SUBSCRIPTION_PRICES[plan]}
+                        revenue={results.revenue}
+                        profit={results.profit}
+                        onClick={() => setSelectedPlan(plan)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
       <CardFooter className={`py-3 px-4 md:p-6 ${isHomePage ? "bg-blue-950/50 border-t border-white/10 pt-4 dark:bg-gray-900/70 dark:border-gray-800" : "bg-gray-50 border-t pt-4 dark:bg-gray-800 dark:border-gray-700"}`}>
         <CalculatorFooter 

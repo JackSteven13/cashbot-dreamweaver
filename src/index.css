@@ -41,6 +41,30 @@
     .rounded-xl {
       border-radius: 0.75rem;
     }
+    
+    /* Optimisations spécifiques pour le simulateur */
+    .calculator-card {
+      margin: 0 !important;
+      border-radius: 0.5rem !important;
+    }
+    
+    .calculator-header {
+      padding: 0.75rem !important;
+    }
+    
+    .calculator-content {
+      padding: 0.75rem !important;
+    }
+    
+    .calculator-slider {
+      height: 0.5rem !important;
+    }
+    
+    .calculator-tabs {
+      margin-top: 0.5rem !important;
+      margin-bottom: 0.5rem !important;
+      border-radius: 0.25rem !important;
+    }
   }
 }
 
@@ -58,5 +82,22 @@ html, body, #root, .overflow-x-hidden {
   
   .card-content {
     padding: 0.75rem !important;
+  }
+  
+  /* Diminution de l'espacement vertical dans le simulateur */
+  .space-y-5 {
+    margin-top: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+  
+  .space-y-4 {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  /* Styles pour les onglets du simulateur */
+  .simulator-tabs button {
+    padding: 0.5rem !important;
+    font-size: 0.75rem !important;
   }
 }
