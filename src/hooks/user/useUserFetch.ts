@@ -20,7 +20,7 @@ export interface UserFetchResult {
 
 // Create a default UserData object to prevent undefined errors
 const defaultUserData: UserData = {
-  username: '',
+  username: 'utilisateur',
   balance: 0,
   subscription: 'freemium',
   transactions: [],
@@ -32,6 +32,7 @@ export const useUserFetch = (): UserFetchResult => {
   // Tracking references for state updates
   const isMounted = useRef(true);
   const initialFetchAttempted = useRef(false);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Use the user data state hook to manage local state
   const userDataState = useUserDataState(defaultUserData);
@@ -53,7 +54,7 @@ export const useUserFetch = (): UserFetchResult => {
     fetchUserData
   );
   
-  // Effect to clean up on unmount
+  // Effect to clean up on unmount and initialize data
   useEffect(() => {
     console.log("useUserFetch mounting");
     isMounted.current = true;
@@ -68,14 +69,41 @@ export const useUserFetch = (): UserFetchResult => {
     if (!initialFetchAttempted.current) {
       fetchUserData().catch(error => {
         console.error("Error during initial fetch:", error);
+        
+        // If fetch fails, ensure we're not stuck in loading state
+        if (isMounted.current) {
+          setIsLoading(false);
+          userDataState.updateUserData({
+            userData: defaultUserData,
+            isLoading: false
+          });
+        }
       });
+      
+      // Set a timeout to ensure we don't get stuck in loading state
+      fetchTimeoutRef.current = setTimeout(() => {
+        if (isMounted.current && isLoading) {
+          console.log("Fetch timeout reached, using default data");
+          setIsLoading(false);
+          userDataState.updateUserData({
+            userData: defaultUserData,
+            isLoading: false
+          });
+        }
+      }, 8000); // 8 second timeout
     }
     
     return () => {
       console.log("useUserFetch unmounting");
       isMounted.current = false;
+      
+      // Clear any pending timeouts
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = null;
+      }
     };
-  }, [fetchUserData, userDataState.updateUserData]);
+  }, [fetchUserData, userDataState.updateUserData, isLoading, setIsLoading]);
   
   // Process data for new users
   const sanitizedUserData = ensureZeroBalanceForNewUser(
@@ -88,7 +116,7 @@ export const useUserFetch = (): UserFetchResult => {
     isNewUser: userDataState.isNewUser,
     dailySessionCount: userDataState.dailySessionCount,
     showLimitAlert: userDataState.isNewUser ? false : userDataState.showLimitAlert, // Always false for new users
-    isLoading: isLoading || !initialFetchAttempted.current,
+    isLoading: isLoading || (!initialFetchAttempted.current && !userDataState.userData?.username),
     setShowLimitAlert: userDataState.setFetchedShowLimitAlert,
     refetchUserData
   };

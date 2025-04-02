@@ -10,6 +10,7 @@ export const useDashboardState = () => {
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
   const [renderKey, setRenderKey] = useState(Date.now());
   const initialRenderComplete = useRef(false);
+  const dataInitialized = useRef(false);
   
   // Effet de debug pour compter les rendus
   useEffect(() => {
@@ -22,9 +23,14 @@ export const useDashboardState = () => {
   
   // Protection contre les valeurs manquantes
   const userDataWithDefaults = useMemo(() => {
-    return {
+    // Si les données n'ont pas changé et qu'on a déjà initialisé, ne pas refaire l'opération
+    if (dataInitialized.current && userData && userData.userData && userData.userData.username) {
+      return userData;
+    }
+    
+    const defaultData = {
       userData: userData.userData || {
-        username: '',
+        username: 'utilisateur',
         balance: 0,
         subscription: 'freemium',
         transactions: [],
@@ -35,12 +41,19 @@ export const useDashboardState = () => {
       dailySessionCount: userData.dailySessionCount || 0,
       showLimitAlert: userData.showLimitAlert || false,
       setShowLimitAlert: userData.setShowLimitAlert || (() => {}),
-      isLoading: userData.isLoading || false,
+      isLoading: userData.isLoading === undefined ? false : userData.isLoading,
       refreshUserData: userData.refreshUserData || (async () => false),
       updateBalance: userData.updateBalance || (async () => {}),
       resetBalance: userData.resetBalance || (async () => {}),
       incrementSessionCount: userData.incrementSessionCount || (async () => {})
     };
+    
+    // Marquer comme initialisé si on a un nom d'utilisateur
+    if (userData.userData && userData.userData.username) {
+      dataInitialized.current = true;
+    }
+    
+    return defaultData;
   }, [userData]);
   
   // Optimiser la vérification de dormance avec les données mémorisées
@@ -76,7 +89,8 @@ export const useDashboardState = () => {
     isStartingSession,
     handleStartSession,
     handleWithdrawal,
-    lastSessionTimestamp
+    lastSessionTimestamp,
+    localBalance
   } = sessions;
 
   // Retourner un objet mémorisé pour éviter les références changeantes
@@ -99,7 +113,8 @@ export const useDashboardState = () => {
     handleWithdrawal,
     lastSessionTimestamp,
     forceRefresh,
-    isLoading: userDataWithDefaults.isLoading
+    isLoading: userDataWithDefaults.isLoading,
+    localBalance
   }), [
     selectedNavItem,
     renderKey,
@@ -117,6 +132,7 @@ export const useDashboardState = () => {
     lastSessionTimestamp,
     forceRefresh,
     userDataWithDefaults.isLoading,
-    userDataWithDefaults.setShowLimitAlert
+    userDataWithDefaults.setShowLimitAlert,
+    localBalance
   ]);
 };

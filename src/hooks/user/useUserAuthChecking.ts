@@ -7,6 +7,16 @@ import { useProfileLoader } from '@/hooks/useProfileLoader';
 import { useBalanceLoader } from '@/hooks/useBalanceLoader';
 import { useState } from 'react';
 
+// Default UserData to prevent undefined errors
+const defaultUserData = {
+  username: 'utilisateur',
+  balance: 0,
+  subscription: 'freemium',
+  transactions: [],
+  referrals: [],
+  referralLink: '',
+};
+
 export const useUserAuthChecking = (
   isMounted: MutableRefObject<boolean>,
   updateUserData: (data: Partial<UserFetcherState>) => void,
@@ -34,20 +44,29 @@ export const useUserAuthChecking = (
       initialFetchAttempted.current = true;
       
       // Check if we have a valid session first
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session) {
-        console.error("No valid session found");
-        setIsLoading(false);
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      // If session check fails, provide default data but mark as not loading
+      if (sessionError || !sessionData?.session) {
+        console.error("No valid session found or session error:", sessionError);
+        
+        if (isMounted.current) {
+          updateUserData({
+            userData: defaultUserData,
+            isLoading: false
+          });
+          setIsLoading(false);
+        }
         return;
       }
       
       // Attempt to refresh token if needed
       try {
-        const { error } = await supabase.auth.refreshSession();
-        if (error) {
-          console.log("Session refresh error:", error);
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.log("Session refresh error:", refreshError);
         } else {
-          console.log("User data fetched successfully");
+          console.log("Session refreshed successfully");
         }
       } catch (refreshErr) {
         console.error("Error refreshing session:", refreshErr);
@@ -60,11 +79,17 @@ export const useUserAuthChecking = (
       
     } catch (error) {
       console.error("Error in fetchUserData:", error);
+      
       if (isMounted.current) {
+        // On error, provide default data but mark as not loading
+        updateUserData({
+          userData: defaultUserData,
+          isLoading: false
+        });
         setIsLoading(false);
       }
     }
-  }, [isMounted, fetchData, initialFetchAttempted]);
+  }, [isMounted, fetchData, initialFetchAttempted, updateUserData]);
   
   return {
     fetchUserData,

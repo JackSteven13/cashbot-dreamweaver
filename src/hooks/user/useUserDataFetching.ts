@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 import { fetchCompleteUserData } from '@/utils/user/userDataFetch';
 import { fetchUserTransactions } from '@/utils/user/transactionUtils';
-import { checkDailyLimit } from '@/utils/subscription'; // Import from the correct folder
+import { checkDailyLimit } from '@/utils/subscription';
 import { generateReferralLink } from '@/utils/referralUtils';
 import { UserFetcherState } from './useUserDataState';
 import { getCurrentSession } from '@/utils/auth/sessionUtils';
@@ -10,7 +10,7 @@ import { UserData } from '@/types/userData';
 
 // Initial default user data
 const defaultUserData: UserData = {
-  username: '',
+  username: 'utilisateur',
   balance: 0,
   subscription: 'freemium',
   transactions: [],
@@ -55,29 +55,14 @@ export const useUserDataFetching = (
       
       if (!userData) {
         console.log("Could not fetch user data, using defaults");
-        updateUserData({
-          userData: defaultUserData,
-          isLoading: false
-        });
-        setIsLoading(false);
-        return;
-      }
-      
-      // Fetch user profile
-      const refreshedProfile = await loadUserProfile(session.user.id, session.user.email);
-      
-      // Fetch balance data
-      const balanceResult = await loadUserBalance(session.user.id);
-      if (!balanceResult) {
-        console.log("Could not fetch balance data, using defaults");
+        // Generate a default referral link at least
+        const defaultRefLink = generateReferralLink(session.user.id);
+        
         updateUserData({
           userData: {
             ...defaultUserData,
-            username: refreshedProfile?.full_name || 
-                     session.user.user_metadata?.full_name || 
-                     (session.user.email ? session.user.email.split('@')[0] : 'utilisateur'),
-            referralLink: userData.referralLink || generateReferralLink(session.user.id),
-            email: session.user.email || undefined,
+            referralLink: defaultRefLink,
+            username: session.user.email ? session.user.email.split('@')[0] : 'utilisateur'
           },
           isLoading: false
         });
@@ -85,40 +70,91 @@ export const useUserDataFetching = (
         return;
       }
       
-      const { balanceData } = balanceResult;
+      // Try to fetch user profile - if this fails, we'll still have something to show
+      try {
+        // Fetch user profile
+        const refreshedProfile = await loadUserProfile(session.user.id, session.user.email);
+        
+        // Fetch balance data
+        const balanceResult = await loadUserBalance(session.user.id);
+        
+        if (!balanceResult) {
+          // If balance fetch fails, use profile info with zero balance
+          const displayName = refreshedProfile?.full_name || 
+                            session.user.user_metadata?.full_name || 
+                            (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
+          
+          updateUserData({
+            userData: {
+              ...defaultUserData,
+              username: displayName,
+              referralLink: userData.referralLink || generateReferralLink(session.user.id),
+              email: session.user.email || undefined,
+              referrals: userData.referrals || []
+            },
+            isNewUser: userData.isNewUser || isNewUser,
+            isLoading: false
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        const { balanceData } = balanceResult;
 
-      // Fetch transactions
-      const transactionsData = await fetchUserTransactions(session.user.id);
+        // Try to fetch transactions - if this fails, just use empty array
+        let transactionsData = [];
+        try {
+          transactionsData = await fetchUserTransactions(session.user.id) || [];
+        } catch (txError) {
+          console.error("Error fetching transactions:", txError);
+        }
 
-      // Determine display name for user
-      const displayName = refreshedProfile?.full_name || 
-                         session.user.user_metadata?.full_name || 
-                         (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
+        // Determine display name for user
+        const displayName = refreshedProfile?.full_name || 
+                          session.user.user_metadata?.full_name || 
+                          (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
 
-      // Create user data object
-      const newUserData = {
-        username: displayName,
-        balance: balanceData?.balance || 0,
-        subscription: balanceData?.subscription || 'freemium',
-        referrals: userData.referrals || [],
-        referralLink: userData.referralLink || generateReferralLink(session.user.id),
-        email: session.user.email || undefined,
-        transactions: transactionsData || []
-      };
+        // Create user data object
+        const newUserData = {
+          username: displayName,
+          balance: balanceData?.balance || 0,
+          subscription: balanceData?.subscription || 'freemium',
+          referrals: userData.referrals || [],
+          referralLink: userData.referralLink || generateReferralLink(session.user.id),
+          email: session.user.email || undefined,
+          transactions: transactionsData
+        };
+        
+        const newDailySessionCount = balanceData?.daily_session_count || 0;
+        
+        // Check if daily limit is reached
+        const limitReached = checkDailyLimit(balanceData?.balance || 0, balanceData?.subscription || 'freemium');
+        
+        // Update data with protection against loops
+        updateUserData({
+          userData: newUserData,
+          isNewUser: userData.isNewUser || isNewUser,
+          dailySessionCount: newDailySessionCount,
+          showLimitAlert: limitReached,
+          isLoading: false
+        });
+        
+      } catch (profileLoadError) {
+        console.error("Error loading profile:", profileLoadError);
+        
+        // Even if profile fetch fails, we can still show basic user data
+        updateUserData({
+          userData: {
+            ...defaultUserData,
+            username: session.user.email ? session.user.email.split('@')[0] : 'utilisateur',
+            referralLink: userData.referralLink || generateReferralLink(session.user.id),
+            referrals: userData.referrals || []
+          },
+          isNewUser: userData.isNewUser || isNewUser,
+          isLoading: false
+        });
+      }
       
-      const newDailySessionCount = balanceData?.daily_session_count || 0;
-      
-      // Check if daily limit is reached
-      const limitReached = checkDailyLimit(balanceData?.balance || 0, balanceData?.subscription || 'freemium');
-      
-      // Update data with protection against loops
-      updateUserData({
-        userData: newUserData,
-        isNewUser: userData.isNewUser || isNewUser,
-        dailySessionCount: newDailySessionCount,
-        showLimitAlert: limitReached,
-        isLoading: false
-      });
       setIsLoading(false);
     } catch (error) {
       console.error("Error in fetchUserData:", error);
