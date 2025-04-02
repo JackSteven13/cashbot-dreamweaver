@@ -1,5 +1,5 @@
 
-import { ReactNode, useEffect, useRef, useState, useCallback } from 'react';
+import { ReactNode, useEffect, useRef, useCallback } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthVerification } from '@/hooks/useAuthVerification';
 import AuthLoadingScreen from './auth/AuthLoadingScreen';
@@ -17,7 +17,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const maxLoadingTime = useRef<NodeJS.Timeout | null>(null);
   const autoRetryCount = useRef(0);
   
-  // Use a stable reference to the auth verification hooks
+  // Use auth verification with no dependencies to prevent infinite loops
   const { 
     isAuthenticated, 
     authCheckFailed, 
@@ -25,7 +25,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     checkAuth
   } = useAuthVerification();
 
-  // Stable cleanup function to avoid re-renders
+  // Stable cleanup function with no dependencies
   const clearTimeouts = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -38,23 +38,28 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
   }, []);
 
-  // Single effect for timeout management with stable dependencies
+  // Single effect for timeout management
   useEffect(() => {
-    // Only set the timeout if authentication hasn't been verified yet
+    // Only set timeout if authentication hasn't been verified yet
+    // and no timeout is already set
     if (isAuthenticated === null && !maxLoadingTime.current) {
       maxLoadingTime.current = setTimeout(() => {
-        if (isAuthenticated === null) {
-          console.log("Maximum loading time reached, forcing verification");
-          checkAuth(true);
-        }
+        console.log("Maximum loading time reached, forcing verification");
+        checkAuth(true);
       }, 8000);
     }
     
     return clearTimeouts;
   }, [isAuthenticated, checkAuth, clearTimeouts]);
 
-  // Effect for auto-retry with stable dependencies
+  // Effect for auto-retry with cleanup
   useEffect(() => {
+    // Clear any existing retry timeout first to prevent multiple timeouts
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    
     if (authCheckFailed && autoRetryCount.current < 3 && !timeoutRef.current) {
       console.log(`Automatic retry ${autoRetryCount.current + 1}/3`);
       
@@ -78,11 +83,16 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     };
   }, [authCheckFailed, isAuthenticated, checkAuth]);
 
-  // Cleanup effect
+  // Clean up on unmount
   useEffect(() => {
     return () => {
       console.log("ProtectedRoute unmounting");
       clearTimeouts();
+      
+      // Clear all localStorage flags to prevent stale state
+      localStorage.removeItem('auth_checking');
+      localStorage.removeItem('auth_refreshing');
+      localStorage.removeItem('auth_redirecting');
     };
   }, [clearTimeouts]);
 
@@ -97,6 +107,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         onCleanLogin={() => {
           localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
           localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
+          localStorage.removeItem('auth_checking');
+          localStorage.removeItem('auth_refreshing');
           window.location.href = '/login';
         }}
       />

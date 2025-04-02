@@ -12,6 +12,9 @@ export const useAuthStateListener = ({ mountedRef, navigate }: UseAuthStateListe
   const setupAuthListener = useCallback(() => {
     console.log("Setting up auth state listener for dashboard");
     
+    // Clear any existing subscriptions to prevent duplicates
+    supabase.auth.onAuthStateChange(undefined);
+    
     // Setup auth state listener with improved resilience
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mountedRef.current) return;
@@ -20,10 +23,15 @@ export const useAuthStateListener = ({ mountedRef, navigate }: UseAuthStateListe
       
       if (event === 'SIGNED_OUT') {
         console.log("User signed out, redirecting to login");
-        navigate('/login', { replace: true });
+        
+        // Use a timeout to avoid immediate navigation that could conflict with other processes
+        setTimeout(() => {
+          if (mountedRef.current) {
+            navigate('/login', { replace: true });
+          }
+        }, 300);
       } else if (event === 'TOKEN_REFRESHED') {
         console.log("Token refreshed successfully");
-        // Pas besoin de réinitialiser ici, juste reconnaître le rafraîchissement
       }
     });
     

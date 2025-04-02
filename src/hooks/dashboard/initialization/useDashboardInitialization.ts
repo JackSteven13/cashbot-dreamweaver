@@ -18,9 +18,17 @@ export const useDashboardInitialization = () => {
   const authCheckInProgress = useRef(false);
   const authCheckAttempted = useRef(false);
   const initializationRetries = useRef(0);
-  const maxRetries = 3;
   
   const navigate = useNavigate();
+  
+  // Clean up any stale flags immediately to prevent issues
+  useEffect(() => {
+    localStorage.removeItem('dashboard_initializing');
+    localStorage.removeItem('auth_checking');
+    localStorage.removeItem('auth_refreshing');
+    localStorage.removeItem('data_syncing');
+    localStorage.removeItem('auth_redirecting');
+  }, []);
   
   // Hooks with stable dependencies
   const { checkAuth } = useAuthCheck({ mountedRef });
@@ -35,8 +43,9 @@ export const useDashboardInitialization = () => {
       return;
     }
     
-    // Clean up any stale flags in localStorage
+    // Clean up any stale flags
     localStorage.removeItem('dashboard_initializing');
+    localStorage.removeItem('auth_checking');
     localStorage.removeItem('auth_refreshing');
     localStorage.removeItem('data_syncing');
     localStorage.removeItem('auth_redirecting');
@@ -72,6 +81,7 @@ export const useDashboardInitialization = () => {
         if (mountedRef.current) {
           setIsAuthChecking(false);
           setIsReady(true);
+          console.log("Dashboard initialization complete, ready to render");
         }
       } else {
         console.log("Authentication failed, redirecting to login");
@@ -105,14 +115,8 @@ export const useDashboardInitialization = () => {
     }
   }, [checkAuth, syncUserData, navigate]);
   
-  // One-time initialization effect
+  // One-time initialization effect with cleanup
   useEffect(() => {
-    // Clean up any stale flags
-    localStorage.removeItem('dashboard_initializing');
-    localStorage.removeItem('auth_refreshing');
-    localStorage.removeItem('data_syncing');
-    localStorage.removeItem('auth_redirecting');
-    
     mountedRef.current = true;
     authCheckInProgress.current = false;
     authCheckAttempted.current = false;
@@ -143,6 +147,7 @@ export const useDashboardInitialization = () => {
       
       // Clean up any stale flags
       localStorage.removeItem('dashboard_initializing');
+      localStorage.removeItem('auth_checking');
       localStorage.removeItem('auth_refreshing');
       localStorage.removeItem('data_syncing');
       localStorage.removeItem('auth_redirecting');

@@ -18,32 +18,37 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
   pathname,
   setSelectedNavItem
 }) => {
-  const initEffectRan = useRef(false);
-  const navEffectRan = useRef(false);
+  const effectsAppliedRef = useRef({
+    initialization: false,
+    navigation: false
+  });
 
   // Initialization effect - runs once only
   useEffect(() => {
-    if (!initEffectRan.current && !initialRenderComplete.current) {
+    if (!effectsAppliedRef.current.initialization && !initialRenderComplete.current) {
       if (!isAuthChecking && !isLoading && userData && userData.username) {
         console.log("Dashboard initially mounted with user data:", userData.username);
         initialRenderComplete.current = true;
-        initEffectRan.current = true;
+        effectsAppliedRef.current.initialization = true;
       }
     }
     
-    // No cleanup or dependencies that could cause re-runs
+    // No cleanup needed as this runs once only
   }, [isAuthChecking, isLoading, userData, initialRenderComplete]);
 
-  // Navigation effect - separated for clarity
+  // Separate navigation effect to avoid conflicts
   useEffect(() => {
-    if (pathname === "/dashboard" && !navEffectRan.current) {
+    // Only run once per dashboard visit
+    if (pathname === "/dashboard" && !effectsAppliedRef.current.navigation) {
+      console.log("Setting selected nav item to dashboard");
       setSelectedNavItem('dashboard');
-      navEffectRan.current = true;
+      effectsAppliedRef.current.navigation = true;
     }
     
+    // Reset navigation flag when path changes
     return () => {
       if (pathname !== "/dashboard") {
-        navEffectRan.current = false;
+        effectsAppliedRef.current.navigation = false;
       }
     };
   }, [pathname, setSelectedNavItem]);
