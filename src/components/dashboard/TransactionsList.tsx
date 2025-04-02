@@ -7,9 +7,10 @@ import { Transaction } from '@/types/userData';
 interface TransactionsListProps {
   transactions: Transaction[];
   isNewUser?: boolean;
+  subscription?: string;
 }
 
-const TransactionsList = ({ transactions, isNewUser = false }: TransactionsListProps) => {
+const TransactionsList = ({ transactions, isNewUser = false, subscription }: TransactionsListProps) => {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
   
   // Afficher 3 transactions récentes par défaut, ou toutes si showAllTransactions est true
