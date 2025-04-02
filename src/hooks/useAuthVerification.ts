@@ -20,6 +20,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
   const isMounted = useRef(true);
   const checkInProgress = useRef(false);
   const initialCheckComplete = useRef(false);
+  const authTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const { username, setUsername, fetchProfileData } = useProfileData();
   
@@ -30,9 +31,10 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     performAuthCheck 
   } = useAuthRetry({ 
     isMounted,
-    maxRetries: 5 // Augmenter le nombre de tentatives
+    maxRetries: 5
   });
 
+  // Fonction améliorée avec timeout de sécurité
   const checkAuth = useCallback(async (isManualRetry = false) => {
     if (checkInProgress.current) {
       console.log("Auth check already in progress, skipping duplicated call");
@@ -49,10 +51,27 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     
     console.log("Starting auth verification check");
     
+    // Mise en place d'un timeout de sécurité pour éviter les blocages infinis
+    if (authTimeoutRef.current) {
+      clearTimeout(authTimeoutRef.current);
+    }
+    
+    authTimeoutRef.current = setTimeout(() => {
+      if (checkInProgress.current && isMounted.current) {
+        console.log("Auth check timeout reached, forcing failure");
+        setAuthCheckFailed(true);
+        setIsAuthenticated(false);
+        checkInProgress.current = false;
+      }
+    }, 15000); // 15 secondes de timeout maximal
+    
     try {
       const isAuthValid = await performAuthCheck(isManualRetry);
       
       if (!isMounted.current) {
+        if (authTimeoutRef.current) {
+          clearTimeout(authTimeoutRef.current);
+        }
         checkInProgress.current = false;
         return;
       }
@@ -61,6 +80,11 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
         console.log("Auth check failed, update state accordingly");
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
+        
+        if (authTimeoutRef.current) {
+          clearTimeout(authTimeoutRef.current);
+        }
+        
         checkInProgress.current = false;
         return;
       }
@@ -72,6 +96,11 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
         console.error("Error fetching user:", error);
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
+        
+        if (authTimeoutRef.current) {
+          clearTimeout(authTimeoutRef.current);
+        }
+        
         checkInProgress.current = false;
         return;
       }
@@ -81,6 +110,11 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
       if (!user) {
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
+        
+        if (authTimeoutRef.current) {
+          clearTimeout(authTimeoutRef.current);
+        }
+        
         checkInProgress.current = false;
         return;
       }
@@ -100,6 +134,9 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
         setIsAuthenticated(false);
       }
     } finally {
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current);
+      }
       checkInProgress.current = false;
     }
   }, [performAuthCheck, fetchProfileData, setIsRetrying]);
@@ -139,6 +176,9 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     return () => {
       console.log("useAuthVerification hook unmounting");
       isMounted.current = false;
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current);
+      }
       clearTimeout(initTimeout);
     };
   }, [checkAuth]);

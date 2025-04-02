@@ -19,6 +19,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const autoRetryCount = useRef(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const maxAutoRetries = 3;
+  const maxLoadingTime = useRef<NodeJS.Timeout | null>(null);
   
   const { 
     isAuthenticated, 
@@ -67,6 +68,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       clearTimeout(timeoutRef.current);
     }
     
+    if (maxLoadingTime.current) {
+      clearTimeout(maxLoadingTime.current);
+    }
+    
     Promise.resolve(forceSignOut())
       .then(() => {
         console.log("Redirection vers la page de connexion");
@@ -88,27 +93,43 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   // Effect to prevent infinite redirects with improved timeout handling
   useEffect(() => {
     // Set a timeout to ensure we don't wait forever
-    const timeoutDuration = 10000; // 10 seconds
+    const timeoutDuration = 15000; // 15 seconds for maximum waiting time
     
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     
+    if (maxLoadingTime.current) {
+      clearTimeout(maxLoadingTime.current);
+    }
+    
     if (isAuthenticated === null) {
-      timeoutRef.current = setTimeout(() => {
+      console.log("Setting max loading time protection");
+      
+      maxLoadingTime.current = setTimeout(() => {
         if (!initialCheckComplete.current && isAuthenticated === null) {
-          console.log("Auth check timeout reached, forcing redirect to login");
+          console.log("Auth check maximum time reached, forcing redirect to login");
           handleCleanLogin();
         }
       }, timeoutDuration);
+      
+      timeoutRef.current = setTimeout(() => {
+        if (!initialCheckComplete.current && isAuthenticated === null) {
+          console.log("Auth check timeout reached, forcing retry");
+          checkAuth(true);
+        }
+      }, 5000); // Premier timeout à 5 secondes pour forcer une vérification
     }
 
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
+      if (maxLoadingTime.current) {
+        clearTimeout(maxLoadingTime.current);
+      }
     };
-  }, [handleCleanLogin, isAuthenticated]);
+  }, [handleCleanLogin, isAuthenticated, checkAuth]);
 
   // Mark initial check as complete when we get a definitive answer
   useEffect(() => {
@@ -120,6 +141,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
+      
+      if (maxLoadingTime.current) {
+        clearTimeout(maxLoadingTime.current);
+        maxLoadingTime.current = null;
+      }
     }
   }, [isAuthenticated]);
 
@@ -129,6 +155,9 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       console.log("ProtectedRoute unmounting");
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
+      }
+      if (maxLoadingTime.current) {
+        clearTimeout(maxLoadingTime.current);
       }
     };
   }, []);
