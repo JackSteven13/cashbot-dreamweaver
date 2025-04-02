@@ -18,6 +18,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const initialCheckComplete = useRef(false);
   const autoRetryCount = useRef(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const maxAutoRetries = 3;
   
   const { 
     isAuthenticated, 
@@ -26,19 +27,23 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     checkAuth
   } = useAuthVerification();
 
-  // Fonction pour retry automatique améliorée
+  // Fonction pour retry automatique améliorée avec backoff exponentiel
   useEffect(() => {
-    if (authCheckFailed && autoRetryCount.current < 2 && !redirectInProgress.current) {
-      console.log(`Auto-retry authentication attempt ${autoRetryCount.current + 1}`);
+    if (authCheckFailed && autoRetryCount.current < maxAutoRetries && !redirectInProgress.current) {
+      console.log(`Auto-retry authentication attempt ${autoRetryCount.current + 1}/${maxAutoRetries}`);
       
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
       
+      // Utiliser un délai exponentiel
+      const retryDelay = Math.min(1000 * Math.pow(2, autoRetryCount.current), 8000);
+      console.log(`Retrying in ${retryDelay}ms`);
+      
       timeoutRef.current = setTimeout(() => {
         checkAuth(true);
         autoRetryCount.current += 1;
-      }, 1500);
+      }, retryDelay);
       
       return () => {
         if (timeoutRef.current) {
@@ -48,9 +53,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
   }, [authCheckFailed, checkAuth]);
 
-  // Handle clean login function
+  // Handle clean login function with improved stability
   const handleCleanLogin = useCallback(() => {
-    if (redirectInProgress.current) return;
+    if (redirectInProgress.current) {
+      console.log("Redirect already in progress, skipping");
+      return;
+    }
     
     redirectInProgress.current = true;
     console.log("Déconnexion propre initiée");
@@ -64,32 +72,36 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         console.log("Redirection vers la page de connexion");
         // Petit délai pour permettre à la déconnexion de se terminer
         setTimeout(() => {
-          navigate('/login', { replace: true });
+          navigate('/login', { replace: true, state: { from: location } });
           redirectInProgress.current = false;
-        }, 300);
+        }, 500);
       })
       .catch((error) => {
         console.error("Erreur pendant la déconnexion propre:", error);
         setTimeout(() => {
-          navigate('/login', { replace: true });
+          navigate('/login', { replace: true, state: { from: location } });
           redirectInProgress.current = false;
-        }, 300);
+        }, 500);
       });
-  }, [navigate]);
+  }, [navigate, location]);
 
-  // Effect to prevent infinite redirects
+  // Effect to prevent infinite redirects with improved timeout handling
   useEffect(() => {
     // Set a timeout to ensure we don't wait forever
+    const timeoutDuration = 10000; // 10 seconds
+    
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     
-    timeoutRef.current = setTimeout(() => {
-      if (!initialCheckComplete.current && isAuthenticated === null) {
-        console.log("Auth check timeout reached, forcing redirect to login");
-        handleCleanLogin();
-      }
-    }, 8000); // 8 seconds timeout
+    if (isAuthenticated === null) {
+      timeoutRef.current = setTimeout(() => {
+        if (!initialCheckComplete.current && isAuthenticated === null) {
+          console.log("Auth check timeout reached, forcing redirect to login");
+          handleCleanLogin();
+        }
+      }, timeoutDuration);
+    }
 
     return () => {
       if (timeoutRef.current) {
@@ -102,19 +114,41 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   useEffect(() => {
     if (isAuthenticated !== null && !initialCheckComplete.current) {
       initialCheckComplete.current = true;
+      console.log("Initial auth check complete, result:", isAuthenticated);
+      
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     }
   }, [isAuthenticated]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      console.log("ProtectedRoute unmounting");
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
   }, []);
 
-  // Show recovery screen if auth check failed
+  // Show recovery screen if auth check failed after all auto-retries
+  if (authCheckFailed && autoRetryCount.current >= maxAutoRetries) {
+    return (
+      <AuthRecoveryScreen 
+        isRetrying={isRetrying}
+        onRetry={() => {
+          console.log("Manual retry requested");
+          autoRetryCount.current = 0;
+          checkAuth(true);
+        }}
+        onCleanLogin={handleCleanLogin}
+      />
+    );
+  }
+  
+  // Show recovery screen if auth check failed but auto-retries are not exhausted
   if (authCheckFailed) {
     return (
       <AuthRecoveryScreen 

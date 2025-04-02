@@ -13,8 +13,10 @@ export const useDashboardInitialization = () => {
   const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const authCheckInProgress = useRef(false);
   const authCheckAttempted = useRef(false);
+  const initializationRetries = useRef(0);
+  const maxInitRetries = 3;
   
-  // Fonction améliorée pour vérifier l'authentification
+  // Fonction améliorée pour vérifier l'authentification avec stabilité accrue
   const checkAuth = useCallback(async () => {
     if (authCheckInProgress.current) {
       console.log("Auth check already in progress, skipping");
@@ -25,15 +27,18 @@ export const useDashboardInitialization = () => {
       authCheckInProgress.current = true;
       authCheckAttempted.current = true;
       
-      // Essayer de rafraîchir la session avant tout
+      console.log("Dashboard initializing: checking auth state");
+      
+      // Essayer de rafraîchir la session avant tout pour une meilleure résilience
       await refreshSession();
       
       // Petit délai pour permettre au rafraîchissement de se propager
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const isAuthenticated = await verifyAuth();
       
       if (!mountedRef.current) {
+        console.log("Component unmounted during auth check");
         authCheckInProgress.current = false;
         return false;
       }
@@ -45,7 +50,7 @@ export const useDashboardInitialization = () => {
         return false;
       }
       
-      console.log("Active session found, initializing dashboard");
+      console.log("Active session found, continuing dashboard initialization");
       authCheckInProgress.current = false;
       return true;
     } catch (error) {
@@ -58,21 +63,36 @@ export const useDashboardInitialization = () => {
     }
   }, []);
   
-  // Synchronisation des données de l'utilisateur entre Supabase et localStorage
+  // Fonction pour synchroniser les données entre Supabase et le localStorage
   const syncUserData = useCallback(async () => {
+    if (!mountedRef.current) return false;
+    
     try {
+      console.log("Syncing user data after authentication");
+      
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session) return false;
+      if (!session) {
+        console.log("No active session, skipping sync");
+        return false;
+      }
+      
+      // Attendre un peu pour être sûr que la session est bien établie
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       const { data: userBalanceData, error } = await supabase
         .from('user_balances')
         .select('subscription')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
       
-      if (error || !userBalanceData) {
+      if (error) {
         console.error("Error fetching subscription data:", error);
+        return false;
+      }
+      
+      if (!userBalanceData) {
+        console.log("No user balance data found, may be a new user");
         return false;
       }
       
@@ -84,16 +104,15 @@ export const useDashboardInitialization = () => {
         localStorage.setItem('subscription', userBalanceData.subscription);
       }
       
-      // Vérifier si une actualisation forcée a été demandée (par exemple après un paiement réussi)
+      // Vérifier si une actualisation forcée a été demandée
       const forceRefresh = localStorage.getItem('forceRefreshBalance');
       if (forceRefresh === 'true') {
         console.log("Force refresh detected, clearing flag");
         localStorage.removeItem('forceRefreshBalance');
-        // Informer que l'actualisation a été effectuée (à utiliser par d'autres hooks si besoin)
         return true; 
       }
       
-      return false;
+      return true;
     } catch (error) {
       console.error("Error syncing user data:", error);
       return false;
@@ -102,6 +121,7 @@ export const useDashboardInitialization = () => {
   
   useEffect(() => {
     mountedRef.current = true;
+    authCheckInProgress.current = false;
     
     const initDashboard = async () => {
       if (authCheckAttempted.current) {
@@ -110,16 +130,39 @@ export const useDashboardInitialization = () => {
       }
       
       setIsAuthChecking(true);
+      
       try {
+        console.log("Starting dashboard initialization");
         const isAuthenticated = await checkAuth();
         
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) {
+          console.log("Component unmounted during initialization");
+          return;
+        }
         
         if (isAuthenticated) {
-          console.log("User authenticated, initializing dashboard");
+          console.log("User authenticated, syncing data");
           
           // Synchroniser les données utilisateur
-          await syncUserData();
+          const syncSuccess = await syncUserData();
+          
+          if (!mountedRef.current) return;
+          
+          if (!syncSuccess && initializationRetries.current < maxInitRetries) {
+            // Retry with exponential backoff
+            initializationRetries.current++;
+            const retryDelay = Math.min(1000 * Math.pow(2, initializationRetries.current), 8000);
+            
+            console.log(`Data sync failed, retrying in ${retryDelay}ms (${initializationRetries.current}/${maxInitRetries})`);
+            
+            initTimeoutRef.current = setTimeout(() => {
+              if (mountedRef.current) {
+                initDashboard();
+              }
+            }, retryDelay);
+            
+            return;
+          }
           
           setIsAuthChecking(false);
           
@@ -129,7 +172,7 @@ export const useDashboardInitialization = () => {
               console.log("Dashboard ready");
               setIsReady(true);
             }
-          }, 500);
+          }, 700);
         } else {
           // Redirection vers la page de login avec un délai pour éviter les problèmes
           console.log("Authentication failed, redirecting to login");
@@ -138,7 +181,7 @@ export const useDashboardInitialization = () => {
               if (mountedRef.current) {
                 navigate('/login', { replace: true });
               }
-            }, 400);
+            }, 500);
           }
         }
       } catch (err) {
@@ -156,18 +199,20 @@ export const useDashboardInitialization = () => {
       if (mountedRef.current) {
         initDashboard();
       }
-    }, 300);
+    }, 500);
     
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    // Set up auth state listener with improved resilience
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mountedRef.current) return;
       
+      console.log(`Auth state change: ${event}`);
+      
       if (event === 'SIGNED_OUT') {
-        console.log("Auth state change: signed out");
+        console.log("User signed out, redirecting to login");
         navigate('/login', { replace: true });
       } else if (event === 'TOKEN_REFRESHED') {
-        console.log("Auth state change: token refreshed");
-        // No need to reinitialize here, just acknowledge the refresh
+        console.log("Token refreshed successfully");
+        // Pas besoin de réinitialiser ici, juste reconnaître le rafraîchissement
       }
     });
     

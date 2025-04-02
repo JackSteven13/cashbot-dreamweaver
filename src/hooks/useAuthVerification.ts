@@ -19,6 +19,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
   const [authCheckFailed, setAuthCheckFailed] = useState(false);
   const isMounted = useRef(true);
   const checkInProgress = useRef(false);
+  const initialCheckComplete = useRef(false);
   
   const { username, setUsername, fetchProfileData } = useProfileData();
   
@@ -28,7 +29,8 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     setIsRetrying,
     performAuthCheck 
   } = useAuthRetry({ 
-    isMounted 
+    isMounted,
+    maxRetries: 5 // Augmenter le nombre de tentatives
   });
 
   const checkAuth = useCallback(async (isManualRetry = false) => {
@@ -45,21 +47,24 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
       setIsAuthenticated(null);
     }
     
-    const isAuthValid = await performAuthCheck(isManualRetry);
-    
-    if (!isMounted.current) {
-      checkInProgress.current = false;
-      return;
-    }
-    
-    if (!isAuthValid) {
-      setAuthCheckFailed(true);
-      setIsAuthenticated(false);
-      checkInProgress.current = false;
-      return;
-    }
+    console.log("Starting auth verification check");
     
     try {
+      const isAuthValid = await performAuthCheck(isManualRetry);
+      
+      if (!isMounted.current) {
+        checkInProgress.current = false;
+        return;
+      }
+      
+      if (!isAuthValid) {
+        console.log("Auth check failed, update state accordingly");
+        setAuthCheckFailed(true);
+        setIsAuthenticated(false);
+        checkInProgress.current = false;
+        return;
+      }
+      
       // Get user data for welcome message with improved error handling
       const { data, error } = await supabase.auth.getUser();
       
@@ -84,7 +89,9 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
       await fetchProfileData(user.id);
       
       if (isMounted.current) {
+        console.log("Auth check successful, user is authenticated");
         setIsAuthenticated(true);
+        initialCheckComplete.current = true;
       }
     } catch (err) {
       console.error("Error during auth check:", err);
@@ -101,6 +108,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
   useAuthStateListener({
     onSignOut: () => {
       if (isMounted.current) {
+        console.log("User signed out, updating state");
         setIsAuthenticated(false);
         setUsername(null);
       }
@@ -117,13 +125,16 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
   useEffect(() => {
     isMounted.current = true;
     checkInProgress.current = false;
+    initialCheckComplete.current = false;
+    
+    console.log("Initial auth check starting with stable delay");
     
     // Set timeout for initial auth check with longer delay to ensure proper initialization
     const initTimeout = setTimeout(() => {
       if (isMounted.current && !checkInProgress.current) {
         checkAuth();
       }
-    }, 1000);
+    }, 1500);
     
     return () => {
       console.log("useAuthVerification hook unmounting");

@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { verifyAuth } from "@/utils/auth/verificationUtils";
 
 interface SubscriptionSynchronizerProps {
   onSync?: (subscription: string) => void;
@@ -18,6 +19,9 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
   const [isInitialized, setIsInitialized] = useState(false);
   const isMounted = useRef(true);
   const syncInProgress = useRef(false);
+  const syncFailures = useRef(0);
+  const maxRetries = 6; // Augmenter le nombre de tentatives maximum
+  const cacheExpiry = 60000; // 1 minute, valeur plus conservatrice
   
   // Fonction de synchronisation extraite pour pouvoir l'utiliser dans le cleanup
   const syncSubscription = useCallback(async (force: boolean = false) => {
@@ -29,7 +33,14 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
     try {
       syncInProgress.current = true;
       
-      // Vérifier si l'utilisateur est connecté
+      // Vérifier si l'utilisateur est connecté avec une méthode robuste
+      const isAuth = await verifyAuth();
+      if (!isAuth) {
+        console.log("Pas de session active valide, synchronisation ignorée");
+        syncInProgress.current = false;
+        return;
+      }
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -40,7 +51,7 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
       
       // Déterminer si on doit forcer une synchronisation
       const now = Date.now();
-      const shouldForceSync = force || forceCheck || (now - lastChecked > 30000); // 30 secondes
+      const shouldForceSync = force || forceCheck || (now - lastChecked > cacheExpiry);
       
       if (!shouldForceSync && !forceCheck) {
         syncInProgress.current = false;
@@ -49,6 +60,9 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
       
       setLastChecked(now);
       console.log("Synchronisation de l'abonnement depuis Supabase...");
+      
+      // Ajout d'un délai avant la requête pour éviter les problèmes de course
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       // Essayer d'abord la fonction RPC avec cache désactivé
       const { data: rpcData, error: rpcError } = await supabase
@@ -85,11 +99,12 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
             }
           }
         } else {
-          console.log("Sync: Supabase=" + rpcData + ", Local=" + currentLocalSub);
+          console.log("Sync: Supabase=" + rpcData + ", Local=" + currentLocalSub + " (aucun changement)");
         }
         
-        // Réinitialiser le compteur de tentatives
+        // Réinitialiser le compteur de tentatives et d'échecs
         setRetryCount(0);
+        syncFailures.current = 0;
         setIsInitialized(true);
       } else {
         if (!isMounted.current) {
@@ -99,6 +114,9 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
         
         // Fallback sur requête directe
         console.log("Échec RPC, tentative directe:", rpcError);
+        
+        // Ajouter un délai avant la tentative alternative
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         const { data: userData, error: directError } = await supabase
           .from('user_balances')
@@ -117,52 +135,66 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
             }
           }
           
-          // Réinitialiser le compteur de tentatives
+          // Réinitialiser le compteur de tentatives et d'échecs
           setRetryCount(0);
+          syncFailures.current = 0;
           setIsInitialized(true);
-        } else if (retryCount < 3 && isMounted.current) {
-          // Si les deux méthodes échouent, réessayer plus tard (max 3 fois)
-          console.log(`Échec de synchronisation, nouvelle tentative prévue (${retryCount + 1}/3)`);
+        } else if (retryCount < maxRetries && isMounted.current) {
+          // Si les deux méthodes échouent, réessayer plus tard avec backoff exponentiel
+          syncFailures.current++;
+          console.log(`Échec de synchronisation (${syncFailures.current}), nouvelle tentative prévue (${retryCount + 1}/${maxRetries})`);
           setRetryCount(prev => prev + 1);
           
-          // Tentative avec délai exponentiel
+          // Tentative avec délai exponentiel mais plafonné
+          const backoffDelay = Math.min(2000 * Math.pow(1.5, retryCount), 20000);
           setTimeout(() => {
             if (isMounted.current) {
               syncSubscription(true);
             }
-          }, 2000 * Math.pow(2, retryCount));
+          }, backoffDelay);
         }
       }
     } catch (error) {
       console.error("Erreur de synchronisation:", error);
       
-      // Réessayer en cas d'erreur réseau ou de connexion
-      if (retryCount < 3 && isMounted.current) {
+      // Réessayer en cas d'erreur réseau ou de connexion avec backoff exponentiel
+      if (retryCount < maxRetries && isMounted.current) {
+        syncFailures.current++;
         setRetryCount(prev => prev + 1);
+        const backoffDelay = Math.min(3000 * Math.pow(1.5, retryCount), 30000);
+        console.log(`Erreur de synchronisation (${syncFailures.current}), nouvelle tentative dans ${backoffDelay}ms`);
+        
         setTimeout(() => {
           if (isMounted.current) {
             syncSubscription(true);
           }
-        }, 3000 * Math.pow(2, retryCount));
+        }, backoffDelay);
       }
     } finally {
       syncInProgress.current = false;
     }
-  }, [onSync, forceCheck, lastChecked, retryCount, isInitialized]);
+  }, [onSync, forceCheck, lastChecked, retryCount, isInitialized, maxRetries]);
   
   useEffect(() => {
     isMounted.current = true;
     syncInProgress.current = false;
+    syncFailures.current = 0;
     
-    // Synchroniser immédiatement au montage
-    syncSubscription(true);
+    console.log("SubscriptionSynchronizer mounted");
+    
+    // Synchroniser immédiatement au montage avec un délai pour éviter les conflits d'initialisation
+    setTimeout(() => {
+      if (isMounted.current && !syncInProgress.current) {
+        syncSubscription(true);
+      }
+    }, 2000);
     
     // Configurer un intervalle pour synchroniser périodiquement
     const intervalId = setInterval(() => {
       if (isMounted.current && !syncInProgress.current) {
         syncSubscription();
       }
-    }, 20000); // Vérifier toutes les 20 secondes
+    }, 30000); // Vérifier toutes les 30 secondes
     
     // Ajouter un event listener pour les changements de focus
     const handleVisibilityChange = () => {
@@ -184,6 +216,7 @@ const SubscriptionSynchronizer = ({ onSync, forceCheck = false }: SubscriptionSy
     window.addEventListener('online', handleOnline);
     
     return () => {
+      console.log("SubscriptionSynchronizer unmounting");
       isMounted.current = false;
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
