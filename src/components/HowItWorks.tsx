@@ -62,6 +62,11 @@ const HowItWorks = () => {
             </div>
           ))}
         </div>
+        
+        <div className="mt-12 text-center">
+          <p className="text-lg font-medium">Notre technologie s'améliore constamment pour maximiser vos revenus</p>
+          <p className="text-muted-foreground mt-2">Pas de compétences techniques requises - Notre système fait tout pour vous</p>
+        </div>
       </div>
     </section>
   );
