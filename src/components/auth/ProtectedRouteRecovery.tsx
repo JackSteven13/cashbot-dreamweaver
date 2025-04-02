@@ -1,10 +1,10 @@
 
-import { FC } from 'react';
+import { FC, MutableRefObject } from 'react';
 import AuthRecoveryScreen from './AuthRecoveryScreen';
 
 interface ProtectedRouteRecoveryProps {
   isRetrying: boolean;
-  autoRetryCount: React.MutableRefObject<number>;
+  autoRetryCount: MutableRefObject<number>;
   maxAutoRetries: number;
   onRetry: () => void;
   onCleanLogin: () => void;
