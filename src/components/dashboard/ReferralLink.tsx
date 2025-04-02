@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Copy, CheckCheck, Award, Users, DollarSign, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -71,7 +70,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
         
         <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-100">
           <p className="text-sm text-[#486581] mb-3 font-medium">
-            Partagez ce lien avec vos amis et gagnez <span className="font-bold text-green-600">35% de commission</span> sur les revenus de leurs abonnements !
+            Partagez ce lien avec vos amis et gagnez <span className="font-bold text-green-600">20% de commission</span> sur les revenus de leurs abonnements !
           </p>
           
           <div className="flex flex-col sm:flex-row gap-2">
@@ -170,7 +169,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
               <ol className="list-decimal ml-4 space-y-1">
                 <li>Partagez votre lien de parrainage avec vos amis</li>
                 <li>Ils créent un compte avec votre lien et souscrivent à un abonnement</li>
-                <li>Vous recevez automatiquement 35% de leur abonnement mensuel (après frais Stripe)</li>
+                <li>Vous recevez automatiquement 20% de leur abonnement mensuel (après frais Stripe)</li>
                 <li>Les commissions sont ajoutées à votre solde disponible chaque mois</li>
                 <li>Votre revenu passif augmente avec chaque nouveau filleul</li>
               </ol>

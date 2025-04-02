@@ -90,11 +90,11 @@ export function invalidateCommissionRateCache(userId: string): void {
  */
 function getCommissionRateBySubscription(subscription: string): number {
   const rates = {
-    'starter': 0.6, // 60%
-    'gold': 0.8,    // 80%
-    'elite': 1.0,   // 100%
-    'freemium': 0.4 // 40%
+    'starter': 0.3, // 30% (was 60%)
+    'gold': 0.4,    // 40% (was 80%)
+    'elite': 0.5,   // 50% (was 100%)
+    'freemium': 0.2 // 20% (was 40%)
   };
   
-  return rates[subscription as keyof typeof rates] || 0.4;
+  return rates[subscription as keyof typeof rates] || 0.2;
 }

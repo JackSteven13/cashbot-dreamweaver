@@ -1,4 +1,3 @@
-
 // Daily limit per subscription type in euros
 export const SUBSCRIPTION_LIMITS = {
   'freemium': 0.5,
@@ -33,10 +32,10 @@ export const SESSION_LIMITS = {
 
 // Commission rates for direct referrals
 export const COMMISSION_RATES = {
-  'freemium': 0.4,   // 40%
-  'starter': 0.6,    // 60%
-  'gold': 0.8,       // 80%
-  'elite': 1.0       // 100%
+  'freemium': 0.2,   // 20%
+  'starter': 0.3,    // 30%
+  'gold': 0.4,       // 40%
+  'elite': 0.5       // 50%
 };
 
 // Recurring commission rates

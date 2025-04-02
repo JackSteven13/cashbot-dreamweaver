@@ -11,7 +11,7 @@ const AdditionalCGVSections = () => {
         
         <p className="font-medium mt-2">2. Gains pour le Parrain :</p>
         <ul className="list-disc ml-8 mt-1">
-          <li>Le parrain reçoit une commission de vingt pour cent du montant des abonnements payés par chaque filleul, et ce, à vie.</li>
+          <li>Le parrain reçoit une commission de dix pour cent du montant des abonnements payés par chaque filleul, et ce, à vie.</li>
           <li>Un bonus de cinquante euros est accordé au parrain pour chaque filleul restant actif pendant une période minimale de trois mois.</li>
         </ul>
         

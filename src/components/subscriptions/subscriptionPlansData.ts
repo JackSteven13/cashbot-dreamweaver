@@ -14,12 +14,12 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
         'Limite de gains de 0,5€ par jour',
         '1 session manuelle par jour',
         '1 session automatique par jour',
-        'Commission de parrainage de 40%',
+        'Commission de parrainage de 20%',
         'Seuil de retrait de 200€',
         'Support par email'
       ],
       limit: SUBSCRIPTION_LIMITS['freemium'],
-      commission: 0.4,
+      commission: 0.2,
       current: currentSubscription === 'freemium',
       disabled: currentSubscription === 'freemium'
     },
@@ -32,13 +32,13 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
         'Limite de gains de 5€ par jour',
         'Sessions manuelles illimitées',
         'Sessions automatiques illimitées',
-        'Commission de parrainage de 60%',
+        'Commission de parrainage de 30%',
         '10% de commission récurrente',
         'Seuil de retrait de 400€',
         'Support prioritaire'
       ],
       limit: SUBSCRIPTION_LIMITS['starter'],
-      commission: 0.6,
+      commission: 0.3,
       mostPopular: true,
       current: currentSubscription === 'starter',
       disabled: currentSubscription === 'starter'
@@ -51,14 +51,14 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
       features: [
         'Limite de gains de 20€ par jour',
         'Sessions manuelles et automatiques illimitées',
-        'Commission de parrainage de 80%',
+        'Commission de parrainage de 40%',
         '20% de commission récurrente',
         '5% de commission niveau 2',
         'Seuil de retrait de 700€',
         'Support prioritaire 24/7'
       ],
       limit: SUBSCRIPTION_LIMITS['gold'],
-      commission: 0.8,
+      commission: 0.4,
       current: currentSubscription === 'gold',
       disabled: currentSubscription === 'gold'
     },
@@ -70,7 +70,7 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
       features: [
         'Limite de gains de 50€ par jour',
         'Accès illimité à toutes les fonctionnalités',
-        'Commission de parrainage de 100%',
+        'Commission de parrainage de 50%',
         '30% de commission récurrente',
         '10% de commission niveau 2',
         'Seuil de retrait de 1000€',
@@ -78,7 +78,7 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
         'Fonctionnalités exclusives en avant-première'
       ],
       limit: SUBSCRIPTION_LIMITS['elite'],
-      commission: 1.0,
+      commission: 0.5,
       current: currentSubscription === 'elite',
       disabled: currentSubscription === 'elite'
     }

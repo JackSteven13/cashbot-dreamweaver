@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,8 +36,8 @@ const ReferralsPage = () => {
 
   // Get commission rate based on subscription
   const commissionRate = userData?.subscription ? 
-    COMMISSION_RATES[userData.subscription as keyof typeof COMMISSION_RATES] || 0.4 : 
-    0.4;
+    COMMISSION_RATES[userData.subscription as keyof typeof COMMISSION_RATES] || 0.2 : 
+    0.2;
   
   const commissionPercentage = Math.round(commissionRate * 100);
 
