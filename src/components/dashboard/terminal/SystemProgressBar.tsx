@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Progress } from '@/components/ui/progress';
-import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscriptionUtils';
+import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 
 interface SystemProgressBarProps {
   displayBalance: number;

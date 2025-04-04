@@ -3,7 +3,7 @@ import { FC, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscriptionUtils';
+import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DailyLimitAlertProps {

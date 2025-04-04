@@ -72,5 +72,28 @@ export const checkDailyLimit = (balance: number, subscription: string): boolean 
   const normalizedSubscription = normalizeSubscription(subscription);
   const effectiveSubscription = getEffectiveSubscription(normalizedSubscription);
   const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  
+  // Vérifie si la dernière réinitialisation était aujourd'hui
+  const lastResetDay = localStorage.getItem('lastBalanceResetDay');
+  const today = new Date().toDateString();
+  
+  if (lastResetDay !== today) {
+    console.log("Nouveau jour détecté, réinitialisation des compteurs devrait être effectuée");
+    // Nous ne réinitialisons pas le solde ici pour éviter les effets de bord
+    // La réinitialisation doit être traitée séparément
+    localStorage.setItem('lastBalanceResetDay', today);
+    return false;
+  }
+  
   return balance >= dailyLimit;
+};
+
+/**
+ * Vérifie si les compteurs quotidiens doivent être réinitialisés
+ * @returns {boolean} true si une réinitialisation est nécessaire
+ */
+export const shouldResetDailyCounters = (): boolean => {
+  const lastResetDay = localStorage.getItem('lastBalanceResetDay');
+  const today = new Date().toDateString();
+  return lastResetDay !== today;
 };

@@ -4,7 +4,7 @@ import {
   SUBSCRIPTION_LIMITS, 
   getEffectiveSubscription,
   canStartManualSession
-} from '@/utils/subscriptionUtils';
+} from '@/utils/subscription';
 import { UserData } from '@/types/userData';
 
 export const useLimitChecking = () => {
