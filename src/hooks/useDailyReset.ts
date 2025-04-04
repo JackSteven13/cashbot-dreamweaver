@@ -1,10 +1,11 @@
 
 import { useEffect, useRef } from 'react';
 import { shouldResetDailyCounters } from '@/utils/subscription';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Hook pour gérer la réinitialisation quotidienne du solde
- * et des compteurs de session
+ * pour les comptes freemium uniquement et des compteurs de session pour tous
  */
 export const useDailyReset = (
   resetFunction: () => Promise<void>,
@@ -25,7 +26,10 @@ export const useDailyReset = (
         resetAttempted.current = true;
         
         try {
+          // Appel à la fonction de réinitialisation qui gère maintenant
+          // différemment les comptes freemium et les comptes payants
           await resetFunction();
+          
           // Mettre à jour la date de dernière réinitialisation
           const today = new Date().toDateString();
           localStorage.setItem('lastBalanceResetDay', today);

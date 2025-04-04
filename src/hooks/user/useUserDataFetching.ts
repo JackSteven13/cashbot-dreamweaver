@@ -113,7 +113,7 @@ export const useUserDataFetching = (
         return;
       }
       
-      // Pour les comptes freemium, réinitialiser le solde à 0 chaque jour
+      // MODIFICATION IMPORTANTE: Pour les comptes freemium, réinitialiser le solde à 0 chaque jour
       if (userBalance.subscription === 'freemium') {
         const { data, error } = await supabase
           .from('user_balances')
@@ -140,16 +140,14 @@ export const useUserDataFetching = (
           date: new Date().toISOString().split('T')[0]
         }]);
         
-        // Mettre à jour l'interface utilisateur après réinitialisation
-        await fetchUserData();
-        
         // Notification à l'utilisateur
         toast({
           title: "Compteurs quotidiens réinitialisés",
           description: "Vous pouvez à nouveau gagner jusqu'à 0.50€ aujourd'hui avec votre compte freemium.",
         });
       } else {
-        // Pour les comptes payants, réinitialiser uniquement le compteur de sessions
+        // MODIFICATION IMPORTANTE: Pour les comptes payants, réinitialiser UNIQUEMENT le compteur de sessions
+        // et NE PAS réinitialiser le solde
         const { error } = await supabase
           .from('user_balances')
           .update({
@@ -161,11 +159,13 @@ export const useUserDataFetching = (
         if (error) {
           console.error("Erreur lors de la réinitialisation du compteur de sessions:", error);
         } else {
-          console.log("Réinitialisation du compteur de sessions pour compte payant");
-          // Rafraîchir les données
-          await fetchUserData();
+          console.log("Réinitialisation du compteur de sessions uniquement pour compte payant");
         }
       }
+      
+      // Rafraîchir les données
+      await fetchUserData();
+      
     } catch (error) {
       console.error("Erreur lors de la réinitialisation des compteurs:", error);
     }

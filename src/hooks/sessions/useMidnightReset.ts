@@ -43,7 +43,7 @@ export const useMidnightReset = (
               
               await incrementSessionCount(); // This will reset to 0 in our function
               
-              // Also reset balance for freemium accounts
+              // MODIFICATION IMPORTANTE : Réinitialiser le solde UNIQUEMENT pour les comptes freemium
               if (userData.subscription === 'freemium') {
                 const { error: balanceError } = await supabase
                   .from('user_balances')
@@ -58,7 +58,7 @@ export const useMidnightReset = (
                   console.error("Error resetting freemium balance:", balanceError);
                 }
                 
-                await updateBalance(0, ''); // This will reset balance to 0
+                await updateBalance(0, 'Réinitialisation bi-mensuelle du compte freemium'); // This will reset balance to 0
                 setShowLimitAlert(false);
               }
             } catch (error) {
