@@ -39,12 +39,17 @@ export const useDashboardState = () => {
   );
 
   // Memoize la fonction de rafraîchissement pour éviter les re-rendus
-  const forceRefresh = useCallback(() => {
+  const forceRefresh = useCallback(async () => {
     console.log("Forçage du rafraîchissement du dashboard");
     setRenderKey(Date.now());
-    // Corriger le type de retour ici
-    userData.refreshUserData().catch(error => console.error("Error refreshing user data:", error));
-    return true; // Retourner true pour satisfaire le type Promise<boolean>
+    
+    try {
+      await userData.refreshUserData();
+      return true; // Retourner true pour satisfaire le type Promise<boolean>
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+      return false; // Retourner false en cas d'erreur
+    }
   }, [userData.refreshUserData]);
 
   // Extraire les propriétés de userData pour éviter les références qui changent

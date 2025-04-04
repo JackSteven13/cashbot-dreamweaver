@@ -9,7 +9,7 @@ export const useMidnightReset = (
   updateBalance: (gain: number, report: string) => Promise<void>,
   setShowLimitAlert: (show: boolean) => void
 ) => {
-  // Reset sessions and balances every 14 days (on the 1st, 15th, and 29th) at midnight Paris time
+  // Reset sessions every 14 days (on the 1st, 15th, and 29th) at midnight Paris time
   useEffect(() => {
     const checkMidnightReset = async () => {
       try {
@@ -43,24 +43,11 @@ export const useMidnightReset = (
               
               await incrementSessionCount(); // This will reset to 0 in our function
               
-              // MODIFICATION IMPORTANTE : Réinitialiser le solde UNIQUEMENT pour les comptes freemium
-              if (userData.subscription === 'freemium') {
-                const { error: balanceError } = await supabase
-                  .from('user_balances')
-                  .update({ 
-                    balance: 0,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('id', session.user.id)
-                  .eq('subscription', 'freemium');
-                  
-                if (balanceError) {
-                  console.error("Error resetting freemium balance:", balanceError);
-                }
-                
-                await updateBalance(0, 'Réinitialisation bi-mensuelle du compte freemium'); // This will reset balance to 0
-                setShowLimitAlert(false);
-              }
+              // MODIFICATION IMPORTANTE : Ne plus réinitialiser le solde, même pour les comptes freemium
+              // Nous ne réinitialisons que le compteur de sessions
+              
+              console.log("Réinitialisation bi-mensuelle des compteurs de sessions effectuée");
+              setShowLimitAlert(false);
             } catch (error) {
               console.error("Error in bi-weekly reset:", error);
             }

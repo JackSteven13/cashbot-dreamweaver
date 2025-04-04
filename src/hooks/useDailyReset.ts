@@ -4,8 +4,8 @@ import { shouldResetDailyCounters } from '@/utils/subscription';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Hook pour gérer la réinitialisation quotidienne du solde
- * pour les comptes freemium uniquement et des compteurs de session pour tous
+ * Hook pour gérer la réinitialisation quotidienne des compteurs de session uniquement
+ * et non plus du solde pour les comptes freemium
  */
 export const useDailyReset = (
   resetFunction: () => Promise<void>,
@@ -22,18 +22,18 @@ export const useDailyReset = (
 
       // Si le système détermine qu'une réinitialisation est nécessaire
       if (shouldResetDailyCounters()) {
-        console.log("Réinitialisation quotidienne nécessaire, exécution...");
+        console.log("Réinitialisation quotidienne des compteurs nécessaire, exécution...");
         resetAttempted.current = true;
         
         try {
-          // Appel à la fonction de réinitialisation qui gère maintenant
-          // différemment les comptes freemium et les comptes payants
+          // Appel à la fonction de réinitialisation qui réinitialise uniquement les compteurs
+          // de session et non plus le solde pour les comptes freemium
           await resetFunction();
           
           // Mettre à jour la date de dernière réinitialisation
           const today = new Date().toDateString();
           localStorage.setItem('lastBalanceResetDay', today);
-          console.log("Réinitialisation quotidienne effectuée avec succès");
+          console.log("Réinitialisation quotidienne des compteurs effectuée avec succès");
         } catch (error) {
           console.error("Erreur lors de la réinitialisation quotidienne:", error);
         }

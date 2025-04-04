@@ -1,6 +1,8 @@
 
-// Exporter toutes les fonctions liées à la subscription
-export * from './constants';
-export * from './subscriptionStatus';
-export * from './sessionManagement';
-export * from './sessionGain';
+// Exporter les fonctions liées à la gestion des abonnements
+export { shouldResetDailyCounters } from './subscriptionStatus';
+export { canStartManualSession } from './sessionManagement';
+export { calculateSessionGain } from './sessionGain';
+
+// Re-export des constantes liées aux abonnements
+export { SUBSCRIPTION_LIMITS } from './constants';

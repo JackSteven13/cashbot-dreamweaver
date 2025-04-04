@@ -3,7 +3,7 @@ import React, { memo } from 'react';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import DailyLimitAlert from '@/components/dashboard/DailyLimitAlert';
 import DormancyAlert from '@/components/dashboard/DormancyAlert';
-import { canStartManualSession } from '@/utils/subscriptionUtils';
+import { canStartManualSession } from '@/utils/subscription'; // Chemin d'importation corrigé
 
 interface DashboardContentProps {
   isDormant: boolean;
