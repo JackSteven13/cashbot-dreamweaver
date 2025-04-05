@@ -1,19 +1,23 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscriptionUtils';
+import { isWithdrawalAllowed, getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
 
 interface UseSummaryPanelProps {
   balance: number;
   subscription: string;
   handleWithdrawal?: () => void;
   handleStartSession: () => void;
+  referralCount?: number;
 }
 
 export const useSummaryPanel = ({
   balance,
   subscription,
   handleWithdrawal,
-  handleStartSession
+  handleStartSession,
+  referralCount = 0
 }: UseSummaryPanelProps) => {
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [displayBalance, setDisplayBalance] = useState(Math.max(0, balance));
@@ -59,16 +63,27 @@ export const useSummaryPanel = ({
       if (handleWithdrawal) {
         handleWithdrawal();
       } else {
-        if (subscription === 'freemium' && effectiveSubscription === 'freemium') {
-          toast({
-            title: "Demande refusée",
-            description: "Les retraits sont disponibles uniquement pour les abonnements payants. Veuillez mettre à niveau votre compte.",
-            variant: "destructive"
-          });
-        } else if (displayBalance < 100) {
+        const withdrawalAllowed = isWithdrawalAllowed(subscription, referralCount);
+        const withdrawalThreshold = getWithdrawalThreshold(subscription);
+        
+        if (!withdrawalAllowed) {
+          if (subscription === 'freemium') {
+            toast({
+              title: "Demande refusée",
+              description: "Les utilisateurs freemium doivent parrainer au moins une personne pour pouvoir retirer leurs fonds.",
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Demande refusée",
+              description: "Les retraits sont disponibles uniquement pour les abonnements payants. Veuillez mettre à niveau votre compte.",
+              variant: "destructive"
+            });
+          }
+        } else if (displayBalance < withdrawalThreshold) {
           toast({
             title: "Montant insuffisant",
-            description: "Le montant minimum de retrait est de 100€. Continuez à gagner plus de revenus.",
+            description: `Le montant minimum de retrait est de ${withdrawalThreshold}€. Continuez à gagner plus de revenus.`,
             variant: "destructive"
           });
         } else {

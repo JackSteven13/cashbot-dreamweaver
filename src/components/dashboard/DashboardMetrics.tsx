@@ -34,6 +34,8 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
 }) => {
   // Calculer les gains issus des parrainages
   const referralBonus = referrals?.reduce((total, ref) => total + (ref.commission_earned || 0), 0) || 0;
+  // Compter le nombre de parrainages actifs
+  const activeReferralCount = referrals?.filter(ref => ref.active !== false)?.length || 0;
   
   return (
     <div className="dashboard-metrics">
@@ -47,7 +49,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
         subscription={subscription}
         dailySessionCount={dailySessionCount}
         canStartSession={canStartSession}
-        referralCount={referrals?.length || 0}
+        referralCount={activeReferralCount}
         referralBonus={referralBonus}
         lastSessionTimestamp={lastSessionTimestamp}
       />

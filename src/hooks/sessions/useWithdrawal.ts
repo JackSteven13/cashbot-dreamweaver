@@ -62,11 +62,14 @@ export const useWithdrawal = (
       return;
     }
     
-    // Vérifier si l'utilisateur peut faire un retrait selon son abonnement
-    if (!isWithdrawalAllowed(userData.subscription)) {
+    // Compter les parrainages actifs
+    const referralCount = userData.referrals?.filter(ref => ref.active !== false)?.length || 0;
+    
+    // Vérifier si l'utilisateur peut faire un retrait selon son abonnement et ses parrainages
+    if (!isWithdrawalAllowed(userData.subscription, referralCount)) {
       toast({
         title: "Retrait impossible",
-        description: "Les comptes freemium ne peuvent pas effectuer de retraits. Passez à un forfait supérieur pour débloquer cette fonctionnalité.",
+        description: "Les comptes freemium doivent parrainer au moins une personne pour pouvoir effectuer un retrait.",
         variant: "destructive"
       });
       return;

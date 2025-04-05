@@ -30,20 +30,22 @@ export const calculateWithdrawalFee = (accountCreationDate: Date, subscription: 
  * @returns Minimum withdrawal amount in currency units
  */
 export const getWithdrawalThreshold = (subscription: string): number => {
-  // For freemium accounts, return an unreachable amount
-  if (subscription === 'freemium') {
-    return WITHDRAWAL_THRESHOLDS.freemium;
-  }
-  
+  // For freemium accounts, return the threshold from constants
   return WITHDRAWAL_THRESHOLDS[subscription as keyof typeof WITHDRAWAL_THRESHOLDS] || 100;
 };
 
 /**
- * Check if withdrawal is allowed based on subscription
+ * Check if withdrawal is allowed based on subscription and referrals
  * @param subscription User subscription level
+ * @param referralCount Number of referrals the user has
  * @returns Boolean indicating if withdrawals are allowed
  */
-export const isWithdrawalAllowed = (subscription: string): boolean => {
-  // Freemium users cannot withdraw
-  return subscription !== 'freemium';
+export const isWithdrawalAllowed = (subscription: string, referralCount: number = 0): boolean => {
+  // Freemium users can withdraw ONLY if they have at least one referral
+  if (subscription === 'freemium') {
+    return referralCount > 0;
+  }
+  
+  // Paid users can always withdraw
+  return true;
 };

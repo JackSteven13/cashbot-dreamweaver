@@ -1,21 +1,20 @@
 
 import React from 'react';
-import UserBalanceCard from './UserBalanceCard';
-import ActionButtons from './ActionButtons';
-import ReferralLink from './ReferralLink';
-import { SystemTerminal } from '@/components/dashboard/terminal';
-import WelcomeMessage from './WelcomeMessage';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useSummaryPanel } from '@/hooks/useSummaryPanel';
-import { useIsMobile } from '@/hooks/use-mobile';
+import UserBalanceCard from './UserBalanceCard';
+import WelcomeMessage from './WelcomeMessage';
+import ReferralLink from './ReferralLink';
+import ActionButtons from './ActionButtons';
 
 interface SummaryPanelProps {
   balance: number;
   referralLink: string;
   isStartingSession: boolean;
   handleStartSession: () => void;
+  handleWithdrawal?: () => void; 
   isNewUser?: boolean;
   subscription: string;
-  handleWithdrawal?: () => void;
   dailySessionCount?: number;
   canStartSession?: boolean;
   referralCount?: number;
@@ -23,22 +22,20 @@ interface SummaryPanelProps {
   lastSessionTimestamp?: string;
 }
 
-const SummaryPanel = ({ 
-  balance, 
-  referralLink, 
-  isStartingSession, 
+const SummaryPanel: React.FC<SummaryPanelProps> = ({
+  balance,
+  referralLink,
+  isStartingSession,
   handleStartSession,
-  isNewUser = false,
-  subscription,
   handleWithdrawal,
+  isNewUser = false,
+  subscription = 'freemium',
   dailySessionCount = 0,
   canStartSession = true,
   referralCount = 0,
   referralBonus = 0,
   lastSessionTimestamp
-}: SummaryPanelProps) => {
-  const isMobile = useIsMobile();
-  
+}) => {
   const {
     displayBalance,
     isButtonDisabled,
@@ -53,56 +50,53 @@ const SummaryPanel = ({
     balance,
     subscription,
     handleWithdrawal,
-    handleStartSession
+    handleStartSession,
+    referralCount
   });
-  
-  const currentlyCanStartSession = getCurrentlyCanStartSession(canStartSession);
+
+  // Calculate best way to display remaining sessions
   const remainingSessions = calculateRemainingSessions(subscription, dailySessionCount);
+  const currentlyCanStartSession = getCurrentlyCanStartSession(canStartSession);
 
   return (
-    <div className="bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-3 md:p-6 mb-4 md:mb-8">
-      <WelcomeMessage isNewUser={isNewUser} />
-      
-      <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
-        <div className="flex-1">
-          <UserBalanceCard 
-            displayBalance={displayBalance}
+    <Card className="mb-6 shadow-md border-slate-200 dark:border-slate-700">
+      <CardHeader className="pb-4">
+        <WelcomeMessage 
+          isNewUser={isNewUser} 
+          subscription={effectiveSubscription}
+          dailySessionCount={dailySessionCount} 
+        />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          <UserBalanceCard
+            balance={displayBalance}
             subscription={effectiveSubscription}
             dailyLimit={effectiveDailyLimit}
-            sessionsDisplay={subscription === 'freemium' && effectiveSubscription === 'freemium'
-              ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}`
-              : 'Sessions illimitées'}
-            referralCount={referralCount}
             referralBonus={referralBonus}
+            lastSessionTimestamp={lastSessionTimestamp}
           />
           
-          <ActionButtons 
+          <ActionButtons
             canStartSession={currentlyCanStartSession}
             isButtonDisabled={isButtonDisabled}
             isStartingSession={isStartingSession}
             isWithdrawing={isWithdrawing}
-            subscription={subscription}
+            subscription={effectiveSubscription}
             currentBalance={displayBalance}
             dailyLimit={effectiveDailyLimit}
             onBoostClick={() => onBoostClick(canStartSession)}
             onWithdraw={onWithdraw}
           />
           
-          <ReferralLink referralLink={referralLink} subscription={subscription} />
+          <ReferralLink 
+            referralLink={referralLink} 
+            subscription={effectiveSubscription}
+            referralCount={referralCount}
+          />
         </div>
-        
-        <SystemTerminal 
-          isNewUser={isNewUser}
-          dailyLimit={effectiveDailyLimit}
-          subscription={subscription}
-          remainingSessions={remainingSessions}
-          referralCount={referralCount}
-          displayBalance={displayBalance}
-          referralBonus={referralBonus}
-          lastSessionTimestamp={lastSessionTimestamp}
-        />
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
