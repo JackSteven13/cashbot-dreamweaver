@@ -36,7 +36,7 @@ export const useSessionOperations = (
         const parsedBalance = parseFloat(storedBalance);
         if (!isNaN(parsedBalance)) {
           cumulativeBalanceRef.current = parsedBalance;
-          console.log(`SessionOperations: Initialized cumulative balance from localStorage: ${parsedBalance}`);
+          console.log(`[SessionOperations] Initialized cumulative balance from localStorage: ${parsedBalance}`);
         } else {
           cumulativeBalanceRef.current = userData.balance || 0;
         }
@@ -47,7 +47,21 @@ export const useSessionOperations = (
       console.error("Failed to read from localStorage:", e);
       cumulativeBalanceRef.current = userData.balance || 0;
     }
-  }, []);
+    
+    // Écouter les événements de mise à jour du solde pour maintenir la cohérence
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      const newBalance = event.detail?.balance;
+      if (typeof newBalance === 'number' && newBalance >= 0) {
+        cumulativeBalanceRef.current = newBalance;
+      }
+    };
+    
+    window.addEventListener('balance:local-update' as any, handleBalanceUpdate);
+    
+    return () => {
+      window.removeEventListener('balance:local-update' as any, handleBalanceUpdate);
+    };
+  }, [userData.balance]);
 
   /**
    * Generate automatic revenue based on subscription type and limits
@@ -55,13 +69,13 @@ export const useSessionOperations = (
   const generateAutomaticRevenue = async (isFirst = false) => {
     // Vérification stricte de l'état du bot avant de continuer
     if (!botStatusRef.current) {
-      console.log("Bot inactif, arrêt de la génération de revenus");
+      console.log("[SessionOperations] Bot inactif, arrêt de la génération de revenus");
       return;
     }
 
     // Autres vérifications de sécurité
     if (sessionInProgress.current || operationLock.current) {
-      console.log("Session déjà en cours ou verrou actif, arrêt");
+      console.log("[SessionOperations] Session déjà en cours ou verrou actif, arrêt");
       return;
     }
     
@@ -126,7 +140,7 @@ export const useSessionOperations = (
       
       // Vérifier à nouveau si le bot est toujours actif
       if (!botStatusRef.current) {
-        console.log("Bot désactivé pendant la préparation de la session, arrêt");
+        console.log("[SessionOperations] Bot désactivé pendant la préparation de la session, arrêt");
         sessionInProgress.current = false;
         operationLock.current = false;
         return;
@@ -154,7 +168,7 @@ export const useSessionOperations = (
       
       // Vérifier à nouveau si le bot est toujours actif
       if (!botStatusRef.current) {
-        console.log("Bot désactivé pendant l'analyse, arrêt");
+        console.log("[SessionOperations] Bot désactivé pendant l'analyse, arrêt");
         triggerDashboardEvent('terminal-update', { 
           line: "Analyse interrompue: le bot a été désactivé.",
           background: true
@@ -209,11 +223,12 @@ export const useSessionOperations = (
         console.error("Failed to store updated balance in localStorage:", e);
       }
       
-      console.log(`Updated cumulative balance: ${currentPersistedBalance} + ${randomGain} = ${updatedBalance}`);
+      console.log(`[SessionOperations] Updated cumulative balance: ${currentPersistedBalance} + ${randomGain} = ${updatedBalance}`);
       
-      // Déclencher l'événement d'analyse complète avec le gain - TOUJOURS utiliser background:true
+      // Déclencher l'événement d'analyse complète avec le gain
       triggerDashboardEvent('analysis-complete', { 
         gain: randomGain, 
+        noEffects: true, // Désactiver les effets visuels excessifs
         background: true 
       });
       
@@ -221,7 +236,7 @@ export const useSessionOperations = (
       await updateBalance(
         randomGain,
         `Notre système d'analyse de contenu vidéo a généré ${randomGain.toFixed(2)}€ de revenus. Performance basée sur le niveau d'abonnement ${userData.subscription}.`,
-        true // Toujours forcer la mise à jour UI immédiate pour les mises à jour automatiques
+        true // Toujours forcer la mise à jour UI immédiate
       );
       
       // Déclencher directement l'événement de mise à jour du solde avec le solde actuel et le gain

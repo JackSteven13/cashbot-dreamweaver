@@ -18,7 +18,8 @@ export const triggerDashboardEvent = (
     detail: {
       ...data,
       timestamp: Date.now(),
-      background: options.background || data.background
+      background: options.background || data.background,
+      noEffects: data.noEffects || true // Désactiver par défaut les effets excessifs
     }
   });
   
@@ -32,63 +33,6 @@ export const triggerDashboardEvent = (
   }
   
   console.log(`Dashboard event triggered: ${eventName}`);
-};
-
-/**
- * Create money particle animation
- * @param element Element to create particles from
- * @param count Number of particles to create
- */
-export const createMoneyParticles = (element: HTMLElement, count = 10) => {
-  if (!element) return;
-  
-  const rect = element.getBoundingClientRect();
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-  
-  for (let i = 0; i < count; i++) {
-    const particle = document.createElement("div");
-    particle.innerHTML = ["💵", "💰", "💸", "€"][Math.floor(Math.random() * 4)];
-    particle.className = "money-particle";
-    particle.style.position = "fixed";
-    particle.style.zIndex = "9999";
-    particle.style.top = `${centerY}px`;
-    particle.style.left = `${centerX}px`;
-    particle.style.fontSize = `${Math.random() * 10 + 14}px`;
-    particle.style.pointerEvents = "none";
-    document.body.appendChild(particle);
-    
-    const angle = Math.random() * Math.PI * 2;
-    const velocity = Math.random() * 150 + 50;
-    const xVelocity = Math.cos(angle) * velocity;
-    const yVelocity = Math.sin(angle) * velocity;
-    
-    let posX = centerX;
-    let posY = centerY;
-    let opacity = 1;
-    let scale = 1;
-    
-    const animate = () => {
-      posX += xVelocity / 10;
-      posY += yVelocity / 10;
-      opacity -= 0.02;
-      scale += 0.01;
-      
-      if (opacity <= 0) {
-        document.body.removeChild(particle);
-        return;
-      }
-      
-      particle.style.left = `${posX}px`;
-      particle.style.top = `${posY}px`;
-      particle.style.opacity = String(opacity);
-      particle.style.transform = `scale(${scale})`;
-      
-      requestAnimationFrame(animate);
-    };
-    
-    requestAnimationFrame(animate);
-  }
 };
 
 /**

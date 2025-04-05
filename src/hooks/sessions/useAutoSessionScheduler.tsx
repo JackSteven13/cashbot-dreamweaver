@@ -22,14 +22,14 @@ export const useAutoSessionScheduler = (
     // Synchroniser notre référence avec la prop
     botStatusRef.current = isBotActive;
     
-    // Récupérer la balance depuis localStorage si disponible
+    // Récupérer la balance depuis localStorage pour une meilleure persistance
     try {
       const storedBalance = localStorage.getItem('currentBalance');
       if (storedBalance) {
         const parsedBalance = parseFloat(storedBalance);
         if (!isNaN(parsedBalance)) {
           persistentBalanceRef.current = parsedBalance;
-          console.log(`Scheduler: Got persisted balance: ${persistentBalanceRef.current}`);
+          console.log(`[Scheduler] Got persisted balance: ${persistentBalanceRef.current}`);
         }
       }
     } catch (e) {
@@ -46,16 +46,15 @@ export const useAutoSessionScheduler = (
     }
     
     // Start an initial session after a short delay if bot is active
-    // and only if this is the first time (to avoid duplicate sessions on re-renders)
     const initialTimeout = setTimeout(() => {
-      // Vérification supplémentaire du statut du bot au moment de l'exécution
+      // Vérifications de sécurité supplémentaires
       if (botStatusRef.current && todaysGainsRef.current < dailyLimit && !initialSessionExecutedRef.current) {
-        console.log("Démarrage de la session initiale automatique");
+        console.log("[Scheduler] Démarrage de la session initiale automatique");
         initialSessionExecutedRef.current = true; // Marquer comme exécuté
         generateAutomaticRevenue(true);
         lastAutoSessionTimeRef.current = Date.now();
       } else {
-        console.log("Bot inactif, limite atteinte ou session initiale déjà exécutée");
+        console.log("[Scheduler] Conditions non remplies pour session initiale");
       }
     }, 10000);
     
@@ -63,7 +62,6 @@ export const useAutoSessionScheduler = (
     const autoSessionInterval = setInterval(() => {
       // Vérification stricte du statut du bot
       if (!botStatusRef.current) {
-        console.log("Bot inactif, pas de génération automatique");
         return;
       }
       
@@ -71,9 +69,9 @@ export const useAutoSessionScheduler = (
       const timeSinceLastSession = Date.now() - lastAutoSessionTimeRef.current;
       const randomInterval = Math.random() * 60000 + 120000; // Between 2 and 3 minutes
       
-      // Vérification supplémentaire du statut du bot avant génération
+      // Vérifier également qu'on n'a pas atteint la limite journalière
       if (timeSinceLastSession >= randomInterval && todaysGainsRef.current < dailyLimit && botStatusRef.current) {
-        console.log("Génération automatique de revenus", timeSinceLastSession, randomInterval);
+        console.log("[Scheduler] Génération automatique de revenus");
         generateAutomaticRevenue();
         lastAutoSessionTimeRef.current = Date.now();
       }
@@ -84,27 +82,33 @@ export const useAutoSessionScheduler = (
       const isActive = event.detail?.active;
       if (typeof isActive === 'boolean') {
         botStatusRef.current = isActive;
-        console.log(`Bot status updated in scheduler: ${isActive ? 'active' : 'inactive'}`);
+        console.log(`[Scheduler] Bot status updated: ${isActive ? 'active' : 'inactive'}`);
       }
     };
     
     // Écouter les changements de solde pour la persistence
     const handleBalanceUpdate = (event: CustomEvent) => {
-      const newBalance = event.detail?.currentBalance;
-      if (typeof newBalance === 'number') {
+      const newBalance = event.detail?.balance;
+      if (typeof newBalance === 'number' && newBalance >= 0) {
         persistentBalanceRef.current = newBalance;
-        console.log(`Scheduler: Updated persistent balance to ${newBalance}`);
+        console.log(`[Scheduler] Updated persistent balance to ${newBalance}`);
+        
+        // S'assurer que le localStorage est aussi à jour
+        localStorage.setItem('lastKnownBalance', newBalance.toString());
+        localStorage.setItem('currentBalance', newBalance.toString());
       }
     };
     
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('balance:local-update' as any, handleBalanceUpdate);
+    window.addEventListener('balance:force-update' as any, handleBalanceUpdate);
 
     return () => {
       clearTimeout(initialTimeout);
       clearInterval(autoSessionInterval);
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
       window.removeEventListener('balance:local-update' as any, handleBalanceUpdate);
+      window.removeEventListener('balance:force-update' as any, handleBalanceUpdate);
     };
   }, [isBotActive, userData.subscription, generateAutomaticRevenue, todaysGainsRef]);
 

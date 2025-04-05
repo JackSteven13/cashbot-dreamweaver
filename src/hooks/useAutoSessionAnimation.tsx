@@ -1,7 +1,7 @@
 
 import { useEffect, useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
-import { createMoneyParticles, animateBalanceUpdate } from '@/utils/animations';
+import { animateBalanceUpdate } from '@/utils/animations';
 
 export const useAutoSessionAnimation = () => {
   const balanceElementRef = useRef<HTMLElement | null>(null);
@@ -34,7 +34,6 @@ export const useAutoSessionAnimation = () => {
       const customEvent = event as CustomEvent;
       const amount = customEvent.detail?.amount || 0;
       const currentBalance = customEvent.detail?.currentBalance || 0;
-      const isBotActive = customEvent.detail?.isBotActive !== false;
       
       if (balanceElementRef.current && amount > 0) {
         // Animer l'élément de solde
@@ -75,10 +74,15 @@ export const useAutoSessionAnimation = () => {
     // Gérer les événements d'animation du dashboard
     const handleDashboardAnimation = (event: Event) => {
       const customEvent = event as CustomEvent;
-      const { type } = customEvent.detail || {};
+      const { type, noEffects } = customEvent.detail || {};
+      
+      // Si noEffects est activé, ne pas ajouter d'effets visuels
+      if (noEffects) {
+        return;
+      }
       
       if (type === 'income' && balanceElementRef.current) {
-        // Ajouter une classe pour l'effet de lueur
+        // Ajouter une classe pour l'effet de lueur subtil
         balanceElementRef.current.classList.add('glow-effect');
         
         // Supprimer la classe après un délai

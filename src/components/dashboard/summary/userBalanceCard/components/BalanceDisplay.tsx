@@ -36,8 +36,13 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       if (storedBalance) {
         const parsedBalance = parseFloat(storedBalance);
         if (!isNaN(parsedBalance) && parsedBalance >= 0) {
-          console.log(`BalanceDisplay: Restoring balance from localStorage: ${parsedBalance}`);
+          console.log(`[BalanceDisplay] Restoring balance from localStorage: ${parsedBalance}`);
           setLocalDisplayBalance(parsedBalance);
+          
+          // Déclencher un événement de synchronisation pour informer les autres composants
+          window.dispatchEvent(new CustomEvent('balance:sync-request', { 
+            detail: { balance: parsedBalance }
+          }));
         }
       }
     } catch (e) {
@@ -64,8 +69,16 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   // Mettre à jour le solde local quand le solde externe change ET est plus grand
   useEffect(() => {
     if (displayBalance > localDisplayBalance) {
-      console.log(`BalanceDisplay: Updating local balance from ${localDisplayBalance} to higher value ${displayBalance}`);
+      console.log(`[BalanceDisplay] Updating local balance from ${localDisplayBalance} to higher value ${displayBalance}`);
       setLocalDisplayBalance(displayBalance);
+      
+      // Persister dans localStorage
+      try {
+        localStorage.setItem('currentBalance', displayBalance.toString());
+        localStorage.setItem('lastKnownBalance', displayBalance.toString());
+      } catch (e) {
+        console.error("Failed to persist display balance:", e);
+      }
     } else {
       // Si le solde externe est plus petit, vérifier localStorage avant de mettre à jour
       try {
@@ -73,7 +86,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         if (storedBalance) {
           const parsedBalance = parseFloat(storedBalance);
           if (!isNaN(parsedBalance) && parsedBalance > localDisplayBalance) {
-            console.log(`BalanceDisplay: Using higher localStorage value: ${parsedBalance}`);
+            console.log(`[BalanceDisplay] Using higher localStorage value: ${parsedBalance}`);
             setLocalDisplayBalance(parsedBalance);
           }
         }
@@ -95,7 +108,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
       if (typeof isActive === 'boolean') {
-        console.log(`BalanceDisplay received bot status update: ${isActive ? 'active' : 'inactive'}`);
+        console.log(`[BalanceDisplay] Received bot status update: ${isActive ? 'active' : 'inactive'}`);
         setLocalBotActive(isActive);
       }
     };
@@ -103,13 +116,14 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     // Écouter les mises à jour forcées du solde
     const handleForceBalanceUpdate = (event: CustomEvent) => {
       const newBalance = event.detail?.newBalance;
-      if (typeof newBalance === 'number') {
-        console.log("Force balance update received:", newBalance);
+      if (typeof newBalance === 'number' && newBalance >= 0) {
+        console.log(`[BalanceDisplay] Force balance update received: ${newBalance}`);
         setLocalDisplayBalance(newBalance);
         
         // Sauvegarder la nouvelle valeur dans localStorage
         try {
           localStorage.setItem('currentBalance', newBalance.toString());
+          localStorage.setItem('lastKnownBalance', newBalance.toString());
         } catch (e) {
           console.error("Failed to save forced balance update to localStorage:", e);
         }
@@ -125,12 +139,12 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         lastAmountRef.current = amount;
       }
       
-      if (typeof currentBalance === 'number') {
-        console.log(`Balance update with currentBalance: ${currentBalance}`);
+      if (typeof currentBalance === 'number' && currentBalance >= 0) {
+        console.log(`[BalanceDisplay] Balance update with currentBalance: ${currentBalance}`);
         animateBalance(localDisplayBalance, currentBalance, 1000);
       } else if (typeof amount === 'number') {
         // Plutôt que de simplement mettre à jour le solde, nous allons animer
-        console.log(`Balance update with amount: +${amount}`);
+        console.log(`[BalanceDisplay] Balance update with amount: +${amount}`);
         const startVal = localDisplayBalance;
         const endVal = startVal + amount;
         animateBalance(startVal, endVal, 1000); // 1 seconde d'animation
@@ -142,6 +156,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       // Sauvegarder immédiatement dans localStorage
       try {
         localStorage.setItem('currentBalance', end.toString());
+        localStorage.setItem('lastKnownBalance', end.toString());
       } catch (e) {
         console.error("Failed to save animated balance to localStorage:", e);
       }
@@ -159,6 +174,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           requestAnimationFrame(updateFrame);
         } else {
           setLocalDisplayBalance(parseFloat(end.toFixed(2)));
+          
+          // Après avoir terminé l'animation, déclencher un événement pour synchroniser les autres composants
+          window.dispatchEvent(new CustomEvent('balance:local-update', {
+            detail: { balance: end }
+          }));
         }
       };
       
@@ -172,16 +192,6 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     // Synchroniser avec la prop isBotActive au montage et lorsqu'elle change
     setLocalBotActive(isBotActive);
     
-    // Récupérer le solde dans le localStorage si disponible
-    const storedBalance = localStorage.getItem('currentBalance');
-    if (storedBalance) {
-      const parsedBalance = parseFloat(storedBalance);
-      if (!isNaN(parsedBalance) && parsedBalance > localDisplayBalance) {
-        console.log("Restoring balance from localStorage:", parsedBalance);
-        setLocalDisplayBalance(parsedBalance);
-      }
-    }
-    
     return () => {
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
       window.removeEventListener('balance:force-update' as any, handleForceBalanceUpdate);
@@ -189,7 +199,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     };
   }, [isBotActive, localDisplayBalance]);
 
-  // Function to toggle bot status manually (useful for debugging)
+  // Function to toggle bot status manually
   const handleBotToggle = () => {
     const newStatus = !localBotActive;
     setLocalBotActive(newStatus);
