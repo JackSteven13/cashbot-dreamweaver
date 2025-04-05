@@ -132,7 +132,8 @@ export const useSessionOperations = (
         toast({
           title: "Revenus générés",
           description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`,
-          className: "toast-notification" // Ajouter la classe pour le style responsive
+          className: "mobile-toast", // Ajouter la classe pour le style responsive
+          duration: 4000
         });
       }
       
@@ -160,7 +161,8 @@ export const useSessionOperations = (
         title: "Erreur",
         description: "Une erreur est survenue. Veuillez réessayer plus tard.",
         variant: "destructive",
-        className: "toast-notification" // Ajouter la classe pour le style responsive
+        className: "mobile-toast", // Ajouter la classe pour le style responsive
+        duration: 4000
       });
     } finally {
       sessionInProgress.current = false;

@@ -60,7 +60,8 @@ export const useAutoSessionAnimation = () => {
         toast({
           title: "Gain automatique",
           description: `CashBot a généré ${amount.toFixed(2)}€ pour vous!`,
-          duration: 3000
+          duration: 4000,
+          className: "mobile-toast"
         });
       }
     };
@@ -91,7 +92,8 @@ export const useAutoSessionAnimation = () => {
       toast({
         title: "Limite journalière atteinte",
         description: `Vous avez atteint votre limite quotidienne avec votre abonnement ${subscription}.`,
-        duration: 5000
+        duration: 5000,
+        className: "mobile-toast"
       });
     };
     

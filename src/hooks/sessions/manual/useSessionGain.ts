@@ -43,7 +43,9 @@ export const useSessionGain = () => {
       toast({
         title: "Limite journalière atteinte",
         description: `Vous avez atteint votre limite de gain journalier de ${dailyLimit}€. Revenez demain ou passez à un forfait supérieur.`,
-        variant: "destructive"
+        variant: "destructive",
+        className: "mobile-toast",
+        duration: 4000
       });
       return { success: false, finalGain: 0, newBalance: currentBalance };
     }
@@ -74,6 +76,8 @@ export const useSessionGain = () => {
     toast({
       title: "Session terminée",
       description: `CashBot a généré ${finalGain.toFixed(2)}€ de revenus pour vous !`,
+      className: "mobile-toast",
+      duration: 4000
     });
     
     return {

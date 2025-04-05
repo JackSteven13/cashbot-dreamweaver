@@ -16,7 +16,7 @@ export function Toaster() {
     <ToastProvider>
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
-          <Toast key={id} {...props} className="toast-notification max-w-[90vw] z-[1000] md:max-w-md">
+          <Toast key={id} {...props} className="toast-notification max-w-[94vw] z-[1000] md:max-w-md">
             <div className="grid gap-1 w-full">
               {title && <ToastTitle className="text-base sm:text-lg">{title}</ToastTitle>}
               {description && (
@@ -28,7 +28,7 @@ export function Toaster() {
           </Toast>
         )
       })}
-      <ToastViewport className="toast-viewport fixed bottom-0 left-[50%] translate-x-[-50%] p-4 flex flex-col gap-2 w-full max-w-[90vw] md:max-w-md" />
+      <ToastViewport className="toast-viewport fixed top-0 left-[50%] translate-x-[-50%] p-4 flex flex-col gap-2 w-full max-w-[95vw] md:max-w-md" />
     </ToastProvider>
   )
 }
