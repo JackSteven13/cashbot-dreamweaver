@@ -83,3 +83,6 @@ export const calculateAutoSessionGain = (
   // Return amount with 2 decimal places
   return Number(Math.max(0, finalGain).toFixed(2));
 };
+
+// Add compatibility function that matches the name expected in the imports
+export const calculateSessionGain = calculateManualSessionGain;

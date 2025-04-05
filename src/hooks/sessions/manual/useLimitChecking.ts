@@ -1,14 +1,11 @@
-import { useState, useEffect } from 'react';
+
+import { toast } from '@/components/ui/use-toast';
 import { UserData } from '@/types/userData';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
-import { getEffectiveSubscription } from '@/utils/subscription/subscriptionStatus';
+import { getEffectiveSubscription } from '@/utils/subscription';
 import { canStartManualSession } from '@/utils/subscription';
 
-export const useLimitChecking = (
-  userData: UserData | null,
-  dailySessionCount: number,
-  setShowLimitAlert: (show: boolean) => void
-) => {
+export const useLimitChecking = () => {
   const checkSessionLimit = (
     userData: UserData, 
     dailySessionCount: number,

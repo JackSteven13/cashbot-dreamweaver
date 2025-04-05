@@ -2,7 +2,6 @@
 import { toast } from '@/components/ui/use-toast';
 import { 
   SUBSCRIPTION_LIMITS, 
-  getEffectiveSubscription,
   calculateManualSessionGain
 } from '@/utils/subscription';
 import { UserData } from '@/types/userData';
@@ -20,9 +19,9 @@ export const useSessionGain = () => {
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Get effective subscription
-    const effectiveSub = getEffectiveSubscription(userData.subscription);
+    const effectiveSub = userData.subscription;
     
-    // Calculate daily limit based on effective subscription
+    // Calculate daily limit based on subscription
     const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     const remainingAmount = dailyLimit - currentBalance;
     
