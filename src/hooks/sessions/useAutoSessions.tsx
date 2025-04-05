@@ -12,6 +12,21 @@ export const useAutoSessions = (
 ) => {
   // Références pour garantir la stabilité des données
   const todaysGainsRef = useRef(0);
+  const lastKnownBalanceRef = useRef(userData?.balance || 0);
+  
+  // Mettre à jour lastKnownBalanceRef quand userData.balance change
+  useEffect(() => {
+    if (userData?.balance !== undefined && userData.balance !== lastKnownBalanceRef.current) {
+      lastKnownBalanceRef.current = userData.balance;
+      
+      // Stocker également en localStorage pour persistence entre les rendus
+      try {
+        localStorage.setItem('lastKnownBalance', userData.balance.toString());
+      } catch (e) {
+        console.error("Failed to store balance in localStorage:", e);
+      }
+    }
+  }, [userData?.balance]);
 
   // Custom hooks pour la logique de génération automatique
   const { getDailyLimit } = useDailyLimits(userData?.subscription);
@@ -34,7 +49,7 @@ export const useAutoSessions = (
     todaysGainsRef,
     generateAutomaticRevenue,
     userData,
-    isBotActive // Passer l'état actif du bot
+    isBotActive
   );
 
   // Simuler des niveaux d'activité

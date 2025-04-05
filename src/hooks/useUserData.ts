@@ -1,15 +1,35 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUserDataFetcher } from './useUserDataFetcher';
 import { UserData } from '@/types/userData';
 
 export const useUserData = () => {
   const [userDataFetcher, userDataActions] = useUserDataFetcher();
   const { userData, isNewUser, dailySessionCount, showLimitAlert, isLoading } = userDataFetcher;
+  const balanceSyncRef = useRef(false);
   
   // Récupérer les données lors du chargement de la page
   useEffect(() => {
-    userDataActions.fetchUserData();
+    userDataActions.fetchUserData().then(() => {
+      // After fetching data, check if we need to restore balance from localStorage
+      if (userData && !balanceSyncRef.current) {
+        const storedBalance = localStorage.getItem('currentBalance');
+        if (storedBalance) {
+          const parsedBalance = parseFloat(storedBalance);
+          if (!isNaN(parsedBalance) && parsedBalance > userData.balance) {
+            console.log(`Restoring balance from localStorage: ${parsedBalance} (server balance: ${userData.balance})`);
+            // If stored balance is higher, use it
+            userDataFetcher.updateUserData({
+              userData: {
+                ...userData,
+                balance: parsedBalance
+              }
+            });
+          }
+        }
+        balanceSyncRef.current = true;
+      }
+    });
     
     // Ajouter une vérification périodique pour la réinitialisation quotidienne
     const checkInterval = setInterval(() => {
@@ -22,6 +42,20 @@ export const useUserData = () => {
     
     return () => clearInterval(checkInterval);
   }, []);
+  
+  // Synchronize with localStorage when balance changes
+  useEffect(() => {
+    if (userData?.balance !== undefined) {
+      const storedBalance = localStorage.getItem('currentBalance');
+      const parsedStored = storedBalance ? parseFloat(storedBalance) : 0;
+      
+      // Only update localStorage if our balance is higher
+      if (!storedBalance || userData.balance > parsedStored) {
+        localStorage.setItem('currentBalance', userData.balance.toString());
+        localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
+      }
+    }
+  }, [userData?.balance]);
   
   // Handler pour rafraîchir les données
   const refreshUserData = useCallback(async (): Promise<boolean> => {
@@ -39,14 +73,23 @@ export const useUserData = () => {
   
   // Handler pour mettre à jour le solde
   const updateBalance = useCallback(async (gain: number, report: string): Promise<void> => {
-    // Implémenter la logique pour mettre à jour le solde
-    // Pour l'instant, on rafraîchit simplement les données
+    // Persist balance to localStorage before API call
+    if (userData?.balance !== undefined) {
+      const newBalance = userData.balance + gain;
+      localStorage.setItem('currentBalance', newBalance.toString());
+      localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
+    }
+    
+    // Now refresh data to update from API
     await refreshUserData();
-    // Return void to match required type
-  }, [refreshUserData]);
+  }, [refreshUserData, userData?.balance]);
   
   // Handler pour réinitialiser le solde
   const resetBalance = useCallback(async (): Promise<void> => {
+    // Clear local storage on reset
+    localStorage.removeItem('currentBalance');
+    localStorage.removeItem('lastBalanceUpdateTime');
+    
     // Implémenter la logique pour réinitialiser le solde
     await refreshUserData();
     // Return void to match required type

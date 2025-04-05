@@ -72,6 +72,14 @@ export const useSessionGain = () => {
     // Calculate new balance (total balance increases)
     const newBalance = currentBalance + finalGain;
     
+    // Persist the new balance in localStorage to prevent loss during page reloads
+    try {
+      localStorage.setItem('lastUpdatedBalance', newBalance.toString());
+      localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
+    } catch (e) {
+      console.error("Failed to persist balance in local storage:", e);
+    }
+    
     // Show success toast
     toast({
       title: "Analyse terminée",

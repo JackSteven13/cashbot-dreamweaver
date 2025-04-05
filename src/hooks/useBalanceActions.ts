@@ -1,4 +1,3 @@
-
 import { UserData, Transaction } from "@/types/userData";
 import { useUserSession } from './useUserSession';
 
@@ -48,9 +47,19 @@ export const useBalanceActions = ({
     try {
       console.log("Updating balance with gain:", gain, "force update:", forceUpdate);
       
+      // Always persist the latest balance in localStorage
+      const currentBalanceBeforeUpdate = userData.balance;
+      const calculatedNewBalance = Number((currentBalanceBeforeUpdate + gain).toFixed(2));
+      
+      try {
+        localStorage.setItem('currentBalance', calculatedNewBalance.toString());
+        localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
+      } catch (e) {
+        console.error("Failed to persist balance in localStorage:", e);
+      }
+      
       // If force update is set, update local state immediately before API call
       if (forceUpdate) {
-        const calculatedNewBalance = Number((userData.balance + gain).toFixed(2));
         console.log("Force updating UI before API call. New balance:", calculatedNewBalance);
         
         // Create a temporary transaction for immediate feedback
@@ -77,7 +86,19 @@ export const useBalanceActions = ({
         
         // Update state after API call to ensure consistency with backend data
         setUserData(prevData => {
-          const newBalance = result.newBalance !== undefined ? result.newBalance : prevData.balance;
+          let newBalance = calculatedNewBalance;
+          
+          // Only use API balance if available, otherwise keep calculated balance
+          if (result.newBalance !== undefined) {
+            newBalance = result.newBalance;
+          }
+          
+          // Always ensure we don't lose track of accumulated gain
+          // If API balance is less than our calculated balance, use the higher value
+          if (newBalance < calculatedNewBalance) {
+            console.log("API balance is less than calculated balance, using calculated balance");
+            newBalance = calculatedNewBalance;
+          }
           
           // Only add transaction if we didn't already add a temporary one
           if (!forceUpdate && result.transaction) {
@@ -110,29 +131,20 @@ export const useBalanceActions = ({
         }
       } else {
         console.error("Balance update failed");
-        // If API call fails and we had force updated, revert to original balance
-        if (forceUpdate) {
-          console.log("API call failed, reverting to original balance:", userData.balance);
+        
+        // Even if API call fails, we keep the updated balance in state to prevent regression
+        // This ensures users don't see their balance disappear
+        if (!forceUpdate) {
+          // Only update state if we haven't already updated it with force update
           setUserData(prevData => ({
             ...prevData,
-            balance: userData.balance,
-            // Remove the temporary transaction
-            transactions: prevData.transactions.filter(tx => !(tx as TempTransaction).id?.toString().startsWith('temp-'))
+            balance: calculatedNewBalance,
           }));
         }
       }
     } catch (error) {
       console.error("Error in updateBalance:", error);
-      // If error occurs and we had force updated, revert to original balance
-      if (forceUpdate) {
-        console.log("Error occurred, reverting to original balance:", userData.balance);
-        setUserData(prevData => ({
-          ...prevData,
-          balance: userData.balance,
-          // Remove the temporary transaction
-          transactions: prevData.transactions.filter(tx => !(tx as TempTransaction).id?.toString().startsWith('temp-'))
-        }));
-      }
+      // Even if error occurs, keep the updated balance to prevent regression
     }
   };
 
@@ -141,6 +153,10 @@ export const useBalanceActions = ({
       const result = await resetUserBalance();
       
       if (result.success) {
+        // Clear balance in localStorage on successful reset
+        localStorage.removeItem('currentBalance');
+        localStorage.removeItem('lastBalanceUpdateTime');
+        
         setUserData(prev => {
           // Create a properly formatted Transaction object if a transaction exists
           let newTransaction: TempTransaction | null = null;

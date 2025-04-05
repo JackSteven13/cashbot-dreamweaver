@@ -41,8 +41,13 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   const [effectiveLimit, setEffectiveLimit] = useState(dailyLimit);
   const [botStatus, setBotStatus] = useState(isBotActive);
   
+  // Convert remainingSessions to number safely for countdown
+  const remainingSessionsNumber = typeof remainingSessions === 'number' 
+    ? remainingSessions 
+    : parseInt(remainingSessions as string, 10) || 0;
+  
   const { timeRemaining, isCountingDown } = useSessionCountdown(
-    typeof remainingSessions === 'number' ? 1 - remainingSessions : 0, 
+    1 - remainingSessionsNumber, // Convert to proper format
     subscription,
     lastSessionTimestamp
   );

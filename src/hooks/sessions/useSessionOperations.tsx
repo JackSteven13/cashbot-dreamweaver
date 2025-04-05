@@ -19,6 +19,7 @@ export const useSessionOperations = (
 ) => {
   const sessionInProgress = useRef(false);
   const operationLock = useRef(false);
+  const cumulativeBalanceRef = useRef<number | null>(null);
 
   /**
    * Generate automatic revenue based on subscription type and limits
@@ -41,6 +42,17 @@ export const useSessionOperations = (
       );
       const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
       todaysGainsRef.current = todaysGains;
+
+      // Initialize cumulativeBalanceRef if not yet set
+      if (cumulativeBalanceRef.current === null) {
+        // Try to get it from localStorage first for persistence
+        const storedBalance = localStorage.getItem('lastKnownBalance');
+        if (storedBalance) {
+          cumulativeBalanceRef.current = parseFloat(storedBalance);
+        } else {
+          cumulativeBalanceRef.current = userData.balance || 0;
+        }
+      }
       
       // Calculate remaining allowed gains for today
       const remainingAllowedGains = Math.max(0, dailyLimit - todaysGainsRef.current);
@@ -104,6 +116,18 @@ export const useSessionOperations = (
       // Mettre à jour le tracker des gains journaliers
       todaysGainsRef.current += randomGain;
       
+      // Mettre à jour le solde cumulatif interne
+      if (cumulativeBalanceRef.current !== null) {
+        cumulativeBalanceRef.current += randomGain;
+        
+        // Stocker en localStorage pour persistence entre les rendus
+        try {
+          localStorage.setItem('lastKnownBalance', cumulativeBalanceRef.current.toString());
+        } catch (e) {
+          console.error("Failed to store balance in localStorage:", e);
+        }
+      }
+      
       // Déclencher l'événement d'analyse complète avec le gain - TOUJOURS utiliser background:true
       triggerDashboardEvent('analysis-complete', { 
         gain: randomGain, 
@@ -118,7 +142,7 @@ export const useSessionOperations = (
       );
       
       // Déclencher directement l'événement de mise à jour du solde avec le solde actuel et le gain
-      const currentBalance = (userData.balance || 0) + randomGain;
+      const currentBalance = cumulativeBalanceRef.current;
       const balanceEvent = new CustomEvent('balance:update', {
         detail: { 
           amount: randomGain,
