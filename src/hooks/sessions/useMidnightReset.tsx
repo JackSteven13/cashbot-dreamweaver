@@ -10,7 +10,7 @@ import { toast } from '@/components/ui/use-toast';
 export const useMidnightReset = (
   userData: UserData,
   incrementSessionCount: () => Promise<void>,
-  updateBalance: (gain: number, report: string) => Promise<void>,
+  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>,
   setShowLimitAlert: (show: boolean) => void
 ) => {
   const lastResetTimeRef = useRef<number>(Date.now());

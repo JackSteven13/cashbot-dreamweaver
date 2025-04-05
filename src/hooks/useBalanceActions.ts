@@ -46,12 +46,23 @@ export const useBalanceActions = ({
       
       // If force update is set, update local state immediately before API call
       if (forceUpdate) {
-        const calculatedNewBalance = userData.balance + gain;
+        const calculatedNewBalance = Number((userData.balance + gain).toFixed(2));
         console.log("Force updating UI before API call. New balance:", calculatedNewBalance);
+        
+        // Create a temporary transaction for immediate feedback
+        const newTransaction = {
+          date: new Date().toISOString(),
+          gain: gain,
+          amount: gain,
+          report: report,
+          type: "Système",
+          id: `temp-${Date.now()}`
+        };
         
         setUserData(prevData => ({
           ...prevData,
-          balance: calculatedNewBalance
+          balance: calculatedNewBalance,
+          transactions: [newTransaction, ...prevData.transactions]
         }));
       }
       
@@ -60,26 +71,32 @@ export const useBalanceActions = ({
       if (result.success) {
         console.log("Balance update successful. New balance from API:", result.newBalance);
         
-        // Always update state after API call to ensure consistency
+        // Update state after API call to ensure consistency with backend data
         setUserData(prevData => {
           const newBalance = result.newBalance !== undefined ? result.newBalance : prevData.balance;
           
-          // Create a properly formatted Transaction object
-          const newTransaction = result.transaction ? {
-            date: result.transaction.date,
-            amount: result.transaction.gain,
-            type: result.transaction.report,
-            report: result.transaction.report,
-            gain: result.transaction.gain
-          } : null;
+          // Only add transaction if we didn't already add a temporary one
+          if (!forceUpdate && result.transaction) {
+            const newTransaction = {
+              date: result.transaction.date,
+              amount: result.transaction.gain,
+              type: result.transaction.report,
+              report: result.transaction.report,
+              gain: result.transaction.gain,
+              id: result.transaction.id || `tx-${Date.now()}`
+            };
+            
+            return {
+              ...prevData,
+              balance: newBalance,
+              transactions: [newTransaction, ...prevData.transactions]
+            };
+          }
           
+          // If we already added a temporary transaction, just update the balance
           return {
             ...prevData,
-            balance: newBalance,
-            transactions: newTransaction ? [
-              newTransaction,
-              ...prevData.transactions
-            ] : prevData.transactions
+            balance: newBalance
           };
         });
         
@@ -93,7 +110,9 @@ export const useBalanceActions = ({
           console.log("API call failed, reverting to original balance:", userData.balance);
           setUserData(prevData => ({
             ...prevData,
-            balance: userData.balance
+            balance: userData.balance,
+            // Remove the temporary transaction
+            transactions: prevData.transactions.filter(tx => !tx.id?.toString().startsWith('temp-'))
           }));
         }
       }
@@ -104,7 +123,9 @@ export const useBalanceActions = ({
         console.log("Error occurred, reverting to original balance:", userData.balance);
         setUserData(prevData => ({
           ...prevData,
-          balance: userData.balance
+          balance: userData.balance,
+          // Remove the temporary transaction
+          transactions: prevData.transactions.filter(tx => !tx.id?.toString().startsWith('temp-'))
         }));
       }
     }
@@ -122,7 +143,8 @@ export const useBalanceActions = ({
             amount: -result.transaction.gain, // Negative amount for withdrawals
             type: "Retrait",
             report: result.transaction.report,
-            gain: -result.transaction.gain
+            gain: -result.transaction.gain,
+            id: result.transaction.id || `withdraw-${Date.now()}`
           } : null;
           
           return {

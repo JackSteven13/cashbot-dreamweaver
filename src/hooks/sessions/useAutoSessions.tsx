@@ -10,7 +10,7 @@ import { triggerDashboardEvent } from '@/utils/animations';
 
 export const useAutoSessions = (
   userData: UserData,
-  updateBalance: (gain: number, report: string) => Promise<void>,
+  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>,
   setShowLimitAlert: (show: boolean) => void
 ) => {
   const [lastAutoSessionTime, setLastAutoSessionTime] = useState(Date.now());
@@ -169,10 +169,11 @@ export const useAutoSessions = (
       // Déclencher l'événement d'analyse terminée avec le gain
       triggerDashboardEvent('analysis-complete', { gain: randomGain });
       
-      // Update user balance and show notification
+      // Update user balance with forceUpdate set to true for immediate UI update
       await updateBalance(
         randomGain,
-        `Le système a généré ${randomGain.toFixed(2)}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${userData.subscription} vous permet d'accéder à ce niveau de performance.`
+        `Le système a généré ${randomGain.toFixed(2)}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${userData.subscription} vous permet d'accéder à ce niveau de performance.`,
+        true // Force immediate UI update
       );
       
       // Déclencher directement l'événement de mise à jour du solde
@@ -186,16 +187,7 @@ export const useAutoSessions = (
         toast({
           title: "Revenus générés",
           description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`,
-          action: userData.subscription === 'freemium' ? (
-            <button
-              onClick={() => {
-                window.location.href = '/upgrade';
-              }}
-              className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded text-xs"
-            >
-              Améliorer
-            </button>
-          ) : undefined
+          // Suppression du bouton "Améliorer" pour les utilisateurs freemium
         });
       }
     } catch (error) {
