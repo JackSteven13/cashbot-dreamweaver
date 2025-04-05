@@ -1,5 +1,5 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/hooks/use-toast';
 import { calculateAutoSessionGain } from '@/utils/subscription';
@@ -18,6 +18,22 @@ export const useAutoRevenueGenerator = (
   const sessionInProgress = useRef(false);
   const operationLock = useRef(false);
   const [botActive, setBotActive] = useState(true);
+
+  // Écouteur d'événements pour synchroniser l'état du bot à travers l'application
+  useEffect(() => {
+    const handleBotStatusChange = (event: CustomEvent) => {
+      const isActive = event.detail?.active;
+      if (typeof isActive === 'boolean') {
+        setBotActive(isActive);
+      }
+    };
+    
+    window.addEventListener('bot:status-change' as any, handleBotStatusChange);
+    
+    return () => {
+      window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
+    };
+  }, []);
 
   /**
    * Generate automatic revenue based on subscription type and limits
@@ -188,21 +204,6 @@ export const useAutoRevenueGenerator = (
       detail: { active: true } 
     }));
   };
-
-  // Écouter les changements d'état du bot provenant d'autres composants
-  useRef(() => {
-    const handleBotStatusChange = (event: CustomEvent) => {
-      const isActive = event.detail?.active;
-      if (typeof isActive === 'boolean') {
-        setBotActive(isActive);
-      }
-    };
-    
-    window.addEventListener('bot:status-change' as any, handleBotStatusChange);
-    return () => {
-      window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
-    };
-  });
 
   return {
     generateAutomaticRevenue,

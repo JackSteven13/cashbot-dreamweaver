@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Bot, BotOff } from 'lucide-react';
 
 interface BalanceDisplayProps {
@@ -37,6 +37,9 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   
   // Ref pour la fonction d'animation
   const balanceRef = useRef<HTMLDivElement>(null);
+
+  // State local pour suivre l'état du bot
+  const [localBotActive, setLocalBotActive] = useState(isBotActive);
   
   // Ajouter la classe pour le ciblage des animations
   useEffect(() => {
@@ -44,6 +47,25 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       balanceRef.current.classList.add('balance-display');
     }
   }, []);
+  
+  // Écouter les événements de changement d'état du bot
+  useEffect(() => {
+    const handleBotStatusChange = (event: CustomEvent) => {
+      const isActive = event.detail?.active;
+      if (typeof isActive === 'boolean') {
+        setLocalBotActive(isActive);
+      }
+    };
+    
+    window.addEventListener('bot:status-change' as any, handleBotStatusChange);
+    
+    // Synchroniser avec la prop isBotActive au montage et lorsqu'elle change
+    setLocalBotActive(isBotActive);
+    
+    return () => {
+      window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
+    };
+  }, [isBotActive]);
   
   return (
     <div className="pt-4 pb-6 text-center" ref={balanceRef}>
@@ -68,7 +90,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         
         {/* Amélioration de l'indicateur de l'état du bot */}
         <div className="mt-3 flex items-center justify-center gap-1">
-          {isBotActive ? (
+          {localBotActive ? (
             <>
               <Bot size={14} className="text-green-500" />
               <span className="text-xs text-green-300 blink-activity">

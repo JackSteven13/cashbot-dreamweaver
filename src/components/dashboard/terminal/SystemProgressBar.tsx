@@ -22,22 +22,28 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
   const [calculatedPercentage, setCalculatedPercentage] = useState(limitPercentage);
   const [localBotActive, setLocalBotActive] = useState(botActive);
   
+  // Calculer les limites et pourcentages et vérifier si la limite est atteinte
   useEffect(() => {
     const effectiveSub = getEffectiveSubscription(subscription);
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     setEffectiveLimit(limit);
     
-    // Calculer le pourcentage et vérifier si la limite est atteinte
-    const percentage = Math.min(100, limitPercentage);
+    // Calculer le pourcentage actuel de la limite journalière
+    const percentage = Math.min(100, (displayBalance / limit) * 100);
     setCalculatedPercentage(percentage);
     
-    // Si le pourcentage atteint 100%, désactiver le bot
+    // Si le pourcentage atteint 100% (= limite atteinte), désactiver le bot
     if (percentage >= 100 && localBotActive) {
       setLocalBotActive(false);
+      
+      // Propager le changement d'état du bot à travers l'application
+      window.dispatchEvent(new CustomEvent('bot:status-change', { 
+        detail: { active: false } 
+      }));
     }
   }, [subscription, displayBalance, dailyLimit, limitPercentage, localBotActive]);
   
-  // Écouter les changements de statut du bot provenant d'autres composants
+  // Synchroniser l'état local avec la prop botActive et écouter les événements
   useEffect(() => {
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
@@ -48,7 +54,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
     
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     
-    // Synchroniser avec la prop botActive
+    // Synchroniser avec la prop botActive au montage
     setLocalBotActive(botActive);
     
     return () => {
@@ -63,7 +69,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
           Progression de la limite journalière
         </div>
         <div className="text-xs font-medium text-gray-300 flex items-center">
-          <span className="text-blue-300 mr-2">{limitPercentage.toFixed(0)}%</span> / {effectiveLimit}€ par jour
+          <span className="text-blue-300 mr-2">{Math.round(calculatedPercentage)}%</span> / {effectiveLimit}€ par jour
           
           {/* Indicateur d'état du bot amélioré */}
           <span className={`ml-2 inline-flex h-2 w-2 rounded-full ${localBotActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
