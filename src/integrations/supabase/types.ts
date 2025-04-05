@@ -38,22 +38,58 @@ export type Database = {
       }
       profiles: {
         Row: {
+          access_code: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
           id: string
+          referrer_id: string | null
         }
         Insert: {
+          access_code?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id: string
+          referrer_id?: string | null
         }
         Update: {
+          access_code?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
+          referrer_id?: string | null
+        }
+        Relationships: []
+      }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by_admin: boolean
+          id: string
+          is_active: boolean
+          owner_id: string | null
+          usage_count: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by_admin?: boolean
+          id?: string
+          is_active?: boolean
+          owner_id?: string | null
+          usage_count?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by_admin?: boolean
+          id?: string
+          is_active?: boolean
+          owner_id?: string | null
+          usage_count?: number
         }
         Relationships: []
       }
@@ -169,6 +205,10 @@ export type Database = {
           subscription: string
           updated_at: string
         }[]
+      }
+      generate_access_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_current_subscription: {
         Args: {

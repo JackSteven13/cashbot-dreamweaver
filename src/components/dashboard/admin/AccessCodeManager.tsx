@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import AccessCodeGenerator from './AccessCodeGenerator';
 
+// Define our own types for the referral_codes table
 interface CodeData {
   id: string;
   code: string;
@@ -63,6 +64,7 @@ const AccessCodeManager = () => {
     
     try {
       // Récupérer les codes depuis la base de données
+      // Use any type to bypass TypeScript errors for now
       const { data: codesData, error: codesError } = await supabase
         .from('referral_codes')
         .select('*')
@@ -72,7 +74,7 @@ const AccessCodeManager = () => {
       
       // Récupérer les informations des propriétaires des codes
       const codesWithOwners = await Promise.all(
-        (codesData || []).map(async (code) => {
+        (codesData || []).map(async (code: any) => {
           if (code.owner_id) {
             const { data: ownerData, error: ownerError } = await supabase
               .from('profiles')
@@ -102,7 +104,7 @@ const AccessCodeManager = () => {
         })
       );
       
-      setCodes(codesWithOwners);
+      setCodes(codesWithOwners as CodeData[]);
     } catch (error) {
       console.error("Error loading codes:", error);
       toast({
@@ -117,9 +119,10 @@ const AccessCodeManager = () => {
   
   const handleToggleCodeStatus = async (id: string, currentStatus: boolean) => {
     try {
+      // Use any type to bypass TypeScript errors for now
       const { error } = await supabase
         .from('referral_codes')
-        .update({ is_active: !currentStatus })
+        .update({ is_active: !currentStatus } as any)
         .eq('id', id);
         
       if (error) throw error;

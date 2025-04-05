@@ -54,6 +54,7 @@ const AccessCodeVerification = ({ onVerificationSuccess }: AccessCodeVerificatio
       }
 
       // Vérifier le code dans la base de données
+      // Use "any" type to bypass TypeScript errors due to missing types
       const { data, error } = await supabase
         .from('referral_codes')
         .select('*')

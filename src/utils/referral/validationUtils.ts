@@ -13,7 +13,8 @@ export const validateReferralCode = async (code: string) => {
   if (code === '87878787') return true;
   
   try {
-    // Rechercher le code dans la table des codes de référence
+    // Nous ne pouvons pas utiliser le typesafety pour cette table spécifique
+    // car elle n'est pas encore dans les types générés
     const { data, error } = await supabase
       .from('referral_codes')
       .select('id, owner_id, is_active')
@@ -44,6 +45,7 @@ export const getReferrerIdFromCode = async (code: string) => {
   if (code === '87878787') return null;
   
   try {
+    // Contourner le typesafety pour cette requête spécifique
     const { data, error } = await supabase
       .from('referral_codes')
       .select('owner_id')
