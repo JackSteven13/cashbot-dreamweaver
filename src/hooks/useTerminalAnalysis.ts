@@ -3,60 +3,72 @@ import { useState, useEffect } from 'react';
 
 export const useTerminalAnalysis = () => {
   const [showAnalysis, setShowAnalysis] = useState(false);
-  const [analysisStep, setAnalysisStep] = useState(0);
-  const [analysisComplete, setAnalysisComplete] = useState(false);
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
-  
-  const analysisSteps = [
-    "Initialisation de l'analyse vidéo...",
-    "Connexion aux serveurs publicitaires...",
-    "Identification des annonceurs premium...",
-    "Analyse du taux de conversion...",
-    "Optimisation des métriques d'engagement...",
-    "Calcul des revenus générés...",
-    "Mise à jour du solde utilisateur...",
-    "Transaction complétée avec succès!"
-  ];
-  
-  // Handle terminal animation
-  useEffect(() => {
-    if (showAnalysis && analysisStep < analysisSteps.length) {
-      const timer = setTimeout(() => {
-        setTerminalLines(prev => [...prev, analysisSteps[analysisStep]]);
-        setAnalysisStep(prev => prev + 1);
-        
-        // Mark analysis as complete when all steps are done
-        if (analysisStep === analysisSteps.length - 1) {
-          setAnalysisComplete(true);
-          setTimeout(() => {
-            setShowAnalysis(false);
-            setAnalysisStep(0);
-            setAnalysisComplete(false);
-            setTerminalLines([]);
-          }, 3000);
-        }
-      }, 400);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [showAnalysis, analysisStep]);
+  const [analysisComplete, setAnalysisComplete] = useState(false);
 
-  // Start terminal animation when a session is started
   useEffect(() => {
-    const handleSessionStart = () => {
-      setShowAnalysis(true);
+    // Listen for terminal updates - these are in-dashboard updates that don't trigger loading screens
+    const handleTerminalUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const line = customEvent.detail?.line;
+      
+      if (line) {
+        setTerminalLines(prev => [...prev, line]);
+        setShowAnalysis(true);
+      }
     };
-    
-    window.addEventListener('session:start', handleSessionStart);
-    return () => window.removeEventListener('session:start', handleSessionStart);
-  }, []);
-  
-  return {
-    showAnalysis,
-    analysisStep,
-    analysisComplete,
-    terminalLines,
-    analysisSteps,
-    setShowAnalysis
-  };
+
+    // Listen for analysis start events
+    const handleAnalysisStart = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      
+      // Only show analysis UI if not running in background
+      if (!customEvent.detail?.background) {
+        setShowAnalysis(true);
+        setAnalysisComplete(false);
+        setTerminalLines([
+          'Initialisation de l\'analyse réseau...',
+        ]);
+      }
+    };
+
+    // Listen for analysis complete events
+    const handleAnalysisComplete = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const gain = customEvent.detail?.gain || 0;
+      
+      // Only update UI if not running in background or if terminal is already showing
+      if (!customEvent.detail?.background || showAnalysis) {
+        setTerminalLines(prev => [
+          ...prev, 
+          `Analyse terminée avec succès! Revenus générés: ${gain.toFixed(2)}€`
+        ]);
+        setAnalysisComplete(true);
+        
+        // Hide terminal after 5 seconds
+        setTimeout(() => {
+          setShowAnalysis(false);
+          // Reset terminal lines after animation completes
+          setTimeout(() => {
+            setTerminalLines([]);
+            setAnalysisComplete(false);
+          }, 300);
+        }, 5000);
+      }
+    };
+
+    window.addEventListener('dashboard:terminal-update', handleTerminalUpdate);
+    window.addEventListener('dashboard:analysis-start', handleAnalysisStart);
+    window.addEventListener('dashboard:analysis-complete', handleAnalysisComplete);
+
+    return () => {
+      window.removeEventListener('dashboard:terminal-update', handleTerminalUpdate);
+      window.removeEventListener('dashboard:analysis-start', handleAnalysisStart);
+      window.removeEventListener('dashboard:analysis-complete', handleAnalysisComplete);
+    };
+  }, [showAnalysis]);
+
+  return { showAnalysis, terminalLines, analysisComplete };
 };
+
+export default useTerminalAnalysis;

@@ -8,7 +8,7 @@ export const triggerDashboardEvent = (
   options: { debounce?: number; background?: boolean } = {}
 ) => {
   // Skip triggering loading events if background is true
-  if (data.background && (eventName === 'analysis-start' || eventName === 'loading-start')) {
+  if ((data.background || options.background) && (eventName === 'analysis-start' || eventName === 'loading-start')) {
     console.log(`Skipping loading screen for background ${eventName} event`);
     return;
   }

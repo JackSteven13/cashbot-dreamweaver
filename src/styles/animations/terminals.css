@@ -1,15 +1,70 @@
 
-/* Terminal animation styles */
+/* Terminal-specific animations */
 .terminal-text {
-  font-family: monospace;
   overflow: hidden;
+  border-right: 2px solid transparent;
   white-space: nowrap;
-  margin: 0;
-  letter-spacing: 0.15em;
-  animation: typing 3.5s steps(40, end);
+  margin: 0 auto;
+  animation: 
+    typing 2s steps(40, end),
+    blink-caret .75s step-end infinite;
 }
 
 @keyframes typing {
   from { width: 0 }
   to { width: 100% }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: #4a9eff }
+}
+
+/* Blinking cursor for terminal effect */
+.blink-cursor::after {
+  content: '|';
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Balance increase animation */
+.balance-increase {
+  animation: balance-increase-anim 1s ease-out;
+}
+
+@keyframes balance-increase-anim {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Terminal fade-in/out animation */
+.terminal-fade-in {
+  animation: terminal-fade-in 0.3s ease-in-out;
+}
+
+.terminal-fade-out {
+  animation: terminal-fade-out 0.3s ease-in-out;
+}
+
+@keyframes terminal-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes terminal-fade-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(10px); }
 }

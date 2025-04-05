@@ -132,12 +132,26 @@ export const useAutoSessions = (
       operationLock.current = true;
       sessionInProgress.current = true;
       
-      // Trigger an analysis event before the gain is calculated
-      // ⚠️ Important: Use background: true to prevent loading screen
+      // Trigger analysis start event - IMPORTANT: Always use background:true to prevent loading screen
       triggerDashboardEvent('analysis-start', { background: true });
       
-      // Wait a short moment for the analysis animation
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Simulate terminal animation within the dashboard - no loading screen
+      // Show progressive terminal outputs in the terminal component
+      triggerDashboardEvent('terminal-update', { 
+        line: "Initialisation de l'analyse réseau...",
+        background: true
+      });
+      
+      // Wait a short moment for visual feedback
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      triggerDashboardEvent('terminal-update', { 
+        line: "Calcul des revenus potentiels...",
+        background: true
+      });
+      
+      // Wait another short moment
+      await new Promise(resolve => setTimeout(resolve, 700));
       
       // Get the daily limit for the current subscription
       const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
@@ -156,6 +170,12 @@ export const useAutoSessions = (
       if (remainingAllowedGains <= 0) {
         // If limit reached, show alert and stop
         setShowLimitAlert(true);
+        
+        triggerDashboardEvent('terminal-update', { 
+          line: "Limite journalière atteinte. Réessayez demain.",
+          background: true
+        });
+        
         sessionInProgress.current = false;
         operationLock.current = false;
         return;
@@ -164,21 +184,28 @@ export const useAutoSessions = (
       // Calculate gain using the utility function (respecting daily limit)
       const baseGain = calculateAutoSessionGain(
         userData.subscription, 
-        todaysGains, // Pass today's gains, not total balance
+        todaysGains, 
         userData.referrals.length
       );
       
       // Ensure we don't exceed daily limit
       const randomGain = Math.min(baseGain, remainingAllowedGains);
       
+      // Update terminal with success message
+      triggerDashboardEvent('terminal-update', { 
+        line: `Analyse terminée avec succès! Revenus générés: ${randomGain.toFixed(2)}€`,
+        background: true
+      });
+      
       // Update today's gains tracker
       todaysGainsRef.current += randomGain;
       
-      // Trigger the analysis complete event with the gain
-      // ⚠️ Important: Use background: true to prevent loading screen
-      triggerDashboardEvent('analysis-complete', { gain: randomGain, background: true });
+      // Trigger the analysis complete event with the gain - ALWAYS use background:true
+      triggerDashboardEvent('analysis-complete', { 
+        gain: randomGain, 
+        background: true 
+      });
       
-      // ALWAYS update balance, regardless of daily limit
       // Update user balance with forceUpdate set to true for immediate UI update
       await updateBalance(
         randomGain,
@@ -186,9 +213,13 @@ export const useAutoSessions = (
         true // Force immediate UI update
       );
       
-      // Directly trigger the balance update event
+      // Directly trigger the balance update event with current balance
+      const currentBalance = (userData.balance || 0) + randomGain;
       const balanceEvent = new CustomEvent('balance:update', {
-        detail: { amount: randomGain }
+        detail: { 
+          amount: randomGain,
+          currentBalance: currentBalance
+        }
       });
       window.dispatchEvent(balanceEvent);
 
