@@ -59,6 +59,24 @@
     max-height: 100vh;
     z-index: 1000;
   }
+  
+  /* Ajustements pour les dialogues sur mobile */
+  [data-state="open"] > .dialog-content {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    padding: 1rem !important;
+  }
+  
+  /* Ajustements pour les boutons sur mobile */
+  button {
+    touch-action: manipulation;
+  }
+  
+  /* Meilleurs espaces pour les éléments interactifs sur mobile */
+  .interactive-element {
+    min-height: 40px;
+    min-width: 40px;
+  }
 }
 
 /* Animation pour le solde lorsqu'il est mis à jour */
@@ -90,7 +108,7 @@
 
 /* Styles pour les boutons de démarrage */
 .home-cta-button {
-  @apply bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-md transition-colors;
+  @apply bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-md transition-colors;
 }
 
 /* Améliorer le contraste des labels dans le simulateur */
@@ -133,6 +151,25 @@
   .content-padding-top {
     padding-top: 7rem;
   }
+  
+  /* Réduction de taille des textes sur mobile */
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  /* Amélioration des espaces dans les formulaires sur mobile */
+  .form-group {
+    margin-bottom: 0.75rem;
+  }
+  
+  /* Boutons plus adaptés aux doigts sur mobile */
+  button, .button {
+    min-height: 38px;
+  }
 }
 
 @media (min-width: 641px) {
@@ -141,3 +178,11 @@
   }
 }
 
+/* Améliorations pour le responsive des dialogues */
+@media (max-width: 640px) {
+  [data-radix-popper-content-wrapper] {
+    max-width: 90vw !important;
+    transform: translateX(-50%) !important;
+    left: 50% !important;
+  }
+}

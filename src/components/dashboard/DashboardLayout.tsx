@@ -38,7 +38,7 @@ const DashboardLayout = ({
           subscription={subscription} 
         />
         
-        <main className="flex-1 p-3 md:p-6 overflow-x-hidden">
+        <main className={`flex-1 ${isMobile ? 'p-2.5 pt-4' : 'p-3 md:p-6'} overflow-x-hidden`}>
           {children}
         </main>
 
@@ -46,10 +46,10 @@ const DashboardLayout = ({
         <div className="md:hidden fixed bottom-6 right-6 z-50">
           <Button 
             size="icon" 
-            className="h-12 w-12 rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg"
+            className="h-11 w-11 rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg"
             onClick={() => navigate('/')}
           >
-            <Home className="h-6 w-6" />
+            <Home className="h-5 w-5" />
             <span className="sr-only">Retour à l'accueil</span>
           </Button>
         </div>

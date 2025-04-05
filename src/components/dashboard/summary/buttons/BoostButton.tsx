@@ -2,6 +2,7 @@
 import React from 'react';
 import { Activity, AlertTriangle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BoostButtonProps {
   canStartSession: boolean;
@@ -22,13 +23,17 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
   buttonRef,
   onClick
 }) => {
+  const isMobile = useIsMobile();
+  const iconSize = isMobile ? 16 : 18;
+  
   if (canStartSession && !limitReached) {
     return (
       <Button 
         ref={buttonRef}
-        className={`w-full bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] hover:from-[#8B5CF6] hover:to-[#6C53AF] text-white relative overflow-hidden shadow-md ${isStartingSession ? 'boost-button-active' : 'boost-button-pulse'}`}
+        className={`w-full bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] hover:from-[#8B5CF6] hover:to-[#6C53AF] text-white relative overflow-hidden shadow-md py-1.5 ${isStartingSession ? 'boost-button-active' : 'boost-button-pulse'}`}
         disabled={isButtonDisabled || isStartingSession || limitReached}
         onClick={onClick}
+        size={isMobile ? "sm" : "default"}
       >
         {/* Visual indicator of progress towards limit */}
         <div 
@@ -38,17 +43,17 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
         
         {isStartingSession ? (
           <span className="flex items-center">
-            <Activity className="animate-pulse mr-2 h-5 w-5" />
-            <span className="processing-dots">Analyse en cours</span>
+            <Activity className="animate-pulse mr-1.5" size={iconSize} />
+            <span className="processing-dots">Analyse</span>
           </span>
         ) : limitReached ? (
           <span className="flex items-center">
-            <AlertTriangle className="mr-2 h-4 w-4" />
-            Limite atteinte
+            <AlertTriangle className="mr-1.5" size={iconSize} />
+            Limite
           </span>
         ) : (
           <span className="flex items-center">
-            <Zap className="mr-2 h-5 w-5" />
+            <Zap className="mr-1.5" size={iconSize} />
             Boost
           </span>
         )}
@@ -62,17 +67,18 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
   } else {
     return (
       <Button 
-        className="w-full bg-slate-300 hover:bg-slate-300 text-slate-600 cursor-not-allowed shadow-md"
+        className="w-full bg-slate-300 hover:bg-slate-300 text-slate-600 cursor-not-allowed shadow-md py-1.5"
         disabled={true}
+        size={isMobile ? "sm" : "default"}
       >
         {limitReached ? (
           <span className="flex items-center">
-            <AlertTriangle className="mr-2 h-4 w-4" />
-            Limite atteinte
+            <AlertTriangle className="mr-1.5" size={iconSize} />
+            Limite
           </span>
         ) : (
           <span className="flex items-center">
-            <Zap className="mr-2 h-5 w-5" />
+            <Zap className="mr-1.5" size={iconSize} />
             Boost
           </span>
         )}

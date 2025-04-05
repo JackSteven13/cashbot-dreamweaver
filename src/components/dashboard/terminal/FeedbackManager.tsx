@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { FeedbackDialog } from './FeedbackDialog';
 import { SystemInfo } from './SystemInfo';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface FeedbackManagerProps {
   isNewUser: boolean;
@@ -10,9 +11,10 @@ interface FeedbackManagerProps {
 export const FeedbackManager: React.FC<FeedbackManagerProps> = ({ isNewUser }) => {
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const isMobile = useIsMobile();
 
   return (
-    <>
+    <div className={`${isMobile ? 'mb-16' : ''}`}>
       <SystemInfo 
         isNewUser={isNewUser} 
         onFeedbackClick={() => setShowFeedbackDialog(true)} 
@@ -30,6 +32,6 @@ export const FeedbackManager: React.FC<FeedbackManagerProps> = ({ isNewUser }) =
           }
         }}
       />
-    </>
+    </div>
   );
 };
