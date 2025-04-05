@@ -1,10 +1,31 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { animateBalanceUpdate } from '@/utils/animations';
 
 export const useAutoSessionAnimation = () => {
   const balanceElementRef = useRef<HTMLElement | null>(null);
+  const [highestBalance, setHighestBalance] = useState<number>(0);
+  
+  // Initialiser avec la valeur localStorage au montage
+  useEffect(() => {
+    try {
+      const storedHighestBalance = localStorage.getItem('highestBalance');
+      const storedBalance = localStorage.getItem('currentBalance');
+      
+      if (storedHighestBalance) {
+        setHighestBalance(parseFloat(storedHighestBalance));
+      } else if (storedBalance) {
+        const parsedBalance = parseFloat(storedBalance);
+        if (!isNaN(parsedBalance)) {
+          setHighestBalance(parsedBalance);
+          localStorage.setItem('highestBalance', parsedBalance.toString());
+        }
+      }
+    } catch (e) {
+      console.error("Failed to read persisted balance:", e);
+    }
+  }, []);
   
   useEffect(() => {
     // Trouver et stocker la référence à l'élément du solde
@@ -37,10 +58,21 @@ export const useAutoSessionAnimation = () => {
       
       // Assurer que nous n'avons que des augmentations de solde
       if (balanceElementRef.current && amount > 0) {
-        // Vérifier le solde actuel pour garantir qu'il ne diminue pas
+        // Vérifier le solde actuel pour garantir qu'il ne diminue jamais
         const displayElement = balanceElementRef.current.querySelector('.text-5xl span:first-child');
         const currentDisplayBalance = displayElement ? parseFloat(displayElement.textContent || '0') : 0;
-        const newBalance = Math.max(currentDisplayBalance, currentBalance);
+        
+        // Utiliser toujours la valeur la plus élevée entre:
+        // - Le solde affiché actuellement
+        // - Le nouveau solde calculé
+        // - Le solde le plus élevé jamais atteint (stocké dans state)
+        const newBalance = Math.max(currentDisplayBalance, currentBalance, highestBalance);
+        
+        // Mettre à jour notre référence du solde le plus élevé
+        if (newBalance > highestBalance) {
+          setHighestBalance(newBalance);
+          localStorage.setItem('highestBalance', newBalance.toString());
+        }
         
         // Animer l'élément de solde, mais seulement vers le haut
         animateBalanceUpdate(
@@ -121,16 +153,26 @@ export const useAutoSessionAnimation = () => {
       });
     };
     
+    // Nouveau gestionnaire pour synchroniser le solde entre composants
+    const handleBalanceSync = () => {
+      // Envoyer le solde actuel le plus élevé à tous les composants
+      window.dispatchEvent(new CustomEvent('balance:force-sync', { 
+        detail: { balance: highestBalance }
+      }));
+    };
+    
     window.addEventListener('balance:update', handleBalanceUpdate);
     window.addEventListener('dashboard:animation', handleDashboardAnimation);
     window.addEventListener('dashboard:limit-reached', handleLimitReached);
+    window.addEventListener('balance:sync-request', handleBalanceSync);
     
     return () => {
       window.removeEventListener('balance:update', handleBalanceUpdate);
       window.removeEventListener('dashboard:animation', handleDashboardAnimation);
       window.removeEventListener('dashboard:limit-reached', handleLimitReached);
+      window.removeEventListener('balance:sync-request', handleBalanceSync);
     };
-  }, []);
+  }, [highestBalance]);
   
   return { balanceElementRef };
 };
