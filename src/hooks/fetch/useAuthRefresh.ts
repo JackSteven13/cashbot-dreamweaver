@@ -13,7 +13,9 @@ export const useAuthRefresh = () => {
   // Attempt to refresh the session
   const attemptSessionRefresh = async (): Promise<boolean> => {
     console.log("Auth not valid, attempting refresh...");
-    return await refreshSession();
+    const session = await refreshSession();
+    // Return boolean result based on whether the session was refreshed successfully
+    return session !== null;
   };
 
   return {

@@ -19,12 +19,7 @@ export const useUserData = () => {
           if (!isNaN(parsedBalance) && parsedBalance > userData.balance) {
             console.log(`Restoring balance from localStorage: ${parsedBalance} (server balance: ${userData.balance})`);
             // If stored balance is higher, use it
-            userDataFetcher.updateUserData({
-              userData: {
-                ...userData,
-                balance: parsedBalance
-              }
-            });
+            userDataActions.fetchUserData(); // Fetch user data again instead of using non-existent updateUserData
           }
         }
         balanceSyncRef.current = true;
