@@ -1,12 +1,32 @@
 
-// Exporter les fonctions liées à la gestion des abonnements
-export { shouldResetDailyCounters } from './subscriptionStatus';
-export { canStartManualSession } from './sessionManagement';
-export { calculateManualSessionGain, calculateAutoSessionGain, calculateSessionGain } from './sessionGain';
+// Export functions related to subscription management
+export { 
+  shouldResetDailyCounters,
+  getEffectiveSubscription, 
+  checkDailyLimit
+} from './subscriptionStatus';
 
-// Re-export des constantes liées aux abonnements
-export { SUBSCRIPTION_LIMITS, MANUAL_SESSION_GAIN_PERCENTAGES } from './constants';
-export { getEffectiveSubscription, checkDailyLimit } from './subscriptionStatus';
+export { 
+  canStartManualSession,
+  subscribeToAuthChanges,
+  unsubscribeFromAuthChanges
+} from './sessionManagement';
 
-// Re-export des fonctions d'authentification depuis subscriptionUtils pour assurer la compatibilité
-export { subscribeToAuthChanges, unsubscribeFromAuthChanges } from './sessionManagement';
+export { 
+  calculateManualSessionGain, 
+  calculateAutoSessionGain,
+  calculateSessionGain
+} from './sessionGain';
+
+export { 
+  calculatePotentialGains,
+  calculateAllPlansRevenue 
+} from './gainCalculation';
+
+// Re-export constants from constants.ts
+export { 
+  SUBSCRIPTION_LIMITS, 
+  MANUAL_SESSION_GAIN_PERCENTAGES,
+  WITHDRAWAL_THRESHOLDS,
+  WITHDRAWAL_FEES
+} from './constants';

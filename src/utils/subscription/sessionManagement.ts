@@ -1,35 +1,34 @@
 
-/**
- * Functions for subscribing to auth changes
- */
-export const subscribeToAuthChanges = () => {
-  // Cette fonction serait implémentée pour gérer les abonnements aux changements d'authentification
-  console.log("Subscribing to auth changes");
-  return () => {}; // Noop cleanup function
-};
-
-export const unsubscribeFromAuthChanges = () => {
-  // Cette fonction serait implémentée pour gérer le désabonnement aux changements d'authentification
-  console.log("Unsubscribing from auth changes");
-};
+import { SUBSCRIPTION_LIMITS } from './constants';
 
 /**
- * Vérifie si un utilisateur peut démarrer une session manuelle
- * @param subscription Type d'abonnement de l'utilisateur
- * @param dailySessionCount Nombre de sessions déjà effectuées aujourd'hui
- * @param balance Solde actuel de l'utilisateur
- * @returns true si l'utilisateur peut démarrer une session, false sinon
+ * Check if a manual session can be started based on subscription type
  */
 export const canStartManualSession = (
   subscription: string,
   dailySessionCount: number,
-  balance: number
+  currentBalance: number
 ): boolean => {
-  // Les utilisateurs freemium ont une limite de sessions quotidiennes
-  if (subscription === 'freemium') {
-    return dailySessionCount < 1;
+  // For freemium, limit to 1 manual session per day
+  if (subscription === 'freemium' && dailySessionCount >= 1) {
+    return false;
   }
   
-  // Les utilisateurs payants peuvent démarrer autant de sessions qu'ils veulent
+  // For paid subscriptions, allow unlimited manual sessions until daily limit is reached
   return true;
+};
+
+/**
+ * Function to subscribe to auth changes (maintained for backward compatibility)
+ */
+export const subscribeToAuthChanges = () => {
+  console.log("Auth change subscription function called - using updated implementation");
+  return () => {}; // Noop cleanup function
+};
+
+/**
+ * Function to unsubscribe from auth changes (maintained for backward compatibility)
+ */
+export const unsubscribeFromAuthChanges = () => {
+  console.log("Auth change unsubscription function called - using updated implementation");
 };

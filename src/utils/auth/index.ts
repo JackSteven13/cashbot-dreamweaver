@@ -1,14 +1,21 @@
 
-// Export auth utilities with explicit exports pour éviter les conflits
-export { getCurrentSession, forceSignOut } from './sessionUtils';
-export { refreshSession } from './sessionUtils'; // Export explicite pour éviter le conflit
-export { verifyAuth } from './verificationUtils';
-// Éviter le conflit en n'exportant pas refreshSession de verificationUtils
-// à la place on exportera explicitement à partir du sessionUtils
+// Re-export functions from authentication modules
+export {
+  validateEmail,
+  validatePassword,
+  validateUsername
+} from './validationUtils';
 
-// Export subscription utils correctly from the subscription module
-export { 
+export {
+  encryptData,
+  decryptData,
+  generateToken
+} from './encryptionUtils';
+
+export {
+  isUserAuthenticated,
   checkDailyLimit,
-  subscribeToAuthChanges, 
-  unsubscribeFromAuthChanges 
-} from '@/utils/subscription/subscriptionStatus';
+  getEffectiveSubscription,
+  subscribeToAuthChanges,
+  unsubscribeFromAuthChanges
+} from './subscriptionUtils';

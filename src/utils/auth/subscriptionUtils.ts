@@ -1,5 +1,5 @@
 
-import { SUBSCRIPTION_LIMITS } from "@/utils/subscription";
+import { SUBSCRIPTION_LIMITS } from "@/utils/subscription/constants";
 
 /**
  * Checks if a user is at their daily limit based on subscription and balance

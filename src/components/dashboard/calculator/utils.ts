@@ -30,7 +30,7 @@ export const calculateRevenueForAllPlans = (
       if (plan === 'elite') performanceMultiplier = 1.45;
       
       // Revenu basé sur la limite journalière, l'utilisation, les jours et le multiplicateur
-      const monthlyRevenue = dailyLimit * baseUtilization * daysPerMonth * performanceMultiplier;
+      const monthlyRevenue = Number(dailyLimit) * baseUtilization * daysPerMonth * performanceMultiplier;
       
       // Le profit est le revenu moins le coût de l'abonnement
       const profit = monthlyRevenue - subscriptionPrice;
