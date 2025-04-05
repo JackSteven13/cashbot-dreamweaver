@@ -92,16 +92,16 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         <div className="mt-3 flex items-center justify-center gap-1">
           {localBotActive ? (
             <>
-              <Bot size={14} className="text-green-500" />
-              <span className="text-xs text-green-300 blink-activity">
-                Génération active
+              <Bot size={14} className="text-blue-500" />
+              <span className="text-xs text-blue-400 blink-activity">
+                Analyse en cours
               </span>
             </>
           ) : (
             <>
               <BotOff size={14} className="text-red-500" />
               <span className="text-xs text-red-300">
-                Génération inactive
+                Analyse inactive
               </span>
             </>
           )}

@@ -51,7 +51,7 @@ export const useSessionOperations = (
         updateBotStatus(false); // Désactiver le bot
         
         triggerDashboardEvent('terminal-update', { 
-          line: "Limite journalière atteinte. Bot désactivé jusqu'à demain.",
+          line: "Limite journalière atteinte. Analyse automatique suspendue.",
           background: true
         });
         
@@ -70,7 +70,7 @@ export const useSessionOperations = (
       
       // Simuler l'animation du terminal dans le dashboard - sans écran de chargement
       triggerDashboardEvent('terminal-update', { 
-        line: "Initialisation de l'analyse réseau...",
+        line: "Initialisation de l'analyse du contenu vidéo...",
         background: true
       });
       
@@ -78,7 +78,7 @@ export const useSessionOperations = (
       await new Promise(resolve => setTimeout(resolve, 800));
       
       triggerDashboardEvent('terminal-update', { 
-        line: "Calcul des revenus potentiels...",
+        line: "Traitement des données algorithmiques...",
         background: true
       });
       
@@ -97,7 +97,7 @@ export const useSessionOperations = (
       
       // Mettre à jour le terminal avec un message de succès
       triggerDashboardEvent('terminal-update', { 
-        line: `Analyse terminée avec succès! Revenus générés: ${randomGain.toFixed(2)}€`,
+        line: `Analyse complétée. Optimisation des résultats: ${randomGain.toFixed(2)}€`,
         background: true
       });
       
@@ -113,7 +113,7 @@ export const useSessionOperations = (
       // Mettre à jour le solde de l'utilisateur avec forceUpdate à true pour mise à jour UI immédiate
       await updateBalance(
         randomGain,
-        `Le système a généré ${randomGain.toFixed(2)}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${userData.subscription} vous permet d'accéder à ce niveau de performance.`,
+        `Notre système d'analyse de contenu vidéo a généré ${randomGain.toFixed(2)}€ de revenus. Performance basée sur le niveau d'abonnement ${userData.subscription}.`,
         true // Forcer la mise à jour UI immédiate
       );
       
@@ -130,9 +130,9 @@ export const useSessionOperations = (
       // Afficher une notification pour la première session ou aléatoirement pour les suivantes
       if (isFirst || Math.random() > 0.6) {
         toast({
-          title: "Revenus générés",
-          description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`,
-          className: "mobile-toast", // Ajouter la classe pour le style responsive
+          title: "Analyse terminée",
+          description: `Algorithme d'analyse vidéo: +${randomGain.toFixed(2)}€ comptabilisés`,
+          className: "mobile-toast",
           duration: 4000
         });
       }
@@ -151,17 +151,17 @@ export const useSessionOperations = (
         setShowLimitAlert(true);
         
         triggerDashboardEvent('terminal-update', { 
-          line: "Limite journalière atteinte. Bot désactivé jusqu'à demain.",
+          line: "Limite journalière atteinte. Analyses automatiques suspendues.",
           background: true
         });
       }
     } catch (error) {
       console.error("Error generating automatic revenue:", error);
       toast({
-        title: "Erreur",
-        description: "Une erreur est survenue. Veuillez réessayer plus tard.",
+        title: "Erreur système",
+        description: "Une erreur technique est survenue. Réessayer ultérieurement.",
         variant: "destructive",
-        className: "mobile-toast", // Ajouter la classe pour le style responsive
+        className: "mobile-toast",
         duration: 4000
       });
     } finally {

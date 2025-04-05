@@ -30,7 +30,7 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
     return (
       <Button 
         ref={buttonRef}
-        className={`w-full bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] hover:from-[#8B5CF6] hover:to-[#6C53AF] text-white relative overflow-hidden shadow-md py-1.5 ${isStartingSession ? 'boost-button-active' : 'boost-button-pulse'}`}
+        className={`w-full bg-gradient-to-r from-[#3b82f6] to-[#1d4ed8] hover:from-[#2563eb] hover:to-[#1e40af] text-white relative overflow-hidden shadow-md py-1.5 ${isStartingSession ? 'boost-button-active' : 'boost-button-pulse'}`}
         disabled={isButtonDisabled || isStartingSession || limitReached}
         onClick={onClick}
         size={isMobile ? "sm" : "default"}
@@ -44,23 +44,18 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
         {isStartingSession ? (
           <span className="flex items-center">
             <Activity className="animate-pulse mr-1.5" size={iconSize} />
-            <span className="processing-dots">Analyse</span>
+            <span className="processing-dots">Analyse en cours</span>
           </span>
         ) : limitReached ? (
           <span className="flex items-center">
             <AlertTriangle className="mr-1.5" size={iconSize} />
-            Limite
+            Limite atteinte
           </span>
         ) : (
           <span className="flex items-center">
             <Zap className="mr-1.5" size={iconSize} />
-            Boost
+            Lancer l'analyse
           </span>
-        )}
-        
-        {/* Glow effect when inactive but ready */}
-        {!isStartingSession && !limitReached && (
-          <span className="absolute inset-0 rounded-md blur opacity-25 bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] animate-pulse"></span>
         )}
       </Button>
     );
@@ -74,12 +69,12 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
         {limitReached ? (
           <span className="flex items-center">
             <AlertTriangle className="mr-1.5" size={iconSize} />
-            Limite
+            Limite atteinte
           </span>
         ) : (
           <span className="flex items-center">
             <Zap className="mr-1.5" size={iconSize} />
-            Boost
+            Lancer l'analyse
           </span>
         )}
       </Button>

@@ -52,14 +52,20 @@ export const useAutoSessionAnimation = () => {
           }
         );
         
-        // Créer des particules d'argent avec une intensité proportionnelle au montant
-        const particleCount = Math.min(Math.max(Math.floor(amount * 10), 5), 30);
-        createMoneyParticles(balanceElementRef.current, particleCount);
+        // Appliquer seulement un effet de surbrillance subtil, pas de particules
+        if (balanceElementRef.current) {
+          balanceElementRef.current.classList.add('glow-effect');
+          setTimeout(() => {
+            if (balanceElementRef.current) {
+              balanceElementRef.current.classList.remove('glow-effect');
+            }
+          }, 3000);
+        }
         
-        // Afficher une notification adaptative
+        // Afficher une notification sobre et technique
         toast({
-          title: "Gain automatique",
-          description: `CashBot a généré ${amount.toFixed(2)}€ pour vous!`,
+          title: "Revenus générés",
+          description: `Analyse de données vidéo terminée. Revenus comptabilisés: ${amount.toFixed(2)}€`,
           duration: 4000,
           className: "mobile-toast"
         });
@@ -69,7 +75,7 @@ export const useAutoSessionAnimation = () => {
     // Gérer les événements d'animation du dashboard
     const handleDashboardAnimation = (event: Event) => {
       const customEvent = event as CustomEvent;
-      const { type, amount } = customEvent.detail || {};
+      const { type } = customEvent.detail || {};
       
       if (type === 'income' && balanceElementRef.current) {
         // Ajouter une classe pour l'effet de lueur

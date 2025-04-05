@@ -1,118 +1,57 @@
 
-import React, { useRef, useEffect, useState } from 'react';
-import { Terminal, Sparkles, Clock, AlertOctagon } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import React from 'react';
 
 interface TerminalDisplayProps {
-  showAnalysis: boolean;
-  terminalLines: string[];
-  analysisComplete: boolean;
+  showAnalysis?: boolean;
+  terminalLines?: string[];
+  analysisComplete?: boolean;
   limitReached?: boolean;
-  countdownTime?: string;
+  countdownTime?: number;
 }
 
 export const TerminalDisplay: React.FC<TerminalDisplayProps> = ({
-  showAnalysis,
-  terminalLines,
-  analysisComplete,
+  showAnalysis = false,
+  terminalLines = [],
+  analysisComplete = false,
   limitReached = false,
-  countdownTime = '00:00:00'
+  countdownTime = 0
 }) => {
-  const terminalRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [isRemoving, setIsRemoving] = useState(false);
-  const isMobile = useIsMobile();
-  
-  // Scroll to bottom of terminal when new lines are added
-  useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-    }
-    
-    if (showAnalysis && !isVisible) {
-      // Make visible immediately when showing analysis
-      setIsRemoving(false);
-      setIsVisible(true);
-    } else if (!showAnalysis && isVisible && !limitReached) {
-      // Start removal animation when hiding
-      setIsRemoving(true);
-      
-      // Add a small delay before completely hiding the component
-      const timeout = setTimeout(() => {
-        setIsVisible(false);
-      }, 500);
-      return () => clearTimeout(timeout);
-    }
-  }, [terminalLines, showAnalysis, isVisible, limitReached]);
-
-  // Don't render anything if not visible
-  if (!isVisible) return null;
+  if (!showAnalysis) {
+    return null;
+  }
   
   return (
-    <div 
-      ref={terminalRef}
-      className={`bg-black/70 p-2.5 rounded-md my-3 ${isMobile ? 'h-36' : 'h-48'} overflow-y-auto font-mono ${isMobile ? 'text-xs' : 'text-sm'} scrollbar-thin scrollbar-thumb-[#9b87f5] scrollbar-track-transparent transition-all duration-300 
-        ${isRemoving ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
-    >
-      <div className="flex items-center mb-1.5">
-        <Terminal size={isMobile ? 12 : 14} className="mr-1.5 text-[#9b87f5]" />
-        <span className="text-[#9b87f5] font-bold">Stream Genius Terminal</span>
+    <div className="bg-black rounded-lg p-3 mb-4 font-mono text-xs text-green-500 h-48 overflow-y-auto">
+      <div className="terminal-header text-white mb-2 border-b border-gray-700 pb-1 flex justify-between">
+        <span>Traitement d'analyse algorithmique</span>
+        <span className="text-xs text-gray-400">{new Date().toISOString()}</span>
       </div>
       
       {terminalLines.map((line, index) => (
-        <div 
-          key={index} 
-          className={`mb-1 ${index === terminalLines.length - 1 ? 'terminal-text' : ''}`}
-        >
-          <span className="text-green-500">$</span> 
-          <span className={index === terminalLines.length - 2 ? 'text-yellow-300' : 'text-white'}>
-            {line}
-          </span>
-          
-          {index === terminalLines.length - 1 && line.includes("succès") && (
-            <span className="ml-1.5 text-green-400">✓</span>
-          )}
-          
-          {/* Display warning icon for limit reached messages */}
-          {index === terminalLines.length - 1 && line.includes("hors-service") && (
-            <span className="ml-1.5 text-amber-400">⚠</span>
-          )}
+        <div key={index} className="terminal-line py-1">
+          <span className="text-gray-400 mr-2">$</span>
+          <span className="text-green-400">{line}</span>
         </div>
       ))}
       
-      {/* Display countdown timer when limit is reached */}
-      {limitReached && (
-        <div className="mt-3 bg-red-500/20 border border-red-400/30 p-1.5 rounded">
-          <div className="flex items-center mb-1">
-            <AlertOctagon size={isMobile ? 14 : 16} className="text-red-400 mr-1.5" />
-            <span className="text-red-300">Bot hors-service</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Clock size={isMobile ? 12 : 14} className="text-amber-400 mr-1" />
-              <span className="text-amber-300 text-xs">Prochaine session:</span>
+      {analysisComplete && (
+        <div className="text-blue-300 mt-2 border-t border-gray-700 pt-1">
+          {limitReached ? (
+            <div className="text-yellow-300">
+              ** Limite journalière atteinte. Veuillez attendre le prochain cycle ou mettre à niveau votre abonnement. **
             </div>
-            <span className="font-bold text-white bg-black/50 px-1.5 py-0.5 rounded border border-amber-500/30 text-xs">
-              {countdownTime}
-            </span>
-          </div>
+          ) : (
+            <div>
+              ** Analyse complétée avec succès. Algorithme optimisé pour votre abonnement. **
+            </div>
+          )}
         </div>
       )}
       
-      {/* Animation for the last step - funds added */}
-      {analysisComplete && !limitReached && terminalLines.length > 0 && terminalLines[terminalLines.length - 1].includes("succès") && (
-        <div className="mt-2 text-green-300 font-bold animate-pulse">
-          <span className="inline-block mr-1.5">
-            <Sparkles size={isMobile ? 12 : 14} className="inline mr-1" />
-            Fonds ajoutés:
-          </span>
-          <span className="balance-increase inline-block">+{(Math.random() * 0.5 + 0.1).toFixed(2)}€</span>
+      {!analysisComplete && countdownTime > 0 && (
+        <div className="text-yellow-300 mt-2 border-t border-gray-700 pt-1">
+          Prochaine analyse automatique disponible dans: {Math.floor(countdownTime / 60)}:{(countdownTime % 60).toString().padStart(2, "0")}
         </div>
-      )}
-      
-      {/* Blinking cursor effect */}
-      {!analysisComplete && !limitReached && (
-        <span className="blink-cursor"></span>
       )}
     </div>
   );

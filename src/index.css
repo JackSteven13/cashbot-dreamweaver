@@ -82,6 +82,9 @@
   max-width: 340px !important;
   padding: 0.75rem 1rem !important;
   font-size: 0.9rem !important;
+  background-color: rgba(30, 41, 59, 0.97) !important;
+  color: #fff !important;
+  border: 1px solid rgba(100, 116, 139, 0.2) !important;
 }
 
 .mobile-toast {
@@ -96,6 +99,8 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   border-radius: 8px;
   padding: 0.75rem 1rem;
+  background-color: rgba(30, 41, 59, 0.97) !important;
+  color: #fff !important;
 }
 
 .toast-viewport {
@@ -113,17 +118,17 @@
   50% { opacity: 0.6; }
 }
 
-/* Effet de lueur pour les mises à jour de solde */
+/* Effet de lueur subtil pour les mises à jour de solde */
 .glow-effect {
   animation: glow 2s ease-out;
 }
 
 @keyframes glow {
-  0% { box-shadow: 0 0 0 rgba(72, 187, 120, 0); }
-  25% { box-shadow: 0 0 15px rgba(72, 187, 120, 0.5); }
-  50% { box-shadow: 0 0 20px rgba(72, 187, 120, 0.6); }
-  75% { box-shadow: 0 0 15px rgba(72, 187, 120, 0.5); }
-  100% { box-shadow: 0 0 0 rgba(72, 187, 120, 0); }
+  0% { box-shadow: 0 0 0 rgba(59, 130, 246, 0); }
+  25% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+  75% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
+  100% { box-shadow: 0 0 0 rgba(59, 130, 246, 0); }
 }
 
 /* Style pour les notifications sur mobile */
@@ -136,10 +141,49 @@
   .toast-notification .toast-title {
     font-size: 0.95rem !important;
     line-height: 1.3 !important;
+    color: #fff !important;
   }
   
   .toast-notification .toast-description {
     font-size: 0.85rem !important;
     line-height: 1.3 !important;
+    color: rgba(255, 255, 255, 0.8) !important;
   }
+}
+
+/* Styles pour l'animation du terminal */
+.processing-dots::after {
+  content: "";
+  animation: processingDots 1.5s infinite;
+}
+
+@keyframes processingDots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
+  100% { content: ""; }
+}
+
+/* Styles pour le bouton boost plus sobre */
+.boost-button-pulse {
+  position: relative;
+}
+
+.boost-button-pulse::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 rgba(139, 92, 246, 0.4);
+  animation: subtle-pulse 2s infinite;
+}
+
+@keyframes subtle-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
 }

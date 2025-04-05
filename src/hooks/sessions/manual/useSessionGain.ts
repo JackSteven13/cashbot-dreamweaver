@@ -74,8 +74,8 @@ export const useSessionGain = () => {
     
     // Show success toast
     toast({
-      title: "Session terminée",
-      description: `CashBot a généré ${finalGain.toFixed(2)}€ de revenus pour vous !`,
+      title: "Analyse terminée",
+      description: `Traitement des données achevé. Revenus générés : ${finalGain.toFixed(2)}€`,
       className: "mobile-toast",
       duration: 4000
     });
