@@ -84,7 +84,7 @@ export async function applyReferralBonus(
     // Mettre à jour le solde
     const { error: updateError } = await supabase
       .from('user_balances')
-      .update({ balance: newBalance })
+      .update({ balance: newBalance.toString() }) // Fix: Convert number to string
       .eq('id', userId);
       
     if (updateError) {
