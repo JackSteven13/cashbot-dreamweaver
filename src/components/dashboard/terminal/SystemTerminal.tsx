@@ -65,6 +65,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
     setEffectiveLimit(limit);
     
     // Update bot status based on passed prop and daily limit check
+    // Le bot est inactif si la limite quotidienne est atteinte
     setBotStatus(isBotActive && displayBalance < limit);
   }, [subscription, displayBalance, isBotActive]);
   
@@ -81,11 +82,12 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
     };
   }, []);
 
+  // Calculer le pourcentage de la limite quotidienne atteinte
   const limitPercentage = Math.min(100, (displayBalance / effectiveLimit) * 100);
   
   // Trigger limit reached event when balance reaches daily limit
   useEffect(() => {
-    if (displayBalance >= effectiveLimit) {
+    if (displayBalance >= effectiveLimit && botStatus) {
       window.dispatchEvent(new CustomEvent('dashboard:limit-reached', { 
         detail: { 
           subscription: effectiveSubscription
@@ -93,7 +95,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
       }));
       setBotStatus(false);
     }
-  }, [displayBalance, effectiveLimit, effectiveSubscription]);
+  }, [displayBalance, effectiveLimit, effectiveSubscription, botStatus]);
 
   const handleActivateProTrial = () => {
     activateProTrial(subscription);

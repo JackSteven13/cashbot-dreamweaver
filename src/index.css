@@ -1,118 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@import './styles/base.css';
-@import './styles/components.css';
-@import './styles/animations.css';
-
-/* Ajustements pour menu mobile */
-@layer utilities {
-  .mobile-nav-fix {
-    z-index: 100;
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.7);
-  }
-  
-  /* Ajustements de taille pour mobile */
-  @media (max-width: 768px) {
-    .text-base {
-      font-size: 0.875rem;
-    }
-    
-    .text-sm {
-      font-size: 0.75rem;
-    }
-    
-    .text-xs {
-      font-size: 0.7rem;
-    }
-    
-    .p-4 {
-      padding: 0.75rem;
-    }
-    
-    .m-4 {
-      margin: 0.75rem;
-    }
-    
-    .gap-4 {
-      gap: 0.75rem;
-    }
-    
-    .rounded-xl {
-      border-radius: 0.75rem;
-    }
-    
-    /* Optimisations spécifiques pour le simulateur */
-    .calculator-card {
-      margin: 0 !important;
-      border-radius: 0.5rem !important;
-    }
-    
-    .calculator-header {
-      padding: 0.75rem !important;
-    }
-    
-    .calculator-content {
-      padding: 0.75rem !important;
-    }
-    
-    .calculator-slider {
-      height: 0.5rem !important;
-    }
-    
-    .calculator-tabs {
-      margin-top: 0.5rem !important;
-      margin-bottom: 0.5rem !important;
-      border-radius: 0.25rem !important;
-    }
-  }
+/* Ajout d'une animation pour l'indicateur de bot actif */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
-/* Empêche le débordement horizontal */
-html, body, #root, .overflow-x-hidden {
-  overflow-x: hidden;
-  max-width: 100vw;
-}
-
-/* Réduit la taille des cartes sur mobile */
-@media (max-width: 768px) {
-  .card-container {
-    padding: 0.5rem !important;
-  }
-  
-  .card-content {
-    padding: 0.75rem !important;
-  }
-  
-  /* Diminution de l'espacement vertical dans le simulateur */
-  .space-y-5 {
-    margin-top: 0.75rem !important;
-    margin-bottom: 0.75rem !important;
-  }
-  
-  .space-y-4 {
-    margin-top: 0.5rem !important;
-    margin-bottom: 0.5rem !important;
-  }
-  
-  /* Styles pour les onglets du simulateur */
-  .simulator-tabs button {
-    padding: 0.5rem !important;
-    font-size: 0.75rem !important;
-  }
-  
-  /* Styles pour les badges sur les plans */
-  .absolute.top-0.right-0 {
-    z-index: 50;
-  }
-  
-  .absolute.top-0.left-0 {
-    z-index: 50;
-  }
-}
-
-/* Styles pour les badges "SÉLECTIONNÉ" et "ACTUEL" */
-.absolute.top-0.right-0.bg-purple-600,
-.absolute.top-0.left-0.bg-green-500 {
-  z-index: 50;
+.blink-activity {
+  animation: blink 2s infinite;
 }

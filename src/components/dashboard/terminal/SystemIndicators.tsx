@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Cpu, Signal, Zap } from 'lucide-react';
+import { Cpu, Signal, Zap, Bot, BotOff } from 'lucide-react';
 
 interface SystemIndicatorsProps {
   showAnalysis?: boolean;
@@ -27,7 +27,11 @@ export const SystemIndicators: React.FC<SystemIndicatorsProps> = ({
       </div>
       
       <div className="flex items-center">
-        <Zap size={12} className={`mr-1 ${botActive ? 'text-green-400' : 'text-red-400'}`} />
+        {botActive ? (
+          <Bot size={14} className="mr-1 text-green-400" />
+        ) : (
+          <BotOff size={14} className="mr-1 text-red-400" />
+        )}
         <span className={botActive ? 'text-green-400' : 'text-red-400'}>
           {botActive ? 'BOT ACTIVE' : 'BOT INACTIVE'}
         </span>

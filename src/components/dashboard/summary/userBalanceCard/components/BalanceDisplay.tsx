@@ -1,5 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
+import { Bot, BotOff } from 'lucide-react';
 
 interface BalanceDisplayProps {
   displayBalance: number;
@@ -65,12 +66,23 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           </div>
         </div>
         
-        {/* Indicateur d'activité */}
+        {/* Indicateur d'activité amélioré */}
         <div className="mt-3 flex items-center justify-center gap-1">
-          <span className={`h-2 w-2 rounded-full ${isBotActive ? 'bg-green-500 blink-activity' : 'bg-red-500'}`}></span>
-          <span className={`text-xs ${isBotActive ? 'text-green-300' : 'text-red-300'}`}>
-            {isBotActive ? 'Génération active' : 'Génération inactive'}
-          </span>
+          {isBotActive ? (
+            <>
+              <Bot size={14} className="text-green-500" />
+              <span className="text-xs text-green-300 blink-activity">
+                Génération active
+              </span>
+            </>
+          ) : (
+            <>
+              <BotOff size={14} className="text-red-500" />
+              <span className="text-xs text-red-300">
+                Génération inactive (limite journalière atteinte)
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>

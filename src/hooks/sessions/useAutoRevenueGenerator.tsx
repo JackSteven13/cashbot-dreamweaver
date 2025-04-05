@@ -65,7 +65,6 @@ export const useAutoRevenueGenerator = (
       }
       
       // TOUJOURS utiliser background:true pour tous les événements automatiques
-      // C'est essentiel pour éviter l'écran de chargement
       triggerDashboardEvent('analysis-start', { background: true });
       
       // Simuler l'animation du terminal dans le dashboard - sans écran de chargement
@@ -137,13 +136,16 @@ export const useAutoRevenueGenerator = (
       
       // Vérifier si nous avons atteint la limite journalière après cette transaction
       if (todaysGainsRef.current >= dailyLimit) {
-        // Si la limite est atteinte maintenant, déclencher l'événement limite-atteinte
+        // Si la limite est atteinte maintenant, désactiver le bot et informer l'utilisateur
+        setBotActive(false);
+        
+        // Déclencher l'événement limite-atteinte
         triggerDashboardEvent('limit-reached', { 
           subscription: userData.subscription,
           background: true
         });
+        
         setShowLimitAlert(true);
-        setBotActive(false); // Désactiver le bot quand la limite est atteinte
         
         triggerDashboardEvent('terminal-update', { 
           line: "Limite journalière atteinte. Bot désactivé jusqu'à demain.",

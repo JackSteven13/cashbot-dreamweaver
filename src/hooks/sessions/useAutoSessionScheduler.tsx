@@ -18,13 +18,20 @@ export const useAutoSessionScheduler = (
     // Get the daily limit for the current subscription
     const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
-    // Start an initial session immediately to show activity to the user
-    // Only if we're below the daily limit and bot is active
+    // Skip all auto sessions if bot is not active
+    if (!isBotActive) {
+      console.log("Bot inactif, aucune session automatique ne sera programmée");
+      return () => {}; // Return empty cleanup function
+    }
+    
+    // Start an initial session after a short delay if bot is active
     const initialTimeout = setTimeout(() => {
-      if (isBotActive && todaysGainsRef.current < dailyLimit) {
-        // IMPORTANT: Toujours utiliser une session initiale en arrière-plan
+      if (todaysGainsRef.current < dailyLimit) {
+        console.log("Démarrage de la session initiale automatique");
         generateAutomaticRevenue(true);
         setLastAutoSessionTime(Date.now());
+      } else {
+        console.log("Limite journalière déjà atteinte, aucune session automatique ne sera démarrée");
       }
     }, 10000);
     
@@ -41,7 +48,7 @@ export const useAutoSessionScheduler = (
       const randomInterval = Math.random() * 60000 + 120000; // Between 2 and 3 minutes
       
       if (timeSinceLastSession >= randomInterval && todaysGainsRef.current < dailyLimit) {
-        // IMPORTANT: Toujours exécuter en arrière-plan pour éviter l'écran de chargement
+        console.log("Génération automatique de revenus");
         generateAutomaticRevenue();
         setLastAutoSessionTime(Date.now());
       }
