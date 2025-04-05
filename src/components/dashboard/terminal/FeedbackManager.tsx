@@ -26,10 +26,8 @@ export const FeedbackManager: React.FC<FeedbackManagerProps> = ({ isNewUser }) =
         setFeedback={setFeedback}
         onClose={() => setShowFeedbackDialog(false)}
         onSubmit={() => {
-          if (feedback.trim()) {
-            setFeedback('');
-            setShowFeedbackDialog(false);
-          }
+          setFeedback('');
+          setShowFeedbackDialog(false);
         }}
       />
     </div>
