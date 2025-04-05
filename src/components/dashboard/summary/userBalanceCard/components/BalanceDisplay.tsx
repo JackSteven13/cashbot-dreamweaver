@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface BalanceDisplayProps {
   displayBalance: number;
@@ -32,8 +32,18 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   // Calculate if gain happened
   const isGain = animatedBalance > previousBalance;
   
+  // Ref pour la fonction d'animation
+  const balanceRef = useRef<HTMLDivElement>(null);
+  
+  // Ajouter la classe pour le ciblage des animations
+  useEffect(() => {
+    if (balanceRef.current) {
+      balanceRef.current.classList.add('balance-display');
+    }
+  }, []);
+  
   return (
-    <div className="pt-4 pb-6 text-center">
+    <div className="pt-4 pb-6 text-center" ref={balanceRef}>
       <div className="relative">
         <h3 className="text-md opacity-80 mb-1">Solde actuel</h3>
         <div className="flex items-center justify-center">
@@ -51,6 +61,12 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
             <span>|</span>
             <span>Total généré: {formattedTotalGenerated}€</span>
           </div>
+        </div>
+        
+        {/* Indicateur d'activité */}
+        <div className="mt-3 flex items-center justify-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-green-500 blink-activity"></span>
+          <span className="text-xs text-green-300">Génération active</span>
         </div>
       </div>
     </div>

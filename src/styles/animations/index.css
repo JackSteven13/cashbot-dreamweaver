@@ -1,8 +1,3 @@
 
-/* Main animations index file - imports all animation categories */
-@import "./base.css";
-@import "./transitions.css";
-@import "./effects.css";
-@import "./particles.css";
-@import "./terminals.css";
-
+/* Importer toutes les animations */
+@import "./dashboard.css";

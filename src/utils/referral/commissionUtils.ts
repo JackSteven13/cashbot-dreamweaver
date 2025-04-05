@@ -110,10 +110,42 @@ export async function applyReferralBonus(
       console.error('Erreur lors de l\'ajout de la transaction:', transactionError);
     }
     
+    // Déclencher un événement pour notifier l'interface utilisateur
+    dispatchBalanceUpdateEvent(amount);
+    
+    // Afficher une notification à l'utilisateur
+    toast({
+      title: "Revenus générés",
+      description: `+${amount.toFixed(2)}€ ont été ajoutés à votre solde!`,
+      variant: "default"
+    });
+    
     return true;
   } catch (error) {
     console.error('Erreur lors de l\'application du bonus de parrainage:', error);
     return false;
+  }
+}
+
+/**
+ * Déclenche un événement de mise à jour du solde pour l'interface utilisateur
+ */
+function dispatchBalanceUpdateEvent(amount: number): void {
+  try {
+    const event = new CustomEvent('balance:update', { 
+      detail: { amount, timestamp: new Date().toISOString() }
+    });
+    
+    window.dispatchEvent(event);
+    
+    // Aussi, déclencher un événement pour les animations
+    const animEvent = new CustomEvent('dashboard:animation', {
+      detail: { type: 'income', amount }
+    });
+    
+    window.dispatchEvent(animEvent);
+  } catch (error) {
+    console.error('Erreur lors de la création de l\'événement:', error);
   }
 }
 
