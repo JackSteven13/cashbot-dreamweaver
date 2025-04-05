@@ -17,9 +17,10 @@ export {
 } from './referral/validationUtils';
 
 export {
-  calculateReferralBonus,
+  calculateCommissionRate,
   getCommissionRate,
   applyReferralBonus,
+  calculateReferralBonus,
   getUserCommissionInfo
 } from './referral/commissionUtils';
 

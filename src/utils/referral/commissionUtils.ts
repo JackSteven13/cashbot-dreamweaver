@@ -33,6 +33,21 @@ export const calculateCommissionRate = (
 };
 
 /**
+ * Get commission rate based on subscription type
+ * This function is exported for external use
+ */
+export const getCommissionRate = (subscription: string): number => {
+  const rates: Record<string, number> = {
+    'freemium': 0.2, // 20%
+    'starter': 0.3,  // 30%
+    'gold': 0.4,     // 40%
+    'elite': 0.5     // 50%
+  };
+  
+  return rates[subscription] || rates['freemium'];
+};
+
+/**
  * Get referrer's ID from referral code
  */
 export const getReferrerId = async (referralCode: string): Promise<string | null> => {
@@ -60,6 +75,45 @@ export const getReferrerId = async (referralCode: string): Promise<string | null
   } catch (error) {
     console.error("Error getting referrer ID:", error);
     return null;
+  }
+};
+
+/**
+ * Calculate bonus from referrals
+ */
+export const calculateReferralBonus = (referrals: Array<{ active?: boolean; commission_rate?: number }>) => {
+  if (!referrals || referrals.length === 0) return 0;
+  
+  // Calculate total bonus from active referrals
+  return referrals
+    .filter(ref => ref.active !== false) // Consider undefined as active too
+    .reduce((total, ref) => total + (ref.commission_rate || 0.7), 0);
+};
+
+/**
+ * Get user's commission information
+ */
+export const getUserCommissionInfo = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('referrals')
+      .select('*')
+      .eq('referrer_id', userId);
+      
+    if (error) throw error;
+    
+    return {
+      totalReferrals: data?.length || 0,
+      activeReferrals: data?.filter(r => r.status === 'active').length || 0,
+      totalCommission: data?.reduce((sum, r) => sum + (r.commission_rate || 0), 0) || 0
+    };
+  } catch (error) {
+    console.error("Error fetching commission info:", error);
+    return {
+      totalReferrals: 0,
+      activeReferrals: 0,
+      totalCommission: 0
+    };
   }
 };
 
@@ -120,12 +174,15 @@ export const applyReferralBonus = async (
       return false;
     }
     
-    // Update referrer's balance
+    // Update referrer's balance (using a more reliable approach)
+    // Instead of using RPC, use a direct update query
     const { error: updateError } = await supabase
-      .rpc('update_balance', { 
-        user_id: referrerId, 
-        amount_change: amount 
-      });
+      .from('user_balances')
+      .update({ 
+        balance: supabase.rpc('get_current_balance', { user_id: referrerId }) + amount,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', referrerId);
       
     if (updateError) {
       console.error("Error updating balance:", updateError);
