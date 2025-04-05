@@ -101,7 +101,7 @@ export async function applyReferralBonus(
       .from('transactions')
       .insert({
         user_id: userId,
-        gain: amount,
+        gain: amount.toString(), // Convert number to string as the database may expect a string
         report: `${description}: +${amount.toFixed(2)}€`
       });
       
