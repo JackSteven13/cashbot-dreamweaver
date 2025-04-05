@@ -1,9 +1,11 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
 import { 
-  checkDailyLimit, 
-  calculateAutoSessionGain
+  SUBSCRIPTION_LIMITS, 
+  calculateAutoSessionGain,
+  checkDailyLimit
 } from '@/utils/subscription';
 
 export const useAutoSessions = (

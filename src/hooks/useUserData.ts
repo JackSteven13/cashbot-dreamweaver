@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useUserDataFetcher } from './useUserDataFetcher';
 import { UserData } from '@/types/userData';
@@ -23,29 +24,32 @@ export const useUserData = () => {
   }, []);
   
   // Handler pour rafraîchir les données
-  const refreshUserData = useCallback(async () => {
+  const refreshUserData = useCallback(async (): Promise<boolean> => {
     await userDataActions.fetchUserData();
+    return true; // Return boolean to match required type
   }, [userDataActions]);
   
   // Handler pour incrémenter le compteur de sessions
-  const incrementSessionCount = useCallback(async () => {
+  const incrementSessionCount = useCallback(async (): Promise<void> => {
     // Implémenter la logique pour incrémenter le compteur de sessions
     // Pour l'instant, on rafraîchit simplement les données
     await refreshUserData();
-    return dailySessionCount + 1;
-  }, [dailySessionCount, refreshUserData]);
+    // Return void to match required type
+  }, [refreshUserData]);
   
   // Handler pour mettre à jour le solde
-  const updateBalance = useCallback(async (gain: number, report: string) => {
+  const updateBalance = useCallback(async (gain: number, report: string): Promise<void> => {
     // Implémenter la logique pour mettre à jour le solde
     // Pour l'instant, on rafraîchit simplement les données
     await refreshUserData();
+    // Return void to match required type
   }, [refreshUserData]);
   
   // Handler pour réinitialiser le solde
-  const resetBalance = useCallback(async () => {
+  const resetBalance = useCallback(async (): Promise<void> => {
     // Implémenter la logique pour réinitialiser le solde
     await refreshUserData();
+    // Return void to match required type
   }, [refreshUserData]);
   
   return {
