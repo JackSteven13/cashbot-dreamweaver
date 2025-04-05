@@ -49,8 +49,11 @@ const Index = () => {
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 md:mb-6">Prêt à générer des revenus complémentaires ?</h2>
               <p className="text-base md:text-lg text-muted-foreground mb-4 md:mb-8">Rejoignez notre communauté d'utilisateurs et commencez à explorer le potentiel de Stream genius.</p>
               
-              <Link to="/register">
-                <Button size="lg" className="group">
+              <Link to="/register" className="w-full sm:w-auto inline-block">
+                <Button 
+                  size="lg" 
+                  className="group bg-green-500 hover:bg-green-600 text-white font-bold text-lg sm:text-xl py-4 px-6 shadow-xl border border-green-400 w-full sm:w-auto"
+                >
                   Démarrer avec Stream genius gratuitement
                   <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
                 </Button>
