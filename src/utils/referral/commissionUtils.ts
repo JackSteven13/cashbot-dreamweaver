@@ -33,7 +33,7 @@ export const applyReferralBonus = (userData: UserData, amount: number): UserData
   return {
     ...userData,
     balance: userData.balance + amount,
-    totalEarnings: (userData.totalEarnings || 0) + amount
+    totalEarnings: ((userData.totalEarnings || 0) + amount)
   };
 };
 

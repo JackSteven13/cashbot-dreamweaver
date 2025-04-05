@@ -1,21 +1,19 @@
 
 // Re-export functions from authentication modules
-export {
-  validateEmail,
-  validatePassword,
-  validateUsername
-} from './validationUtils';
+// Instead of importing validationUtils and encryptionUtils which don't exist
+// we'll directly export the needed functions from verificationUtils and sessionUtils
+
+export { verifyAuth } from './verificationUtils';
+export { 
+  refreshSession,
+  getCurrentSession,
+  forceSignOut
+} from './sessionUtils';
 
 export {
-  encryptData,
-  decryptData,
-  generateToken
-} from './encryptionUtils';
-
-export {
-  isUserAuthenticated,
   checkDailyLimit,
   getEffectiveSubscription,
   subscribeToAuthChanges,
   unsubscribeFromAuthChanges
 } from './subscriptionUtils';
+

@@ -34,4 +34,5 @@ export interface UserData {
     type: string;
     lastFour: string;
   }>;
+  totalEarnings?: number; // Add totalEarnings property
 }

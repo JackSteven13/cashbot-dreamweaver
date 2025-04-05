@@ -21,7 +21,8 @@ export const useDailyReset = (
       if (resetAttempted.current) return;
 
       // Si le système détermine qu'une réinitialisation est nécessaire
-      if (shouldResetDailyCounters()) {
+      // Pass Date.now() as the argument for lastResetTime
+      if (shouldResetDailyCounters(Date.now())) {
         console.log("Réinitialisation quotidienne des compteurs nécessaire, exécution...");
         resetAttempted.current = true;
         

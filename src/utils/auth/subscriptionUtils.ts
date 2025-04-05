@@ -1,5 +1,22 @@
 
 import { SUBSCRIPTION_LIMITS } from "@/utils/subscription/constants";
+import { supabase } from "@/integrations/supabase/client";
+
+/**
+ * Checks if a user is authenticated
+ */
+export const isUserAuthenticated = async (): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error || !data.session) {
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Error checking authentication:", error);
+    return false;
+  }
+};
 
 /**
  * Checks if a user is at their daily limit based on subscription and balance

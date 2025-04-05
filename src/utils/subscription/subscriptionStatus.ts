@@ -19,6 +19,7 @@ export const checkDailyLimit = (balance: number, subscription: string): boolean 
 
 /**
  * Check if daily counters should be reset (e.g., at midnight)
+ * @param lastResetTime Timestamp of the last reset
  */
 export const shouldResetDailyCounters = (lastResetTime: number): boolean => {
   const now = new Date();
