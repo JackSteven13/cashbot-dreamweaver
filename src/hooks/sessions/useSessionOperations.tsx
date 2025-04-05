@@ -1,3 +1,4 @@
+
 import { useRef, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { triggerDashboardEvent } from '@/utils/animations';
@@ -157,6 +158,7 @@ export const useSessionOperations = (
         // Stocker en localStorage pour persistence entre les rendus
         try {
           localStorage.setItem('lastKnownBalance', cumulativeBalanceRef.current.toString());
+          localStorage.setItem('currentBalance', cumulativeBalanceRef.current.toString()); // Assurer la cohérence
         } catch (e) {
           console.error("Failed to store balance in localStorage:", e);
         }
@@ -184,6 +186,15 @@ export const useSessionOperations = (
         }
       });
       window.dispatchEvent(balanceEvent);
+
+      // Force-update balance display to ensure consistent UI
+      window.dispatchEvent(new CustomEvent('balance:force-update', {
+        detail: { 
+          newBalance: currentBalance,
+          gain: randomGain,
+          transactionDate: new Date().toISOString()
+        }
+      }));
 
       // Afficher une notification pour la première session ou aléatoirement pour les suivantes
       if (isFirst || Math.random() > 0.6) {

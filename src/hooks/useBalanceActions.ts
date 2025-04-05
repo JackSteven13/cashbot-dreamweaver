@@ -1,3 +1,4 @@
+
 import { UserData, Transaction } from "@/types/userData";
 import { useUserSession } from './useUserSession';
 
@@ -54,6 +55,7 @@ export const useBalanceActions = ({
       try {
         localStorage.setItem('currentBalance', calculatedNewBalance.toString());
         localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
+        localStorage.setItem('lastKnownBalance', calculatedNewBalance.toString()); // Synchroniser avec les autres références
       } catch (e) {
         console.error("Failed to persist balance in localStorage:", e);
       }
@@ -71,6 +73,15 @@ export const useBalanceActions = ({
           type: "Système",
           id: `temp-${Date.now()}`
         };
+        
+        // Déclencher un événement global pour informer les autres composants de la mise à jour
+        window.dispatchEvent(new CustomEvent('balance:force-update', { 
+          detail: { 
+            newBalance: calculatedNewBalance,
+            gain: gain,
+            transaction: newTransaction
+          }
+        }));
         
         setUserData(prevData => ({
           ...prevData,
@@ -156,6 +167,7 @@ export const useBalanceActions = ({
         // Clear balance in localStorage on successful reset
         localStorage.removeItem('currentBalance');
         localStorage.removeItem('lastBalanceUpdateTime');
+        localStorage.removeItem('lastKnownBalance');
         
         setUserData(prev => {
           // Create a properly formatted Transaction object if a transaction exists

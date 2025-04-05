@@ -71,21 +71,68 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       const newBalance = event.detail?.newBalance;
       if (typeof newBalance === 'number') {
         console.log("Force balance update received:", newBalance);
+        // Immédiatement mettre à jour l'affichage sans attente
         setLocalDisplayBalance(newBalance);
       }
     };
     
+    // Écouter les mises à jour normales du solde pour l'animation
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      const amount = event.detail?.amount;
+      const currentBalance = event.detail?.currentBalance;
+      if (typeof amount === 'number' && typeof currentBalance === 'number') {
+        // Plutôt que de simplement mettre à jour le solde, nous allons animer
+        console.log(`Balance update received: +${amount} to ${currentBalance}`);
+        const startVal = localDisplayBalance;
+        const endVal = currentBalance;
+        animateBalance(startVal, endVal, 1000); // 1 seconde d'animation
+      }
+    };
+    
+    // Fonction pour animer le changement de solde
+    const animateBalance = (start: number, end: number, duration: number) => {
+      const startTime = Date.now();
+      
+      const updateFrame = () => {
+        const currentTime = Date.now();
+        const elapsed = currentTime - startTime;
+        
+        if (elapsed < duration) {
+          const progress = elapsed / duration;
+          const currentValue = start + (end - start) * progress;
+          setLocalDisplayBalance(currentValue);
+          requestAnimationFrame(updateFrame);
+        } else {
+          setLocalDisplayBalance(end);
+        }
+      };
+      
+      requestAnimationFrame(updateFrame);
+    };
+    
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('balance:force-update' as any, handleForceBalanceUpdate);
+    window.addEventListener('balance:update' as any, handleBalanceUpdate);
     
     // Synchroniser avec la prop isBotActive au montage et lorsqu'elle change
     setLocalBotActive(isBotActive);
     
+    // Récupérer le solde dans le localStorage si disponible
+    const storedBalance = localStorage.getItem('currentBalance');
+    if (storedBalance) {
+      const parsedBalance = parseFloat(storedBalance);
+      if (!isNaN(parsedBalance) && parsedBalance > localDisplayBalance) {
+        console.log("Restoring balance from localStorage:", parsedBalance);
+        setLocalDisplayBalance(parsedBalance);
+      }
+    }
+    
     return () => {
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
       window.removeEventListener('balance:force-update' as any, handleForceBalanceUpdate);
+      window.removeEventListener('balance:update' as any, handleBalanceUpdate);
     };
-  }, [isBotActive]);
+  }, [isBotActive, localDisplayBalance]);
 
   // Function to toggle bot status manually (useful for debugging)
   const handleBotToggle = () => {

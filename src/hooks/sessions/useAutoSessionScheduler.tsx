@@ -14,6 +14,7 @@ export const useAutoSessionScheduler = (
   // Utiliser useRef au lieu de useState pour éviter les erreurs React
   const lastAutoSessionTimeRef = useRef<number>(Date.now());
   const botStatusRef = useRef<boolean>(isBotActive);
+  const initialSessionExecutedRef = useRef<boolean>(false);
 
   // Effect to simulate automatic ad analysis
   useEffect(() => {
@@ -30,14 +31,16 @@ export const useAutoSessionScheduler = (
     }
     
     // Start an initial session after a short delay if bot is active
+    // and only if this is the first time (to avoid duplicate sessions on re-renders)
     const initialTimeout = setTimeout(() => {
       // Vérification supplémentaire du statut du bot au moment de l'exécution
-      if (botStatusRef.current && todaysGainsRef.current < dailyLimit) {
+      if (botStatusRef.current && todaysGainsRef.current < dailyLimit && !initialSessionExecutedRef.current) {
         console.log("Démarrage de la session initiale automatique");
+        initialSessionExecutedRef.current = true; // Marquer comme exécuté
         generateAutomaticRevenue(true);
         lastAutoSessionTimeRef.current = Date.now();
       } else {
-        console.log("Bot inactif ou limite atteinte, pas de session initiale");
+        console.log("Bot inactif, limite atteinte ou session initiale déjà exécutée");
       }
     }, 10000);
     
@@ -55,7 +58,7 @@ export const useAutoSessionScheduler = (
       
       // Vérification supplémentaire du statut du bot avant génération
       if (timeSinceLastSession >= randomInterval && todaysGainsRef.current < dailyLimit && botStatusRef.current) {
-        console.log("Génération automatique de revenus");
+        console.log("Génération automatique de revenus", timeSinceLastSession, randomInterval);
         generateAutomaticRevenue();
         lastAutoSessionTimeRef.current = Date.now();
       }
@@ -82,6 +85,7 @@ export const useAutoSessionScheduler = (
   // Exposer les valeurs de référence de manière sécurisée
   return {
     lastAutoSessionTime: lastAutoSessionTimeRef.current,
-    getLastAutoSessionTime: () => lastAutoSessionTimeRef.current
+    getLastAutoSessionTime: () => lastAutoSessionTimeRef.current,
+    isInitialSessionExecuted: () => initialSessionExecutedRef.current
   };
 };
