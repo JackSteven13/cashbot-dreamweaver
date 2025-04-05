@@ -27,24 +27,24 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
 }) => {
   const isMobile = useIsMobile();
   
-  // Updated these classes to work better in both light and dark modes
+  // Amélioration du contraste et de la visibilité
   const labelClass = isHomePage 
-    ? "text-white font-medium dark:text-blue-100" 
-    : "text-[#1e3a5f] font-medium dark:text-white";
+    ? "text-white font-medium text-base" 
+    : "text-[#1e3a5f] font-medium text-base dark:text-white";
+  
   const descriptionClass = isHomePage 
-    ? "text-blue-200 dark:text-blue-200" 
-    : "text-gray-600 dark:text-gray-300";
-  // Improved contrast for the value display
-  const valueClass = `w-12 text-center font-medium ${
+    ? "text-blue-200 text-sm dark:text-blue-200" 
+    : "text-gray-600 text-sm dark:text-gray-300";
+  
+  const valueClass = `min-w-[45px] text-center font-semibold ${
     isHomePage 
-      ? 'text-white bg-blue-900/50 dark:bg-blue-900/70 rounded px-2 py-1' 
-      : 'text-blue-700 dark:text-white bg-blue-50 dark:bg-blue-900/50 rounded px-2 py-1'
+      ? 'text-white bg-blue-800 dark:bg-blue-800 rounded px-3 py-1' 
+      : 'text-blue-700 dark:text-white bg-blue-50 dark:bg-blue-900/50 rounded px-3 py-1'
   }`;
 
-  // Ajustements pour mobile - réduire l'espace vertical
-  const mobileSpacing = isMobile ? "space-y-3" : "space-y-5";
-  const mobileTextClass = isMobile ? "text-sm" : "";
-  const mobileDescriptionClass = isMobile ? "text-xs" : "";
+  // Ajustements pour mobile - espacer correctement les éléments
+  const mobileSpacing = isMobile ? "space-y-6" : "space-y-6";
+  const mobileDescriptionClass = isMobile ? "mb-2" : "mb-2";
 
   return (
     <div className={mobileSpacing}>
@@ -53,13 +53,13 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
         name="sessionsPerDay"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className={`${labelClass} ${mobileTextClass}`}>
+            <FormLabel className={labelClass}>
               Sessions par jour
             </FormLabel>
             <FormDescription className={`${descriptionClass} ${mobileDescriptionClass}`}>
               Nombre de sessions de gain que vous souhaitez lancer quotidiennement
             </FormDescription>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 mt-2">
               <FormControl>
                 <Slider
                   min={1}
@@ -83,13 +83,13 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
         name="daysPerMonth"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className={`${labelClass} ${mobileTextClass}`}>
+            <FormLabel className={labelClass}>
               Jours d'activité par mois
             </FormLabel>
             <FormDescription className={`${descriptionClass} ${mobileDescriptionClass}`}>
               Combien de jours par mois utiliserez-vous l'application?
             </FormDescription>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 mt-2">
               <FormControl>
                 <Slider
                   min={1}

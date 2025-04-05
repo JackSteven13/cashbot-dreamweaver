@@ -3,7 +3,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Ajout d'une animation pour l'indicateur de bot actif */
+/* Animation pour l'indicateur de bot actif */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
@@ -70,4 +70,34 @@
 
 .glow-effect {
   animation: glowing 1.5s ease-in-out;
+}
+
+/* Styles améliorés pour les sliders */
+[role="slider"] {
+  @apply w-6 h-6 bg-white border-2 border-primary shadow-md !important;
+  transition: transform 0.1s;
+}
+
+[role="slider"]:focus {
+  @apply transform scale-110 outline-none;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
+}
+
+[role="slider"]:hover {
+  @apply transform scale-110;
+}
+
+/* Styles pour les boutons de démarrage */
+.home-cta-button {
+  @apply bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105;
+  letter-spacing: 0.02em;
+}
+
+/* Améliorer le contraste des labels dans le simulateur */
+.calculator-label {
+  @apply font-semibold text-base text-white;
+}
+
+.calculator-value {
+  @apply bg-blue-800/80 text-white font-semibold px-3 py-1 rounded-md min-w-[45px] text-center;
 }
