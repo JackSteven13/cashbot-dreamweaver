@@ -101,7 +101,7 @@ export const useDashboardSessions = (
     isProcessingWithdrawal: isProcessingWithdrawal,
     lastSessionTimestamp,
     localBalance,  // Exposer le solde local pour éviter les problèmes de synchronisation
-    isBotActive    // Expose the bot active status
+    isBotActive    // Exposer l'état du bot
   };
 };
 

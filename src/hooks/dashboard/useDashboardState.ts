@@ -67,7 +67,8 @@ export const useDashboardState = () => {
     isStartingSession,
     handleStartSession,
     handleWithdrawal,
-    lastSessionTimestamp
+    lastSessionTimestamp,
+    isBotActive
   } = sessions;
 
   // Retourner un objet mémorisé pour éviter les références changeantes
@@ -90,7 +91,8 @@ export const useDashboardState = () => {
     handleWithdrawal,
     lastSessionTimestamp,
     forceRefresh,
-    isLoading
+    isLoading,
+    isBotActive
   }), [
     selectedNavItem,
     renderKey,
@@ -108,6 +110,7 @@ export const useDashboardState = () => {
     lastSessionTimestamp,
     forceRefresh,
     isLoading,
-    setShowLimitAlert
+    setShowLimitAlert,
+    isBotActive
   ]);
 };

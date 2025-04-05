@@ -22,6 +22,7 @@ interface SystemTerminalProps {
   displayBalance: number;
   referralBonus?: number;
   lastSessionTimestamp?: string;
+  isBotActive?: boolean;
 }
 
 const SystemTerminal: React.FC<SystemTerminalProps> = ({
@@ -32,12 +33,13 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   referralCount,
   displayBalance,
   referralBonus = 0,
-  lastSessionTimestamp
+  lastSessionTimestamp,
+  isBotActive = true
 }) => {
   const [showProTrialInfo, setShowProTrialInfo] = useState(isNewUser);
   const [effectiveSubscription, setEffectiveSubscription] = useState(subscription);
   const [effectiveLimit, setEffectiveLimit] = useState(dailyLimit);
-  const [botStatus, setBotStatus] = useState(displayBalance < effectiveLimit);
+  const [botStatus, setBotStatus] = useState(isBotActive);
   
   const { timeRemaining, isCountingDown } = useSessionCountdown(
     typeof remainingSessions === 'number' ? 1 - remainingSessions : 0, 
@@ -62,9 +64,9 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     setEffectiveLimit(limit);
     
-    // Update bot status based on balance compared to limit
-    setBotStatus(displayBalance < limit);
-  }, [subscription, displayBalance]);
+    // Update bot status based on passed prop and daily limit check
+    setBotStatus(isBotActive && displayBalance < limit);
+  }, [subscription, displayBalance, isBotActive]);
   
   // Listen for limit-reached event
   useEffect(() => {

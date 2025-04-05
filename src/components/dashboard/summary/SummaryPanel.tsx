@@ -20,6 +20,7 @@ interface SummaryPanelProps {
   referralCount?: number;
   referralBonus?: number;
   lastSessionTimestamp?: string;
+  isBotActive?: boolean;
 }
 
 const SummaryPanel: React.FC<SummaryPanelProps> = ({
@@ -34,7 +35,8 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
   canStartSession = true,
   referralCount = 0,
   referralBonus = 0,
-  lastSessionTimestamp
+  lastSessionTimestamp,
+  isBotActive = true
 }) => {
   const {
     displayBalance,
@@ -76,6 +78,7 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
             referralBonus={referralBonus}
             lastSessionTimestamp={lastSessionTimestamp}
             sessionsDisplay={String(remainingSessions)}
+            isBotActive={isBotActive}
           />
           
           <ActionButtons
@@ -88,6 +91,7 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
             dailyLimit={effectiveDailyLimit}
             onBoostClick={() => onBoostClick(canStartSession)}
             onWithdraw={onWithdraw}
+            isBotActive={isBotActive}
           />
           
           <ReferralLink 

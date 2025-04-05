@@ -16,6 +16,7 @@ interface DashboardMetricsProps {
   canStartSession?: boolean;
   referrals?: any[];
   lastSessionTimestamp?: string;
+  isBotActive?: boolean;
 }
 
 const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
@@ -30,7 +31,8 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
   dailySessionCount = 0,
   canStartSession = true,
   referrals = [],
-  lastSessionTimestamp
+  lastSessionTimestamp,
+  isBotActive = true
 }) => {
   // Calculer les gains issus des parrainages
   const referralBonus = referrals?.reduce((total, ref) => total + (ref.commission_earned || 0), 0) || 0;
@@ -52,6 +54,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
         referralCount={activeReferralCount}
         referralBonus={referralBonus}
         lastSessionTimestamp={lastSessionTimestamp}
+        isBotActive={isBotActive}
       />
       
       <TransactionsPanel

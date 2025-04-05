@@ -9,7 +9,7 @@ export const useAutoSessionScheduler = (
   todaysGainsRef: React.MutableRefObject<number>,
   generateAutomaticRevenue: (isFirst?: boolean) => Promise<void>,
   userData: any,
-  isBotActive?: boolean
+  isBotActive: boolean = true
 ) => {
   const [lastAutoSessionTime, setLastAutoSessionTime] = useState(Date.now());
 
@@ -19,9 +19,9 @@ export const useAutoSessionScheduler = (
     const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
     // Start an initial session immediately to show activity to the user
-    // Only if we're below the daily limit
+    // Only if we're below the daily limit and bot is active
     const initialTimeout = setTimeout(() => {
-      if (todaysGainsRef.current < dailyLimit) {
+      if (isBotActive && todaysGainsRef.current < dailyLimit) {
         // IMPORTANT: Toujours utiliser une session initiale en arrière-plan
         generateAutomaticRevenue(true);
         setLastAutoSessionTime(Date.now());
@@ -31,7 +31,8 @@ export const useAutoSessionScheduler = (
     // Set up interval for automatic sessions
     const autoSessionInterval = setInterval(() => {
       // Skip if bot is explicitly not active
-      if (isBotActive === false) {
+      if (!isBotActive) {
+        console.log("Bot inactif, pas de génération automatique");
         return;
       }
       

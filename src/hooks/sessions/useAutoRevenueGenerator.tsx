@@ -64,7 +64,7 @@ export const useAutoRevenueGenerator = (
         return;
       }
       
-      // CRITIQUE: TOUJOURS utiliser background:true pour tous les événements automatiques
+      // TOUJOURS utiliser background:true pour tous les événements automatiques
       // C'est essentiel pour éviter l'écran de chargement
       triggerDashboardEvent('analysis-start', { background: true });
       
@@ -117,7 +117,7 @@ export const useAutoRevenueGenerator = (
         true // Forcer la mise à jour UI immédiate
       );
       
-      // Déclencher directement l'événement de mise à jour du solde avec le solde actuel
+      // Déclencher directement l'événement de mise à jour du solde avec le solde actuel et le gain
       const currentBalance = (userData.balance || 0) + randomGain;
       const balanceEvent = new CustomEvent('balance:update', {
         detail: { 

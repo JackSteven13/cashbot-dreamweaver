@@ -39,7 +39,8 @@ const Dashboard = memo(() => {
     handleWithdrawal,
     lastSessionTimestamp,
     forceRefresh,
-    isLoading
+    isLoading,
+    isBotActive
   } = useDashboardState();
   
   // Effet de debug avec scope limité
@@ -100,6 +101,7 @@ const Dashboard = memo(() => {
                 dailySessionCount={dailySessionCount}
                 handleReactivate={handleReactivate}
                 lastSessionTimestamp={lastSessionTimestamp}
+                isBotActive={isBotActive}
               />
             } />
           </Routes>

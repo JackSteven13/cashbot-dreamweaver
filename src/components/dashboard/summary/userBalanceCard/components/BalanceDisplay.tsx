@@ -8,6 +8,7 @@ interface BalanceDisplayProps {
   previousBalance: number;
   referralBonus?: number;
   totalGeneratedBalance?: number;
+  isBotActive?: boolean;
 }
 
 const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
@@ -17,6 +18,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   previousBalance,
   referralBonus = 0,
   totalGeneratedBalance = 0,
+  isBotActive = true
 }) => {
   // Ensure we have valid numbers for displaying
   const safeReferralBonus = referralBonus ?? 0;
@@ -65,8 +67,10 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         
         {/* Indicateur d'activité */}
         <div className="mt-3 flex items-center justify-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-green-500 blink-activity"></span>
-          <span className="text-xs text-green-300">Génération active</span>
+          <span className={`h-2 w-2 rounded-full ${isBotActive ? 'bg-green-500 blink-activity' : 'bg-red-500'}`}></span>
+          <span className={`text-xs ${isBotActive ? 'text-green-300' : 'text-red-300'}`}>
+            {isBotActive ? 'Génération active' : 'Génération inactive'}
+          </span>
         </div>
       </div>
     </div>

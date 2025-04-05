@@ -24,6 +24,7 @@ interface UserBalanceCardProps {
   totalGeneratedBalance?: number;
   lastSessionTimestamp?: string;
   sessionsDisplay?: string;
+  isBotActive?: boolean;
 }
 
 const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
@@ -36,7 +37,8 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   networkGains,
   botGains,
   totalGeneratedBalance,
-  lastSessionTimestamp
+  lastSessionTimestamp,
+  isBotActive = true
 }) => {
   // Ensure we have valid values or defaults for calculated fields
   const safeDisplayBalance = typeof displayBalance === 'number' ? displayBalance : 0;
@@ -127,6 +129,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
           previousBalance={previousBalance}
           referralBonus={safeReferralBonus}
           totalGeneratedBalance={safeTotalGeneratedBalance}
+          isBotActive={isBotActive}
         />
         
         <ProgressBar 
