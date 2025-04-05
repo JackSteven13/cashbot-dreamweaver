@@ -64,17 +64,17 @@ export const useAutoRevenueGenerator = (
         return;
       }
       
-      // ALWAYS use background:true for all automatic revenue events
-      // This is critical to prevent the loading screen
+      // CRITIQUE: TOUJOURS utiliser background:true pour tous les événements automatiques
+      // C'est essentiel pour éviter l'écran de chargement
       triggerDashboardEvent('analysis-start', { background: true });
       
-      // Simulate terminal animation within the dashboard - no loading screen
+      // Simuler l'animation du terminal dans le dashboard - sans écran de chargement
       triggerDashboardEvent('terminal-update', { 
         line: "Initialisation de l'analyse réseau...",
         background: true
       });
       
-      // Wait a short moment for visual feedback
+      // Attendre un court instant pour le retour visuel
       await new Promise(resolve => setTimeout(resolve, 800));
       
       triggerDashboardEvent('terminal-update', { 
@@ -82,42 +82,42 @@ export const useAutoRevenueGenerator = (
         background: true
       });
       
-      // Wait another short moment
+      // Attendre un autre court instant
       await new Promise(resolve => setTimeout(resolve, 700));
       
-      // Calculate gain using the utility function (respecting daily limit)
+      // Calculer le gain en utilisant la fonction utilitaire (en respectant la limite journalière)
       const baseGain = calculateAutoSessionGain(
         userData.subscription, 
         todaysGains, 
         userData.referrals.length
       );
       
-      // Ensure we don't exceed daily limit
+      // S'assurer de ne pas dépasser la limite journalière
       const randomGain = Math.min(baseGain, remainingAllowedGains);
       
-      // Update terminal with success message
+      // Mettre à jour le terminal avec un message de succès
       triggerDashboardEvent('terminal-update', { 
         line: `Analyse terminée avec succès! Revenus générés: ${randomGain.toFixed(2)}€`,
         background: true
       });
       
-      // Update today's gains tracker
+      // Mettre à jour le tracker des gains journaliers
       todaysGainsRef.current += randomGain;
       
-      // Trigger the analysis complete event with the gain - ALWAYS use background:true
+      // Déclencher l'événement d'analyse complète avec le gain - TOUJOURS utiliser background:true
       triggerDashboardEvent('analysis-complete', { 
         gain: randomGain, 
         background: true 
       });
       
-      // Update user balance with forceUpdate set to true for immediate UI update
+      // Mettre à jour le solde de l'utilisateur avec forceUpdate à true pour mise à jour UI immédiate
       await updateBalance(
         randomGain,
         `Le système a généré ${randomGain.toFixed(2)}€ de revenus grâce à notre technologie propriétaire. Votre abonnement ${userData.subscription} vous permet d'accéder à ce niveau de performance.`,
-        true // Force immediate UI update
+        true // Forcer la mise à jour UI immédiate
       );
       
-      // Directly trigger the balance update event with current balance
+      // Déclencher directement l'événement de mise à jour du solde avec le solde actuel
       const currentBalance = (userData.balance || 0) + randomGain;
       const balanceEvent = new CustomEvent('balance:update', {
         detail: { 
@@ -127,7 +127,7 @@ export const useAutoRevenueGenerator = (
       });
       window.dispatchEvent(balanceEvent);
 
-      // Show notification for first session or randomly for subsequent sessions
+      // Afficher une notification pour la première session ou aléatoirement pour les suivantes
       if (isFirst || Math.random() > 0.6) {
         toast({
           title: "Revenus générés",
@@ -135,15 +135,15 @@ export const useAutoRevenueGenerator = (
         });
       }
       
-      // Check if we've reached the daily limit after this transaction
+      // Vérifier si nous avons atteint la limite journalière après cette transaction
       if (todaysGainsRef.current >= dailyLimit) {
-        // If limit reached now, trigger the limit-reached event
+        // Si la limite est atteinte maintenant, déclencher l'événement limite-atteinte
         triggerDashboardEvent('limit-reached', { 
           subscription: userData.subscription,
           background: true
         });
         setShowLimitAlert(true);
-        setBotActive(false); // Deactivate the bot when limit is reached
+        setBotActive(false); // Désactiver le bot quand la limite est atteinte
         
         triggerDashboardEvent('terminal-update', { 
           line: "Limite journalière atteinte. Bot désactivé jusqu'à demain.",
@@ -159,14 +159,14 @@ export const useAutoRevenueGenerator = (
       });
     } finally {
       sessionInProgress.current = false;
-      // Release lock after a small delay to prevent rapid subsequent calls
+      // Libérer le verrou après un petit délai pour éviter des appels rapides subséquents
       setTimeout(() => {
         operationLock.current = false;
       }, 500);
     }
   };
 
-  // Reset bot activity when daily counters reset
+  // Réinitialiser l'activité du bot lorsque les compteurs journaliers sont réinitialisés
   const resetBotActivity = () => {
     setBotActive(true);
   };

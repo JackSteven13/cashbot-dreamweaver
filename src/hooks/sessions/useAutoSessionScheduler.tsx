@@ -22,6 +22,7 @@ export const useAutoSessionScheduler = (
     // Only if we're below the daily limit
     const initialTimeout = setTimeout(() => {
       if (todaysGainsRef.current < dailyLimit) {
+        // IMPORTANT: Toujours utiliser une session initiale en arrière-plan
         generateAutomaticRevenue(true);
         setLastAutoSessionTime(Date.now());
       }
@@ -39,6 +40,7 @@ export const useAutoSessionScheduler = (
       const randomInterval = Math.random() * 60000 + 120000; // Between 2 and 3 minutes
       
       if (timeSinceLastSession >= randomInterval && todaysGainsRef.current < dailyLimit) {
+        // IMPORTANT: Toujours exécuter en arrière-plan pour éviter l'écran de chargement
         generateAutomaticRevenue();
         setLastAutoSessionTime(Date.now());
       }

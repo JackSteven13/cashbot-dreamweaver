@@ -38,10 +38,10 @@ export const useTerminalAnalysis = () => {
     const handleAnalysisStart = (event: Event) => {
       const customEvent = event as CustomEvent;
       
-      // Always check for background flag - crucial fix to prevent loading screen
+      // CRITIQUE: Toujours vérifier le flag background - correction cruciale pour éviter l'écran de chargement
       const isBackgroundProcess = customEvent.detail?.background === true;
       
-      // Only show analysis UI if not running in background
+      // N'afficher l'UI d'analyse que si elle ne s'exécute pas en arrière-plan
       if (isBackgroundProcess) {
         console.log("Skipping loading screen for background analysis-start event");
         setShowAnalysis(true);
@@ -50,8 +50,8 @@ export const useTerminalAnalysis = () => {
           'Initialisation de l\'analyse réseau...',
         ]);
       } else {
-        // This path should not be taken for auto-generated revenue,
-        // only for manual actions like button clicks
+        // Ce chemin ne doit pas être pris pour les revenus générés automatiquement,
+        // uniquement pour les actions manuelles comme les clics sur les boutons
         setShowAnalysis(true);
         setAnalysisComplete(false);
         setTerminalLines([
@@ -66,17 +66,17 @@ export const useTerminalAnalysis = () => {
       const gain = customEvent.detail?.gain || 0;
       const isBackgroundProcess = customEvent.detail?.background === true;
       
-      // For both background and foreground processes, update the terminal
+      // Pour les processus en arrière-plan et au premier plan, mettre à jour le terminal
       setTerminalLines(prev => [
         ...prev, 
         `Analyse terminée avec succès! Revenus générés: ${gain.toFixed(2)}€`
       ]);
       setAnalysisComplete(true);
       
-      // Hide terminal after 5 seconds
+      // Masquer le terminal après 5 secondes
       setTimeout(() => {
         setShowAnalysis(false);
-        // Reset terminal lines after animation completes
+        // Réinitialiser les lignes du terminal après la fin de l'animation
         setTimeout(() => {
           setTerminalLines([]);
           setAnalysisComplete(false);
