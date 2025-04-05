@@ -25,8 +25,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const safeReferralBonus = referralBonus ?? 0;
   const safeTotalGeneratedBalance = totalGeneratedBalance ?? (displayBalance * 1.2);
   
+  // Gestion de l'état local du solde pour les animations
+  const [localDisplayBalance, setLocalDisplayBalance] = useState(displayBalance);
+  
   // Format numbers safely
-  const formattedBalance = displayBalance.toFixed(2);
+  const formattedBalance = localDisplayBalance.toFixed(2);
   const formattedAnimatedBalance = animatedBalance.toFixed(2);
   const formattedPreviousBalance = previousBalance.toFixed(2);
   const formattedTotalGenerated = safeTotalGeneratedBalance.toFixed(2);
@@ -40,6 +43,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 
   // State local pour suivre l'état du bot
   const [localBotActive, setLocalBotActive] = useState(isBotActive);
+  
+  // Mettre à jour le solde local quand le solde externe change
+  useEffect(() => {
+    setLocalDisplayBalance(displayBalance);
+  }, [displayBalance]);
   
   // Ajouter la classe pour le ciblage des animations
   useEffect(() => {
@@ -57,13 +65,24 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       }
     };
     
+    // Écouter les mises à jour forcées du solde
+    const handleForceBalanceUpdate = (event: CustomEvent) => {
+      const newBalance = event.detail?.newBalance;
+      if (typeof newBalance === 'number') {
+        console.log("Force balance update received:", newBalance);
+        setLocalDisplayBalance(newBalance);
+      }
+    };
+    
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
+    window.addEventListener('balance:force-update' as any, handleForceBalanceUpdate);
     
     // Synchroniser avec la prop isBotActive au montage et lorsqu'elle change
     setLocalBotActive(isBotActive);
     
     return () => {
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
+      window.removeEventListener('balance:force-update' as any, handleForceBalanceUpdate);
     };
   }, [isBotActive]);
   

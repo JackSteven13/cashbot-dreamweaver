@@ -63,6 +63,11 @@ export const useAutoSessions = (
       if (now.getHours() === 0 && now.getMinutes() < 5) {
         resetBotActivity();
         todaysGainsRef.current = 0;
+        
+        // Forcer l'activation du bot
+        window.dispatchEvent(new CustomEvent('bot:external-status-change', {
+          detail: { active: true }
+        }));
       }
     };
 
@@ -72,6 +77,22 @@ export const useAutoSessions = (
     
     return () => clearInterval(interval);
   }, [resetBotActivity]);
+
+  // Au démarrage, générer une première session après un délai
+  useEffect(() => {
+    // Activer le bot initialement
+    const timer = setTimeout(() => {
+      // Ne déclencher que si le bot est actif
+      if (isBotActive) {
+        console.log('Initial session starting...');
+        generateAutomaticRevenue(true); // true indique que c'est la première session
+      } else {
+        console.log('Bot inactive, no initial session will be scheduled');
+      }
+    }, 5000); // Attendre 5 secondes après le montage
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   return {
     lastAutoSessionTime,

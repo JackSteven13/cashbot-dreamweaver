@@ -7,6 +7,7 @@ export const useUserData = () => {
   const [userDataFetcher, userDataActions] = useUserDataFetcher();
   const { userData, isNewUser, dailySessionCount, showLimitAlert, isLoading } = userDataFetcher;
   const balanceSyncRef = useRef(false);
+  const localBalanceRef = useRef<number | null>(null);
   
   // Récupérer les données lors du chargement de la page
   useEffect(() => {
@@ -19,7 +20,8 @@ export const useUserData = () => {
           if (!isNaN(parsedBalance) && parsedBalance > userData.balance) {
             console.log(`Restoring balance from localStorage: ${parsedBalance} (server balance: ${userData.balance})`);
             // If stored balance is higher, use it
-            userDataActions.fetchUserData(); // Fetch user data again instead of using non-existent updateUserData
+            localBalanceRef.current = parsedBalance;
+            userDataActions.fetchUserData(); // Fetch user data again
           }
         }
         balanceSyncRef.current = true;
@@ -49,6 +51,9 @@ export const useUserData = () => {
         localStorage.setItem('currentBalance', userData.balance.toString());
         localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
       }
+      
+      // Mettre à jour notre référence locale
+      localBalanceRef.current = Math.max(userData.balance, parsedStored);
     }
   }, [userData?.balance]);
   
@@ -60,19 +65,29 @@ export const useUserData = () => {
   
   // Handler pour incrémenter le compteur de sessions
   const incrementSessionCount = useCallback(async (): Promise<void> => {
-    // Implémenter la logique pour incrémenter le compteur de sessions
     // Pour l'instant, on rafraîchit simplement les données
     await refreshUserData();
-    // Return void to match required type
   }, [refreshUserData]);
   
   // Handler pour mettre à jour le solde
-  const updateBalance = useCallback(async (gain: number, report: string): Promise<void> => {
+  const updateBalance = useCallback(async (gain: number, report: string, forceUpdate: boolean = false): Promise<void> => {
     // Persist balance to localStorage before API call
     if (userData?.balance !== undefined) {
       const newBalance = userData.balance + gain;
       localStorage.setItem('currentBalance', newBalance.toString());
       localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
+      
+      // Mettre à jour immédiatement la référence locale pour l'interface utilisateur
+      localBalanceRef.current = newBalance;
+      
+      console.log(`Balance updated locally: ${userData.balance} + ${gain} = ${newBalance}`);
+      
+      // Déclencher un événement pour notifier les composants d'interface utilisateur
+      if (forceUpdate) {
+        window.dispatchEvent(new CustomEvent('balance:force-update', { 
+          detail: { newBalance: newBalance }
+        }));
+      }
     }
     
     // Now refresh data to update from API
@@ -85,13 +100,23 @@ export const useUserData = () => {
     localStorage.removeItem('currentBalance');
     localStorage.removeItem('lastBalanceUpdateTime');
     
+    // Reset local reference
+    localBalanceRef.current = null;
+    
     // Implémenter la logique pour réinitialiser le solde
     await refreshUserData();
-    // Return void to match required type
   }, [refreshUserData]);
   
+  // Calculer le solde à afficher (utiliser la valeur locale si disponible)
+  const effectiveBalance = localBalanceRef.current !== null ? 
+    localBalanceRef.current : 
+    (userData?.balance || 0);
+  
   return {
-    userData,
+    userData: userData ? {
+      ...userData,
+      balance: effectiveBalance // Override balance with local value if available
+    } : null,
     isNewUser,
     dailySessionCount,
     showLimitAlert,

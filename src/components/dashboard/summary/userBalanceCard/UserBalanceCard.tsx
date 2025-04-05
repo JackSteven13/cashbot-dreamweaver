@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { WITHDRAWAL_THRESHOLDS } from '@/components/dashboard/summary/constants';
 
 // Import subcomponents
@@ -47,6 +47,9 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   const safeTotalGeneratedBalance = totalGeneratedBalance !== undefined ? totalGeneratedBalance : (safeDisplayBalance * 1.2);
   const safeReferralBonus = typeof referralBonus === 'number' ? referralBonus : 0;
   
+  // Utiliser une référence pour suivre le solde local entre les rendus
+  const currentBalanceRef = useRef(safeDisplayBalance);
+  
   // Get withdrawal threshold for this subscription type
   const withdrawalThreshold = WITHDRAWAL_THRESHOLDS[subscription as keyof typeof WITHDRAWAL_THRESHOLDS] || 200;
   
@@ -56,15 +59,29 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   const [animatedBalance, setAnimatedBalance] = useState(safeDisplayBalance);
   const [previousBalance, setPreviousBalance] = useState(safeDisplayBalance);
   
+  // Update local ref when display balance changes
+  useEffect(() => {
+    if (currentBalanceRef.current !== safeDisplayBalance) {
+      console.log("Balance prop changed to:", safeDisplayBalance);
+      currentBalanceRef.current = safeDisplayBalance;
+    }
+  }, [safeDisplayBalance]);
+  
   // Handle balance update events
   useEffect(() => {
     const handleBalanceUpdate = (e: CustomEvent) => {
       const newAmount = e.detail?.amount || 0;
-      setPreviousBalance(safeDisplayBalance);
+      const newCurrentBalance = e.detail?.currentBalance;
+      
+      if (typeof newCurrentBalance === 'number') {
+        currentBalanceRef.current = newCurrentBalance;
+      }
+      
+      setPreviousBalance(currentBalanceRef.current);
       setBalanceAnimating(true);
       
-      const startValue = safeDisplayBalance;
-      const endValue = safeDisplayBalance + newAmount;
+      const startValue = currentBalanceRef.current;
+      const endValue = currentBalanceRef.current + newAmount;
       const duration = 1000;
       const startTime = Date.now();
       
@@ -80,15 +97,31 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         } else {
           setAnimatedBalance(endValue);
           setBalanceAnimating(false);
+          
+          // Mettre à jour notre référence locale après l'animation
+          currentBalanceRef.current = endValue;
         }
       };
       
       requestAnimationFrame(updateValue);
     };
     
+    // Écouter les mises à jour forcées du solde
+    const handleForceBalanceUpdate = (event: CustomEvent) => {
+      const newBalance = event.detail?.newBalance;
+      if (typeof newBalance === 'number') {
+        currentBalanceRef.current = newBalance;
+      }
+    };
+    
     window.addEventListener('balance:update' as any, handleBalanceUpdate);
-    return () => window.removeEventListener('balance:update' as any, handleBalanceUpdate);
-  }, [safeDisplayBalance]);
+    window.addEventListener('balance:force-update' as any, handleForceBalanceUpdate);
+    
+    return () => {
+      window.removeEventListener('balance:update' as any, handleBalanceUpdate);
+      window.removeEventListener('balance:force-update' as any, handleForceBalanceUpdate);
+    };
+  }, []);
   
   // Periodic glow effect
   useEffect(() => {
@@ -123,7 +156,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         <BalanceHeader dailyLimit={dailyLimit} />
         
         <BalanceDisplay 
-          displayBalance={safeDisplayBalance}
+          displayBalance={balanceAnimating ? previousBalance : currentBalanceRef.current}
           balanceAnimating={balanceAnimating}
           animatedBalance={animatedBalance}
           previousBalance={previousBalance}
@@ -133,7 +166,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         />
         
         <ProgressBar 
-          displayBalance={safeDisplayBalance} 
+          displayBalance={currentBalanceRef.current}
           withdrawalThreshold={withdrawalThreshold} 
         />
         

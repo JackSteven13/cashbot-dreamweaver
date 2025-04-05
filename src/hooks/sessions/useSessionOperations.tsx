@@ -138,7 +138,7 @@ export const useSessionOperations = (
       await updateBalance(
         randomGain,
         `Notre système d'analyse de contenu vidéo a généré ${randomGain.toFixed(2)}€ de revenus. Performance basée sur le niveau d'abonnement ${userData.subscription}.`,
-        true // Forcer la mise à jour UI immédiate
+        true // Toujours forcer la mise à jour UI immédiate pour les mises à jour automatiques
       );
       
       // Déclencher directement l'événement de mise à jour du solde avec le solde actuel et le gain
