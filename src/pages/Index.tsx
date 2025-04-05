@@ -3,7 +3,6 @@ import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
-import Button from '@/components/Button';
 import RevenueCalculator from '@/components/dashboard/RevenueCalculator';
 import Footer from '@/components/Footer';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -40,7 +39,7 @@ const Index = () => {
           </div>
         </section>
         
-        {/* How It Works section - New section that replaces testimonials */}
+        {/* How It Works section */}
         <HowItWorks />
         
         {/* CTA Section - Reduced padding */}
@@ -50,14 +49,11 @@ const Index = () => {
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 md:mb-6">Prêt à générer des revenus complémentaires ?</h2>
               <p className="text-base md:text-lg text-muted-foreground mb-4 md:mb-8">Rejoignez notre communauté d'utilisateurs et commencez à explorer le potentiel de Stream genius.</p>
               
-              <Link to="/register" className="w-full sm:w-auto inline-block">
-                <Button 
-                  size="lg" 
-                  className="group bg-green-500 hover:bg-green-600 text-white font-bold text-lg sm:text-xl py-4 px-6 shadow-xl border border-green-400 w-full sm:w-auto"
-                >
-                  Démarrer avec Stream genius gratuitement
-                  <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
-                </Button>
+              <Link to="/register" className="inline-block">
+                <button className="bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-md flex items-center justify-center transition-colors">
+                  <span className="text-lg">Démarrer maintenant</span>
+                  <ArrowRight size={18} className="ml-2" />
+                </button>
               </Link>
             </div>
           </div>

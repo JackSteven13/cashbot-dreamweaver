@@ -26,7 +26,6 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
     return (
       <Button 
         ref={buttonRef}
-        size="lg" 
         className={`w-full bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] hover:from-[#8B5CF6] hover:to-[#6C53AF] text-white relative overflow-hidden shadow-md ${isStartingSession ? 'boost-button-active' : 'boost-button-pulse'}`}
         disabled={isButtonDisabled || isStartingSession || limitReached}
         onClick={onClick}
@@ -45,12 +44,12 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
         ) : limitReached ? (
           <span className="flex items-center">
             <AlertTriangle className="mr-2 h-4 w-4" />
-            Limite journalière atteinte
+            Limite atteinte
           </span>
         ) : (
           <span className="flex items-center">
             <Zap className="mr-2 h-5 w-5" />
-            Boost manuel
+            Boost
           </span>
         )}
         
@@ -63,19 +62,18 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
   } else {
     return (
       <Button 
-        size="lg" 
         className="w-full bg-slate-300 hover:bg-slate-300 text-slate-600 cursor-not-allowed shadow-md"
         disabled={true}
       >
         {limitReached ? (
           <span className="flex items-center">
             <AlertTriangle className="mr-2 h-4 w-4" />
-            Limite journalière atteinte
+            Limite atteinte
           </span>
         ) : (
           <span className="flex items-center">
             <Zap className="mr-2 h-5 w-5" />
-            Boost manuel
+            Boost
           </span>
         )}
       </Button>

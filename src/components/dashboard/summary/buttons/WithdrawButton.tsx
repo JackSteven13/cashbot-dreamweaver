@@ -16,7 +16,6 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
 }) => {
   return (
     <Button 
-      size="lg" 
       variant="outline"
       className="w-full border-slate-500 text-slate-600 hover:bg-slate-50 shadow-sm whitespace-normal h-auto py-2 transition-all duration-300 hover:border-[#9b87f5] hover:text-[#9b87f5]"
       disabled={isWithdrawing || isButtonDisabled}
@@ -29,7 +28,7 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
           Traitement...
         </span>
       ) : (
-        <span>Retirer les fonds</span>
+        <span>Retirer</span>
       )}
     </Button>
   );

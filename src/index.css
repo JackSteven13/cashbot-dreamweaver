@@ -90,8 +90,7 @@
 
 /* Styles pour les boutons de démarrage */
 .home-cta-button {
-  @apply bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105;
-  letter-spacing: 0.02em;
+  @apply bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-md transition-colors;
 }
 
 /* Améliorer le contraste des labels dans le simulateur */
@@ -141,3 +140,4 @@
     padding-top: 8rem;
   }
 }
+
