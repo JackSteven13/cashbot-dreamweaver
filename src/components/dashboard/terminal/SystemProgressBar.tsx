@@ -20,16 +20,41 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
 }) => {
   const [effectiveLimit, setEffectiveLimit] = useState(dailyLimit);
   const [calculatedPercentage, setCalculatedPercentage] = useState(limitPercentage);
+  const [localBotActive, setLocalBotActive] = useState(botActive);
   
   useEffect(() => {
     const effectiveSub = getEffectiveSubscription(subscription);
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     setEffectiveLimit(limit);
     
-    // Only calculate based on daily limit, not total balance
-    // For UI purposes, limit the percentage to 100% max
-    setCalculatedPercentage(Math.min(100, limitPercentage));
-  }, [subscription, displayBalance, dailyLimit, limitPercentage]);
+    // Calculer le pourcentage et vérifier si la limite est atteinte
+    const percentage = Math.min(100, limitPercentage);
+    setCalculatedPercentage(percentage);
+    
+    // Si le pourcentage atteint 100%, désactiver le bot
+    if (percentage >= 100 && localBotActive) {
+      setLocalBotActive(false);
+    }
+  }, [subscription, displayBalance, dailyLimit, limitPercentage, localBotActive]);
+  
+  // Écouter les changements de statut du bot provenant d'autres composants
+  useEffect(() => {
+    const handleBotStatusChange = (event: CustomEvent) => {
+      const isActive = event.detail?.active;
+      if (typeof isActive === 'boolean') {
+        setLocalBotActive(isActive);
+      }
+    };
+    
+    window.addEventListener('bot:status-change' as any, handleBotStatusChange);
+    
+    // Synchroniser avec la prop botActive
+    setLocalBotActive(botActive);
+    
+    return () => {
+      window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
+    };
+  }, [botActive]);
 
   return (
     <div className="mb-5">
@@ -40,9 +65,9 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
         <div className="text-xs font-medium text-gray-300 flex items-center">
           <span className="text-blue-300 mr-2">{limitPercentage.toFixed(0)}%</span> / {effectiveLimit}€ par jour
           
-          {/* Bot status indicator */}
-          <span className={`ml-2 inline-flex h-2 w-2 rounded-full ${botActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
-          <span className="ml-1 text-xs text-gray-400">{botActive ? 'Bot actif' : 'Bot inactif'}</span>
+          {/* Indicateur d'état du bot amélioré */}
+          <span className={`ml-2 inline-flex h-2 w-2 rounded-full ${localBotActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
+          <span className="ml-1 text-xs text-gray-400">{localBotActive ? 'Bot actif' : 'Bot inactif'}</span>
         </div>
       </div>
       <Progress value={calculatedPercentage} className="h-2 bg-slate-700">

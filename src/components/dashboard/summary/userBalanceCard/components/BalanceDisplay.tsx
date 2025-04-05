@@ -66,7 +66,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           </div>
         </div>
         
-        {/* Indicateur d'activité amélioré */}
+        {/* Amélioration de l'indicateur de l'état du bot */}
         <div className="mt-3 flex items-center justify-center gap-1">
           {isBotActive ? (
             <>

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Cpu, Signal, Zap, Bot, BotOff } from 'lucide-react';
+import { Cpu, Signal, Bot, BotOff } from 'lucide-react';
 
 interface SystemIndicatorsProps {
   showAnalysis?: boolean;
@@ -33,7 +33,7 @@ export const SystemIndicators: React.FC<SystemIndicatorsProps> = ({
           <BotOff size={14} className="mr-1 text-red-400" />
         )}
         <span className={botActive ? 'text-green-400' : 'text-red-400'}>
-          {botActive ? 'BOT ACTIVE' : 'BOT INACTIVE'}
+          BOT {botActive ? 'ACTIVE' : 'INACTIVE'}
         </span>
       </div>
     </div>

@@ -31,6 +31,16 @@
     top: auto !important;
     right: auto !important;
     width: 90% !important;
+    max-width: 90vw !important;
+  }
+  
+  .toast-notification .toast-title {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  .toast-notification .toast-description {
+    font-size: 0.875rem;
   }
 }
 

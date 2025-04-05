@@ -1,7 +1,7 @@
 
 import { useState, useRef } from 'react';
 import { UserData } from '@/types/userData';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { calculateAutoSessionGain } from '@/utils/subscription';
 import { triggerDashboardEvent } from '@/utils/animations';
 
@@ -45,9 +45,14 @@ export const useAutoRevenueGenerator = (
       const remainingAllowedGains = Math.max(0, dailyLimit - todaysGainsRef.current);
       
       if (remainingAllowedGains <= 0) {
-        // If limit reached, show alert, trigger limit-reached event, and stop
+        // Si limite atteinte, montrer l'alerte, déclencher l'événement limite-atteinte, et arrêter
         setShowLimitAlert(true);
-        setBotActive(false); // Deactivate the bot
+        setBotActive(false); // Désactiver le bot
+        
+        // Déclencher des événements pour informer le reste de l'application
+        window.dispatchEvent(new CustomEvent('bot:status-change', { 
+          detail: { active: false } 
+        }));
         
         triggerDashboardEvent('terminal-update', { 
           line: "Limite journalière atteinte. Bot désactivé jusqu'à demain.",
@@ -130,7 +135,8 @@ export const useAutoRevenueGenerator = (
       if (isFirst || Math.random() > 0.6) {
         toast({
           title: "Revenus générés",
-          description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`
+          description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`,
+          className: "toast-notification" // Ajouter la classe pour le style responsive
         });
       }
       
@@ -138,6 +144,11 @@ export const useAutoRevenueGenerator = (
       if (todaysGainsRef.current >= dailyLimit) {
         // Si la limite est atteinte maintenant, désactiver le bot et informer l'utilisateur
         setBotActive(false);
+        
+        // Informer le reste de l'application du changement d'état du bot
+        window.dispatchEvent(new CustomEvent('bot:status-change', { 
+          detail: { active: false } 
+        }));
         
         // Déclencher l'événement limite-atteinte
         triggerDashboardEvent('limit-reached', { 
@@ -157,7 +168,8 @@ export const useAutoRevenueGenerator = (
       toast({
         title: "Erreur",
         description: "Une erreur est survenue. Veuillez réessayer plus tard.",
-        variant: "destructive"
+        variant: "destructive",
+        className: "toast-notification" // Ajouter la classe pour le style responsive
       });
     } finally {
       sessionInProgress.current = false;
@@ -171,7 +183,26 @@ export const useAutoRevenueGenerator = (
   // Réinitialiser l'activité du bot lorsque les compteurs journaliers sont réinitialisés
   const resetBotActivity = () => {
     setBotActive(true);
+    // Informer le reste de l'application du changement d'état du bot
+    window.dispatchEvent(new CustomEvent('bot:status-change', { 
+      detail: { active: true } 
+    }));
   };
+
+  // Écouter les changements d'état du bot provenant d'autres composants
+  useRef(() => {
+    const handleBotStatusChange = (event: CustomEvent) => {
+      const isActive = event.detail?.active;
+      if (typeof isActive === 'boolean') {
+        setBotActive(isActive);
+      }
+    };
+    
+    window.addEventListener('bot:status-change' as any, handleBotStatusChange);
+    return () => {
+      window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
+    };
+  });
 
   return {
     generateAutomaticRevenue,
