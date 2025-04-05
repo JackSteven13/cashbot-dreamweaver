@@ -48,14 +48,31 @@ export const useBalanceActions = ({
     try {
       console.log("Updating balance with gain:", gain, "force update:", forceUpdate);
       
-      // Always persist the latest balance in localStorage
-      const currentBalanceBeforeUpdate = userData.balance;
-      const calculatedNewBalance = Number((currentBalanceBeforeUpdate + gain).toFixed(2));
+      // Toujours récupérer la dernière valeur persistée avant de calculer le nouveau solde
+      let currentBalanceBeforeUpdate = userData.balance;
       
       try {
+        const storedBalance = localStorage.getItem('currentBalance');
+        if (storedBalance) {
+          const parsedBalance = parseFloat(storedBalance);
+          if (!isNaN(parsedBalance) && parsedBalance > currentBalanceBeforeUpdate) {
+            currentBalanceBeforeUpdate = parsedBalance;
+            console.log(`Using persisted balance from localStorage: ${currentBalanceBeforeUpdate}`);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to read persisted balance:", e);
+      }
+      
+      // Calculate new balance with gain
+      const calculatedNewBalance = Number((currentBalanceBeforeUpdate + gain).toFixed(2));
+      
+      // Always persist the latest balance in localStorage
+      try {
+        console.log(`Persisting new balance: ${calculatedNewBalance}`);
         localStorage.setItem('currentBalance', calculatedNewBalance.toString());
         localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
-        localStorage.setItem('lastKnownBalance', calculatedNewBalance.toString()); // Synchroniser avec les autres références
+        localStorage.setItem('lastKnownBalance', calculatedNewBalance.toString());
       } catch (e) {
         console.error("Failed to persist balance in localStorage:", e);
       }
@@ -97,18 +114,33 @@ export const useBalanceActions = ({
         
         // Update state after API call to ensure consistency with backend data
         setUserData(prevData => {
+          // Start with the local calculated balance which should be most up-to-date
           let newBalance = calculatedNewBalance;
           
-          // Only use API balance if available, otherwise keep calculated balance
-          if (result.newBalance !== undefined) {
+          // Only use API balance if available and higher than our calculated balance
+          if (result.newBalance !== undefined && result.newBalance > calculatedNewBalance) {
             newBalance = result.newBalance;
           }
           
-          // Always ensure we don't lose track of accumulated gain
-          // If API balance is less than our calculated balance, use the higher value
-          if (newBalance < calculatedNewBalance) {
-            console.log("API balance is less than calculated balance, using calculated balance");
-            newBalance = calculatedNewBalance;
+          // Try getting persisted balance one more time as a final check
+          try {
+            const latestPersistedBalance = localStorage.getItem('currentBalance');
+            if (latestPersistedBalance) {
+              const parsedBalance = parseFloat(latestPersistedBalance);
+              if (!isNaN(parsedBalance) && parsedBalance > newBalance) {
+                newBalance = parsedBalance;
+              }
+            }
+          } catch (e) {
+            console.error("Failed to get latest persisted balance:", e);
+          }
+          
+          // Update localStorage with final value for complete consistency
+          try {
+            localStorage.setItem('currentBalance', newBalance.toString());
+            localStorage.setItem('lastKnownBalance', newBalance.toString());
+          } catch (e) {
+            console.error("Failed to persist final balance value:", e);
           }
           
           // Only add transaction if we didn't already add a temporary one
@@ -151,6 +183,14 @@ export const useBalanceActions = ({
             ...prevData,
             balance: calculatedNewBalance,
           }));
+        }
+        
+        // Make sure localStorage is still updated even if API fails
+        try {
+          localStorage.setItem('currentBalance', calculatedNewBalance.toString());
+          localStorage.setItem('lastKnownBalance', calculatedNewBalance.toString());
+        } catch (e) {
+          console.error("Failed to persist balance after API failure:", e);
         }
       }
     } catch (error) {

@@ -15,11 +15,26 @@ export const useAutoSessionScheduler = (
   const lastAutoSessionTimeRef = useRef<number>(Date.now());
   const botStatusRef = useRef<boolean>(isBotActive);
   const initialSessionExecutedRef = useRef<boolean>(false);
+  const persistentBalanceRef = useRef<number>(userData?.balance || 0);
 
   // Effect to simulate automatic ad analysis
   useEffect(() => {
     // Synchroniser notre référence avec la prop
     botStatusRef.current = isBotActive;
+    
+    // Récupérer la balance depuis localStorage si disponible
+    try {
+      const storedBalance = localStorage.getItem('currentBalance');
+      if (storedBalance) {
+        const parsedBalance = parseFloat(storedBalance);
+        if (!isNaN(parsedBalance)) {
+          persistentBalanceRef.current = parsedBalance;
+          console.log(`Scheduler: Got persisted balance: ${persistentBalanceRef.current}`);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to read persisted balance:", e);
+    }
     
     // Get the daily limit for the current subscription
     const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
@@ -73,12 +88,23 @@ export const useAutoSessionScheduler = (
       }
     };
     
+    // Écouter les changements de solde pour la persistence
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      const newBalance = event.detail?.currentBalance;
+      if (typeof newBalance === 'number') {
+        persistentBalanceRef.current = newBalance;
+        console.log(`Scheduler: Updated persistent balance to ${newBalance}`);
+      }
+    };
+    
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
+    window.addEventListener('balance:local-update' as any, handleBalanceUpdate);
 
     return () => {
       clearTimeout(initialTimeout);
       clearInterval(autoSessionInterval);
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
+      window.removeEventListener('balance:local-update' as any, handleBalanceUpdate);
     };
   }, [isBotActive, userData.subscription, generateAutomaticRevenue, todaysGainsRef]);
 
@@ -86,6 +112,7 @@ export const useAutoSessionScheduler = (
   return {
     lastAutoSessionTime: lastAutoSessionTimeRef.current,
     getLastAutoSessionTime: () => lastAutoSessionTimeRef.current,
-    isInitialSessionExecuted: () => initialSessionExecutedRef.current
+    isInitialSessionExecuted: () => initialSessionExecutedRef.current,
+    getCurrentPersistentBalance: () => persistentBalanceRef.current
   };
 };

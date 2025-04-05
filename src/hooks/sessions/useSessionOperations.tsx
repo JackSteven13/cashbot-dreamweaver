@@ -1,6 +1,6 @@
 
 import { useRef, useEffect } from 'react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import { triggerDashboardEvent } from '@/utils/animations';
 import { UserData } from '@/types/userData';
 import { calculateAutoSessionGain } from '@/utils/subscription';
@@ -21,11 +21,33 @@ export const useSessionOperations = (
   const operationLock = useRef(false);
   const cumulativeBalanceRef = useRef<number | null>(null);
   const botStatusRef = useRef(isBotActive);
-
-  // Mettre à jour la référence quand la prop change
+  
+  // Use useEffect to update botStatusRef when isBotActive changes
   useEffect(() => {
     botStatusRef.current = isBotActive;
   }, [isBotActive]);
+  
+  // Initialiser cumulativeBalanceRef au montage avec localStorage
+  useEffect(() => {
+    // Essayer de récupérer le solde depuis localStorage
+    try {
+      const storedBalance = localStorage.getItem('lastKnownBalance');
+      if (storedBalance) {
+        const parsedBalance = parseFloat(storedBalance);
+        if (!isNaN(parsedBalance)) {
+          cumulativeBalanceRef.current = parsedBalance;
+          console.log(`SessionOperations: Initialized cumulative balance from localStorage: ${parsedBalance}`);
+        } else {
+          cumulativeBalanceRef.current = userData.balance || 0;
+        }
+      } else {
+        cumulativeBalanceRef.current = userData.balance || 0;
+      }
+    } catch (e) {
+      console.error("Failed to read from localStorage:", e);
+      cumulativeBalanceRef.current = userData.balance || 0;
+    }
+  }, []);
 
   /**
    * Generate automatic revenue based on subscription type and limits
@@ -58,13 +80,23 @@ export const useSessionOperations = (
       const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
       todaysGainsRef.current = todaysGains;
 
-      // Initialize cumulativeBalanceRef if not yet set
+      // Toujours récupérer le solde le plus à jour depuis localStorage
       if (cumulativeBalanceRef.current === null) {
         // Try to get it from localStorage first for persistence
-        const storedBalance = localStorage.getItem('lastKnownBalance');
-        if (storedBalance) {
-          cumulativeBalanceRef.current = parseFloat(storedBalance);
-        } else {
+        try {
+          const storedBalance = localStorage.getItem('lastKnownBalance');
+          if (storedBalance) {
+            const parsedBalance = parseFloat(storedBalance);
+            if (!isNaN(parsedBalance)) {
+              cumulativeBalanceRef.current = parsedBalance;
+            } else {
+              cumulativeBalanceRef.current = userData.balance || 0;
+            }
+          } else {
+            cumulativeBalanceRef.current = userData.balance || 0;
+          }
+        } catch (e) {
+          console.error("Failed to read from localStorage:", e);
           cumulativeBalanceRef.current = userData.balance || 0;
         }
       }
@@ -151,18 +183,33 @@ export const useSessionOperations = (
       // Mettre à jour le tracker des gains journaliers
       todaysGainsRef.current += randomGain;
       
-      // Mettre à jour le solde cumulatif interne
-      if (cumulativeBalanceRef.current !== null) {
-        cumulativeBalanceRef.current += randomGain;
-        
-        // Stocker en localStorage pour persistence entre les rendus
-        try {
-          localStorage.setItem('lastKnownBalance', cumulativeBalanceRef.current.toString());
-          localStorage.setItem('currentBalance', cumulativeBalanceRef.current.toString()); // Assurer la cohérence
-        } catch (e) {
-          console.error("Failed to store balance in localStorage:", e);
+      // Récupérer la dernière valeur du solde persisté pour assurer la cohérence
+      let currentPersistedBalance = cumulativeBalanceRef.current || 0;
+      try {
+        const storedBalance = localStorage.getItem('currentBalance');
+        if (storedBalance) {
+          const parsedBalance = parseFloat(storedBalance);
+          if (!isNaN(parsedBalance) && parsedBalance > currentPersistedBalance) {
+            currentPersistedBalance = parsedBalance;
+          }
         }
+      } catch (e) {
+        console.error("Failed to read current stored balance:", e);
       }
+      
+      // Mettre à jour le solde cumulatif interne
+      const updatedBalance = currentPersistedBalance + randomGain;
+      cumulativeBalanceRef.current = updatedBalance;
+      
+      // Toujours stocker en localStorage pour persistence entre les rendus
+      try {
+        localStorage.setItem('lastKnownBalance', updatedBalance.toString());
+        localStorage.setItem('currentBalance', updatedBalance.toString());
+      } catch (e) {
+        console.error("Failed to store updated balance in localStorage:", e);
+      }
+      
+      console.log(`Updated cumulative balance: ${currentPersistedBalance} + ${randomGain} = ${updatedBalance}`);
       
       // Déclencher l'événement d'analyse complète avec le gain - TOUJOURS utiliser background:true
       triggerDashboardEvent('analysis-complete', { 
@@ -178,11 +225,10 @@ export const useSessionOperations = (
       );
       
       // Déclencher directement l'événement de mise à jour du solde avec le solde actuel et le gain
-      const currentBalance = cumulativeBalanceRef.current;
       const balanceEvent = new CustomEvent('balance:update', {
         detail: { 
           amount: randomGain,
-          currentBalance: currentBalance
+          currentBalance: updatedBalance
         }
       });
       window.dispatchEvent(balanceEvent);
@@ -190,7 +236,7 @@ export const useSessionOperations = (
       // Force-update balance display to ensure consistent UI
       window.dispatchEvent(new CustomEvent('balance:force-update', {
         detail: { 
-          newBalance: currentBalance,
+          newBalance: updatedBalance,
           gain: randomGain,
           transactionDate: new Date().toISOString()
         }
@@ -244,6 +290,7 @@ export const useSessionOperations = (
 
   return {
     generateAutomaticRevenue,
-    isSessionInProgress: () => sessionInProgress.current
+    isSessionInProgress: () => sessionInProgress.current,
+    getCurrentBalance: () => cumulativeBalanceRef.current || 0
   };
 };
