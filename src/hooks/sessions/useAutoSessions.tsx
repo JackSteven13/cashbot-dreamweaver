@@ -186,8 +186,7 @@ export const useAutoSessions = (
       if (isFirst || Math.random() > 0.6) {
         toast({
           title: "Revenus générés",
-          description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`,
-          // Suppression du bouton "Améliorer" pour les utilisateurs freemium
+          description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`
         });
       }
     } catch (error) {

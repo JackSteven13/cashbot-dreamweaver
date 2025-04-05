@@ -14,10 +14,22 @@ export const updateUserBalance = async (
   const positiveGain = Math.max(0, parseFloat(gain.toFixed(2)));
   const newBalance = parseFloat((currentBalance + positiveGain).toFixed(2));
   
-  // Check if limit reached for freemium users
-  const limitReached = 
-    newBalance >= SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] && 
-    subscription === 'freemium';
+  // Get today's date in YYYY-MM-DD format
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Calculate today's gains for limit checking
+  const { data: todaysTransactions } = await supabase
+    .from('transactions')
+    .select('gain')
+    .eq('user_id', userId)
+    .gte('date', today)
+    .lt('date', new Date(new Date().setDate(new Date().getDate() + 1)).toISOString());
+    
+  const todaysGains = (todaysTransactions || []).reduce((sum, tx) => sum + (tx.gain || 0), 0) + positiveGain;
+  
+  // Check if daily limit reached for freemium users (not total balance)
+  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  const limitReached = todaysGains >= dailyLimit && subscription === 'freemium';
   
   // Retry mechanism
   const maxRetries = 3;
@@ -27,6 +39,7 @@ export const updateUserBalance = async (
   while (retryCount < maxRetries && !success) {
     try {
       console.log(`Updating balance from ${currentBalance} to ${newBalance} for user ${userId} (attempt ${retryCount + 1}/${maxRetries})`);
+      console.log(`Today's gains: ${todaysGains}/${dailyLimit}`);
       
       // Use standard update instead of RPC to avoid TypeScript errors
       const { data, error: updateError } = await supabase
