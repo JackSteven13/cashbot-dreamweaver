@@ -1,9 +1,8 @@
-
 import { toast } from '@/components/ui/use-toast';
 import { UserData } from '@/types/userData';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
-import { getEffectiveSubscription } from '@/utils/subscription';
-import { canStartManualSession } from '@/utils/subscription';
+import { getEffectiveSubscription } from '@/utils/subscription/subscriptionStatus';
+import { canStartManualSession } from '@/utils/subscription/sessionManagement';
 
 export const useLimitChecking = () => {
   const checkSessionLimit = (

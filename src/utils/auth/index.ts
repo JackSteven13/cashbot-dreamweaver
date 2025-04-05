@@ -11,4 +11,4 @@ export {
   checkDailyLimit,
   subscribeToAuthChanges, 
   unsubscribeFromAuthChanges 
-} from '@/utils/subscription';
+} from '@/utils/subscription/subscriptionStatus';

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { SystemInfoGrid } from './SystemInfo';
 import { SystemProgressBar } from './SystemProgressBar';
@@ -11,7 +10,7 @@ import { SystemIndicators } from './SystemIndicators';
 import { useSessionCountdown } from '@/hooks/useSessionCountdown';
 import { useProTrial } from '@/hooks/useProTrial';
 import { useTerminalAnalysis } from '@/hooks/useTerminalAnalysis';
-import { getEffectiveSubscription, SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
+import { getEffectiveSubscription, SUBSCRIPTION_LIMITS } from '@/utils/subscription/subscriptionStatus';
 
 interface SystemTerminalProps {
   isNewUser: boolean;
@@ -54,7 +53,6 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   
   const limitPercentage = Math.min(100, (displayBalance / effectiveLimit) * 100);
   
-  // Update effective subscription and limit when props change
   useEffect(() => {
     const effectiveSub = getEffectiveSubscription(subscription);
     setEffectiveSubscription(effectiveSub);
@@ -83,7 +81,6 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           <SessionCountdown timeRemaining={timeRemaining} />
         )}
         
-        {/* Terminal output with animations */}
         <TerminalDisplay 
           showAnalysis={showAnalysis}
           terminalLines={terminalLines}
@@ -110,7 +107,6 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           </>
         )}
         
-        {/* System indicators */}
         <SystemIndicators showAnalysis={showAnalysis} />
       </div>
     </div>

@@ -1,9 +1,8 @@
-
 import React, { memo } from 'react';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import DailyLimitAlert from '@/components/dashboard/DailyLimitAlert';
 import DormancyAlert from '@/components/dashboard/DormancyAlert';
-import { canStartManualSession } from '@/utils/subscription'; // Chemin d'importation corrigé
+import { canStartManualSession } from '@/utils/subscription/sessionManagement';
 
 interface DashboardContentProps {
   isDormant: boolean;
@@ -19,7 +18,6 @@ interface DashboardContentProps {
   lastSessionTimestamp?: string;
 }
 
-// Utilisation de memo pour éviter les re-rendus inutiles
 const DashboardContent: React.FC<DashboardContentProps> = memo(({
   isDormant,
   dormancyData,
@@ -35,7 +33,6 @@ const DashboardContent: React.FC<DashboardContentProps> = memo(({
 }) => {
   if (!userData) return null;
   
-  // Calcul du canStartSession une seule fois
   const canStartSession = !isDormant && canStartManualSession(
     userData.subscription, 
     dailySessionCount, 
