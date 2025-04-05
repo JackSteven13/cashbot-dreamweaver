@@ -3,6 +3,30 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 
+interface SystemInfoProps {
+  isNewUser: boolean;
+  onFeedbackClick?: () => void;
+}
+
+export const SystemInfo: React.FC<SystemInfoProps> = ({
+  isNewUser,
+  onFeedbackClick
+}) => {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="font-bold text-lg">System Status</h3>
+      {!isNewUser && (
+        <button
+          onClick={onFeedbackClick}
+          className="text-xs text-blue-400 hover:text-blue-300"
+        >
+          Send Feedback
+        </button>
+      )}
+    </div>
+  );
+};
+
 interface SystemInfoGridProps {
   subscription: string;
   tempProEnabled?: boolean;
