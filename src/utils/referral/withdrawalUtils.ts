@@ -1,51 +1,141 @@
 
-import { WITHDRAWAL_FEES, WITHDRAWAL_THRESHOLDS } from '@/utils/subscription/constants';
-
 /**
- * Calculate withdrawal fee based on account age and subscription
- * @param accountCreationDate Date account was created
- * @param subscription User's subscription level
- * @returns Fee percentage as decimal (higher for newer accounts and lower tier subscriptions)
+ * Détermine si un retrait est autorisé en fonction de l'abonnement et des parrainages
+ * @param subscription Type d'abonnement
+ * @param referralCount Nombre de parrainages actifs
+ * @returns Booléen indiquant si le retrait est autorisé
  */
-export const calculateWithdrawalFee = (accountCreationDate: Date, subscription: string): number => {
-  const now = new Date();
-  const sixMonthsInMs = 6 * 30 * 24 * 60 * 60 * 1000; // Approximate 6 months in milliseconds
-  const accountAgeMs = now.getTime() - accountCreationDate.getTime();
-  
-  // Check if account is less than 6 months old
-  const isEarlyAccount = accountAgeMs < sixMonthsInMs;
-  
-  // Get fee structure based on account age
-  const feeStructure = isEarlyAccount 
-    ? WITHDRAWAL_FEES.earlyAccount 
-    : WITHDRAWAL_FEES.matureAccount;
-    
-  // Apply fee based on subscription level
-  return feeStructure[subscription as keyof typeof feeStructure] || 0.5;
-};
-
-/**
- * Get withdrawal threshold based on subscription
- * @param subscription User subscription level
- * @returns Minimum withdrawal amount in currency units
- */
-export const getWithdrawalThreshold = (subscription: string): number => {
-  // For freemium accounts, return the threshold from constants
-  return WITHDRAWAL_THRESHOLDS[subscription as keyof typeof WITHDRAWAL_THRESHOLDS] || 100;
-};
-
-/**
- * Check if withdrawal is allowed based on subscription and referrals
- * @param subscription User subscription level
- * @param referralCount Number of referrals the user has
- * @returns Boolean indicating if withdrawals are allowed
- */
-export const isWithdrawalAllowed = (subscription: string, referralCount: number = 0): boolean => {
-  // Freemium users can withdraw ONLY if they have at least one referral
+export function isWithdrawalAllowed(
+  subscription: string = 'freemium', 
+  referralCount: number = 0
+): boolean {
+  // Règles pour le retrait selon le type d'abonnement
   if (subscription === 'freemium') {
+    // Les utilisateurs freemium doivent avoir au moins un parrainage actif
     return referralCount > 0;
   }
   
-  // Paid users can always withdraw
-  return true;
-};
+  // Les abonnements payants peuvent toujours retirer
+  return subscription === 'starter' || 
+         subscription === 'gold' || 
+         subscription === 'elite';
+}
+
+/**
+ * Obtient le seuil minimum de retrait en fonction de l'abonnement
+ * @param subscription Type d'abonnement
+ * @returns Montant minimum pour un retrait
+ */
+export function getWithdrawalThreshold(subscription: string = 'freemium'): number {
+  const thresholds: Record<string, number> = {
+    'freemium': 200,  // 200€ minimum pour freemium
+    'starter': 100,   // 100€ minimum pour starter
+    'gold': 50,       // 50€ minimum pour gold
+    'elite': 25       // 25€ minimum pour elite
+  };
+  
+  return thresholds[subscription] || 200;
+}
+
+/**
+ * Calcule les frais de retrait en fonction de l'ancienneté du compte et de l'abonnement
+ * @param registrationDate Date d'inscription de l'utilisateur
+ * @param subscription Type d'abonnement
+ * @returns Frais de retrait (pourcentage en décimal)
+ */
+export function calculateWithdrawalFee(
+  registrationDate: Date = new Date(), 
+  subscription: string = 'freemium'
+): number {
+  // Base de frais selon l'abonnement
+  const baseFees: Record<string, number> = {
+    'freemium': 0.15, // 15% pour freemium
+    'starter': 0.10,  // 10% pour starter
+    'gold': 0.05,     // 5% pour gold
+    'elite': 0.03     // 3% pour elite
+  };
+  
+  const baseFee = baseFees[subscription] || 0.15;
+  
+  // Réduction des frais selon l'ancienneté du compte
+  const now = new Date();
+  const accountAgeInDays = Math.floor((now.getTime() - registrationDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Réduction progressive des frais pour les comptes anciens
+  if (accountAgeInDays > 365) {
+    // -50% après 1 an
+    return baseFee * 0.5;
+  } else if (accountAgeInDays > 180) {
+    // -30% après 6 mois
+    return baseFee * 0.7;
+  } else if (accountAgeInDays > 90) {
+    // -15% après 3 mois
+    return baseFee * 0.85;
+  }
+  
+  return baseFee;
+}
+
+/**
+ * Vérifie si un utilisateur a atteint la limite de fréquence de retrait
+ * @param lastWithdrawalDate Date du dernier retrait
+ * @param subscription Type d'abonnement
+ * @returns Objet contenant le statut et le temps d'attente restant
+ */
+export function checkWithdrawalFrequencyLimit(
+  lastWithdrawalDate: Date | null = null, 
+  subscription: string = 'freemium'
+): { allowed: boolean, daysRemaining: number } {
+  if (!lastWithdrawalDate) return { allowed: true, daysRemaining: 0 };
+  
+  // Fréquence de retrait selon l'abonnement (en jours)
+  const withdrawalFrequency: Record<string, number> = {
+    'freemium': 30,  // 1 fois par mois pour freemium
+    'starter': 14,   // 1 fois toutes les 2 semaines pour starter
+    'gold': 7,       // 1 fois par semaine pour gold
+    'elite': 3       // 1 fois tous les 3 jours pour elite
+  };
+  
+  const frequency = withdrawalFrequency[subscription] || 30;
+  const now = new Date();
+  const diffTime = now.getTime() - lastWithdrawalDate.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < frequency) {
+    return {
+      allowed: false,
+      daysRemaining: frequency - diffDays
+    };
+  }
+  
+  return { allowed: true, daysRemaining: 0 };
+}
+
+/**
+ * Récupère le processus de retrait (temps de traitement, etc.) selon l'abonnement
+ */
+export function getWithdrawalProcess(subscription: string = 'freemium'): {
+  processingDays: string,
+  methods: string[]
+} {
+  const processes: Record<string, { processingDays: string, methods: string[] }> = {
+    'freemium': { 
+      processingDays: '14-21 jours',
+      methods: ['Virement bancaire']
+    },
+    'starter': { 
+      processingDays: '7-14 jours',
+      methods: ['Virement bancaire', 'PayPal']
+    },
+    'gold': { 
+      processingDays: '3-7 jours',
+      methods: ['Virement bancaire', 'PayPal', 'Crypto']
+    },
+    'elite': { 
+      processingDays: '1-3 jours',
+      methods: ['Virement bancaire', 'PayPal', 'Crypto', 'Carte prépayée']
+    }
+  };
+  
+  return processes[subscription] || processes.freemium;
+}

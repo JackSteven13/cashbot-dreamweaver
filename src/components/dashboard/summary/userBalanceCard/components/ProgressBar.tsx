@@ -1,37 +1,31 @@
 
 import React from 'react';
-import { Award } from 'lucide-react';
 
 interface ProgressBarProps {
   displayBalance: number;
   withdrawalThreshold: number;
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ displayBalance, withdrawalThreshold }) => {
-  const progressPercentage = Math.min(Math.floor((displayBalance / withdrawalThreshold) * 100), 95);
-  const isNearThreshold = progressPercentage >= 80;
-  const isAtMaximum = progressPercentage >= 95;
-
+const ProgressBar: React.FC<ProgressBarProps> = ({
+  displayBalance = 0,
+  withdrawalThreshold = 200
+}) => {
+  // Ensure valid numbers and calculate progress
+  const safeBalance = typeof displayBalance === 'number' ? displayBalance : 0;
+  const safeThreshold = typeof withdrawalThreshold === 'number' ? withdrawalThreshold : 200;
+  const progress = Math.min(100, (safeBalance / safeThreshold) * 100);
+  
   return (
-    <div className="mt-3 mb-1">
-      <div className="w-full bg-slate-700/70 rounded-full h-2.5">
-        <div 
-          className={`h-2.5 rounded-full ${progressPercentage >= 95 ? 'bg-yellow-500' : progressPercentage >= 80 ? 'bg-amber-500' : 'bg-[#9b87f5]'} transition-all duration-1000`}
-          style={{ width: `${progressPercentage}%` }}
-        ></div>
+    <div className="mt-2 mb-4">
+      <div className="flex justify-between text-xs mb-1">
+        <span>Progression retrait</span>
+        <span>{safeBalance.toFixed(2)}€ / {safeThreshold}€</span>
       </div>
-      <div className="flex justify-between text-xs text-white/60 mt-1">
-        <span>{progressPercentage}%</span>
-        <span>
-          {progressPercentage >= 95 ? (
-            <span className="text-yellow-300 flex items-center">
-              <Award className="h-3 w-3 mr-1" />
-              Quelques euros restants!
-            </span>
-          ) : (
-            `Seuil: ${withdrawalThreshold}€`
-          )}
-        </span>
+      <div className="h-2 w-full bg-gray-700 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-blue-400 to-blue-600"
+          style={{ width: `${progress}%` }}
+        />
       </div>
     </div>
   );

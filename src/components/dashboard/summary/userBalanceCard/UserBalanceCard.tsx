@@ -27,9 +27,9 @@ interface UserBalanceCardProps {
 }
 
 const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
-  displayBalance,
-  subscription,
-  dailyLimit,
+  displayBalance = 0,
+  subscription = 'freemium',
+  dailyLimit = 0.5,
   sessionsDisplay = 'illimitées',
   referralCount = 0,
   referralBonus = 0,
@@ -39,24 +39,30 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   lastSessionTimestamp
 }) => {
   // Ensure we have valid values or defaults for calculated fields
-  const safeNetworkGains = networkGains !== undefined ? networkGains : (displayBalance * 0.3);
-  const safeBotGains = botGains !== undefined ? botGains : (displayBalance * 0.7);
-  const safeTotalGeneratedBalance = totalGeneratedBalance !== undefined ? totalGeneratedBalance : (displayBalance * 1.2);
+  const safeDisplayBalance = typeof displayBalance === 'number' ? displayBalance : 0;
+  const safeNetworkGains = networkGains !== undefined ? networkGains : (safeDisplayBalance * 0.3);
+  const safeBotGains = botGains !== undefined ? botGains : (safeDisplayBalance * 0.7);
+  const safeTotalGeneratedBalance = totalGeneratedBalance !== undefined ? totalGeneratedBalance : (safeDisplayBalance * 1.2);
+  const safeReferralBonus = typeof referralBonus === 'number' ? referralBonus : 0;
   
+  // Get withdrawal threshold for this subscription type
   const withdrawalThreshold = WITHDRAWAL_THRESHOLDS[subscription as keyof typeof WITHDRAWAL_THRESHOLDS] || 200;
+  
+  // State for UI effects
   const [glowActive, setGlowActive] = useState(false);
   const [balanceAnimating, setBalanceAnimating] = useState(false);
-  const [animatedBalance, setAnimatedBalance] = useState(displayBalance);
-  const [previousBalance, setPreviousBalance] = useState(displayBalance);
+  const [animatedBalance, setAnimatedBalance] = useState(safeDisplayBalance);
+  const [previousBalance, setPreviousBalance] = useState(safeDisplayBalance);
   
+  // Handle balance update events
   useEffect(() => {
     const handleBalanceUpdate = (e: CustomEvent) => {
       const newAmount = e.detail?.amount || 0;
-      setPreviousBalance(displayBalance);
+      setPreviousBalance(safeDisplayBalance);
       setBalanceAnimating(true);
       
-      const startValue = displayBalance;
-      const endValue = displayBalance + newAmount;
+      const startValue = safeDisplayBalance;
+      const endValue = safeDisplayBalance + newAmount;
       const duration = 1000;
       const startTime = Date.now();
       
@@ -80,8 +86,9 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
     
     window.addEventListener('balance:update' as any, handleBalanceUpdate);
     return () => window.removeEventListener('balance:update' as any, handleBalanceUpdate);
-  }, [displayBalance]);
+  }, [safeDisplayBalance]);
   
+  // Periodic glow effect
   useEffect(() => {
     const initialTimer = setTimeout(() => {
       setGlowActive(true);
@@ -99,6 +106,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
     };
   }, []);
   
+  // Activate glow during balance animation
   useEffect(() => {
     if (balanceAnimating) {
       setGlowActive(true);
@@ -113,16 +121,16 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         <BalanceHeader dailyLimit={dailyLimit} />
         
         <BalanceDisplay 
-          displayBalance={displayBalance}
+          displayBalance={safeDisplayBalance}
           balanceAnimating={balanceAnimating}
           animatedBalance={animatedBalance}
           previousBalance={previousBalance}
-          referralBonus={referralBonus}
+          referralBonus={safeReferralBonus}
           totalGeneratedBalance={safeTotalGeneratedBalance}
         />
         
         <ProgressBar 
-          displayBalance={displayBalance} 
+          displayBalance={safeDisplayBalance} 
           withdrawalThreshold={withdrawalThreshold} 
         />
         
@@ -138,7 +146,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         
         <ReferralInfo 
           referralCount={referralCount}
-          referralBonus={referralBonus}
+          referralBonus={safeReferralBonus}
         />
         
         <div className="mt-3 text-xs text-white/50 italic">

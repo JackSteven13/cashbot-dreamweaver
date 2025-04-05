@@ -1,35 +1,35 @@
 
 import React from 'react';
-import { Users } from 'lucide-react';
 
 interface ReferralInfoProps {
   referralCount: number;
   referralBonus: number;
 }
 
-const ReferralInfo: React.FC<ReferralInfoProps> = ({ referralCount, referralBonus }) => {
-  if (referralCount > 0) {
-    return (
-      <div className="mt-4 bg-slate-800/70 backdrop-blur-sm rounded-lg p-3 border border-white/5 flex justify-between items-center hover:border-[#9b87f5]/30 transition-all duration-300 group">
-        <div>
-          <div className="text-xs text-white/70 mb-1">Filleuls actifs</div>
-          <div className="font-medium flex items-center">
-            {referralCount} {referralCount > 1 ? 'personnes' : 'personne'}
-            <span className="text-green-400 ml-2 text-xs">(+{referralBonus}% de gains)</span>
-          </div>
-        </div>
-        <Users className="h-5 w-5 text-white/70 group-hover:text-[#9b87f5] transition-colors duration-300" />
-      </div>
-    );
-  }
+const ReferralInfo: React.FC<ReferralInfoProps> = ({
+  referralCount = 0,
+  referralBonus = 0
+}) => {
+  // Ensure we have valid numbers
+  const safeReferralCount = typeof referralCount === 'number' ? referralCount : 0;
+  const safeReferralBonus = typeof referralBonus === 'number' ? referralBonus : 0;
+  
+  // Format numbers safely
+  const formattedReferralBonus = safeReferralBonus.toFixed(2);
   
   return (
-    <div className="mt-4 bg-slate-800/70 backdrop-blur-sm rounded-lg p-3 border border-white/5 flex justify-between items-center opacity-80 hover:opacity-100 hover:border-[#9b87f5]/30 transition-all duration-300 group">
-      <div>
-        <div className="text-xs text-white/70 mb-1">Filleuls actifs</div>
-        <div className="font-medium text-white/80">Aucun filleul</div>
+    <div className="mt-4 border-t border-gray-600/50 pt-3">
+      <div className="flex justify-between items-center">
+        <div className="text-xs text-gray-300">
+          Parrainages actifs
+        </div>
+        <div className="text-sm">
+          <span className="text-yellow-400 font-semibold">{safeReferralCount}</span>
+          <span className="text-gray-400 ml-2">
+            ({formattedReferralBonus}€)
+          </span>
+        </div>
       </div>
-      <Users className="h-5 w-5 text-white/50 group-hover:text-[#9b87f5] transition-colors duration-300" />
     </div>
   );
 };

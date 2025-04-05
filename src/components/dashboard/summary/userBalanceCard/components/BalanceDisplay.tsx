@@ -1,14 +1,13 @@
 
 import React from 'react';
-import { Sparkles } from 'lucide-react';
 
 interface BalanceDisplayProps {
   displayBalance: number;
   balanceAnimating: boolean;
   animatedBalance: number;
   previousBalance: number;
-  referralBonus: number;
-  totalGeneratedBalance: number;
+  referralBonus?: number;
+  totalGeneratedBalance?: number;
 }
 
 const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
@@ -16,30 +15,44 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   balanceAnimating,
   animatedBalance,
   previousBalance,
-  referralBonus,
-  totalGeneratedBalance
+  referralBonus = 0,
+  totalGeneratedBalance = 0,
 }) => {
+  // Ensure we have valid numbers for displaying
+  const safeReferralBonus = referralBonus ?? 0;
+  const safeTotalGeneratedBalance = totalGeneratedBalance ?? (displayBalance * 1.2);
+  
+  // Format numbers safely
+  const formattedBalance = displayBalance.toFixed(2);
+  const formattedAnimatedBalance = animatedBalance.toFixed(2);
+  const formattedPreviousBalance = previousBalance.toFixed(2);
+  const formattedTotalGenerated = safeTotalGeneratedBalance.toFixed(2);
+  const formattedReferralBonus = safeReferralBonus.toFixed(2);
+  
+  // Calculate if gain happened
+  const isGain = animatedBalance > previousBalance;
+  
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center space-x-2">
-        <span className={`text-3xl font-bold ${balanceAnimating ? 'balance-increase text-green-300' : ''}`}>
-          {animatedBalance.toFixed(2)}€
-        </span>
-        {balanceAnimating && (
-          <span className="text-green-400 text-sm animate-fade-in">
-            +{(animatedBalance - previousBalance).toFixed(2)}€
-          </span>
-        )}
-        {referralBonus > 0 && (
-          <div className="bg-green-500/30 text-green-200 text-xs px-2 py-1 rounded-full flex items-center">
-            <Sparkles className="h-3 w-3 mr-1" />
-            +{referralBonus}%
+    <div className="pt-4 pb-6 text-center">
+      <div className="relative">
+        <h3 className="text-md opacity-80 mb-1">Solde actuel</h3>
+        <div className="flex items-center justify-center">
+          <div className="text-5xl font-bold">
+            <span className={`transition-colors duration-300 ${balanceAnimating ? (isGain ? 'text-green-300' : 'text-red-300') : 'text-white'}`}>
+              {balanceAnimating ? formattedAnimatedBalance : formattedBalance}
+            </span>
+            <span className="text-2xl ml-0.5">€</span>
           </div>
-        )}
+        </div>
+        
+        <div className="text-xs text-green-300 mt-2">
+          <div className="flex justify-center gap-2">
+            <span>Bonus parrainage: {formattedReferralBonus}€</span>
+            <span>|</span>
+            <span>Total généré: {formattedTotalGenerated}€</span>
+          </div>
+        </div>
       </div>
-      <p className="text-xs text-white/60 mt-1">
-        sur {totalGeneratedBalance.toFixed(2)}€ générés
-      </p>
     </div>
   );
 };
