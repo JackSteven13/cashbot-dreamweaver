@@ -1,7 +1,11 @@
 
+/**
+ * Functions for subscribing to auth changes
+ */
 export const subscribeToAuthChanges = () => {
   // Cette fonction serait implémentée pour gérer les abonnements aux changements d'authentification
   console.log("Subscribing to auth changes");
+  return () => {}; // Noop cleanup function
 };
 
 export const unsubscribeFromAuthChanges = () => {

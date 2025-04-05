@@ -97,3 +97,9 @@ export const shouldResetDailyCounters = (): boolean => {
   const today = new Date().toDateString();
   return lastResetDay !== today;
 };
+
+// Re-exporting subscription management functions
+export { subscribeToAuthChanges, unsubscribeFromAuthChanges } from '@/utils/subscription/sessionManagement';
+
+// Export SUBSCRIPTION_LIMITS
+export { SUBSCRIPTION_LIMITS } from './constants';
