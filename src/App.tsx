@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
@@ -18,8 +18,43 @@ import Contact from "./pages/Contact";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Payment from './pages/Payment';
 import PaymentSuccess from './pages/PaymentSuccess';
+import AccessGate from './pages/AccessGate';
 
 const queryClient = new QueryClient();
+
+// HOC pour vérifier le code d'accès
+const CodeProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const [isCodeVerified, setIsCodeVerified] = useState<boolean | null>(null);
+  
+  useEffect(() => {
+    const checkAccessCode = () => {
+      const verified = localStorage.getItem('access_code_verified') === 'true';
+      setIsCodeVerified(verified);
+    };
+    
+    checkAccessCode();
+    
+    // Re-vérifier si le localStorage change
+    window.addEventListener('storage', checkAccessCode);
+    return () => {
+      window.removeEventListener('storage', checkAccessCode);
+    };
+  }, []);
+  
+  // Pendant la vérification, ne rien afficher
+  if (isCodeVerified === null) {
+    return null;
+  }
+  
+  // Si non vérifié, rediriger vers la page d'accès
+  if (!isCodeVerified) {
+    const currentPath = window.location.pathname;
+    return <Navigate to={`/access?from=${encodeURIComponent(currentPath)}`} replace />;
+  }
+  
+  // Si vérifié, afficher le contenu
+  return <>{children}</>;
+};
 
 const AppRoutes = () => {
   // Check for redirections from 404 page
@@ -33,18 +68,41 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<Index />} />
+      <Route path="/access" element={<AccessGate />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      
+      {/* Routes protégées par code d'accès */}
+      <Route path="/" element={
+        <CodeProtectedRoute>
+          <Index />
+        </CodeProtectedRoute>
+      } />
       <Route path="/dashboard/*" element={
         <ProtectedRoute>
           <Dashboard />
         </ProtectedRoute>
       } />
-      <Route path="/about" element={<About />} />
-      <Route path="/offres" element={<Offres />} />
-      <Route path="/terms" element={<Terms />} />
-      <Route path="/contact" element={<Contact />} />
+      <Route path="/about" element={
+        <CodeProtectedRoute>
+          <About />
+        </CodeProtectedRoute>
+      } />
+      <Route path="/offres" element={
+        <CodeProtectedRoute>
+          <Offres />
+        </CodeProtectedRoute>
+      } />
+      <Route path="/terms" element={
+        <CodeProtectedRoute>
+          <Terms />
+        </CodeProtectedRoute>
+      } />
+      <Route path="/contact" element={
+        <CodeProtectedRoute>
+          <Contact />
+        </CodeProtectedRoute>
+      } />
       <Route path="/payment" element={
         <ProtectedRoute>
           <Payment />

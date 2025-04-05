@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -6,6 +7,7 @@ import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
+import { validateReferralCode } from '@/utils/referral/validationUtils';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -33,6 +35,16 @@ const Login = () => {
         if (error) {
           console.error("Session check error:", error);
           setIsCheckingSession(false);
+          return;
+        }
+        
+        // Vérifier si un code d'accès valide est présent
+        const accessCode = localStorage.getItem('access_code');
+        const isCodeVerified = localStorage.getItem('access_code_verified') === 'true';
+        
+        if (!accessCode || !isCodeVerified) {
+          // Rediriger vers la page d'accès si aucun code n'est trouvé
+          navigate('/access?from=/login', { replace: true });
           return;
         }
         
@@ -64,6 +76,18 @@ const Login = () => {
     setIsLoading(true);
     
     try {
+      // Vérifier si l'utilisateur a un code d'accès valide
+      const accessCode = localStorage.getItem('access_code');
+      if (!accessCode) {
+        throw new Error("Aucun code d'accès trouvé. Veuillez accéder à la plateforme via un code d'accès valide.");
+      }
+      
+      // Vérifier la validité du code
+      const isValidCode = await validateReferralCode(accessCode);
+      if (!isValidCode && accessCode !== '87878787') { // Permettre le code admin
+        throw new Error("Votre code d'accès est invalide ou a été désactivé.");
+      }
+      
       // Force clear problematic stored sessions first
       localStorage.removeItem('supabase.auth.token');
       
@@ -90,6 +114,13 @@ const Login = () => {
           if (userData) {
             localStorage.setItem('subscription', userData.subscription);
           }
+          
+          // Mettre à jour le code d'accès dans le profil utilisateur si nécessaire
+          await supabase
+            .from('profiles')
+            .update({ access_code: accessCode })
+            .eq('id', data.user.id);
+            
         } catch (prefetchError) {
           console.warn("Prefetch warning (non-critical):", prefetchError);
         }

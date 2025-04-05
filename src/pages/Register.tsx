@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
@@ -6,6 +7,8 @@ import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
+import { getStoredReferralCode } from '@/utils/referral/referralLinks';
+import { getReferrerIdFromCode } from '@/utils/referral/validationUtils';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -14,6 +17,20 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+
+  // Récupérer le code d'accès qui sert aussi de code de parrainage
+  useEffect(() => {
+    const accessCode = localStorage.getItem('access_code');
+    const storedReferralCode = getStoredReferralCode();
+    
+    if (accessCode || storedReferralCode) {
+      setReferralCode(accessCode || storedReferralCode);
+    } else {
+      // Rediriger vers la page d'accès si aucun code n'est trouvé
+      navigate('/access?from=/register', { replace: true });
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +47,9 @@ const Register = () => {
     setIsLoading(true);
     
     try {
+      // Obtenir l'ID du parrain à partir du code de parrainage
+      const referrerId = referralCode ? await getReferrerIdFromCode(referralCode) : null;
+      
       // Sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -37,6 +57,8 @@ const Register = () => {
         options: {
           data: {
             full_name: name,
+            referrer_id: referrerId,
+            access_code: referralCode,
           },
         },
       });
@@ -50,7 +72,9 @@ const Register = () => {
           .upsert({
             id: data.user.id,
             full_name: name,
-            email: email
+            email: email,
+            referrer_id: referrerId,
+            access_code: referralCode
           });
           
         // Initialiser les données utilisateur dans la base de données
@@ -104,6 +128,17 @@ const Register = () => {
               Rejoignez des milliers d'utilisateurs qui génèrent des revenus passifs
             </p>
           </div>
+          
+          {referralCode && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+              <p className="text-sm text-green-800">
+                Vous vous inscrivez avec le code : <strong>{referralCode}</strong>
+              </p>
+              <p className="text-xs text-green-600 mt-1">
+                Ce code vous donne accès à la plateforme Stream Genius
+              </p>
+            </div>
+          )}
           
           <div className="glass-panel p-6 rounded-xl">
             <form onSubmit={handleSubmit} className="space-y-4">
