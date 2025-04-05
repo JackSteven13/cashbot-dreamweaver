@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Users, Bot, Network, TrendingUp, Award, ChevronsUp } from 'lucide-react';
 import { WITHDRAWAL_THRESHOLDS } from '@/components/dashboard/summary/constants';
@@ -23,11 +24,16 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   sessionsDisplay = 'illimitées',
   referralCount = 0,
   referralBonus = 0,
-  networkGains = displayBalance * 0.3,
-  botGains = displayBalance * 0.7,
-  totalGeneratedBalance = displayBalance * 1.2,
+  networkGains,
+  botGains,
+  totalGeneratedBalance,
   lastSessionTimestamp
 }) => {
+  // Ensure we have valid values or defaults for calculated fields
+  const safeNetworkGains = networkGains !== undefined ? networkGains : (displayBalance * 0.3);
+  const safeBotGains = botGains !== undefined ? botGains : (displayBalance * 0.7);
+  const safeTotalGeneratedBalance = totalGeneratedBalance !== undefined ? totalGeneratedBalance : (displayBalance * 1.2);
+  
   const withdrawalThreshold = WITHDRAWAL_THRESHOLDS[subscription as keyof typeof WITHDRAWAL_THRESHOLDS] || 200;
   const [glowActive, setGlowActive] = useState(false);
   const [balanceAnimating, setBalanceAnimating] = useState(false);
@@ -124,7 +130,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
             )}
           </div>
           <p className="text-xs text-white/60 mt-1">
-            sur {totalGeneratedBalance.toFixed(2)}€ générés
+            sur {safeTotalGeneratedBalance.toFixed(2)}€ générés
           </p>
         </div>
         
@@ -176,7 +182,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
                 <Network className="h-3 w-3 mr-1 text-emerald-400 group-hover:animate-pulse" />
                 Gains réseau
               </div>
-              <div className="font-medium text-emerald-300">{networkGains.toFixed(2)}€</div>
+              <div className="font-medium text-emerald-300">{safeNetworkGains.toFixed(2)}€</div>
             </div>
             <TrendingUp className="h-4 w-4 text-emerald-400/70" />
           </div>
@@ -187,7 +193,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
                 <Bot className="h-3 w-3 mr-1 text-blue-400 group-hover:animate-pulse" />
                 Gains bots*
               </div>
-              <div className="font-medium text-blue-300">{botGains.toFixed(2)}€</div>
+              <div className="font-medium text-blue-300">{safeBotGains.toFixed(2)}€</div>
             </div>
             <ChevronsUp className="h-4 w-4 text-blue-400/70" />
           </div>

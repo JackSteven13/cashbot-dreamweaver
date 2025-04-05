@@ -75,7 +75,7 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
             dailyLimit={effectiveDailyLimit}
             referralBonus={referralBonus}
             lastSessionTimestamp={lastSessionTimestamp}
-            sessionsDisplay={remainingSessions}
+            sessionsDisplay={String(remainingSessions)}
           />
           
           <ActionButtons
