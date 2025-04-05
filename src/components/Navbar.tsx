@@ -34,7 +34,7 @@ const Navbar = () => {
       className={`fixed w-full z-50 transition-all duration-300 ${
         isScrolled
           ? 'py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-sm'
-          : 'py-6 md:py-8 bg-transparent'
+          : 'py-8 md:py-10 bg-transparent'
       }`}
       style={{ zIndex: 100 }}
     >
@@ -91,7 +91,7 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Mobile Menu using Sheet component from shadcn/ui */}
+          {/* Mobile Menu using Sheet component from shadcn/ui - Fixed styling issues */}
           <div className="md:hidden flex items-center gap-2">
             <DarkModeToggle />
             <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>

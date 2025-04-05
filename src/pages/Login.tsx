@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -138,7 +137,7 @@ const Login = () => {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       
-      <main className="flex-1 flex items-center justify-center py-12">
+      <main className="flex-1 flex items-center justify-center pt-28 pb-12">
         <div className="w-full max-w-md px-4">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold">Connectez-vous à votre compte</h1>

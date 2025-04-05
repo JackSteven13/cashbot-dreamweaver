@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -97,8 +96,8 @@ const Register = () => {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       
-      <main className="flex-1 flex items-center justify-center py-12">
-        <div className="w-full max-w-md px-4">
+      <main className="flex-1 flex items-center justify-center pt-28 pb-12 px-4">
+        <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold">Créez votre compte</h1>
             <p className="text-muted-foreground mt-2">

@@ -12,7 +12,8 @@ const PaymentLayout = ({ children }: PaymentLayoutProps) => {
     <div className="cyberpunk-bg min-h-screen bg-[#0f0f23] pb-12">
       <PaymentHeader />
       
-      <main className="container mx-auto pt-8 pb-14 px-4 relative z-10">
+      {/* Increased top padding for better spacing below header */}
+      <main className="container mx-auto pt-16 pb-14 px-4 relative z-10">
         <div className="max-w-2xl mx-auto">
           {children}
           

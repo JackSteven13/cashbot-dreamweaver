@@ -20,7 +20,8 @@ const Index = () => {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       
-      <main className="flex-1">
+      {/* Added content-padding-top class to Hero for spacing */}
+      <main className="flex-1 content-padding-top">
         <Hero />
         
         {/* Revenue Calculator Section - Moved up and reduced padding */}
