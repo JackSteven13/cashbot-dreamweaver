@@ -89,15 +89,51 @@ export const useWithdrawal = (
       operationLock.current = true;
       setIsProcessingWithdrawal(true);
       
-      console.log("Starting withdrawal process with balance:", userData.balance);
+      // Utiliser la valeur la plus récente du solde
+      let currentBalance = userData.balance;
+      
+      // Vérifier s'il existe une valeur plus élevée dans localStorage
+      try {
+        const storedHighestBalance = localStorage.getItem('highestBalance');
+        const storedCurrentBalance = localStorage.getItem('currentBalance');
+        const storedLastKnownBalance = localStorage.getItem('lastKnownBalance');
+        
+        // Utiliser la valeur maximum parmi toutes les sources
+        if (storedHighestBalance) {
+          const parsedHighest = parseFloat(storedHighestBalance);
+          if (!isNaN(parsedHighest) && parsedHighest > currentBalance) {
+            currentBalance = parsedHighest;
+          }
+        }
+        
+        if (storedCurrentBalance) {
+          const parsedCurrent = parseFloat(storedCurrentBalance);
+          if (!isNaN(parsedCurrent) && parsedCurrent > currentBalance) {
+            currentBalance = parsedCurrent;
+          }
+        }
+        
+        if (storedLastKnownBalance) {
+          const parsedLastKnown = parseFloat(storedLastKnownBalance);
+          if (!isNaN(parsedLastKnown) && parsedLastKnown > currentBalance) {
+            currentBalance = parsedLastKnown;
+          }
+        }
+        
+        console.log("Using maximum balance for withdrawal:", currentBalance);
+      } catch (e) {
+        console.error("Failed to read persisted balance for withdrawal:", e);
+      }
+      
+      console.log("Starting withdrawal process with balance:", currentBalance);
       
       // Process withdrawal only if sufficient balance
-      if (userData.balance >= withdrawalRules.minimumWithdrawalAmount) {
+      if (currentBalance >= withdrawalRules.minimumWithdrawalAmount) {
         // Calculer les frais selon l'ancienneté du compte
         const registerDate = userData.registeredAt || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
         const fee = calculateWithdrawalFee(registerDate, userData.subscription);
-        const feeAmount = userData.balance * fee;
-        const netAmount = userData.balance - feeAmount;
+        const feeAmount = currentBalance * fee;
+        const netAmount = currentBalance - feeAmount;
         
         toast({
           title: "Traitement en cours",
@@ -119,6 +155,11 @@ export const useWithdrawal = (
             description: `Votre retrait de ${netAmount.toFixed(2)}€ (après frais de ${(fee * 100).toFixed(0)}%: ${feeAmount.toFixed(2)}€) sera traité dans ${withdrawalRules.processingDays}.`
           });
           withdrawalAttempts.current = 0; // Reset attempts on success
+          
+          // Nettoyer le localStorage après retrait réussi
+          localStorage.removeItem('highestBalance');
+          localStorage.removeItem('currentBalance');
+          localStorage.removeItem('lastKnownBalance');
         } catch (error) {
           console.error("Error processing withdrawal:", error);
           withdrawalAttempts.current += 1;

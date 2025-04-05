@@ -8,6 +8,40 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
   const maxRetries = 3;
   let retryCount = 0;
   
+  // Vérifier s'il y a une valeur plus élevée dans localStorage
+  try {
+    const storedHighestBalance = localStorage.getItem('highestBalance');
+    const storedCurrentBalance = localStorage.getItem('currentBalance');
+    const storedLastKnownBalance = localStorage.getItem('lastKnownBalance');
+    
+    // Utiliser la valeur maximum parmi toutes les sources
+    if (storedHighestBalance) {
+      const parsedHighest = parseFloat(storedHighestBalance);
+      if (!isNaN(parsedHighest) && parsedHighest > currentBalance) {
+        console.log(`[resetBalance] Using higher stored balance: ${parsedHighest} > ${currentBalance}`);
+        currentBalance = parsedHighest;
+      }
+    }
+    
+    if (storedCurrentBalance) {
+      const parsedCurrent = parseFloat(storedCurrentBalance);
+      if (!isNaN(parsedCurrent) && parsedCurrent > currentBalance) {
+        console.log(`[resetBalance] Using higher current balance: ${parsedCurrent} > ${currentBalance}`);
+        currentBalance = parsedCurrent;
+      }
+    }
+    
+    if (storedLastKnownBalance) {
+      const parsedLastKnown = parseFloat(storedLastKnownBalance);
+      if (!isNaN(parsedLastKnown) && parsedLastKnown > currentBalance) {
+        console.log(`[resetBalance] Using higher last known balance: ${parsedLastKnown} > ${currentBalance}`);
+        currentBalance = parsedLastKnown;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to read persisted balance for withdrawal:", e);
+  }
+  
   while (retryCount < maxRetries) {
     try {
       console.log(`Resetting balance from ${currentBalance} to 0 for user ${userId} (attempt ${retryCount + 1}/${maxRetries})`);
@@ -43,6 +77,22 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
       
       // Add withdrawal transaction result
       const transactionResult = await addTransaction(userId, -currentBalance, report);
+      
+      // Nettoyer le localStorage après réinitialisation du solde réussie
+      try {
+        localStorage.removeItem('highestBalance');
+        localStorage.removeItem('currentBalance');
+        localStorage.removeItem('lastBalanceUpdateTime');
+        localStorage.removeItem('lastKnownBalance');
+        console.log("LocalStorage balance data cleared after withdrawal");
+        
+        // Informer tous les composants de réinitialiser leur état de solde
+        window.dispatchEvent(new CustomEvent('balance:reset', {
+          detail: { userId }
+        }));
+      } catch (e) {
+        console.error("Failed to clear localStorage after withdrawal:", e);
+      }
       
       console.log("Balance reset successfully and transaction created");
       return { 
