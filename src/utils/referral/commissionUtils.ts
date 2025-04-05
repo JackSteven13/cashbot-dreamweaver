@@ -78,13 +78,17 @@ export async function applyReferralBonus(
       return false;
     }
     
-    const currentBalance = parseFloat(balanceData.balance);
+    // Ensure we're working with a number for calculations
+    const currentBalance = typeof balanceData.balance === 'string' 
+      ? parseFloat(balanceData.balance) 
+      : balanceData.balance;
+    
     const newBalance = currentBalance + amount;
     
-    // Mettre à jour le solde
+    // Mettre à jour le solde - convert to string as the database expects a string
     const { error: updateError } = await supabase
       .from('user_balances')
-      .update({ balance: newBalance.toString() }) // Fix: Convert number to string
+      .update({ balance: newBalance.toString() })
       .eq('id', userId);
       
     if (updateError) {
@@ -161,7 +165,11 @@ export async function getUserCommissionInfo(userId: string, subscription: string
     let totalEarned = 0;
     
     if (!transactionsError && transactions) {
-      totalEarned = transactions.reduce((sum, tx) => sum + (parseFloat(tx.gain) || 0), 0);
+      totalEarned = transactions.reduce((sum, tx) => {
+        // Handle both string and number types for gain
+        const txGain = typeof tx.gain === 'string' ? parseFloat(tx.gain) : tx.gain;
+        return sum + (isNaN(txGain) ? 0 : txGain);
+      }, 0);
     }
     
     return {
