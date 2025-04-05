@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import { Share2, Copy, Users, Gift } from 'lucide-react';
 import { useUserData } from '@/hooks/useUserData';
 import { toast } from 'sonner';
 import { COMMISSION_RATES } from '@/components/dashboard/summary/constants';
+import AccessCodeDisplay from '@/components/dashboard/AccessCodeDisplay';
 
 const ReferralsPage = () => {
   const { userData, isLoading } = useUserData();
@@ -44,6 +46,9 @@ const ReferralsPage = () => {
   return (
     <div className="w-full">
       <h1 className="text-2xl font-bold mb-6">Programme de parrainage</h1>
+      
+      {/* Affichage du code d'accès en haut de la page */}
+      <AccessCodeDisplay />
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <Card>
