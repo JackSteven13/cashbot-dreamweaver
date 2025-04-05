@@ -13,6 +13,19 @@ export const calculateManualSessionGain = (
   // Get the daily limit for the subscription
   const dailyLimit = SUBSCRIPTION_LIMITS[subscriptionType as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
+  // Calculate remaining amount to reach the limit
+  const remainingToLimit = dailyLimit - currentBalance;
+  
+  // If almost at limit, return a tiny amount to approach limit without exceeding
+  if (remainingToLimit <= 0.02 && remainingToLimit > 0) {
+    return parseFloat(remainingToLimit.toFixed(2));
+  }
+  
+  // If already at or above limit, return 0
+  if (remainingToLimit <= 0) {
+    return 0;
+  }
+  
   // Get the percentage range for random gain based on subscription
   const gainPercentages = MANUAL_SESSION_GAIN_PERCENTAGES[subscriptionType as keyof typeof MANUAL_SESSION_GAIN_PERCENTAGES] 
     || MANUAL_SESSION_GAIN_PERCENTAGES.freemium;
@@ -30,7 +43,6 @@ export const calculateManualSessionGain = (
   const gainWithBonus = baseGain * (1 + referralBonus);
   
   // Make sure we don't exceed the daily limit
-  const remainingToLimit = dailyLimit - currentBalance;
   const finalGain = Math.min(gainWithBonus, remainingToLimit);
   
   // Return amount with 2 decimal places
@@ -48,6 +60,19 @@ export const calculateAutoSessionGain = (
   // Auto sessions generate smaller amounts than manual sessions
   // Get the daily limit for the subscription
   const dailyLimit = SUBSCRIPTION_LIMITS[subscriptionType as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  
+  // Calculate remaining amount to reach the limit
+  const remainingToLimit = dailyLimit - currentBalance;
+  
+  // If almost at limit, return a tiny amount to approach limit without exceeding
+  if (remainingToLimit <= 0.01 && remainingToLimit > 0) {
+    return parseFloat(remainingToLimit.toFixed(2));
+  }
+  
+  // If already at or above limit, return 0
+  if (remainingToLimit <= 0) {
+    return 0;
+  }
   
   // Auto sessions are 10-30% smaller than manual sessions
   const autoDiscountFactor = 0.7 + (Math.random() * 0.2); // 70-90% of manual gain
@@ -77,7 +102,6 @@ export const calculateAutoSessionGain = (
   const gainWithBonus = baseGain * (1 + referralBonus);
   
   // Make sure we don't exceed the daily limit
-  const remainingToLimit = dailyLimit - currentBalance;
   const finalGain = Math.min(gainWithBonus, remainingToLimit);
   
   // Return amount with 2 decimal places

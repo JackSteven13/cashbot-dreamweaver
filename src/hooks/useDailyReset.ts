@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Hook pour gérer la réinitialisation quotidienne des compteurs de session
- * et aussi du solde pour les comptes freemium
+ * sans remettre à zéro le solde pour les comptes freemium
  */
 export const useDailyReset = (
   resetFunction: () => Promise<void>,
@@ -30,7 +30,7 @@ export const useDailyReset = (
         resetAttempted.current = true;
         
         try {
-          // Vérifier si l'utilisateur est en freemium pour réinitialiser aussi son solde
+          // Vérifier si l'utilisateur est en freemium pour réinitialiser uniquement son compteur de session
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
             const { data } = await supabase
@@ -40,17 +40,16 @@ export const useDailyReset = (
               .single();
               
             if (data && data.subscription === 'freemium') {
-              // Réinitialiser le solde à 0 pour permettre d'accumuler à nouveau jusqu'à 0,50€ pour les freemium
+              // Réinitialiser uniquement le compteur de sessions, pas le solde
               await supabase
                 .from('user_balances')
                 .update({ 
-                  balance: 0,
                   daily_session_count: 0,
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', session.user.id);
                 
-              console.log("Solde freemium réinitialisé à 0€ pour permettre une nouvelle accumulation journalière");
+              console.log("Compteur de sessions freemium réinitialisé, le solde est conservé");
             }
           }
           
