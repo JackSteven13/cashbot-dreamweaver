@@ -22,6 +22,7 @@ export const SystemIndicators: React.FC<SystemIndicatorsProps> = ({
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
       if (typeof isActive === 'boolean') {
+        console.log(`SystemIndicators received bot status update: ${isActive ? 'active' : 'inactive'}`);
         setLocalBotActive(isActive);
       }
     };
@@ -36,6 +37,19 @@ export const SystemIndicators: React.FC<SystemIndicatorsProps> = ({
     };
   }, [botActive]);
   
+  // Function to toggle bot status manually
+  const handleBotToggle = () => {
+    const newStatus = !localBotActive;
+    console.log(`Toggling bot status from SystemIndicators: ${localBotActive} to ${newStatus}`);
+    
+    // Dispatch global event to sync state across components
+    window.dispatchEvent(new CustomEvent('bot:external-status-change', {
+      detail: { active: newStatus }
+    }));
+    
+    // No need to update local state here as it will be updated by the event handler above
+  };
+  
   return (
     <div className="flex flex-wrap items-center justify-between mt-6 pt-4 border-t border-gray-700/50 text-xs text-gray-400">
       <div className="flex items-center mr-3 mb-2 sm:mb-0">
@@ -48,7 +62,11 @@ export const SystemIndicators: React.FC<SystemIndicatorsProps> = ({
         <span>NETWORK: ONLINE</span>
       </div>
       
-      <div className="flex items-center mb-2 sm:mb-0">
+      <div 
+        className="flex items-center mb-2 sm:mb-0 cursor-pointer" 
+        onClick={handleBotToggle}
+        title="Cliquez pour activer/désactiver l'analyse automatique"
+      >
         {localBotActive ? (
           <Bot size={14} className="mr-1 text-green-400" />
         ) : (

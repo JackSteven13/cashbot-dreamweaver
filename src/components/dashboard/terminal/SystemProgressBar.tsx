@@ -37,9 +37,11 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
       setLocalBotActive(false);
       
       // Propager le changement d'état du bot à travers l'application
-      window.dispatchEvent(new CustomEvent('bot:status-change', { 
+      window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
         detail: { active: false } 
       }));
+      
+      console.log("Limite atteinte dans SystemProgressBar, bot désactivé");
     }
   }, [subscription, displayBalance, dailyLimit, limitPercentage, localBotActive]);
   
@@ -48,6 +50,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
       if (typeof isActive === 'boolean') {
+        console.log(`SystemProgressBar received bot status update: ${isActive ? 'active' : 'inactive'}`);
         setLocalBotActive(isActive);
       }
     };
@@ -61,6 +64,27 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
     };
   }, [botActive]);
+  
+  // Fonction pour basculer manuellement l'état du bot
+  const toggleBotStatus = () => {
+    const newStatus = !localBotActive;
+    
+    // Si le pourcentage est à 100%, ne pas permettre la réactivation
+    if (calculatedPercentage >= 100 && newStatus) {
+      console.log("Impossible de réactiver le bot: limite journalière atteinte");
+      return;
+    }
+    
+    console.log(`Toggling bot status from ${localBotActive} to ${newStatus}`);
+    
+    // Mettre à jour l'état local
+    setLocalBotActive(newStatus);
+    
+    // Propager le changement à toute l'application
+    window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
+      detail: { active: newStatus } 
+    }));
+  };
 
   return (
     <div className="mb-5">
@@ -71,9 +95,15 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
         <div className="text-xs font-medium text-gray-300 flex items-center">
           <span className="text-blue-300 mr-2">{Math.round(calculatedPercentage)}%</span> / {effectiveLimit}€ par jour
           
-          {/* Indicateur d'état du bot amélioré */}
-          <span className={`ml-2 inline-flex h-2 w-2 rounded-full ${localBotActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
-          <span className="ml-1 text-xs text-gray-400">{localBotActive ? 'Bot actif' : 'Bot inactif'}</span>
+          {/* Indicateur d'état du bot amélioré avec possibilité de cliquer */}
+          <div 
+            className="ml-2 flex items-center cursor-pointer" 
+            onClick={toggleBotStatus}
+            title="Cliquez pour activer/désactiver l'analyse automatique"
+          >
+            <span className={`inline-flex h-2 w-2 rounded-full ${localBotActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
+            <span className="ml-1 text-xs text-gray-400">{localBotActive ? 'Bot actif' : 'Bot inactif'}</span>
+          </div>
         </div>
       </div>
       <Progress value={calculatedPercentage} className="h-2 bg-slate-700">

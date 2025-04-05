@@ -61,6 +61,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
       if (typeof isActive === 'boolean') {
+        console.log(`BalanceDisplay received bot status update: ${isActive ? 'active' : 'inactive'}`);
         setLocalBotActive(isActive);
       }
     };
@@ -85,6 +86,17 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       window.removeEventListener('balance:force-update' as any, handleForceBalanceUpdate);
     };
   }, [isBotActive]);
+
+  // Function to toggle bot status manually (useful for debugging)
+  const handleBotToggle = () => {
+    const newStatus = !localBotActive;
+    setLocalBotActive(newStatus);
+    
+    // Dispatch global event to sync state across components
+    window.dispatchEvent(new CustomEvent('bot:external-status-change', {
+      detail: { active: newStatus }
+    }));
+  };
   
   return (
     <div className="pt-4 pb-6 text-center" ref={balanceRef}>
@@ -107,8 +119,12 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           </div>
         </div>
         
-        {/* Amélioration de l'indicateur de l'état du bot */}
-        <div className="mt-3 flex items-center justify-center gap-1">
+        {/* Amélioration de l'indicateur de l'état du bot avec option de clic pour basculer */}
+        <div 
+          className="mt-3 flex items-center justify-center gap-1 cursor-pointer" 
+          onClick={handleBotToggle}
+          title="Cliquez pour activer/désactiver le bot"
+        >
           {localBotActive ? (
             <>
               <Bot size={14} className="text-blue-500" />

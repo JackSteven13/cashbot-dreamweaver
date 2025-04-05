@@ -20,13 +20,28 @@ export const useSessionOperations = (
   const sessionInProgress = useRef(false);
   const operationLock = useRef(false);
   const cumulativeBalanceRef = useRef<number | null>(null);
+  const botStatusRef = useRef(isBotActive);
+
+  // Mettre à jour la référence quand la prop change
+  useRef(() => {
+    botStatusRef.current = isBotActive;
+  }).current = isBotActive;
 
   /**
    * Generate automatic revenue based on subscription type and limits
    */
   const generateAutomaticRevenue = async (isFirst = false) => {
-    // Check if bot is active before proceeding
-    if (!isBotActive || sessionInProgress.current || operationLock.current) return;
+    // Vérification stricte de l'état du bot avant de continuer
+    if (!botStatusRef.current) {
+      console.log("Bot inactif, arrêt de la génération de revenus");
+      return;
+    }
+
+    // Autres vérifications de sécurité
+    if (sessionInProgress.current || operationLock.current) {
+      console.log("Session déjà en cours ou verrou actif, arrêt");
+      return;
+    }
     
     try {
       operationLock.current = true;
@@ -58,9 +73,9 @@ export const useSessionOperations = (
       const remainingAllowedGains = Math.max(0, dailyLimit - todaysGainsRef.current);
       
       if (remainingAllowedGains <= 0) {
-        // Si limite atteinte, montrer l'alerte, déclencher l'événement limite-atteinte, et arrêter
+        // Si limite atteinte, désactiver le bot et montrer l'alerte
+        updateBotStatus(false);
         setShowLimitAlert(true);
-        updateBotStatus(false); // Désactiver le bot
         
         triggerDashboardEvent('terminal-update', { 
           line: "Limite journalière atteinte. Analyse automatique suspendue.",
@@ -72,6 +87,14 @@ export const useSessionOperations = (
           background: true
         });
         
+        sessionInProgress.current = false;
+        operationLock.current = false;
+        return;
+      }
+      
+      // Vérifier à nouveau si le bot est toujours actif
+      if (!botStatusRef.current) {
+        console.log("Bot désactivé pendant la préparation de la session, arrêt");
         sessionInProgress.current = false;
         operationLock.current = false;
         return;
@@ -96,6 +119,18 @@ export const useSessionOperations = (
       
       // Attendre un autre court instant
       await new Promise(resolve => setTimeout(resolve, 700));
+      
+      // Vérifier à nouveau si le bot est toujours actif
+      if (!botStatusRef.current) {
+        console.log("Bot désactivé pendant l'analyse, arrêt");
+        triggerDashboardEvent('terminal-update', { 
+          line: "Analyse interrompue: le bot a été désactivé.",
+          background: true
+        });
+        sessionInProgress.current = false;
+        operationLock.current = false;
+        return;
+      }
       
       // Calculer le gain en utilisant la fonction utilitaire (en respectant la limite journalière)
       const baseGain = calculateAutoSessionGain(
