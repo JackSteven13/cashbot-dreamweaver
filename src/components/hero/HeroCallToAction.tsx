@@ -11,7 +11,7 @@ const HeroCallToAction = () => {
           type="button" 
           size="lg" 
           fullWidth 
-          className="group bg-green-500 hover:bg-green-600 text-white font-semibold text-lg"
+          className="group bg-green-500 hover:bg-green-600 text-white font-bold text-lg py-3.5 px-6 shadow-lg"
         >
           Démarrer maintenant
           <ArrowRight size={20} className="ml-2 transition-transform group-hover:translate-x-1" />

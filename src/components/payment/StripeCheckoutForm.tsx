@@ -73,16 +73,16 @@ const StripeCheckoutForm = ({
   
   return (
     <div className="space-y-4 md:space-y-5">
-      <div className="flex items-center gap-2 text-[#1e3a5f] mb-1 md:mb-2">
-        <CreditCard className="h-4 w-4 md:h-5 md:w-5" />
-        <h3 className="font-medium text-sm md:text-base">Paiement sécurisé par Stripe</h3>
+      <div className="flex items-center gap-2 text-[#1e3a5f] dark:text-white mb-2 md:mb-3">
+        <CreditCard className="h-5 w-5" />
+        <h3 className="font-medium text-base md:text-lg">Paiement sécurisé par Stripe</h3>
       </div>
       
-      <div className="text-xs md:text-sm text-gray-600 mb-2 md:mb-4">
+      <div className="text-sm md:text-base text-gray-600 dark:text-gray-300 mb-3 md:mb-5">
         Vous serez redirigé vers la plateforme sécurisée de Stripe pour finaliser votre paiement.
       </div>
       
-      <div className="flex items-start space-x-2 py-1 md:py-2">
+      <div className="flex items-start space-x-2 py-2 md:py-3">
         <Checkbox 
           id="terms" 
           checked={termsAccepted}
@@ -90,11 +90,11 @@ const StripeCheckoutForm = ({
           className="mt-0.5"
         />
         <div className="grid gap-1 leading-none">
-          <Label htmlFor="terms" className="text-xs md:text-sm text-gray-700">
+          <Label htmlFor="terms" className="text-sm md:text-base text-gray-700 dark:text-gray-200">
             J'ai lu et j'accepte les{' '}
             <Link 
               to={termsLink} 
-              className="text-blue-600 hover:underline focus:outline-none focus:underline" 
+              className="text-blue-600 hover:underline focus:outline-none focus:underline dark:text-blue-400" 
               target="_blank"
               onClick={(e) => {
                 // Empêcher les clics multiples rapides
@@ -113,7 +113,7 @@ const StripeCheckoutForm = ({
       
       <Button 
         fullWidth 
-        className="bg-green-600 hover:bg-green-700 text-white text-sm md:text-base py-3 md:py-4 font-bold shadow-md flex justify-center items-center gap-2"
+        className="bg-green-600 hover:bg-green-700 text-white text-base md:text-lg py-3 md:py-4 font-bold shadow-md flex justify-center items-center gap-2 mt-4"
         onClick={handleCheckout}
         isLoading={isStripeProcessing && !stripeUrl}
         disabled={!termsAccepted || (isStripeProcessing && !stripeUrl)}
@@ -124,7 +124,7 @@ const StripeCheckoutForm = ({
       {stripeUrl && redirectAttempted && (
         <Button 
           fullWidth 
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm md:text-base py-2.5 md:py-3 flex justify-center items-center gap-2 shadow-md"
+          className="bg-blue-600 hover:bg-blue-700 text-white text-base py-3 md:py-4 flex justify-center items-center gap-2 shadow-md mt-3"
           onClick={() => openStripeWindow(stripeUrl)}
         >
           <ExternalLink size={20} />

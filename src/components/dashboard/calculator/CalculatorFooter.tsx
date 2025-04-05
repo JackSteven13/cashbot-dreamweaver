@@ -20,8 +20,8 @@ const CalculatorFooter: React.FC<CalculatorFooterProps> = ({
   
   // Amélioration visible du bouton pour un meilleur contraste
   const buttonClass = isHomePage 
-    ? "bg-green-500 hover:bg-green-600 text-white w-full md:w-auto dark:bg-green-500 dark:hover:bg-green-600 shadow-md font-semibold text-base" 
-    : "bg-green-600 hover:bg-green-700 text-white dark:bg-green-500 dark:hover:bg-green-600 font-semibold";
+    ? "bg-green-500 hover:bg-green-600 text-white w-full md:w-auto dark:bg-green-500 dark:hover:bg-green-600 shadow-md font-bold text-base py-3 px-6" 
+    : "bg-green-600 hover:bg-green-700 text-white dark:bg-green-500 dark:hover:bg-green-600 font-bold py-2.5 px-5";
   
   // Texte du bouton selon le contexte
   const buttonText = isHomePage 
@@ -52,7 +52,7 @@ const CalculatorFooter: React.FC<CalculatorFooterProps> = ({
         variant="default"
         className={buttonClass}
         onClick={handleClick}
-        size="lg"
+        size={isHomePage ? "lg" : "default"}
       >
         {buttonText}
       </Button>

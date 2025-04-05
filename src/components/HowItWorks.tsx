@@ -37,22 +37,27 @@ const HowItWorks = () => {
           <p className="text-base md:text-lg text-muted-foreground">Un processus simple et efficace pour générer des revenus complémentaires</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-6">
           {steps.map((step, index) => (
             <div 
               key={index} 
-              className="flex flex-col items-center text-center glass-card p-6 rounded-xl hover:shadow-lg transition-all duration-300"
+              className="relative flex flex-col items-center text-center glass-card p-6 md:p-8 rounded-xl hover:shadow-lg transition-all duration-300 mb-8 md:mb-0"
             >
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
-                {step.icon}
+              <div className="flex items-center justify-center w-full mb-4">
+                <div className="relative">
+                  <div className="absolute -left-2 -top-8 text-7xl font-bold text-primary/10 opacity-70">
+                    {index + 1}
+                  </div>
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    {step.icon}
+                  </div>
+                </div>
               </div>
-              <div className="relative mb-4">
-                <span className="absolute -left-4 -top-1 text-4xl font-bold text-primary/10">{index + 1}</span>
-                <h3 className="text-xl font-semibold mb-2 relative z-10">{step.title}</h3>
-              </div>
+              
+              <h3 className="text-xl font-semibold mb-3 mt-2 relative z-10">{step.title}</h3>
               <p className="text-muted-foreground">{step.description}</p>
               
-              {index < steps.length - 1 && (
+              {index < steps.length - 1 && !isMobile && (
                 <div className="hidden lg:block absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2">
                   <svg className="w-6 h-6 text-primary/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

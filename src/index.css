@@ -74,17 +74,18 @@
 
 /* Styles améliorés pour les sliders */
 [role="slider"] {
-  @apply w-6 h-6 bg-white border-2 border-primary shadow-md !important;
-  transition: transform 0.1s;
+  @apply w-6 h-6 bg-white border-2 border-primary rounded-full shadow-md !important;
+  transition: transform 0.1s, box-shadow 0.2s;
 }
 
 [role="slider"]:focus {
   @apply transform scale-110 outline-none;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
 }
 
 [role="slider"]:hover {
   @apply transform scale-110;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
 }
 
 /* Styles pour les boutons de démarrage */
@@ -100,4 +101,24 @@
 
 .calculator-value {
   @apply bg-blue-800/80 text-white font-semibold px-3 py-1 rounded-md min-w-[45px] text-center;
+}
+
+/* Amélioration des styles pour How It Works */
+.how-it-works-step {
+  @apply relative flex flex-col items-center text-center p-6 rounded-xl;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.how-it-works-step:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.how-it-works-number {
+  @apply absolute -left-4 -top-6 text-8xl font-bold opacity-20 text-primary;
+  z-index: 0;
 }

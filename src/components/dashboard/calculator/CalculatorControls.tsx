@@ -29,11 +29,11 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
   
   // Amélioration du contraste et de la visibilité
   const labelClass = isHomePage 
-    ? "text-white font-medium text-base" 
-    : "text-[#1e3a5f] font-medium text-base dark:text-white";
+    ? "text-white font-semibold text-base" 
+    : "text-[#1e3a5f] font-semibold text-base dark:text-white";
   
   const descriptionClass = isHomePage 
-    ? "text-blue-200 text-sm dark:text-blue-200" 
+    ? "text-blue-100 text-sm dark:text-blue-100" 
     : "text-gray-600 text-sm dark:text-gray-300";
   
   const valueClass = `min-w-[45px] text-center font-semibold ${
@@ -43,8 +43,8 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
   }`;
 
   // Ajustements pour mobile - espacer correctement les éléments
-  const mobileSpacing = isMobile ? "space-y-6" : "space-y-6";
-  const mobileDescriptionClass = isMobile ? "mb-2" : "mb-2";
+  const mobileSpacing = isMobile ? "space-y-8" : "space-y-6";
+  const mobileDescriptionClass = isMobile ? "mb-3" : "mb-2";
 
   return (
     <div className={mobileSpacing}>
@@ -59,7 +59,7 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
             <FormDescription className={`${descriptionClass} ${mobileDescriptionClass}`}>
               Nombre de sessions de gain que vous souhaitez lancer quotidiennement
             </FormDescription>
-            <div className="flex items-center space-x-4 mt-2">
+            <div className="flex items-center space-x-4 mt-3">
               <FormControl>
                 <Slider
                   min={1}
@@ -89,7 +89,7 @@ const CalculatorControls: React.FC<CalculatorControlsProps> = ({
             <FormDescription className={`${descriptionClass} ${mobileDescriptionClass}`}>
               Combien de jours par mois utiliserez-vous l'application?
             </FormDescription>
-            <div className="flex items-center space-x-4 mt-2">
+            <div className="flex items-center space-x-4 mt-3">
               <FormControl>
                 <Slider
                   min={1}

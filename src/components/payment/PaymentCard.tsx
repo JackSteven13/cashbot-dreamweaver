@@ -31,13 +31,13 @@ const PaymentCard = ({
   const isMobile = useIsMobile();
 
   return (
-    <Card className="cyber-card max-w-[95vw] md:max-w-full mx-auto">
-      <CardHeader className="py-3 px-4 md:p-6">
-        <CardTitle className="text-base md:text-xl text-[#1e3a5f]">
+    <Card className="cyber-card shadow-2xl max-w-[95vw] md:max-w-full mx-auto border border-white/10">
+      <CardHeader className="py-4 px-5 md:p-6 bg-gradient-to-r from-blue-900/90 to-indigo-900/90 border-b border-white/10">
+        <CardTitle className="text-base md:text-xl text-white font-semibold">
           Finaliser votre abonnement {selectedPlan && (selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1))}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 md:space-y-4 px-4 md:px-6 pb-6">
+      <CardContent className="space-y-4 md:space-y-5 p-5 md:p-6">
         <PlanSummary selectedPlan={selectedPlan} />
         
         {useStripeCheckout ? (
