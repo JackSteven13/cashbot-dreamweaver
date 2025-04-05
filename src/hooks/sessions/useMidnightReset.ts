@@ -1,68 +1,96 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
-import { supabase } from "@/integrations/supabase/client";
+import { shouldResetDailyCounters } from '@/utils/subscription';
+import { toast } from '@/components/ui/use-toast';
 
+/**
+ * Hook to manage daily reset functionality at midnight
+ */
 export const useMidnightReset = (
   userData: UserData,
   incrementSessionCount: () => Promise<void>,
   updateBalance: (gain: number, report: string) => Promise<void>,
   setShowLimitAlert: (show: boolean) => void
 ) => {
-  // Reset sessions every 14 days (on the 1st, 15th, and 29th) at midnight Paris time
+  const lastResetTimeRef = useRef<number>(Date.now());
+  
   useEffect(() => {
-    const checkMidnightReset = async () => {
-      try {
-        const now = new Date();
-        // Get Paris time (UTC+1 or UTC+2 depending on DST)
-        const parisTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-        
-        // 1. Check if it's midnight in Paris
-        if (parisTime.getHours() === 0 && parisTime.getMinutes() === 0) {
-          // 2. Check if it's a 14-day interval (1st, 15th, 29th of month)
-          const dayOfMonth = parisTime.getDate();
-          if (dayOfMonth === 1 || dayOfMonth === 15 || dayOfMonth === 29) {
-            console.log(`14-day reset triggered at Paris midnight on day: ${parisTime.getDate()}`);
-            
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-            
-            try {
-              // Reset session count for all users
-              const { error: updateError } = await supabase
-                .from('user_balances')
-                .update({ 
-                  daily_session_count: 0,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', session.user.id);
-                
-              if (updateError) {
-                console.error("Error resetting session count:", updateError);
-              }
-              
-              await incrementSessionCount(); // This will reset to 0 in our function
-              
-              // MODIFICATION IMPORTANTE : Ne plus réinitialiser le solde, même pour les comptes freemium
-              // Nous ne réinitialisons que le compteur de sessions
-              
-              console.log("Réinitialisation bi-mensuelle des compteurs de sessions effectuée");
-              setShowLimitAlert(false);
-            } catch (error) {
-              console.error("Error in bi-weekly reset:", error);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error checking reset:", error);
+    const checkForDailyReset = () => {
+      // Check if we should reset based on last reset time
+      if (shouldResetDailyCounters(lastResetTimeRef.current)) {
+        console.log("Daily reset triggered by time check");
+        performDailyReset();
       }
     };
     
-    // Check every minute for reset
-    const resetInterval = setInterval(checkMidnightReset, 60000);
+    // Check immediately when the component mounts
+    checkForDailyReset();
     
-    return () => clearInterval(resetInterval);
-  }, [userData.subscription, incrementSessionCount, updateBalance, setShowLimitAlert]);
-};
+    // Set up an interval to check regularly (every 5 minutes)
+    const intervalId = setInterval(checkForDailyReset, 5 * 60 * 1000);
+    
+    // Specific check at midnight
+    const checkAtMidnight = () => {
+      const now = new Date();
+      const nextMidnight = new Date();
+      nextMidnight.setHours(24, 0, 0, 0);
+      
+      const timeToMidnight = nextMidnight.getTime() - now.getTime();
+      
+      // Schedule the reset for midnight
+      const midnightTimer = setTimeout(() => {
+        console.log("Daily reset triggered by midnight timer");
+        performDailyReset();
+        
+        // Set up the next day's timer after this one fires
+        checkAtMidnight();
+      }, timeToMidnight);
+      
+      return midnightTimer;
+    };
+    
+    // Set up the initial midnight check
+    const midnightTimer = checkAtMidnight();
+    
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(midnightTimer);
+    };
+  }, []);
+  
+  const performDailyReset = async () => {
+    try {
+      // Only hide the limit alert if it's currently shown
+      setShowLimitAlert(false);
+      
+      // Reset the daily session count
+      await incrementSessionCount();
+      
+      // Update the last reset time
+      lastResetTimeRef.current = Date.now();
+      
+      // Display a notification about the reset
+      toast({
+        title: "Limite journalière réinitialisée",
+        description: "Vos gains journaliers ont été réinitialisés. Vous pouvez à nouveau générer des revenus aujourd'hui!",
+        action: (
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('dashboard:refresh'))}
+            className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded text-xs"
+          >
+            Générer maintenant
+          </button>
+        )
+      });
+      
+      // Dispatch an event to refresh the UI
+      window.dispatchEvent(new CustomEvent('daily-reset:complete'));
+      
+    } catch (error) {
+      console.error("Error during daily reset:", error);
+    }
+  };
 
-export default useMidnightReset;
+  return { performDailyReset };
+};

@@ -4,8 +4,7 @@ import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
 import { 
   SUBSCRIPTION_LIMITS, 
-  calculateAutoSessionGain,
-  checkDailyLimit
+  calculateAutoSessionGain
 } from '@/utils/subscription';
 import { triggerDashboardEvent } from '@/utils/animations';
 
@@ -19,6 +18,59 @@ export const useAutoSessions = (
   const operationLock = useRef(false);
   const activityInterval = useRef<NodeJS.Timeout | null>(null);
   const [activityLevel, setActivityLevel] = useState(1); // 1-5 échelle d'activité
+  
+  // Track today's auto-generated gains
+  const todaysGainsRef = useRef(0);
+  
+  // Calculate today's gains from transactions
+  useEffect(() => {
+    if (userData?.transactions) {
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const todaysAutoTransactions = userData.transactions.filter(tx => 
+        tx.date.startsWith(today) && 
+        tx.gain > 0 && 
+        tx.report.includes('système a généré')
+      );
+      
+      todaysGainsRef.current = todaysAutoTransactions.reduce((sum, tx) => sum + tx.gain, 0);
+      console.log("Today's auto-generated gains:", todaysGainsRef.current);
+    }
+  }, [userData?.transactions]);
+  
+  // Reset daily counters on day change
+  useEffect(() => {
+    const checkDayChange = () => {
+      const now = new Date();
+      const currentDay = now.getDate();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      
+      const storedDate = localStorage.getItem('lastAutoSessionDate');
+      if (storedDate) {
+        const [year, month, day] = storedDate.split('-').map(Number);
+        
+        if (year !== currentYear || month !== currentMonth || day !== currentDay) {
+          console.log("New day detected, resetting auto session counters");
+          todaysGainsRef.current = 0;
+          localStorage.setItem('lastAutoSessionDate', 
+            `${currentYear}-${currentMonth}-${currentDay}`);
+        }
+      } else {
+        localStorage.setItem('lastAutoSessionDate', 
+          `${currentYear}-${currentMonth}-${currentDay}`);
+      }
+    };
+    
+    // Check on component mount
+    checkDayChange();
+    
+    // Set up interval to check (every 5 minutes)
+    const dayCheckInterval = setInterval(checkDayChange, 5 * 60 * 1000);
+    
+    return () => {
+      clearInterval(dayCheckInterval);
+    };
+  }, []);
 
   // Effet pour simuler une activité périodique visible
   useEffect(() => {
@@ -48,9 +100,13 @@ export const useAutoSessions = (
 
   // Effet pour simuler l'analyse automatique des publicités
   useEffect(() => {
+    // Get the daily limit for the current subscription
+    const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    
     // Démarrer immédiatement une première session pour montrer l'activité à l'utilisateur
     setTimeout(() => {
-      if (!checkDailyLimit(userData.balance, userData.subscription)) {
+      // Check if we're below the daily limit
+      if (todaysGainsRef.current < dailyLimit) {
         generateAutomaticRevenue(true);
         setLastAutoSessionTime(Date.now());
       }
@@ -61,14 +117,14 @@ export const useAutoSessions = (
       const timeSinceLastSession = Date.now() - lastAutoSessionTime;
       const randomInterval = Math.random() * 60000 + 120000; // Entre 2 et 3 minutes
       
-      if (timeSinceLastSession >= randomInterval && !checkDailyLimit(userData.balance, userData.subscription)) {
+      if (timeSinceLastSession >= randomInterval && todaysGainsRef.current < dailyLimit) {
         generateAutomaticRevenue();
         setLastAutoSessionTime(Date.now());
       }
     }, 30000); // Vérifier toutes les 30 secondes
 
     return () => clearInterval(autoSessionInterval);
-  }, [lastAutoSessionTime, userData.subscription, userData.balance]);
+  }, [lastAutoSessionTime, userData.subscription]);
 
   const generateAutomaticRevenue = async (isFirst = false) => {
     if (sessionInProgress.current || operationLock.current) return;
@@ -83,18 +139,32 @@ export const useAutoSessions = (
       // Attendre un court instant pour l'animation d'analyse
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Calculate gain using the utility function
-      const randomGain = calculateAutoSessionGain(
+      // Get the daily limit for the current subscription
+      const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      
+      // Calculate remaining allowed gains for today
+      const remainingAllowedGains = Math.max(0, dailyLimit - todaysGainsRef.current);
+      
+      if (remainingAllowedGains <= 0) {
+        // If limit reached, show alert and stop
+        setShowLimitAlert(true);
+        sessionInProgress.current = false;
+        operationLock.current = false;
+        return;
+      }
+      
+      // Calculate gain using the utility function (respecting daily limit)
+      const baseGain = calculateAutoSessionGain(
         userData.subscription, 
-        userData.balance, 
+        todaysGainsRef.current, // Pass today's gains, not total balance
         userData.referrals.length
       );
       
-      // If no gain was generated (due to limit being reached), show alert
-      if (randomGain <= 0) {
-        setShowLimitAlert(true);
-        return;
-      }
+      // Ensure we don't exceed daily limit
+      const randomGain = Math.min(baseGain, remainingAllowedGains);
+      
+      // Update today's gains tracker
+      todaysGainsRef.current += randomGain;
       
       // Déclencher l'événement d'analyse terminée avec le gain
       triggerDashboardEvent('analysis-complete', { gain: randomGain });
@@ -116,12 +186,16 @@ export const useAutoSessions = (
         toast({
           title: "Revenus générés",
           description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`,
-          action: userData.subscription === 'freemium' ? {
-            label: "Améliorer",
-            onClick: () => {
-              window.location.href = '/upgrade';
-            }
-          } : undefined
+          action: userData.subscription === 'freemium' ? 
+            <button
+              onClick={() => {
+                window.location.href = '/upgrade';
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded text-xs"
+            >
+              Améliorer
+            </button>
+           : undefined
         });
       }
     } catch (error) {

@@ -1,227 +1,145 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
 /**
- * Structure des informations de commission pour un utilisateur
+ * Calculate commission rate based on plan types
  */
-export interface CommissionInfo {
-  baseRate: number;
-  effectiveRate: number;
-  tier2Rate: number;
-  referralCount: number;
-  totalEarned: number;
-  isTopReferrer: boolean;
-}
+export const calculateCommissionRate = (
+  referredPlanType: string,
+  referrerPlan: string
+) => {
+  // Base commission rate
+  let baseRate = 0.7; // 0.7€ standard
+  
+  // Adjust based on referred plan
+  if (referredPlanType === 'gold') {
+    baseRate = 1.5;
+  } else if (referredPlanType === 'elite') {
+    baseRate = 2.0;
+  }
+  
+  // Bonus for referrer's plan
+  let referrerBonus = 1.0; // Default multiplier
+  if (referrerPlan === 'starter') {
+    referrerBonus = 1.1; // 10% bonus
+  } else if (referrerPlan === 'gold') {
+    referrerBonus = 1.2; // 20% bonus
+  } else if (referrerPlan === 'elite') {
+    referrerBonus = 1.3; // 30% bonus
+  }
+  
+  return baseRate * referrerBonus;
+};
 
 /**
- * Obtient le taux de commission de base en fonction du type d'abonnement
- * @param subscription Type d'abonnement
- * @returns Taux de commission (en décimal)
+ * Get referrer's ID from referral code
  */
-export function getCommissionRate(subscription: string): number {
-  const rates: Record<string, number> = {
-    'starter': 0.3,  // 30%
-    'gold': 0.4,     // 40%
-    'elite': 0.5,    // 50%
-    'freemium': 0.2  // 20%
-  };
+export const getReferrerId = async (referralCode: string): Promise<string | null> => {
+  if (!referralCode) return null;
   
-  return rates[subscription] || 0.2;
-}
-
-/**
- * Calcul le bonus de parrainage en fonction des filleuls actifs
- * @param referrals Liste des parrainages
- * @param subscription Type d'abonnement
- * @returns Montant du bonus de parrainage
- */
-export function calculateReferralBonus(
-  referrals: Array<any> = [],
-  subscription: string = 'freemium'
-): number {
-  if (!referrals || referrals.length === 0) return 0;
-  
-  const baseCommissionRate = getCommissionRate(subscription);
-  
-  // Calculer le bonus pour chaque filleul actif
-  return referrals.reduce((total, referral) => {
-    // Si le parrainage est actif et a un taux de commission valide
-    if (referral.status === 'active' && typeof referral.commission_rate === 'number') {
-      const referralBonus = referral.balance * referral.commission_rate * baseCommissionRate;
-      return total + (isNaN(referralBonus) ? 0 : referralBonus);
-    }
-    return total;
-  }, 0);
-}
-
-/**
- * Applique le bonus de parrainage au solde de l'utilisateur
- */
-export async function applyReferralBonus(
-  userId: string,
-  amount: number,
-  description: string = "Bonus de parrainage"
-): Promise<boolean> {
   try {
-    if (!amount || amount <= 0) return false;
+    // Extract referrer ID from code (assuming format: {userId}_randomString)
+    const referrerId = referralCode.split('_')[0];
     
-    // Récupérer le solde actuel
-    const { data: balanceData, error: balanceError } = await supabase
-      .from('user_balances')
-      .select('balance')
-      .eq('id', userId)
+    if (!referrerId) return null;
+    
+    // Verify the referrer exists
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', referrerId)
       .single();
       
-    if (balanceError) {
-      console.error('Erreur lors de la récupération du solde:', balanceError);
-      return false;
+    if (error || !data) {
+      console.error("Invalid referrer ID:", error);
+      return null;
     }
     
-    // Ensure we're working with a number for calculations
-    const currentBalance = typeof balanceData.balance === 'string' 
-      ? parseFloat(balanceData.balance) 
-      : balanceData.balance;
-    
-    const newBalance = currentBalance + amount;
-    
-    // Mettre à jour le solde - convert to string as the database expects a string
-    const { error: updateError } = await supabase
+    return referrerId;
+  } catch (error) {
+    console.error("Error getting referrer ID:", error);
+    return null;
+  }
+};
+
+/**
+ * Apply referral bonus to referrer's balance
+ */
+export const applyReferralBonus = async (
+  referrerId: string, 
+  newUserId: string,
+  planType: string
+): Promise<boolean> => {
+  try {
+    // Get referrer's subscription
+    const { data: referrerData, error: referrerError } = await supabase
       .from('user_balances')
-      .update({ balance: newBalance.toString() })
-      .eq('id', userId);
+      .select('subscription')
+      .eq('id', referrerId)
+      .single();
       
-    if (updateError) {
-      console.error('Erreur lors de la mise à jour du solde:', updateError);
+    if (referrerError || !referrerData) {
+      console.error("Error getting referrer data:", referrerError);
       return false;
     }
     
-    // Ajouter une transaction
-    // Since the gain field in transactions expects a number type according to the error message
+    // Calculate commission
+    const amount = calculateCommissionRate(planType, referrerData.subscription);
+    
+    // Create referral record
+    const { error: referralError } = await supabase
+      .from('referrals')
+      .insert([
+        {
+          referrer_id: referrerId,
+          referred_user_id: newUserId,
+          commission_rate: amount,
+          plan_type: planType
+        }
+      ]);
+      
+    if (referralError) {
+      console.error("Error creating referral record:", referralError);
+      return false;
+    }
+    
+    // Add transaction for the commission
     const { error: transactionError } = await supabase
       .from('transactions')
-      .insert({
-        user_id: userId,
-        gain: amount, // Keep as number, as the database expects a number for this field
-        report: `${description}: +${amount.toFixed(2)}€`
-      });
+      .insert([
+        {
+          user_id: referrerId,
+          gain: Number(amount), // Convert to number
+          report: `Commission de parrainage pour l'utilisateur avec plan ${planType}`
+        }
+      ]);
       
     if (transactionError) {
-      console.error('Erreur lors de l\'ajout de la transaction:', transactionError);
+      console.error("Error creating transaction:", transactionError);
+      return false;
     }
     
-    // Déclencher un événement pour notifier l'interface utilisateur
-    dispatchBalanceUpdateEvent(amount);
-    
-    // Afficher une notification à l'utilisateur
-    toast({
-      title: "Revenus générés",
-      description: `+${amount.toFixed(2)}€ ont été ajoutés à votre solde!`,
-      variant: "default"
-    });
+    // Update referrer's balance
+    const { error: updateError } = await supabase
+      .rpc('update_balance', { 
+        user_id: referrerId, 
+        amount_change: amount 
+      });
+      
+    if (updateError) {
+      console.error("Error updating balance:", updateError);
+      return false;
+    }
     
     return true;
   } catch (error) {
-    console.error('Erreur lors de l\'application du bonus de parrainage:', error);
+    console.error("Error processing referral bonus:", error);
+    toast({
+      title: "Erreur",
+      description: "Une erreur est survenue lors du traitement du parrainage.",
+      variant: "destructive"
+    });
     return false;
   }
-}
-
-/**
- * Déclenche un événement de mise à jour du solde pour l'interface utilisateur
- */
-function dispatchBalanceUpdateEvent(amount: number): void {
-  try {
-    const event = new CustomEvent('balance:update', { 
-      detail: { amount, timestamp: new Date().toISOString() }
-    });
-    
-    window.dispatchEvent(event);
-    
-    // Aussi, déclencher un événement pour les animations
-    const animEvent = new CustomEvent('dashboard:animation', {
-      detail: { type: 'income', amount }
-    });
-    
-    window.dispatchEvent(animEvent);
-  } catch (error) {
-    console.error('Erreur lors de la création de l\'événement:', error);
-  }
-}
-
-/**
- * Obtient les informations complètes de commission pour un utilisateur
- */
-export async function getUserCommissionInfo(userId: string, subscription: string): Promise<CommissionInfo> {
-  try {
-    // Récupérer les filleuls actifs
-    const { data: referrals, error: referralsError } = await supabase
-      .from('referrals')
-      .select('referred_user_id, commission_rate, status')
-      .eq('referrer_id', userId)
-      .eq('status', 'active');
-      
-    if (referralsError) {
-      console.error('Erreur lors de la récupération des parrainages:', referralsError);
-      return {
-        baseRate: getCommissionRate(subscription),
-        effectiveRate: getCommissionRate(subscription),
-        tier2Rate: 0.05, // 5% pour les filleuls de niveau 2
-        referralCount: 0,
-        totalEarned: 0,
-        isTopReferrer: false
-      };
-    }
-    
-    // Calcul du taux effectif avec bonus pour les parrains performants
-    const referralCount = referrals?.length || 0;
-    const baseRate = getCommissionRate(subscription);
-    let effectiveRate = baseRate;
-    
-    // Bonus pour les parrains ayant beaucoup de filleuls
-    if (referralCount >= 10) {
-      effectiveRate = baseRate * 1.2; // +20% de bonus
-    } else if (referralCount >= 5) {
-      effectiveRate = baseRate * 1.1; // +10% de bonus
-    }
-    
-    // Vérifier si l'utilisateur est un parrain performant (top 10%)
-    const isTopReferrer = referralCount >= 5;
-    
-    // Récupérer le total gagné via le parrainage (somme des transactions avec "Bonus de parrainage")
-    const { data: transactions, error: transactionsError } = await supabase
-      .from('transactions')
-      .select('gain')
-      .eq('user_id', userId)
-      .ilike('report', '%Bonus de parrainage%');
-      
-    let totalEarned = 0;
-    
-    if (!transactionsError && transactions) {
-      totalEarned = transactions.reduce((sum, tx) => {
-        // Handle both string and number types for gain
-        const txGain = typeof tx.gain === 'string' ? parseFloat(tx.gain) : tx.gain;
-        return sum + (isNaN(txGain) ? 0 : txGain);
-      }, 0);
-    }
-    
-    return {
-      baseRate,
-      effectiveRate,
-      tier2Rate: 0.05,
-      referralCount,
-      totalEarned,
-      isTopReferrer
-    };
-  } catch (error) {
-    console.error('Erreur lors de la récupération des informations de commission:', error);
-    return {
-      baseRate: getCommissionRate(subscription),
-      effectiveRate: getCommissionRate(subscription),
-      tier2Rate: 0.05,
-      referralCount: 0,
-      totalEarned: 0,
-      isTopReferrer: false
-    };
-  }
-}
+};

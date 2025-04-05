@@ -52,6 +52,13 @@ export const useUserDataFetching = (
 
       // Récupérer les transactions
       const transactionsData = await fetchUserTransactions(session.user.id);
+      
+      // Calculate today's gains by filtering transactions from today
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const todaysTransactions = transactionsData.filter(tx => 
+        tx.date.startsWith(today) && tx.gain > 0
+      );
+      const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
 
       // Déterminer le nom d'affichage de l'utilisateur
       const displayName = refreshedProfile?.full_name || 
@@ -71,8 +78,8 @@ export const useUserDataFetching = (
       
       const newDailySessionCount = balanceData?.daily_session_count || 0;
       
-      // Vérifier si la limite quotidienne est atteinte
-      const limitReached = checkDailyLimit(balanceData?.balance || 0, balanceData?.subscription || 'freemium');
+      // Vérifier si la limite quotidienne est atteinte - based on today's transactions
+      const limitReached = checkDailyLimit(todaysGains, balanceData?.subscription || 'freemium');
       
       // Mettre à jour les données avec protection contre les boucles
       updateUserData({

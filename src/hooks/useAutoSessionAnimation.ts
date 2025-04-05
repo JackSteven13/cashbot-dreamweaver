@@ -47,17 +47,21 @@ export const useAutoSessionAnimation = () => {
           title: "Gain automatique!",
           description: `Le système a généré ${amount.toFixed(2)}€ pour vous.`,
           variant: "default",
-          action: amount > 0.1 ? {
-            label: "Booster",
-            onClick: () => {
-              // Déclencher un événement pour le booster
-              window.dispatchEvent(new CustomEvent('boost:request'));
-              toast({
-                title: "Boost activé!",
-                description: "Vos gains seront amplifiés pendant les prochaines minutes.",
-              });
-            }
-          } : undefined
+          action: amount > 0.1 ? 
+            <button 
+              onClick={() => {
+                // Déclencher un événement pour le booster
+                window.dispatchEvent(new CustomEvent('boost:request'));
+                toast({
+                  title: "Boost activé!",
+                  description: "Vos gains seront amplifiés pendant les prochaines minutes.",
+                });
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded text-xs"
+            >
+              Booster
+            </button>
+           : undefined
         });
       }
     };

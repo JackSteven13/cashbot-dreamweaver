@@ -12,9 +12,11 @@ export const getEffectiveSubscription = (subscription: string): string => {
 
 /**
  * Check if daily limit has been reached based on subscription
+ * This checks if the DAILY limit has been reached, not the total balance
  */
-export const checkDailyLimit = (balance: number, subscription: string): boolean => {
-  return balance >= (SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
+export const checkDailyLimit = (dailyGain: number, subscription: string): boolean => {
+  const limit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  return dailyGain >= limit;
 };
 
 /**
