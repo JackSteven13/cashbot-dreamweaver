@@ -8,13 +8,15 @@ interface SystemProgressBarProps {
   dailyLimit: number;
   limitPercentage: number;
   subscription: string;
+  botActive?: boolean;
 }
 
 export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({ 
   displayBalance, 
   dailyLimit,
   limitPercentage,
-  subscription
+  subscription,
+  botActive = true
 }) => {
   const [effectiveLimit, setEffectiveLimit] = useState(dailyLimit);
   const [calculatedPercentage, setCalculatedPercentage] = useState(limitPercentage);
@@ -35,13 +37,23 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
         <div className="text-xs font-medium text-gray-300">
           Progression de la limite journalière
         </div>
-        <div className="text-xs font-medium text-gray-300">
-          <span className="text-blue-300">{limitPercentage.toFixed(0)}%</span> / {effectiveLimit}€ par jour
+        <div className="text-xs font-medium text-gray-300 flex items-center">
+          <span className="text-blue-300 mr-2">{limitPercentage.toFixed(0)}%</span> / {effectiveLimit}€ par jour
+          
+          {/* Bot status indicator */}
+          <span className={`ml-2 inline-flex h-2 w-2 rounded-full ${botActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
+          <span className="ml-1 text-xs text-gray-400">{botActive ? 'Bot actif' : 'Bot inactif'}</span>
         </div>
       </div>
       <Progress value={calculatedPercentage} className="h-2 bg-slate-700">
         <div 
-          className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-500"
+          className={`h-full rounded-full transition-all duration-500 ${
+            calculatedPercentage >= 100 
+              ? 'bg-red-500' 
+              : calculatedPercentage > 80 
+                ? 'bg-orange-400' 
+                : 'bg-gradient-to-r from-blue-400 to-blue-600'
+          }`}
           style={{ width: `${calculatedPercentage}%` }}
         />
       </Progress>

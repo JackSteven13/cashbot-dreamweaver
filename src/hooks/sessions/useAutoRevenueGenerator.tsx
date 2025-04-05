@@ -17,16 +17,52 @@ export const useAutoRevenueGenerator = (
 ) => {
   const sessionInProgress = useRef(false);
   const operationLock = useRef(false);
+  const [botActive, setBotActive] = useState(true);
 
   /**
    * Generate automatic revenue based on subscription type and limits
    */
   const generateAutomaticRevenue = async (isFirst = false) => {
-    if (sessionInProgress.current || operationLock.current) return;
+    // Check if bot is active before proceeding
+    if (!botActive || sessionInProgress.current || operationLock.current) return;
     
     try {
       operationLock.current = true;
       sessionInProgress.current = true;
+      
+      // Get the daily limit for the current subscription
+      const dailyLimit = getDailyLimit();
+      
+      // Calculate today's gains from transactions
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const todaysTransactions = userData.transactions.filter(tx => 
+        tx.date.startsWith(today) && tx.gain > 0
+      );
+      const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
+      todaysGainsRef.current = todaysGains;
+      
+      // Calculate remaining allowed gains for today
+      const remainingAllowedGains = Math.max(0, dailyLimit - todaysGainsRef.current);
+      
+      if (remainingAllowedGains <= 0) {
+        // If limit reached, show alert, trigger limit-reached event, and stop
+        setShowLimitAlert(true);
+        setBotActive(false); // Deactivate the bot
+        
+        triggerDashboardEvent('terminal-update', { 
+          line: "Limite journalière atteinte. Bot désactivé jusqu'à demain.",
+          background: true
+        });
+        
+        triggerDashboardEvent('limit-reached', { 
+          subscription: userData.subscription,
+          background: true
+        });
+        
+        sessionInProgress.current = false;
+        operationLock.current = false;
+        return;
+      }
       
       // ALWAYS use background:true for all automatic revenue events
       // This is critical to prevent the loading screen
@@ -48,39 +84,6 @@ export const useAutoRevenueGenerator = (
       
       // Wait another short moment
       await new Promise(resolve => setTimeout(resolve, 700));
-      
-      // Get the daily limit for the current subscription
-      const dailyLimit = getDailyLimit();
-      
-      // Calculate today's gains from transactions
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      const todaysTransactions = userData.transactions.filter(tx => 
-        tx.date.startsWith(today) && tx.gain > 0
-      );
-      const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
-      todaysGainsRef.current = todaysGains;
-      
-      // Calculate remaining allowed gains for today
-      const remainingAllowedGains = Math.max(0, dailyLimit - todaysGainsRef.current);
-      
-      if (remainingAllowedGains <= 0) {
-        // If limit reached, show alert, trigger limit-reached event, and stop
-        setShowLimitAlert(true);
-        
-        triggerDashboardEvent('terminal-update', { 
-          line: "Limite journalière atteinte. Réessayez demain.",
-          background: true
-        });
-        
-        triggerDashboardEvent('limit-reached', { 
-          subscription: userData.subscription,
-          background: true // IMPORTANT: Always specify background:true
-        });
-        
-        sessionInProgress.current = false;
-        operationLock.current = false;
-        return;
-      }
       
       // Calculate gain using the utility function (respecting daily limit)
       const baseGain = calculateAutoSessionGain(
@@ -137,9 +140,15 @@ export const useAutoRevenueGenerator = (
         // If limit reached now, trigger the limit-reached event
         triggerDashboardEvent('limit-reached', { 
           subscription: userData.subscription,
-          background: true // IMPORTANT: Always specify background:true
+          background: true
         });
         setShowLimitAlert(true);
+        setBotActive(false); // Deactivate the bot when limit is reached
+        
+        triggerDashboardEvent('terminal-update', { 
+          line: "Limite journalière atteinte. Bot désactivé jusqu'à demain.",
+          background: true
+        });
       }
     } catch (error) {
       console.error("Error generating automatic revenue:", error);
@@ -157,8 +166,15 @@ export const useAutoRevenueGenerator = (
     }
   };
 
+  // Reset bot activity when daily counters reset
+  const resetBotActivity = () => {
+    setBotActive(true);
+  };
+
   return {
     generateAutomaticRevenue,
-    isSessionInProgress: () => sessionInProgress.current
+    isSessionInProgress: () => sessionInProgress.current,
+    isBotActive: botActive,
+    resetBotActivity
   };
 };

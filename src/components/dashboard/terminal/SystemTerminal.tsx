@@ -37,6 +37,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   const [showProTrialInfo, setShowProTrialInfo] = useState(isNewUser);
   const [effectiveSubscription, setEffectiveSubscription] = useState(subscription);
   const [effectiveLimit, setEffectiveLimit] = useState(dailyLimit);
+  const [botStatus, setBotStatus] = useState(displayBalance < effectiveLimit);
   
   const { timeRemaining, isCountingDown } = useSessionCountdown(
     typeof remainingSessions === 'number' ? 1 - remainingSessions : 0, 
@@ -54,16 +55,32 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
     countdownTime
   } = useTerminalAnalysis();
   
-  const limitPercentage = Math.min(100, (displayBalance / effectiveLimit) * 100);
-  
   useEffect(() => {
     const effectiveSub = getEffectiveSubscription(subscription);
     setEffectiveSubscription(effectiveSub);
     
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     setEffectiveLimit(limit);
-  }, [subscription]);
+    
+    // Update bot status based on balance compared to limit
+    setBotStatus(displayBalance < limit);
+  }, [subscription, displayBalance]);
+  
+  // Listen for limit-reached event
+  useEffect(() => {
+    const handleLimitReached = () => {
+      setBotStatus(false);
+    };
+    
+    window.addEventListener('dashboard:limit-reached', handleLimitReached);
+    
+    return () => {
+      window.removeEventListener('dashboard:limit-reached', handleLimitReached);
+    };
+  }, []);
 
+  const limitPercentage = Math.min(100, (displayBalance / effectiveLimit) * 100);
+  
   // Trigger limit reached event when balance reaches daily limit
   useEffect(() => {
     if (displayBalance >= effectiveLimit) {
@@ -72,6 +89,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           subscription: effectiveSubscription
         }
       }));
+      setBotStatus(false);
     }
   }, [displayBalance, effectiveLimit, effectiveSubscription]);
 
@@ -89,6 +107,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           dailyLimit={effectiveLimit} 
           limitPercentage={limitPercentage}
           subscription={subscription}
+          botActive={botStatus}
         />
         
         {isCountingDown && !limitReached && (
@@ -99,11 +118,11 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           showAnalysis={showAnalysis}
           terminalLines={terminalLines}
           analysisComplete={analysisComplete}
-          limitReached={limitReached}
+          limitReached={limitReached || !botStatus}
           countdownTime={countdownTime}
         />
         
-        {!showAnalysis && !limitReached && (
+        {!showAnalysis && (
           <>
             <SystemInfoGrid 
               subscription={subscription}
@@ -111,6 +130,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
               dailyLimit={effectiveLimit}
               remainingSessions={remainingSessions}
               referralBonus={referralBonus}
+              botActive={botStatus}
             />
             
             {isNewUser && <NewUserGuide />}
@@ -123,7 +143,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           </>
         )}
         
-        <SystemIndicators showAnalysis={showAnalysis} />
+        <SystemIndicators showAnalysis={showAnalysis} botActive={botStatus} />
       </div>
     </div>
   );

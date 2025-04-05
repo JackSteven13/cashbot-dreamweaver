@@ -1,41 +1,15 @@
 
 import React from 'react';
-import { AlertCircle, Sparkles, Users } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-
-interface SystemInfoProps {
-  isNewUser: boolean;
-  onFeedbackClick: () => void;
-}
-
-export const SystemInfo: React.FC<SystemInfoProps> = ({ isNewUser, onFeedbackClick }) => {
-  return (
-    <div className="flex justify-between items-center mb-4">
-      <div className="flex items-center">
-        <div className="h-3 w-3 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-        <h3 className="text-lg font-medium text-white">
-          {isNewUser ? "Stream genius • Bienvenue" : "Stream genius • Système actif"}
-        </h3>
-      </div>
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        className="text-xs text-gray-300 hover:text-white hover:bg-slate-700/50"
-        onClick={onFeedbackClick}
-      >
-        <AlertCircle className="h-3.5 w-3.5 mr-1" />
-        Feedback
-      </Button>
-    </div>
-  );
-};
+import { Badge } from '@/components/ui/badge';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 
 interface SystemInfoGridProps {
   subscription: string;
-  tempProEnabled: boolean;
+  tempProEnabled?: boolean;
   dailyLimit: number;
   remainingSessions: number | string;
   referralBonus?: number;
+  botActive?: boolean;
 }
 
 export const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
@@ -43,50 +17,52 @@ export const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
   tempProEnabled,
   dailyLimit,
   remainingSessions,
-  referralBonus = 0
+  referralBonus = 0,
+  botActive = true
 }) => {
-  const isElitePlan = subscription === 'elite';
+  // Format subscription display
+  const formatSubscription = () => {
+    let subName = subscription.charAt(0).toUpperCase() + subscription.slice(1);
+    
+    if (tempProEnabled && subscription === 'freemium') {
+      return (
+        <span>
+          {subName} <Badge variant="outline" className="ml-1 bg-blue-900/30 text-blue-400 border-blue-700">Pro Trial</Badge>
+        </span>
+      );
+    }
+    
+    return subName;
+  };
   
   return (
-    <div className="space-y-3 mb-4 font-mono text-sm">
-      <div className="grid grid-cols-2 gap-3">
-        <div className={`${isElitePlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isElitePlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
-          <div className="text-xs text-gray-400">Abonnement</div>
-          <div className="text-sm font-medium text-white capitalize flex items-center">
-            {tempProEnabled ? 'Pro (Essai)' : subscription}
-            {isElitePlan && <Sparkles className="h-3 w-3 text-purple-300 ml-1" />}
-          </div>
+    <div className="grid grid-cols-2 gap-3 mt-4 mb-5 text-xs">
+      <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+        <div className="text-gray-400 mb-1">Abonnement</div>
+        <div className="font-medium text-white flex items-center">
+          {formatSubscription()}
         </div>
-        <div className={`${isElitePlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isElitePlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
-          <div className="text-xs text-gray-400">Limite journalière</div>
-          <div className="text-sm font-medium text-white">
-            {tempProEnabled ? '5€' : `${dailyLimit}€`}
-          </div>
+      </div>
+      
+      <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+        <div className="text-gray-400 mb-1">Limite journalière</div>
+        <div className="font-medium text-white">{dailyLimit.toFixed(2)}€ / jour</div>
+      </div>
+      
+      <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+        <div className="text-gray-400 mb-1">Sessions restantes</div>
+        <div className="font-medium text-white">
+          {subscription === 'freemium' ? remainingSessions : '∞'}
         </div>
-        <div className={`${isElitePlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isElitePlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
-          <div className="text-xs text-gray-400">Sessions</div>
-          <div className="text-sm font-medium text-white">
-            {tempProEnabled 
-              ? 'Illimitées (Essai)' 
-              : (subscription === 'freemium' 
-                ? `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}` 
-                : 'Illimitées')}
-          </div>
-        </div>
-        <div className={`${isElitePlan ? 'bg-violet-800/40' : 'bg-slate-700/30'} p-2 rounded-lg border ${isElitePlan ? 'border-purple-500/30' : 'border-slate-600/50'}`}>
-          <div className="text-xs text-gray-400">Bonus parrainage</div>
-          <div className="text-sm font-medium text-white flex items-center">
-            {referralBonus > 0 ? (
-              <>
-                <span>+{referralBonus}%</span>
-                <Users className="h-3 w-3 ml-1 text-green-300" />
-              </>
-            ) : (
-              <span className="flex items-center">
-                0% <span className="text-xs ml-1 text-gray-400">(aucun filleul)</span>
-              </span>
-            )}
-          </div>
+      </div>
+      
+      <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+        <div className="text-gray-400 mb-1">Statut du bot</div>
+        <div className="font-medium flex items-center">
+          <span className={`inline-flex h-2 w-2 mr-2 rounded-full ${botActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
+          <span className={`${botActive ? 'text-green-400' : 'text-red-400'}`}>
+            {botActive ? 'Actif' : 'Inactif'}
+          </span>
         </div>
       </div>
     </div>

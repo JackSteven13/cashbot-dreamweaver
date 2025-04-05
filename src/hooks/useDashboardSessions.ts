@@ -62,7 +62,12 @@ export const useDashboardSessions = (
   }, [userData?.transactions]);  // Dépendance simplifiée
 
   // Utiliser les hooks individuels pour chaque fonctionnalité
-  useAutoSessions(
+  const { 
+    lastAutoSessionTime, 
+    activityLevel, 
+    generateAutomaticRevenue,
+    isBotActive 
+  } = useAutoSessions(
     userData,
     updateBalance,
     setShowLimitAlert
@@ -95,7 +100,8 @@ export const useDashboardSessions = (
     handleWithdrawal,
     isProcessingWithdrawal: isProcessingWithdrawal,
     lastSessionTimestamp,
-    localBalance  // Exposer le solde local pour éviter les problèmes de synchronisation
+    localBalance,  // Exposer le solde local pour éviter les problèmes de synchronisation
+    isBotActive    // Expose the bot active status
   };
 };
 

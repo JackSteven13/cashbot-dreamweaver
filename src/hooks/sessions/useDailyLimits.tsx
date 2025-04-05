@@ -5,9 +5,10 @@ import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 /**
  * Hook for managing daily limit tracking and resets
  * @param userData User data object
+ * @param onDayChange Optional callback when day changes
  * @returns Today's gains reference and day change tracking
  */
-export const useDailyLimits = (userData: any) => {
+export const useDailyLimits = (userData: any, onDayChange?: () => void) => {
   // Track today's auto-generated gains
   const todaysGainsRef = useRef(0);
   
@@ -42,6 +43,11 @@ export const useDailyLimits = (userData: any) => {
           todaysGainsRef.current = 0;
           localStorage.setItem('lastAutoSessionDate', 
             `${currentYear}-${currentMonth}-${currentDay}`);
+          
+          // Call the onDayChange callback if provided
+          if (onDayChange) {
+            onDayChange();
+          }
         }
       } else {
         localStorage.setItem('lastAutoSessionDate', 
@@ -58,7 +64,7 @@ export const useDailyLimits = (userData: any) => {
     return () => {
       clearInterval(dayCheckInterval);
     };
-  }, []);
+  }, [onDayChange]);
 
   /**
    * Get daily limit for the current subscription

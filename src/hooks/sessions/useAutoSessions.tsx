@@ -18,7 +18,7 @@ export const useAutoSessions = (
   const { todaysGainsRef, getDailyLimit } = useDailyLimits(userData);
   
   // Create auto revenue generator
-  const { generateAutomaticRevenue, isSessionInProgress } = useAutoRevenueGenerator(
+  const { generateAutomaticRevenue, isSessionInProgress, isBotActive, resetBotActivity } = useAutoRevenueGenerator(
     userData,
     updateBalance,
     setShowLimitAlert,
@@ -30,7 +30,8 @@ export const useAutoSessions = (
   const { setLastAutoSessionTime: updateLastSessionTime } = useAutoSessionScheduler(
     todaysGainsRef,
     generateAutomaticRevenue,
-    userData
+    userData,
+    isBotActive
   );
   
   // Update the lastAutoSessionTime state both locally and in the scheduler
@@ -43,6 +44,8 @@ export const useAutoSessions = (
     lastAutoSessionTime,
     setLastAutoSessionTime: setSessionTime,
     activityLevel,
-    generateAutomaticRevenue
+    generateAutomaticRevenue,
+    isBotActive,
+    resetBotActivity
   };
 };

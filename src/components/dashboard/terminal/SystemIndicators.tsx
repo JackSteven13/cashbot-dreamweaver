@@ -1,25 +1,36 @@
 
 import React from 'react';
-import { Bot, Cpu } from 'lucide-react';
+import { Cpu, Signal, Zap } from 'lucide-react';
 
 interface SystemIndicatorsProps {
-  showAnalysis: boolean;
+  showAnalysis?: boolean;
+  botActive?: boolean;
 }
 
-export const SystemIndicators: React.FC<SystemIndicatorsProps> = ({ showAnalysis }) => {
+export const SystemIndicators: React.FC<SystemIndicatorsProps> = ({ 
+  showAnalysis = false,
+  botActive = true
+}) => {
+  // Simulate varying CPU load
+  const randomLoad = Math.floor(Math.random() * 30) + 20;
+  
   return (
-    <div className="flex items-center justify-between mt-4 text-xs text-white/60">
+    <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-700/50 text-xs text-gray-400">
       <div className="flex items-center">
-        <Bot size={12} className="mr-1 text-[#9b87f5]" />
-        <span>Bots actifs: {Math.floor(Math.random() * 5) + 3}</span>
+        <Cpu size={12} className="mr-1" />
+        <span>CPU: {randomLoad}%</span>
       </div>
+      
       <div className="flex items-center">
-        <Cpu size={12} className="mr-1 text-[#9b87f5]" />
-        <span>Système: {showAnalysis ? (
-          <span className="text-green-400">Analyse en cours</span>
-        ) : (
-          <span>En attente</span>
-        )}</span>
+        <Signal size={12} className="mr-1" />
+        <span>NETWORK: ONLINE</span>
+      </div>
+      
+      <div className="flex items-center">
+        <Zap size={12} className={`mr-1 ${botActive ? 'text-green-400' : 'text-red-400'}`} />
+        <span className={botActive ? 'text-green-400' : 'text-red-400'}>
+          {botActive ? 'BOT ACTIVE' : 'BOT INACTIVE'}
+        </span>
       </div>
     </div>
   );
