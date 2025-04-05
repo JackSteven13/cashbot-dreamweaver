@@ -128,7 +128,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           terminalLines={terminalLines}
           analysisComplete={analysisComplete}
           limitReached={limitReached || !botStatus}
-          countdownTime={countdownTime}
+          countdownTime={countdownTime ? parseInt(countdownTime.toString(), 10) : 0}
         />
         
         {!showAnalysis && (
