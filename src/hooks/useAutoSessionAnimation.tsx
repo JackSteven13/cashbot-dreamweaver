@@ -33,10 +33,24 @@ export const useAutoSessionAnimation = () => {
     const handleBalanceUpdate = (event: Event) => {
       const customEvent = event as CustomEvent;
       const amount = customEvent.detail?.amount || 0;
+      const currentBalance = customEvent.detail?.currentBalance || 0;
       
       if (balanceElementRef.current && amount > 0) {
-        // Animer l'élément de solde
-        animateBalanceUpdate(balanceElementRef.current, amount);
+        // Animer l'élément de solde avec les 4 arguments requis
+        // 1. startValue (current balance - amount)
+        // 2. endValue (current balance)
+        // 3. duration (1000ms default)
+        // 4. updateCallback function to update the UI
+        animateBalanceUpdate(
+          currentBalance - amount, 
+          currentBalance,
+          1000,
+          (value) => {
+            if (balanceElementRef.current) {
+              balanceElementRef.current.textContent = `${value.toFixed(2)}€`;
+            }
+          }
+        );
         
         // Créer des particules d'argent avec une intensité proportionnelle au montant
         const particleCount = Math.min(Math.max(Math.floor(amount * 10), 5), 30);
