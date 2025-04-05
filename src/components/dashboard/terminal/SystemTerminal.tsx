@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { SystemInfoGrid } from './SystemInfo';
 import { SystemProgressBar } from './SystemProgressBar';
@@ -48,7 +49,9 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   const {
     showAnalysis,
     terminalLines,
-    analysisComplete
+    analysisComplete,
+    limitReached,
+    countdownTime
   } = useTerminalAnalysis();
   
   const limitPercentage = Math.min(100, (displayBalance / effectiveLimit) * 100);
@@ -60,6 +63,17 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     setEffectiveLimit(limit);
   }, [subscription]);
+
+  // Trigger limit reached event when balance reaches daily limit
+  useEffect(() => {
+    if (displayBalance >= effectiveLimit) {
+      window.dispatchEvent(new CustomEvent('dashboard:limit-reached', { 
+        detail: { 
+          subscription: effectiveSubscription
+        }
+      }));
+    }
+  }, [displayBalance, effectiveLimit, effectiveSubscription]);
 
   const handleActivateProTrial = () => {
     activateProTrial(subscription);
@@ -77,7 +91,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           subscription={subscription}
         />
         
-        {isCountingDown && (
+        {isCountingDown && !limitReached && (
           <SessionCountdown timeRemaining={timeRemaining} />
         )}
         
@@ -85,9 +99,11 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
           showAnalysis={showAnalysis}
           terminalLines={terminalLines}
           analysisComplete={analysisComplete}
+          limitReached={limitReached}
+          countdownTime={countdownTime}
         />
         
-        {!showAnalysis && (
+        {!showAnalysis && !limitReached && (
           <>
             <SystemInfoGrid 
               subscription={subscription}

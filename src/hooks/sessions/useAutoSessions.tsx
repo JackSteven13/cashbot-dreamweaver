@@ -168,12 +168,17 @@ export const useAutoSessions = (
       const remainingAllowedGains = Math.max(0, dailyLimit - todaysGainsRef.current);
       
       if (remainingAllowedGains <= 0) {
-        // If limit reached, show alert and stop
+        // If limit reached, show alert, trigger limit-reached event, and stop
         setShowLimitAlert(true);
         
         triggerDashboardEvent('terminal-update', { 
           line: "Limite journalière atteinte. Réessayez demain.",
           background: true
+        });
+        
+        triggerDashboardEvent('limit-reached', { 
+          subscription: userData.subscription,
+          background: false // We want this to be visible
         });
         
         sessionInProgress.current = false;
@@ -229,6 +234,16 @@ export const useAutoSessions = (
           title: "Revenus générés",
           description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`
         });
+      }
+      
+      // Check if we've reached the daily limit after this transaction
+      if (todaysGainsRef.current >= dailyLimit) {
+        // If limit reached now, trigger the limit-reached event
+        triggerDashboardEvent('limit-reached', { 
+          subscription: userData.subscription,
+          background: false // We want this to be visible
+        });
+        setShowLimitAlert(true);
       }
     } catch (error) {
       console.error("Error generating automatic revenue:", error);
