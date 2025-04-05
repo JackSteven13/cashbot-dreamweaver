@@ -38,8 +38,20 @@ export const useTerminalAnalysis = () => {
     const handleAnalysisStart = (event: Event) => {
       const customEvent = event as CustomEvent;
       
+      // Always check for background flag - crucial fix to prevent loading screen
+      const isBackgroundProcess = customEvent.detail?.background === true;
+      
       // Only show analysis UI if not running in background
-      if (!customEvent.detail?.background) {
+      if (isBackgroundProcess) {
+        console.log("Skipping loading screen for background analysis-start event");
+        setShowAnalysis(true);
+        setAnalysisComplete(false);
+        setTerminalLines([
+          'Initialisation de l\'analyse réseau...',
+        ]);
+      } else {
+        // This path should not be taken for auto-generated revenue,
+        // only for manual actions like button clicks
         setShowAnalysis(true);
         setAnalysisComplete(false);
         setTerminalLines([
@@ -52,25 +64,24 @@ export const useTerminalAnalysis = () => {
     const handleAnalysisComplete = (event: Event) => {
       const customEvent = event as CustomEvent;
       const gain = customEvent.detail?.gain || 0;
+      const isBackgroundProcess = customEvent.detail?.background === true;
       
-      // Only update UI if not running in background or if terminal is already showing
-      if (!customEvent.detail?.background || showAnalysis) {
-        setTerminalLines(prev => [
-          ...prev, 
-          `Analyse terminée avec succès! Revenus générés: ${gain.toFixed(2)}€`
-        ]);
-        setAnalysisComplete(true);
-        
-        // Hide terminal after 5 seconds
+      // For both background and foreground processes, update the terminal
+      setTerminalLines(prev => [
+        ...prev, 
+        `Analyse terminée avec succès! Revenus générés: ${gain.toFixed(2)}€`
+      ]);
+      setAnalysisComplete(true);
+      
+      // Hide terminal after 5 seconds
+      setTimeout(() => {
+        setShowAnalysis(false);
+        // Reset terminal lines after animation completes
         setTimeout(() => {
-          setShowAnalysis(false);
-          // Reset terminal lines after animation completes
-          setTimeout(() => {
-            setTerminalLines([]);
-            setAnalysisComplete(false);
-          }, 300);
-        }, 5000);
-      }
+          setTerminalLines([]);
+          setAnalysisComplete(false);
+        }, 300);
+      }, 5000);
     };
 
     // Listen for daily limit reached events

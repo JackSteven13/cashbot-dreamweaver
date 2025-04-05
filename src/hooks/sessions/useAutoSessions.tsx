@@ -132,11 +132,11 @@ export const useAutoSessions = (
       operationLock.current = true;
       sessionInProgress.current = true;
       
-      // Trigger analysis start event - IMPORTANT: Always use background:true to prevent loading screen
+      // ALWAYS use background:true for all automatic revenue events
+      // This is critical to prevent the loading screen
       triggerDashboardEvent('analysis-start', { background: true });
       
       // Simulate terminal animation within the dashboard - no loading screen
-      // Show progressive terminal outputs in the terminal component
       triggerDashboardEvent('terminal-update', { 
         line: "Initialisation de l'analyse réseau...",
         background: true
@@ -178,7 +178,7 @@ export const useAutoSessions = (
         
         triggerDashboardEvent('limit-reached', { 
           subscription: userData.subscription,
-          background: false // We want this to be visible
+          background: true // IMPORTANT: Always specify background:true
         });
         
         sessionInProgress.current = false;
@@ -241,7 +241,7 @@ export const useAutoSessions = (
         // If limit reached now, trigger the limit-reached event
         triggerDashboardEvent('limit-reached', { 
           subscription: userData.subscription,
-          background: false // We want this to be visible
+          background: true // IMPORTANT: Always specify background:true
         });
         setShowLimitAlert(true);
       }

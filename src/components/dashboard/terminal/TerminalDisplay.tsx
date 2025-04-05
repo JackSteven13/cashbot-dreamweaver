@@ -19,6 +19,7 @@ export const TerminalDisplay: React.FC<TerminalDisplayProps> = ({
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   
   // Scroll to bottom of terminal when new lines are added
   useEffect(() => {
@@ -27,22 +28,29 @@ export const TerminalDisplay: React.FC<TerminalDisplayProps> = ({
     }
     
     if (showAnalysis && !isVisible) {
+      // Make visible immediately when showing analysis
+      setIsRemoving(false);
       setIsVisible(true);
     } else if (!showAnalysis && isVisible && !limitReached) {
-      // Add a small delay before hiding to allow for animations
+      // Start removal animation when hiding
+      setIsRemoving(true);
+      
+      // Add a small delay before completely hiding the component
       const timeout = setTimeout(() => {
         setIsVisible(false);
-      }, 2000);
+      }, 500);
       return () => clearTimeout(timeout);
     }
   }, [terminalLines, showAnalysis, isVisible, limitReached]);
 
+  // Don't render anything if not visible
   if (!isVisible) return null;
   
   return (
     <div 
       ref={terminalRef}
-      className={`bg-black/70 p-3 rounded-md my-4 h-48 overflow-y-auto font-mono text-sm scrollbar-thin scrollbar-thumb-[#9b87f5] scrollbar-track-transparent transition-all duration-300 ${showAnalysis ? 'opacity-100' : 'opacity-0'}`}
+      className={`bg-black/70 p-3 rounded-md my-4 h-48 overflow-y-auto font-mono text-sm scrollbar-thin scrollbar-thumb-[#9b87f5] scrollbar-track-transparent transition-all duration-300 
+        ${isRemoving ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
     >
       <div className="flex items-center mb-2">
         <Terminal size={14} className="mr-2 text-[#9b87f5]" />
