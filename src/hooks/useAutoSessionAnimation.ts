@@ -47,7 +47,7 @@ export const useAutoSessionAnimation = () => {
           title: "Gain automatique!",
           description: `Le système a généré ${amount.toFixed(2)}€ pour vous.`,
           variant: "default",
-          action: amount > 0.1 ? 
+          action: amount > 0.1 ? (
             <button 
               onClick={() => {
                 // Déclencher un événement pour le booster
@@ -61,7 +61,7 @@ export const useAutoSessionAnimation = () => {
             >
               Booster
             </button>
-           : undefined
+          ) : undefined
         });
       }
     };

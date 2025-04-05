@@ -186,7 +186,7 @@ export const useAutoSessions = (
         toast({
           title: "Revenus générés",
           description: `CashBot a généré ${randomGain.toFixed(2)}€ pour vous !`,
-          action: userData.subscription === 'freemium' ? 
+          action: userData.subscription === 'freemium' ? (
             <button
               onClick={() => {
                 window.location.href = '/upgrade';
@@ -195,7 +195,7 @@ export const useAutoSessions = (
             >
               Améliorer
             </button>
-           : undefined
+          ) : undefined
         });
       }
     } catch (error) {
