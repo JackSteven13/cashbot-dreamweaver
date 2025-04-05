@@ -12,25 +12,25 @@ interface Penalty {
 }
 
 interface DormancyAlertProps {
-  show: boolean;
-  dormancyDays: number;
-  penalties: Penalty[];
-  originalBalance: number;
-  remainingBalance: number;
-  reactivationFee: number;
-  onReactivate: () => void;
+  show?: boolean;
+  dormancyData: {
+    dormancyDays: number;
+    penalties: Penalty[];
+    originalBalance: number;
+    remainingBalance: number;
+    reactivationFee: number;
+  };
+  handleReactivate: () => void;
 }
 
 const DormancyAlert: React.FC<DormancyAlertProps> = ({
-  show,
-  dormancyDays,
-  penalties,
-  originalBalance,
-  remainingBalance,
-  reactivationFee,
-  onReactivate
+  show = true,
+  dormancyData,
+  handleReactivate
 }) => {
-  if (!show) return null;
+  if (!show || !dormancyData) return null;
+
+  const { dormancyDays, penalties, originalBalance, remainingBalance, reactivationFee } = dormancyData;
 
   // Calculate which stage of dormancy the account is in
   const getStage = () => {
@@ -83,7 +83,7 @@ const DormancyAlert: React.FC<DormancyAlertProps> = ({
           <Button 
             variant="destructive" 
             className="mt-4 w-full"
-            onClick={onReactivate}
+            onClick={handleReactivate}
           >
             Réactiver mon compte ({reactivationFee.toFixed(2)}€ de frais)
           </Button>

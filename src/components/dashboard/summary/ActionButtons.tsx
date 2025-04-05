@@ -15,6 +15,7 @@ interface ActionButtonsProps {
   dailyLimit: number;
   onBoostClick: () => void;
   onWithdraw: () => void;
+  isBotActive?: boolean;
 }
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
@@ -26,7 +27,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   currentBalance,
   dailyLimit,
   onBoostClick,
-  onWithdraw
+  onWithdraw,
+  isBotActive = true
 }) => {
   const {
     effectiveSubscription,
