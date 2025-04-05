@@ -97,11 +97,12 @@ export async function applyReferralBonus(
     }
     
     // Ajouter une transaction
+    // Since the gain field in transactions expects a number type according to the error message
     const { error: transactionError } = await supabase
       .from('transactions')
       .insert({
         user_id: userId,
-        gain: amount.toString(), // Convert number to string as the database may expect a string
+        gain: amount, // Keep as number, as the database expects a number for this field
         report: `${description}: +${amount.toFixed(2)}€`
       });
       
