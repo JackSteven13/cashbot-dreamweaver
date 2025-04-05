@@ -43,7 +43,7 @@ export const updateUserBalance = async (
       console.log(`Updating balance from ${currentBalance} to ${newBalance} for user ${userId} (attempt ${retryCount + 1}/${maxRetries})`);
       console.log(`Today's gains: ${todaysGains}/${dailyLimit}`);
       
-      // Always update the balance regardless of daily limit
+      // ALWAYS update the balance regardless of daily limit
       const { data, error: updateError } = await supabase
         .from('user_balances')
         .update({ 
@@ -70,7 +70,12 @@ export const updateUserBalance = async (
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 500));
       } else {
         success = true;
-        console.log("Balance updated successfully to", newBalance, "DB returned:", data?.[0]?.balance);
+        
+        // Only log if we got a gain worth mentioning
+        if (positiveGain > 0.01) {
+          console.log("Balance updated successfully to", newBalance, "DB returned:", data?.[0]?.balance);
+        }
+        
         return { 
           success: true, 
           newBalance: data?.[0]?.balance || newBalance, // Use DB value if available

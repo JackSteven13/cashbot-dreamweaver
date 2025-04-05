@@ -85,7 +85,7 @@ export const useBalanceActions = ({
             const newTransaction: TempTransaction = {
               date: transactionData.date,
               amount: transactionData.gain,
-              type: transactionData.report,
+              type: "Système",
               report: transactionData.report,
               gain: transactionData.gain,
               id: `tx-${Date.now()}`

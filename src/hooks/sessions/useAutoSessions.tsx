@@ -71,23 +71,23 @@ export const useAutoSessions = (
     };
   }, []);
 
-  // Effet pour simuler une activité périodique visible
+  // Effect for simulating periodic visible activity
   useEffect(() => {
     const simulateActivity = () => {
       const newActivityLevel = Math.floor(Math.random() * 5) + 1;
       setActivityLevel(newActivityLevel);
       
-      // Déclencher un événement d'activité pour les animations
+      // Trigger an activity event for animations
       triggerDashboardEvent('activity', { level: newActivityLevel });
       
-      // Pour les niveaux d'activité élevés, déclencher une micro-animation
+      // For high activity levels, trigger a micro-animation
       if (newActivityLevel >= 4 && !sessionInProgress.current) {
         const microGain = (Math.random() * 0.01).toFixed(2);
         triggerDashboardEvent('micro-gain', { amount: parseFloat(microGain) });
       }
     };
     
-    // Démarrer l'intervalle d'activité qui s'exécute plus fréquemment que les sessions réelles
+    // Start the activity interval that runs more frequently than actual sessions
     activityInterval.current = setInterval(simulateActivity, 15000);
     
     return () => {
@@ -97,12 +97,12 @@ export const useAutoSessions = (
     };
   }, []);
 
-  // Effet pour simuler l'analyse automatique des publicités
+  // Effect to simulate automatic ad analysis
   useEffect(() => {
     // Get the daily limit for the current subscription
     const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
-    // Démarrer immédiatement une première session pour montrer l'activité à l'utilisateur
+    // Start an initial session immediately to show activity to the user
     setTimeout(() => {
       // Check if we're below the daily limit
       if (todaysGainsRef.current < dailyLimit) {
@@ -112,15 +112,15 @@ export const useAutoSessions = (
     }, 10000);
     
     const autoSessionInterval = setInterval(() => {
-      // Vérifier si 2-3 minutes se sont écoulées depuis la dernière session
+      // Check if 2-3 minutes have passed since the last session
       const timeSinceLastSession = Date.now() - lastAutoSessionTime;
-      const randomInterval = Math.random() * 60000 + 120000; // Entre 2 et 3 minutes
+      const randomInterval = Math.random() * 60000 + 120000; // Between 2 and 3 minutes
       
       if (timeSinceLastSession >= randomInterval && todaysGainsRef.current < dailyLimit) {
         generateAutomaticRevenue();
         setLastAutoSessionTime(Date.now());
       }
-    }, 30000); // Vérifier toutes les 30 secondes
+    }, 30000); // Check every 30 seconds
 
     return () => clearInterval(autoSessionInterval);
   }, [lastAutoSessionTime, userData.subscription]);
@@ -132,10 +132,11 @@ export const useAutoSessions = (
       operationLock.current = true;
       sessionInProgress.current = true;
       
-      // Déclencher un événement d'analyse avant que le gain soit calculé
-      triggerDashboardEvent('analysis-start');
+      // Trigger an analysis event before the gain is calculated
+      // ⚠️ Important: Use background: true to prevent loading screen
+      triggerDashboardEvent('analysis-start', { background: true });
       
-      // Attendre un court instant pour l'animation d'analyse
+      // Wait a short moment for the analysis animation
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       // Get the daily limit for the current subscription
@@ -173,8 +174,9 @@ export const useAutoSessions = (
       // Update today's gains tracker
       todaysGainsRef.current += randomGain;
       
-      // Déclencher l'événement d'analyse terminée avec le gain
-      triggerDashboardEvent('analysis-complete', { gain: randomGain });
+      // Trigger the analysis complete event with the gain
+      // ⚠️ Important: Use background: true to prevent loading screen
+      triggerDashboardEvent('analysis-complete', { gain: randomGain, background: true });
       
       // ALWAYS update balance, regardless of daily limit
       // Update user balance with forceUpdate set to true for immediate UI update
@@ -184,7 +186,7 @@ export const useAutoSessions = (
         true // Force immediate UI update
       );
       
-      // Déclencher directement l'événement de mise à jour du solde
+      // Directly trigger the balance update event
       const balanceEvent = new CustomEvent('balance:update', {
         detail: { amount: randomGain }
       });

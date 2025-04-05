@@ -23,61 +23,71 @@ export const useSessionGain = () => {
         throw new Error('Données utilisateur non disponibles');
       }
 
-      // Obtenir l'abonnement effectif (tenant compte des essais gratuits)
+      // Get effective subscription (taking free trials into account)
       const effectiveSubscription = getEffectiveSubscription(userData.subscription || 'freemium');
       
-      // Obtenir la limite journalière pour cet abonnement
+      // Get daily limit for this subscription
       const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
-      // S'assurer que currentBalance est un nombre
+      // Ensure currentBalance is a number
       const safeCurrentBalance = typeof currentBalance === 'number' ? currentBalance : 0;
       
-      // Calculer combien on peut encore gagner aujourd'hui
-      const remainingAllowedGain = Math.max(0, dailyLimit - safeCurrentBalance);
+      // Get today's date in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Calculate today's gains (not related to total balance)
+      const todaysTransactions = userData.transactions.filter(tx => 
+        tx.date.startsWith(today) && tx.gain > 0
+      );
+      
+      const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
+      
+      // Calculate how much more we can earn today
+      const remainingAllowedGain = Math.max(0, dailyLimit - todaysGains);
       
       if (remainingAllowedGain <= 0) {
-        // L'utilisateur a atteint sa limite journalière
+        // User has reached their daily limit
         setShowLimitAlert(true);
         return { success: false, finalGain: 0, newBalance: safeCurrentBalance };
       }
       
-      // Calculer le gain potentiel de cette session
+      // Calculate potential gain for this session
       let potentialGain: number;
       
       switch (effectiveSubscription) {
         case 'elite':
-          // 0.30€ - 0.70€ par session
+          // 0.30€ - 0.70€ per session
           potentialGain = Math.random() * (0.70 - 0.30) + 0.30;
           break;
         case 'gold':
-          // 0.20€ - 0.50€ par session
+          // 0.20€ - 0.50€ per session
           potentialGain = Math.random() * (0.50 - 0.20) + 0.20;
           break;
         case 'starter':
-          // 0.10€ - 0.30€ par session
+          // 0.10€ - 0.30€ per session
           potentialGain = Math.random() * (0.30 - 0.10) + 0.10;
           break;
         default:
-          // 0.05€ - 0.15€ par session pour freemium
+          // 0.05€ - 0.15€ per session for freemium
           potentialGain = Math.random() * (0.15 - 0.05) + 0.05;
       }
       
-      // Arrondir à 2 décimales
+      // Round to 2 decimals
       potentialGain = Math.round(potentialGain * 100) / 100;
       
-      // Limiter le gain au restant autorisé
+      // Limit gain to remaining allowed amount
       const finalGain = Math.min(potentialGain, remainingAllowedGain);
       const newBalance = safeCurrentBalance + finalGain;
       
-      // Mettre à jour l'état local pour le dernier gain
+      // Update local state for last gain
       setLastGain(finalGain);
       
-      // Vérifier si avec ce gain, la limite est maintenant atteinte
-      if (newBalance >= dailyLimit) {
+      // Check if today's limit is now reached
+      if (todaysGains + finalGain >= dailyLimit) {
         setShowLimitAlert(true);
       }
       
-      // Enregistrer l'horodatage de la session
+      // Record session timestamp
       localStorage.setItem(`lastSession_${userData.username}`, new Date().toISOString());
       
       return { success: true, finalGain, newBalance };

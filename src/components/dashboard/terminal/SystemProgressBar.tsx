@@ -35,15 +35,21 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
           Progression de la limite journalière
         </div>
         <div className="text-xs font-medium text-gray-300">
-          {limitPercentage.toFixed(0)}% / {effectiveLimit}€ par jour
+          <span className="text-blue-300">{limitPercentage.toFixed(0)}%</span> / {effectiveLimit}€ par jour
         </div>
       </div>
       <Progress value={calculatedPercentage} className="h-2 bg-slate-700">
         <div 
-          className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"
+          className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-500"
           style={{ width: `${calculatedPercentage}%` }}
         />
       </Progress>
+      <div className="mt-1 text-xs text-gray-400">
+        <span>Solde total: <span className="text-white">{displayBalance.toFixed(2)}€</span></span>
+        <span className="float-right text-gray-400 text-xs">
+          (Limite: gains de {effectiveLimit}€/jour)
+        </span>
+      </div>
     </div>
   );
 };
