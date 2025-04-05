@@ -162,7 +162,7 @@
 /* Amélioration de l'espace entre la navbar et le contenu */
 @media (max-width: 640px) {
   .content-padding-top {
-    padding-top: 7rem;
+    padding-top: 4rem;
   }
   
   /* Réduction de taille des textes sur mobile */
@@ -194,6 +194,7 @@
 
 @media (min-width: 641px) {
   .content-padding-top {
-    padding-top: 8rem;
+    padding-top: 5rem;
   }
 }
+
