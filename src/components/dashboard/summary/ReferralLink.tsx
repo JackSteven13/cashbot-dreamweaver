@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Copy, CheckCheck, Award, Users, PercentIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
@@ -17,7 +18,7 @@ interface ReferralLinkProps {
   referrals?: any[];
   subscription?: string;
   isTopReferrer?: boolean;
-  referralCount?: number;
+  referralCount?: number; // Add this prop to match SummaryPanel usage
 }
 
 const ReferralLink: React.FC<ReferralLinkProps> = ({ 
@@ -28,15 +29,6 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
   referralCount = 0
 }) => {
   const [copied, setCopied] = useState(false);
-  const [accessCode, setAccessCode] = useState<string | null>(null);
-  const [accessCodeCopied, setAccessCodeCopied] = useState(false);
-
-  useEffect(() => {
-    const storedCode = localStorage.getItem('access_code');
-    if (storedCode) {
-      setAccessCode(storedCode);
-    }
-  }, []);
 
   const handleCopyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);
@@ -50,21 +42,6 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
     setTimeout(() => {
       setCopied(false);
     }, 2000);
-  };
-
-  const handleCopyAccessCode = () => {
-    if (accessCode) {
-      navigator.clipboard.writeText(accessCode);
-      setAccessCodeCopied(true);
-      toast({
-        title: "Code copié !",
-        description: "Votre code d'accès a été copié dans le presse-papier",
-      });
-      
-      setTimeout(() => {
-        setAccessCodeCopied(false);
-      }, 2000);
-    }
   };
 
   // Get commission rates based on subscription
@@ -87,31 +64,6 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
           </div>
         )}
       </div>
-      
-      {accessCode && (
-        <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm font-medium text-blue-800 mb-1">Votre code d'accès et de parrainage:</p>
-              <div className="font-mono font-medium text-blue-700 tracking-wide">
-                {accessCode.split('').map((digit, index) => (
-                  <span key={index} className="mx-0.5">{digit}</span>
-                ))}
-              </div>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleCopyAccessCode} 
-              className="ml-2"
-              disabled={accessCodeCopied}
-            >
-              {accessCodeCopied ? <CheckCheck size={16} className="text-green-500 mr-1" /> : <Copy size={16} className="mr-1" />}
-              {accessCodeCopied ? "Copié" : "Copier"}
-            </Button>
-          </div>
-        </div>
-      )}
       
       <p className="text-sm text-[#486581] mb-3">
         Partagez ce lien avec vos amis et gagnez <span className="font-bold text-green-600">{Math.round(directCommission * 100)}% de commission</span> sur leurs abonnements !
@@ -203,8 +155,8 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
       <div className="mt-4 bg-blue-50 p-3 rounded-md border border-blue-100 text-xs text-blue-700">
         <p className="font-medium">Comment ça marche :</p>
         <ol className="list-decimal ml-4 mt-1 space-y-1">
-          <li>Partagez votre code d'accès ou votre lien de parrainage</li>
-          <li>Ils créent un compte avec votre code et souscrivent à un abonnement</li>
+          <li>Partagez votre lien de parrainage avec vos amis</li>
+          <li>Ils créent un compte avec votre lien et souscrivent à un abonnement</li>
           <li>Vous recevez automatiquement {Math.round(directCommission * 100)}% de leurs abonnements</li>
           {recurringCommission > 0 && (
             <li>Vous continuez à recevoir {Math.round(recurringCommission * 100)}% de leurs abonnements chaque mois</li>

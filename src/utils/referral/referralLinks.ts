@@ -5,10 +5,10 @@
  * @returns Full referral URL with code
  */
 export const generateReferralLink = (userId: string) => {
-  // Get the stored access code for the user
-  const accessCode = localStorage.getItem('access_code') || userId.substring(0, 8);
-  // Return full URL with the code
-  return `${window.location.origin}?ref=${accessCode}`;
+  // Create a shorter referral code using just the first part of the UUID
+  const referralCode = userId.substring(0, 8);
+  // Return full URL with the referral code
+  return `${window.location.origin}?ref=${referralCode}`;
 };
 
 /**
@@ -26,11 +26,6 @@ export const getReferralCodeFromUrl = () => {
  */
 export const storeReferralCode = (code: string) => {
   localStorage.setItem('referralCode', code);
-  
-  // Également stocker comme code d'accès si pas déjà présent
-  if (!localStorage.getItem('access_code')) {
-    localStorage.setItem('access_code', code);
-  }
 };
 
 /**
@@ -38,8 +33,7 @@ export const storeReferralCode = (code: string) => {
  * @returns Stored referral code or null
  */
 export const getStoredReferralCode = () => {
-  // Priorité au code d'accès stocké (qui est aussi le code de parrainage)
-  return localStorage.getItem('access_code') || localStorage.getItem('referralCode');
+  return localStorage.getItem('referralCode');
 };
 
 /**
@@ -47,5 +41,4 @@ export const getStoredReferralCode = () => {
  */
 export const clearStoredReferralCode = () => {
   localStorage.removeItem('referralCode');
-  // Ne pas supprimer le code d'accès, car il est nécessaire pour l'accès à la plateforme
 };
