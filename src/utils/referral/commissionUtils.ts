@@ -174,12 +174,25 @@ export const applyReferralBonus = async (
       return false;
     }
     
-    // Update referrer's balance (using a more reliable approach)
-    // Instead of using RPC, use a direct update query
+    // First get current balance
+    const { data: balanceData, error: balanceError } = await supabase
+      .from('user_balances')
+      .select('balance')
+      .eq('id', referrerId)
+      .single();
+      
+    if (balanceError || balanceData === null) {
+      console.error("Error fetching balance:", balanceError);
+      return false;
+    }
+    
+    // Update referrer's balance with the fetched balance
+    const newBalance = Number(balanceData.balance) + Number(amount);
+    
     const { error: updateError } = await supabase
       .from('user_balances')
       .update({ 
-        balance: supabase.rpc('get_current_balance', { user_id: referrerId }) + amount,
+        balance: newBalance,
         updated_at: new Date().toISOString()
       })
       .eq('id', referrerId);
