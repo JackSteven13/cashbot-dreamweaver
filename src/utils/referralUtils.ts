@@ -25,5 +25,6 @@ export {
 
 export {
   calculateWithdrawalFee,
-  getWithdrawalThreshold
+  getWithdrawalThreshold,
+  isWithdrawalAllowed
 } from './referral/withdrawalUtils';

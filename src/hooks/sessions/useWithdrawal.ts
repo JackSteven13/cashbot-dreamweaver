@@ -2,14 +2,12 @@
 import { useRef, useState, useEffect } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
-import { calculateWithdrawalFee } from '@/utils/referral/withdrawalUtils';
+import { calculateWithdrawalFee, getWithdrawalThreshold, isWithdrawalAllowed } from '@/utils/referral/withdrawalUtils';
 
-interface WithdrawalFees {
-  earlyFee: number; // 50% pour les retraits dans les premiers 6 mois
-  standardFee: number; // 15% après les 6 premiers mois
-  minimumWithdrawalAmount: number; // Maintenu à 100€
-  withdrawalFrequency: number; // Nombre de jours entre les retraits autorisés (30 jours)
-  processingDays: string; // Délai de traitement (7-30 jours)
+interface WithdrawalRules {
+  minimumWithdrawalAmount: number; // Montant minimum pour retirer
+  withdrawalFrequency: number;     // Nombre de jours entre les retraits autorisés
+  processingDays: string;          // Délai de traitement
 }
 
 export const useWithdrawal = (
@@ -21,11 +19,9 @@ export const useWithdrawal = (
   const withdrawalAttempts = useRef(0);
   const maxAttempts = 3;
   
-  // Nouvelles stratégies de retrait
-  const withdrawalRules: WithdrawalFees = {
-    earlyFee: 0.5, // 50% pour les retraits dans les premiers 6 mois
-    standardFee: 0.15, // 15% après les 6 premiers mois
-    minimumWithdrawalAmount: 100, // Maintenu à 100€
+  // Règles de retrait
+  const withdrawalRules: WithdrawalRules = {
+    minimumWithdrawalAmount: getWithdrawalThreshold(userData.subscription),
     withdrawalFrequency: 30, // Une fois par mois (30 jours)
     processingDays: "7-30 jours"
   };
@@ -66,6 +62,16 @@ export const useWithdrawal = (
       return;
     }
     
+    // Vérifier si l'utilisateur peut faire un retrait selon son abonnement
+    if (!isWithdrawalAllowed(userData.subscription)) {
+      toast({
+        title: "Retrait impossible",
+        description: "Les comptes freemium ne peuvent pas effectuer de retraits. Passez à un forfait supérieur pour débloquer cette fonctionnalité.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Vérifier si l'utilisateur peut faire un retrait (fréquence)
     if (!canWithdraw) {
       toast({
@@ -82,11 +88,11 @@ export const useWithdrawal = (
       
       console.log("Starting withdrawal process with balance:", userData.balance);
       
-      // Process withdrawal only if sufficient balance (at least 100€) and not freemium account
-      if (userData.balance >= withdrawalRules.minimumWithdrawalAmount && userData.subscription !== 'freemium') {
+      // Process withdrawal only if sufficient balance
+      if (userData.balance >= withdrawalRules.minimumWithdrawalAmount) {
         // Calculer les frais selon l'ancienneté du compte
         const registerDate = userData.registeredAt || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-        const fee = calculateWithdrawalFee(registerDate);
+        const fee = calculateWithdrawalFee(registerDate, userData.subscription);
         const feeAmount = userData.balance * fee;
         const netAmount = userData.balance - feeAmount;
         
@@ -130,13 +136,7 @@ export const useWithdrawal = (
             });
           }
         }
-      } else if (userData.subscription === 'freemium') {
-        toast({
-          title: "Compte freemium",
-          description: "Les retraits ne sont pas disponibles avec un compte freemium. Passez à un forfait supérieur.",
-          variant: "destructive"
-        });
-      } else if (userData.balance < withdrawalRules.minimumWithdrawalAmount) {
+      } else {
         toast({
           title: "Solde insuffisant",
           description: `Vous devez avoir au moins ${withdrawalRules.minimumWithdrawalAmount}€ pour effectuer un retrait.`,
