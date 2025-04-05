@@ -7,21 +7,30 @@ import { storeReferralCode } from '@/utils/referral/referralLinks';
 import { validateReferralCode } from '@/utils/referral/validationUtils';
 
 const AccessGate = () => {
-  const [isVerified, setIsVerified] = useState<boolean>(false);
+  const [isVerified, setIsVerified] = useState<boolean | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
   // Vérifier si le code est déjà validé au chargement
   useEffect(() => {
-    const isCodeVerified = localStorage.getItem('access_code_verified') === 'true';
-    
-    if (isCodeVerified) {
-      setIsVerified(true);
+    const checkAccessCode = () => {
+      const verified = localStorage.getItem('access_code_verified') === 'true';
+      setIsVerified(verified);
       
-      // Redirection vers la page appropriée
-      const from = new URLSearchParams(location.search).get('from') || '/';
-      navigate(from, { replace: true });
-    }
+      if (verified) {
+        // Redirection vers la page appropriée
+        const from = new URLSearchParams(location.search).get('from') || '/';
+        navigate(from, { replace: true });
+      }
+    };
+    
+    checkAccessCode();
+    
+    // Re-vérifier si le localStorage change
+    window.addEventListener('storage', checkAccessCode);
+    return () => {
+      window.removeEventListener('storage', checkAccessCode);
+    };
   }, [navigate, location.search]);
 
   const handleVerificationSuccess = async (code: string) => {
@@ -42,7 +51,7 @@ const AccessGate = () => {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       
-      <main className="flex-1 flex items-center justify-center pt-28 pb-12 px-4">
+      <main className="flex-1 flex items-start sm:items-center justify-center pt-16 sm:pt-20 md:pt-28 pb-8 sm:pb-12 px-4">
         {!isVerified && (
           <AccessCodeVerification onVerificationSuccess={handleVerificationSuccess} />
         )}

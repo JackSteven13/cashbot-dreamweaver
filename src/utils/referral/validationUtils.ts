@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { REFERRAL_CODES_TABLE } from "@/integrations/supabase/types/referralCodes";
 
 /**
  * Validate if a referral code is valid by checking against the referral_codes table
@@ -13,13 +14,12 @@ export const validateReferralCode = async (code: string) => {
   if (code === '87878787') return true;
   
   try {
-    // Nous ne pouvons pas utiliser le typesafety pour cette table spécifique
-    // car elle n'est pas encore dans les types générés
+    // Contourner les types pour cette table spécifique
     const { data, error } = await supabase
-      .from('referral_codes')
+      .from(REFERRAL_CODES_TABLE)
       .select('id, owner_id, is_active')
       .eq('code', code)
-      .single();
+      .single() as any;
       
     if (error) {
       console.error('Error validating referral code:', error);
@@ -45,12 +45,12 @@ export const getReferrerIdFromCode = async (code: string) => {
   if (code === '87878787') return null;
   
   try {
-    // Contourner le typesafety pour cette requête spécifique
+    // Contourner les types pour cette requête spécifique
     const { data, error } = await supabase
-      .from('referral_codes')
+      .from(REFERRAL_CODES_TABLE)
       .select('owner_id')
       .eq('code', code)
-      .single();
+      .single() as any;
       
     if (error || !data) {
       console.error('Error getting referrer from code:', error);

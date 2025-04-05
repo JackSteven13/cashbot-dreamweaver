@@ -6,6 +6,7 @@ import { toast } from '@/components/ui/use-toast';
 import Button from '@/components/Button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/integrations/supabase/client";
+import { REFERRAL_CODES_TABLE } from '@/integrations/supabase/types/referralCodes';
 
 const ADMIN_ACCESS_CODE = '87878787'; // Code d'accès administrateur
 
@@ -53,13 +54,12 @@ const AccessCodeVerification = ({ onVerificationSuccess }: AccessCodeVerificatio
         return;
       }
 
-      // Vérifier le code dans la base de données
-      // Use "any" type to bypass TypeScript errors due to missing types
+      // Vérifier le code dans la base de données en contournant les types
       const { data, error } = await supabase
-        .from('referral_codes')
+        .from(REFERRAL_CODES_TABLE)
         .select('*')
         .eq('code', accessCode)
-        .single();
+        .single() as any;
 
       if (error) {
         throw new Error("Code d'accès invalide ou expiré");
@@ -96,52 +96,52 @@ const AccessCodeVerification = ({ onVerificationSuccess }: AccessCodeVerificatio
   };
 
   return (
-    <div className="max-w-md w-full mx-auto p-6 bg-background border border-border rounded-xl shadow-lg">
-      <div className="flex justify-center mb-6">
-        <div className="bg-primary/10 p-3 rounded-full">
-          <KeyRound size={28} className="text-primary" />
+    <div className="max-w-md w-full mx-auto p-4 sm:p-6 bg-background border border-border rounded-xl shadow-lg">
+      <div className="flex justify-center mb-4 sm:mb-6">
+        <div className="bg-primary/10 p-2 sm:p-3 rounded-full">
+          <KeyRound size={24} className="text-primary" />
         </div>
       </div>
       
-      <h2 className="text-2xl font-bold text-center mb-2">Accès sécurisé</h2>
+      <h2 className="text-xl sm:text-2xl font-bold text-center mb-2">Accès sécurisé</h2>
       
-      <p className="text-muted-foreground text-center mb-6">
+      <p className="text-sm sm:text-base text-muted-foreground text-center mb-4 sm:mb-6">
         Veuillez entrer votre code d'accès à 8 chiffres pour continuer
       </p>
       
       {storedCode ? (
-        <div className="mb-6">
-          <p className="text-sm text-center mb-2">
+        <div className="mb-4 sm:mb-6">
+          <p className="text-xs sm:text-sm text-center mb-2">
             Vous avez déjà un code enregistré :
           </p>
-          <div className="bg-secondary p-3 rounded-md text-center font-mono text-lg">
+          <div className="bg-secondary p-2 sm:p-3 rounded-md text-center font-mono text-base sm:text-lg">
             {storedCode.split('').map((digit, index) => (
               <span key={index} className="mx-0.5">{digit}</span>
             ))}
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center mb-6">
+        <div className="flex flex-col items-center mb-4 sm:mb-6">
           <InputOTP 
             maxLength={8} 
             value={accessCode} 
             onChange={setAccessCode}
             pattern="^[0-9]{1,8}$"
-            className="mb-4"
+            className="mb-3 sm:mb-4 flex justify-center"
           >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-              <InputOTPSlot index={6} />
-              <InputOTPSlot index={7} />
+            <InputOTPGroup className="gap-1 sm:gap-2">
+              <InputOTPSlot index={0} className="w-8 h-9 sm:w-10 sm:h-12" />
+              <InputOTPSlot index={1} className="w-8 h-9 sm:w-10 sm:h-12" />
+              <InputOTPSlot index={2} className="w-8 h-9 sm:w-10 sm:h-12" />
+              <InputOTPSlot index={3} className="w-8 h-9 sm:w-10 sm:h-12" />
+              <InputOTPSlot index={4} className="w-8 h-9 sm:w-10 sm:h-12" />
+              <InputOTPSlot index={5} className="w-8 h-9 sm:w-10 sm:h-12" />
+              <InputOTPSlot index={6} className="w-8 h-9 sm:w-10 sm:h-12" />
+              <InputOTPSlot index={7} className="w-8 h-9 sm:w-10 sm:h-12" />
             </InputOTPGroup>
           </InputOTP>
           
-          <p className="text-xs text-muted-foreground mb-4">
+          <p className="text-xs text-muted-foreground mb-3 sm:mb-4 text-center px-2">
             Ce code vous a été communiqué par la personne qui vous a parrainé
           </p>
         </div>
@@ -153,22 +153,22 @@ const AccessCodeVerification = ({ onVerificationSuccess }: AccessCodeVerificatio
         size="lg"
         isLoading={isVerifying}
         disabled={isVerifying || (!storedCode && accessCode.length !== 8)}
-        className="group"
+        className="group h-10 sm:h-12 text-sm sm:text-base"
       >
         {isVerifying ? (
           <>
-            <Loader2 size={18} className="mr-2 animate-spin" />
+            <Loader2 size={16} className="mr-2 animate-spin" />
             Vérification...
           </>
         ) : (
           <>
             Continuer
-            <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
+            <ArrowRight size={16} className="ml-2 transition-transform group-hover:translate-x-1" />
           </>
         )}
       </Button>
       
-      <p className="text-xs text-muted-foreground text-center mt-6">
+      <p className="text-xs text-muted-foreground text-center mt-4 sm:mt-6 px-2">
         En continuant, vous acceptez les <a href="/terms" className="underline hover:text-primary">termes et conditions</a> de Stream Genius
       </p>
     </div>

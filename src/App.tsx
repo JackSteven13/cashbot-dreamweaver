@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useEffect, useState } from "react";
 import Index from "./pages/Index";
@@ -22,14 +22,18 @@ import AccessGate from './pages/AccessGate';
 
 const queryClient = new QueryClient();
 
-// HOC pour vérifier le code d'accès
+// HOC pour vérifier le code d'accès avec gestion améliorée des transitions
 const CodeProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [isCodeVerified, setIsCodeVerified] = useState<boolean | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
+  const location = useLocation();
   
   useEffect(() => {
     const checkAccessCode = () => {
+      setIsChecking(true);
       const verified = localStorage.getItem('access_code_verified') === 'true';
       setIsCodeVerified(verified);
+      setIsChecking(false);
     };
     
     checkAccessCode();
@@ -41,14 +45,18 @@ const CodeProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
   
-  // Pendant la vérification, ne rien afficher
-  if (isCodeVerified === null) {
-    return null;
+  // Montrer une indicateur de chargement minimal pendant la vérification
+  if (isChecking) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
   
-  // Si non vérifié, rediriger vers la page d'accès
+  // Si non vérifié, rediriger vers la page d'accès avec le chemin actuel
   if (!isCodeVerified) {
-    const currentPath = window.location.pathname;
+    const currentPath = location.pathname;
     return <Navigate to={`/access?from=${encodeURIComponent(currentPath)}`} replace />;
   }
   
@@ -124,7 +132,6 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light">
         <BrowserRouter>
-          {/* Fix: Move TooltipProvider inside the React component tree */}
           <TooltipProvider>
             <Toaster />
             <Sonner />
