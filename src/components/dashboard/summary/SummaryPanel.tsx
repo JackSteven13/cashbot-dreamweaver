@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useSummaryPanel } from '@/hooks/useSummaryPanel';
-import UserBalanceCard from './UserBalanceCard';
+import UserBalanceCard from './userBalanceCard';
 import WelcomeMessage from './WelcomeMessage';
 import ReferralLink from './ReferralLink';
 import ActionButtons from './ActionButtons';
