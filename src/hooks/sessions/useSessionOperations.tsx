@@ -1,5 +1,4 @@
-
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { triggerDashboardEvent } from '@/utils/animations';
 import { UserData } from '@/types/userData';
@@ -23,9 +22,9 @@ export const useSessionOperations = (
   const botStatusRef = useRef(isBotActive);
 
   // Mettre à jour la référence quand la prop change
-  useRef(() => {
+  useEffect(() => {
     botStatusRef.current = isBotActive;
-  }).current = isBotActive;
+  }, [isBotActive]);
 
   /**
    * Generate automatic revenue based on subscription type and limits
