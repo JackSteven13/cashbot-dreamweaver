@@ -16,6 +16,10 @@ interface UseBalanceActionsProps {
   setShowLimitAlert: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
+interface TempTransaction extends Transaction {
+  id: string;
+}
+
 export const useBalanceActions = ({
   userData,
   dailySessionCount,
@@ -50,7 +54,7 @@ export const useBalanceActions = ({
         console.log("Force updating UI before API call. New balance:", calculatedNewBalance);
         
         // Create a temporary transaction for immediate feedback
-        const newTransaction = {
+        const newTransaction: TempTransaction = {
           date: new Date().toISOString(),
           gain: gain,
           amount: gain,
@@ -77,13 +81,14 @@ export const useBalanceActions = ({
           
           // Only add transaction if we didn't already add a temporary one
           if (!forceUpdate && result.transaction) {
-            const newTransaction = {
-              date: result.transaction.date,
-              amount: result.transaction.gain,
-              type: result.transaction.report,
-              report: result.transaction.report,
-              gain: result.transaction.gain,
-              id: result.transaction.id || `tx-${Date.now()}`
+            const transactionData = result.transaction;
+            const newTransaction: TempTransaction = {
+              date: transactionData.date,
+              amount: transactionData.gain,
+              type: transactionData.report,
+              report: transactionData.report,
+              gain: transactionData.gain,
+              id: `tx-${Date.now()}`
             };
             
             return {
@@ -112,7 +117,7 @@ export const useBalanceActions = ({
             ...prevData,
             balance: userData.balance,
             // Remove the temporary transaction
-            transactions: prevData.transactions.filter(tx => !tx.id?.toString().startsWith('temp-'))
+            transactions: prevData.transactions.filter(tx => !(tx as TempTransaction).id?.toString().startsWith('temp-'))
           }));
         }
       }
@@ -125,7 +130,7 @@ export const useBalanceActions = ({
           ...prevData,
           balance: userData.balance,
           // Remove the temporary transaction
-          transactions: prevData.transactions.filter(tx => !tx.id?.toString().startsWith('temp-'))
+          transactions: prevData.transactions.filter(tx => !(tx as TempTransaction).id?.toString().startsWith('temp-'))
         }));
       }
     }
@@ -138,14 +143,18 @@ export const useBalanceActions = ({
       if (result.success) {
         setUserData(prev => {
           // Create a properly formatted Transaction object if a transaction exists
-          const newTransaction = result.transaction ? {
-            date: result.transaction.date,
-            amount: -result.transaction.gain, // Negative amount for withdrawals
-            type: "Retrait",
-            report: result.transaction.report,
-            gain: -result.transaction.gain,
-            id: result.transaction.id || `withdraw-${Date.now()}`
-          } : null;
+          let newTransaction: TempTransaction | null = null;
+          
+          if (result.transaction) {
+            newTransaction = {
+              date: result.transaction.date,
+              amount: -result.transaction.gain, // Negative amount for withdrawals
+              type: "Retrait",
+              report: result.transaction.report,
+              gain: -result.transaction.gain,
+              id: `withdraw-${Date.now()}`
+            };
+          }
           
           return {
             ...prev,
