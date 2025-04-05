@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,4 +11,36 @@
 
 .blink-activity {
   animation: blink 2s infinite;
+}
+
+/* Amélioration des notifications toast */
+.toast-notification {
+  max-width: 90vw !important;
+  width: auto !important;
+  word-break: break-word;
+  z-index: 1000;
+}
+
+@media (max-width: 640px) {
+  .toast-notification {
+    padding: 0.75rem !important;
+    font-size: 0.875rem;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    bottom: 1rem !important;
+    top: auto !important;
+    right: auto !important;
+    width: 90% !important;
+  }
+}
+
+/* Animation pour le solde lorsqu'il est mis à jour */
+@keyframes glowing {
+  0% { box-shadow: 0 0 5px rgba(155, 135, 245, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(155, 135, 245, 0.8); }
+  100% { box-shadow: 0 0 5px rgba(155, 135, 245, 0.5); }
+}
+
+.glow-effect {
+  animation: glowing 1.5s ease-in-out;
 }

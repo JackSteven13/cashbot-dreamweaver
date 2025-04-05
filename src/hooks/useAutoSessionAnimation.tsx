@@ -1,6 +1,6 @@
 
 import { useEffect, useRef } from 'react';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { createMoneyParticles, animateBalanceUpdate } from '@/utils/animations';
 
 export const useAutoSessionAnimation = () => {
@@ -34,20 +34,20 @@ export const useAutoSessionAnimation = () => {
       const customEvent = event as CustomEvent;
       const amount = customEvent.detail?.amount || 0;
       const currentBalance = customEvent.detail?.currentBalance || 0;
+      const isBotActive = customEvent.detail?.isBotActive !== false;
       
       if (balanceElementRef.current && amount > 0) {
-        // Animer l'élément de solde avec les 4 arguments requis
-        // 1. startValue (current balance - amount)
-        // 2. endValue (current balance)
-        // 3. duration (1000ms default)
-        // 4. updateCallback function to update the UI
+        // Animer l'élément de solde
         animateBalanceUpdate(
           currentBalance - amount, 
           currentBalance,
           1000,
           (value) => {
             if (balanceElementRef.current) {
-              balanceElementRef.current.textContent = `${value.toFixed(2)}€`;
+              const displayElement = balanceElementRef.current.querySelector('.text-5xl span:first-child');
+              if (displayElement) {
+                displayElement.textContent = `${value.toFixed(2)}`;
+              }
             }
           }
         );
@@ -56,10 +56,11 @@ export const useAutoSessionAnimation = () => {
         const particleCount = Math.min(Math.max(Math.floor(amount * 10), 5), 30);
         createMoneyParticles(balanceElementRef.current, particleCount);
         
-        // Afficher une notification interactive sans bouton pour améliorer
+        // Afficher une notification adaptative
         toast({
-          title: "Gain automatique!",
-          description: `Le système a généré ${amount.toFixed(2)}€ pour vous.`
+          title: "Gain automatique",
+          description: `CashBot a généré ${amount.toFixed(2)}€ pour vous!`,
+          duration: 3000
         });
       }
     };
@@ -82,12 +83,26 @@ export const useAutoSessionAnimation = () => {
       }
     };
     
+    // Gérer les événements de limite atteinte
+    const handleLimitReached = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { subscription } = customEvent.detail || {};
+      
+      toast({
+        title: "Limite journalière atteinte",
+        description: `Vous avez atteint votre limite quotidienne avec votre abonnement ${subscription}.`,
+        duration: 5000
+      });
+    };
+    
     window.addEventListener('balance:update', handleBalanceUpdate);
     window.addEventListener('dashboard:animation', handleDashboardAnimation);
+    window.addEventListener('dashboard:limit-reached', handleLimitReached);
     
     return () => {
       window.removeEventListener('balance:update', handleBalanceUpdate);
       window.removeEventListener('dashboard:animation', handleDashboardAnimation);
+      window.removeEventListener('dashboard:limit-reached', handleLimitReached);
     };
   }, []);
   

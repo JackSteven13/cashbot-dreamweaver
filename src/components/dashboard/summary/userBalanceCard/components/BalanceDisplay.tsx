@@ -59,9 +59,9 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         </div>
         
         <div className="text-xs text-green-300 mt-2">
-          <div className="flex justify-center gap-2">
+          <div className="flex flex-wrap justify-center gap-1 px-2">
             <span>Bonus parrainage: {formattedReferralBonus}€</span>
-            <span>|</span>
+            <span className="hidden sm:inline">|</span>
             <span>Total généré: {formattedTotalGenerated}€</span>
           </div>
         </div>
@@ -79,7 +79,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
             <>
               <BotOff size={14} className="text-red-500" />
               <span className="text-xs text-red-300">
-                Génération inactive (limite journalière atteinte)
+                Génération inactive
               </span>
             </>
           )}
