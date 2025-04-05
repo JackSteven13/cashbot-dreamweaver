@@ -16,15 +16,17 @@ import { COMMISSION_RATES, RECURRING_COMMISSION_RATES, LEVEL2_COMMISSION_RATES }
 interface ReferralLinkProps {
   referralLink: string;
   referrals?: any[];
-  subscription: string;
+  subscription?: string;
   isTopReferrer?: boolean;
+  referralCount?: number; // Add this prop to match SummaryPanel usage
 }
 
 const ReferralLink: React.FC<ReferralLinkProps> = ({ 
   referralLink, 
   referrals = [], 
   subscription = 'freemium',
-  isTopReferrer = false
+  isTopReferrer = false,
+  referralCount = 0
 }) => {
   const [copied, setCopied] = useState(false);
 

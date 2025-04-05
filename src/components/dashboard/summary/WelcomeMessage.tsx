@@ -3,9 +3,15 @@ import React from 'react';
 
 interface WelcomeMessageProps {
   isNewUser: boolean;
+  subscription?: string;
+  dailySessionCount?: number;
 }
 
-const WelcomeMessage: React.FC<WelcomeMessageProps> = ({ isNewUser }) => {
+const WelcomeMessage: React.FC<WelcomeMessageProps> = ({ 
+  isNewUser, 
+  subscription,
+  dailySessionCount 
+}) => {
   if (!isNewUser) return null;
   
   return (

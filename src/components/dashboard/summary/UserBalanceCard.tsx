@@ -1,49 +1,48 @@
-
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Users, Bot, Network, TrendingUp, Award, ChevronsUp } from 'lucide-react';
 import { WITHDRAWAL_THRESHOLDS } from '@/components/dashboard/summary/constants';
 
 interface UserBalanceCardProps {
   displayBalance: number;
+  balance?: number;
   subscription: string;
   dailyLimit: number;
-  sessionsDisplay: string;
   referralCount?: number;
   referralBonus?: number;
   networkGains?: number;
   botGains?: number;
   totalGeneratedBalance?: number;
+  lastSessionTimestamp?: string;
+  sessionsDisplay?: string;
 }
 
 const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   displayBalance,
   subscription,
   dailyLimit,
-  sessionsDisplay,
+  sessionsDisplay = 'illimitées',
   referralCount = 0,
   referralBonus = 0,
-  networkGains = displayBalance * 0.3, // Par défaut, 30% des gains viennent du réseau
-  botGains = displayBalance * 0.7, // Par défaut, 70% des gains viennent des bots
-  totalGeneratedBalance = displayBalance * 1.2 // Par défaut, montrer un montant 20% plus élevé comme "généré"
+  networkGains = displayBalance * 0.3,
+  botGains = displayBalance * 0.7,
+  totalGeneratedBalance = displayBalance * 1.2,
+  lastSessionTimestamp
 }) => {
-  // Calculate how close we are to the withdrawal threshold
   const withdrawalThreshold = WITHDRAWAL_THRESHOLDS[subscription as keyof typeof WITHDRAWAL_THRESHOLDS] || 200;
   const [glowActive, setGlowActive] = useState(false);
   const [balanceAnimating, setBalanceAnimating] = useState(false);
   const [animatedBalance, setAnimatedBalance] = useState(displayBalance);
   const [previousBalance, setPreviousBalance] = useState(displayBalance);
   
-  // Listen for balance update events to trigger animations
   useEffect(() => {
     const handleBalanceUpdate = (e: CustomEvent) => {
       const newAmount = e.detail?.amount || 0;
       setPreviousBalance(displayBalance);
       setBalanceAnimating(true);
       
-      // Animate balance counter
       const startValue = displayBalance;
       const endValue = displayBalance + newAmount;
-      const duration = 1000; // 1 second animation
+      const duration = 1000;
       const startTime = Date.now();
       
       const updateValue = () => {
@@ -64,26 +63,20 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
       requestAnimationFrame(updateValue);
     };
     
-    // Add event listener for balance updates
     window.addEventListener('balance:update' as any, handleBalanceUpdate);
     return () => window.removeEventListener('balance:update' as any, handleBalanceUpdate);
   }, [displayBalance]);
   
-  // Implement the progressive reduction of gains near threshold
-  // When reaching 80% of threshold, we slow down gains, and stop near 95%
   const progressPercentage = Math.min(Math.floor((displayBalance / withdrawalThreshold) * 100), 95);
   const isNearThreshold = progressPercentage >= 80;
   const isAtMaximum = progressPercentage >= 95;
   
-  // Activate glow effect randomly or when balance is updated
   useEffect(() => {
-    // Initial random glow after component mounts
     const initialTimer = setTimeout(() => {
       setGlowActive(true);
       setTimeout(() => setGlowActive(false), 3000);
     }, Math.random() * 5000 + 2000);
     
-    // Random periodic glow effect
     const intervalTimer = setInterval(() => {
       setGlowActive(true);
       setTimeout(() => setGlowActive(false), 3000);
@@ -95,7 +88,6 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
     };
   }, []);
   
-  // Activate glow when balance animates
   useEffect(() => {
     if (balanceAnimating) {
       setGlowActive(true);
@@ -136,18 +128,17 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
           </p>
         </div>
         
-        {/* Progress bar towards withdrawal threshold with capped progress */}
         <div className="mt-3 mb-1">
           <div className="w-full bg-slate-700/70 rounded-full h-2.5">
             <div 
-              className={`h-2.5 rounded-full ${isAtMaximum ? 'bg-yellow-500' : isNearThreshold ? 'bg-amber-500' : 'bg-[#9b87f5]'} transition-all duration-1000`}
+              className={`h-2.5 rounded-full ${progressPercentage >= 95 ? 'bg-yellow-500' : progressPercentage >= 80 ? 'bg-amber-500' : 'bg-[#9b87f5]'} transition-all duration-1000`}
               style={{ width: `${progressPercentage}%` }}
             ></div>
           </div>
           <div className="flex justify-between text-xs text-white/60 mt-1">
             <span>{progressPercentage}%</span>
             <span>
-              {isAtMaximum ? (
+              {progressPercentage >= 95 ? (
                 <span className="text-yellow-300 flex items-center">
                   <Award className="h-3 w-3 mr-1" />
                   Quelques euros restants!
@@ -178,7 +169,6 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
           </div>
         </div>
         
-        {/* Separate network gains vs bot gains */}
         <div className="grid grid-cols-2 gap-4 mt-4">
           <div className="bg-emerald-900/20 backdrop-blur-sm rounded-lg p-3 border border-emerald-800/30 flex justify-between items-center group hover:bg-emerald-900/30 transition-all duration-300">
             <div>

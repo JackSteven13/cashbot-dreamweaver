@@ -70,11 +70,12 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
       <CardContent>
         <div className="space-y-6">
           <UserBalanceCard
-            balance={displayBalance}
+            displayBalance={displayBalance}
             subscription={effectiveSubscription}
             dailyLimit={effectiveDailyLimit}
             referralBonus={referralBonus}
             lastSessionTimestamp={lastSessionTimestamp}
+            sessionsDisplay={remainingSessions}
           />
           
           <ActionButtons
