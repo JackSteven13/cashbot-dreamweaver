@@ -35,17 +35,31 @@ export const useAutoSessionAnimation = () => {
       const amount = customEvent.detail?.amount || 0;
       const currentBalance = customEvent.detail?.currentBalance || 0;
       
+      // Assurer que nous n'avons que des augmentations de solde
       if (balanceElementRef.current && amount > 0) {
-        // Animer l'élément de solde
+        // Vérifier le solde actuel pour garantir qu'il ne diminue pas
+        const displayElement = balanceElementRef.current.querySelector('.text-5xl span:first-child');
+        const currentDisplayBalance = displayElement ? parseFloat(displayElement.textContent || '0') : 0;
+        const newBalance = Math.max(currentDisplayBalance, currentBalance);
+        
+        // Animer l'élément de solde, mais seulement vers le haut
         animateBalanceUpdate(
-          currentBalance - amount, 
-          currentBalance,
+          currentDisplayBalance, 
+          newBalance,
           1000,
           (value) => {
             if (balanceElementRef.current) {
               const displayElement = balanceElementRef.current.querySelector('.text-5xl span:first-child');
               if (displayElement) {
                 displayElement.textContent = `${value.toFixed(2)}`;
+                
+                // Persister immédiatement la valeur dans localStorage
+                try {
+                  localStorage.setItem('currentBalance', value.toFixed(2));
+                  localStorage.setItem('lastKnownBalance', value.toFixed(2));
+                } catch (e) {
+                  console.error("Failed to persist balance in localStorage:", e);
+                }
               }
             }
           }

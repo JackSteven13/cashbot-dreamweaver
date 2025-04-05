@@ -16,6 +16,7 @@ export const useAutoSessionScheduler = (
   const botStatusRef = useRef<boolean>(isBotActive);
   const initialSessionExecutedRef = useRef<boolean>(false);
   const persistentBalanceRef = useRef<number>(userData?.balance || 0);
+  const highestBalanceRef = useRef<number>(0);
 
   // Effect to simulate automatic ad analysis
   useEffect(() => {
@@ -24,11 +25,22 @@ export const useAutoSessionScheduler = (
     
     // Récupérer la balance depuis localStorage pour une meilleure persistance
     try {
-      const storedBalance = localStorage.getItem('currentBalance');
+      const storedHighestBalance = localStorage.getItem('highestBalance');
+      const storedBalance = localStorage.getItem('currentBalance') || localStorage.getItem('lastKnownBalance');
+      
+      if (storedHighestBalance) {
+        const parsedBalance = parseFloat(storedHighestBalance);
+        if (!isNaN(parsedBalance)) {
+          highestBalanceRef.current = parsedBalance;
+          console.log(`[Scheduler] Got highest persisted balance: ${highestBalanceRef.current}`);
+        }
+      }
+      
       if (storedBalance) {
         const parsedBalance = parseFloat(storedBalance);
         if (!isNaN(parsedBalance)) {
-          persistentBalanceRef.current = parsedBalance;
+          // Toujours utiliser la valeur la plus élevée
+          persistentBalanceRef.current = Math.max(parsedBalance, persistentBalanceRef.current, highestBalanceRef.current);
           console.log(`[Scheduler] Got persisted balance: ${persistentBalanceRef.current}`);
         }
       }
@@ -48,7 +60,7 @@ export const useAutoSessionScheduler = (
     // Start an initial session after a short delay if bot is active
     const initialTimeout = setTimeout(() => {
       // Vérifications de sécurité supplémentaires
-      if (botStatusRef.current && todaysGainsRef.current < dailyLimit && !initialSessionExecutedRef.current) {
+      if (botStatusRef.current && persistentBalanceRef.current < dailyLimit && !initialSessionExecutedRef.current) {
         console.log("[Scheduler] Démarrage de la session initiale automatique");
         initialSessionExecutedRef.current = true; // Marquer comme exécuté
         generateAutomaticRevenue(true);
@@ -70,7 +82,7 @@ export const useAutoSessionScheduler = (
       const randomInterval = Math.random() * 60000 + 120000; // Between 2 and 3 minutes
       
       // Vérifier également qu'on n'a pas atteint la limite journalière
-      if (timeSinceLastSession >= randomInterval && todaysGainsRef.current < dailyLimit && botStatusRef.current) {
+      if (timeSinceLastSession >= randomInterval && persistentBalanceRef.current < dailyLimit && botStatusRef.current) {
         console.log("[Scheduler] Génération automatique de revenus");
         generateAutomaticRevenue();
         lastAutoSessionTimeRef.current = Date.now();
@@ -90,12 +102,17 @@ export const useAutoSessionScheduler = (
     const handleBalanceUpdate = (event: CustomEvent) => {
       const newBalance = event.detail?.balance;
       if (typeof newBalance === 'number' && newBalance >= 0) {
-        persistentBalanceRef.current = newBalance;
-        console.log(`[Scheduler] Updated persistent balance to ${newBalance}`);
-        
-        // S'assurer que le localStorage est aussi à jour
-        localStorage.setItem('lastKnownBalance', newBalance.toString());
-        localStorage.setItem('currentBalance', newBalance.toString());
+        // Ne mettre à jour que si le nouveau solde est plus élevé
+        if (newBalance > persistentBalanceRef.current) {
+          persistentBalanceRef.current = newBalance;
+          highestBalanceRef.current = Math.max(highestBalanceRef.current, newBalance);
+          console.log(`[Scheduler] Updated persistent balance to ${newBalance}`);
+          
+          // S'assurer que le localStorage est aussi à jour
+          localStorage.setItem('lastKnownBalance', newBalance.toString());
+          localStorage.setItem('currentBalance', newBalance.toString());
+          localStorage.setItem('highestBalance', highestBalanceRef.current.toString());
+        }
       }
     };
     
@@ -117,6 +134,6 @@ export const useAutoSessionScheduler = (
     lastAutoSessionTime: lastAutoSessionTimeRef.current,
     getLastAutoSessionTime: () => lastAutoSessionTimeRef.current,
     isInitialSessionExecuted: () => initialSessionExecutedRef.current,
-    getCurrentPersistentBalance: () => persistentBalanceRef.current
+    getCurrentPersistentBalance: () => Math.max(persistentBalanceRef.current, highestBalanceRef.current)
   };
 };

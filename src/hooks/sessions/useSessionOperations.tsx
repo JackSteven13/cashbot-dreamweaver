@@ -20,6 +20,7 @@ export const useSessionOperations = (
   const sessionInProgress = useRef(false);
   const operationLock = useRef(false);
   const cumulativeBalanceRef = useRef<number | null>(null);
+  const highestBalanceRef = useRef<number | null>(null);
   const botStatusRef = useRef(isBotActive);
   
   // Use useEffect to update botStatusRef when isBotActive changes
@@ -31,12 +32,34 @@ export const useSessionOperations = (
   useEffect(() => {
     // Essayer de récupérer le solde depuis localStorage
     try {
-      const storedBalance = localStorage.getItem('lastKnownBalance');
+      const storedHighestBalance = localStorage.getItem('highestBalance');
+      const storedBalance = localStorage.getItem('lastKnownBalance') || localStorage.getItem('currentBalance');
+      
+      if (storedHighestBalance) {
+        const parsedHighestBalance = parseFloat(storedHighestBalance);
+        if (!isNaN(parsedHighestBalance)) {
+          highestBalanceRef.current = parsedHighestBalance;
+          console.log(`[SessionOperations] Initialized highest balance from localStorage: ${parsedHighestBalance}`);
+        }
+      }
+      
       if (storedBalance) {
         const parsedBalance = parseFloat(storedBalance);
         if (!isNaN(parsedBalance)) {
-          cumulativeBalanceRef.current = parsedBalance;
-          console.log(`[SessionOperations] Initialized cumulative balance from localStorage: ${parsedBalance}`);
+          // Comparer avec la valeur existante et utiliser la plus élevée
+          const maxBalance = Math.max(
+            parsedBalance, 
+            userData.balance || 0,
+            highestBalanceRef.current || 0
+          );
+          cumulativeBalanceRef.current = maxBalance;
+          highestBalanceRef.current = maxBalance;
+          console.log(`[SessionOperations] Initialized cumulative balance: ${maxBalance}`);
+          
+          // S'assurer que localStorage est à jour avec la valeur maximale
+          localStorage.setItem('currentBalance', maxBalance.toString());
+          localStorage.setItem('lastKnownBalance', maxBalance.toString());
+          localStorage.setItem('highestBalance', maxBalance.toString());
         } else {
           cumulativeBalanceRef.current = userData.balance || 0;
         }
@@ -52,7 +75,20 @@ export const useSessionOperations = (
     const handleBalanceUpdate = (event: CustomEvent) => {
       const newBalance = event.detail?.balance;
       if (typeof newBalance === 'number' && newBalance >= 0) {
-        cumulativeBalanceRef.current = newBalance;
+        // Ne mettre à jour que si le nouveau solde est plus élevé
+        const currentBalance = cumulativeBalanceRef.current || 0;
+        const currentHighest = highestBalanceRef.current || 0;
+        
+        if (newBalance > currentBalance) {
+          cumulativeBalanceRef.current = newBalance;
+          console.log(`[SessionOperations] Updated cumulative balance: ${newBalance}`);
+          
+          // Mettre à jour aussi le solde le plus élevé si nécessaire
+          if (newBalance > currentHighest) {
+            highestBalanceRef.current = newBalance;
+            localStorage.setItem('highestBalance', newBalance.toString());
+          }
+        }
       }
     };
     
@@ -94,31 +130,42 @@ export const useSessionOperations = (
       const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
       todaysGainsRef.current = todaysGains;
 
-      // Toujours récupérer le solde le plus à jour depuis localStorage
-      if (cumulativeBalanceRef.current === null) {
-        // Try to get it from localStorage first for persistence
+      // Toujours récupérer le solde le plus à jour depuis localStorage ou notre référence
+      let currentPersistedBalance = 0;
+      if (cumulativeBalanceRef.current !== null) {
+        currentPersistedBalance = cumulativeBalanceRef.current;
+      } else {
+        // Essayer de récupérer depuis localStorage
         try {
-          const storedBalance = localStorage.getItem('lastKnownBalance');
+          const storedBalance = localStorage.getItem('currentBalance') || localStorage.getItem('lastKnownBalance');
           if (storedBalance) {
             const parsedBalance = parseFloat(storedBalance);
             if (!isNaN(parsedBalance)) {
+              currentPersistedBalance = parsedBalance;
               cumulativeBalanceRef.current = parsedBalance;
             } else {
-              cumulativeBalanceRef.current = userData.balance || 0;
+              currentPersistedBalance = userData.balance || 0;
+              cumulativeBalanceRef.current = currentPersistedBalance;
             }
           } else {
-            cumulativeBalanceRef.current = userData.balance || 0;
+            currentPersistedBalance = userData.balance || 0;
+            cumulativeBalanceRef.current = currentPersistedBalance;
           }
         } catch (e) {
           console.error("Failed to read from localStorage:", e);
-          cumulativeBalanceRef.current = userData.balance || 0;
+          currentPersistedBalance = userData.balance || 0;
+          cumulativeBalanceRef.current = currentPersistedBalance;
         }
       }
       
-      // Calculate remaining allowed gains for today
-      const remainingAllowedGains = Math.max(0, dailyLimit - todaysGainsRef.current);
+      // Utiliser le solde le plus élevé pour les calculs mais limité par la limite journalière
+      const highestBalance = highestBalanceRef.current || currentPersistedBalance;
+      const effectiveBalance = Math.min(highestBalance, dailyLimit - 0.01);
       
-      if (remainingAllowedGains <= 0) {
+      // Calculate remaining allowed gains for today
+      const remainingAllowedGains = Math.max(0, dailyLimit - effectiveBalance);
+      
+      if (remainingAllowedGains <= 0.01) {
         // Si limite atteinte, désactiver le bot et montrer l'alerte
         updateBotStatus(false);
         setShowLimitAlert(true);
@@ -198,27 +245,21 @@ export const useSessionOperations = (
       todaysGainsRef.current += randomGain;
       
       // Récupérer la dernière valeur du solde persisté pour assurer la cohérence
-      let currentPersistedBalance = cumulativeBalanceRef.current || 0;
-      try {
-        const storedBalance = localStorage.getItem('currentBalance');
-        if (storedBalance) {
-          const parsedBalance = parseFloat(storedBalance);
-          if (!isNaN(parsedBalance) && parsedBalance > currentPersistedBalance) {
-            currentPersistedBalance = parsedBalance;
-          }
-        }
-      } catch (e) {
-        console.error("Failed to read current stored balance:", e);
+      let updatedBalance = currentPersistedBalance + randomGain;
+      
+      // Mettre à jour le solde le plus élevé si nécessaire
+      if (updatedBalance > (highestBalanceRef.current || 0)) {
+        highestBalanceRef.current = updatedBalance;
       }
       
       // Mettre à jour le solde cumulatif interne
-      const updatedBalance = currentPersistedBalance + randomGain;
       cumulativeBalanceRef.current = updatedBalance;
       
       // Toujours stocker en localStorage pour persistence entre les rendus
       try {
         localStorage.setItem('lastKnownBalance', updatedBalance.toString());
         localStorage.setItem('currentBalance', updatedBalance.toString());
+        localStorage.setItem('highestBalance', (highestBalanceRef.current || updatedBalance).toString());
       } catch (e) {
         console.error("Failed to store updated balance in localStorage:", e);
       }
@@ -268,7 +309,7 @@ export const useSessionOperations = (
       }
       
       // Vérifier si nous avons atteint la limite journalière après cette transaction
-      if (todaysGainsRef.current >= dailyLimit) {
+      if (updatedBalance >= dailyLimit) {
         // Si la limite est atteinte maintenant, désactiver le bot et informer l'utilisateur
         updateBotStatus(false);
         
@@ -306,6 +347,11 @@ export const useSessionOperations = (
   return {
     generateAutomaticRevenue,
     isSessionInProgress: () => sessionInProgress.current,
-    getCurrentBalance: () => cumulativeBalanceRef.current || 0
+    getCurrentBalance: () => {
+      // Toujours retourner la valeur la plus élevée
+      const currentBalance = cumulativeBalanceRef.current || 0;
+      const highestBalance = highestBalanceRef.current || 0;
+      return Math.max(currentBalance, highestBalance);
+    }
   };
 };
