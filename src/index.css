@@ -67,6 +67,19 @@
     padding: 1rem !important;
   }
   
+  /* Fixes pour les feuilles/sheets et les menus sur mobile */
+  .sheet-content,
+  [data-radix-popper-content-wrapper] {
+    background-color: white !important;
+    border-color: #e5e7eb !important;
+  }
+
+  .dark .sheet-content,
+  .dark [data-radix-popper-content-wrapper] {
+    background-color: rgb(17, 24, 39) !important;
+    border-color: rgb(55, 65, 81) !important;
+  }
+  
   /* Ajustements pour les boutons sur mobile */
   button {
     touch-action: manipulation;
@@ -170,19 +183,17 @@
   button, .button {
     min-height: 38px;
   }
+
+  /* Fix pour les menus mobiles */
+  [data-radix-popper-content-wrapper] {
+    max-width: 90vw !important;
+    transform: translateX(-50%) !important;
+    left: 50% !important;
+  }
 }
 
 @media (min-width: 641px) {
   .content-padding-top {
     padding-top: 8rem;
-  }
-}
-
-/* Améliorations pour le responsive des dialogues */
-@media (max-width: 640px) {
-  [data-radix-popper-content-wrapper] {
-    max-width: 90vw !important;
-    transform: translateX(-50%) !important;
-    left: 50% !important;
   }
 }

@@ -104,15 +104,18 @@ const Navbar = () => {
                   <Menu size={24} />
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[85%] sm:w-[350px] pt-16 z-[150] bg-background">
+              <SheetContent 
+                side="right" 
+                className="w-[85%] sm:w-[350px] pt-10 z-[150] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-lg"
+              >
                 <SheetHeader>
-                  <SheetTitle className="text-left text-xl font-bold mb-4">Menu</SheetTitle>
+                  <SheetTitle className="text-left text-xl font-bold mb-6">Menu</SheetTitle>
                 </SheetHeader>
                 <div className="flex flex-col space-y-4">
                   <SheetClose asChild>
                     <Link
                       to="/"
-                      className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                      className="px-4 py-3 text-base font-medium rounded-lg hover:bg-secondary"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Accueil
@@ -121,7 +124,7 @@ const Navbar = () => {
                   <SheetClose asChild>
                     <Link
                       to="/offres"
-                      className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                      className="px-4 py-3 text-base font-medium rounded-lg hover:bg-secondary"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Offres
@@ -130,23 +133,23 @@ const Navbar = () => {
                   <SheetClose asChild>
                     <Link
                       to="/about"
-                      className="px-4 py-3 text-sm font-medium rounded-lg hover:bg-secondary"
+                      className="px-4 py-3 text-base font-medium rounded-lg hover:bg-secondary"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       À propos
                     </Link>
                   </SheetClose>
-                  <div className="pt-4 flex flex-col space-y-3 border-t border-border mt-2">
+                  <div className="pt-6 flex flex-col space-y-4 border-t border-gray-200 dark:border-gray-700 mt-2">
                     <SheetClose asChild>
                       <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-                        <Button variant="outline" fullWidth>
+                        <Button variant="outline" fullWidth className="py-2.5">
                           Connexion
                         </Button>
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
                       <Link to="/register" onClick={() => setIsMenuOpen(false)}>
-                        <Button fullWidth>
+                        <Button fullWidth className="py-2.5">
                           S'inscrire
                         </Button>
                       </Link>
