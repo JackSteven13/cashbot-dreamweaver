@@ -20,29 +20,26 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
   
   // Calculate today's gains
   useEffect(() => {
-    // In a real implementation, we'd fetch today's transactions 
-    // For now, we'll estimate today's gains from the total balance
-    // This is just a UI display, the actual logic for checking limits is elsewhere
     const calculateTodaysGains = async () => {
       const today = new Date().toISOString().split('T')[0];
       
-      // In a real implementation, we'd fetch today's transactions
-      // For now we'll use a percentage of the current balance as an estimate
-      const estimatedTodaysGains = Math.min(currentBalance * 0.4, 
+      // Fetch today's transactions from supabase to get actual daily gains
+      // For now, we'll estimate based on the subscription limit for UI purposes only
+      const estimatedTodaysGains = Math.min(effectiveLimit * 0.9, 
         SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
       
       setTodaysGains(estimatedTodaysGains);
     };
     
     calculateTodaysGains();
-  }, [currentBalance, subscription]);
+  }, [currentBalance, subscription, effectiveLimit]);
   
-  // Vérifier si le mode Pro temporaire est activé
+  // Check if temporary Pro mode is activated
   useEffect(() => {
     const effectiveSub = getEffectiveSubscription(subscription);
     setEffectiveSubscription(effectiveSub);
     
-    // Mettre à jour la limite effective
+    // Update effective limit
     setEffectiveLimit(SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
   }, [subscription]);
   
@@ -71,7 +68,7 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
             }
           </span>
           
-          {/* Barre de progression visuelle */}
+          {/* Progress bar for visual representation */}
           <div className="w-full h-1.5 md:h-2 bg-gray-200 rounded-full mt-1.5 md:mt-2 overflow-hidden">
             <div 
               className={`h-full ${isLimitReached ? 'bg-amber-500' : isNearLimit ? 'bg-orange-500' : 'bg-yellow-500'}`}

@@ -25,6 +25,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
     setEffectiveLimit(limit);
     
     // Only calculate based on daily limit, not total balance
+    // For UI purposes, limit the percentage to 100% max
     setCalculatedPercentage(Math.min(100, limitPercentage));
   }, [subscription, displayBalance, dailyLimit, limitPercentage]);
 

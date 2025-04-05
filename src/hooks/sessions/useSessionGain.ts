@@ -75,7 +75,8 @@ export const useSessionGain = () => {
       // Round to 2 decimals
       potentialGain = Math.round(potentialGain * 100) / 100;
       
-      // Limit gain to remaining allowed amount
+      // Limit gain to remaining allowed amount for today
+      // BUT we still let the total balance increase beyond the daily limit
       const finalGain = Math.min(potentialGain, remainingAllowedGain);
       const newBalance = safeCurrentBalance + finalGain;
       

@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import { SUBSCRIPTION_LIMITS } from "@/utils/subscriptionUtils";
+import { SUBSCRIPTION_LIMITS } from "@/utils/subscription";
 
 // Update user balance with retry mechanism
 export const updateUserBalance = async (
@@ -27,11 +27,9 @@ export const updateUserBalance = async (
     
   const todaysGains = (todaysTransactions || []).reduce((sum, tx) => sum + (tx.gain || 0), 0) + positiveGain;
   
-  // Check if daily limit reached for freemium users (not total balance)
+  // Check if daily limit reached (for warnings only)
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-  
-  // Only check if daily limit is reached, but don't block the balance update
-  const limitReached = todaysGains >= dailyLimit && subscription === 'freemium';
+  const limitReached = todaysGains >= dailyLimit;
   
   // Retry mechanism
   const maxRetries = 3;
@@ -44,6 +42,7 @@ export const updateUserBalance = async (
       console.log(`Today's gains: ${todaysGains}/${dailyLimit}`);
       
       // ALWAYS update the balance regardless of daily limit
+      // The daily limit only restricts how much can be earned in a day, not the total balance
       const { data, error: updateError } = await supabase
         .from('user_balances')
         .update({ 
