@@ -28,12 +28,11 @@ export const useAutoSessions = (
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       const todaysAutoTransactions = userData.transactions.filter(tx => 
         tx.date.startsWith(today) && 
-        tx.gain > 0 && 
-        tx.report.includes('système a généré')
+        tx.gain > 0
       );
       
       todaysGainsRef.current = todaysAutoTransactions.reduce((sum, tx) => sum + tx.gain, 0);
-      console.log("Today's auto-generated gains:", todaysGainsRef.current);
+      console.log("Today's total gains:", todaysGainsRef.current);
     }
   }, [userData?.transactions]);
   
@@ -142,6 +141,14 @@ export const useAutoSessions = (
       // Get the daily limit for the current subscription
       const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
+      // Calculate today's gains from transactions
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const todaysTransactions = userData.transactions.filter(tx => 
+        tx.date.startsWith(today) && tx.gain > 0
+      );
+      const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
+      todaysGainsRef.current = todaysGains;
+      
       // Calculate remaining allowed gains for today
       const remainingAllowedGains = Math.max(0, dailyLimit - todaysGainsRef.current);
       
@@ -156,7 +163,7 @@ export const useAutoSessions = (
       // Calculate gain using the utility function (respecting daily limit)
       const baseGain = calculateAutoSessionGain(
         userData.subscription, 
-        todaysGainsRef.current, // Pass today's gains, not total balance
+        todaysGains, // Pass today's gains, not total balance
         userData.referrals.length
       );
       
@@ -169,6 +176,7 @@ export const useAutoSessions = (
       // Déclencher l'événement d'analyse terminée avec le gain
       triggerDashboardEvent('analysis-complete', { gain: randomGain });
       
+      // ALWAYS update balance, regardless of daily limit
       // Update user balance with forceUpdate set to true for immediate UI update
       await updateBalance(
         randomGain,

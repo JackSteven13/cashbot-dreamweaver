@@ -23,7 +23,19 @@ export const useSessionGain = () => {
     
     // Calculate daily limit based on subscription
     const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    const remainingAmount = dailyLimit - currentBalance;
+    
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Calculate today's gains for limit checking (use transactions)
+    const todaysTransactions = userData.transactions.filter(tx => 
+      tx.date.startsWith(today) && tx.gain > 0
+    );
+    
+    const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
+    
+    // Calculate remaining amount for today (not related to the total balance)
+    const remainingAmount = dailyLimit - todaysGains;
     
     // Final verification before applying gain
     if (remainingAmount <= 0) {
@@ -39,13 +51,13 @@ export const useSessionGain = () => {
     // Calculate gain using utility function
     const randomGain = calculateManualSessionGain(
       effectiveSub, 
-      currentBalance, 
+      todaysGains, // Pass today's gains, not the total balance
       userData.referrals.length
     );
     
     // Final check to ensure we don't exceed limit
     const { shouldProceed, finalGain } = checkFinalGainLimit(
-      currentBalance,
+      todaysGains, // Use today's gains instead of total balance
       randomGain,
       dailyLimit,
       setShowLimitAlert
@@ -55,7 +67,7 @@ export const useSessionGain = () => {
       return { success: false, finalGain: 0, newBalance: currentBalance };
     }
     
-    // Calculate new balance
+    // Calculate new balance (total balance increases)
     const newBalance = currentBalance + finalGain;
     
     // Show success toast

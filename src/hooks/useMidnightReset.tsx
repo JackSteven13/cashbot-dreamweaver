@@ -67,6 +67,11 @@ export const useMidnightReset = (
       // Reset the daily session count
       await incrementSessionCount();
       
+      // Clear the today's gains counter in localStorage
+      const now = new Date();
+      localStorage.setItem('lastAutoSessionDate', 
+        `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`);
+      
       // Update the last reset time
       lastResetTimeRef.current = Date.now();
       

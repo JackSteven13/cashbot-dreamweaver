@@ -29,6 +29,8 @@ export const updateUserBalance = async (
   
   // Check if daily limit reached for freemium users (not total balance)
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  
+  // Only check if daily limit is reached, but don't block the balance update
   const limitReached = todaysGains >= dailyLimit && subscription === 'freemium';
   
   // Retry mechanism
@@ -41,7 +43,7 @@ export const updateUserBalance = async (
       console.log(`Updating balance from ${currentBalance} to ${newBalance} for user ${userId} (attempt ${retryCount + 1}/${maxRetries})`);
       console.log(`Today's gains: ${todaysGains}/${dailyLimit}`);
       
-      // Use standard update instead of RPC to avoid TypeScript errors
+      // Always update the balance regardless of daily limit
       const { data, error: updateError } = await supabase
         .from('user_balances')
         .update({ 

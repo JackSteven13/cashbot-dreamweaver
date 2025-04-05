@@ -25,11 +25,6 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
     setEffectiveLimit(limit);
     
     // Only calculate based on daily limit, not total balance
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    
-    // This should be based on today's gains, not total balance
-    // For now we'll use the limit percentage passed in, but ideally we'd 
-    // calculate this from today's transactions
     setCalculatedPercentage(Math.min(100, limitPercentage));
   }, [subscription, displayBalance, dailyLimit, limitPercentage]);
 
@@ -40,7 +35,6 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
           Progression de la limite journalière
         </div>
         <div className="text-xs font-medium text-gray-300">
-          {/* This should be today's gains, not total balance */}
           {limitPercentage.toFixed(0)}% / {effectiveLimit}€ par jour
         </div>
       </div>
