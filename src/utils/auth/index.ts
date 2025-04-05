@@ -14,6 +14,6 @@ export {
   checkDailyLimit,
   getEffectiveSubscription,
   subscribeToAuthChanges,
-  unsubscribeFromAuthChanges
+  unsubscribeFromAuthChanges,
+  isUserAuthenticated
 } from './subscriptionUtils';
-

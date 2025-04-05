@@ -20,9 +20,12 @@ export const useDailyReset = (
       // Éviter les multiples tentatives de réinitialisation
       if (resetAttempted.current) return;
 
+      // Get the last reset time from localStorage or use 0 as default
+      const lastResetTimeStr = localStorage.getItem('lastResetTime');
+      const lastResetTime = lastResetTimeStr ? parseInt(lastResetTimeStr, 10) : 0;
+
       // Si le système détermine qu'une réinitialisation est nécessaire
-      // Pass Date.now() as the argument for lastResetTime
-      if (shouldResetDailyCounters(Date.now())) {
+      if (shouldResetDailyCounters(lastResetTime)) {
         console.log("Réinitialisation quotidienne des compteurs nécessaire, exécution...");
         resetAttempted.current = true;
         
@@ -34,6 +37,7 @@ export const useDailyReset = (
           // Mettre à jour la date de dernière réinitialisation
           const today = new Date().toDateString();
           localStorage.setItem('lastBalanceResetDay', today);
+          localStorage.setItem('lastResetTime', Date.now().toString());
           console.log("Réinitialisation quotidienne des compteurs effectuée avec succès");
         } catch (error) {
           console.error("Erreur lors de la réinitialisation quotidienne:", error);
