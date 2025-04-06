@@ -40,12 +40,11 @@ export function ToastNotification({
           maxWidth: "clamp(320px, 95vw, 420px)",
           minWidth: "clamp(300px, 90vw, 380px)",
           padding: "12px 16px",
-          zIndex: "9999"
         },
         duration: duration,
         descriptionClassName: "text-muted-foreground text-base break-words mt-1",
       }}
-      className={cn("toaster group z-[1000]", className)}
+      className={cn("toaster group z-[100]", className)}
       theme={theme}
       closeButton={closeButton}
       richColors={richColors}
