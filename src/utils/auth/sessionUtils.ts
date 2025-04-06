@@ -7,8 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const getCurrentSession = async () => {
   try {
-    // Léger délai pour éviter les problèmes de concurrence
-    await new Promise(resolve => setTimeout(resolve, 150));
+    // Court délai pour éviter les problèmes de concurrence
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     // Vérifier d'abord si une session est présente dans localStorage
     const hasLocalSession = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
@@ -34,8 +34,7 @@ export const getCurrentSession = async () => {
       
       if (now > tokenExpiry) {
         console.log("Session expired, attempting automatic refresh...");
-        const refreshed = await refreshSession();
-        return refreshed;
+        return await refreshSession();
       }
       
       return data.session;
@@ -53,18 +52,41 @@ export const getCurrentSession = async () => {
  */
 export const refreshSession = async () => {
   try {
+    // Eviter les rafraîchissements concurrents
+    if (localStorage.getItem('auth_refreshing') === 'true') {
+      const refreshTimestamp = localStorage.getItem('auth_refresh_timestamp');
+      const now = Date.now();
+      
+      // Si le rafraîchissement est en cours depuis plus de 10 secondes, forcer un nettoyage
+      if (refreshTimestamp && now - parseInt(refreshTimestamp) > 10000) {
+        console.log("Nettoyage du flag de rafraîchissement bloqué");
+        localStorage.removeItem('auth_refreshing');
+        localStorage.removeItem('auth_refresh_timestamp');
+      } else {
+        console.log("Session refresh already in progress, waiting...");
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+    
     console.log("Attempting to refresh the session");
+    localStorage.setItem('auth_refreshing', 'true');
+    localStorage.setItem('auth_refresh_timestamp', Date.now().toString());
     
     // Vérifier d'abord si une session est présente dans localStorage
     const hasLocalSession = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
     
     if (!hasLocalSession) {
       console.log("No local session to refresh");
+      localStorage.removeItem('auth_refreshing');
+      localStorage.removeItem('auth_refresh_timestamp');
       return null;
     }
     
     // Utiliser refreshSession avec persistance
     const { data, error } = await supabase.auth.refreshSession();
+    
+    localStorage.removeItem('auth_refreshing');
+    localStorage.removeItem('auth_refresh_timestamp');
     
     if (error) {
       console.error("Error refreshing session:", error);
@@ -98,6 +120,8 @@ export const refreshSession = async () => {
     return null;
   } catch (error) {
     console.error("Error refreshing session:", error);
+    localStorage.removeItem('auth_refreshing');
+    localStorage.removeItem('auth_refresh_timestamp');
     return null;
   }
 };
@@ -117,7 +141,12 @@ export const forceSignOut = async (): Promise<boolean> => {
       'supabase.auth.refresh_token',
       'sb-cfjibduhagxiwqkiyhqd-auth-token',
       'sb-cfjibduhagxiwqkiyhqd-auth-refresh',
-      'supabase.auth.expires_at',
+      'auth_checking',
+      'auth_refreshing',
+      'auth_redirecting',
+      'auth_check_timestamp',
+      'auth_refresh_timestamp',
+      'auth_redirect_timestamp',
       'user_registered',
       'username',
       'user_balance',
@@ -125,16 +154,27 @@ export const forceSignOut = async (): Promise<boolean> => {
       'subscription'
     ];
     
-    keysToRemove.forEach(key => localStorage.removeItem(key));
+    keysToRemove.forEach(key => {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        console.error(`Error removing key ${key}:`, e);
+      }
+    });
     
     // Pause pour permettre aux opérations locales de se terminer
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 200));
     
     // Perform more stable sign out with local and global scope
-    await supabase.auth.signOut({ scope: 'global' });
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (signOutError) {
+      console.error("Error during supabase signOut:", signOutError);
+      // Continue même en cas d'erreur pour assurer un nettoyage complet
+    }
     
     // Short delay for sign out to process
-    await new Promise(resolve => setTimeout(resolve, 400));
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     console.log("User signed out successfully");
     return true;

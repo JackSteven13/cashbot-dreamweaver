@@ -1,75 +1,54 @@
 
-import { FC, useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
-const AuthLoadingScreen: FC = () => {
-  const [loadingTime, setLoadingTime] = useState(0);
+const AuthLoadingScreen: React.FC = () => {
+  const [loadingStep, setLoadingStep] = useState(0);
   const [dots, setDots] = useState('');
-  
-  // Effet pour gérer le temps de chargement
+
+  // Messages plus informatifs pour l'utilisateur
+  const loadingMessages = [
+    "Vérification de session",
+    "Authentification en cours",
+    "Chargement de votre profil"
+  ];
+
+  // Effet pour faire avancer les phases de chargement
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLoadingTime(prev => prev + 1);
-    }, 1000);
+    const stepTimer = setTimeout(() => {
+      setLoadingStep((prev) => (prev < loadingMessages.length - 1 ? prev + 1 : prev));
+    }, 1800);
     
-    return () => clearInterval(interval);
-  }, []);
-  
-  // Effet pour les points d'animation
+    return () => clearTimeout(stepTimer);
+  }, [loadingStep, loadingMessages.length]);
+
+  // Effet pour l'animation des points
   useEffect(() => {
     const dotsInterval = setInterval(() => {
-      setDots(prev => prev.length < 3 ? prev + '.' : '');
+      setDots((prev) => {
+        if (prev.length >= 3) return '';
+        return prev + '.';
+      });
     }, 500);
     
     return () => clearInterval(dotsInterval);
   }, []);
-  
-  // Afficher un message différent selon la durée de chargement
-  const getMessage = () => {
-    if (loadingTime > 10) {
-      return (
-        <>
-          <span className="text-yellow-300 mb-2 block">
-            Le chargement prend plus de temps que prévu{dots}
-          </span>
-          <span className="text-xs text-blue-200">
-            Connexion réseau en cours...
-          </span>
-        </>
-      );
-    } else if (loadingTime > 5) {
-      return (
-        <>
-          <span className="text-blue-300 mb-2 block">
-            Vérification de l'authentification en cours{dots}
-          </span>
-          <span className="text-xs text-blue-200">
-            Cela peut prendre quelques instants
-          </span>
-        </>
-      );
-    }
-    
-    return (
-      <>
-        <span className="text-blue-300 mb-2 block">Vérification de l'authentification{dots}</span>
-        <span className="text-xs text-blue-200">Cela peut prendre quelques secondes</span>
-      </>
-    );
-  };
-  
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#0f0f23]">
-      <Loader2 className="w-10 h-10 animate-spin text-blue-400 mb-4" />
-      <div className="text-center px-4">
-        {getMessage()}
+    <div className="flex flex-col min-h-screen bg-[#0f0f23] items-center justify-center px-4">
+      <div className="relative mb-6">
+        <div className="absolute -inset-4 rounded-full opacity-30 blur-lg bg-blue-500 animate-pulse"></div>
+        <Loader2 className="w-16 h-16 animate-spin text-blue-400 relative" />
+      </div>
+      
+      <div className="text-center">
+        <p className="text-blue-300 text-xl font-medium transition-all duration-300">
+          {loadingMessages[loadingStep]}{dots}
+        </p>
         
-        {loadingTime > 20 && (
-          <div className="mt-6 text-xs text-yellow-200">
-            Vous semblez avoir des difficultés à vous connecter.
-            <br />Veuillez actualiser la page ou vérifier votre connexion Internet.
-          </div>
-        )}
+        <p className="mt-3 text-sm text-blue-200/70 max-w-xs">
+          Si le chargement persiste, essayez de rafraîchir la page
+        </p>
       </div>
     </div>
   );

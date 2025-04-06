@@ -1,8 +1,8 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-// Utiliser les importations spécifiques pour éviter les conflits
 import { verifyAuth, refreshSession } from "@/utils/auth/index";
+import { toast } from "@/components/ui/use-toast";
 
 interface UseAuthVerificationResult {
   isAuthenticated: boolean | null;
@@ -25,7 +25,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
   const isMounted = useRef(true);
   const checkInProgress = useRef(false);
   const authTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isAuthRedirecting = useRef(false);
+  const authCheckCompleted = useRef(false);
 
   // Fonction pour récupérer les données de profil
   const fetchProfileData = useCallback(async (userId: string) => {
@@ -53,18 +53,15 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
 
   // Fonction stabilisée pour vérifier l'authentification
   const checkAuth = useCallback(async (isManualRetry = false) => {
-    // Vérifier si une redirection est déjà en cours via localStorage
-    const authRedirecting = localStorage.getItem('auth_redirecting') === 'true';
-    
-    if (authRedirecting || isAuthRedirecting.current) {
-      console.log("Redirection auth déjà en cours, vérification ignorée");
-      return;
-    }
-    
+    // Éviter les exécutions multiples
     if (checkInProgress.current || !isMounted.current) {
-      console.log("Vérification d'authentification déjà en cours ou composant démonté, ignorée");
+      console.log("Vérification d'authentification déjà en cours ou composant démonté");
       return;
     }
+    
+    // Nettoyer les drapeaux locaux de redirection
+    localStorage.removeItem('auth_redirecting');
+    localStorage.removeItem('auth_redirect_timestamp');
     
     checkInProgress.current = true;
     
@@ -76,7 +73,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     
     console.log("Vérification d'authentification démarrée");
     
-    // Définir un timeout de sécurité
+    // Définir un timeout de sécurité plus court
     if (authTimeoutRef.current) {
       clearTimeout(authTimeoutRef.current);
     }
@@ -88,7 +85,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
         setIsAuthenticated(false);
         checkInProgress.current = false;
       }
-    }, 10000); // 10 secondes max
+    }, 5000); // 5 secondes max
     
     try {
       // Vérifier si une session est présente localement
@@ -98,6 +95,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
         if (isMounted.current) {
           setIsAuthenticated(false);
           setAuthCheckFailed(false);
+          authCheckCompleted.current = true;
         }
         
         if (authTimeoutRef.current) {
@@ -107,6 +105,12 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
         checkInProgress.current = false;
         return;
       }
+      
+      // Essayer de rafraîchir d'abord, puis récupérer
+      await refreshSession();
+      
+      // Court délai pour laisser la session se propager
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       // Récupérer la session active
       const { data, error } = await supabase.auth.getSession();
@@ -123,58 +127,11 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
       if (error || !data.session) {
         console.error("Erreur ou pas de session:", error);
         
-        // Essayer de rafraîchir la session une fois
-        if (retryAttempts < 1) {
-          try {
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-            
-            if (!isMounted.current) {
-              if (authTimeoutRef.current) {
-                clearTimeout(authTimeoutRef.current);
-              }
-              
-              checkInProgress.current = false;
-              return;
-            }
-            
-            if (refreshError || !refreshData.session) {
-              console.error("Échec du rafraîchissement:", refreshError);
-              
-              if (isMounted.current) {
-                setAuthCheckFailed(true);
-                setIsAuthenticated(false);
-                setRetryAttempts(prev => prev + 1);
-              }
-              
-              if (authTimeoutRef.current) {
-                clearTimeout(authTimeoutRef.current);
-              }
-              
-              checkInProgress.current = false;
-              return;
-            }
-            
-            // Session rafraîchie avec succès
-            if (isMounted.current) {
-              setIsAuthenticated(true);
-              setAuthCheckFailed(false);
-              fetchProfileData(refreshData.session.user.id);
-            }
-          } catch (refreshErr) {
-            console.error("Erreur de rafraîchissement:", refreshErr);
-            
-            if (isMounted.current) {
-              setAuthCheckFailed(true);
-              setIsAuthenticated(false);
-              setRetryAttempts(prev => prev + 1);
-            }
-          }
-        } else {
-          // Trop de tentatives de rafraîchissement
-          if (isMounted.current) {
-            setAuthCheckFailed(true);
-            setIsAuthenticated(false);
-          }
+        if (isMounted.current) {
+          setAuthCheckFailed(true);
+          setIsAuthenticated(false);
+          setRetryAttempts(prev => prev + 1);
+          authCheckCompleted.current = true;
         }
         
         if (authTimeoutRef.current) {
@@ -190,12 +147,14 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
         if (isMounted.current) {
           setIsAuthenticated(true);
           setAuthCheckFailed(false);
+          authCheckCompleted.current = true;
           fetchProfileData(data.session.user.id);
         }
       } else {
         if (isMounted.current) {
           setIsAuthenticated(false);
           setAuthCheckFailed(false);
+          authCheckCompleted.current = true;
         }
       }
     } catch (err) {
@@ -204,6 +163,7 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
       if (isMounted.current) {
         setAuthCheckFailed(true);
         setIsAuthenticated(false);
+        authCheckCompleted.current = true;
       }
     } finally {
       setIsRetrying(false);
@@ -215,49 +175,9 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
       
       checkInProgress.current = false;
     }
-  }, [retryAttempts, fetchProfileData]);
+  }, [fetchProfileData]);
 
-  // Effet pour gérer les flags de redirection
-  useEffect(() => {
-    // Vérifier au montage si une redirection est déjà en cours
-    const authRedirecting = localStorage.getItem('auth_redirecting') === 'true';
-    isAuthRedirecting.current = authRedirecting;
-    
-    // Observer les changements sur le localStorage pour auth_redirecting
-    const checkRedirectingFlag = () => {
-      const isRedirecting = localStorage.getItem('auth_redirecting') === 'true';
-      isAuthRedirecting.current = isRedirecting;
-    };
-    
-    // Check every second
-    const intervalId = setInterval(checkRedirectingFlag, 1000);
-    
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, []);
-
-  // Effet pour écouter les changements d'état d'authentification
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!isMounted.current) return;
-      
-      console.log("Changement d'état d'authentification:", event);
-      
-      if (event === 'SIGNED_OUT') {
-        setIsAuthenticated(false);
-        setUsername(null);
-      } else if (event === 'TOKEN_REFRESHED') {
-        setIsAuthenticated(true);
-      }
-    });
-    
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  // Effet d'initialisation principal
+  // Effet d'initialisation principal simplifié pour éviter les boucles
   useEffect(() => {
     // Nettoyer les flags au montage
     isMounted.current = true;
@@ -265,20 +185,17 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
     
     console.log("useAuthVerification hook monté");
     
-    // Vérifier si une redirection est déjà en cours
-    const authRedirecting = localStorage.getItem('auth_redirecting') === 'true';
-    
-    if (authRedirecting) {
-      console.log("Redirection auth déjà en cours, initialisation ignorée");
-      return;
+    // Ne vérifier qu'une seule fois au montage
+    if (!authCheckCompleted.current) {
+      // Délai court pour éviter les conflits
+      const initTimeout = setTimeout(() => {
+        if (isMounted.current && !checkInProgress.current) {
+          checkAuth();
+        }
+      }, 100);
+      
+      return () => clearTimeout(initTimeout);
     }
-    
-    // Délai court pour éviter les conflits
-    const initTimeout = setTimeout(() => {
-      if (isMounted.current && !checkInProgress.current && !isAuthRedirecting.current) {
-        checkAuth();
-      }
-    }, 300);
     
     return () => {
       console.log("useAuthVerification hook démonté");
@@ -287,8 +204,6 @@ export const useAuthVerification = (): UseAuthVerificationResult => {
       if (authTimeoutRef.current) {
         clearTimeout(authTimeoutRef.current);
       }
-      
-      clearTimeout(initTimeout);
     };
   }, [checkAuth]);
 

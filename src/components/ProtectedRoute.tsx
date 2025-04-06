@@ -1,9 +1,10 @@
 
-import { ReactNode, useEffect, useRef, useCallback } from 'react';
+import { ReactNode, useEffect, useRef, useCallback, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthVerification } from '@/hooks/useAuthVerification';
 import AuthLoadingScreen from './auth/AuthLoadingScreen';
 import ProtectedRouteRecovery from './auth/ProtectedRouteRecovery';
+import { toast } from '@/components/ui/use-toast';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -18,18 +19,36 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const autoRetryCount = useRef(0);
   const stableLocationRef = useRef(location.pathname);
   
+  // État pour forcer une réinitialisation en cas d'erreur persistante
+  const [forceReset, setForceReset] = useState(false);
+  
   // Mettre à jour la référence stable pour éviter les renders en cascade
   useEffect(() => {
     stableLocationRef.current = location.pathname;
   }, [location.pathname]);
   
-  // Use auth verification with no dependencies to prevent infinite loops
+  // Use auth verification with reset capability
   const { 
     isAuthenticated, 
     authCheckFailed, 
     isRetrying, 
     checkAuth
   } = useAuthVerification();
+
+  // Force reset auth state when needed
+  useEffect(() => {
+    if (forceReset) {
+      // Reset localStorage items that might be causing issues
+      localStorage.removeItem('auth_checking');
+      localStorage.removeItem('auth_refreshing');
+      localStorage.removeItem('auth_redirecting');
+      localStorage.removeItem('auth_redirect_timestamp');
+      
+      // Retry auth check with forced parameters
+      checkAuth(true);
+      setForceReset(false);
+    }
+  }, [forceReset, checkAuth]);
 
   // Stable cleanup function with no dependencies
   const clearTimeouts = useCallback(() => {
@@ -44,29 +63,25 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
   }, []);
 
-  // Single effect for timeout management
+  // Effet pour gérer le timeout maximum avec déblocage forcé
   useEffect(() => {
-    // Vérifier si une redirection est déjà en cours via localStorage
-    const isAuthRedirecting = localStorage.getItem('auth_redirecting') === 'true';
-    
-    if (isAuthRedirecting) {
-      console.log("Auth redirection in progress, skipping timeout setup");
-      return clearTimeouts;
-    }
-    
-    // Only set timeout if authentication hasn't been verified yet
-    // and no timeout is already set
     if (isAuthenticated === null && !maxLoadingTime.current) {
       maxLoadingTime.current = setTimeout(() => {
         console.log("Maximum loading time reached, forcing verification");
         if (!redirectInProgress.current && isAuthenticated === null) {
-          checkAuth(true);
+          // Avant de réessayer, nettoyer tout état potentiellement bloquant
+          localStorage.removeItem('auth_checking');
+          localStorage.removeItem('auth_refreshing');
+          localStorage.removeItem('auth_redirecting');
+          
+          // Forcer une réinitialisation complète
+          setForceReset(true);
         }
-      }, 8000);
+      }, 6000); // Réduit à 6 seconds pour débloquer plus rapidement
     }
     
     return clearTimeouts;
-  }, [isAuthenticated, checkAuth, clearTimeouts]);
+  }, [isAuthenticated, clearTimeouts]);
 
   // Effect for auto-retry with cleanup
   useEffect(() => {
@@ -76,24 +91,21 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       timeoutRef.current = null;
     }
     
-    // Vérifier si une redirection est déjà en cours via localStorage
-    const isAuthRedirecting = localStorage.getItem('auth_redirecting') === 'true';
-    
-    if (isAuthRedirecting) {
-      console.log("Auth redirection in progress, skipping retry setup");
-      return;
-    }
-    
-    if (authCheckFailed && autoRetryCount.current < 3 && !timeoutRef.current && !redirectInProgress.current) {
-      console.log(`Automatic retry ${autoRetryCount.current + 1}/3`);
+    if (authCheckFailed && autoRetryCount.current < 2 && !timeoutRef.current && !redirectInProgress.current) {
+      console.log(`Automatic retry ${autoRetryCount.current + 1}/2`);
       
       timeoutRef.current = setTimeout(() => {
         if (!redirectInProgress.current) {
           autoRetryCount.current += 1;
+          
+          // Nettoyer l'état avant de réessayer
+          localStorage.removeItem('auth_checking');
+          localStorage.removeItem('auth_refreshing');
+          
           checkAuth(true);
         }
         timeoutRef.current = null;
-      }, 2000);
+      }, 1500);
     }
     
     if (isAuthenticated !== null && !initialCheckComplete.current) {
@@ -109,7 +121,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     };
   }, [authCheckFailed, isAuthenticated, checkAuth]);
 
-  // Clean up on unmount
+  // Clean up on unmount to prevent memory leaks
   useEffect(() => {
     console.log("ProtectedRoute mounting");
     redirectInProgress.current = false;
@@ -121,6 +133,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       // Clear all localStorage flags to prevent stale state
       localStorage.removeItem('auth_checking');
       localStorage.removeItem('auth_refreshing');
+      localStorage.removeItem('auth_redirecting');
     };
   }, [clearTimeouts]);
 
@@ -128,58 +141,63 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const handleCleanLogin = useCallback(() => {
     if (!redirectInProgress.current) {
       redirectInProgress.current = true;
-      localStorage.setItem('auth_redirecting', 'true');
       
-      // Nettoyer les tokens d'authentification
-      localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-      localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
-      localStorage.removeItem('auth_checking');
-      localStorage.removeItem('auth_refreshing');
-      
-      // Retirer le flag de redirection après un délai
-      setTimeout(() => {
+      // Forcer la suppression de tous les tokens et flags
+      try {
+        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
+        localStorage.removeItem('auth_checking');
+        localStorage.removeItem('auth_refreshing');
         localStorage.removeItem('auth_redirecting');
-      }, 1000);
+      } catch (e) {
+        console.error("Erreur lors du nettoyage du localStorage:", e);
+      }
       
+      toast({
+        title: "Problème d'authentification",
+        description: "Veuillez vous reconnecter",
+        variant: "destructive"
+      });
+      
+      // Utiliser une redirection directe pour éviter les problèmes de React Router
       window.location.href = '/login';
     }
   }, []);
 
-  // Show recovery screen if auth check failed
-  if (authCheckFailed) {
+  // Afficher l'écran de récupération en cas d'échec après plusieurs tentatives
+  if (authCheckFailed && autoRetryCount.current >= 2) {
     return (
       <ProtectedRouteRecovery
         isRetrying={isRetrying}
         autoRetryCount={autoRetryCount}
-        maxAutoRetries={3}
+        maxAutoRetries={2}
         onRetry={() => checkAuth(true)}
         onCleanLogin={handleCleanLogin}
       />
     );
   }
   
-  // Show loading screen during auth verification
+  // Afficher l'écran de chargement pendant la vérification d'authentification
   if (isAuthenticated === null) {
     return <AuthLoadingScreen />;
   }
 
-  // Redirect to login if not authenticated
+  // Rediriger vers login si non authentifié
   if (isAuthenticated === false) {
     if (!redirectInProgress.current) {
       redirectInProgress.current = true;
-      localStorage.setItem('auth_redirecting', 'true');
       
-      // Nettoyer le flag de redirection après un délai
-      setTimeout(() => {
-        localStorage.removeItem('auth_redirecting');
-      }, 1000);
+      // Nettoyer les flags de redirection
+      localStorage.removeItem('auth_redirecting');
+      localStorage.removeItem('auth_checking');
+      localStorage.removeItem('auth_refreshing');
       
       return <Navigate to="/login" replace state={{ from: location }} />;
     }
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  // If authenticated, show protected content
+  // Si authentifié, afficher le contenu protégé
   return <>{children}</>;
 };
 
