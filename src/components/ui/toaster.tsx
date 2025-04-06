@@ -22,12 +22,12 @@ export function Toaster() {
           <Toast 
             key={id} 
             {...props} 
-            className={`toast-notification ${isError ? 'destructive' : ''} max-w-[94vw] z-[1000] md:max-w-md`}
+            className={`toast-notification ${isError ? 'destructive bg-red-950/90 text-white border-red-700/50' : ''} max-w-[94vw] z-[1000] md:max-w-md shadow-lg`}
           >
-            <div className="grid gap-1 w-full">
-              {title && <ToastTitle className="text-base sm:text-lg font-semibold">{title}</ToastTitle>}
+            <div className="grid gap-1.5 w-full">
+              {title && <ToastTitle className="text-base font-semibold sm:text-lg">{title}</ToastTitle>}
               {description && (
-                <ToastDescription className="text-sm sm:text-base break-words text-gray-700 dark:text-gray-300 w-full">
+                <ToastDescription className="text-sm sm:text-base break-words text-gray-200 dark:text-gray-200 w-full opacity-95">
                   {description}
                 </ToastDescription>
               )}
@@ -37,7 +37,7 @@ export function Toaster() {
           </Toast>
         )
       })}
-      <ToastViewport className="toast-viewport fixed top-0 z-50 flex flex-col items-center w-full p-4 md:items-end gap-2 max-w-[100vw]" />
+      <ToastViewport className="toast-viewport fixed top-0 z-[100] flex flex-col items-center w-full p-4 sm:items-end gap-2 max-w-[100vw]" />
     </ToastProvider>
   )
 }
