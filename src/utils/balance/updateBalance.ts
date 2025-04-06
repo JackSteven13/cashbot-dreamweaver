@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { SUBSCRIPTION_LIMITS } from "@/utils/subscription";
+import { balanceManager } from "./balanceManager";
 
 // Update user balance with retry mechanism
 export const updateUserBalance = async (
@@ -12,7 +13,14 @@ export const updateUserBalance = async (
 ) => {
   // Ensure gain is always positive and has max 2 decimal places
   const positiveGain = Math.max(0, parseFloat(gain.toFixed(2)));
-  const newBalance = parseFloat((currentBalance + positiveGain).toFixed(2));
+  
+  // Utiliser le gestionnaire centralisé pour la valeur la plus fiable
+  const latestBalance = balanceManager.getCurrentBalance();
+  // Toujours utiliser la valeur la plus élevée comme référence
+  const effectiveCurrentBalance = Math.max(currentBalance, latestBalance);
+  
+  // Calculer le nouveau solde
+  const newBalance = parseFloat((effectiveCurrentBalance + positiveGain).toFixed(2));
   
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split('T')[0];
@@ -38,7 +46,7 @@ export const updateUserBalance = async (
   
   while (retryCount < maxRetries && !success) {
     try {
-      console.log(`Updating balance from ${currentBalance} to ${newBalance} for user ${userId} (attempt ${retryCount + 1}/${maxRetries})`);
+      console.log(`Updating balance from ${effectiveCurrentBalance} to ${newBalance} for user ${userId} (attempt ${retryCount + 1}/${maxRetries})`);
       console.log(`Today's gains: ${todaysGains}/${dailyLimit}`);
       
       // ALWAYS update the balance regardless of daily limit
@@ -62,7 +70,7 @@ export const updateUserBalance = async (
             description: "Impossible de mettre à jour votre solde. Veuillez réessayer.",
             variant: "destructive"
           });
-          return { success: false, newBalance: currentBalance, limitReached: false };
+          return { success: false, newBalance: effectiveCurrentBalance, limitReached: false };
         }
         
         // Wait before retrying (exponential backoff)
@@ -73,6 +81,16 @@ export const updateUserBalance = async (
         // Only log if we got a gain worth mentioning
         if (positiveGain > 0.01) {
           console.log("Balance updated successfully to", newBalance, "DB returned:", data?.[0]?.balance);
+        }
+        
+        // Mettre à jour le gestionnaire central de solde
+        const dbReturnedBalance = data?.[0]?.balance;
+        if (typeof dbReturnedBalance === 'number' && !isNaN(dbReturnedBalance)) {
+          // Initialisation du gestionnaire avec la valeur de la base
+          balanceManager.initialize(dbReturnedBalance);
+        } else {
+          // Sinon, mettre à jour avec la valeur calculée localement
+          balanceManager.updateBalance(positiveGain);
         }
         
         return { 
@@ -91,7 +109,7 @@ export const updateUserBalance = async (
           description: "Une erreur est survenue. Veuillez réessayer.",
           variant: "destructive"
         });
-        return { success: false, newBalance: currentBalance, limitReached: false };
+        return { success: false, newBalance: effectiveCurrentBalance, limitReached: false };
       }
       
       // Wait before retrying (exponential backoff)
@@ -100,5 +118,5 @@ export const updateUserBalance = async (
   }
   
   // This should not be reached but added as a fallback
-  return { success: false, newBalance: currentBalance, limitReached: false };
+  return { success: false, newBalance: effectiveCurrentBalance, limitReached: false };
 };

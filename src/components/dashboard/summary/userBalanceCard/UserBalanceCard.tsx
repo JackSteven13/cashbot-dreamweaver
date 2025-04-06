@@ -1,6 +1,7 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WITHDRAWAL_THRESHOLDS } from '@/components/dashboard/summary/constants';
+import { balanceManager } from '@/utils/balance/balanceManager';
 
 // Import subcomponents
 import { 
@@ -40,100 +41,97 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   lastSessionTimestamp,
   isBotActive = true
 }) => {
-  // Ensure we have valid values or defaults for calculated fields
+  // État local pour l'affichage du solde
   const [localBalance, setLocalBalance] = useState(displayBalance);
-  const highestBalanceRef = useRef<number>(displayBalance);
-  const safeReferralBonus = typeof referralBonus === 'number' ? referralBonus : 0;
+  const [balanceAnimating, setBalanceAnimating] = useState(false);
+  const [animatedBalance, setAnimatedBalance] = useState(displayBalance);
+  const [previousBalance, setPreviousBalance] = useState(displayBalance);
+  const [glowActive, setGlowActive] = useState(false);
   
-  // Initialiser avec la valeur maximum disponible
+  // Initialiser le gestionnaire de solde avec la valeur de départ
   useEffect(() => {
-    try {
-      const storedHighestBalance = localStorage.getItem('highestBalance');
-      const storedBalance = localStorage.getItem('currentBalance');
-      const storedLastKnownBalance = localStorage.getItem('lastKnownBalance');
-      
-      // Calculer le maximum
-      let maxBalance = displayBalance;
-      
-      if (storedHighestBalance) {
-        const parsed = parseFloat(storedHighestBalance);
-        if (!isNaN(parsed) && parsed > maxBalance) {
-          maxBalance = parsed;
-          highestBalanceRef.current = parsed;
-        }
+    balanceManager.initialize(displayBalance);
+    
+    // S'abonner aux mises à jour du gestionnaire de solde
+    const unsubscribe = balanceManager.subscribe((state) => {
+      // Si une mise à jour du solde se produit, l'animer
+      if (state.lastKnownBalance !== localBalance) {
+        animateBalanceChange(localBalance, state.lastKnownBalance);
       }
-      
-      if (storedBalance) {
-        const parsed = parseFloat(storedBalance);
-        if (!isNaN(parsed) && parsed > maxBalance) {
-          maxBalance = parsed;
-          highestBalanceRef.current = parsed;
-        }
-      }
-      
-      if (storedLastKnownBalance) {
-        const parsed = parseFloat(storedLastKnownBalance);
-        if (!isNaN(parsed) && parsed > maxBalance) {
-          maxBalance = parsed;
-          highestBalanceRef.current = parsed;
-        }
-      }
-      
-      // Utiliser la valeur maximale pour l'affichage
-      setLocalBalance(maxBalance);
-      
-      // Confirmer que la valeur maximum est bien stockée
-      localStorage.setItem('highestBalance', highestBalanceRef.current.toString());
-    } catch (e) {
-      console.error("Failed to read balance from localStorage:", e);
-    }
+    });
+    
+    return () => {
+      unsubscribe(); // Se désabonner à la destruction du composant
+    };
   }, []);
   
-  // Mettre à jour le solde local uniquement si le solde affiché est plus élevé
+  // N'accepter les mises à jour de props displayBalance que si supérieures
   useEffect(() => {
     if (displayBalance > localBalance) {
-      console.log(`[UserBalanceCard] Updating local balance: ${localBalance} -> ${displayBalance}`);
-      setLocalBalance(displayBalance);
-      
-      if (displayBalance > highestBalanceRef.current) {
-        highestBalanceRef.current = displayBalance;
-        localStorage.setItem('highestBalance', displayBalance.toString());
-      }
-    } else {
-      // Si le solde est inférieur, vérifier si notre solde local est correct
-      const storedHighestBalance = localStorage.getItem('highestBalance');
-      if (storedHighestBalance) {
-        const parsed = parseFloat(storedHighestBalance);
-        if (!isNaN(parsed) && parsed > localBalance) {
-          console.log(`[UserBalanceCard] Restoring from higher stored balance: ${parsed}`);
-          setLocalBalance(parsed);
-          highestBalanceRef.current = parsed;
-        }
-      }
+      animateBalanceChange(localBalance, displayBalance);
     }
-  }, [displayBalance, localBalance]);
+  }, [displayBalance]);
   
-  // Écouter les événements de synchronisation forcée
-  useEffect(() => {
-    const handleForceSyncBalance = (event: CustomEvent) => {
-      const syncedBalance = event.detail?.balance;
-      if (typeof syncedBalance === 'number' && syncedBalance > 0) {
-        // Ne mettre à jour que si le solde synchronisé est plus élevé
-        if (syncedBalance > localBalance) {
-          console.log(`[UserBalanceCard] Force sync balance update: ${syncedBalance}`);
-          setLocalBalance(syncedBalance);
-          
-          if (syncedBalance > highestBalanceRef.current) {
-            highestBalanceRef.current = syncedBalance;
-          }
-        }
+  // Fonction pour animer un changement de solde
+  const animateBalanceChange = (from: number, to: number) => {
+    if (to <= from) return;
+    
+    setPreviousBalance(from);
+    setBalanceAnimating(true);
+    setGlowActive(true);
+    
+    const startValue = from;
+    const endValue = to;
+    const duration = 1000;
+    const startTime = Date.now();
+    
+    const updateValue = () => {
+      const now = Date.now();
+      const elapsed = now - startTime;
+      
+      if (elapsed < duration) {
+        const progress = elapsed / duration;
+        // Utiliser une fonction easing pour une animation plus fluide
+        const eased = -Math.pow(progress - 1, 2) + 1; // easeOutQuad
+        const currentValue = startValue + (endValue - startValue) * eased;
+        setAnimatedBalance(currentValue);
+        requestAnimationFrame(updateValue);
+      } else {
+        setAnimatedBalance(endValue);
+        setLocalBalance(endValue);
+        setBalanceAnimating(false);
+        
+        // Désactiver l'effet glow après un délai
+        setTimeout(() => {
+          setGlowActive(false);
+        }, 3000);
       }
     };
     
-    window.addEventListener('balance:force-sync' as any, handleForceSyncBalance);
+    requestAnimationFrame(updateValue);
+  };
+  
+  // Écouter les événements de l'application
+  useEffect(() => {
+    // Gérer les mises à jour cohérentes du solde
+    const handleConsistentUpdate = (event: CustomEvent) => {
+      const newBalance = event.detail?.currentBalance;
+      if (typeof newBalance === 'number' && newBalance > localBalance) {
+        animateBalanceChange(localBalance, newBalance);
+      }
+    };
+    
+    // Gérer les réinitialisations de solde
+    const handleBalanceReset = () => {
+      animateBalanceChange(localBalance, 0);
+    };
+    
+    window.addEventListener('balance:consistent-update' as any, handleConsistentUpdate);
+    window.addEventListener('balance:reset' as any, handleBalanceReset);
     
     return () => {
-      window.removeEventListener('balance:force-sync' as any, handleForceSyncBalance);
+      window.removeEventListener('balance:consistent-update' as any, handleConsistentUpdate);
+      window.removeEventListener('balance:reset' as any, handleBalanceReset);
     };
   }, [localBalance]);
   
@@ -145,130 +143,17 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   // Get withdrawal threshold for this subscription type
   const withdrawalThreshold = WITHDRAWAL_THRESHOLDS[subscription as keyof typeof WITHDRAWAL_THRESHOLDS] || 200;
   
-  // State for UI effects
-  const [glowActive, setGlowActive] = useState(false);
-  const [balanceAnimating, setBalanceAnimating] = useState(false);
-  const [animatedBalance, setAnimatedBalance] = useState(localBalance);
-  const [previousBalance, setPreviousBalance] = useState(localBalance);
-  
-  // Handle balance update events
-  useEffect(() => {
-    const handleBalanceUpdate = (e: CustomEvent) => {
-      const newAmount = e.detail?.amount || 0;
-      const newCurrentBalance = e.detail?.currentBalance;
-      
-      // Utiliser le solde fourni ou calculer
-      let updatedBalance = localBalance;
-      if (typeof newCurrentBalance === 'number') {
-        updatedBalance = Math.max(localBalance, newCurrentBalance);
-      } else {
-        updatedBalance = localBalance + newAmount;
-      }
-      
-      // N'animer que si le nouveau solde est plus élevé
-      if (updatedBalance > localBalance) {
-        setPreviousBalance(localBalance);
-        setBalanceAnimating(true);
-        
-        const startValue = localBalance;
-        const endValue = updatedBalance;
-        const duration = 1000;
-        const startTime = Date.now();
-        
-        const updateValue = () => {
-          const now = Date.now();
-          const elapsed = now - startTime;
-          
-          if (elapsed < duration) {
-            const progress = elapsed / duration;
-            const currentValue = startValue + (endValue - startValue) * progress;
-            setAnimatedBalance(currentValue);
-            requestAnimationFrame(updateValue);
-          } else {
-            setAnimatedBalance(endValue);
-            setBalanceAnimating(false);
-            setLocalBalance(endValue);
-            
-            // Mettre à jour notre référence maximum
-            if (endValue > highestBalanceRef.current) {
-              highestBalanceRef.current = endValue;
-              localStorage.setItem('highestBalance', endValue.toString());
-            }
-          }
-        };
-        
-        requestAnimationFrame(updateValue);
-      }
-    };
-    
-    // Écouter les mises à jour forcées du solde
-    const handleForceBalanceUpdate = (event: CustomEvent) => {
-      const newBalance = event.detail?.newBalance;
-      if (typeof newBalance === 'number' && newBalance > localBalance) {
-        setPreviousBalance(localBalance);
-        setAnimatedBalance(newBalance);
-        setBalanceAnimating(true);
-        
-        setTimeout(() => {
-          setBalanceAnimating(false);
-          setLocalBalance(newBalance);
-          
-          // Mettre à jour notre référence maximum
-          if (newBalance > highestBalanceRef.current) {
-            highestBalanceRef.current = newBalance;
-            localStorage.setItem('highestBalance', newBalance.toString());
-          }
-        }, 1000);
-      }
-    };
-    
-    window.addEventListener('balance:update' as any, handleBalanceUpdate);
-    window.addEventListener('balance:force-update' as any, handleForceBalanceUpdate);
-    
-    return () => {
-      window.removeEventListener('balance:update' as any, handleBalanceUpdate);
-      window.removeEventListener('balance:force-update' as any, handleForceBalanceUpdate);
-    };
-  }, [localBalance]);
-  
-  // Periodic glow effect
-  useEffect(() => {
-    const initialTimer = setTimeout(() => {
-      setGlowActive(true);
-      setTimeout(() => setGlowActive(false), 3000);
-    }, Math.random() * 5000 + 2000);
-    
-    const intervalTimer = setInterval(() => {
-      setGlowActive(true);
-      setTimeout(() => setGlowActive(false), 3000);
-    }, Math.random() * 10000 + 15000);
-    
-    return () => {
-      clearTimeout(initialTimer);
-      clearInterval(intervalTimer);
-    };
-  }, []);
-  
-  // Activate glow during balance animation
-  useEffect(() => {
-    if (balanceAnimating) {
-      setGlowActive(true);
-    } else {
-      setTimeout(() => setGlowActive(false), 3000);
-    }
-  }, [balanceAnimating]);
-  
   return (
     <div className="mb-6">
       <div className={`bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white transition-all duration-500 ${glowActive ? 'glow-effect' : ''}`}>
         <BalanceHeader dailyLimit={dailyLimit} />
         
         <BalanceDisplay 
-          displayBalance={balanceAnimating ? previousBalance : localBalance}
+          displayBalance={localBalance}
           balanceAnimating={balanceAnimating}
           animatedBalance={animatedBalance}
           previousBalance={previousBalance}
-          referralBonus={safeReferralBonus}
+          referralBonus={referralBonus}
           totalGeneratedBalance={safeTotalGeneratedBalance}
           isBotActive={isBotActive}
         />
@@ -290,7 +175,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         
         <ReferralInfo 
           referralCount={referralCount}
-          referralBonus={safeReferralBonus}
+          referralBonus={referralBonus}
         />
         
         <div className="mt-3 text-xs text-white/50 italic">

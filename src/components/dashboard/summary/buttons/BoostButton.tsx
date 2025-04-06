@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Activity, AlertTriangle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -25,14 +25,35 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
 }) => {
   const isMobile = useIsMobile();
   const iconSize = isMobile ? 16 : 18;
+  const [isClicked, setIsClicked] = useState(false);
+  
+  // Gérer le clic avec un feedback visuel supplémentaire
+  const handleClick = () => {
+    if (isButtonDisabled || isStartingSession || limitReached) return;
+    
+    setIsClicked(true);
+    onClick();
+    
+    // Réinitialiser l'état cliqué après un délai
+    setTimeout(() => {
+      setIsClicked(false);
+    }, 1000);
+  };
+  
+  // Les classes pour l'animation
+  const animationClass = isStartingSession 
+    ? 'boost-button-active' 
+    : isClicked 
+      ? 'boost-button-clicked'
+      : 'boost-button-pulse';
   
   if (canStartSession && !limitReached) {
     return (
       <Button 
         ref={buttonRef}
-        className={`w-full bg-gradient-to-r from-[#3b82f6] to-[#1d4ed8] hover:from-[#2563eb] hover:to-[#1e40af] text-white relative overflow-hidden shadow-md py-1.5 ${isStartingSession ? 'boost-button-active' : 'boost-button-pulse'}`}
+        className={`w-full bg-gradient-to-r from-[#3b82f6] to-[#1d4ed8] hover:from-[#2563eb] hover:to-[#1e40af] text-white relative overflow-hidden shadow-md py-1.5 ${animationClass}`}
         disabled={isButtonDisabled || isStartingSession || limitReached}
-        onClick={onClick}
+        onClick={handleClick}
         size={isMobile ? "sm" : "default"}
       >
         {/* Visual indicator of progress towards limit */}

@@ -36,3 +36,47 @@
     box-shadow: 0 0 5px 0 rgba(59, 130, 246, 0.3);
   }
 }
+
+/* Animation pour le bouton boost */
+.boost-button-pulse {
+  animation: boost-button-pulse 3s infinite;
+}
+
+.boost-button-clicked {
+  animation: boost-button-clicked 0.5s forwards;
+}
+
+@keyframes boost-button-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px 0 rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px 5px rgba(59, 130, 246, 0.7);
+  }
+}
+
+@keyframes boost-button-clicked {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Animation pour le clignotement de l'indicateur d'activité */
+.blink-activity {
+  animation: blink-activity 2s infinite;
+}
+
+@keyframes blink-activity {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
