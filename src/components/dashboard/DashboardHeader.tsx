@@ -1,5 +1,7 @@
 
 import React, { useMemo } from 'react';
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { User, ChevronDown } from 'lucide-react';
 
 interface DashboardHeaderProps {
   username: string;
