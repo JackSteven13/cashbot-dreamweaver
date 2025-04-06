@@ -60,7 +60,7 @@ const Login = () => {
     }
   }, []);
 
-  // Check existing session on mount with timeout protection
+  // Check existing session on mount but don't auto-redirect to dashboard
   useEffect(() => {
     const sessionTimeout = setTimeout(() => {
       setIsCheckingSession(false);
@@ -73,7 +73,7 @@ const Login = () => {
         // Force clear problematic stored sessions
         localStorage.removeItem('supabase.auth.token');
         
-        // Check for valid session
+        // We still check for a session, but we won't redirect automatically
         const { data, error } = await supabase.auth.getSession();
         
         clearTimeout(sessionTimeout);
@@ -84,34 +84,20 @@ const Login = () => {
           return;
         }
         
-        // If we have a valid session, redirect to dashboard
-        if (data.session) {
-          // Vérifier que la session n'est pas expirée
-          const expiresAt = data.session.expires_at;
-          const now = Math.floor(Date.now() / 1000);
-          
-          if (expiresAt && now >= expiresAt) {
-            console.log("Session expired, staying on login");
-            setIsCheckingSession(false);
-            return;
-          }
-          
-          console.log("Found existing session, redirecting to dashboard");
-          navigate('/dashboard', { replace: true });
-          return;
-        }
-        
+        // Even if we have a valid session, we don't redirect automatically anymore
+        // The user must explicitly log in with credentials
         setIsCheckingSession(false);
+        
+        // Get last email for suggestion only
+        const savedEmail = localStorage.getItem('last_logged_in_email');
+        if (savedEmail) {
+          setLastLoggedInEmail(savedEmail);
+          // We populate the email field but leave it editable
+          setEmail(savedEmail);
+        }
       } catch (err) {
         console.error("Session check failed:", err);
         setIsCheckingSession(false);
-      }
-      
-      // Get last email for suggestion
-      const savedEmail = localStorage.getItem('last_logged_in_email');
-      if (savedEmail) {
-        setLastLoggedInEmail(savedEmail);
-        setEmail(savedEmail);
       }
     };
     
@@ -147,7 +133,7 @@ const Login = () => {
         localStorage.removeItem(flag);
       });
       
-      // Use signInWithPassword with explicit config
+      // Always manually sign in with the provided credentials
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -277,7 +263,7 @@ const Login = () => {
                   Dernière connexion avec: <strong>{lastLoggedInEmail}</strong>
                 </p>
                 <p className="text-xs text-blue-300/80 mt-1">
-                  Vous pouvez vous connecter avec ce compte ou utiliser un autre compte.
+                  Veuillez saisir vos identifiants pour vous connecter.
                 </p>
               </div>
             )}
