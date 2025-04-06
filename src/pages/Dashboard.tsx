@@ -1,4 +1,3 @@
-
 import { Routes, Route, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardContent from '@/components/dashboard/DashboardContent';
@@ -7,6 +6,7 @@ import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
 import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
+import { useReferralNotifications } from '@/hooks/useReferralNotifications';
 import { memo, useEffect, useRef, useMemo } from 'react';
 
 // Composant principal avec memo pour éviter les re-rendus inutiles
@@ -43,11 +43,28 @@ const Dashboard = memo(() => {
     isBotActive
   } = useDashboardState();
   
+  // Utiliser notre nouveau hook de notifications de parrainage
+  useReferralNotifications();
+  
   // Effet de debug avec scope limité
   useEffect(() => {
     renderCountRef.current += 1;
     console.log(`Dashboard render count: ${renderCountRef.current}`);
   });
+  
+  // Écouter les événements de mise à jour des parrainages
+  useEffect(() => {
+    const handleReferralUpdate = () => {
+      // Forcer l'actualisation des données utilisateur pour refléter les nouveaux parrainages
+      forceRefresh();
+    };
+    
+    window.addEventListener('referral:update', handleReferralUpdate);
+    
+    return () => {
+      window.removeEventListener('referral:update', handleReferralUpdate);
+    };
+  }, [forceRefresh]);
   
   // Calculs memoizés pour éviter les re-calculs à chaque rendu
   const { isLoading_Combined, hasError, canShowDashboard } = useMemo(() => {

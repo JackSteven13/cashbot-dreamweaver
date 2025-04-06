@@ -1,81 +1,28 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { ThemeProvider } from "next-themes";
-import { useEffect } from "react";
-import Index from "./pages/Index";
-import Dashboard from "./pages/Dashboard";
-import NotFound from "./pages/NotFound";
-import Offres from "./pages/Offres";
-import Register from "./pages/Register";
-import Login from "./pages/Login";
-import About from "./pages/About";
-import Terms from "./pages/Terms";
-import Contact from "./pages/Contact";
-import ProtectedRoute from "./components/ProtectedRoute";
-import Payment from './pages/Payment';
-import PaymentSuccess from './pages/PaymentSuccess';
+import { BrowserRouter as Router } from 'react-router-dom';
+import AppRoutes from './routes/AppRoutes';
+import { ThemeProvider } from '@/components/ThemeProvider';
+import { QueryProvider } from '@/components/QueryProvider';
+import { ToastNotification } from './components/ui/toast-notification';
+import { Toaster } from '@/components/ui/toaster'; // On garde également l'ancien système pour compatibilité
 
-const queryClient = new QueryClient();
-
-const AppRoutes = () => {
-  // Check for redirections from 404 page
-  useEffect(() => {
-    const redirectedFrom = sessionStorage.getItem('redirectedFrom');
-    if (redirectedFrom) {
-      sessionStorage.removeItem('redirectedFrom');
-      console.log('Redirected from:', redirectedFrom);
-    }
-  }, []);
-
+function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/dashboard/*" element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/about" element={<About />} />
-      <Route path="/offres" element={<Offres />} />
-      <Route path="/terms" element={<Terms />} />
-      <Route path="/contact" element={<Contact />} />
-      <Route path="/payment" element={
-        <ProtectedRoute>
-          <Payment />
-        </ProtectedRoute>
-      } />
-      <Route path="/payment-success" element={
-        <ProtectedRoute>
-          <PaymentSuccess />
-        </ProtectedRoute>
-      } />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <ThemeProvider defaultTheme="light">
+      <QueryProvider>
+        <Router>
+          <AppRoutes />
+          <ToastNotification 
+            position="top-right" 
+            theme="system"
+            richColors={true}
+            offset="1rem"
+          />
+          <Toaster /> {/* Conserver l'ancien système de notification pour compatibilité */}
+        </Router>
+      </QueryProvider>
+    </ThemeProvider>
   );
-};
-
-// Fix: Create a proper functional component for the app root
-const App = () => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="light">
-        <BrowserRouter>
-          {/* Fix: Move TooltipProvider inside the React component tree */}
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <AppRoutes />
-          </TooltipProvider>
-        </BrowserRouter>
-      </ThemeProvider>
-    </QueryClientProvider>
-  );
-};
+}
 
 export default App;

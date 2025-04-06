@@ -1,10 +1,10 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ArrowRight, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import Button from '@/components/Button';
 import { Input } from '@/components/ui/input';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
 import { handleError, ErrorType } from '@/utils/errorHandling';
 
@@ -18,16 +18,25 @@ const RegistrationForm = ({ onSuccessfulRegistration }: RegistrationFormProps) =
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  
+  const location = useLocation();
+  
+  // Extraire le code de parrainage de l'URL s'il existe
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      setReferralCode(refCode);
+      console.log("Code de parrainage détecté:", refCode);
+    }
+  }, [location.search]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (password !== confirmPassword) {
-      toast({
-        title: "Erreur",
-        description: "Les mots de passe ne correspondent pas",
-        variant: "destructive",
-      });
+      toast.error("Les mots de passe ne correspondent pas");
       return;
     }
     
@@ -53,13 +62,14 @@ const RegistrationForm = ({ onSuccessfulRegistration }: RegistrationFormProps) =
       }
       
       if (data && data.user) {
-        // Créer un profil pour l'utilisateur
+        // Créer un profil pour l'utilisateur avec le code de parrainage si disponible
         await supabase
           .from('profiles')
           .upsert({
             id: data.user.id,
             full_name: name,
-            email: email
+            email: email,
+            referrer_id: referralCode // Stocker l'ID du parrain
           });
           
         // Initialiser les données utilisateur dans la base de données
@@ -71,6 +81,23 @@ const RegistrationForm = ({ onSuccessfulRegistration }: RegistrationFormProps) =
             daily_session_count: 0,
             subscription: 'freemium'
           });
+        
+        // Si un code de parrainage a été fourni, l'appliquer
+        if (referralCode) {
+          console.log("Traitement du parrainage avec code:", referralCode);
+          try {
+            // Importer de manière dynamique pour éviter les cycles de dépendance
+            const { applyReferralBonus } = await import('@/utils/referralUtils');
+            const success = await applyReferralBonus(referralCode, data.user.id);
+            
+            if (success) {
+              console.log("Bonus de parrainage appliqué avec succès");
+            }
+          } catch (referralError) {
+            console.error("Erreur lors de l'application du bonus de parrainage:", referralError);
+            // Ne pas bloquer l'inscription si le parrainage échoue
+          }
+        }
         
         // Passer le nom à la fonction parent pour afficher un message de bienvenue
         onSuccessfulRegistration(name);
@@ -150,6 +177,12 @@ const RegistrationForm = ({ onSuccessfulRegistration }: RegistrationFormProps) =
           required
         />
       </div>
+      
+      {referralCode && (
+        <div className="bg-amber-50 border border-amber-100 rounded-md p-2 text-sm text-amber-800">
+          Vous vous inscrivez avec un code de parrainage. Vous bénéficierez d'avantages supplémentaires!
+        </div>
+      )}
       
       <div className="pt-2">
         <Button type="submit" fullWidth size="lg" isLoading={isLoading} className="group">
