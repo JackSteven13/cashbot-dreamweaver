@@ -87,11 +87,11 @@ const Login = () => {
     }
   }, []);
 
-  // Check existing session on mount with timeout protection
+  // Check existing session on mount but don't auto-redirect
   useEffect(() => {
     const sessionTimeout = setTimeout(() => {
       setIsCheckingSession(false);
-    }, 5000); // Ne jamais bloquer plus de 5 secondes
+    }, 1500); // Réduire le temps de vérification à 1.5 secondes
     
     const checkExistingSession = async () => {
       setIsCheckingSession(true);
@@ -100,37 +100,18 @@ const Login = () => {
         // Force clear problematic stored sessions
         localStorage.removeItem('supabase.auth.token');
         
-        // Check for valid session
-        const { data, error } = await supabase.auth.getSession();
+        // Force sign out any existing session to require re-authentication
+        await supabase.auth.signOut();
+        
+        // Remove all auth tokens to force re-authentication
+        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
         
         clearTimeout(sessionTimeout);
-        
-        if (error) {
-          console.error("Session check error:", error);
-          setIsCheckingSession(false);
-          return;
-        }
-        
-        // If we have a valid session, redirect to dashboard
-        if (data.session) {
-          // Vérifier que la session n'est pas expirée
-          const expiresAt = data.session.expires_at;
-          const now = Math.floor(Date.now() / 1000);
-          
-          if (expiresAt && now >= expiresAt) {
-            console.log("Session expired, staying on login");
-            setIsCheckingSession(false);
-            return;
-          }
-          
-          console.log("Found existing session, redirecting to dashboard");
-          navigate('/dashboard', { replace: true });
-          return;
-        }
-        
         setIsCheckingSession(false);
       } catch (err) {
         console.error("Session check failed:", err);
+        clearTimeout(sessionTimeout);
         setIsCheckingSession(false);
       }
     };
