@@ -244,7 +244,8 @@ export const useSessionOperations = (
       
       // Boost pour les utilisateurs récents (moins d'une semaine)
       // Pour s'assurer que Jacques obtient plus rapidement des gains
-      const userCreationDate = userData?.profile?.created_at ? new Date(userData.profile.created_at) : null;
+      const userCreationDate = userData?.profile?.created_at ? new Date(userData.profile.created_at) : 
+                               userData?.registeredAt || null;
       const currentDate = new Date();
       const isNewUser = userCreationDate && 
         (currentDate.getTime() - userCreationDate.getTime()) < 7 * 24 * 60 * 60 * 1000;

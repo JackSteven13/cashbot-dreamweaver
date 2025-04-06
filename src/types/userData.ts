@@ -29,10 +29,16 @@ export interface UserData {
   referralLink: string;
   transactions: Transaction[];
   registeredAt?: Date;
-  email?: string; // Add email property
+  email?: string;
   paymentMethods?: Array<{
     type: string;
     lastFour: string;
   }>;
-  totalEarnings?: number; // Add totalEarnings property
+  totalEarnings?: number;
+  profile?: { 
+    created_at?: string;
+    full_name?: string;
+    email?: string;
+    id?: string;
+  }; // Add profile property to fix the error
 }
