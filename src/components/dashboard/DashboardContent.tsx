@@ -1,11 +1,10 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import DashboardMetrics from './DashboardMetrics';
 import DailyLimitAlert from './DailyLimitAlert';
 import DormancyAlert from './DormancyAlert';
 import SystemTerminal from './terminal/SystemTerminal';
-import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/subscriptionStatus';
+import { SUBSCRIPTION_LIMITS } from '@/components/dashboard/summary/constants';
 
 const DashboardContent = ({
   userData,
