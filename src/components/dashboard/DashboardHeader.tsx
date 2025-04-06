@@ -1,38 +1,49 @@
+import React from 'react';
+import { AccountSwitcher } from '../auth/AccountSwitcher';
+import { useUserSession } from '@/hooks/useUserSession';
+import { LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { forceSignOut } from '@/utils/auth';
+import { toast } from '@/components/ui/use-toast';
 
-import React, { useMemo } from 'react';
+const DashboardHeader: React.FC = () => {
+  const { session } = useUserSession();
+  const navigate = useNavigate();
 
-interface DashboardHeaderProps {
-  username: string;
-  subscription: string;
-}
-
-const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
-  // Simplifié pour traiter tous les utilisateurs de la même façon
-  const displayName = useMemo(() => {
-    // Nettoyage du nom avec remplacement par défaut
-    if (!username || username.trim() === '') {
-      return 'Utilisateur';
+  const handleLogout = async () => {
+    try {
+      await forceSignOut();
+      toast({
+        title: "Déconnexion réussie",
+        description: "Vous avez été déconnecté de votre compte."
+      });
+      navigate('/login');
+    } catch (error) {
+      console.error("Error during logout:", error);
+      toast({
+        title: "Erreur lors de la déconnexion",
+        description: "Une erreur est survenue, veuillez réessayer.",
+        variant: "destructive"
+      });
     }
-    
-    // Limiter la longueur pour éviter les problèmes d'affichage
-    const cleanName = username.trim();
-    return cleanName.length > 20 ? cleanName.substring(0, 20) + '...' : cleanName;
-  }, [username]);
+  };
 
-  // Convertir "alpha" en "starter" pour l'affichage
-  const displaySubscription = subscription === "alpha" ? "starter" : subscription || "freemium";
-  
   return (
-    <header className="sticky top-0 z-10 bg-[#1e3a5f] border-b border-[#2d5f8a]/30">
-      <div className="flex items-center justify-between p-4">
-        <h1 className="text-xl font-semibold text-white">
-          {`Bonjour, ${displayName}`}
-        </h1>
+    <header className="flex justify-between items-center px-4 py-3 border-b border-slate-800/50 bg-slate-900/80 backdrop-blur">
+      <div className="flex items-center gap-3">
+        <img src="/streamgeniushq-logo-light.svg" alt="Stream Genius HQ Logo" className="h-8" />
+        <h1 className="text-lg font-semibold">Tableau de bord</h1>
+      </div>
+      
+      <div className="flex items-center gap-3">
+        {/* Ajout du sélecteur de comptes */}
+        <AccountSwitcher />
         
-        <div className="text-sm text-right hidden sm:block">
-          <p className="font-medium text-white">{displayName}</p>
-          <p className="text-blue-200">Abonnement {displaySubscription || 'freemium'}</p>
-        </div>
+        <Button variant="outline" size="sm" onClick={handleLogout} className="bg-secondary/30 hover:bg-secondary/50">
+          <LogOut className="mr-2 h-4 w-4" />
+          Déconnexion
+        </Button>
       </div>
     </header>
   );
