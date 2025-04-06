@@ -1,10 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-const AuthLoadingScreen: React.FC = () => {
+interface AuthLoadingScreenProps {
+  onManualRetry?: () => void;
+}
+
+const AuthLoadingScreen: React.FC<AuthLoadingScreenProps> = ({ onManualRetry }) => {
   const [loadingStep, setLoadingStep] = useState(0);
   const [dots, setDots] = useState('');
+  const [showRetry, setShowRetry] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Messages plus informatifs pour l'utilisateur
   const loadingMessages = [
@@ -34,6 +41,38 @@ const AuthLoadingScreen: React.FC = () => {
     return () => clearInterval(dotsInterval);
   }, []);
 
+  // Timeout pour montrer l'option de réessayer si ça prend trop de temps
+  useEffect(() => {
+    timeoutRef.current = setTimeout(() => {
+      setShowRetry(true);
+    }, 15000); // Afficher après 15 secondes
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleManualRetry = () => {
+    // Réinitialiser
+    setLoadingStep(0);
+    setShowRetry(false);
+    
+    // Appeler la fonction de retry si fournie
+    if (onManualRetry) {
+      onManualRetry();
+    }
+    
+    // Réinitialiser le timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      setShowRetry(true);
+    }, 15000);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-[#0f0f23] items-center justify-center px-4">
       <div className="relative mb-6">
@@ -49,6 +88,23 @@ const AuthLoadingScreen: React.FC = () => {
         <p className="mt-3 text-sm text-blue-200/70 max-w-xs">
           Si le chargement persiste, essayez de rafraîchir la page
         </p>
+        
+        {showRetry && (
+          <div className="mt-6">
+            <p className="text-yellow-300 text-sm mb-3">
+              Le chargement semble prendre plus de temps que prévu
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleManualRetry}
+              className="bg-blue-800/30 hover:bg-blue-700/40 text-blue-300 border-blue-700/50"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Réessayer la vérification
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

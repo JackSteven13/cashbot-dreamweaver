@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,11 +17,55 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);
+  const [showResetAlert, setShowResetAlert] = useState(false);
+  const loginAttempted = useRef(false);
   
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
-  // Check existing session on mount
+  // Nettoyer les flags d'authentification potentiellement bloquants
   useEffect(() => {
+    // Protection contre les blocages persistants
+    const loginBlockingFlags = [
+      'auth_checking',
+      'auth_refreshing',
+      'auth_redirecting',
+      'auth_check_timestamp',
+      'auth_refresh_timestamp',
+      'auth_redirect_timestamp',
+      'auth_signing_out'
+    ];
+    
+    loginBlockingFlags.forEach(flag => {
+      localStorage.removeItem(flag);
+    });
+    
+    // Si un utilisateur arrive sur le login, c'est qu'il n'est probablement plus authentifié
+    // Donc on peut vérifier et nettoyer les jetons potentiellement invalides
+    const authToken = localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+    if (authToken) {
+      try {
+        // Analyser le jeton pour voir s'il est expiré
+        const tokenData = JSON.parse(authToken);
+        const expiresAt = tokenData?.expires_at;
+        
+        if (expiresAt && Date.now() / 1000 >= expiresAt) {
+          console.log("Detected expired token, cleaning up");
+          localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+          localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
+          setShowResetAlert(true);
+        }
+      } catch (e) {
+        console.error("Error parsing auth token:", e);
+      }
+    }
+  }, []);
+
+  // Check existing session on mount with timeout protection
+  useEffect(() => {
+    const sessionTimeout = setTimeout(() => {
+      setIsCheckingSession(false);
+    }, 5000); // Ne jamais bloquer plus de 5 secondes
+    
     const checkExistingSession = async () => {
       setIsCheckingSession(true);
       
@@ -30,6 +76,8 @@ const Login = () => {
         // Check for valid session
         const { data, error } = await supabase.auth.getSession();
         
+        clearTimeout(sessionTimeout);
+        
         if (error) {
           console.error("Session check error:", error);
           setIsCheckingSession(false);
@@ -38,12 +86,25 @@ const Login = () => {
         
         // If we have a valid session, redirect to dashboard
         if (data.session) {
+          // Vérifier que la session n'est pas expirée
+          const expiresAt = data.session.expires_at;
+          const now = Math.floor(Date.now() / 1000);
+          
+          if (expiresAt && now >= expiresAt) {
+            console.log("Session expired, staying on login");
+            setIsCheckingSession(false);
+            return;
+          }
+          
           console.log("Found existing session, redirecting to dashboard");
           navigate('/dashboard', { replace: true });
           return;
         }
+        
+        setIsCheckingSession(false);
       } catch (err) {
         console.error("Session check failed:", err);
+        setIsCheckingSession(false);
       }
       
       // Get last email for suggestion
@@ -52,20 +113,39 @@ const Login = () => {
         setLastLoggedInEmail(savedEmail);
         setEmail(savedEmail);
       }
-      
-      setIsCheckingSession(false);
     };
     
     checkExistingSession();
+    
+    return () => clearTimeout(sessionTimeout);
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isLoading || loginAttempted.current) return;
+    
     setIsLoading(true);
+    loginAttempted.current = true;
     
     try {
       // Force clear problematic stored sessions first
       localStorage.removeItem('supabase.auth.token');
+      
+      // Nettoyer tous les flags d'authentification
+      const loginBlockingFlags = [
+        'auth_checking',
+        'auth_refreshing',
+        'auth_redirecting',
+        'auth_check_timestamp',
+        'auth_refresh_timestamp',
+        'auth_redirect_timestamp',
+        'auth_signing_out'
+      ];
+      
+      loginBlockingFlags.forEach(flag => {
+        localStorage.removeItem(flag);
+      });
       
       // Use signInWithPassword with explicit config
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -85,7 +165,7 @@ const Login = () => {
             .from('user_balances')
             .select('subscription')
             .eq('id', data.user.id)
-            .single();
+            .maybeSingle();
             
           if (userData) {
             localStorage.setItem('subscription', userData.subscription);
@@ -101,8 +181,9 @@ const Login = () => {
         
         // Redirect with a short delay to ensure auth state is fully updated
         setTimeout(() => {
+          loginAttempted.current = false;
           navigate('/dashboard', { replace: true });
-        }, 800);
+        }, 1000);
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -113,9 +194,34 @@ const Login = () => {
           : (error.message || "Une erreur est survenue lors de la connexion"),
         variant: "destructive",
       });
+      
+      // Réinitialiser pour permettre de réessayer
+      setTimeout(() => {
+        loginAttempted.current = false;
+      }, 2000);
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  // Fonction pour nettoyer complètement le localStorage avant de réessayer
+  const handleClearAndRetry = () => {
+    // Nettoyer tous les jetons et flags
+    localStorage.clear();
+    
+    // Réinitialiser pour permettre de réessayer
+    loginAttempted.current = false;
+    setShowResetAlert(false);
+    
+    toast({
+      title: "Cache nettoyé",
+      description: "Vous pouvez maintenant vous reconnecter",
+    });
+    
+    // Rafraîchir la page après un petit délai
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   // Si on vérifie encore la session, afficher un loader
@@ -146,6 +252,24 @@ const Login = () => {
             </p>
           </div>
           
+          {showResetAlert && (
+            <Alert variant="warning" className="mb-6 bg-amber-900/20 border-amber-700/50 text-amber-200">
+              <AlertCircle className="h-4 w-4 text-amber-400" />
+              <AlertDescription className="flex flex-col gap-2">
+                <p>Une session précédente a été détectée mais semble avoir expiré.</p>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="bg-amber-800/50 hover:bg-amber-800/70 text-amber-100 mt-1"
+                  onClick={handleClearAndRetry}
+                >
+                  <RefreshCw className="mr-2 h-3 w-3" />
+                  Nettoyer le cache et réessayer
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <div className="glass-panel p-6 rounded-xl">
             {lastLoggedInEmail && (
               <div className="mb-4 p-3 bg-blue-900/20 rounded-lg">
@@ -171,6 +295,7 @@ const Login = () => {
                   className="w-full"
                   placeholder="votre@email.com"
                   required
+                  disabled={isLoading}
                 />
               </div>
               
@@ -186,6 +311,7 @@ const Login = () => {
                   className="w-full"
                   placeholder="••••••••"
                   required
+                  disabled={isLoading}
                 />
               </div>
               
@@ -196,7 +322,14 @@ const Login = () => {
               </div>
               
               <div className="pt-2">
-                <Button type="submit" fullWidth size="lg" isLoading={isLoading} className="group">
+                <Button 
+                  type="submit" 
+                  fullWidth 
+                  size="lg" 
+                  isLoading={isLoading} 
+                  className="group"
+                  disabled={isLoading || loginAttempted.current}
+                >
                   {isLoading ? (
                     <>
                       <Loader2 size={18} className="mr-2 animate-spin" />

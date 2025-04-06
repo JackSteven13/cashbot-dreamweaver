@@ -5,6 +5,7 @@ import { useAuthVerification } from '@/hooks/useAuthVerification';
 import AuthLoadingScreen from './auth/AuthLoadingScreen';
 import ProtectedRouteRecovery from './auth/ProtectedRouteRecovery';
 import { toast } from '@/components/ui/use-toast';
+import { forceSignOut } from '@/utils/auth/sessionUtils';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -14,25 +15,21 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const location = useLocation();
   const redirectInProgress = useRef(false);
   const initialCheckComplete = useRef(false);
+  const autoRetryCount = useRef(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const maxLoadingTime = useRef<NodeJS.Timeout | null>(null);
-  const autoRetryCount = useRef(0);
-  const stableLocationRef = useRef(location.pathname);
-  
-  // État pour forcer une réinitialisation en cas d'erreur persistante
   const [forceReset, setForceReset] = useState(false);
   
-  // Mettre à jour la référence stable pour éviter les renders en cascade
-  useEffect(() => {
-    stableLocationRef.current = location.pathname;
-  }, [location.pathname]);
+  // État pour suivre les redirections et éviter les boucles infinies
+  const [redirectAttempts, setRedirectAttempts] = useState(0);
   
-  // Use auth verification with reset capability
+  // Use auth verification with retry capability
   const { 
     isAuthenticated, 
     authCheckFailed, 
     isRetrying, 
-    checkAuth
+    checkAuth,
+    retryAttempts
   } = useAuthVerification();
 
   // Force reset auth state when needed
@@ -43,6 +40,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       localStorage.removeItem('auth_refreshing');
       localStorage.removeItem('auth_redirecting');
       localStorage.removeItem('auth_redirect_timestamp');
+      localStorage.removeItem('auth_check_timestamp');
       
       // Retry auth check with forced parameters
       checkAuth(true);
@@ -50,7 +48,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
   }, [forceReset, checkAuth]);
 
-  // Stable cleanup function with no dependencies
+  // Fonction de nettoyage stable des timeouts
   const clearTimeouts = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -73,11 +71,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
           localStorage.removeItem('auth_checking');
           localStorage.removeItem('auth_refreshing');
           localStorage.removeItem('auth_redirecting');
+          localStorage.removeItem('auth_check_timestamp');
           
           // Forcer une réinitialisation complète
           setForceReset(true);
         }
-      }, 6000); // Réduit à 6 seconds pour débloquer plus rapidement
+      }, 12000); // Augmenté à 12 secondes pour permettre à l'auth de se terminer
     }
     
     return clearTimeouts;
@@ -85,12 +84,13 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   // Effect for auto-retry with cleanup
   useEffect(() => {
-    // Clear any existing retry timeout first to prevent multiple timeouts
+    // Clear any existing retry timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
     
+    // Auto retry logic with limits
     if (authCheckFailed && autoRetryCount.current < 2 && !timeoutRef.current && !redirectInProgress.current) {
       console.log(`Automatic retry ${autoRetryCount.current + 1}/2`);
       
@@ -105,9 +105,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
           checkAuth(true);
         }
         timeoutRef.current = null;
-      }, 1500);
+      }, 2000); // Retenter après 2 secondes
     }
     
+    // Mark initial check as complete when we have a definitive answer
     if (isAuthenticated !== null && !initialCheckComplete.current) {
       initialCheckComplete.current = true;
       console.log("Initial auth check completed, result:", isAuthenticated);
@@ -134,13 +135,23 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       localStorage.removeItem('auth_checking');
       localStorage.removeItem('auth_refreshing');
       localStorage.removeItem('auth_redirecting');
+      localStorage.removeItem('auth_check_timestamp');
     };
   }, [clearTimeouts]);
 
   // Fonction pour rediriger vers la page de login de manière sécurisée
   const handleCleanLogin = useCallback(() => {
+    if (redirectAttempts >= 3) {
+      // Si trop de redirections, forcer une déconnexion complète
+      forceSignOut().then(() => {
+        window.location.href = '/login';
+      });
+      return;
+    }
+    
     if (!redirectInProgress.current) {
       redirectInProgress.current = true;
+      setRedirectAttempts(prev => prev + 1);
       
       // Forcer la suppression de tous les tokens et flags
       try {
@@ -149,6 +160,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         localStorage.removeItem('auth_checking');
         localStorage.removeItem('auth_refreshing');
         localStorage.removeItem('auth_redirecting');
+        localStorage.removeItem('auth_check_timestamp');
       } catch (e) {
         console.error("Erreur lors du nettoyage du localStorage:", e);
       }
@@ -162,10 +174,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       // Utiliser une redirection directe pour éviter les problèmes de React Router
       window.location.href = '/login';
     }
-  }, []);
+  }, [redirectAttempts]);
 
   // Afficher l'écran de récupération en cas d'échec après plusieurs tentatives
-  if (authCheckFailed && autoRetryCount.current >= 2) {
+  if (authCheckFailed && (autoRetryCount.current >= 2 || retryAttempts >= 3)) {
     return (
       <ProtectedRouteRecovery
         isRetrying={isRetrying}
@@ -179,7 +191,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   
   // Afficher l'écran de chargement pendant la vérification d'authentification
   if (isAuthenticated === null) {
-    return <AuthLoadingScreen />;
+    return <AuthLoadingScreen onManualRetry={() => {
+      clearTimeouts();
+      setForceReset(true);
+    }} />;
   }
 
   // Rediriger vers login si non authentifié
@@ -191,6 +206,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       localStorage.removeItem('auth_redirecting');
       localStorage.removeItem('auth_checking');
       localStorage.removeItem('auth_refreshing');
+      localStorage.removeItem('auth_check_timestamp');
       
       return <Navigate to="/login" replace state={{ from: location }} />;
     }

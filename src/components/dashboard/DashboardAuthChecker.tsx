@@ -1,8 +1,7 @@
 
 import { FC, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// Utiliser les importations spécifiques pour éviter les conflits
-import { verifyAuth, refreshSession } from "@/utils/auth/index";
+import { verifyAuth, refreshSession, forceSignOut } from "@/utils/auth/index";
 import { toast } from "@/components/ui/use-toast";
 
 interface DashboardAuthCheckerProps {
@@ -18,6 +17,7 @@ const DashboardAuthChecker: FC<DashboardAuthCheckerProps> = ({
   const authCheckInProgress = useRef(false);
   const maxAttempts = useRef(0);
   const checkTimeout = useRef<NodeJS.Timeout | null>(null);
+  const executingCleanup = useRef(false);
   
   // Nettoyer les drapeaux potentiellement bloquants au montage
   useEffect(() => {
@@ -45,11 +45,47 @@ const DashboardAuthChecker: FC<DashboardAuthCheckerProps> = ({
       }
     };
     
-    // Exécuter immédiatement et programmer une vérification dans 2 secondes
+    // Exécuter immédiatement
     checkAndCleanBlockingFlags();
-    const cleanupTimeout = setTimeout(checkAndCleanBlockingFlags, 2000);
     
-    return () => clearTimeout(cleanupTimeout);
+    // Nettoyage périodique pour éviter les états bloqués
+    const cleanupInterval = setInterval(checkAndCleanBlockingFlags, 10000);
+    
+    return () => clearInterval(cleanupInterval);
+  }, []);
+  
+  // Fonction de nettoyage radical en cas de problème persistant
+  const performEmergencyCleanup = useCallback(async () => {
+    if (executingCleanup.current) return;
+    
+    executingCleanup.current = true;
+    console.log("Exécution du nettoyage d'urgence des sessions");
+    
+    try {
+      // Force la déconnexion complète
+      await forceSignOut();
+      
+      // Nettoyage complet du localStorage
+      localStorage.clear();
+      
+      // Notification à l'utilisateur
+      toast({
+        title: "Session réinitialisée",
+        description: "Veuillez vous reconnecter",
+        variant: "destructive"
+      });
+      
+      // Redirection après un court délai
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1000);
+    } catch (e) {
+      console.error("Erreur lors du nettoyage d'urgence:", e);
+      // En cas d'échec, redirection forcée
+      window.location.href = '/login';
+    } finally {
+      executingCleanup.current = false;
+    }
   }, []);
   
   const checkAuth = useCallback(async () => {
@@ -61,19 +97,38 @@ const DashboardAuthChecker: FC<DashboardAuthCheckerProps> = ({
     try {
       authCheckInProgress.current = true;
       
-      // Marquer le début de la vérification
+      // Marquer le début de la vérification avec timestamp
       localStorage.setItem('auth_checking', 'true');
       localStorage.setItem('auth_check_timestamp', Date.now().toString());
+      
+      // Protection contre les vérifications bloquées
+      checkTimeout.current = setTimeout(() => {
+        console.log("Auth check timeout reached");
+        authCheckInProgress.current = false;
+        localStorage.removeItem('auth_checking');
+        localStorage.removeItem('auth_check_timestamp');
+        setAuthError(true);
+        
+        // Si trop de timeouts consécutifs, lancer le nettoyage d'urgence
+        maxAttempts.current++;
+        if (maxAttempts.current >= 3) {
+          performEmergencyCleanup();
+        }
+      }, 8000);
       
       // Essayer de rafraîchir la session avant tout
       await refreshSession();
       
       // Petit délai pour permettre au rafraîchissement de se propager
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const isAuthenticated = await verifyAuth();
       
-      // Nettoyer le flag de vérification
+      // Nettoyer le timeout et le flag de vérification
+      if (checkTimeout.current) {
+        clearTimeout(checkTimeout.current);
+        checkTimeout.current = null;
+      }
       localStorage.removeItem('auth_checking');
       localStorage.removeItem('auth_check_timestamp');
       authCheckInProgress.current = false;
@@ -103,6 +158,10 @@ const DashboardAuthChecker: FC<DashboardAuthCheckerProps> = ({
       // Nettoyer le flag de vérification en cas d'erreur
       localStorage.removeItem('auth_checking');
       localStorage.removeItem('auth_check_timestamp');
+      if (checkTimeout.current) {
+        clearTimeout(checkTimeout.current);
+        checkTimeout.current = null;
+      }
       authCheckInProgress.current = false;
       
       // Si trop de tentatives, forcer une redirection de nettoyage
@@ -115,43 +174,55 @@ const DashboardAuthChecker: FC<DashboardAuthCheckerProps> = ({
         });
         
         setTimeout(() => {
-          window.location.href = '/login';
+          performEmergencyCleanup();
         }, 1500);
       }
       
       return false;
     }
-  }, [navigate, setAuthError]);
+  }, [navigate, setAuthError, performEmergencyCleanup]);
 
   // Configurer un timeout de sécurité pour débloquer la vérification
   useEffect(() => {
-    checkTimeout.current = setTimeout(() => {
+    const safetyTimeout = setTimeout(() => {
       if (authCheckInProgress.current) {
-        console.log("Auth check timeout reached, resetting");
+        console.log("Auth check safety timeout reached, resetting");
         localStorage.removeItem('auth_checking');
         localStorage.removeItem('auth_check_timestamp');
         authCheckInProgress.current = false;
         setIsAuthChecking(false);
         setAuthError(true);
       }
-    }, 5000);
+    }, 10000); // 10 secondes max pour la vérification totale
     
     return () => {
+      clearTimeout(safetyTimeout);
       if (checkTimeout.current) {
         clearTimeout(checkTimeout.current);
       }
     };
   }, [setIsAuthChecking, setAuthError]);
 
-  // Effectuer la vérification immédiatement
+  // Effectuer la vérification immédiatement puis périodiquement
   useEffect(() => {
     const doCheck = async () => {
       const result = await checkAuth();
       
-      // Mettre à jour l'état de vérification
+      // Mettre à jour l'état de vérification avec délai
       setTimeout(() => {
         setIsAuthChecking(false);
       }, 500);
+      
+      // Vérification périodique si réussite
+      if (result) {
+        const interval = setInterval(async () => {
+          if (!authCheckInProgress.current) {
+            await checkAuth();
+          }
+        }, 60000); // Vérifier toutes les minutes
+        
+        return () => clearInterval(interval);
+      }
     };
     
     doCheck();
