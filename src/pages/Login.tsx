@@ -1,13 +1,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2, RefreshCw, AlertCircle, ChevronDown, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -18,6 +19,9 @@ const Login = () => {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);
   const [showResetAlert, setShowResetAlert] = useState(false);
+  const [recentEmails, setRecentEmails] = useState<string[]>([]);
+  const [isAccountSelectorOpen, setIsAccountSelectorOpen] = useState(false);
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const loginAttempted = useRef(false);
   
   const from = (location.state as any)?.from?.pathname || '/dashboard';
@@ -57,6 +61,29 @@ const Login = () => {
       } catch (e) {
         console.error("Error parsing auth token:", e);
       }
+    }
+  }, []);
+
+  // Charger la liste des emails récemment utilisés
+  useEffect(() => {
+    try {
+      // Récupérer la liste des emails récemment utilisés
+      const storedEmails = localStorage.getItem('recent_emails');
+      if (storedEmails) {
+        const parsedEmails = JSON.parse(storedEmails);
+        if (Array.isArray(parsedEmails)) {
+          setRecentEmails(parsedEmails.slice(0, 5)); // Limiter à 5 emails récents maximum
+        }
+      }
+      
+      // Récupérer le dernier email utilisé
+      const savedEmail = localStorage.getItem('last_logged_in_email');
+      if (savedEmail) {
+        setLastLoggedInEmail(savedEmail);
+        setEmail(savedEmail);
+      }
+    } catch (e) {
+      console.error("Error loading stored emails:", e);
     }
   }, []);
 
@@ -106,13 +133,6 @@ const Login = () => {
         console.error("Session check failed:", err);
         setIsCheckingSession(false);
       }
-      
-      // Get last email for suggestion
-      const savedEmail = localStorage.getItem('last_logged_in_email');
-      if (savedEmail) {
-        setLastLoggedInEmail(savedEmail);
-        setEmail(savedEmail);
-      }
     };
     
     checkExistingSession();
@@ -157,7 +177,7 @@ const Login = () => {
       
       if (data && data.user) {
         // Save the email for future suggestions
-        localStorage.setItem('last_logged_in_email', email);
+        saveEmailToRecentList(email);
         
         // Pre-fetch user data to avoid loading issues
         try {
@@ -223,6 +243,70 @@ const Login = () => {
       window.location.reload();
     }, 1000);
   };
+  
+  // Fonction pour sauvegarder l'email dans la liste des récents
+  const saveEmailToRecentList = (emailToSave: string) => {
+    try {
+      // Définir comme dernier email de connexion
+      localStorage.setItem('last_logged_in_email', emailToSave);
+      
+      // Ajouter à la liste des emails récents (jusqu'à 5 maximum, sans doublons)
+      let updatedEmails = [emailToSave];
+      
+      const storedEmails = localStorage.getItem('recent_emails');
+      if (storedEmails) {
+        const parsedEmails = JSON.parse(storedEmails);
+        if (Array.isArray(parsedEmails)) {
+          // Filtrer pour enlever cet email s'il existe déjà
+          const filteredEmails = parsedEmails.filter(e => e !== emailToSave);
+          // Ajouter en premier et limiter à 5
+          updatedEmails = [emailToSave, ...filteredEmails].slice(0, 5);
+        }
+      }
+      
+      localStorage.setItem('recent_emails', JSON.stringify(updatedEmails));
+      setRecentEmails(updatedEmails);
+    } catch (e) {
+      console.error("Error saving email to recent list:", e);
+    }
+  };
+  
+  // Fonction pour sélectionner un email récent
+  const selectRecentEmail = (selectedEmail: string) => {
+    setEmail(selectedEmail);
+    setIsAccountSelectorOpen(false);
+    // Focus sur le champ mot de passe après sélection
+    setTimeout(() => {
+      document.getElementById('password')?.focus();
+    }, 50);
+  };
+  
+  // Fonction pour effacer un email de la liste des récents
+  const removeEmailFromRecent = (emailToRemove: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Éviter la sélection de l'email
+    
+    try {
+      const updatedEmails = recentEmails.filter(e => e !== emailToRemove);
+      setRecentEmails(updatedEmails);
+      localStorage.setItem('recent_emails', JSON.stringify(updatedEmails));
+      
+      // Si c'était le dernier email utilisé, effacer également cette référence
+      if (lastLoggedInEmail === emailToRemove) {
+        localStorage.removeItem('last_logged_in_email');
+        setLastLoggedInEmail(null);
+      }
+      
+      // Si c'était l'email actuel dans le champ, l'effacer également
+      if (email === emailToRemove) {
+        setEmail('');
+        setTimeout(() => {
+          emailInputRef.current?.focus();
+        }, 50);
+      }
+    } catch (e) {
+      console.error("Error removing email from recent list:", e);
+    }
+  };
 
   // Si on vérifie encore la session, afficher un loader
   if (isCheckingSession) {
@@ -271,14 +355,55 @@ const Login = () => {
           )}
           
           <div className="glass-panel p-6 rounded-xl">
-            {lastLoggedInEmail && (
-              <div className="mb-4 p-3 bg-blue-900/20 rounded-lg">
-                <p className="text-sm text-blue-300">
-                  Dernière connexion avec: <strong>{lastLoggedInEmail}</strong>
+            {recentEmails.length > 0 && (
+              <div className="mb-4 p-3 bg-blue-900/20 rounded-lg border border-blue-900/30">
+                <p className="text-sm text-blue-300 font-medium mb-1">
+                  Sélectionnez un compte ou entrez un autre email
                 </p>
-                <p className="text-xs text-blue-300/80 mt-1">
-                  Vous pouvez vous connecter avec ce compte ou utiliser un autre compte.
-                </p>
+                
+                {email && lastLoggedInEmail === email && (
+                  <p className="text-xs text-blue-300/80 mb-2">
+                    Connectez-vous à nouveau pour continuer
+                  </p>
+                )}
+                
+                <Popover open={isAccountSelectorOpen} onOpenChange={setIsAccountSelectorOpen}>
+                  <PopoverTrigger asChild>
+                    <button 
+                      className="w-full flex items-center justify-between p-2 rounded-md bg-blue-800/30 hover:bg-blue-800/50 border border-blue-800/40 text-left transition-colors mb-1"
+                      onClick={() => setIsAccountSelectorOpen(true)}
+                    >
+                      <span className="text-blue-100 truncate">{email || "Choisir un compte"}</span>
+                      <ChevronDown className="h-4 w-4 shrink-0 text-blue-300/70" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-2 w-full max-w-[300px]">
+                    <div className="space-y-1">
+                      {recentEmails.map((recentEmail) => (
+                        <div 
+                          key={recentEmail}
+                          className="flex items-center justify-between p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer group"
+                          onClick={() => selectRecentEmail(recentEmail)}
+                        >
+                          <span className="truncate">{recentEmail}</span>
+                          <button
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                            onClick={(e) => removeEmailFromRecent(recentEmail, e)}
+                            aria-label="Supprimer cet email"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                
+                <div className="flex items-center my-2">
+                  <div className="h-px flex-1 bg-blue-800/30"></div>
+                  <span className="px-3 text-xs text-blue-400/80">ou</span>
+                  <div className="h-px flex-1 bg-blue-800/30"></div>
+                </div>
               </div>
             )}
             
@@ -289,6 +414,7 @@ const Login = () => {
                 </label>
                 <Input
                   id="email"
+                  ref={emailInputRef}
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
