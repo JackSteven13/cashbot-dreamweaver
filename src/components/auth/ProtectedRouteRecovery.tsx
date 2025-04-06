@@ -5,7 +5,7 @@ import { RefreshCcw, LogOut, AlertTriangle } from 'lucide-react';
 
 interface ProtectedRouteRecoveryProps {
   isRetrying: boolean;
-  autoRetryCount: number; // Changed from React.MutableRefObject<number> to number
+  autoRetryCount: React.MutableRefObject<number>;
   maxAutoRetries: number;
   onRetry: () => void;
   onCleanLogin: () => void;
@@ -30,7 +30,7 @@ const ProtectedRouteRecovery: React.FC<ProtectedRouteRecoveryProps> = ({
             Nous avons rencontré un problème lors de la vérification de votre session.
           </p>
           <p className="text-sm text-slate-400 mt-1">
-            {autoRetryCount}/{maxAutoRetries} tentatives automatiques effectuées
+            {autoRetryCount.current}/{maxAutoRetries} tentatives automatiques effectuées
           </p>
         </div>
 

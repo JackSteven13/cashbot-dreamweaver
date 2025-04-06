@@ -181,7 +181,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return (
       <ProtectedRouteRecovery
         isRetrying={isRetrying}
-        autoRetryCount={autoRetryCount.current}
+        autoRetryCount={autoRetryCount}
         maxAutoRetries={2}
         onRetry={() => checkAuth(true)}
         onCleanLogin={handleCleanLogin}
