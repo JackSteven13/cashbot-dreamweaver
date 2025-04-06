@@ -109,6 +109,9 @@ function getErrorMessage(error: FormattedError): string {
     if (error.code === 'INVALID_CREDENTIALS') {
       return "Identifiants invalides. Veuillez vérifier votre email et mot de passe.";
     }
+    if (error.code === 'email_in_use') {
+      return "Cet email est déjà utilisé. Veuillez vous connecter ou utiliser un autre email.";
+    }
   }
   
   if (error.type === ErrorType.DATABASE && error.code?.includes('PGRST')) {

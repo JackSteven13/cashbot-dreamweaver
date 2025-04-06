@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -6,6 +7,7 @@ import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
+import { handleError, ErrorType } from '@/utils/errorHandling';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -41,7 +43,12 @@ const Register = () => {
         },
       });
       
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('email') && error.message.includes('already')) {
+          throw { message: "Cet email est déjà utilisé", code: "email_in_use" };
+        }
+        throw error;
+      }
       
       if (data && data.user) {
         // Créer un profil pour l'utilisateur
@@ -82,11 +89,8 @@ const Register = () => {
       }
     } catch (error: any) {
       console.error("Registration error:", error);
-      toast({
-        title: "Erreur d'inscription",
-        description: error.message || "Une erreur est survenue lors de l'inscription.",
-        variant: "destructive",
-      });
+      // Utiliser la fonction handleError pour une gestion centralisée des erreurs
+      handleError(error, "Inscription utilisateur", ErrorType.AUTHENTICATION, true);
     } finally {
       setIsLoading(false);
     }

@@ -80,3 +80,57 @@
     opacity: 0.5;
   }
 }
+
+/* Nouvelles animations pour les toast notifications */
+.toast-notification {
+  animation: toast-appear 0.3s ease-out;
+}
+
+.toast-notification.destructive {
+  animation: toast-appear-error 0.4s ease-out;
+}
+
+@keyframes toast-appear {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-appear-error {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+  75% {
+    transform: translateY(-3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Amélioration de la visibilité des notifications d'erreur */
+.toast-notification.destructive {
+  border-left: 4px solid #ef4444;
+}
+
+/* Style pour les titres de toast */
+.toast-title {
+  font-weight: 600;
+}
+
+/* Style pour les descriptions de toast */
+.toast-description {
+  font-weight: normal;
+  color: rgba(0, 0, 0, 0.75);
+}
+
