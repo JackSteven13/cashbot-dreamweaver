@@ -101,6 +101,7 @@ export const useSessionOperations = (
 
   /**
    * Generate automatic revenue based on subscription type and limits
+   * Amélioration: gains plus fréquents et visibilité améliorée
    */
   const generateAutomaticRevenue = async (isFirst = false) => {
     // Vérification stricte de l'état du bot avant de continuer
@@ -180,6 +181,14 @@ export const useSessionOperations = (
           background: true
         });
         
+        // Notification toast bien visible
+        toast({
+          title: "Limite journalière atteinte",
+          description: "Vous avez atteint votre limite de gains quotidiens. Revenez demain ou passez à un abonnement supérieur!",
+          variant: "destructive",
+          duration: 7000,
+        });
+        
         sessionInProgress.current = false;
         operationLock.current = false;
         return;
@@ -226,11 +235,25 @@ export const useSessionOperations = (
       }
       
       // Calculer le gain en utilisant la fonction utilitaire (en respectant la limite journalière)
-      const baseGain = calculateAutoSessionGain(
+      // AMÉLIORATION: Booster les gains en freemium pour une meilleure expérience utilisateur
+      let baseGain = calculateAutoSessionGain(
         userData.subscription, 
         todaysGains, 
         userData.referrals.length
       );
+      
+      // Boost pour les utilisateurs récents (moins d'une semaine)
+      // Pour s'assurer que Jacques obtient plus rapidement des gains
+      const userCreationDate = userData?.profile?.created_at ? new Date(userData.profile.created_at) : null;
+      const currentDate = new Date();
+      const isNewUser = userCreationDate && 
+        (currentDate.getTime() - userCreationDate.getTime()) < 7 * 24 * 60 * 60 * 1000;
+        
+      if (isNewUser && userData.subscription === 'freemium') {
+        baseGain *= 3; // Triple des gains pour les nouveaux utilisateurs freemium
+      } else if (userData.subscription === 'freemium') {
+        baseGain *= 1.5; // 50% de boost pour tous les utilisateurs freemium
+      }
       
       // S'assurer de ne pas dépasser la limite journalière
       const randomGain = Math.min(baseGain, remainingAllowedGains);
@@ -269,7 +292,7 @@ export const useSessionOperations = (
       // Déclencher l'événement d'analyse complète avec le gain
       triggerDashboardEvent('analysis-complete', { 
         gain: randomGain, 
-        noEffects: true, // Désactiver les effets visuels excessifs
+        noEffects: false, // Activer les effets visuels pour une meilleure expérience
         background: true 
       });
       
@@ -299,12 +322,13 @@ export const useSessionOperations = (
       }));
 
       // Afficher une notification pour la première session ou aléatoirement pour les suivantes
-      if (isFirst || Math.random() > 0.6) {
+      // AMÉLIORATION: Notification toast plus visible et plus informative
+      if (isFirst || Math.random() > 0.4) { // 60% de chance au lieu de 40%
         toast({
-          title: "Analyse terminée",
-          description: `Algorithme d'analyse vidéo: +${randomGain.toFixed(2)}€ comptabilisés`,
-          className: "mobile-toast",
-          duration: 4000
+          title: `+${randomGain.toFixed(2)}€ Générés!`,
+          description: `Algorithme d'analyse vidéo: génération réussie. Total: ${updatedBalance.toFixed(2)}€`,
+          className: "mobile-toast toast-notification",
+          duration: 6000
         });
       }
       

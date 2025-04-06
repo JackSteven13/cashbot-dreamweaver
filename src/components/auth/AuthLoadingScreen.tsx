@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 interface AuthLoadingScreenProps {
   onManualRetry?: () => void;
@@ -9,43 +8,47 @@ interface AuthLoadingScreenProps {
 
 const AuthLoadingScreen: React.FC<AuthLoadingScreenProps> = ({ onManualRetry }) => {
   const [loadingStep, setLoadingStep] = useState(0);
-  const [dots, setDots] = useState('');
+  const [progress, setProgress] = useState(0);
   const [showRetry, setShowRetry] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  
   // Messages plus informatifs pour l'utilisateur
   const loadingMessages = [
-    "Vérification de session",
-    "Authentification en cours",
+    "Vérification de votre identité",
+    "Préparation de votre environnement",
     "Chargement de votre profil"
   ];
 
-  // Effet pour faire avancer les phases de chargement
+  // Effet pour faire avancer les phases de chargement et simuler une progression
   useEffect(() => {
     const stepTimer = setTimeout(() => {
       setLoadingStep((prev) => (prev < loadingMessages.length - 1 ? prev + 1 : prev));
     }, 1800);
     
-    return () => clearTimeout(stepTimer);
-  }, [loadingStep, loadingMessages.length]);
-
-  // Effet pour l'animation des points
-  useEffect(() => {
-    const dotsInterval = setInterval(() => {
-      setDots((prev) => {
-        if (prev.length >= 3) return '';
-        return prev + '.';
+    // Simuler une progression
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        // Calculer la nouvelle valeur avec une légère variation aléatoire
+        const increment = Math.random() * 2 + 1; // Entre 1 et 3
+        const newValue = prev + increment;
+        
+        // Limiter la progression en fonction de l'étape
+        const maxProgress = (loadingStep + 1) * 33.33;
+        return Math.min(newValue, maxProgress);
       });
-    }, 500);
+    }, 200);
     
-    return () => clearInterval(dotsInterval);
-  }, []);
+    return () => {
+      clearTimeout(stepTimer);
+      clearInterval(progressInterval);
+    };
+  }, [loadingStep, loadingMessages.length]);
 
   // Timeout pour montrer l'option de réessayer si ça prend trop de temps
   useEffect(() => {
     timeoutRef.current = setTimeout(() => {
       setShowRetry(true);
-    }, 15000); // Afficher après 15 secondes
+    }, 12000); // Afficher après 12 secondes
     
     return () => {
       if (timeoutRef.current) {
@@ -57,6 +60,7 @@ const AuthLoadingScreen: React.FC<AuthLoadingScreenProps> = ({ onManualRetry }) 
   const handleManualRetry = () => {
     // Réinitialiser
     setLoadingStep(0);
+    setProgress(0);
     setShowRetry(false);
     
     // Appeler la fonction de retry si fournie
@@ -70,39 +74,70 @@ const AuthLoadingScreen: React.FC<AuthLoadingScreenProps> = ({ onManualRetry }) 
     }
     timeoutRef.current = setTimeout(() => {
       setShowRetry(true);
-    }, 15000);
+    }, 12000);
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0f0f23] items-center justify-center px-4">
-      <div className="relative mb-6">
-        <div className="absolute -inset-4 rounded-full opacity-30 blur-lg bg-blue-500 animate-pulse"></div>
-        <Loader2 className="w-16 h-16 animate-spin text-blue-400 relative" />
-      </div>
-      
-      <div className="text-center">
-        <p className="text-blue-300 text-xl font-medium transition-all duration-300">
-          {loadingMessages[loadingStep]}{dots}
-        </p>
+    <div className="flex flex-col min-h-screen bg-[#0a0a20] items-center justify-center px-4">
+      <div className="max-w-md w-full">
+        {/* Logo animé */}
+        <div className="mb-8">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 blur-lg opacity-50 animate-pulse"></div>
+            <div className="relative w-20 h-20 mx-auto">
+              <svg 
+                viewBox="0 0 100 100" 
+                className="w-full h-full fill-blue-400"
+              >
+                <path d="M50,10 C70,10 85,25 85,50 C85,75 70,90 50,90 C30,90 15,75 15,50 C15,25 30,10 50,10 Z" 
+                  className="opacity-20" />
+                <path 
+                  d="M50,10 C70,10 85,25 85,50 C85,75 70,90 50,90"
+                  fill="none"
+                  stroke="#60a5fa"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  className="origin-center animate-spin"
+                  style={{ animationDuration: '3s' }}
+                />
+                <circle cx="50" cy="50" r="5" className="fill-white" />
+                <circle cx="85" cy="50" r="5" className="fill-blue-200 animate-pulse" />
+              </svg>
+            </div>
+          </div>
+        </div>
         
-        <p className="mt-3 text-sm text-blue-200/70 max-w-xs">
-          Si le chargement persiste, essayez de rafraîchir la page
-        </p>
+        <div className="text-center mb-6">
+          <h2 className="text-blue-300 text-2xl font-bold mb-1">Stream Genius</h2>
+          <p className="text-blue-400 mb-3 text-lg font-medium">
+            {loadingMessages[loadingStep]}
+          </p>
+        </div>
+        
+        {/* Barre de progression */}
+        <div className="w-full bg-slate-800/40 h-2 rounded-full overflow-hidden mb-4">
+          <div 
+            className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
         
         {showRetry && (
-          <div className="mt-6">
+          <div className="mt-8 text-center">
             <p className="text-yellow-300 text-sm mb-3">
               Le chargement semble prendre plus de temps que prévu
             </p>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <button 
               onClick={handleManualRetry}
-              className="bg-blue-800/30 hover:bg-blue-700/40 text-blue-300 border-blue-700/50"
+              className="px-4 py-2 bg-blue-800/30 hover:bg-blue-700/40 text-blue-300 border border-blue-700/50 rounded-md transition-colors"
             >
-              <RefreshCw className="mr-2 h-4 w-4" />
+              <svg className="w-4 h-4 inline-block mr-2 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2 12C2 6.48 6.48 2 12 2C17.52 2 22 6.48 22 12C22 17.52 17.52 22 12 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 22C10.1435 22 8.36301 21.2625 7.05025 20.0497C5.7375 18.837 5 17.0565 5 15.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M9 15L5 15.2L5.2 19.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
               Réessayer la vérification
-            </Button>
+            </button>
           </div>
         )}
       </div>

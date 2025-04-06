@@ -16,22 +16,22 @@ export interface ToastNotificationProps {
 }
 
 export function ToastNotification({
-  position = "top-right",
+  position = "top-center",
   className,
   toastClassName,
-  theme = "system",
+  theme = "dark",
   closeButton = true,
-  offset = "2rem",
+  offset = "1.5rem",
   duration = 5000,
   richColors = true,
-  expandByDefault = false,
+  expandByDefault = true,
 }: ToastNotificationProps) {
   return (
     <SonnerToaster
       position={position}
       toastOptions={{
         className: cn(
-          "group toast-notification font-medium bg-background border-border text-foreground shadow-lg",
+          "group toast-notification font-medium border border-blue-500/30 bg-slate-900/95 text-white shadow-lg",
           toastClassName
         ),
         style: {
@@ -40,11 +40,12 @@ export function ToastNotification({
           maxWidth: "clamp(320px, 95vw, 420px)",
           minWidth: "clamp(300px, 90vw, 380px)",
           padding: "12px 16px",
+          zIndex: 9999,
         },
         duration: duration,
-        descriptionClassName: "text-muted-foreground text-base break-words mt-1",
+        descriptionClassName: "text-gray-200 text-base break-words mt-1",
       }}
-      className={cn("toaster group z-[100]", className)}
+      className={cn("toaster group z-[9999]", className)}
       theme={theme}
       closeButton={closeButton}
       richColors={richColors}
