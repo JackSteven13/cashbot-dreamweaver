@@ -51,11 +51,19 @@ export const fetchUserBalance = async (userId: string) => {
               return null;
             }
             
+            console.log("Compte créé via insertion directe avec solde à 0");
             return { data: directInsert?.[0], isNewUser: true };
           }
           
           // If array returned, get first element
           const balanceData = Array.isArray(newBalance) ? newBalance[0] : newBalance;
+          console.log("Compte créé via RPC avec solde à 0");
+          
+          // Double-vérifier que le solde est à 0 pour nouveau compte
+          if (balanceData) {
+            balanceData.balance = 0;
+          }
+          
           return { data: balanceData, isNewUser: true };
           
         } catch (error) {
@@ -65,6 +73,26 @@ export const fetchUserBalance = async (userId: string) => {
       }
       
       return null;
+    }
+    
+    // Vérifier s'il s'agit d'un nouveau compte (basé sur le solde et l'absence de transaction)
+    const isLikelyNewUser = userBalanceData.balance === 0 && userBalanceData.daily_session_count === 0;
+    
+    if (isLikelyNewUser) {
+      // Pour plus de sécurité, on vérifie s'il existe des transactions
+      const { data: transactions, error: txError } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('user_id', userId)
+        .limit(1);
+        
+      // S'il n'y a pas de transactions, c'est un nouvel utilisateur
+      const isConfirmedNewUser = !txError && (!transactions || transactions.length === 0);
+      
+      if (isConfirmedNewUser) {
+        console.log("Utilisateur détecté comme nouveau basé sur l'absence de transactions");
+        return { data: userBalanceData, isNewUser: true };
+      }
     }
     
     // Check if the account should be temporarily restricted based on high performance

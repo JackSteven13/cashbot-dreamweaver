@@ -16,10 +16,25 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
       balanceData = balanceResult.data;
       isUserNew = balanceResult.isNewUser;
       
-      // Pour les nouveaux utilisateurs, on s'assure que le solde et le nombre de sessions sont à 0
+      // Pour les nouveaux utilisateurs, on FORCE le solde et le nombre de sessions à 0
       if (isUserNew && balanceData) {
+        console.log("Nouveau utilisateur détecté - Initialisation du solde à zéro");
         balanceData.balance = 0;
         balanceData.daily_session_count = 0;
+        
+        // Assurer la synchronisation avec la base de données pour les nouveaux utilisateurs
+        try {
+          const { error } = await supabase
+            .from('user_balances')
+            .update({ balance: 0, daily_session_count: 0 })
+            .eq('id', userId);
+            
+          if (error) {
+            console.error("Erreur lors de la réinitialisation du solde pour nouvel utilisateur:", error);
+          }
+        } catch (err) {
+          console.error("Exception lors de la réinitialisation du solde:", err);
+        }
       }
     } else {
       // Create new balance if needed
@@ -57,6 +72,11 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
         title: "Bienvenue sur Stream Genius !",
         description: "Votre compte a été créé avec succès. Notre système est maintenant actif pour vous.",
       });
+      
+      // Effacer tout cache de solde dans localStorage pour les nouveaux utilisateurs
+      localStorage.removeItem('currentBalance');
+      localStorage.removeItem('lastKnownBalance');
+      localStorage.removeItem('highestBalance');
     }
 
     return {

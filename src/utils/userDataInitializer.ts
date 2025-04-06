@@ -27,7 +27,8 @@ export const ensureZeroBalanceForNewUser = (isNewUser: boolean, userData: UserDa
     return {
       ...userData,
       balance: 0,
-      transactions: []
+      transactions: [],
+      referrals: [] // S'assurer également qu'il n'y a pas de parrainages hérités
     };
   }
   

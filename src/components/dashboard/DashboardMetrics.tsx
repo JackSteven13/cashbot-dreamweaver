@@ -34,15 +34,18 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
   lastSessionTimestamp,
   isBotActive = true
 }) => {
+  // S'assurer que les nouveaux utilisateurs commencent toujours avec un solde à 0
+  const displayBalance = isNewUser ? 0 : balance;
+  
   // Calculer les gains issus des parrainages
-  const referralBonus = referrals?.reduce((total, ref) => total + (ref.commission_earned || 0), 0) || 0;
+  const referralBonus = isNewUser ? 0 : (referrals?.reduce((total, ref) => total + (ref.commission_earned || 0), 0) || 0);
   // Compter le nombre de parrainages actifs
-  const activeReferralCount = referrals?.filter(ref => ref.active !== false)?.length || 0;
+  const activeReferralCount = isNewUser ? 0 : (referrals?.filter(ref => ref.active !== false)?.length || 0);
   
   return (
     <div className="dashboard-metrics">
       <SummaryPanel
-        balance={balance}
+        balance={displayBalance}
         referralLink={referralLink}
         isStartingSession={isStartingSession}
         handleStartSession={handleStartSession}
@@ -58,7 +61,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
       />
       
       <TransactionsPanel
-        transactions={transactions}
+        transactions={isNewUser ? [] : transactions}
         subscription={subscription}
       />
     </div>
