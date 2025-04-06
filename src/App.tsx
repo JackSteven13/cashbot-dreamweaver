@@ -8,9 +8,9 @@ import { Toaster } from '@/components/ui/toaster'; // On garde également l'anci
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="light">
-      <QueryProvider>
-        <Router>
+    <Router>
+      <ThemeProvider defaultTheme="light">
+        <QueryProvider>
           <AppRoutes />
           <ToastNotification 
             position="top-right" 
@@ -19,9 +19,9 @@ function App() {
             offset="1rem"
           />
           <Toaster /> {/* Conserver l'ancien système de notification pour compatibilité */}
-        </Router>
-      </QueryProvider>
-    </ThemeProvider>
+        </QueryProvider>
+      </ThemeProvider>
+    </Router>
   );
 }
 

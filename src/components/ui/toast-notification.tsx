@@ -12,7 +12,7 @@ export interface ToastNotificationProps {
   offset?: string | number;
   duration?: number;
   richColors?: boolean;
-  expandByDefault?: boolean;
+  expandByDefault?: boolean; // We'll keep the prop in the interface but won't pass it to Sonner
 }
 
 export function ToastNotification({
@@ -24,7 +24,7 @@ export function ToastNotification({
   offset = "2rem",
   duration = 5000,
   richColors = true,
-  expandByDefault = false,
+  expandByDefault = false, // Keep as prop but don't pass directly to Sonner
 }: ToastNotificationProps) {
   return (
     <SonnerToaster
@@ -42,13 +42,14 @@ export function ToastNotification({
         },
         duration: duration,
         descriptionClassName: "text-muted-foreground text-sm break-words",
-        expandByDefault: expandByDefault
+        // We don't pass expandByDefault as it's not supported
       }}
       className={cn("toaster group", className)}
       theme={theme}
       closeButton={closeButton}
       richColors={richColors}
       offset={offset}
+      expand={expandByDefault} // Use the "expand" property instead which is supported
     />
   );
 }
