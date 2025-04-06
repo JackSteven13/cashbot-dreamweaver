@@ -4,6 +4,7 @@ import { BoostButton } from './buttons/BoostButton';
 import { WithdrawButton } from './buttons/WithdrawButton';
 import { OffersButton } from './buttons/OffersButton';
 import { useActionButtons } from '@/hooks/useActionButtons';
+import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
 
 interface ActionButtonsProps {
   canStartSession: boolean;
@@ -49,6 +50,11 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     onWithdraw
   });
   
+  // Obtenir le seuil minimum de retrait pour l'abonnement
+  const withdrawalThreshold = getWithdrawalThreshold(subscription);
+  // Vérifier si le solde est suffisant pour un retrait
+  const canWithdraw = currentBalance >= withdrawalThreshold;
+  
   return (
     <>
       <div className="grid grid-cols-1 gap-3 mb-6">
@@ -69,7 +75,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           <div className="w-full">
             <WithdrawButton 
               isWithdrawing={isWithdrawing}
-              isButtonDisabled={isButtonDisabled}
+              isButtonDisabled={isButtonDisabled || !canWithdraw}
               onClick={onWithdraw}
             />
           </div>

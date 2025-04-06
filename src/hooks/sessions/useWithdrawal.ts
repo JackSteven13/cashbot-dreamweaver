@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
@@ -19,22 +18,17 @@ export const useWithdrawal = (
   const withdrawalAttempts = useRef(0);
   const maxAttempts = 3;
   
-  // Règles de retrait
   const withdrawalRules: WithdrawalRules = {
     minimumWithdrawalAmount: getWithdrawalThreshold(userData.subscription),
     withdrawalFrequency: 30, // Une fois par mois (30 jours)
     processingDays: "7-30 jours"
   };
   
-  // État pour suivre si l'utilisateur peut faire un retrait (fréquence)
   const [canWithdraw, setCanWithdraw] = useState(true);
   const [lastWithdrawalDate, setLastWithdrawalDate] = useState<Date | null>(null);
   const [daysUntilNextWithdrawal, setDaysUntilNextWithdrawal] = useState(0);
   
-  // Vérifier si l'utilisateur a effectué un retrait récemment
   useEffect(() => {
-    // On pourrait stocker cette information dans la base de données
-    // Pour l'instant, on utilise le localStorage
     const lastWithdrawal = localStorage.getItem(`lastWithdrawal_${userData.username}`);
     
     if (lastWithdrawal) {
@@ -56,16 +50,23 @@ export const useWithdrawal = (
   }, [userData.username, withdrawalRules.withdrawalFrequency]);
 
   const handleWithdrawal = async () => {
-    // Prevent multiple concurrent operations
     if (isProcessingWithdrawal || operationLock.current) {
       console.log("Withdrawal operation already in progress, please wait");
       return;
     }
     
-    // Compter les parrainages actifs
     const referralCount = userData.referrals?.filter(ref => ref.active !== false)?.length || 0;
     
-    // Vérifier si l'utilisateur peut faire un retrait selon son abonnement et ses parrainages
+    const minAmount = getWithdrawalThreshold(userData.subscription);
+    if (userData.balance < minAmount) {
+      toast({
+        title: "Solde insuffisant",
+        description: `Le montant minimum de retrait est de ${minAmount}€. Votre solde actuel est de ${userData.balance.toFixed(2)}€.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (!isWithdrawalAllowed(userData.subscription, referralCount)) {
       toast({
         title: "Retrait impossible",
@@ -75,7 +76,6 @@ export const useWithdrawal = (
       return;
     }
     
-    // Vérifier si l'utilisateur peut faire un retrait (fréquence)
     if (!canWithdraw) {
       toast({
         title: "Fréquence de retrait limitée",
@@ -89,16 +89,13 @@ export const useWithdrawal = (
       operationLock.current = true;
       setIsProcessingWithdrawal(true);
       
-      // Utiliser la valeur la plus récente du solde
       let currentBalance = userData.balance;
       
-      // Vérifier s'il existe une valeur plus élevée dans localStorage
       try {
         const storedHighestBalance = localStorage.getItem('highestBalance');
         const storedCurrentBalance = localStorage.getItem('currentBalance');
         const storedLastKnownBalance = localStorage.getItem('lastKnownBalance');
         
-        // Utiliser la valeur maximum parmi toutes les sources
         if (storedHighestBalance) {
           const parsedHighest = parseFloat(storedHighestBalance);
           if (!isNaN(parsedHighest) && parsedHighest > currentBalance) {
@@ -127,9 +124,7 @@ export const useWithdrawal = (
       
       console.log("Starting withdrawal process with balance:", currentBalance);
       
-      // Process withdrawal only if sufficient balance
       if (currentBalance >= withdrawalRules.minimumWithdrawalAmount) {
-        // Calculer les frais selon l'ancienneté du compte
         const registerDate = userData.registeredAt || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
         const fee = calculateWithdrawalFee(registerDate, userData.subscription);
         const feeAmount = currentBalance * fee;
@@ -141,10 +136,8 @@ export const useWithdrawal = (
         });
         
         try {
-          // Reset balance to 0 to simulate withdrawal
           await resetBalance();
           
-          // Enregistrer la date du retrait
           localStorage.setItem(`lastWithdrawal_${userData.username}`, new Date().toISOString());
           setLastWithdrawalDate(new Date());
           setCanWithdraw(false);
@@ -154,9 +147,8 @@ export const useWithdrawal = (
             title: "Retrait programmé",
             description: `Votre retrait de ${netAmount.toFixed(2)}€ (après frais de ${(fee * 100).toFixed(0)}%: ${feeAmount.toFixed(2)}€) sera traité dans ${withdrawalRules.processingDays}.`
           });
-          withdrawalAttempts.current = 0; // Reset attempts on success
+          withdrawalAttempts.current = 0;
           
-          // Nettoyer le localStorage après retrait réussi
           localStorage.removeItem('highestBalance');
           localStorage.removeItem('currentBalance');
           localStorage.removeItem('lastKnownBalance');
@@ -169,10 +161,9 @@ export const useWithdrawal = (
               title: "Nouvelle tentative",
               description: "Réessai du retrait en cours...",
             });
-            // Retry once after a short delay
             setTimeout(() => handleWithdrawal(), 1000);
           } else {
-            withdrawalAttempts.current = 0; // Reset attempts counter
+            withdrawalAttempts.current = 0;
             toast({
               title: "Échec du retrait",
               description: "Nous n'avons pas pu traiter votre retrait. Veuillez réessayer plus tard.",
@@ -196,7 +187,6 @@ export const useWithdrawal = (
       });
     } finally {
       setIsProcessingWithdrawal(false);
-      // Release operation lock after a delay
       setTimeout(() => {
         operationLock.current = false;
       }, 1000);

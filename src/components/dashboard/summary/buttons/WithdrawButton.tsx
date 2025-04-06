@@ -21,7 +21,7 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
   return (
     <Button 
       variant="outline"
-      className="w-full border-slate-500 text-slate-600 hover:bg-slate-50 shadow-sm whitespace-normal py-1.5 transition-all duration-300 hover:border-[#9b87f5] hover:text-[#9b87f5]"
+      className={`w-full border-slate-500 text-slate-600 hover:bg-slate-50 shadow-sm whitespace-normal py-1.5 transition-all duration-300 ${isButtonDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-[#9b87f5] hover:text-[#9b87f5]'}`}
       disabled={isWithdrawing || isButtonDisabled}
       onClick={onClick}
       size={isMobile ? "sm" : "default"}

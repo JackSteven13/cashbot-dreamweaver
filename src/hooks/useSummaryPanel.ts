@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscriptionUtils';
@@ -60,42 +59,42 @@ export const useSummaryPanel = ({
     setIsWithdrawing(true);
     
     try {
-      if (handleWithdrawal) {
-        handleWithdrawal();
-      } else {
-        const withdrawalAllowed = isWithdrawalAllowed(subscription, referralCount);
-        const withdrawalThreshold = getWithdrawalThreshold(subscription);
-        
-        if (!withdrawalAllowed) {
-          if (subscription === 'freemium') {
-            toast({
-              title: "Demande refusée",
-              description: "Les utilisateurs freemium doivent parrainer au moins une personne pour pouvoir retirer leurs fonds.",
-              variant: "destructive"
-            });
-          } else {
-            toast({
-              title: "Demande refusée",
-              description: "Les retraits sont disponibles uniquement pour les abonnements payants. Veuillez mettre à niveau votre compte.",
-              variant: "destructive"
-            });
-          }
-        } else if (displayBalance < withdrawalThreshold) {
+      // Vérifier le seuil minimum de retrait
+      const withdrawalThreshold = getWithdrawalThreshold(subscription);
+      if (displayBalance < withdrawalThreshold) {
+        toast({
+          title: "Montant insuffisant",
+          description: `Le montant minimum de retrait est de ${withdrawalThreshold}€. Votre solde actuel est de ${displayBalance.toFixed(2)}€.`,
+          variant: "destructive"
+        });
+        setIsWithdrawing(false);
+        setIsButtonDisabled(false);
+        return;
+      }
+      
+      // Vérifier si les retraits sont autorisés pour cet abonnement avec ce nombre de parrainages
+      const withdrawalAllowed = isWithdrawalAllowed(subscription, referralCount);
+      if (!withdrawalAllowed) {
+        if (subscription === 'freemium') {
           toast({
-            title: "Montant insuffisant",
-            description: `Le montant minimum de retrait est de ${withdrawalThreshold}€. Continuez à gagner plus de revenus.`,
+            title: "Retrait impossible",
+            description: "Les utilisateurs freemium doivent parrainer au moins une personne pour pouvoir retirer leurs fonds.",
             variant: "destructive"
           });
         } else {
-          const fee = 0.15;
-          const feeAmount = displayBalance * fee;
-          const netAmount = displayBalance - feeAmount;
-          
           toast({
-            title: "Demande de retrait acceptée",
-            description: `Votre retrait de ${netAmount.toFixed(2)}€ (après frais de ${(fee * 100).toFixed(0)}%) sera traité dans 10-15 jours ouvrables.`,
+            title: "Demande refusée",
+            description: "Les retraits sont disponibles uniquement pour les abonnements payants ou avec parrainages. Veuillez mettre à niveau votre compte.",
+            variant: "destructive"
           });
         }
+        setIsWithdrawing(false);
+        setIsButtonDisabled(false);
+        return;
+      }
+      
+      if (handleWithdrawal) {
+        handleWithdrawal();
       }
     } catch (error) {
       console.error("Error processing withdrawal:", error);

@@ -34,6 +34,8 @@ export function ToastNotification({
         ),
         style: {
           fontSize: "0.95rem",
+          width: "auto",
+          maxWidth: "90vw",
         },
         duration: duration,
       }}
