@@ -1,3 +1,4 @@
+
 import { Routes, Route, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardContent from '@/components/dashboard/DashboardContent';
@@ -7,13 +8,14 @@ import DashboardInitializationEffect from '@/components/dashboard/DashboardIniti
 import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
 import { useReferralNotifications } from '@/hooks/useReferralNotifications';
-import { memo, useEffect, useRef, useMemo } from 'react';
+import { memo, useEffect, useRef, useMemo, useState } from 'react';
 
-// Composant principal avec memo pour éviter les re-rendus inutiles
+// Composant principal avec transitions améliorées
 const Dashboard = memo(() => {
   const location = useLocation();
   const renderCountRef = useRef(0);
   const initialRenderCompleteRef = useRef(false);
+  const [transitionStage, setTransitionStage] = useState('init');
   
   // Hooks stables avec dépendances minimales
   const {
@@ -43,8 +45,23 @@ const Dashboard = memo(() => {
     isBotActive
   } = useDashboardState();
   
-  // Utiliser notre nouveau hook de notifications de parrainage
+  // Utiliser notre hook de notifications
   useReferralNotifications();
+  
+  // Effet pour gérer les transitions de chargement
+  useEffect(() => {
+    if (isAuthChecking || isLoading || !isReady || isChecking) {
+      setTransitionStage('loading');
+    } else if (authError || (!isAuthChecking && !userData?.username)) {
+      setTransitionStage('error');
+    } else if (!isAuthChecking && !authError && isReady && userData?.username) {
+      // Ajouter une légère transition pour éviter les flashs
+      const timer = setTimeout(() => {
+        setTransitionStage('ready');
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
   
   // Effet de debug avec scope limité
   useEffect(() => {
@@ -55,7 +72,6 @@ const Dashboard = memo(() => {
   // Écouter les événements de mise à jour des parrainages
   useEffect(() => {
     const handleReferralUpdate = () => {
-      // Forcer l'actualisation des données utilisateur pour refléter les nouveaux parrainages
       forceRefresh();
     };
     
@@ -66,7 +82,7 @@ const Dashboard = memo(() => {
     };
   }, [forceRefresh]);
   
-  // Calculs memoizés pour éviter les re-calculs à chaque rendu
+  // Calculs memoizés pour éviter les re-calculs
   const { isLoading_Combined, hasError, canShowDashboard } = useMemo(() => {
     const isLoadingCombined = isAuthChecking || isLoading || !isReady || isChecking;
     const hasErrorValue = authError || (!isLoadingCombined && !userData?.username);
@@ -79,9 +95,10 @@ const Dashboard = memo(() => {
     };
   }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
   
+  // Rendu conditionnel avec transitions fluides
   return (
     <>
-      {/* Effet d'initialisation stabilisé et isolé */}
+      {/* Effet d'initialisation */}
       <DashboardInitializationEffect
         initialRenderComplete={initialRenderCompleteRef}
         isAuthChecking={isAuthChecking}
@@ -91,39 +108,57 @@ const Dashboard = memo(() => {
         setSelectedNavItem={setSelectedNavItem}
       />
       
-      {isLoading_Combined && <DashboardLoading />}
-      
-      {hasError && <DashboardError errorType={authError ? "auth" : "data"} onRefresh={forceRefresh} />}
-      
-      {canShowDashboard && (
-        <DashboardLayout
-          key={renderKey}
-          username={userData.username}
-          subscription={userData.subscription}
-          selectedNavItem={selectedNavItem}
-          setSelectedNavItem={setSelectedNavItem}
-        >
-          <Routes>
-            <Route index element={
-              <DashboardContent
-                key={`content-${renderKey}`}
-                isDormant={isDormant}
-                dormancyData={dormancyData}
-                showLimitAlert={showLimitAlert}
-                isNewUser={isNewUser}
-                userData={userData}
-                isStartingSession={isStartingSession}
-                handleStartSession={handleStartSession}
-                handleWithdrawal={handleWithdrawal}
-                dailySessionCount={dailySessionCount}
-                handleReactivate={handleReactivate}
-                lastSessionTimestamp={lastSessionTimestamp}
-                isBotActive={isBotActive}
-              />
-            } />
-          </Routes>
-        </DashboardLayout>
-      )}
+      {/* Rendu avec transitions douces entre les états */}
+      <div className="relative min-h-screen">
+        {/* Écran de chargement avec transition */}
+        {isLoading_Combined && (
+          <div className="absolute inset-0 z-50">
+            <DashboardLoading />
+          </div>
+        )}
+        
+        {/* Affichage des erreurs */}
+        {hasError && !isLoading_Combined && (
+          <div className={`absolute inset-0 z-40 transition-opacity duration-300 ${transitionStage === 'error' ? 'opacity-100' : 'opacity-0'}`}>
+            <DashboardError errorType={authError ? "auth" : "data"} onRefresh={forceRefresh} />
+          </div>
+        )}
+        
+        {/* Contenu principal avec animation d'entrée */}
+        {canShowDashboard && (
+          <div 
+            className={`transition-opacity duration-300 ${transitionStage === 'ready' ? 'opacity-100' : 'opacity-0'}`}
+          >
+            <DashboardLayout
+              key={renderKey}
+              username={userData.username}
+              subscription={userData.subscription}
+              selectedNavItem={selectedNavItem}
+              setSelectedNavItem={setSelectedNavItem}
+            >
+              <Routes>
+                <Route index element={
+                  <DashboardContent
+                    key={`content-${renderKey}`}
+                    isDormant={isDormant}
+                    dormancyData={dormancyData}
+                    showLimitAlert={showLimitAlert}
+                    isNewUser={isNewUser}
+                    userData={userData}
+                    isStartingSession={isStartingSession}
+                    handleStartSession={handleStartSession}
+                    handleWithdrawal={handleWithdrawal}
+                    dailySessionCount={dailySessionCount}
+                    handleReactivate={handleReactivate}
+                    lastSessionTimestamp={lastSessionTimestamp}
+                    isBotActive={isBotActive}
+                  />
+                } />
+              </Routes>
+            </DashboardLayout>
+          </div>
+        )}
+      </div>
     </>
   );
 });

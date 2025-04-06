@@ -77,6 +77,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
               isWithdrawing={isWithdrawing}
               isButtonDisabled={isButtonDisabled || !canWithdraw}
               onClick={onWithdraw}
+              minWithdrawalAmount={withdrawalThreshold}
+              currentBalance={currentBalance}
             />
           </div>
         </div>

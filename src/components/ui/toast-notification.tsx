@@ -12,6 +12,7 @@ export interface ToastNotificationProps {
   offset?: string | number;
   duration?: number;
   richColors?: boolean;
+  expandByDefault?: boolean;
 }
 
 export function ToastNotification({
@@ -23,6 +24,7 @@ export function ToastNotification({
   offset = "2rem",
   duration = 5000,
   richColors = true,
+  expandByDefault = false,
 }: ToastNotificationProps) {
   return (
     <SonnerToaster
@@ -36,8 +38,11 @@ export function ToastNotification({
           fontSize: "0.95rem",
           width: "auto",
           maxWidth: "90vw",
+          minWidth: "min(270px, 90vw)",
         },
         duration: duration,
+        descriptionClassName: "text-muted-foreground text-sm break-words",
+        expandByDefault: expandByDefault
       }}
       className={cn("toaster group", className)}
       theme={theme}
