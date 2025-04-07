@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import Button from '@/components/Button';
+import { Button } from '@/components/ui/button';
 import SessionCard from '@/components/SessionCard';
 import { Transaction } from '@/types/userData';
+import { PlusCircle } from 'lucide-react';
 
 interface TransactionsListProps {
   transactions: Transaction[];
@@ -13,30 +14,38 @@ interface TransactionsListProps {
 const TransactionsList = ({ transactions, isNewUser = false, subscription }: TransactionsListProps) => {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
   
+  // Vérifier que les transactions sont valides et non vides
+  const validTransactions = Array.isArray(transactions) ? 
+    transactions.filter(tx => tx && typeof tx.gain === 'number' && tx.date) : [];
+  
   // Afficher 3 transactions récentes par défaut, ou toutes si showAllTransactions est true
   const displayedTransactions = showAllTransactions 
-    ? transactions 
-    : transactions.slice(0, 3);
+    ? validTransactions 
+    : validTransactions.slice(0, 3);
     
   const handleViewFullHistory = () => {
     setShowAllTransactions(true);
   };
   
+  // Debug
+  console.log("Transactions reçues:", transactions);
+  console.log("Transactions valides:", validTransactions);
+  
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold text-[#1e3a5f]">Sessions récentes</h2>
-        {transactions.length > 3 && !showAllTransactions && (
+        {validTransactions.length > 3 && !showAllTransactions && (
           <Button 
             variant="outline" 
-            size="sm" 
-            className="border-[#cbd5e0] bg-[#f0f4f8] text-[#334e68] hover:bg-[#e2e8f0]"
+            size="sm"
             onClick={handleViewFullHistory}
+            className="border-[#cbd5e0] bg-[#f0f4f8] text-[#334e68] hover:bg-[#e2e8f0]"
           >
             Voir l'historique complet
           </Button>
         )}
-        {showAllTransactions && (
+        {showAllTransactions && validTransactions.length > 3 && (
           <Button 
             variant="outline" 
             size="sm" 
@@ -52,10 +61,10 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
         <div className="space-y-4">
           {displayedTransactions.map((transaction, index) => (
             <SessionCard 
-              key={index}
+              key={transaction.id || index}
               date={transaction.date}
-              gain={transaction.gain}
-              report={transaction.report}
+              gain={transaction.gain || transaction.amount || 0}
+              report={transaction.report || transaction.type || ''}
             />
           ))}
         </div>
@@ -70,17 +79,22 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
           ) : (
             <>
               <p className="text-[#334e68]">Aucune session récente.</p>
-              <p className="text-sm text-[#486581] mt-2">Lancez une analyse manuelle ou attendez la prochaine session automatique.</p>
+              <div className="flex flex-col items-center mt-4">
+                <PlusCircle className="h-8 w-8 text-blue-400 mb-2" />
+                <p className="text-sm text-[#486581]">
+                  Lancez une analyse manuelle ou attendez la prochaine session automatique.
+                </p>
+              </div>
             </>
           )}
         </div>
       )}
       
       {/* Afficher un message si l'historique est réduit et qu'il y a plus de transactions */}
-      {!showAllTransactions && transactions.length > 3 && (
+      {!showAllTransactions && validTransactions.length > 3 && (
         <div className="text-center mt-4">
           <p className="text-sm text-[#486581]">
-            {transactions.length - 3} {transactions.length - 3 > 1 ? 'autres sessions' : 'autre session'} non affichée{transactions.length - 3 > 1 ? 's' : ''}.
+            {validTransactions.length - 3} {validTransactions.length - 3 > 1 ? 'autres sessions' : 'autre session'} non affichée{validTransactions.length - 3 > 1 ? 's' : ''}.
           </p>
         </div>
       )}

@@ -2,8 +2,8 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchCompleteUserData } from '@/utils/user/userDataFetch';
-import { fetchUserTransactions } from '@/utils/user/transactionUtils';
-import { checkDailyLimit } from '@/utils/subscription'; // Updated import path
+import { fetchUserTransactions } from './transactionUtils';
+import { checkDailyLimit } from '@/utils/subscription';
 import { generateReferralLink } from '@/utils/referralUtils';
 import { UserFetcherState } from './useUserDataState';
 import { getCurrentSession } from '@/utils/auth/sessionUtils';
@@ -50,15 +50,17 @@ export const useUserDataFetching = (
       
       const { balanceData } = balanceResult;
 
-      // Récupérer les transactions
+      // Récupérer explicitement les transactions avec le nouveau service
       const transactionsData = await fetchUserTransactions(session.user.id);
+      
+      console.log("Transactions récupérées:", transactionsData);
       
       // Calculate today's gains by filtering transactions from today
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       const todaysTransactions = transactionsData.filter(tx => 
-        tx.date.startsWith(today) && tx.gain > 0
+        tx.date && tx.date.startsWith(today) && tx.gain > 0
       );
-      const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
+      const todaysGains = todaysTransactions.reduce((sum, tx) => sum + (tx.gain || 0), 0);
 
       // Déterminer le nom d'affichage de l'utilisateur
       const displayName = refreshedProfile?.full_name || 
@@ -89,13 +91,15 @@ export const useUserDataFetching = (
         showLimitAlert: limitReached,
         isLoading: false
       });
+      
+      console.log("Données utilisateur mises à jour:", newUserData);
     } catch (error) {
       console.error("Error in fetchUserData:", error);
       setIsLoading(false);
     }
   }, [loadUserProfile, loadUserBalance, isNewUser, updateUserData, setIsLoading]);
 
-  // Nouvelle fonction pour réinitialiser uniquement les compteurs de sessions quotidiens
+  // Fonction pour réinitialiser uniquement les compteurs de sessions quotidiens
   const resetDailyCounters = useCallback(async () => {
     try {
       console.log("Réinitialisation des compteurs de sessions quotidiens...");

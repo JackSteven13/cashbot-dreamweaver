@@ -1,4 +1,3 @@
-
 import { Routes, Route, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardContent from '@/components/dashboard/DashboardContent';
@@ -8,6 +7,7 @@ import DashboardInitializationEffect from '@/components/dashboard/DashboardIniti
 import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
 import { useReferralNotifications } from '@/hooks/useReferralNotifications';
+import { useTransactionReconciliation } from '@/hooks/useTransactionReconciliation';
 import { memo, useEffect, useRef, useMemo, useState } from 'react';
 
 // Composant principal avec transitions améliorées
@@ -44,6 +44,9 @@ const Dashboard = memo(() => {
     isLoading,
     isBotActive
   } = useDashboardState();
+  
+  // Hook de réconciliation de transactions
+  useTransactionReconciliation(userData, isLoading);
   
   // Utiliser notre hook de notifications
   useReferralNotifications();
