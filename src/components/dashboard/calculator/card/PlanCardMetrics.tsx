@@ -16,8 +16,8 @@ const PlanCardMetrics: React.FC<PlanCardMetricsProps> = ({ revenue, profit }) =>
   const displayRevenue = revenue === undefined || isNaN(revenue) ? 0 : revenue;
   const displayProfit = profit === undefined || isNaN(profit) ? 0 : profit;
   
-  // Déterminer les classes de couleur
-  const profitColorClass = 'text-green-600 dark:text-green-400 font-bold';
+  // Utiliser une couleur plus neutre et professionnelle pour les profits
+  const profitColorClass = 'text-blue-400 dark:text-blue-400 font-bold';
   
   return (
     <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800/30">

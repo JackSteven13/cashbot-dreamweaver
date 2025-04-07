@@ -9,7 +9,7 @@ import { Toaster } from '@/components/ui/toaster'; // On garde également l'anci
 function App() {
   return (
     <Router>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="dark">
         <QueryProvider>
           <AppRoutes />
           <ToastNotification 

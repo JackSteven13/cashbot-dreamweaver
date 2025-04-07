@@ -77,7 +77,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-xl font-bold text-green-600 dark:text-green-400">
+              <div className="text-xl font-bold text-blue-500 dark:text-blue-400">
                 Félicitations !
               </div>
             </CardContent>
@@ -96,7 +96,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
                 <div className="text-xl font-bold text-gray-800 dark:text-gray-200">
                   {referralCount}
                 </div>
-                <div className="text-sm text-green-600">
+                <div className="text-sm text-blue-500">
                   {referralBonus > 0 ? `+${referralBonus}% bonus` : ''}
                 </div>
               </div>
@@ -117,19 +117,19 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600 dark:text-slate-300">Aujourd'hui</span>
-                <span className="font-medium text-blue-600 dark:text-blue-400">
+                <span className="font-medium text-slate-700 dark:text-slate-300">
                   +{formatRevenue(isNewUser ? 0 : balance)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600 dark:text-slate-300">Cette semaine</span>
-                <span className="font-medium text-blue-600 dark:text-blue-400">
+                <span className="font-medium text-slate-700 dark:text-slate-300">
                   +{formatRevenue(isNewUser ? 0 : balance * 1.5)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600 dark:text-slate-300">Ce mois</span>
-                <span className="font-medium text-blue-600 dark:text-blue-400">
+                <span className="font-medium text-slate-700 dark:text-slate-300">
                   +{formatRevenue(isNewUser ? 0 : balance * 3)}
                 </span>
               </div>

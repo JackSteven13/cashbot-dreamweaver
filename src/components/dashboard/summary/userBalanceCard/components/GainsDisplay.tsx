@@ -22,12 +22,12 @@ const GainsDisplay: React.FC<GainsDisplayProps> = ({
     <div className="mt-4 px-1">
       <div className="flex justify-between text-xs mb-1.5">
         <span className="text-gray-300">Gains réseau</span>
-        <span className="text-green-400">{formattedNetworkGains}€</span>
+        <span className="text-blue-300">{formattedNetworkGains}€</span>
       </div>
       
       <div className="flex justify-between text-xs">
         <span className="text-gray-300">Gains bots*</span>
-        <span className="text-blue-400">{formattedBotGains}€</span>
+        <span className="text-blue-300">{formattedBotGains}€</span>
       </div>
     </div>
   );

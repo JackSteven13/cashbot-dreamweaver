@@ -27,7 +27,7 @@ const SessionCard = ({ gain, report, date = new Date().toLocaleDateString() }: S
             <div className="flex items-center gap-2 mt-1">
               <h3 className={cn(
                 "text-2xl font-semibold",
-                isWithdrawal ? "text-red-600" : "text-emerald-600"
+                isWithdrawal ? "text-red-600" : "text-slate-300"
               )}>
                 {isWithdrawal ? "" : "+"}{gain.toFixed(2)}€
               </h3>
@@ -39,7 +39,7 @@ const SessionCard = ({ gain, report, date = new Date().toLocaleDateString() }: S
               ) : (
                 <ArrowUpRight 
                   size={18} 
-                  className="text-emerald-600" 
+                  className="text-slate-300" 
                 />
               )}
             </div>
