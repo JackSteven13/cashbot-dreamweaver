@@ -21,15 +21,35 @@ const DarkModeToggle = () => {
   // Don't render anything until component is mounted to avoid hydration mismatch
   if (!mounted) return null;
 
+  const isDarkMode = theme === 'dark';
+
   return (
     <div className="flex items-center gap-2">
-      <Sun size={16} className="text-yellow-500 dark:text-gray-400" />
-      <Switch
-        checked={theme === 'dark'}
-        onCheckedChange={handleToggle}
-        className="data-[state=checked]:bg-[#4CAF50] data-[state=unchecked]:bg-gray-200"
+      <Sun 
+        size={18} 
+        className={`transition-colors duration-300 ${
+          isDarkMode 
+            ? 'text-gray-500' 
+            : 'text-yellow-500 drop-shadow-sm'
+        }`} 
       />
-      <Moon size={16} className="text-gray-400 dark:text-[#4CAF50]" />
+      <Switch
+        checked={isDarkMode}
+        onCheckedChange={handleToggle}
+        className={`${
+          isDarkMode 
+            ? 'data-[state=checked]:bg-[#4CAF50] data-[state=unchecked]:bg-gray-700' 
+            : 'data-[state=checked]:bg-[#4CAF50] data-[state=unchecked]:bg-gray-200'
+        } transition-colors duration-300`}
+      />
+      <Moon 
+        size={18} 
+        className={`transition-colors duration-300 ${
+          isDarkMode 
+            ? 'text-[#4CAF50] drop-shadow-sm' 
+            : 'text-gray-400'
+        }`} 
+      />
     </div>
   );
 };
