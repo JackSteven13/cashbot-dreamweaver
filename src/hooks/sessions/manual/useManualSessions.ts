@@ -74,10 +74,10 @@ export const useManualSessions = ({
         await incrementSessionCount();
       }
       
-      // Calculate gain for the session - ne pas réinitialiser le solde à zéro
+      // Calculate gain for the session - IMPORTANT: Ne pas réinitialiser le solde
       const { success, finalGain, newBalance } = await calculateSessionGain(
         userData,
-        currentBalanceRef.current,
+        currentBalanceRef.current, // Utiliser la référence actuelle, pas réinitialiser
         setShowLimitAlert
       );
       

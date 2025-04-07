@@ -6,6 +6,8 @@ interface GuideProps {
 }
 
 export const Guide: React.FC<GuideProps> = ({ isNewUser = false }) => {
+  if (!isNewUser) return null;
+  
   return (
     <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-800/40">
       <h3 className="text-blue-300 mb-2 font-medium flex items-center">

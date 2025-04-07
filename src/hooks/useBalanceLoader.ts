@@ -14,9 +14,32 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
     // Process balance data
     if (balanceResult) {
       balanceData = balanceResult.data;
-      isUserNew = balanceResult.isNewUser;
       
-      // Pour les nouveaux utilisateurs, on FORCE le solde et le nombre de sessions à 0
+      // Vérification plus précise d'un nouvel utilisateur :
+      // 1. Check explicite via l'API
+      // 2. Vérification si le compte a été créé il y a moins de 10 minutes
+      
+      const isExplicitlyNew = balanceResult.isNewUser;
+      
+      // Vérification basée sur le timestamp de création
+      const creationTime = balanceData?.created_at || null;
+      const isRecentlyCreated = creationTime ? 
+        (new Date().getTime() - new Date(creationTime).getTime()) < 10 * 60 * 1000 : // 10 minutes
+        false;
+      
+      // Un utilisateur est considéré comme nouveau uniquement s'il est explicitement marqué comme tel
+      // ET récemment créé
+      isUserNew = isExplicitlyNew && isRecentlyCreated;
+      
+      console.log("User status check:", {
+        userId,
+        isExplicitlyNew,
+        creationTime,
+        isRecentlyCreated,
+        finalIsNewUser: isUserNew
+      });
+      
+      // Pour les nouveaux utilisateurs, on initialise le solde et le nombre de sessions à 0
       if (isUserNew && balanceData) {
         console.log("Nouveau utilisateur détecté - Initialisation du solde à zéro");
         balanceData.balance = 0;
@@ -77,6 +100,10 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
       localStorage.removeItem('currentBalance');
       localStorage.removeItem('lastKnownBalance');
       localStorage.removeItem('highestBalance');
+      localStorage.removeItem('welcomeMessageShown');
+    } else {
+      // Important: explicitement mettre à jour le state pour les utilisateurs existants
+      onNewUser(false);
     }
 
     return {

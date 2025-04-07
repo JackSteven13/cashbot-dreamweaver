@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface WelcomeMessageProps {
   isNewUser: boolean;
@@ -12,7 +12,22 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
   subscription,
   dailySessionCount 
 }) => {
-  if (!isNewUser) return null;
+  // Utiliser localStorage pour garantir que le message n'apparaît qu'une seule fois
+  const [shouldDisplay, setShouldDisplay] = useState(false);
+  
+  useEffect(() => {
+    // Vérifie si c'est un nouvel utilisateur ET si on n'a pas déjà montré le message
+    const welcomeShown = localStorage.getItem('welcomeMessageShown');
+    if (isNewUser && !welcomeShown) {
+      setShouldDisplay(true);
+      // Marquer que le message a été affiché
+      localStorage.setItem('welcomeMessageShown', 'true');
+    } else {
+      setShouldDisplay(false);
+    }
+  }, [isNewUser]);
+  
+  if (!shouldDisplay) return null;
   
   return (
     <div className="bg-green-50 text-green-800 p-4 mb-6 rounded-md border border-green-200">
