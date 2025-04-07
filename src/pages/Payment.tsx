@@ -8,6 +8,7 @@ import PaymentCard from '@/components/payment/PaymentCard';
 const Payment = () => {
   const {
     selectedPlan,
+    currentSubscription,
     isAuthChecking,
     useStripePayment,
     isProcessing,
@@ -26,6 +27,7 @@ const Payment = () => {
     <PaymentLayout>
       <PaymentCard 
         selectedPlan={selectedPlan}
+        currentSubscription={currentSubscription}
         useStripeCheckout={useStripePayment}
         isStripeProcessing={isStripeProcessing}
         isProcessing={isProcessing}

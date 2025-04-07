@@ -124,6 +124,17 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       setIsStripeProcessing(false);
       setDidInitiateRedirect(false);
       
+      // Gestion des erreurs spécifiques
+      if (error.message && error.message.includes('SAME_PLAN')) {
+        toast({
+          title: "Abonnement déjà actif",
+          description: "Vous êtes déjà abonné à ce forfait.",
+          variant: "default"
+        });
+        navigate('/dashboard');
+        return;
+      }
+      
       const errorMessage = formatErrorMessage(error);
       
       toast({

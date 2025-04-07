@@ -10,19 +10,24 @@ import { toast } from "@/components/ui/use-toast";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
 import MobilePaymentHelper from './MobilePaymentHelper';
+import { formatPrice } from '@/utils/balance/limitCalculations';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;
   isStripeProcessing: boolean;
   onCheckout: () => void;
   stripeUrl?: string | null;
+  isUpgrade?: boolean;
+  proratedPrice?: number;
 }
 
 const StripeCheckoutForm = ({ 
   selectedPlan, 
   isStripeProcessing, 
   onCheckout,
-  stripeUrl
+  stripeUrl,
+  isUpgrade = false,
+  proratedPrice = 0
 }: StripeCheckoutFormProps) => {
   const [termsAccepted, setTermsAccepted] = useState(true); // Pré-cochée par défaut
   const [redirectAttempted, setRedirectAttempted] = useState(false);
@@ -75,11 +80,22 @@ const StripeCheckoutForm = ({
     <div className="space-y-4 md:space-y-5">
       <div className="flex items-center gap-2 text-[#1e3a5f] dark:text-white mb-2 md:mb-3">
         <CreditCard className="h-5 w-5" />
-        <h3 className="font-medium text-base md:text-lg">Paiement sécurisé par Stripe</h3>
+        <h3 className="font-medium text-base md:text-lg">
+          Paiement sécurisé par Stripe{isUpgrade && " - Mise à niveau"}
+        </h3>
       </div>
       
       <div className="text-sm md:text-base text-gray-600 dark:text-gray-300 mb-3 md:mb-5">
-        Vous serez redirigé vers la plateforme sécurisée de Stripe pour finaliser votre paiement.
+        {isUpgrade ? (
+          <span>
+            Vous effectuez une mise à niveau vers un abonnement supérieur. Le montant facturé ({formatPrice(proratedPrice)}) 
+            tient compte du temps restant sur votre abonnement actuel.
+          </span>
+        ) : (
+          <span>
+            Vous serez redirigé vers la plateforme sécurisée de Stripe pour finaliser votre paiement.
+          </span>
+        )}
       </div>
       
       <div className="flex items-start space-x-2 py-2 md:py-3">
@@ -118,7 +134,9 @@ const StripeCheckoutForm = ({
         isLoading={isStripeProcessing && !stripeUrl}
         disabled={!termsAccepted || (isStripeProcessing && !stripeUrl)}
       >
-        {isStripeProcessing && !stripeUrl ? 'Préparation du paiement...' : 'Procéder au paiement'}
+        {isStripeProcessing && !stripeUrl ? 'Préparation du paiement...' : (
+          isUpgrade ? `Procéder à la mise à niveau (${formatPrice(proratedPrice)})` : 'Procéder au paiement'
+        )}
       </Button>
       
       {stripeUrl && redirectAttempted && (

@@ -1,3 +1,4 @@
+
 import { corsHeaders } from './helpers/corsHeaders.ts';
 import { isStripeConfigured } from './helpers/stripeClient.ts';
 import { findReferrer, trackReferral } from './services/referralService.ts';
@@ -82,6 +83,32 @@ Deno.serve(async (req) => {
       });
     }
     
+    // Get user's current subscription
+    const { data: userData, error: userDataError } = await supabase
+      .from('user_balances')
+      .select('subscription')
+      .eq('id', user.id)
+      .single();
+      
+    if (userDataError) {
+      console.error('Error fetching user subscription:', userDataError);
+      // Continue without current subscription data
+    }
+    
+    const currentSubscription = userData?.subscription || 'freemium';
+    console.log(`User's current subscription:`, currentSubscription);
+    
+    // If changing to the same plan, inform the user
+    if (currentSubscription === plan) {
+      return new Response(JSON.stringify({ 
+        error: 'Vous êtes déjà abonné à ce forfait.', 
+        code: 'SAME_PLAN' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     // If it's a free plan, just update the user's subscription
     if (plan === 'freemium') {
       console.log('Handling freemium plan subscription');
@@ -109,7 +136,8 @@ Deno.serve(async (req) => {
         plan,
         successUrl: successUrl || '',
         cancelUrl: cancelUrl || '',
-        referrerId
+        referrerId,
+        currentSubscription
       });
       
       // If referral code is provided, track it even before payment completion

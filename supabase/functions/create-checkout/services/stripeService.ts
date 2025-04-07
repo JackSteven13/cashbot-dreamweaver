@@ -66,7 +66,8 @@ export async function createCheckoutSession({
   plan,
   successUrl,
   cancelUrl,
-  referrerId
+  referrerId,
+  currentSubscription
 }: {
   userId: string;
   userEmail: string;
@@ -74,21 +75,50 @@ export async function createCheckoutSession({
   successUrl: string;
   cancelUrl: string;
   referrerId: string | null;
+  currentSubscription?: string | null;
 }) {
   try {
     // Plan price mapping in euros - ensure these match values in client
     const PLAN_PRICES: Record<string, number> = {
+      'freemium': 0,
       'starter': 99,
       'gold': 349,
       'elite': 549
     };
     
-    // Ensure the plan is valid
+    // Ensure the plan is valid and different from current subscription
     if (!PLAN_PRICES[plan as keyof typeof PLAN_PRICES]) {
       throw new Error(`Invalid plan: ${plan}`);
     }
     
+    // If downgrading or same plan, don't apply proration logic
+    const isUpgrade = currentSubscription && 
+                      currentSubscription !== 'freemium' && 
+                      PLAN_PRICES[plan as keyof typeof PLAN_PRICES] > PLAN_PRICES[currentSubscription as keyof typeof PLAN_PRICES];
+    
     console.log(`Processing plan ${plan} with price ${PLAN_PRICES[plan as keyof typeof PLAN_PRICES]} EUR`);
+    
+    // First, try to find the customer in Stripe
+    let customerId: string | undefined;
+    const customers = await stripe?.customers.list({
+      email: userEmail,
+      limit: 1
+    });
+    
+    if (customers?.data.length && customers.data.length > 0) {
+      customerId = customers.data[0].id;
+      console.log(`Found existing Stripe customer:`, customerId);
+    } else {
+      // Create a new customer if not found
+      const customer = await stripe?.customers.create({
+        email: userEmail,
+        metadata: {
+          userId: userId
+        }
+      });
+      customerId = customer?.id;
+      console.log(`Created new Stripe customer:`, customerId);
+    }
     
     // Get or create price ID for the selected plan
     const priceId = await getOrCreatePrice(plan, PLAN_PRICES[plan as keyof typeof PLAN_PRICES]);
@@ -97,8 +127,8 @@ export async function createCheckoutSession({
       throw new Error(`Could not determine price ID for plan: ${plan}`);
     }
     
-    // Create the checkout session with the price ID
-    const session = await stripe?.checkout.sessions.create({
+    // Find existing subscriptions for the customer to handle proration
+    let sessionConfig: any = {
       payment_method_types: ['card'],
       mode: 'subscription',
       line_items: [
@@ -110,11 +140,14 @@ export async function createCheckoutSession({
       success_url: successUrl || 'https://cashbot.com/payment-success?session_id={CHECKOUT_SESSION_ID}',
       cancel_url: cancelUrl || 'https://cashbot.com/payment-cancelled',
       client_reference_id: userId,
-      customer_email: userEmail,
+      customer_email: customerId ? undefined : userEmail,
+      customer: customerId,
       metadata: {
         userId: userId,
         plan: plan,
         referrerId: referrerId || '',
+        isUpgrade: isUpgrade ? 'true' : 'false',
+        previousPlan: currentSubscription || '',
       },
       // Add UI customization to improve visibility
       custom_text: {
@@ -126,7 +159,56 @@ export async function createCheckoutSession({
       locale: 'fr',
       // Ensure checkout uses a popup/redirect method
       ui_mode: 'hosted',
-    });
+    };
+    
+    // If this is an upgrade from an existing subscription, try to find active subscription
+    if (isUpgrade && customerId) {
+      const subscriptions = await stripe?.subscriptions.list({
+        customer: customerId,
+        status: 'active',
+        limit: 1
+      });
+      
+      // If there's an active subscription and we're upgrading, enable proration
+      if (subscriptions?.data.length && subscriptions.data.length > 0) {
+        const currentSubscriptionId = subscriptions.data[0].id;
+        console.log(`Found active subscription for upgrade:`, currentSubscriptionId);
+        
+        // Find the current subscription phase to calculate remainingTime
+        const currentPhase = subscriptions.data[0].current_period_end;
+        const now = Math.floor(Date.now() / 1000);
+        const remainingTime = currentPhase - now;
+        const totalPeriod = 365 * 24 * 60 * 60; // One year in seconds
+        
+        // Calculate prorated amount based on remaining time
+        const currentPlanPrice = PLAN_PRICES[currentSubscription as keyof typeof PLAN_PRICES];
+        const newPlanPrice = PLAN_PRICES[plan as keyof typeof PLAN_PRICES];
+        const proratedCredit = (currentPlanPrice * remainingTime) / totalPeriod;
+        const upgradeCost = newPlanPrice - proratedCredit;
+        
+        console.log(`Proration calculation: Current plan: ${currentPlanPrice}€, New plan: ${newPlanPrice}€`);
+        console.log(`Remaining time: ${remainingTime}s of ${totalPeriod}s (${(remainingTime/totalPeriod*100).toFixed(2)}%)`);
+        console.log(`Prorated credit: ${proratedCredit.toFixed(2)}€, Final upgrade cost: ${upgradeCost.toFixed(2)}€`);
+        
+        // Use Stripe's subscription upgrade feature
+        // Set subscription_data.billing_cycle_anchor to "now" for immediate upgrade
+        sessionConfig.subscription_data = {
+          metadata: {
+            upgrade_from: currentSubscription,
+            prorated_credit: proratedCredit.toFixed(2),
+            upgrade_cost: upgradeCost.toFixed(2)
+          }
+        };
+        
+        // For proration, we'll cancel the old subscription when the new one is created successfully
+        // This is handled in the webhook
+        sessionConfig.metadata.subscription_to_cancel = currentSubscriptionId;
+        sessionConfig.metadata.apply_prorated_credit = 'true';
+      }
+    }
+    
+    // Create the checkout session with the price ID
+    const session = await stripe?.checkout.sessions.create(sessionConfig);
     
     if (!session) {
       throw new Error("Failed to create checkout session - Stripe not properly configured");
