@@ -28,7 +28,7 @@ export const fetchUserTransactions = async (userId: string): Promise<Transaction
     
     // Mapper les données de la base de données vers notre interface Transaction
     return transactionsData.map(t => ({
-      id: t.id,
+      id: t.id, // Ensure id is included in the mapping
       date: t.date || new Date(t.created_at).toISOString().split('T')[0],
       amount: typeof t.gain === 'number' ? parseFloat(t.gain.toString()) : 0, 
       type: t.report || 'Transaction',
@@ -71,3 +71,6 @@ export const addTransaction = async (
     return false;
   }
 };
+
+// Re-export the addTransaction function to ensure it's available when imported from this file
+export { addTransaction };

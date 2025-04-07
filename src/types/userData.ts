@@ -1,5 +1,6 @@
 
 export interface Transaction {
+  id?: string; // Adding id as optional property
   date: string;
   amount: number;
   type: string;

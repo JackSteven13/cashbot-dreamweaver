@@ -1,6 +1,6 @@
 
 import { useEffect } from 'react';
-import { addTransaction } from '@/utils/user/transactionUtils';
+import { addTransaction } from '@/utils/transactionUtils'; // Updated import path
 import { getCurrentSession } from '@/utils/auth/sessionUtils';
 
 export const useTransactionReconciliation = (
