@@ -38,8 +38,8 @@ export function ToastNotification({
         style: {
           fontSize: "0.95rem",
           width: "auto",
-          maxWidth: "clamp(320px, 95vw, 420px)",
-          minWidth: "clamp(300px, 90vw, 380px)",
+          maxWidth: "clamp(320px, 85vw, 420px)", // Réduit la largeur max sur mobile
+          minWidth: "clamp(280px, 80vw, 320px)", // Réduit la largeur min sur mobile
           padding: "12px 16px",
           zIndex: 9999,
         },
@@ -53,7 +53,7 @@ export function ToastNotification({
       theme="dark"
       closeButton={closeButton}
       richColors={richColors}
-      offset={offset}
+      offset="2rem" // Augmenter l'offset pour éloigner du bord de l'écran
       expand={expandByDefault}
     />
   );

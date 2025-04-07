@@ -6,9 +6,11 @@ import {
 } from '@/utils/subscription';
 import { UserData } from '@/types/userData';
 import { useLimitChecking } from './useLimitChecking';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const useSessionGain = () => {
   const { checkFinalGainLimit } = useLimitChecking();
+  const isMobile = useIsMobile();
   
   const calculateSessionGain = async (
     userData: UserData,
@@ -44,7 +46,7 @@ export const useSessionGain = () => {
         title: "Limite journalière atteinte",
         description: `Vous avez atteint votre limite de gain journalier de ${dailyLimit}€. Revenez demain ou passez à un forfait supérieur.`,
         variant: "destructive",
-        className: "mobile-toast",
+        className: isMobile ? "mobile-toast" : "",
         duration: 4000
       });
       return { success: false, finalGain: 0, newBalance: currentBalance };
@@ -80,11 +82,11 @@ export const useSessionGain = () => {
       console.error("Failed to persist balance in local storage:", e);
     }
     
-    // Afficher un toast de succès
+    // Afficher un toast de succès avec classe mobile-toast pour les appareils mobiles
     toast({
       title: "Analyse terminée",
       description: `Traitement des données achevé. Revenus générés : ${finalGain.toFixed(2)}€`,
-      className: "mobile-toast",
+      className: isMobile ? "mobile-toast" : "",
       duration: 4000
     });
     

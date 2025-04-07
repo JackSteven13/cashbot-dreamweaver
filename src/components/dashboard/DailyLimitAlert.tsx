@@ -53,7 +53,10 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
   const isNearLimit = limitPercentage >= 90;
 
   return (
-    <Alert className={`mb-4 md:mb-6 ${isLimitReached ? 'bg-amber-50 border-amber-300' : 'bg-yellow-50 border-yellow-200'}`}>
+    <Alert 
+      className={`mb-4 md:mb-6 ${isLimitReached ? 'bg-amber-50 border-amber-300' : 'bg-yellow-50 border-yellow-200'}`}
+      variant={isLimitReached ? "destructive" : "warning"} // Utilisez les variants pour la cohérence
+    >
       <AlertTitle className={`text-sm md:text-base ${isLimitReached ? 'text-amber-800' : 'text-yellow-800'}`}>
         {isLimitReached ? 'Limite journalière atteinte' : 'Limite journalière presque atteinte'}
       </AlertTitle>

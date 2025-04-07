@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -66,12 +67,12 @@
 /* Style pour les notifications mobiles */
 .mobile-toast {
   position: fixed;
-  z-index: 1000;
-  top: 1rem;
+  z-index: 9999;
+  top: 2.5rem;
   left: 50%;
   transform: translateX(-50%);
-  width: 94vw;
-  max-width: 350px;
+  width: 90vw;
+  max-width: 320px;
   min-width: 250px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   border-radius: 8px;
@@ -81,8 +82,10 @@
 }
 
 .toast-viewport {
-  top: 0 !important;
+  top: 1rem !important;
+  left: 50% !important;
   transform: translateX(-50%) !important;
+  width: auto !important;
 }
 
 /* Animation pour faire clignoter "Génération active" */
@@ -111,8 +114,16 @@
 /* Style pour les notifications sur mobile */
 @media (max-width: 640px) {
   .toast-notification {
+    position: fixed !important;
+    top: 2.5rem !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 90vw !important;
+    max-width: 320px !important;
+    min-width: 250px !important;
     padding: 0.75rem !important;
-    max-width: 95vw !important;
+    font-size: 0.9rem !important;
+    z-index: 9999 !important;
   }
   
   .toast-notification .toast-title {
@@ -121,18 +132,19 @@
     color: #fff !important;
   }
   
-  :root:not(.dark) .toast-notification .toast-title {
-    color: #333 !important;
-  }
-  
   .toast-notification .toast-description {
     font-size: 0.85rem !important;
     line-height: 1.3 !important;
     color: rgba(255, 255, 255, 0.8) !important;
   }
   
-  :root:not(.dark) .toast-notification .toast-description {
-    color: rgba(0, 0, 0, 0.7) !important;
+  /* La partie viewport pour le positionnement mobile */
+  .toast-viewport {
+    width: 100% !important;
+    padding: 0.5rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
   }
 }
 
