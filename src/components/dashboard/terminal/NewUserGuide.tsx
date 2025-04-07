@@ -10,7 +10,7 @@ export const NewUserGuide: React.FC = () => {
       <ol className="list-decimal ml-4 mt-1 text-green-200 text-xs space-y-1">
         <li>Lancez votre premier boost manuel gratuit</li>
         <li>Partagez votre lien de parrainage pour commencer à gagner des commissions</li>
-        <li>Activez votre essai gratuit de 48h pour découvrir les fonctionnalités Pro</li>
+        <li>Consultez les offres premium pour augmenter vos limites de gains</li>
       </ol>
     </div>
   );

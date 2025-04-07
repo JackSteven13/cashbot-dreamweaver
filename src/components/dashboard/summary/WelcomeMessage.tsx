@@ -17,7 +17,7 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
   
   useEffect(() => {
     // Vérifie si c'est un nouvel utilisateur ET si on n'a pas déjà montré le message
-    const welcomeShown = localStorage.getItem('welcomeMessageShown');
+    const welcomeShown = localStorage.getItem('welcomeMessageShown') === 'true';
     
     // On ne montre le message que si c'est un nouvel utilisateur ET que le message n'a jamais été montré
     if (isNewUser && !welcomeShown) {

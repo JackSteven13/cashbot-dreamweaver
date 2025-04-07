@@ -77,10 +77,16 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
       }
     }
     
-    // Ajouter un message si l'utilisateur est nouveau
+    // Ajouter un message si l'utilisateur est vraiment nouveau (vérification stricte)
     if (isNewUser && !lines.some(line => line.includes('Welcome new user'))) {
-      newLines.push('');
-      newLines.push('> Welcome new user! Please start with the guide below.');
+      // Vérifier s'il s'agit vraiment d'un nouvel utilisateur en vérifiant le localStorage
+      const welcomeShown = localStorage.getItem('welcomeMessageShown') === 'true';
+      
+      // Ne montrer le message que pour les utilisateurs qui n'ont jamais vu le message de bienvenue
+      if (!welcomeShown) {
+        newLines.push('');
+        newLines.push('> Welcome new user! Please start with the guide below.');
+      }
     }
     
     // Mettre à jour les lignes seulement si elles ont changé

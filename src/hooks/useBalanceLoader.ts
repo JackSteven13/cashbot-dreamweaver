@@ -15,35 +15,37 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
     if (balanceResult) {
       balanceData = balanceResult.data;
       
-      // Vérification plus précise d'un nouvel utilisateur :
-      // 1. Check explicite via l'API
-      // 2. Vérification si le compte a été créé il y a moins de 10 minutes
+      // Vérification plus stricte d'un nouvel utilisateur :
+      // On considère un utilisateur comme nouveau seulement si:
+      // 1. L'API indique explicitement que c'est un nouvel utilisateur
+      // 2. Le compte a été créé dans les 5 minutes (au lieu de 10)
+      // 3. Il n'y a aucune transaction
+      // 4. Il n'a jamais vu le message de bienvenue
       
       const isExplicitlyNew = balanceResult.isNewUser;
       
-      // Vérification basée sur le timestamp de création
+      // Vérification basée sur le timestamp de création (5 minutes au lieu de 10)
       const creationTime = balanceData?.created_at || null;
       const isRecentlyCreated = creationTime ? 
-        (new Date().getTime() - new Date(creationTime).getTime()) < 10 * 60 * 1000 : // 10 minutes
+        (new Date().getTime() - new Date(creationTime).getTime()) < 5 * 60 * 1000 : // 5 minutes
         false;
       
-      // Un utilisateur est considéré comme nouveau uniquement s'il est explicitement marqué comme tel
-      // ET récemment créé ET n'a pas de transactions
-      isUserNew = isExplicitlyNew && isRecentlyCreated && 
-                 (!balanceData?.transactions || balanceData.transactions.length === 0);
+      // Vérifier si l'utilisateur a des transactions
+      const hasNoTransactions = !balanceData?.transactions || balanceData.transactions.length === 0;
       
       // Vérifier également si cet utilisateur a déjà vu le message de bienvenue
-      const welcomeMessageShown = localStorage.getItem('welcomeMessageShown');
-      if (welcomeMessageShown) {
-        isUserNew = false;
-      }
+      const welcomeMessageShown = localStorage.getItem('welcomeMessageShown') === 'true';
+      
+      // Un utilisateur est considéré comme nouveau uniquement si toutes ces conditions sont remplies
+      isUserNew = isExplicitlyNew && isRecentlyCreated && hasNoTransactions && !welcomeMessageShown;
       
       console.log("User status check:", {
         userId,
         isExplicitlyNew,
         creationTime,
         isRecentlyCreated,
-        welcomeShown: !!welcomeMessageShown,
+        hasNoTransactions,
+        welcomeShown: welcomeMessageShown,
         finalIsNewUser: isUserNew
       });
       
