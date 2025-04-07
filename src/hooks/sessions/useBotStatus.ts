@@ -1,8 +1,9 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
 export const useBotStatus = (initialState: boolean = true) => {
-  const [isBotActive, setIsBotActive] = useState(initialState);
+  const [isBotActive, setBotActive] = useState(initialState);
   
   // Effectuer des actions lorsque le statut du bot change
   useEffect(() => {
@@ -26,19 +27,52 @@ export const useBotStatus = (initialState: boolean = true) => {
     try {
       const savedStatus = localStorage.getItem('botActive');
       if (savedStatus !== null) {
-        setIsBotActive(savedStatus === 'true');
+        setBotActive(savedStatus === 'true');
       }
     } catch (error) {
       console.error('Failed to load bot status:', error);
     }
   }, []);
   
+  // Vérifier si la limite est atteinte et désactiver automatiquement le bot le cas échéant
+  const checkLimitAndUpdateBot = useCallback((subscription: string, currentBalance: number) => {
+    const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    
+    if (currentBalance >= dailyLimit && isBotActive) {
+      console.log(`Limite journalière atteinte (${currentBalance}/${dailyLimit}). Désactivation forcée du bot.`);
+      setBotActive(false);
+      
+      // Propager le changement
+      window.dispatchEvent(new CustomEvent('bot:status-change', {
+        detail: { active: false }
+      }));
+      
+      return false;
+    }
+    
+    return true;
+  }, [isBotActive]);
+  
   // Écouter les événements externes de changement d'état du bot
   useEffect(() => {
     const handleExternalStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
-      if (typeof isActive === 'boolean' && isActive !== isBotActive) {
-        setIsBotActive(isActive);
+      const forceLimitCheck = event.detail?.checkLimit;
+      const subscription = event.detail?.subscription;
+      const currentBalance = event.detail?.balance;
+      
+      if (typeof isActive === 'boolean') {
+        // Si on essaie d'activer le bot alors que la limite est atteinte, bloquer l'activation
+        if (isActive && forceLimitCheck && subscription && currentBalance !== undefined) {
+          const canActivate = checkLimitAndUpdateBot(subscription, currentBalance);
+          
+          // Uniquement mettre à jour si l'activation est permise ou si on demande une désactivation
+          if (canActivate || !isActive) {
+            setBotActive(isActive);
+          }
+        } else {
+          setBotActive(isActive);
+        }
       }
     };
     
@@ -47,11 +81,19 @@ export const useBotStatus = (initialState: boolean = true) => {
     return () => {
       window.removeEventListener('bot:external-status-change' as any, handleExternalStatusChange);
     };
-  }, [isBotActive]);
+  }, [isBotActive, checkLimitAndUpdateBot]);
   
   // Réinitialiser l'activité du bot
-  const resetBotActivity = () => {
-    setIsBotActive(true);
+  const resetBotActivity = useCallback((subscription: string, currentBalance: number) => {
+    // Vérifier d'abord si la limite est atteinte
+    const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    
+    if (currentBalance >= dailyLimit) {
+      console.log('Tentative de réactivation du bot bloquée : limite journalière atteinte');
+      return false;
+    }
+    
+    setBotActive(true);
     
     // Propager le changement
     window.dispatchEvent(new CustomEvent('bot:status-change', {
@@ -59,18 +101,30 @@ export const useBotStatus = (initialState: boolean = true) => {
     }));
     
     console.log('Bot activity reset to active');
-  };
+    return true;
+  }, []);
   
   // Mettre à jour le statut du bot
-  const updateBotStatus = (active: boolean) => {
-    if (active !== isBotActive) {
-      setIsBotActive(active);
+  const updateBotStatus = useCallback((active: boolean, subscription?: string, currentBalance?: number) => {
+    // Si on tente d'activer le bot et qu'on a des infos sur l'abonnement et le solde
+    if (active && subscription && currentBalance !== undefined) {
+      // Vérifier si la limite est atteinte
+      const canActivate = checkLimitAndUpdateBot(subscription, currentBalance);
+      
+      // Ne mettre à jour que si l'activation est permise ou si on demande une désactivation
+      if (canActivate) {
+        setBotActive(active);
+      }
+    } else {
+      // Si on désactive ou si on n'a pas d'infos sur l'abonnement/solde
+      setBotActive(active);
     }
-  };
+  }, [checkLimitAndUpdateBot]);
   
   return {
     isBotActive,
     updateBotStatus,
-    resetBotActivity
+    resetBotActivity,
+    checkLimitAndUpdateBot
   };
 };

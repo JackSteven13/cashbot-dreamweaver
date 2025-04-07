@@ -1,186 +1,108 @@
 
-import React, { useState, useEffect } from 'react';
-import { WITHDRAWAL_THRESHOLDS } from '@/components/dashboard/summary/constants';
-import { balanceManager } from '@/utils/balance/balanceManager';
-
-// Import subcomponents
-import { 
-  BalanceHeader,
-  BalanceDisplay, 
-  ProgressBar, 
-  SubscriptionInfo, 
-  GainsDisplay, 
-  ReferralInfo 
-} from './components';
+import React, { useState, useEffect, useMemo } from 'react';
+import BalanceDisplay from './components/BalanceDisplay';
+import GainsDisplay from './components/GainsDisplay';
+import SubscriptionLevelDisplay from './components/SubscriptionLevelDisplay';
+import BalanceChart from './components/BalanceChart';
 
 interface UserBalanceCardProps {
   displayBalance: number;
-  balance?: number;
   subscription: string;
   dailyLimit: number;
-  referralCount?: number;
-  referralBonus?: number;
-  networkGains?: number;
-  botGains?: number;
-  totalGeneratedBalance?: number;
-  lastSessionTimestamp?: string;
-  sessionsDisplay?: string;
-  isBotActive?: boolean;
+  limitPercentage: number;
+  referralCount: number;
+  referralBonus: number;
+  botActive?: boolean;
 }
 
-const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
-  displayBalance = 0,
-  subscription = 'freemium',
-  dailyLimit = 0.5,
-  sessionsDisplay = 'illimitées',
-  referralCount = 0,
-  referralBonus = 0,
-  networkGains,
-  botGains,
-  totalGeneratedBalance,
-  lastSessionTimestamp,
-  isBotActive = true
+const UserBalanceCard: React.FC<UserBalanceCardProps> = ({ 
+  displayBalance,
+  subscription,
+  dailyLimit,
+  limitPercentage,
+  referralCount,
+  referralBonus,
+  botActive
 }) => {
-  // État local pour l'affichage du solde
-  const [localBalance, setLocalBalance] = useState(displayBalance);
-  const [balanceAnimating, setBalanceAnimating] = useState(false);
+  // États pour l'animation du solde
   const [animatedBalance, setAnimatedBalance] = useState(displayBalance);
   const [previousBalance, setPreviousBalance] = useState(displayBalance);
-  const [glowActive, setGlowActive] = useState(false);
+  const [balanceAnimating, setBalanceAnimating] = useState(false);
   
-  // Initialiser le gestionnaire de solde avec la valeur de départ
-  useEffect(() => {
-    balanceManager.initialize(displayBalance);
-    
-    // S'abonner aux mises à jour du gestionnaire de solde
-    const unsubscribe = balanceManager.subscribe((state) => {
-      // Si une mise à jour du solde se produit, l'animer
-      if (state.lastKnownBalance !== localBalance) {
-        animateBalanceChange(localBalance, state.lastKnownBalance);
-      }
-    });
-    
-    return () => {
-      unsubscribe(); // Se désabonner à la destruction du composant
-    };
-  }, []);
-  
-  // N'accepter les mises à jour de props displayBalance que si supérieures
-  useEffect(() => {
-    if (displayBalance > localBalance) {
-      animateBalanceChange(localBalance, displayBalance);
-    }
+  // Calculer les valeurs dérivées pour l'affichage
+  const totalGenerated = useMemo(() => {
+    return Math.max(displayBalance * 1.2, displayBalance + 0.5);
   }, [displayBalance]);
   
-  // Fonction pour animer un changement de solde
-  const animateBalanceChange = (from: number, to: number) => {
-    if (to <= from) return;
-    
-    setPreviousBalance(from);
-    setBalanceAnimating(true);
-    setGlowActive(true);
-    
-    const startValue = from;
-    const endValue = to;
-    const duration = 1000;
-    const startTime = Date.now();
-    
-    const updateValue = () => {
-      const now = Date.now();
-      const elapsed = now - startTime;
-      
-      if (elapsed < duration) {
-        const progress = elapsed / duration;
-        // Utiliser une fonction easing pour une animation plus fluide
-        const eased = -Math.pow(progress - 1, 2) + 1; // easeOutQuad
-        const currentValue = startValue + (endValue - startValue) * eased;
-        setAnimatedBalance(currentValue);
-        requestAnimationFrame(updateValue);
-      } else {
-        setAnimatedBalance(endValue);
-        setLocalBalance(endValue);
-        setBalanceAnimating(false);
-        
-        // Désactiver l'effet glow après un délai
-        setTimeout(() => {
-          setGlowActive(false);
-        }, 3000);
-      }
-    };
-    
-    requestAnimationFrame(updateValue);
-  };
-  
-  // Écouter les événements de l'application
+  // Temporairement découpler le solde de l'animation (pour éviter les erreurs visuelles)
   useEffect(() => {
-    // Gérer les mises à jour cohérentes du solde
-    const handleConsistentUpdate = (event: CustomEvent) => {
-      const newBalance = event.detail?.currentBalance;
-      if (typeof newBalance === 'number' && newBalance > localBalance) {
-        animateBalanceChange(localBalance, newBalance);
+    if (!balanceAnimating && displayBalance !== animatedBalance) {
+      setPreviousBalance(animatedBalance);
+      setAnimatedBalance(displayBalance);
+    }
+  }, [displayBalance, balanceAnimating, animatedBalance]);
+  
+  // Effet pour animer les changements de solde via l'événement balance:update
+  useEffect(() => {
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      const amount = event.detail?.amount || 0;
+      
+      // Ne déclencher que si nous avons un montant significatif
+      if (amount > 0) {
+        setPreviousBalance(animatedBalance);
+        setBalanceAnimating(true);
+        
+        // Animation simple pour le changement de solde
+        const newBalance = animatedBalance + amount;
+        setAnimatedBalance(newBalance);
+        
+        // Réinitialiser l'état d'animation après un délai
+        setTimeout(() => {
+          setBalanceAnimating(false);
+        }, 2000);
       }
     };
     
-    // Gérer les réinitialisations de solde
-    const handleBalanceReset = () => {
-      animateBalanceChange(localBalance, 0);
-    };
-    
-    window.addEventListener('balance:consistent-update' as any, handleConsistentUpdate);
-    window.addEventListener('balance:reset' as any, handleBalanceReset);
+    window.addEventListener('balance:update' as any, handleBalanceUpdate);
     
     return () => {
-      window.removeEventListener('balance:consistent-update' as any, handleConsistentUpdate);
-      window.removeEventListener('balance:reset' as any, handleBalanceReset);
+      window.removeEventListener('balance:update' as any, handleBalanceUpdate);
     };
-  }, [localBalance]);
-  
-  // Calculer les gains dérivés en fonction du solde local
-  const safeNetworkGains = networkGains !== undefined ? networkGains : (localBalance * 0.3);
-  const safeBotGains = botGains !== undefined ? botGains : (localBalance * 0.7);
-  const safeTotalGeneratedBalance = totalGeneratedBalance !== undefined ? totalGeneratedBalance : (localBalance * 1.2);
-  
-  // Get withdrawal threshold for this subscription type
-  const withdrawalThreshold = WITHDRAWAL_THRESHOLDS[subscription as keyof typeof WITHDRAWAL_THRESHOLDS] || 200;
-  
+  }, [animatedBalance]);
+
   return (
-    <div className="mb-6">
-      <div className={`bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white transition-all duration-500 ${glowActive ? 'glow-effect' : ''}`}>
-        <BalanceHeader dailyLimit={dailyLimit} />
-        
-        <BalanceDisplay 
-          displayBalance={localBalance}
-          balanceAnimating={balanceAnimating}
-          animatedBalance={animatedBalance}
-          previousBalance={previousBalance}
-          referralBonus={referralBonus}
-          totalGeneratedBalance={safeTotalGeneratedBalance}
-          isBotActive={isBotActive}
-        />
-        
-        <ProgressBar 
-          displayBalance={localBalance}
-          withdrawalThreshold={withdrawalThreshold} 
-        />
-        
-        <SubscriptionInfo 
+    <div className="user-balance-card p-6 bg-slate-800/60 rounded-lg shadow-lg border border-slate-700/50">
+      <BalanceDisplay 
+        displayBalance={displayBalance}
+        balanceAnimating={balanceAnimating} 
+        animatedBalance={animatedBalance} 
+        previousBalance={previousBalance}
+        referralBonus={referralBonus}
+        totalGeneratedBalance={totalGenerated}
+        isBotActive={botActive}
+        subscription={subscription}
+      />
+      
+      <div className="my-4 border-t border-b border-slate-700/50 py-3">
+        <SubscriptionLevelDisplay 
           subscription={subscription}
-          sessionsDisplay={sessionsDisplay}
-        />
-        
-        <GainsDisplay 
-          networkGains={safeNetworkGains}
-          botGains={safeBotGains}
-        />
-        
-        <ReferralInfo 
           referralCount={referralCount}
-          referralBonus={referralBonus}
+          limitPercentage={limitPercentage}
+          dailyLimit={dailyLimit}
         />
-        
-        <div className="mt-3 text-xs text-white/50 italic">
-          * Les gains bots sont estimatifs et peuvent varier
-        </div>
+      </div>
+      
+      <GainsDisplay 
+        networkGains={referralBonus || 0}
+        botGains={Math.max(0, displayBalance - (referralBonus || 0))}
+      />
+      
+      <div className="mt-5 pt-3 border-t border-slate-700/50">
+        <BalanceChart 
+          balance={displayBalance} 
+          subscription={subscription}
+          dailyLimit={dailyLimit}
+        />
       </div>
     </div>
   );

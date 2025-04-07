@@ -3,6 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Bot, BotOff } from 'lucide-react';
 import { balanceManager, getHighestBalance } from '@/utils/balance/balanceManager';
 import { animateBalanceUpdate } from '@/utils/animations/animateBalanceUpdate';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
+import { toast } from "@/components/ui/use-toast";
 
 interface BalanceDisplayProps {
   displayBalance: number;
@@ -12,6 +14,7 @@ interface BalanceDisplayProps {
   referralBonus?: number;
   totalGeneratedBalance?: number;
   isBotActive?: boolean;
+  subscription?: string; // Ajout du type d'abonnement
 }
 
 const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
@@ -21,7 +24,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   previousBalance,
   referralBonus = 0,
   totalGeneratedBalance = 0,
-  isBotActive = true
+  isBotActive = true,
+  subscription = 'freemium'
 }) => {
   // S'assurer d'avoir des nombres valides pour l'affichage
   const safeReferralBonus = referralBonus ?? 0;
@@ -121,6 +125,12 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     window.addEventListener('session:start', handleSessionStart);
     return () => window.removeEventListener('session:start', handleSessionStart);
   }, [localDisplayBalance]);
+  
+  // Vérifier si la limite est atteinte
+  const isLimitReached = () => {
+    const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    return localDisplayBalance >= dailyLimit;
+  };
   
   // Écouter les événements de changement d'état du bot et de solde
   useEffect(() => {
@@ -222,12 +232,31 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 
   // Function to toggle bot status manually
   const handleBotToggle = () => {
+    // Vérifier d'abord si la limite est atteinte
+    const limitReached = isLimitReached();
+    
+    // Si la limite est atteinte et qu'on essaie d'activer le bot, bloquer et afficher un toast
+    if (limitReached && !localBotActive) {
+      toast({
+        title: "Impossible d'activer l'analyse",
+        description: "Vous avez atteint votre limite journalière de gains. Revenez demain ou passez à un forfait supérieur.",
+        variant: "destructive",
+        duration: 5000
+      });
+      return;
+    }
+    
     const newStatus = !localBotActive;
     setLocalBotActive(newStatus);
     
-    // Dispatch global event to sync state across components
+    // Dispatch global event to sync state across components with limit checking
     window.dispatchEvent(new CustomEvent('bot:external-status-change', {
-      detail: { active: newStatus }
+      detail: { 
+        active: newStatus,
+        checkLimit: true,
+        subscription: subscription,
+        balance: localDisplayBalance
+      }
     }));
   };
   
@@ -280,6 +309,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               <BotOff size={14} className="text-red-500" />
               <span className="text-xs text-red-300">
                 Analyse inactive
+                {isLimitReached() ? " (limite atteinte)" : ""}
               </span>
             </>
           )}

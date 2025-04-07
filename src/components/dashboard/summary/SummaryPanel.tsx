@@ -1,18 +1,17 @@
 
-import React from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { useSummaryPanel } from '@/hooks/useSummaryPanel';
-import UserBalanceCard from './userBalanceCard';
-import WelcomeMessage from './WelcomeMessage';
-import ReferralLink from './ReferralLink';
+import React, { useState, useEffect, useRef } from 'react';
 import ActionButtons from './ActionButtons';
+import UserBalanceCard from './userBalanceCard/UserBalanceCard';
+import ReferralCard from './ReferralCard';
+import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
+import { calculateLimitPercentage } from '@/utils/balance/limitCalculations';
 
 interface SummaryPanelProps {
   balance: number;
   referralLink: string;
   isStartingSession: boolean;
   handleStartSession: () => void;
-  handleWithdrawal?: () => void; 
+  handleWithdrawal?: () => void;
   isNewUser?: boolean;
   subscription: string;
   dailySessionCount?: number;
@@ -38,70 +37,68 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
   lastSessionTimestamp,
   isBotActive = true
 }) => {
-  const {
-    displayBalance,
-    isButtonDisabled,
-    isWithdrawing,
-    effectiveSubscription,
-    effectiveDailyLimit,
-    onWithdraw,
-    onBoostClick,
-    calculateRemainingSessions,
-    getCurrentlyCanStartSession
-  } = useSummaryPanel({
-    balance,
-    subscription,
-    handleWithdrawal,
-    handleStartSession,
-    referralCount
-  });
-
-  // Calculate best way to display remaining sessions
-  const remainingSessions = calculateRemainingSessions(subscription, dailySessionCount);
-  const currentlyCanStartSession = getCurrentlyCanStartSession(canStartSession);
+  // Calcul du forfait effectif (tenant compte des essais, etc.)
+  const effectiveSubscription = getEffectiveSubscription(subscription);
+  const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  
+  // Calcul du pourcentage de la limite atteint
+  const limitPercentage = calculateLimitPercentage(balance, dailyLimit);
+  
+  // Référence au bouton (pour dévérouillage éventuel)
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  
+  // Vérifier si le solde dépasse la limite journalière
+  const limitReached = balance >= dailyLimit;
+  
+  // État pour suivre si le retrait est en cours
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  
+  // Gérer le retrait en capturant l'état transitoire
+  const handleWithdrawalWithState = () => {
+    setIsWithdrawing(true);
+    
+    // Appeler le handler original s'il existe
+    if (handleWithdrawal) {
+      handleWithdrawal();
+    }
+    
+    // Réinitialiser l'état après un délai
+    setTimeout(() => {
+      setIsWithdrawing(false);
+    }, 3000);
+  };
 
   return (
-    <Card className="mb-6 shadow-md border-slate-200 dark:border-slate-700">
-      <CardHeader className="pb-4">
-        <WelcomeMessage 
-          isNewUser={isNewUser} 
-          subscription={effectiveSubscription}
-          dailySessionCount={dailySessionCount} 
-        />
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          <UserBalanceCard
-            displayBalance={displayBalance}
-            subscription={effectiveSubscription}
-            dailyLimit={effectiveDailyLimit}
-            referralBonus={referralBonus}
-            lastSessionTimestamp={lastSessionTimestamp}
-            sessionsDisplay={String(remainingSessions)}
-            isBotActive={isBotActive}
-          />
-          
-          <ActionButtons
-            canStartSession={currentlyCanStartSession}
-            isButtonDisabled={isButtonDisabled}
-            isStartingSession={isStartingSession}
-            isWithdrawing={isWithdrawing}
-            subscription={effectiveSubscription}
-            currentBalance={displayBalance}
-            dailyLimit={effectiveDailyLimit}
-            onBoostClick={() => onBoostClick(canStartSession)}
-            onWithdraw={onWithdraw}
-            isBotActive={isBotActive}
-          />
-          
-          <ReferralLink 
-            referralLink={referralLink} 
-            subscription={effectiveSubscription}
-            referralCount={referralCount}
-          />
-        </div>
-      </CardContent>
-    </Card>
+    <div className="summary-panel space-y-4">
+      <UserBalanceCard 
+        displayBalance={balance}
+        subscription={subscription}
+        dailyLimit={dailyLimit}
+        limitPercentage={limitPercentage}
+        referralCount={referralCount}
+        referralBonus={referralBonus}
+        botActive={isBotActive}
+      />
+      
+      <ActionButtons
+        canStartSession={canStartSession}
+        isButtonDisabled={isStartingSession || false}
+        isStartingSession={isStartingSession || false}
+        isWithdrawing={isWithdrawing}
+        subscription={subscription}
+        currentBalance={balance}
+        dailyLimit={dailyLimit}
+        onBoostClick={handleStartSession}
+        onWithdraw={handleWithdrawalWithState}
+        isBotActive={isBotActive}
+      />
+      
+      <ReferralCard 
+        referralLink={referralLink}
+        referralCount={referralCount}
+        subscription={subscription}
+      />
+    </div>
   );
 };
 
