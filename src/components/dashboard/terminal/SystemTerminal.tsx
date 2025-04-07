@@ -1,160 +1,118 @@
 
-import React, { useState, useEffect } from 'react';
-import { SystemInfoGrid } from './SystemInfo';
-import { SystemProgressBar } from './SystemProgressBar';
-import { SessionCountdown } from './SessionCountdown';
-import { NewUserGuide } from './NewUserGuide';
-import { FeedbackManager } from './FeedbackManager';
-import { ProTrialManager } from './ProTrialManager';
-import { TerminalDisplay } from './TerminalDisplay';
-import { SystemIndicators } from './SystemIndicators';
-import { useSessionCountdown } from '@/hooks/useSessionCountdown';
-import { useProTrial } from '@/hooks/useProTrial';
-import { useTerminalAnalysis } from '@/hooks/useTerminalAnalysis';
-import { getEffectiveSubscription, SUBSCRIPTION_LIMITS } from '@/utils/subscription/subscriptionStatus';
+import React, { useEffect, useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Bot, BotOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import TerminalOutput from './TerminalOutput';
 
 interface SystemTerminalProps {
-  isNewUser: boolean;
-  dailyLimit: number;
-  subscription: string;
-  remainingSessions: number | string;
-  referralCount: number;
-  displayBalance: number;
+  isNewUser?: boolean;
+  dailyLimit?: number;
+  subscription?: string;
+  remainingSessions?: number;
+  referralCount?: number;
+  displayBalance?: number;
   referralBonus?: number;
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
 }
 
 const SystemTerminal: React.FC<SystemTerminalProps> = ({
-  isNewUser,
-  dailyLimit,
-  subscription,
-  remainingSessions,
-  referralCount,
-  displayBalance,
+  isNewUser = false,
+  dailyLimit = 0.5,
+  subscription = 'freemium',
+  remainingSessions = 0,
+  referralCount = 0,
+  displayBalance = 0,
   referralBonus = 0,
   lastSessionTimestamp,
   isBotActive = true
 }) => {
-  const [showProTrialInfo, setShowProTrialInfo] = useState(isNewUser);
-  const [effectiveSubscription, setEffectiveSubscription] = useState(subscription);
-  const [effectiveLimit, setEffectiveLimit] = useState(dailyLimit);
-  const [botStatus, setBotStatus] = useState(isBotActive);
+  // State pour gérer l'état visuel du terminal
+  const [animationActive, setAnimationActive] = useState(false);
+  const [scrollToBottom, setScrollToBottom] = useState(false);
   
-  // Convert remainingSessions to number safely for countdown
-  const remainingSessionsNumber = typeof remainingSessions === 'number' 
-    ? remainingSessions 
-    : parseInt(remainingSessions as string, 10) || 0;
-  
-  const { timeRemaining, isCountingDown } = useSessionCountdown(
-    1 - remainingSessionsNumber, // Convert to proper format
-    subscription,
-    lastSessionTimestamp
-  );
-  
-  const { isPromoActivated, tempProEnabled, activateProTrial } = useProTrial(subscription);
-  
-  const {
-    showAnalysis,
-    terminalLines,
-    analysisComplete,
-    limitReached,
-    countdownTime
-  } = useTerminalAnalysis();
-  
+  // Animer le terminal en réponse aux événements
   useEffect(() => {
-    const effectiveSub = getEffectiveSubscription(subscription);
-    setEffectiveSubscription(effectiveSub);
-    
-    const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    setEffectiveLimit(limit);
-    
-    // Update bot status based on passed prop and daily limit check
-    // Le bot est inactif si la limite quotidienne est atteinte
-    setBotStatus(isBotActive && displayBalance < limit);
-  }, [subscription, displayBalance, isBotActive]);
-  
-  // Listen for limit-reached event
-  useEffect(() => {
-    const handleLimitReached = () => {
-      setBotStatus(false);
+    const handleTerminalUpdate = () => {
+      setAnimationActive(true);
+      setTimeout(() => {
+        setAnimationActive(false);
+      }, 1500);
+      setScrollToBottom(true);
     };
     
-    window.addEventListener('dashboard:limit-reached', handleLimitReached);
+    window.addEventListener('terminal:update', handleTerminalUpdate);
+    window.addEventListener('session:start', handleTerminalUpdate);
     
     return () => {
-      window.removeEventListener('dashboard:limit-reached', handleLimitReached);
+      window.removeEventListener('terminal:update', handleTerminalUpdate);
+      window.removeEventListener('session:start', handleTerminalUpdate);
     };
   }, []);
-
-  // Calculer le pourcentage de la limite quotidienne atteinte
-  const limitPercentage = Math.min(100, (displayBalance / effectiveLimit) * 100);
   
-  // Trigger limit reached event when balance reaches daily limit
-  useEffect(() => {
-    if (displayBalance >= effectiveLimit && botStatus) {
-      window.dispatchEvent(new CustomEvent('dashboard:limit-reached', { 
-        detail: { 
-          subscription: effectiveSubscription
-        }
-      }));
-      setBotStatus(false);
+  // Retourne false si le temps écoulé est < 12h
+  const shouldShowTimestamp = (lastTimestamp?: string): boolean => {
+    if (!lastTimestamp) return false;
+    
+    try {
+      const timestamp = new Date(lastTimestamp);
+      const now = new Date();
+      const diffHours = (now.getTime() - timestamp.getTime()) / (1000 * 60 * 60);
+      
+      return diffHours <= 12;
+    } catch (error) {
+      console.error("Error parsing timestamp:", error);
+      return false;
     }
-  }, [displayBalance, effectiveLimit, effectiveSubscription, botStatus]);
-
-  const handleActivateProTrial = () => {
-    activateProTrial(subscription);
   };
-
+  
   return (
-    <div className="w-full lg:w-1/2">
-      <div className="bg-gradient-to-br from-[#1A1F2C] to-[#1e3a5f] rounded-xl shadow-lg border border-[#2d5f8a]/30 p-5 text-white">
-        <FeedbackManager isNewUser={isNewUser} />
-        
-        <SystemProgressBar 
-          displayBalance={displayBalance} 
-          dailyLimit={effectiveLimit} 
-          limitPercentage={limitPercentage}
-          subscription={subscription}
-          botActive={botStatus}
-        />
-        
-        {isCountingDown && !limitReached && (
-          <SessionCountdown timeRemaining={timeRemaining} />
-        )}
-        
-        <TerminalDisplay 
-          showAnalysis={showAnalysis}
-          terminalLines={terminalLines}
-          analysisComplete={analysisComplete}
-          limitReached={limitReached || !botStatus}
-          countdownTime={countdownTime ? parseInt(countdownTime.toString(), 10) : 0}
-        />
-        
-        {!showAnalysis && (
-          <>
-            <SystemInfoGrid 
-              subscription={subscription}
-              tempProEnabled={tempProEnabled}
-              dailyLimit={effectiveLimit}
-              remainingSessions={remainingSessions}
-              referralBonus={referralBonus}
-              botActive={botStatus}
+    <Card className={cn(
+      "min-h-[400px] shadow-md border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-200",
+      animationActive && "border-blue-400 dark:border-blue-500"
+    )}>
+      <div className="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+        <div className="flex items-center">
+          <div className="mr-2">
+            {isBotActive ? (
+              <Bot className="h-5 w-5 text-blue-500" />
+            ) : (
+              <BotOff className="h-5 w-5 text-red-500" />
+            )}
+          </div>
+          <h2 className="font-medium text-slate-800 dark:text-slate-200">
+            Système {isBotActive ? 'Actif' : 'Inactif'}
+          </h2>
+        </div>
+        <div className="flex space-x-1">
+          {Array(3).fill(0).map((_, i) => (
+            <div 
+              key={i}
+              className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"
             />
-            
-            {isNewUser && <NewUserGuide />}
-            
-            <ProTrialManager 
-              subscription={subscription}
-              isPromoActivated={isPromoActivated}
-              activateProTrial={handleActivateProTrial}
-            />
-          </>
-        )}
-        
-        <SystemIndicators showAnalysis={showAnalysis} botActive={botStatus} />
+          ))}
+        </div>
       </div>
-    </div>
+      
+      <div className="bg-black text-green-500 font-mono text-xs p-4 h-[350px] overflow-auto">
+        <TerminalOutput 
+          isNewUser={isNewUser}
+          subscription={subscription}
+          remainingSessions={remainingSessions}
+          referralCount={referralCount}
+          dailyLimit={dailyLimit}
+          displayBalance={displayBalance}
+          referralBonus={referralBonus}
+          scrollToBottom={scrollToBottom}
+          lastSessionTimestamp={
+            shouldShowTimestamp(lastSessionTimestamp) ? 
+            lastSessionTimestamp : undefined
+          }
+          isBotActive={isBotActive}
+        />
+      </div>
+    </Card>
   );
 };
 
