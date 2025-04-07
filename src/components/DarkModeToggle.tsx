@@ -1,57 +1,11 @@
 
-import React, { useEffect, useState } from 'react';
-import { useTheme } from 'next-themes';
-import { Moon, Sun } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
+import React from 'react';
+// Ce composant n'est plus nécessaire car nous n'avons plus besoin d'un toggle
+// Il est remplacé par une div vide pour éviter d'avoir à modifier tous les fichiers qui l'importent
 
 const DarkModeToggle = () => {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Use useEffect to avoid hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Handle toggle change
-  const handleToggle = (checked: boolean) => {
-    setTheme(checked ? 'dark' : 'light');
-  };
-
-  // Don't render anything until component is mounted to avoid hydration mismatch
-  if (!mounted) return null;
-
-  const isDarkMode = theme === 'dark';
-
-  return (
-    <div className="flex items-center gap-2">
-      <Sun 
-        size={18} 
-        className={`transition-colors duration-300 ${
-          isDarkMode 
-            ? 'text-gray-500' 
-            : 'text-yellow-500 drop-shadow-sm'
-        }`} 
-      />
-      <Switch
-        checked={isDarkMode}
-        onCheckedChange={handleToggle}
-        className={`${
-          isDarkMode 
-            ? 'data-[state=checked]:bg-[#4CAF50] data-[state=unchecked]:bg-gray-700' 
-            : 'data-[state=checked]:bg-[#4CAF50] data-[state=unchecked]:bg-gray-200'
-        } transition-colors duration-300`}
-      />
-      <Moon 
-        size={18} 
-        className={`transition-colors duration-300 ${
-          isDarkMode 
-            ? 'text-[#4CAF50] drop-shadow-sm' 
-            : 'text-gray-400'
-        }`} 
-      />
-    </div>
-  );
+  // Ne fait rien, retourne null
+  return null;
 };
 
 export default DarkModeToggle;

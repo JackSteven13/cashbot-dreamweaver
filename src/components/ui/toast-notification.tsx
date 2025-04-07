@@ -2,13 +2,12 @@
 import * as React from "react";
 import { Toaster as SonnerToaster } from "sonner";
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
 
 export interface ToastNotificationProps {
   position?: "top-right" | "top-center" | "top-left" | "bottom-right" | "bottom-center" | "bottom-left";
   className?: string;
   toastClassName?: string;
-  theme?: "light" | "dark" | "system";
+  theme?: "dark"; // Modifier le type pour n'accepter que "dark"
   closeButton?: boolean;
   offset?: string | number;
   duration?: number;
@@ -20,29 +19,20 @@ export function ToastNotification({
   position = "top-center",
   className,
   toastClassName,
-  theme: toastTheme = "system",
+  theme = "dark", // Toujours en mode sombre
   closeButton = true,
   offset = "1.5rem",
   duration = 5000,
   richColors = true,
   expandByDefault = true,
 }: ToastNotificationProps) {
-  const { theme: appTheme } = useTheme();
-  
-  // Determine the actual theme to use
-  const effectiveTheme = toastTheme === "system" 
-    ? appTheme 
-    : toastTheme;
-
   return (
     <SonnerToaster
       position={position}
       toastOptions={{
         className: cn(
           "group toast-notification font-medium transition-colors duration-300",
-          effectiveTheme === "dark" 
-            ? "border border-blue-500/30 bg-slate-900/95 text-white shadow-lg" 
-            : "border border-slate-200 bg-white text-slate-900 shadow-md",
+          "border border-blue-500/30 bg-slate-900/95 text-white shadow-lg",
           toastClassName
         ),
         style: {
@@ -56,11 +46,11 @@ export function ToastNotification({
         duration: duration,
         descriptionClassName: cn(
           "text-base break-words mt-1",
-          effectiveTheme === "dark" ? "text-gray-200" : "text-gray-600"
+          "text-gray-200"
         ),
       }}
       className={cn("toaster group z-[9999]", className)}
-      theme={effectiveTheme}
+      theme="dark"
       closeButton={closeButton}
       richColors={richColors}
       offset={offset}

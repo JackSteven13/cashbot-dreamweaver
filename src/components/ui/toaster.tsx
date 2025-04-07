@@ -29,7 +29,7 @@ export function Toaster() {
             <div className="grid gap-1.5 w-full">
               {title && <ToastTitle className="text-base font-semibold sm:text-lg text-white">{title}</ToastTitle>}
               {description && (
-                <ToastDescription className="text-sm sm:text-base break-words text-gray-200 dark:text-gray-200 w-full opacity-95">
+                <ToastDescription className="text-sm sm:text-base break-words text-gray-200 w-full opacity-95">
                   {description}
                 </ToastDescription>
               )}

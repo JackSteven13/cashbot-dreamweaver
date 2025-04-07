@@ -6,45 +6,23 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { type ThemeProviderProps } from "next-themes/dist/types";
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
-  // Ajouter un effet pour appliquer des classes supplémentaires au body
+  // Force le mode sombre dès le chargement
   useEffect(() => {
-    // Observer les changements d'attributs sur documentElement (pour détecter le changement de theme)
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (
-          mutation.type === 'attributes' && 
-          mutation.attributeName === 'data-theme'
-        ) {
-          const isDarkMode = document.documentElement.classList.contains('dark');
-          
-          if (isDarkMode) {
-            document.body.classList.add('dark-theme-body');
-            document.body.classList.remove('light-theme-body');
-          } else {
-            document.body.classList.add('light-theme-body');
-            document.body.classList.remove('dark-theme-body');
-          }
-        }
-      }
-    });
-
-    observer.observe(document.documentElement, { attributes: true });
-
-    // Initial setup
-    if (document.documentElement.classList.contains('dark')) {
-      document.body.classList.add('dark-theme-body');
-    } else {
-      document.body.classList.add('light-theme-body');
-    }
-
-    return () => observer.disconnect();
+    // Appliquer directement les classes dark au document
+    document.documentElement.classList.add('dark');
+    document.body.classList.add('dark-theme-body');
+    document.body.classList.remove('light-theme-body');
+    
+    // Ajouter un attribut data-theme pour la cohérence
+    document.documentElement.setAttribute('data-theme', 'dark');
   }, []);
 
   return (
     <NextThemesProvider 
       attribute="class"
-      defaultTheme={props.defaultTheme || "system"}
-      enableSystem
+      defaultTheme="dark"
+      forcedTheme="dark" // Forcer le thème sombre
+      enableSystem={false} // Désactiver la détection système
       disableTransitionOnChange={false}
       {...props}
     >

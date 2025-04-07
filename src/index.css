@@ -1,42 +1,10 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
  
 @layer base {
+  /* Configuration pour le mode sombre uniquement */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
- 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
- 
-    --primary: 142 71% 45%;
-    --primary-foreground: 210 40% 98%;
- 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
- 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
- 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
- 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
- 
-    --radius: 0.5rem;
-  }
- 
-  .dark {
     --background: 222.2 47% 11%;
     --foreground: 210 40% 98%;
  
@@ -71,23 +39,20 @@
   * {
     @apply border-border;
   }
+  
+  /* Forcer le thème sombre pour tout le site */
   body {
-    @apply bg-background text-foreground transition-colors duration-300;
+    @apply bg-slate-900 text-slate-100;
   }
-
-  /* Classes spécifiques pour les modes clair/sombre */
-  body.light-theme-body {
-    background-color: #ffffff;
-    color: #333333;
-  }
-
+  
+  /* Supprimer les classes spécifiques pour les modes clair/sombre */
   body.dark-theme-body {
     background-color: #121212;
     color: #e0e0e0;
   }
 }
 
-/* Toast notifications styles for mobile */
+/* Toast notifications styles */
 .toast-notification {
   width: 100% !important;
   max-width: 340px !important;
@@ -98,14 +63,7 @@
   border: 1px solid rgba(100, 116, 139, 0.2) !important;
 }
 
-/* Light mode toast */
-:root:not(.dark) .toast-notification {
-  background-color: rgba(255, 255, 255, 0.97) !important;
-  color: #333 !important;
-  border: 1px solid rgba(226, 232, 240, 1) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
+/* Style pour les notifications mobiles */
 .mobile-toast {
   position: fixed;
   z-index: 1000;
@@ -120,13 +78,6 @@
   padding: 0.75rem 1rem;
   background-color: rgba(30, 41, 59, 0.97) !important;
   color: #fff !important;
-}
-
-/* Light mode mobile toast */
-:root:not(.dark) .mobile-toast {
-  background-color: rgba(255, 255, 255, 0.97) !important;
-  color: #333 !important;
-  border: 1px solid rgba(226, 232, 240, 1);
 }
 
 .toast-viewport {
