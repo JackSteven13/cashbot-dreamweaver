@@ -72,5 +72,4 @@ export const addTransaction = async (
   }
 };
 
-// Re-export the addTransaction function to ensure it's available when imported from this file
-export { addTransaction };
+// Removed the duplicate export here to fix the error
