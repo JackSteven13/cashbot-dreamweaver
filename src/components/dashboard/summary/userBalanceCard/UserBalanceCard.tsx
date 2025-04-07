@@ -31,7 +31,8 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   
   // Calculer les valeurs dérivées pour l'affichage
   const totalGenerated = useMemo(() => {
-    return Math.max(displayBalance * 1.2, displayBalance + 0.5);
+    // Le total généré est maintenant égal au solde affiché
+    return displayBalance;
   }, [displayBalance]);
   
   // Temporairement découpler le solde de l'animation (pour éviter les erreurs visuelles)
