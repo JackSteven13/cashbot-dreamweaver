@@ -13,6 +13,7 @@ interface BalanceState {
   dailyGains: number;
   isSyncing: boolean;
   minDisplayBalance: number; // Valeur minimale à afficher pendant les transitions
+  userId: string | null; // Ajout du userId pour identifier l'utilisateur
 }
 
 // État global initial
@@ -23,7 +24,8 @@ const initialState: BalanceState = {
   lastTransactionTime: new Date().toISOString(),
   dailyGains: 0,
   isSyncing: false,
-  minDisplayBalance: 0
+  minDisplayBalance: 0,
+  userId: null
 };
 
 // Singleton pour la gestion centrale du solde
@@ -36,6 +38,8 @@ class BalanceManager {
   private isInSession: boolean = false;
   
   private constructor() {
+    // Récupérer l'ID de l'utilisateur actuel depuis la session
+    this.refreshUserIdFromSession();
     this.loadFromStorage();
     this.setupEventListeners();
   }
@@ -48,58 +52,87 @@ class BalanceManager {
     return BalanceManager.instance;
   }
   
+  // Actualiser l'ID utilisateur depuis la session
+  private async refreshUserIdFromSession(): Promise<void> {
+    try {
+      // Importer de façon dynamique pour éviter les dépendances circulaires
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase.auth.getSession();
+      
+      if (data?.session?.user?.id) {
+        if (this.state.userId !== data.session.user.id) {
+          console.log(`[BalanceManager] UserId mis à jour: ${data.session.user.id}`);
+          this.state.userId = data.session.user.id;
+          // Recharger les données avec le nouvel ID utilisateur
+          this.loadFromStorage();
+        }
+      } else {
+        console.log('[BalanceManager] Aucun utilisateur connecté');
+      }
+    } catch (error) {
+      console.error('[BalanceManager] Erreur lors de la récupération de session:', error);
+    }
+  }
+  
   // Initialiser avec les valeurs de la base de données
   public initialize(dbBalance: number): void {
-    console.log(`[BalanceManager] Initializing with DB balance: ${dbBalance}, current highest: ${this.state.highestReachedBalance}`);
-    
-    // PROTECTION CRITIQUE: Ne jamais réduire à une valeur inférieure au maximum historique
-    const highestStoredBalance = this.getMaxStoredBalance();
-    
-    if (this.isInitialized && dbBalance <= highestStoredBalance) {
-      console.log(`[BalanceManager] Already initialized with higher balance: ${highestStoredBalance}. Ignoring ${dbBalance}`);
+    this.refreshUserIdFromSession().then(() => {
+      console.log(`[BalanceManager] Initializing with DB balance: ${dbBalance}, current highest: ${this.state.highestReachedBalance}`);
       
-      // Si la valeur de la BD est inférieure, forcer la synchronisation avec notre valeur plus élevée
-      if (dbBalance < highestStoredBalance) {
-        console.log(`[BalanceManager] DB value (${dbBalance}) is lower than stored max (${highestStoredBalance}). Forcing sync...`);
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('balance:force-sync', { 
-            detail: { balance: highestStoredBalance }
-          }));
-        }, 1000);
+      // PROTECTION CRITIQUE: Ne jamais réduire à une valeur inférieure au maximum historique
+      const highestStoredBalance = this.getMaxStoredBalance();
+      
+      if (this.isInitialized && dbBalance <= highestStoredBalance) {
+        console.log(`[BalanceManager] Already initialized with higher balance: ${highestStoredBalance}. Ignoring ${dbBalance}`);
+        
+        // Si la valeur de la BD est inférieure, forcer la synchronisation avec notre valeur plus élevée
+        if (dbBalance < highestStoredBalance) {
+          console.log(`[BalanceManager] DB value (${dbBalance}) is lower than stored max (${highestStoredBalance}). Forcing sync...`);
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('balance:force-sync', { 
+              detail: { balance: highestStoredBalance }
+            }));
+          }, 1000);
+        }
+        
+        return;
       }
       
-      return;
-    }
-    
-    // Ne jamais réduire la valeur minimale d'affichage
-    this.state.minDisplayBalance = Math.max(this.state.minDisplayBalance, dbBalance, highestStoredBalance);
-    
-    // Si la valeur de la BD est supérieure à notre maximum stocké, utiliser celle-ci
-    if (dbBalance > highestStoredBalance) {
-      this.state.lastKnownBalance = dbBalance;
-      this.state.highestReachedBalance = dbBalance;
-    } else {
-      // Sinon, conserver notre valeur maximale en mémoire
-      this.state.lastKnownBalance = highestStoredBalance;
-      this.state.highestReachedBalance = highestStoredBalance;
-    }
-    
-    this.saveToStorage();
-    this.isInitialized = true;
-    this.notifySubscribers();
-    
-    // Traiter les mises à jour en attente
-    if (this.pendingUpdates.length > 0) {
-      console.log(`[BalanceManager] Processing ${this.pendingUpdates.length} pending updates`);
-      this.pendingUpdates.forEach(amount => {
-        this.updateBalance(amount);
-      });
-      this.pendingUpdates = [];
-    }
+      // Ne jamais réduire la valeur minimale d'affichage
+      this.state.minDisplayBalance = Math.max(this.state.minDisplayBalance, dbBalance, highestStoredBalance);
+      
+      // Si la valeur de la BD est supérieure à notre maximum stocké, utiliser celle-ci
+      if (dbBalance > highestStoredBalance) {
+        this.state.lastKnownBalance = dbBalance;
+        this.state.highestReachedBalance = dbBalance;
+      } else {
+        // Sinon, conserver notre valeur maximale en mémoire
+        this.state.lastKnownBalance = highestStoredBalance;
+        this.state.highestReachedBalance = highestStoredBalance;
+      }
+      
+      this.saveToStorage();
+      this.isInitialized = true;
+      this.notifySubscribers();
+      
+      // Traiter les mises à jour en attente
+      if (this.pendingUpdates.length > 0) {
+        console.log(`[BalanceManager] Processing ${this.pendingUpdates.length} pending updates`);
+        this.pendingUpdates.forEach(amount => {
+          this.updateBalance(amount);
+        });
+        this.pendingUpdates = [];
+      }
+    });
   }
   
   // Récupère la valeur maximale du solde à partir de toutes les sources disponibles
   private getMaxStoredBalance(): number {
+    if (!this.state.userId) {
+      console.warn('[BalanceManager] Tentative de récupérer le solde sans ID utilisateur');
+      return 0;
+    }
+    
     // Récupérer toutes les valeurs possibles
     const currentHighest = this.state.highestReachedBalance || 0;
     const currentBalance = this.state.lastKnownBalance || 0;
@@ -108,9 +141,16 @@ class BalanceManager {
     let localStorageMax = 0;
     
     try {
-      const storedHighest = localStorage.getItem('highestBalance');
-      const storedCurrent = localStorage.getItem('currentBalance');
-      const storedLastKnown = localStorage.getItem('lastKnownBalance');
+      // Utiliser des clés avec l'ID utilisateur
+      const userId = this.state.userId;
+      const userBalanceKey = `user_balance_${userId}`;
+      const userHighestBalanceKey = `highest_balance_${userId}`;
+      const userLastKnownBalanceKey = `last_balance_${userId}`;
+      
+      // Aussi vérifier les anciennes clés génériques pour la compatibilité
+      const storedHighest = localStorage.getItem(userHighestBalanceKey) || localStorage.getItem('highestBalance');
+      const storedCurrent = localStorage.getItem(userBalanceKey) || localStorage.getItem('currentBalance');
+      const storedLastKnown = localStorage.getItem(userLastKnownBalanceKey) || localStorage.getItem('lastKnownBalance');
       
       const values = [
         storedHighest ? parseFloat(storedHighest) : 0,
@@ -263,7 +303,7 @@ class BalanceManager {
   // Réinitialiser totalement le solde (utilisé après un retrait réussi)
   public resetBalance(): void {
     console.log('[BalanceManager] Resetting balance to 0');
-    this.state = {...initialState};
+    this.state = {...initialState, userId: this.state.userId};
     this.saveToStorage();
     this.notifySubscribers();
     
@@ -284,15 +324,36 @@ class BalanceManager {
   
   // Persister l'état actuel dans localStorage
   private saveToStorage(): void {
+    if (!this.state.userId) {
+      console.warn('[BalanceManager] Tentative de sauvegarder sans ID utilisateur');
+      return;
+    }
+    
     try {
-      localStorage.setItem('balanceState', JSON.stringify(this.state));
+      // Utiliser des clés avec l'ID utilisateur
+      const userId = this.state.userId;
+      const userBalanceKey = `user_balance_${userId}`;
+      const userHighestBalanceKey = `highest_balance_${userId}`;
+      const userLastKnownBalanceKey = `last_balance_${userId}`;
+      const userMinDisplayBalanceKey = `min_display_${userId}`;
+      const userStateKey = `balance_state_${userId}`;
       
-      // Toujours sauvegarder séparément pour redondance et compatibilité
-      localStorage.setItem('currentBalance', String(this.state.lastKnownBalance));
-      localStorage.setItem('highestBalance', String(this.state.highestReachedBalance));
-      localStorage.setItem('lastKnownBalance', String(this.state.lastKnownBalance));
-      localStorage.setItem('minDisplayBalance', String(this.state.minDisplayBalance));
-      localStorage.setItem('balanceLastSaved', new Date().toISOString());
+      // Sauvegarder l'état complet
+      localStorage.setItem(userStateKey, JSON.stringify(this.state));
+      
+      // Sauvegarder également les valeurs individuelles pour redondance
+      localStorage.setItem(userBalanceKey, String(this.state.lastKnownBalance));
+      localStorage.setItem(userHighestBalanceKey, String(this.state.highestReachedBalance));
+      localStorage.setItem(userLastKnownBalanceKey, String(this.state.lastKnownBalance));
+      localStorage.setItem(userMinDisplayBalanceKey, String(this.state.minDisplayBalance));
+      localStorage.setItem(`balance_last_saved_${userId}`, new Date().toISOString());
+      
+      // Supprimer les anciennes clés génériques pour éviter les confusions
+      localStorage.removeItem('balanceState');
+      localStorage.removeItem('currentBalance');
+      localStorage.removeItem('highestBalance');
+      localStorage.removeItem('lastKnownBalance');
+      localStorage.removeItem('minDisplayBalance');
     } catch (e) {
       console.error('[BalanceManager] Failed to save state to localStorage:', e);
     }
@@ -300,20 +361,33 @@ class BalanceManager {
   
   // Charger l'état depuis localStorage
   private loadFromStorage(): void {
+    if (!this.state.userId) {
+      console.warn('[BalanceManager] Tentative de charger sans ID utilisateur');
+      return;
+    }
+    
     try {
+      // Utiliser des clés avec l'ID utilisateur
+      const userId = this.state.userId;
+      const userStateKey = `balance_state_${userId}`;
+      const userBalanceKey = `user_balance_${userId}`;
+      const userHighestBalanceKey = `highest_balance_${userId}`;
+      const userLastKnownBalanceKey = `last_balance_${userId}`;
+      const userMinDisplayBalanceKey = `min_display_${userId}`;
+      
       // Essayer de charger l'état complet
-      const savedState = localStorage.getItem('balanceState');
+      const savedState = localStorage.getItem(userStateKey);
       
       if (savedState) {
         const parsedState = JSON.parse(savedState);
-        this.state = { ...this.state, ...parsedState };
-        console.log('[BalanceManager] Loaded state from storage:', this.state);
+        this.state = { ...this.state, ...parsedState, userId: this.state.userId };
+        console.log(`[BalanceManager] Loaded state for user ${userId}:`, this.state);
       } else {
-        // Compatibilité avec l'ancien système
-        const storedHighestBalance = localStorage.getItem('highestBalance');
-        const storedCurrentBalance = localStorage.getItem('currentBalance');
-        const storedLastKnownBalance = localStorage.getItem('lastKnownBalance');
-        const storedMinDisplayBalance = localStorage.getItem('minDisplayBalance');
+        // Compatibilité avec l'ancien système et valeurs individuelles
+        const storedHighestBalance = localStorage.getItem(userHighestBalanceKey) || localStorage.getItem('highestBalance');
+        const storedCurrentBalance = localStorage.getItem(userBalanceKey) || localStorage.getItem('currentBalance');
+        const storedLastKnownBalance = localStorage.getItem(userLastKnownBalanceKey) || localStorage.getItem('lastKnownBalance');
+        const storedMinDisplayBalance = localStorage.getItem(userMinDisplayBalanceKey) || localStorage.getItem('minDisplayBalance');
         
         if (storedHighestBalance) {
           this.state.highestReachedBalance = parseFloat(storedHighestBalance);
@@ -343,7 +417,7 @@ class BalanceManager {
             this.state.minDisplayBalance = maxBalance;
           }
           
-          console.log('[BalanceManager] Loaded from legacy storage, balance:', maxBalance);
+          console.log(`[BalanceManager] Loaded from legacy storage for user ${userId}, balance:`, maxBalance);
         }
       }
     } catch (e) {
@@ -403,6 +477,11 @@ class BalanceManager {
       this.endSession();
     });
     
+    // Actualiser l'ID utilisateur lorsque le statut d'authentification change
+    window.addEventListener('auth:state-change', () => {
+      this.refreshUserIdFromSession();
+    });
+    
     // Nouvelle vérification périodique pour garantir la cohérence
     setInterval(() => {
       // Vérifier les inconsistances entre le localStorage et la mémoire
@@ -420,6 +499,9 @@ class BalanceManager {
         this.notifySubscribers();
         this.broadcastBalanceUpdate(0);
       }
+      
+      // Actualiser périodiquement l'ID utilisateur
+      this.refreshUserIdFromSession();
     }, 30000); // Vérifier toutes les 30 secondes
   }
   
@@ -430,7 +512,8 @@ class BalanceManager {
         currentBalance: this.state.lastKnownBalance,
         highestBalance: this.state.highestReachedBalance,
         amount: amount,
-        minDisplayBalance: this.state.minDisplayBalance
+        minDisplayBalance: this.state.minDisplayBalance,
+        userId: this.state.userId
       }
     }));
   }
