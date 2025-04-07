@@ -33,17 +33,23 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   
   // Ref pour la fonction d'animation
   const balanceRef = useRef<HTMLDivElement>(null);
+  const initialBalanceValue = useRef(displayBalance);
   
   // Au montage, synchroniser avec le gestionnaire de solde
   useEffect(() => {
+    initialBalanceValue.current = displayBalance;
+    
     // S'abonner aux mises à jour du gestionnaire de solde
     const unsubscribe = balanceManager.subscribe((state) => {
-      // Ne mettre à jour que si le solde est supérieur
-      if (state.lastKnownBalance > localDisplayBalance) {
+      // Ne mettre à jour que si le solde est différent
+      if (state.lastKnownBalance !== localDisplayBalance) {
+        // Pour éviter le flash à 0, ne jamais descendre en dessous de la valeur initiale
+        const newBalance = Math.max(state.lastKnownBalance, initialBalanceValue.current);
+        
         // Animer doucement vers la nouvelle valeur
         animateBalanceUpdate(
           localDisplayBalance, 
-          state.lastKnownBalance, 
+          newBalance, 
           800, 
           (value) => setLocalDisplayBalance(value)
         );
@@ -60,12 +66,14 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     };
   }, []);
   
-  // N'accepter les mises à jour de props displayBalance que si supérieures
+  // N'accepter les mises à jour de props displayBalance que si différentes
   useEffect(() => {
-    if (displayBalance > localDisplayBalance) {
+    if (displayBalance !== localDisplayBalance) {
+      // Ne jamais descendre en dessous de la valeur initiale pour éviter le flash à 0
+      const targetBalance = Math.max(displayBalance, initialBalanceValue.current);
       animateBalanceUpdate(
         localDisplayBalance, 
-        displayBalance, 
+        targetBalance, 
         800, 
         (value) => setLocalDisplayBalance(value)
       );
@@ -77,7 +85,6 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
       if (typeof isActive === 'boolean') {
-        console.log(`[BalanceDisplay] Received bot status update: ${isActive ? 'active' : 'inactive'}`);
         setLocalBotActive(isActive);
       }
     };
@@ -88,11 +95,12 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       const amount = event.detail?.amount;
       
       if (typeof currentBalance === 'number' && currentBalance > 0) {
-        if (currentBalance > localDisplayBalance) {
-          console.log(`[BalanceDisplay] Consistent update: ${localDisplayBalance} -> ${currentBalance}`);
+        // Ne jamais descendre en dessous de la valeur initiale
+        const validBalance = Math.max(currentBalance, initialBalanceValue.current);
+        if (validBalance !== localDisplayBalance) {
           animateBalanceUpdate(
             localDisplayBalance, 
-            currentBalance, 
+            validBalance, 
             800, 
             (value) => setLocalDisplayBalance(value)
           );
@@ -100,8 +108,15 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       }
     };
     
+    // Écouter les événements de début de session pour protéger contre les réinitialisations
+    const handleSessionStart = () => {
+      // Sauvegarder l'affichage actuel pendant la session
+      initialBalanceValue.current = Math.max(initialBalanceValue.current, localDisplayBalance);
+    };
+    
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('balance:consistent-update' as any, handleConsistentBalanceUpdate);
+    window.addEventListener('session:start' as any, handleSessionStart);
     
     // Synchroniser avec la prop isBotActive
     setLocalBotActive(isBotActive);
@@ -109,6 +124,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     return () => {
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
       window.removeEventListener('balance:consistent-update' as any, handleConsistentBalanceUpdate);
+      window.removeEventListener('session:start' as any, handleSessionStart);
     };
   }, [isBotActive, localDisplayBalance]);
 

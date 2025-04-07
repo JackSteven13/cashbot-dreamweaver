@@ -74,15 +74,19 @@ export const useManualSessions = ({
         await incrementSessionCount();
       }
       
-      // Calculate gain for the session - IMPORTANT: Ne pas réinitialiser le solde
+      // IMPORTANT: Garder une copie du solde actuel pour l'animation
+      // mais ne pas modifier l'affichage du solde à ce stade
+      const originalBalance = currentBalanceRef.current;
+      
+      // Calculate gain for the session - NE PAS RÉINITIALISER le solde
       const { success, finalGain, newBalance } = await calculateSessionGain(
         userData,
-        currentBalanceRef.current, // Utiliser la référence actuelle, pas réinitialiser
+        originalBalance, // Utiliser le solde original sans réinitialisation
         setShowLimitAlert
       );
       
       if (success && finalGain > 0) {
-        console.log("Session successful, updating UI balance from", currentBalanceRef.current, "to", newBalance);
+        console.log("Session successful, updating UI balance from", originalBalance, "to", newBalance);
         
         // Update local state immediately to reflect change in UI
         setLocalBalance(newBalance);
