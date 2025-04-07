@@ -15,29 +15,29 @@ export const useSessionGain = () => {
     currentBalance: number,
     setShowLimitAlert: (show: boolean) => void
   ): Promise<{ success: boolean; finalGain: number; newBalance: number }> => {
-    // Simulate session processing delay
+    // Simuler un délai de traitement de session
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Get effective subscription
+    // Obtenir l'abonnement effectif
     const effectiveSub = userData.subscription;
     
-    // Calculate daily limit based on subscription
+    // Calculer la limite quotidienne basée sur l'abonnement
     const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
-    // Get today's date in YYYY-MM-DD format
+    // Obtenir la date d'aujourd'hui au format YYYY-MM-DD
     const today = new Date().toISOString().split('T')[0];
     
-    // Calculate today's gains for limit checking (use transactions)
+    // Calculer les gains d'aujourd'hui pour la vérification des limites (utiliser les transactions)
     const todaysTransactions = userData.transactions.filter(tx => 
       tx.date.startsWith(today) && tx.gain > 0
     );
     
     const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
     
-    // Calculate remaining amount for today (not related to the total balance)
+    // Calculer le montant restant pour aujourd'hui (non lié au solde total)
     const remainingAmount = dailyLimit - todaysGains;
     
-    // Final verification before applying gain
+    // Vérification finale avant d'appliquer le gain
     if (remainingAmount <= 0) {
       setShowLimitAlert(true);
       toast({
@@ -50,16 +50,16 @@ export const useSessionGain = () => {
       return { success: false, finalGain: 0, newBalance: currentBalance };
     }
     
-    // Calculate gain using utility function
+    // Calculer le gain en utilisant la fonction utilitaire
     const randomGain = calculateManualSessionGain(
       effectiveSub, 
-      todaysGains, // Pass today's gains, not the total balance
+      todaysGains, // Passer les gains du jour, pas le solde total
       userData.referrals.length
     );
     
-    // Final check to ensure we don't exceed limit
+    // Vérification finale pour s'assurer que nous ne dépassons pas la limite
     const { shouldProceed, finalGain } = checkFinalGainLimit(
-      todaysGains, // Use today's gains instead of total balance
+      todaysGains, // Utiliser les gains du jour au lieu du solde total
       randomGain,
       dailyLimit,
       setShowLimitAlert
@@ -69,10 +69,10 @@ export const useSessionGain = () => {
       return { success: false, finalGain: 0, newBalance: currentBalance };
     }
     
-    // Calculate new balance (total balance increases)
+    // Calculer le nouveau solde (le solde total augmente)
     const newBalance = currentBalance + finalGain;
     
-    // Persist the new balance in localStorage to prevent loss during page reloads
+    // Persister le nouveau solde dans localStorage pour éviter les pertes lors des rechargements de page
     try {
       localStorage.setItem('lastUpdatedBalance', newBalance.toString());
       localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
@@ -80,7 +80,7 @@ export const useSessionGain = () => {
       console.error("Failed to persist balance in local storage:", e);
     }
     
-    // Show success toast
+    // Afficher un toast de succès
     toast({
       title: "Analyse terminée",
       description: `Traitement des données achevé. Revenus générés : ${finalGain.toFixed(2)}€`,

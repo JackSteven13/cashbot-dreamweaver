@@ -12,6 +12,7 @@ interface BalanceState {
   lastTransactionTime: string;
   dailyGains: number;
   isSyncing: boolean;
+  minDisplayBalance: number; // Valeur minimale à afficher pendant les transitions
 }
 
 // État global initial
@@ -21,7 +22,8 @@ const initialState: BalanceState = {
   lastTransactionAmount: 0,
   lastTransactionTime: new Date().toISOString(),
   dailyGains: 0,
-  isSyncing: false
+  isSyncing: false,
+  minDisplayBalance: 0
 };
 
 // Singleton pour la gestion centrale du solde
@@ -31,6 +33,7 @@ class BalanceManager {
   private subscribers: Set<(state: BalanceState) => void> = new Set();
   private isInitialized: boolean = false;
   private pendingUpdates: number[] = [];
+  private isInSession: boolean = false;
   
   private constructor() {
     this.loadFromStorage();
@@ -47,10 +50,15 @@ class BalanceManager {
   
   // Initialiser avec les valeurs de la base de données
   public initialize(dbBalance: number): void {
-    if (this.isInitialized) return;
+    if (this.isInitialized && dbBalance <= this.state.lastKnownBalance) {
+      console.log(`[BalanceManager] Already initialized with higher balance: ${this.state.lastKnownBalance}. Ignoring ${dbBalance}`);
+      return;
+    }
     
     console.log(`[BalanceManager] Initializing with DB balance: ${dbBalance}`);
     
+    // Ne jamais réduire la valeur minimale d'affichage
+    this.state.minDisplayBalance = Math.max(this.state.minDisplayBalance, dbBalance);
     this.state.lastKnownBalance = dbBalance;
     
     // Garantir que la valeur maximale est correcte
@@ -74,12 +82,33 @@ class BalanceManager {
   
   // Obtenir le solde actuel
   public getCurrentBalance(): number {
+    // Pendant une session, utiliser minDisplayBalance pour éviter les régressions
+    if (this.isInSession) {
+      return Math.max(this.state.lastKnownBalance, this.state.minDisplayBalance);
+    }
     return this.state.lastKnownBalance;
   }
   
   // Obtenir le solde le plus élevé jamais atteint
   public getHighestBalance(): number {
     return this.state.highestReachedBalance;
+  }
+  
+  // Marquer le début d'une session pour protéger contre les réinitialisations
+  public startSession(): void {
+    this.isInSession = true;
+    // Garantir que la valeur d'affichage minimale est à jour
+    this.state.minDisplayBalance = Math.max(
+      this.state.minDisplayBalance,
+      this.state.lastKnownBalance
+    );
+    console.log(`[BalanceManager] Session started, protected balance: ${this.state.minDisplayBalance}`);
+  }
+  
+  // Fin de session
+  public endSession(): void {
+    this.isInSession = false;
+    console.log(`[BalanceManager] Session ended`);
   }
   
   // Mettre à jour le solde - ne permet jamais une diminution sauf en cas de retrait explicite
@@ -97,19 +126,30 @@ class BalanceManager {
       this.state.highestReachedBalance = 0;
       this.state.dailyGains = 0;
       this.state.lastTransactionAmount = 0;
+      this.state.minDisplayBalance = 0;
       this.saveToStorage();
       this.notifySubscribers();
       return;
     }
     
     // Pour les dépôts et revenus, toujours ajouter au solde actuel
-    const newBalance = this.state.lastKnownBalance + amount;
-    console.log(`[BalanceManager] Updating balance: ${this.state.lastKnownBalance} + ${amount} = ${newBalance}`);
+    // En session, utiliser minDisplayBalance comme base
+    const baseBalance = this.isInSession ? 
+      Math.max(this.state.lastKnownBalance, this.state.minDisplayBalance) : 
+      this.state.lastKnownBalance;
+    
+    const positiveGain = Math.max(0, amount);
+    const newBalance = baseBalance + positiveGain;
+    
+    console.log(`[BalanceManager] Updating balance: ${baseBalance} + ${positiveGain} = ${newBalance}`);
     
     this.state.lastKnownBalance = newBalance;
-    this.state.lastTransactionAmount = amount;
+    this.state.lastTransactionAmount = positiveGain;
     this.state.lastTransactionTime = new Date().toISOString();
-    this.state.dailyGains += amount;
+    this.state.dailyGains += positiveGain;
+    
+    // Mettre à jour le solde minimum d'affichage pour éviter les régressions
+    this.state.minDisplayBalance = Math.max(this.state.minDisplayBalance, newBalance);
     
     // Mettre à jour le solde maximum si nécessaire
     if (newBalance > this.state.highestReachedBalance) {
@@ -120,7 +160,7 @@ class BalanceManager {
     this.notifySubscribers();
     
     // Informer tout le système de la mise à jour
-    this.broadcastBalanceUpdate(amount);
+    this.broadcastBalanceUpdate(positiveGain);
   }
   
   // Forcer la définition d'une valeur spécifique (utilisé pour synchronisation avec la base de données)
@@ -128,13 +168,21 @@ class BalanceManager {
     if (amount < 0) return;
     
     // Ne jamais réduire le solde affiché
-    if (amount < this.state.lastKnownBalance) {
-      console.log(`[BalanceManager] Ignoring lower balance update: ${amount} < ${this.state.lastKnownBalance}`);
+    // Pendant une session, comparé avec minDisplayBalance
+    const effectiveCurrentBalance = this.isInSession ? 
+      Math.max(this.state.lastKnownBalance, this.state.minDisplayBalance) : 
+      this.state.lastKnownBalance;
+      
+    if (amount < effectiveCurrentBalance) {
+      console.log(`[BalanceManager] Ignoring lower balance update: ${amount} < ${effectiveCurrentBalance}`);
       return;
     }
     
     console.log(`[BalanceManager] Setting balance to: ${amount}`);
     this.state.lastKnownBalance = amount;
+    
+    // Également mettre à jour la valeur minimale d'affichage
+    this.state.minDisplayBalance = Math.max(this.state.minDisplayBalance, amount);
     
     if (amount > this.state.highestReachedBalance) {
       this.state.highestReachedBalance = amount;
@@ -175,6 +223,7 @@ class BalanceManager {
       localStorage.setItem('currentBalance', String(this.state.lastKnownBalance));
       localStorage.setItem('highestBalance', String(this.state.highestReachedBalance));
       localStorage.setItem('lastKnownBalance', String(this.state.lastKnownBalance));
+      localStorage.setItem('minDisplayBalance', String(this.state.minDisplayBalance));
     } catch (e) {
       console.error('[BalanceManager] Failed to save state to localStorage:', e);
     }
@@ -195,9 +244,14 @@ class BalanceManager {
         const storedHighestBalance = localStorage.getItem('highestBalance');
         const storedCurrentBalance = localStorage.getItem('currentBalance');
         const storedLastKnownBalance = localStorage.getItem('lastKnownBalance');
+        const storedMinDisplayBalance = localStorage.getItem('minDisplayBalance');
         
         if (storedHighestBalance) {
           this.state.highestReachedBalance = parseFloat(storedHighestBalance);
+        }
+        
+        if (storedMinDisplayBalance) {
+          this.state.minDisplayBalance = parseFloat(storedMinDisplayBalance);
         }
         
         // Utiliser la valeur maximale entre toutes les sources disponibles
@@ -205,6 +259,7 @@ class BalanceManager {
           storedCurrentBalance ? parseFloat(storedCurrentBalance) : 0,
           storedLastKnownBalance ? parseFloat(storedLastKnownBalance) : 0,
           storedHighestBalance ? parseFloat(storedHighestBalance) : 0,
+          storedMinDisplayBalance ? parseFloat(storedMinDisplayBalance) : 0,
         ].filter(val => !isNaN(val));
         
         if (balances.length > 0) {
@@ -213,6 +268,10 @@ class BalanceManager {
           
           if (maxBalance > this.state.highestReachedBalance) {
             this.state.highestReachedBalance = maxBalance;
+          }
+          
+          if (maxBalance > this.state.minDisplayBalance) {
+            this.state.minDisplayBalance = maxBalance;
           }
           
           console.log('[BalanceManager] Loaded from legacy storage, balance:', maxBalance);
@@ -266,6 +325,14 @@ class BalanceManager {
     window.addEventListener('balance:reset', () => {
       this.resetBalance();
     });
+    
+    window.addEventListener('session:start', () => {
+      this.startSession();
+    });
+    
+    window.addEventListener('session:complete', () => {
+      this.endSession();
+    });
   }
   
   // Informer tout le système d'une mise à jour du solde
@@ -274,7 +341,8 @@ class BalanceManager {
       detail: {
         currentBalance: this.state.lastKnownBalance,
         highestBalance: this.state.highestReachedBalance,
-        amount: amount
+        amount: amount,
+        minDisplayBalance: this.state.minDisplayBalance
       }
     }));
   }
@@ -295,3 +363,6 @@ export const getHighestBalance = (): number => balanceManager.getHighestBalance(
 export const updateBalance = (amount: number): void => balanceManager.updateBalance(amount);
 export const resetBalance = (): void => balanceManager.resetBalance();
 export const initializeBalance = (dbBalance: number): void => balanceManager.initialize(dbBalance);
+export const startBalanceSession = (): void => balanceManager.startSession();
+export const endBalanceSession = (): void => balanceManager.endSession();
+

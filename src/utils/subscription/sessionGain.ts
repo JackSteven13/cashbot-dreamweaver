@@ -7,14 +7,14 @@ import { MANUAL_SESSION_GAIN_PERCENTAGES } from './constants';
  */
 export const calculateManualSessionGain = (
   subscriptionType: string,
-  currentBalance: number,
+  currentDailyGains: number,
   referralCount: number = 0
 ): number => {
   // Get the daily limit for the subscription
   const dailyLimit = SUBSCRIPTION_LIMITS[subscriptionType as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
   // Calculate remaining amount to reach the limit
-  const remainingToLimit = dailyLimit - currentBalance;
+  const remainingToLimit = dailyLimit - currentDailyGains;
   
   // If almost at limit, return a tiny amount to approach limit without exceeding
   if (remainingToLimit <= 0.02 && remainingToLimit > 0) {
@@ -54,7 +54,7 @@ export const calculateManualSessionGain = (
  */
 export const calculateAutoSessionGain = (
   subscriptionType: string,
-  currentBalance: number,
+  currentDailyGains: number,
   referralCount: number = 0
 ): number => {
   // Auto sessions generate smaller amounts than manual sessions
@@ -62,7 +62,7 @@ export const calculateAutoSessionGain = (
   const dailyLimit = SUBSCRIPTION_LIMITS[subscriptionType as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
   // Calculate remaining amount to reach the limit
-  const remainingToLimit = dailyLimit - currentBalance;
+  const remainingToLimit = dailyLimit - currentDailyGains;
   
   // If almost at limit, return a tiny amount to approach limit without exceeding
   if (remainingToLimit <= 0.01 && remainingToLimit > 0) {
@@ -110,3 +110,13 @@ export const calculateAutoSessionGain = (
 
 // Add compatibility function that matches the name expected in the imports
 export const calculateSessionGain = calculateManualSessionGain;
+
+// Event helper functions to maintain balance consistency
+export const announceSessionStart = () => {
+  window.dispatchEvent(new CustomEvent('session:start'));
+};
+
+export const announceSessionComplete = () => {
+  window.dispatchEvent(new CustomEvent('session:complete'));
+};
+

@@ -17,10 +17,10 @@ export const useManualSessions = ({
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [localBalance, setLocalBalance] = useState(userData.balance);
   
-  // Maintain a local reference to the current balance to avoid race conditions
+  // Maintenir une référence locale au solde actuel pour éviter les conditions de course
   const currentBalanceRef = useRef<number>(userData.balance);
   
-  // Update the balance reference when userData changes
+  // Mettre à jour la référence quand userData change
   useEffect(() => {
     if (currentBalanceRef.current !== userData.balance) {
       console.log("Updating balance reference from", currentBalanceRef.current, "to", userData.balance);
@@ -29,7 +29,7 @@ export const useManualSessions = ({
     }
   }, [userData.balance]);
   
-  // Hooks for session management
+  // Hooks pour la gestion des sessions
   const { 
     checkBoostLimit, 
     updateBoostCount, 
@@ -43,76 +43,79 @@ export const useManualSessions = ({
   const { calculateSessionGain } = useSessionGain();
 
   const handleStartSession = async () => {
-    // Check if we can start a new session
+    // Vérifier si nous pouvons démarrer une nouvelle session
     if (!canStartNewSession()) {
       return;
     }
     
-    // Check for boost limit to prevent abuse
+    // Vérifier la limite de boost pour prévenir les abus
     if (checkBoostLimit()) {
       return;
     }
     
-    // Check session limit based on subscription
-    if (!checkSessionLimit(userData, dailySessionCount, currentBalanceRef.current, setShowLimitAlert)) {
+    // Sauvegarder le solde actuel pour éviter toute réinitialisation visuelle
+    const startingBalance = currentBalanceRef.current;
+    
+    // Vérifier la limite de session basée sur l'abonnement
+    // Important: utiliser startingBalance et non currentBalanceRef.current pour le check
+    if (!checkSessionLimit(userData, dailySessionCount, startingBalance, setShowLimitAlert)) {
       return;
     }
     
-    // Set debounce to prevent rapid clicking
+    // Définir la protection anti-rebond pour empêcher les clics rapides
     setClickDebounce();
     
-    // Trigger session start event for UI animations
+    // Déclencher l'événement de démarrage de session pour les animations UI
     window.dispatchEvent(new CustomEvent('session:start'));
     
     try {
-      // Set all locks and flags
+      // Définir tous les verrous et drapeaux
       setLocks();
       setIsStartingSession(true);
       
-      // Increment daily session count for freemium accounts
+      // Incrémenter le compteur de sessions quotidiennes pour les comptes freemium
       if (userData.subscription === 'freemium') {
         await incrementSessionCount();
       }
       
-      // IMPORTANT: Garder une copie du solde actuel pour l'animation
-      // mais ne pas modifier l'affichage du solde à ce stade
-      const originalBalance = currentBalanceRef.current;
+      // TRÈS IMPORTANT: Ne pas réinitialiser l'affichage du solde pendant le traitement
+      // mais utiliser la référence locale pour le calcul
       
-      // Calculate gain for the session - NE PAS RÉINITIALISER le solde
+      // Calculer le gain pour la session - NE PAS RÉINITIALISER le solde
       const { success, finalGain, newBalance } = await calculateSessionGain(
         userData,
-        originalBalance, // Utiliser le solde original sans réinitialisation
+        startingBalance, // Utiliser le solde préservé
         setShowLimitAlert
       );
       
       if (success && finalGain > 0) {
-        console.log("Session successful, updating UI balance from", originalBalance, "to", newBalance);
+        console.log("Session successful, updating UI balance from", startingBalance, "to", newBalance);
         
-        // Update local state immediately to reflect change in UI
+        // Mettre à jour l'état local immédiatement pour refléter le changement dans l'UI
         setLocalBalance(newBalance);
         
-        // Update local reference before API call
+        // Mettre à jour la référence locale avant l'appel API
         currentBalanceRef.current = newBalance;
         
-        // Dispatch balance update event for UI animations
+        // Diffuser l'événement de mise à jour du solde pour les animations UI
         window.dispatchEvent(new CustomEvent('balance:update', { 
           detail: { amount: finalGain } 
         }));
         
-        // Add a small delay to allow animations to complete
+        // Ajouter un petit délai pour permettre aux animations de se terminer
         await new Promise(resolve => setTimeout(resolve, 2000));
         
-        // Update user balance in database with forceful UI update flag
+        // Mettre à jour le solde utilisateur dans la base de données avec le drapeau de mise à jour forcée UI
         await updateBalance(
           finalGain,
           `Session manuelle : Notre technologie a optimisé le processus et généré ${finalGain.toFixed(2)}€ de revenus pour votre compte ${userData.subscription}.`,
-          true // Force UI update flag
+          true // Drapeau de mise à jour forcée UI
         );
         
-        // Update boost count for rate limiting
+        // Mettre à jour le compteur de boost pour la limitation de débit
         updateBoostCount();
         
-        // Check if limit is now reached
+        // Vérifier si la limite est maintenant atteinte
         const effectiveSub = getEffectiveSubscription(userData.subscription);
         const effectiveLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS];
         
@@ -128,7 +131,7 @@ export const useManualSessions = ({
         variant: "destructive"
       });
     } finally {
-      // Add a slight delay before finishing to allow animations to complete
+      // Ajouter un léger délai avant de terminer pour permettre aux animations de se compléter
       setTimeout(() => {
         setIsStartingSession(false);
         clearLocks();
@@ -139,7 +142,7 @@ export const useManualSessions = ({
   return {
     isStartingSession,
     handleStartSession,
-    localBalance // Export local balance for direct UI updates
+    localBalance // Exporter le solde local pour les mises à jour directes de l'UI
   };
 };
 
