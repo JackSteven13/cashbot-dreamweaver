@@ -1,6 +1,6 @@
 
 import { FC, useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 const DashboardLoading: FC = () => {
   const [loadingPhase, setLoadingPhase] = useState(0);
@@ -39,28 +39,61 @@ const DashboardLoading: FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#0a0a20] px-4">
-      {/* Logo animé */}
+      {/* Logo animé amélioré */}
       <div className="mb-8">
-        <div className="relative">
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 blur-lg opacity-50 animate-pulse"></div>
-          <div className="relative w-24 h-24 mx-auto">
+        <div className="relative w-28 h-28 mx-auto">
+          {/* Effet de lueur en arrière-plan */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 blur-xl opacity-30 animate-pulse"></div>
+          
+          {/* Cercle principal */}
+          <div className="relative w-full h-full flex items-center justify-center">
+            {/* Cercle extérieur animé */}
             <svg 
+              width="100%" 
+              height="100%" 
               viewBox="0 0 100 100" 
-              className="w-full h-full fill-blue-400"
+              className="absolute inset-0"
             >
-              <path d="M50,10 C70,10 85,25 85,50 C85,75 70,90 50,90 C30,90 15,75 15,50 C15,25 30,10 50,10 Z" 
-                className="opacity-20" />
-              <path 
-                d="M50,10 C70,10 85,25 85,50 C85,75 70,90 50,90"
+              <defs>
+                <linearGradient id="circleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#60a5fa" />
+                  <stop offset="100%" stopColor="#3b82f6" />
+                </linearGradient>
+              </defs>
+              
+              {/* Cercle complet en arrière-plan avec faible opacité */}
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
                 fill="none"
-                stroke="#60a5fa"
-                strokeWidth="6"
-                strokeLinecap="round"
-                className="origin-center animate-spin"
-                style={{ animationDuration: '3s' }}
+                stroke="#1e3a8a"
+                strokeWidth="4"
+                strokeOpacity="0.2"
               />
-              <circle cx="50" cy="50" r="5" className="fill-white" />
-              <circle cx="85" cy="50" r="5" className="fill-blue-200 animate-pulse" />
+              
+              {/* Arc animé qui tourne */}
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                fill="none"
+                stroke="url(#circleGradient)"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeDasharray="251.2"
+                strokeDashoffset="100"
+                transform="rotate(-90 50 50)"
+                className="origin-center animate-spin"
+                style={{ animationDuration: '1.5s', animationTimingFunction: 'linear' }}
+              />
+              
+              {/* Points d'accent */}
+              <circle cx="50" cy="10" r="3" fill="#93c5fd" className="animate-pulse" style={{ animationDelay: '0.2s' }} />
+              <circle cx="50" cy="90" r="3" fill="#3b82f6" className="animate-pulse" style={{ animationDelay: '0.5s' }} />
+              
+              {/* Petit cercle central */}
+              <circle cx="50" cy="50" r="5" fill="#f0f9ff" />
             </svg>
           </div>
         </div>
@@ -73,14 +106,9 @@ const DashboardLoading: FC = () => {
         </p>
       </div>
       
-      {/* Barre de progression stylisée */}
+      {/* Barre de progression stylisée avec le composant Progress */}
       <div className="w-full max-w-md mx-auto mb-8">
-        <div className="bg-slate-800/40 h-2 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-100"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+        <Progress value={progress} className="h-2 bg-slate-800/40" />
         <div className="flex justify-between mt-2 text-xs text-slate-500">
           <span>Initialisation</span>
           <span>{Math.min(100, Math.round(progress))}%</span>
