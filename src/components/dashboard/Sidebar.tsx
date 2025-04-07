@@ -1,15 +1,9 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   LogOut, 
   Home,
-  Activity,
-  Zap,
-  Bolt,
   BarChart3,
-  Users,
-  Wallet
 } from 'lucide-react';
 import Button from '@/components/Button';
 import { forceSignOut } from "@/utils/auth/sessionUtils";
@@ -46,10 +40,9 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
     }
   };
 
+  // Removed wallet and referrals menu items, keeping only dashboard
   const menuItems = [
     { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3, path: '/' },
-    { id: 'wallet', label: 'Portefeuille', icon: Wallet, path: '/wallet' },
-    { id: 'referrals', label: 'Parrainages', icon: Users, path: '/referrals' }
   ];
   
   return (
