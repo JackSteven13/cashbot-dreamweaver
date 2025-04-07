@@ -14,7 +14,7 @@ function App() {
           <AppRoutes />
           <ToastNotification 
             position="top-right" 
-            theme="system"
+            theme="dark"
             richColors={true}
             offset="1rem"
           />
