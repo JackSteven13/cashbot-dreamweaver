@@ -10,6 +10,8 @@ import NotFound from '../pages/NotFound';
 import Offres from '../pages/Offres';
 import Payment from '../pages/Payment';
 import PaymentSuccess from '../pages/PaymentSuccess';
+import Terms from '../pages/Terms';
+import Contact from '../pages/Contact';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -22,6 +24,8 @@ const AppRoutes: React.FC = () => {
       <Route path="/offres" element={<Offres />} />
       <Route path="/payment" element={<Payment />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/contact" element={<Contact />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
