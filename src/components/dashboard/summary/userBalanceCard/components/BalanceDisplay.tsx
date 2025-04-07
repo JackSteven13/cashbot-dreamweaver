@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, BotOff } from 'lucide-react';
-import { balanceManager } from '@/utils/balance/balanceManager';
+import { balanceManager, getHighestBalance } from '@/utils/balance/balanceManager';
 import { animateBalanceUpdate } from '@/utils/animations/animateBalanceUpdate';
 
 interface BalanceDisplayProps {
@@ -35,36 +35,47 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const balanceRef = useRef<HTMLDivElement>(null);
   const initialBalanceValue = useRef(displayBalance);
   const minimumDisplayBalance = useRef(displayBalance);
+  const highestBalanceValue = useRef(getHighestBalance() || displayBalance);
   
-  // Au montage, synchroniser avec le gestionnaire de solde
+  // Au montage, synchroniser avec le gestionnaire de solde et l'historique
   useEffect(() => {
-    // Initialiser les références avec la valeur de départ
-    initialBalanceValue.current = displayBalance;
-    minimumDisplayBalance.current = displayBalance;
+    // Initialiser les références avec la valeur maximale disponible
+    const highestBalance = getHighestBalance();
+    highestBalanceValue.current = Math.max(highestBalance, displayBalance);
+    minimumDisplayBalance.current = Math.max(highestBalance, displayBalance);
+    initialBalanceValue.current = Math.max(highestBalance, displayBalance);
+    
+    // Si la valeur affichée est inférieure au maximum historique, corriger immédiatement
+    if (displayBalance < highestBalance) {
+      console.log(`[BalanceDisplay] Correcting display balance from ${displayBalance} to ${highestBalance}`);
+      setLocalDisplayBalance(highestBalance);
+    }
     
     // S'abonner aux mises à jour du gestionnaire de solde
     const unsubscribe = balanceManager.subscribe((state) => {
       // Ne mettre à jour que si le solde est différent
-      if (state.lastKnownBalance !== localDisplayBalance) {
-        // PROTECTION CRITIQUE: Ne jamais descendre en dessous de la valeur minimale connue
-        const newBalance = Math.max(
-          state.lastKnownBalance, 
-          minimumDisplayBalance.current
-        );
+      const newBalance = state.lastKnownBalance;
+      const currentMax = Math.max(newBalance, highestBalanceValue.current);
+      
+      if (currentMax !== localDisplayBalance) {
+        console.log(`[BalanceDisplay] Updating from subscription: ${localDisplayBalance} -> ${currentMax}`);
         
         // Animer doucement vers la nouvelle valeur
         animateBalanceUpdate(
           localDisplayBalance, 
-          newBalance, 
+          currentMax, 
           800, 
           (value) => setLocalDisplayBalance(value)
         );
+        
+        // Mettre à jour notre référence du maximum
+        highestBalanceValue.current = currentMax;
       }
     });
     
-    // Initialiser le gestionnaire avec la valeur initiale
-    if (displayBalance > 0) {
-      balanceManager.initialize(displayBalance);
+    // Initialiser le gestionnaire avec la valeur maximale
+    if (highestBalanceValue.current > 0) {
+      balanceManager.initialize(highestBalanceValue.current);
     }
     
     return () => {
@@ -72,21 +83,30 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     };
   }, []);
   
-  // N'accepter les mises à jour de props displayBalance que si différentes
+  // N'accepter les mises à jour de props displayBalance que si supérieures à notre maximum
   useEffect(() => {
-    if (displayBalance !== localDisplayBalance) {
-      // Mettre à jour la valeur minimale si nécessaire
-      minimumDisplayBalance.current = Math.max(minimumDisplayBalance.current, localDisplayBalance);
+    // PROTECTION CRITIQUE: Ne jamais accepter une valeur inférieure à notre maximum
+    const currentMax = Math.max(displayBalance, highestBalanceValue.current);
+    
+    if (currentMax > localDisplayBalance) {
+      console.log(`[BalanceDisplay] Updating display from props: ${localDisplayBalance} -> ${currentMax}`);
       
-      // Ne jamais descendre en dessous de la valeur minimale pour éviter le flash à 0
-      const targetBalance = Math.max(displayBalance, minimumDisplayBalance.current);
+      // Mettre à jour la valeur minimale
+      minimumDisplayBalance.current = currentMax;
+      highestBalanceValue.current = currentMax;
       
       animateBalanceUpdate(
         localDisplayBalance, 
-        targetBalance, 
+        currentMax, 
         800, 
         (value) => setLocalDisplayBalance(value)
       );
+    } else if (displayBalance < localDisplayBalance) {
+      // Si on tente de nous donner une valeur plus basse, forcer la synchronisation
+      console.log(`[BalanceDisplay] Rejecting lower balance: ${displayBalance} < ${localDisplayBalance}`);
+      window.dispatchEvent(new CustomEvent('balance:force-sync', { 
+        detail: { balance: localDisplayBalance }
+      }));
     }
   }, [displayBalance]);
   
@@ -95,14 +115,14 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     const handleSessionStart = () => {
       // Protéger la valeur actuelle pour éviter toute régression visuelle
       minimumDisplayBalance.current = Math.max(minimumDisplayBalance.current, localDisplayBalance);
-      console.log("Protected minimum balance value:", minimumDisplayBalance.current);
+      console.log("[BalanceDisplay] Protected minimum balance value:", minimumDisplayBalance.current);
     };
     
     window.addEventListener('session:start', handleSessionStart);
     return () => window.removeEventListener('session:start', handleSessionStart);
   }, [localDisplayBalance]);
   
-  // Écouter les événements de changement d'état du bot
+  // Écouter les événements de changement d'état du bot et de solde
   useEffect(() => {
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
@@ -114,19 +134,49 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     // Écouter les mises à jour cohérentes provenant du gestionnaire de solde
     const handleConsistentBalanceUpdate = (event: CustomEvent) => {
       const currentBalance = event.detail?.currentBalance;
-      const amount = event.detail?.amount;
+      const highestBalance = event.detail?.highestBalance;
       
-      if (typeof currentBalance === 'number' && currentBalance > 0) {
-        // Ne jamais descendre en dessous de la valeur minimale connue
-        const validBalance = Math.max(
-          currentBalance, 
-          minimumDisplayBalance.current
-        );
+      // Toujours utiliser la valeur la plus élevée disponible
+      const maxBalance = Math.max(
+        currentBalance || 0,
+        highestBalance || 0,
+        highestBalanceValue.current || 0
+      );
+      
+      if (maxBalance > localDisplayBalance) {
+        console.log(`[BalanceDisplay] Consistent update: ${localDisplayBalance} -> ${maxBalance}`);
         
-        if (validBalance !== localDisplayBalance) {
+        // Mettre à jour nos références en premier
+        highestBalanceValue.current = maxBalance;
+        minimumDisplayBalance.current = Math.max(minimumDisplayBalance.current, maxBalance);
+        
+        // Animer vers la nouvelle valeur
+        animateBalanceUpdate(
+          localDisplayBalance, 
+          maxBalance, 
+          800, 
+          (value) => setLocalDisplayBalance(value)
+        );
+      }
+    };
+    
+    // Écouter les événements de forçage de synchronisation
+    const handleForceSyncBalance = (event: CustomEvent) => {
+      const syncedBalance = event.detail?.balance;
+      
+      if (typeof syncedBalance === 'number' && !isNaN(syncedBalance) && syncedBalance > 0) {
+        // N'accepter que les valeurs supérieures à notre maximum
+        const validTarget = Math.max(syncedBalance, highestBalanceValue.current);
+        
+        if (validTarget > localDisplayBalance) {
+          console.log(`[BalanceDisplay] Force sync: ${localDisplayBalance} -> ${validTarget}`);
+          
+          highestBalanceValue.current = validTarget;
+          minimumDisplayBalance.current = Math.max(minimumDisplayBalance.current, validTarget);
+          
           animateBalanceUpdate(
             localDisplayBalance, 
-            validBalance, 
+            validTarget, 
             800, 
             (value) => setLocalDisplayBalance(value)
           );
@@ -139,13 +189,24 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       // Sauvegarder l'affichage actuel pendant la session
       minimumDisplayBalance.current = Math.max(
         minimumDisplayBalance.current, 
-        localDisplayBalance
+        localDisplayBalance,
+        highestBalanceValue.current
       );
+    };
+    
+    // Écouter les réinitialisations explicites du solde (retraits)
+    const handleBalanceReset = () => {
+      console.log("[BalanceDisplay] Explicit balance reset detected");
+      setLocalDisplayBalance(0);
+      highestBalanceValue.current = 0;
+      minimumDisplayBalance.current = 0;
     };
     
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('balance:consistent-update' as any, handleConsistentBalanceUpdate);
+    window.addEventListener('balance:force-sync' as any, handleForceSyncBalance);
     window.addEventListener('session:start' as any, handleSessionStart);
+    window.addEventListener('balance:reset-complete' as any, handleBalanceReset);
     
     // Synchroniser avec la prop isBotActive
     setLocalBotActive(isBotActive);
@@ -153,7 +214,9 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     return () => {
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
       window.removeEventListener('balance:consistent-update' as any, handleConsistentBalanceUpdate);
+      window.removeEventListener('balance:force-sync' as any, handleForceSyncBalance);
       window.removeEventListener('session:start' as any, handleSessionStart);
+      window.removeEventListener('balance:reset-complete' as any, handleBalanceReset);
     };
   }, [isBotActive, localDisplayBalance]);
 

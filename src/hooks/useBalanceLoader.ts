@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { fetchUserBalance } from '@/utils/user/balanceUtils';
 import { toast } from "@/components/ui/use-toast";
+import { balanceManager, getHighestBalance } from '@/utils/balance/balanceManager'; 
 
 export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
   const loadUserBalance = useCallback(async (userId: string) => {
@@ -49,6 +50,9 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
         finalIsNewUser: isUserNew
       });
       
+      // Protection critique: vérifier si le solde de la base est inférieur au solde maximum stocké
+      const highestStoredBalance = getHighestBalance(); // Obtenir le solde maximum de notre système de persistance
+      
       // Pour les nouveaux utilisateurs, on initialise le solde et le nombre de sessions à 0
       if (isUserNew && balanceData) {
         console.log("Nouveau utilisateur détecté - Initialisation du solde à zéro");
@@ -67,6 +71,30 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
           }
         } catch (err) {
           console.error("Exception lors de la réinitialisation du solde:", err);
+        }
+      } 
+      // Si nous avons un solde stocké plus élevé que celui de la base, mettre à jour la base
+      else if (!isUserNew && highestStoredBalance > 0 && balanceData && balanceData.balance < highestStoredBalance) {
+        console.log(`Solde DB (${balanceData.balance}) inférieur au solde maximum stocké (${highestStoredBalance}). Synchronisation...`);
+        
+        try {
+          const { error } = await supabase
+            .from('user_balances')
+            .update({ 
+              balance: highestStoredBalance,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+            
+          if (error) {
+            console.error("Erreur lors de la synchronisation du solde:", error);
+          } else {
+            console.log(`Solde mis à jour avec succès dans la base à ${highestStoredBalance}`);
+            // Mettre à jour les données locales pour refléter le changement
+            balanceData.balance = highestStoredBalance;
+          }
+        } catch (err) {
+          console.error("Exception lors de la synchronisation du solde:", err);
         }
       }
     } else {
@@ -110,9 +138,15 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
       localStorage.removeItem('currentBalance');
       localStorage.removeItem('lastKnownBalance');
       localStorage.removeItem('highestBalance');
+      localStorage.removeItem('balanceState');
     } else {
       // Important: explicitement mettre à jour le state pour les utilisateurs existants
       onNewUser(false);
+      
+      // Initialiser le gestionnaire de solde avec la valeur de la base de données
+      if (balanceData) {
+        balanceManager.initialize(balanceData.balance);
+      }
     }
 
     return {

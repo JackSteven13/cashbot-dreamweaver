@@ -50,20 +50,38 @@ class BalanceManager {
   
   // Initialiser avec les valeurs de la base de données
   public initialize(dbBalance: number): void {
-    if (this.isInitialized && dbBalance <= this.state.lastKnownBalance) {
-      console.log(`[BalanceManager] Already initialized with higher balance: ${this.state.lastKnownBalance}. Ignoring ${dbBalance}`);
+    console.log(`[BalanceManager] Initializing with DB balance: ${dbBalance}, current highest: ${this.state.highestReachedBalance}`);
+    
+    // PROTECTION CRITIQUE: Ne jamais réduire à une valeur inférieure au maximum historique
+    const highestStoredBalance = this.getMaxStoredBalance();
+    
+    if (this.isInitialized && dbBalance <= highestStoredBalance) {
+      console.log(`[BalanceManager] Already initialized with higher balance: ${highestStoredBalance}. Ignoring ${dbBalance}`);
+      
+      // Si la valeur de la BD est inférieure, forcer la synchronisation avec notre valeur plus élevée
+      if (dbBalance < highestStoredBalance) {
+        console.log(`[BalanceManager] DB value (${dbBalance}) is lower than stored max (${highestStoredBalance}). Forcing sync...`);
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('balance:force-sync', { 
+            detail: { balance: highestStoredBalance }
+          }));
+        }, 1000);
+      }
+      
       return;
     }
     
-    console.log(`[BalanceManager] Initializing with DB balance: ${dbBalance}`);
-    
     // Ne jamais réduire la valeur minimale d'affichage
-    this.state.minDisplayBalance = Math.max(this.state.minDisplayBalance, dbBalance);
-    this.state.lastKnownBalance = dbBalance;
+    this.state.minDisplayBalance = Math.max(this.state.minDisplayBalance, dbBalance, highestStoredBalance);
     
-    // Garantir que la valeur maximale est correcte
-    if (dbBalance > this.state.highestReachedBalance) {
+    // Si la valeur de la BD est supérieure à notre maximum stocké, utiliser celle-ci
+    if (dbBalance > highestStoredBalance) {
+      this.state.lastKnownBalance = dbBalance;
       this.state.highestReachedBalance = dbBalance;
+    } else {
+      // Sinon, conserver notre valeur maximale en mémoire
+      this.state.lastKnownBalance = highestStoredBalance;
+      this.state.highestReachedBalance = highestStoredBalance;
     }
     
     this.saveToStorage();
@@ -80,18 +98,53 @@ class BalanceManager {
     }
   }
   
+  // Récupère la valeur maximale du solde à partir de toutes les sources disponibles
+  private getMaxStoredBalance(): number {
+    // Récupérer toutes les valeurs possibles
+    const currentHighest = this.state.highestReachedBalance || 0;
+    const currentBalance = this.state.lastKnownBalance || 0;
+    const minDisplay = this.state.minDisplayBalance || 0;
+    
+    let localStorageMax = 0;
+    
+    try {
+      const storedHighest = localStorage.getItem('highestBalance');
+      const storedCurrent = localStorage.getItem('currentBalance');
+      const storedLastKnown = localStorage.getItem('lastKnownBalance');
+      
+      const values = [
+        storedHighest ? parseFloat(storedHighest) : 0,
+        storedCurrent ? parseFloat(storedCurrent) : 0,
+        storedLastKnown ? parseFloat(storedLastKnown) : 0
+      ].filter(val => !isNaN(val));
+      
+      if (values.length > 0) {
+        localStorageMax = Math.max(...values);
+      }
+    } catch (e) {
+      console.error('[BalanceManager] Failed to read stored balance values:', e);
+    }
+    
+    // Retourner la valeur maximale parmi toutes les sources
+    return Math.max(currentHighest, currentBalance, minDisplay, localStorageMax);
+  }
+  
   // Obtenir le solde actuel
   public getCurrentBalance(): number {
     // Pendant une session, utiliser minDisplayBalance pour éviter les régressions
     if (this.isInSession) {
       return Math.max(this.state.lastKnownBalance, this.state.minDisplayBalance);
     }
-    return this.state.lastKnownBalance;
+    
+    // PROTECTION SUPPLÉMENTAIRE: Toujours vérifier avec le localStorage aussi
+    const maxStored = this.getMaxStoredBalance();
+    return Math.max(this.state.lastKnownBalance, maxStored);
   }
   
   // Obtenir le solde le plus élevé jamais atteint
   public getHighestBalance(): number {
-    return this.state.highestReachedBalance;
+    const maxStored = this.getMaxStoredBalance();
+    return Math.max(this.state.highestReachedBalance, maxStored);
   }
   
   // Marquer le début d'une session pour protéger contre les réinitialisations
@@ -100,7 +153,8 @@ class BalanceManager {
     // Garantir que la valeur d'affichage minimale est à jour
     this.state.minDisplayBalance = Math.max(
       this.state.minDisplayBalance,
-      this.state.lastKnownBalance
+      this.state.lastKnownBalance,
+      this.getMaxStoredBalance()
     );
     console.log(`[BalanceManager] Session started, protected balance: ${this.state.minDisplayBalance}`);
   }
@@ -133,10 +187,13 @@ class BalanceManager {
     }
     
     // Pour les dépôts et revenus, toujours ajouter au solde actuel
-    // En session, utiliser minDisplayBalance comme base
-    const baseBalance = this.isInSession ? 
-      Math.max(this.state.lastKnownBalance, this.state.minDisplayBalance) : 
-      this.state.lastKnownBalance;
+    // PROTECTION CRITIQUE: Utiliser le maximum entre le solde actuel et toutes les sources persistées
+    const maxStoredBalance = this.getMaxStoredBalance();
+    const baseBalance = Math.max(
+      this.state.lastKnownBalance,
+      this.isInSession ? this.state.minDisplayBalance : 0,
+      maxStoredBalance
+    );
     
     const positiveGain = Math.max(0, amount);
     const newBalance = baseBalance + positiveGain;
@@ -167,14 +224,25 @@ class BalanceManager {
   public setBalance(amount: number): void {
     if (amount < 0) return;
     
-    // Ne jamais réduire le solde affiché
-    // Pendant une session, comparé avec minDisplayBalance
-    const effectiveCurrentBalance = this.isInSession ? 
-      Math.max(this.state.lastKnownBalance, this.state.minDisplayBalance) : 
-      this.state.lastKnownBalance;
+    // PROTECTION CRITIQUE: Ne jamais réduire le solde en dessous du maximum historique
+    const maxStoredBalance = this.getMaxStoredBalance();
+    
+    // Si la nouvelle valeur est inférieure à notre maximum historique, conserver le maximum
+    if (amount < maxStoredBalance) {
+      console.log(`[BalanceManager] Ignoring lower balance update: ${amount} < ${maxStoredBalance}`);
       
-    if (amount < effectiveCurrentBalance) {
-      console.log(`[BalanceManager] Ignoring lower balance update: ${amount} < ${effectiveCurrentBalance}`);
+      // Après un délai pour laisser l'UI se stabiliser, forcer la synchronisation avec notre maximum
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('balance:consistent-update', {
+          detail: { 
+            currentBalance: maxStoredBalance,
+            highestBalance: maxStoredBalance,
+            amount: 0,
+            minDisplayBalance: maxStoredBalance
+          }
+        }));
+      }, 1000);
+      
       return;
     }
     
@@ -219,11 +287,12 @@ class BalanceManager {
     try {
       localStorage.setItem('balanceState', JSON.stringify(this.state));
       
-      // Maintenir également les clés existantes pour la compatibilité
+      // Toujours sauvegarder séparément pour redondance et compatibilité
       localStorage.setItem('currentBalance', String(this.state.lastKnownBalance));
       localStorage.setItem('highestBalance', String(this.state.highestReachedBalance));
       localStorage.setItem('lastKnownBalance', String(this.state.lastKnownBalance));
       localStorage.setItem('minDisplayBalance', String(this.state.minDisplayBalance));
+      localStorage.setItem('balanceLastSaved', new Date().toISOString());
     } catch (e) {
       console.error('[BalanceManager] Failed to save state to localStorage:', e);
     }
@@ -333,6 +402,25 @@ class BalanceManager {
     window.addEventListener('session:complete', () => {
       this.endSession();
     });
+    
+    // Nouvelle vérification périodique pour garantir la cohérence
+    setInterval(() => {
+      // Vérifier les inconsistances entre le localStorage et la mémoire
+      const maxStored = this.getMaxStoredBalance();
+      const currentInMemory = this.state.lastKnownBalance;
+      
+      // Si la valeur maximale en stockage est supérieure à celle en mémoire, synchroniser
+      if (maxStored > currentInMemory) {
+        console.log(`[BalanceManager] Inconsistency detected: stored=${maxStored}, memory=${currentInMemory}. Synchronizing...`);
+        this.state.lastKnownBalance = maxStored;
+        this.state.highestReachedBalance = Math.max(maxStored, this.state.highestReachedBalance);
+        this.state.minDisplayBalance = Math.max(maxStored, this.state.minDisplayBalance);
+        
+        this.saveToStorage();
+        this.notifySubscribers();
+        this.broadcastBalanceUpdate(0);
+      }
+    }, 30000); // Vérifier toutes les 30 secondes
   }
   
   // Informer tout le système d'une mise à jour du solde
@@ -365,4 +453,3 @@ export const resetBalance = (): void => balanceManager.resetBalance();
 export const initializeBalance = (dbBalance: number): void => balanceManager.initialize(dbBalance);
 export const startBalanceSession = (): void => balanceManager.startSession();
 export const endBalanceSession = (): void => balanceManager.endSession();
-
