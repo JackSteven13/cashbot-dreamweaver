@@ -28,14 +28,22 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
         false;
       
       // Un utilisateur est considéré comme nouveau uniquement s'il est explicitement marqué comme tel
-      // ET récemment créé
-      isUserNew = isExplicitlyNew && isRecentlyCreated;
+      // ET récemment créé ET n'a pas de transactions
+      isUserNew = isExplicitlyNew && isRecentlyCreated && 
+                 (!balanceData?.transactions || balanceData.transactions.length === 0);
+      
+      // Vérifier également si cet utilisateur a déjà vu le message de bienvenue
+      const welcomeMessageShown = localStorage.getItem('welcomeMessageShown');
+      if (welcomeMessageShown) {
+        isUserNew = false;
+      }
       
       console.log("User status check:", {
         userId,
         isExplicitlyNew,
         creationTime,
         isRecentlyCreated,
+        welcomeShown: !!welcomeMessageShown,
         finalIsNewUser: isUserNew
       });
       
@@ -100,7 +108,6 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
       localStorage.removeItem('currentBalance');
       localStorage.removeItem('lastKnownBalance');
       localStorage.removeItem('highestBalance');
-      localStorage.removeItem('welcomeMessageShown');
     } else {
       // Important: explicitement mettre à jour le state pour les utilisateurs existants
       onNewUser(false);

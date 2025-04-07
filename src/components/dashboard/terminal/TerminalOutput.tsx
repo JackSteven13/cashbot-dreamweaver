@@ -88,7 +88,7 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
       setLines(newLines);
     }
   }, [subscription, remainingSessions, referralCount, displayBalance, 
-      referralBonus, isNewUser, lastSessionTimestamp, isBotActive]);
+      referralBonus, isNewUser, lastSessionTimestamp, isBotActive, lines]);
   
   // Effet pour ajouter des lignes lors d'événements spécifiques
   useEffect(() => {

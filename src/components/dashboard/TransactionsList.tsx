@@ -69,8 +69,8 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
             </>
           ) : (
             <>
-              <p className="text-[#334e68]">Le système va maintenant commencer à générer des revenus automatiquement.</p>
-              <p className="text-sm text-[#486581] mt-2">Aucune action n'est requise de votre part.</p>
+              <p className="text-[#334e68]">Aucune session récente.</p>
+              <p className="text-sm text-[#486581] mt-2">Lancez une analyse manuelle ou attendez la prochaine session automatique.</p>
             </>
           )}
         </div>
