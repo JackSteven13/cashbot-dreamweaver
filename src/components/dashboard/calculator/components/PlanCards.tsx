@@ -76,7 +76,7 @@ const PlanCards: React.FC<PlanCardsProps> = ({
         <div key={plan} className={isMobile ? "mb-3" : ""}>
           <SubscriptionPlanCard
             key={plan}
-            title={SUBSCRIPTION_LABELS[plan] || plan}
+            title={plan.charAt(0).toUpperCase() + plan.slice(1)}
             price={SUBSCRIPTION_PRICES[plan] || 0}
             description={SUBSCRIPTION_DESCRIPTIONS[plan] || ''}
             features={SUBSCRIPTION_FEATURES[plan] || []}
@@ -86,8 +86,7 @@ const PlanCards: React.FC<PlanCardsProps> = ({
             isHomePage={isHomePage}
             isCurrent={isCurrent}
             isFreemium={isFreemium}
-            subscriptionLabel={SUBSCRIPTION_LABELS[plan]}
-            subscriptionPrice={SUBSCRIPTION_PRICES[plan]}
+            subscriptionLabel="/an"
             revenue={results.revenue}
             profit={results.profit}
             onClick={() => onSelectPlan(plan)}
