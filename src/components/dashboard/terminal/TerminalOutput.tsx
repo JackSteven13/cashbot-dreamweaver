@@ -4,6 +4,7 @@ import { SystemInfo } from './SystemInfo';
 import { SystemProgressBar } from './SystemProgressBar';
 import { SessionCountdown } from './SessionCountdown';
 import { NewUserGuide } from './NewUserGuide';
+import { useSessionCountdown } from '@/hooks/useSessionCountdown';
 
 interface TerminalOutputProps {
   isNewUser?: boolean;
@@ -31,6 +32,13 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
   isBotActive = true
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
+  
+  // Use the countdown hook to get countdown time
+  const { timeRemaining, isCountingDown } = useSessionCountdown(
+    remainingSessions,
+    subscription,
+    lastSessionTimestamp
+  );
 
   // Auto-scroll to bottom when new content is added
   useEffect(() => {
@@ -42,12 +50,14 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
   // Format the balance for display
   const formattedBalance = displayBalance.toFixed(2);
   const formattedDailyLimit = dailyLimit.toFixed(2);
+  
+  // Calculate percentage for progress bar
+  const limitPercentage = Math.min(100, (displayBalance / dailyLimit) * 100);
 
   return (
     <div ref={terminalRef} className="space-y-2">
       <SystemInfo 
-        isNewUser={isNewUser} 
-        subscription={subscription}
+        isNewUser={isNewUser}
       />
       
       <div className="text-green-400">
@@ -116,7 +126,13 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
         
         {isBotActive && (
           <div className="mt-1">
-            <SystemProgressBar />
+            <SystemProgressBar 
+              displayBalance={displayBalance}
+              dailyLimit={dailyLimit}
+              limitPercentage={limitPercentage}
+              subscription={subscription}
+              botActive={isBotActive}
+            />
           </div>
         )}
       </div>
@@ -127,7 +143,7 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
             $ system.showCountdown()
           </div>
           <div className="pl-4">
-            <SessionCountdown />
+            <SessionCountdown timeRemaining={timeRemaining} />
           </div>
         </>
       )}
