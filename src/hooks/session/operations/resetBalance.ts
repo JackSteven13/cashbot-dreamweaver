@@ -22,6 +22,7 @@ export const useResetBalance = (
     setError(null);
 
     try {
+      // Convert the number 0 to string "0" for Supabase
       const { error: resetError } = await supabase
         .from('user_balances')
         .update({ 

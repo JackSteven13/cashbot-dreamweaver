@@ -4,9 +4,9 @@ import { useAuthSession } from './useAuthSession';
 import { useFetchBalance } from './operations/fetchBalance';
 import { useUpdateBalance } from './operations/updateBalance';
 import { useResetBalance } from './operations/resetBalance';
-import { BalanceOperationsProps, BalanceUpdateResult } from './types/balanceTypes';
+import { BalanceOperationsProps } from './types/balanceTypes';
 
-export { BalanceUpdateResult } from './types/balanceTypes';
+export type { BalanceUpdateResult } from './types/balanceTypes';
 
 export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOperationsProps) => {
   const [balance, setBalance] = useState<number>(initialBalance);

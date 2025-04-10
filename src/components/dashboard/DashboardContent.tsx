@@ -40,10 +40,13 @@ const DashboardContent = ({
   // Count active referrals
   const activeReferrals = referrals?.filter(ref => ref.active !== false) || [];
   
-  // Convert dailySessionCount to string for components that expect string
-  const dailySessionCountStr = typeof dailySessionCount === 'number' 
-    ? dailySessionCount.toString() 
+  // Convert dailySessionCount to number for components that expect number
+  const numericDailySessionCount = typeof dailySessionCount === 'string' 
+    ? parseInt(dailySessionCount, 10) 
     : dailySessionCount;
+  
+  // Ensure dailySessionCount is also available as string for display
+  const dailySessionCountStr = numericDailySessionCount.toString();
   
   return (
     <main className="flex-1 overflow-auto py-4">
@@ -73,7 +76,7 @@ const DashboardContent = ({
             transactions={transactions}
             isNewUser={isNewUser}
             subscription={subscription}
-            dailySessionCount={dailySessionCountStr}
+            dailySessionCount={numericDailySessionCount}
             canStartSession={!isDormant}
             referrals={referrals}
             lastSessionTimestamp={lastSessionTimestamp}
@@ -84,7 +87,7 @@ const DashboardContent = ({
             isNewUser={isNewUser}
             dailyLimit={dailyLimit}
             subscription={subscription}
-            remainingSessions={dailySessionCountStr}
+            remainingSessions={numericDailySessionCount}
             referralCount={activeReferrals.length}
             displayBalance={balance}
             referralBonus={referralBonus}

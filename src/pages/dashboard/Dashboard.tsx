@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserFetchRefactored } from '@/hooks/fetch/useUserFetchRefactored';
@@ -112,6 +113,11 @@ const Dashboard = () => {
   const referralBonus = userData?.referrals?.reduce((total, ref) => 
     total + (ref.commission_rate || 0), 0) || 0;
   
+  // Convert dailySessionCount to number if it's a string
+  const numericDailySessionCount = typeof dailySessionCount === 'string' 
+    ? parseInt(dailySessionCount, 10) 
+    : dailySessionCount;
+  
   return (
     <div className="dashboard-container">
       {showLimitAlert && (
@@ -143,7 +149,7 @@ const Dashboard = () => {
         transactions={userData?.transactions || []}
         isNewUser={isNewUser}
         subscription={getSubscription(userData)}
-        dailySessionCount={dailySessionCount.toString()}
+        dailySessionCount={numericDailySessionCount}
         canStartSession={!showLimitAlert}
         referrals={userData?.referrals || []}
         lastSessionTimestamp={lastAutoSessionTime}
@@ -155,7 +161,7 @@ const Dashboard = () => {
         isNewUser={isNewUser}
         dailyLimit={dailyLimit}
         subscription={getSubscription(userData)}
-        remainingSessions={dailySessionCount.toString()}
+        remainingSessions={numericDailySessionCount}
         referralCount={userData?.referrals?.length || 0}
         displayBalance={userData?.balance || 0}
         referralBonus={referralBonus}

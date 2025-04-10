@@ -31,7 +31,12 @@ export const useFetchBalance = (
       }
 
       if (data) {
-        setBalance(parseFloat(data.balance) || 0);
+        // Convert string balance to number
+        const numericBalance = typeof data.balance === 'string' 
+          ? parseFloat(data.balance) 
+          : data.balance;
+        
+        setBalance(numericBalance || 0);
       }
     } catch (err) {
       console.error('Error fetching balance:', err);
