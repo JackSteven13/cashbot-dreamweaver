@@ -15,9 +15,9 @@ export const PLAN_PRICES = {
 
 // Taux de commission par plan
 export const COMMISSION_RATES = {
-  'freemium': 0.2,    // 20% (was 40%)
-  'starter': 0.3,     // 30% (was 60%)
-  'gold': 0.4,        // 40% (was 80%)
-  'elite': 0.5,       // 50% (was 100%)
-  'default': 0.2      // 20% (was 40%) par défaut
+  'freemium': 0.2,    // 20%
+  'starter': 0.3,     // 30%
+  'gold': 0.4,        // 40%
+  'elite': 0.5,       // 50%
+  'default': 0.2      // 20% par défaut
 };

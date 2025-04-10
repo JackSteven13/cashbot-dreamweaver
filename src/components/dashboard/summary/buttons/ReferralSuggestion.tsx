@@ -61,7 +61,7 @@ const ReferralSuggestionContent: React.FC<{ onStartReferral: () => void }> = ({ 
         <div>
           <h4 className="font-semibold text-slate-800 mb-1">Gagnez plus avec le parrainage</h4>
           <p className="text-sm text-slate-600">
-            Parrainez des amis et gagnez <span className="font-medium text-green-600">20-50%</span> de leurs abonnements chaque mois, automatiquement.
+            Parrainez des amis et gagnez <span className="font-medium text-green-600">20-50%</span> de leurs abonnements annuels, automatiquement.
           </p>
         </div>
       </div>

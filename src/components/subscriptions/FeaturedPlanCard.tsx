@@ -79,7 +79,7 @@ const FeaturedPlanCard: React.FC<FeaturedPlanCardProps> = ({
                 </li>
                 <li className="flex items-center text-xs md:text-sm text-purple-800 dark:text-purple-300">
                   <PercentIcon className="h-3.5 w-3.5 mr-2 text-purple-500" />
-                  Commission de parrainage de 100%
+                  Commission de parrainage de 50%
                 </li>
               </ul>
             </div>

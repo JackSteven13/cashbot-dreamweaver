@@ -96,12 +96,12 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
                   <div>
                     <h4 className="font-semibold text-slate-800 mb-1">Atteignez votre seuil de retrait plus rapidement !</h4>
                     <p className="text-sm text-slate-600">
-                      Parrainez des amis et gagnez <span className="font-medium text-green-600">20-50%</span> de leurs abonnements mensuels sans limite de filleuls.
+                      Parrainez des amis et gagnez <span className="font-medium text-green-600">20-50%</span> de leurs abonnements annuels sans limite de filleuls.
                     </p>
                   </div>
                 </div>
                 <div className="bg-blue-50 border border-blue-100 rounded-md p-2 text-xs text-blue-800">
-                  <p>💡 Chaque parrainage actif vous rapporte des revenus passifs mensuels, même pendant votre sommeil !</p>
+                  <p>💡 Chaque parrainage actif vous rapporte des revenus passifs, même pendant votre sommeil !</p>
                 </div>
                 <div className="pt-1">
                   <Button 
