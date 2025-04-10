@@ -24,25 +24,69 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
   const [localBotActive, setLocalBotActive] = useState(botActive);
   const [limitReached, setLimitReached] = useState(false);
   
+  // Load today's gains from localStorage for a more accurate limit check
   useEffect(() => {
-    const effectiveSub = getEffectiveSubscription(subscription);
-    const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    setEffectiveLimit(limit);
+    const today = new Date().toISOString().split('T')[0];
+    const todaysGainsKey = `todaysGains_${today}`;
     
-    const percentage = Math.min(100, (displayBalance / limit) * 100);
-    setCalculatedPercentage(percentage);
-    
-    const isLimitReached = percentage >= 100;
-    setLimitReached(isLimitReached);
-    
-    if (isLimitReached && localBotActive) {
-      setLocalBotActive(false);
+    try {
+      const storedGains = localStorage.getItem(todaysGainsKey);
+      if (storedGains) {
+        const todaysGains = parseFloat(storedGains);
+        if (!isNaN(todaysGains)) {
+          const effectiveSub = getEffectiveSubscription(subscription);
+          const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+          setEffectiveLimit(limit);
+          
+          const percentage = Math.min(100, (todaysGains / limit) * 100);
+          setCalculatedPercentage(percentage);
+          
+          const isLimitReached = percentage >= 100;
+          setLimitReached(isLimitReached);
+          
+          // If limit reached, ensure bot is inactive
+          if (isLimitReached && localBotActive) {
+            setLocalBotActive(false);
+            window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
+              detail: { active: false } 
+            }));
+            console.log("Limite atteinte dans SystemProgressBar, bot désactivé");
+          }
+        }
+      } else {
+        // Use the provided data as fallback
+        const effectiveSub = getEffectiveSubscription(subscription);
+        const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+        setEffectiveLimit(limit);
+        
+        const percentage = Math.min(100, (displayBalance / limit) * 100);
+        setCalculatedPercentage(percentage);
+        
+        const isLimitReached = percentage >= 100;
+        setLimitReached(isLimitReached);
+        
+        // If limit reached, ensure bot is inactive
+        if (isLimitReached && localBotActive) {
+          setLocalBotActive(false);
+          window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
+            detail: { active: false } 
+          }));
+          console.log("Limite atteinte dans SystemProgressBar, bot désactivé");
+        }
+      }
+    } catch (e) {
+      console.error("Error reading today's gains:", e);
       
-      window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
-        detail: { active: false } 
-      }));
+      // Use the provided data as fallback
+      const effectiveSub = getEffectiveSubscription(subscription);
+      const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      setEffectiveLimit(limit);
       
-      console.log("Limite atteinte dans SystemProgressBar, bot désactivé");
+      const percentage = Math.min(100, (displayBalance / limit) * 100);
+      setCalculatedPercentage(percentage);
+      
+      const isLimitReached = percentage >= 100;
+      setLimitReached(isLimitReached);
     }
   }, [subscription, displayBalance, dailyLimit, limitPercentage, localBotActive]);
   

@@ -25,6 +25,30 @@ export const updateUserBalance = async (
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split('T')[0];
   
+  // Track this user's daily gains in localStorage
+  const todaysGainsKey = `todaysGains_${today}_${userId}`;
+  
+  let todaysGains = 0;
+  try {
+    const storedGains = localStorage.getItem(todaysGainsKey);
+    if (storedGains) {
+      todaysGains = parseFloat(storedGains);
+    }
+  } catch (e) {
+    console.error("Error retrieving daily gains from localStorage:", e);
+  }
+  
+  // Add current gain to today's total
+  todaysGains += positiveGain;
+  
+  // Store updated daily gains
+  try {
+    localStorage.setItem(todaysGainsKey, todaysGains.toString());
+    console.log(`Updated daily gains for user ${userId}: ${todaysGains}`);
+  } catch (e) {
+    console.error("Error storing daily gains in localStorage:", e);
+  }
+  
   // Calculate today's gains for limit checking
   const { data: todaysTransactions } = await supabase
     .from('transactions')
@@ -33,11 +57,22 @@ export const updateUserBalance = async (
     .gte('date', today)
     .lt('date', new Date(new Date().setDate(new Date().getDate() + 1)).toISOString());
     
-  const todaysGains = (todaysTransactions || []).reduce((sum, tx) => sum + (tx.gain || 0), 0) + positiveGain;
+  const dbTodaysGains = (todaysTransactions || []).reduce((sum, tx) => sum + (tx.gain || 0), 0) + positiveGain;
+  
+  // Use the higher value between DB and localStorage
+  const effectiveTodaysGains = Math.max(dbTodaysGains, todaysGains);
   
   // Check if daily limit reached (for warnings only)
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-  const limitReached = todaysGains >= dailyLimit;
+  const limitReached = effectiveTodaysGains >= dailyLimit;
+  
+  if (limitReached) {
+    // Also trigger bot deactivation event
+    window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
+      detail: { active: false }
+    }));
+    console.log(`Daily limit reached for user ${userId}, bot deactivated`);
+  }
   
   // Retry mechanism
   const maxRetries = 3;
@@ -47,7 +82,7 @@ export const updateUserBalance = async (
   while (retryCount < maxRetries && !success) {
     try {
       console.log(`Updating balance from ${effectiveCurrentBalance} to ${newBalance} for user ${userId} (attempt ${retryCount + 1}/${maxRetries})`);
-      console.log(`Today's gains: ${todaysGains}/${dailyLimit}`);
+      console.log(`Today's gains: ${effectiveTodaysGains}/${dailyLimit}`);
       
       // ALWAYS update the balance regardless of daily limit
       // The daily limit only restricts how much can be earned in a day, not the total balance

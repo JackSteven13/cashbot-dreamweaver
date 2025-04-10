@@ -22,6 +22,44 @@ export const useAutoRevenueGenerator = (
   const initialSessionExecutedRef = useRef(false);
   const lastOfflineUpdateRef = useRef<string | null>(null);
   
+  // Check if limit is reached and update bot status accordingly
+  useEffect(() => {
+    if (!userData?.subscription) return;
+    
+    // Get the daily limit
+    const dailyLimit = getDailyLimit(userData.subscription);
+    
+    // Get today's date
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Try to get today's gains from localStorage
+    let todaysGains = 0;
+    try {
+      const todaysGainsKey = `todaysGains_${today}`;
+      const storedGains = localStorage.getItem(todaysGainsKey);
+      if (storedGains) {
+        todaysGains = parseFloat(storedGains);
+      }
+    } catch (e) {
+      console.error("Error retrieving daily gains:", e);
+    }
+    
+    // Use the higher value between reference and localStorage
+    const effectiveGains = Math.max(todaysGains, todaysGainsRef.current);
+    
+    // If limit is reached, deactivate bot
+    if (effectiveGains >= dailyLimit) {
+      console.log(`Daily limit reached (${effectiveGains}/${dailyLimit}), deactivating bot`);
+      setBotActive(false);
+      setShowLimitAlert(true);
+      
+      // Ensure this is reflected globally
+      window.dispatchEvent(new CustomEvent('bot:status-change', { 
+        detail: { active: false }
+      }));
+    }
+  }, [userData?.subscription, userData?.balance, getDailyLimit, setShowLimitAlert, todaysGainsRef]);
+  
   // Effet pour synchroniser les gains générés hors-ligne
   useEffect(() => {
     if (!userData?.id) return;
@@ -274,6 +312,16 @@ export const useAutoRevenueGenerator = (
         
         // Mettre à jour également le gestionnaire central de solde
         balanceManager.updateBalance(gain);
+        
+        // Check if limit is now reached after this gain
+        if (todaysGainsRef.current >= dailyLimit) {
+          console.log('Limite atteinte après ce gain, désactivation du bot');
+          setBotActive(false);
+          setShowLimitAlert(true);
+          window.dispatchEvent(new CustomEvent('bot:status-change', { 
+            detail: { active: false }
+          }));
+        }
       }
     } catch (error) {
       console.error('Erreur lors de la génération automatique de revenus:', error);

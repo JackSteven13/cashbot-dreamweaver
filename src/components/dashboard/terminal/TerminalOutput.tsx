@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { cn } from '@/lib/utils';
+import { calculateLimitPercentage } from '@/utils/balance/limitCalculations';
 
 interface TerminalOutputProps {
   isNewUser?: boolean;
@@ -20,24 +20,28 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
   subscription = 'freemium',
   remainingSessions = 0,
   referralCount = 0,
-  dailyLimit,
-  displayBalance,
-  referralBonus,
+  dailyLimit = 0.5,
+  displayBalance = 0,
+  referralBonus = 0,
   scrollToBottom = false,
   lastSessionTimestamp,
   isBotActive = true
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
-
-  // Défilement automatique vers le bas du terminal
+  
+  // Défiler jusqu'au bas lorsque le contenu change
   useEffect(() => {
     if (scrollToBottom && terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
-  }, [scrollToBottom]);
-
-  // Fonction pour formater les valeurs monétaires
-  const formatCurrency = (value: number) => {
+  }, [scrollToBottom, isNewUser, displayBalance, isBotActive]);
+  
+  // Calculer le pourcentage de la limite journalière
+  const limitPercentage = calculateLimitPercentage(displayBalance, dailyLimit);
+  const isLimitReached = limitPercentage >= 100;
+  
+  // Formater les valeurs numériques pour l'affichage
+  const formatValue = (value: number): string => {
     return `${value.toFixed(2)}€`;
   };
 
@@ -50,92 +54,141 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
 
   return (
     <div ref={terminalRef} className="terminal-output space-y-3">
-      {/* Séquence de démarrage */}
-      <div className="terminal-section">
-        <div className={primaryColor}>$ system.bootSequence()</div>
-        <div className="ml-4">
-          &gt; Initialisation... <span className={successColor}>OK</span>
+      {/* En-tête du terminal */}
+      <div>
+        <div className="text-gray-500"># Terminal système v3.42.1</div>
+        <div className={primaryColor}>&gt; analyzing_system --status</div>
+        <div className="pl-2">
+          Status: <span className={isBotActive ? successColor : errorColor}>
+            {isBotActive ? "ONLINE" : "OFFLINE"}
+          </span>
+          {isBotActive ? (
+            <span className="text-gray-500 ml-2">// Système en fonctionnement normal</span>
+          ) : (
+            <span className="text-gray-500 ml-2">// Système en veille - limite atteinte</span>
+          )}
         </div>
-        <div className="ml-4">
-          &gt; Vérification système... <span className={successColor}>OK</span>
-        </div>
-        <div className="ml-4">
-          &gt; Chargement algorithmes... <span className={successColor}>OK</span>
-        </div>
-        <div className="ml-4">
-          &gt; Compte: <span className={valueColor}>Vérifié</span>
-        </div>
-        <div className="ml-4">
-          &gt; Plan: <span className={valueColor}>{subscription}</span>
-        </div>
-        <div className="ml-4">
-          &gt; Système prêt
-        </div>
-      </div>
-
-      {/* Vérification du compte */}
-      <div className="terminal-section">
-        <div className={primaryColor}>$ system.checkAccountStatus()</div>
-        <div className="ml-4">
-          &gt; Compte actif: <span className={valueColor}>Oui</span>
-        </div>
-        <div className="ml-4">
-          &gt; Plan: <span className={valueColor}>{subscription}</span>
-        </div>
-        <div className="ml-4">
-          &gt; Solde actuel: <span className={valueColor}>{formatCurrency(displayBalance)}</span>
-        </div>
-        <div className="ml-4">
-          &gt; Limite journalière: <span className={valueColor}>{formatCurrency(dailyLimit)}</span>
-        </div>
-        <div className="ml-4">
-          &gt; Sessions restantes: <span className={remainingSessions === 0 ? warningColor : valueColor}>{remainingSessions}</span>
-        </div>
-      </div>
-
-      {/* Activité du système */}
-      <div className="terminal-section">
-        <div className={primaryColor}>$ system.getActivity()</div>
-        <div className="ml-4">
-          &gt; Bot: <span className={isBotActive ? successColor : errorColor}>{isBotActive ? 'Actif' : 'Inactif'}</span>
-        </div>
-        {lastSessionTimestamp && (
-          <div className="ml-4">
-            &gt; Dernière session: <span className={valueColor}>{new Date(lastSessionTimestamp).toLocaleTimeString()}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Décompte ou message selon l'état */}
-      <div className="terminal-section">
-        {isBotActive ? (
-          <div className={primaryColor}>$ system.showCountdown()</div>
-        ) : (
-          <div className={errorColor}>$ system.reactivate()</div>
-        )}
       </div>
       
-      {/* Message pour nouveau compte */}
+      {/* Informations sur l'utilisateur */}
+      <div>
+        <div className={primaryColor}>&gt; user --info</div>
+        <div className="pl-2">
+          Subscription: <span className={valueColor}>{subscription}</span><br />
+          Daily Limit: <span className={valueColor}>{formatValue(dailyLimit)}</span><br />
+          Balance: <span className={valueColor}>{formatValue(displayBalance)}</span><br />
+          Bonus Parrainage: <span className={valueColor}>{formatValue(referralBonus)}</span><br />
+          {referralCount > 0 && (
+            <>Referrals: <span className={valueColor}>{referralCount}</span><br /></>
+          )}
+        </div>
+      </div>
+      
+      {/* Statut des limites */}
+      <div>
+        <div className={primaryColor}>&gt; user --limit-status</div>
+        <div className="pl-2">
+          <div>
+            Daily limit usage: <span className={
+              isLimitReached ? errorColor : (limitPercentage > 80 ? warningColor : successColor)
+            }>
+              {Math.floor(limitPercentage)}%
+            </span>
+          </div>
+          <div className="w-64 h-1 bg-gray-700 mt-1 mb-2">
+            <div 
+              className={`h-full ${isLimitReached ? 'bg-red-500' : (limitPercentage > 80 ? 'bg-amber-400' : 'bg-cyan-400')}`} 
+              style={{ width: `${limitPercentage}%` }}
+            />
+          </div>
+          {isLimitReached && (
+            <div className={errorColor}>
+              ALERTE: Limite journalière atteinte de {formatValue(dailyLimit)}
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Statut de session */}
+      <div>
+        <div className={primaryColor}>&gt; session --status</div>
+        <div className="pl-2">
+          {isLimitReached ? (
+            <span className={errorColor}>
+              Sessions bloquées - limite journalière atteinte
+            </span>
+          ) : isBotActive ? (
+            <span className={successColor}>
+              Sessions actives - prêt pour analyse
+            </span>
+          ) : (
+            <span className={errorColor}>
+              Sessions inactives - système en veille
+            </span>
+          )}
+          {subscription === 'freemium' && !isLimitReached && (
+            <div>
+              Sessions manuelles restantes: <span className={valueColor}>{
+                Math.max(0, 1 - (remainingSessions || 0))
+              }</span>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Dernière activité */}
+      {lastSessionTimestamp && (
+        <div>
+          <div className={primaryColor}>&gt; session --last-activity</div>
+          <div className="pl-2">
+            <span className={valueColor}>
+              {new Date(lastSessionTimestamp).toLocaleTimeString()} - {
+                new Date(lastSessionTimestamp).toLocaleDateString()
+              }
+            </span>
+          </div>
+        </div>
+      )}
+      
+      {/* Si l'utilisateur est nouveau, afficher un message de bienvenue */}
       {isNewUser && (
-        <div className="terminal-section mt-4 border-t border-gray-800 pt-2">
-          <div className={warningColor}>
-            [INFORMATION] Nouveau compte détecté. Accès aux tutoriels débloqué.
+        <div className="mt-4">
+          <div className={warningColor}>&gt; system --welcome-message</div>
+          <div className="pl-2">
+            Bienvenue dans notre système d'analyse publicitaire.<br/>
+            Commencez par lancer une session d'analyse pour générer vos premiers revenus.
           </div>
         </div>
       )}
       
-      {/* Info référence si applicable */}
-      {referralCount > 0 && (
-        <div className="terminal-section border-t border-gray-800 pt-2">
-          <div className={primaryColor}>$ system.referralStatus()</div>
-          <div className="ml-4">
-            &gt; Affiliés actifs: <span className={valueColor}>{referralCount}</span>
-          </div>
-          <div className="ml-4">
-            &gt; Bonus généré: <span className={valueColor}>{formatCurrency(referralBonus)}</span>
+      {/* Commandes disponibles */}
+      <div className="mt-4">
+        <div className={primaryColor}>&gt; help</div>
+        <div className="pl-2 text-gray-500">
+          Commandes disponibles:<br/>
+          - session --start : Démarrer une nouvelle analyse<br/>
+          - system --reset : Réinitialiser le système<br/>
+          - user --upgrade : Augmenter votre limite journalière
+        </div>
+      </div>
+      
+      {/* Si le système est inactif (limite atteinte), afficher un message d'info */}
+      {isLimitReached && (
+        <div className="mt-2">
+          <div className={errorColor}>&gt; system --warning</div>
+          <div className="pl-2 text-amber-300">
+            Limite journalière atteinte. Pour continuer l'analyse, veuillez:<br/>
+            - Attendre le renouvellement quotidien à minuit<br/>
+            - Passer à un forfait supérieur pour augmenter votre limite
           </div>
         </div>
       )}
+      
+      {/* Cursor clignotant */}
+      <div className="flex items-center">
+        <span className={primaryColor}>&gt;</span>
+        <span className="ml-1 w-2 h-4 bg-green-500 animate-pulse"></span>
+      </div>
     </div>
   );
 };
