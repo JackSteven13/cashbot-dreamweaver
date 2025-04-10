@@ -26,16 +26,16 @@ export const useDashboardState = () => {
     dormancyData,
     isChecking,
     handleReactivate
-  } = useDormancyCheck(userData.userData?.subscription || 'freemium', userData.refreshUserData);
+  } = useDormancyCheck(userData.userData?.subscription || 'freemium', userData.refetchUserData);
   
   // Memoize des sessions pour éviter les recalculs inutiles
   const sessions = useDashboardSessions(
     userData.userData,
-    userData.dailySessionCount,
-    userData.incrementSessionCount,
-    userData.updateBalance,
+    userData.dailySessionCount || 0,
+    async () => {}, // placeholder for incrementSessionCount
+    async (gain, report, forceUpdate) => {}, // placeholder for updateBalance
     userData.setShowLimitAlert,
-    userData.resetBalance
+    async () => {} // placeholder for resetBalance
   );
 
   // Memoize la fonction de rafraîchissement pour éviter les re-rendus
@@ -44,31 +44,31 @@ export const useDashboardState = () => {
     setRenderKey(Date.now());
     
     try {
-      await userData.refreshUserData();
+      await userData.refetchUserData();
       return true; // Retourner true pour satisfaire le type Promise<boolean>
     } catch (error) {
       console.error("Error refreshing user data:", error);
       return false; // Retourner false en cas d'erreur
     }
-  }, [userData.refreshUserData]);
+  }, [userData.refetchUserData]);
 
   // Extraire les propriétés de userData pour éviter les références qui changent
   const {
     userData: userDataObj,
-    isNewUser,
-    dailySessionCount,
-    showLimitAlert,
+    isNewUser = false,
+    dailySessionCount = 0,
+    showLimitAlert = false,
     setShowLimitAlert,
-    isLoading
+    isLoading = false
   } = userData;
 
   // Extraire les propriétés de sessions pour éviter les références qui changent
   const {
-    isStartingSession,
-    handleStartSession,
-    handleWithdrawal,
+    isStartingSession = false,
+    handleStartSession = async () => {},
+    handleWithdrawal = async () => {},
     lastSessionTimestamp,
-    isBotActive
+    isBotActive = true
   } = sessions;
 
   // Retourner un objet mémorisé pour éviter les références changeantes

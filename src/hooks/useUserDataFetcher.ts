@@ -18,11 +18,11 @@ export type { UserFetcherState };
 export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => {
   const { state, updateUserData, setShowLimitAlert, setIsLoading } = useUserDataState();
   const { loadUserProfile, isNewUser, setIsNewUser } = useProfileLoader();
-  const { loadUserBalance } = useBalanceLoader(setIsNewUser);
+  const { loadBalance } = useBalanceLoader(setIsNewUser);
 
   const { fetchUserData, resetDailyCounters } = useUserDataFetching(
     loadUserProfile,
-    loadUserBalance,
+    loadBalance,
     updateUserData,
     setIsLoading,
     isNewUser

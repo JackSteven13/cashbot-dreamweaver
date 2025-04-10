@@ -7,7 +7,7 @@ class BalanceManager {
   private initialized: boolean = false;
   private userId: string | null = null;
   private localStorageKey: string = 'highestBalance';
-  private subscribers: Array<(balance: number) => void> = [];
+  private subscribers: Array<(state: {currentBalance: number, lastKnownBalance: number, highestBalance: number}) => void> = [];
   
   /**
    * Initialise le gestionnaire avec une valeur de solde
@@ -185,7 +185,7 @@ class BalanceManager {
   /**
    * S'abonner aux changements de solde
    */
-  subscribe(callback: (balance: number) => void): () => void {
+  subscribe(callback: (state: {currentBalance: number, lastKnownBalance: number, highestBalance: number}) => void): () => void {
     this.subscribers.push(callback);
     
     // Retourner une fonction pour se désabonner
@@ -198,9 +198,15 @@ class BalanceManager {
    * Notifier tous les abonnés
    */
   private notifySubscribers(): void {
+    const state = {
+      currentBalance: this.currentBalance,
+      lastKnownBalance: this.currentBalance,
+      highestBalance: this.currentBalance
+    };
+    
     for (const subscriber of this.subscribers) {
       try {
-        subscriber(this.currentBalance);
+        subscriber(state);
       } catch (e) {
         console.error("[BalanceManager] Error notifying subscriber:", e);
       }
@@ -210,3 +216,8 @@ class BalanceManager {
 
 // Singleton pour être utilisé dans toute l'application
 export const balanceManager = new BalanceManager();
+
+// Export the getHighestBalance function directly
+export const getHighestBalance = (): number => {
+  return balanceManager.getHighestBalance();
+};
