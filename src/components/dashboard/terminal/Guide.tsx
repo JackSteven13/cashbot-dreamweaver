@@ -4,9 +4,17 @@ import { NewUserGuide } from './NewUserGuide';
 
 interface GuideProps {
   isNewUser?: boolean;
+  subscription?: string;
+  remainingSessions?: number;
+  referralCount?: number;
 }
 
-export const Guide: React.FC<GuideProps> = ({ isNewUser = false }) => {
+export const Guide: React.FC<GuideProps> = ({ 
+  isNewUser = false,
+  subscription,
+  remainingSessions,
+  referralCount
+}) => {
   // Vérifier si l'utilisateur est réellement nouveau (en consultant également localStorage)
   const welcomeShown = localStorage.getItem('welcomeMessageShown') === 'true';
   

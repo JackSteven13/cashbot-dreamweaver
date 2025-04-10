@@ -1,16 +1,16 @@
 
 import React, { useEffect, useRef } from 'react';
-import { formatTimestamp } from '@/utils/timeUtils';
-import Guide from './Guide';
-import NewUserGuide from './NewUserGuide';
-import SystemIndicators from './SystemIndicators';
+import { formatTimestamp } from '@/utils/formatters'; // Changed from timeUtils to formatters
+import { Guide } from './Guide';  // Changed to named import
+import { NewUserGuide } from './NewUserGuide'; // Changed to named import
+import { SystemIndicators } from './SystemIndicators'; // Changed to named import
 
 interface TerminalOutputProps {
   isNewUser?: boolean;
   subscription?: string;
   referralCount?: number;
-  remainingSessions?: number; // Changed from string to number
-  dailyLimit: number; // Changed from string to number
+  remainingSessions?: number;
+  dailyLimit: number;
   displayBalance: number;
   referralBonus?: number;
   scrollToBottom?: boolean;
@@ -68,9 +68,7 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
         <NewUserGuide />
       ) : (
         <Guide 
-          subscription={subscription}
-          remainingSessions={remainingSessions}
-          referralCount={referralCount}
+          isNewUser={isNewUser}
         />
       )}
     </div>
