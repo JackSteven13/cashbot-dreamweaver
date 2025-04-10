@@ -131,7 +131,7 @@ export const useBalanceOperations = () => {
       // Reset balance - only pass the user ID
       const result = await resetUserBalance(session.user.id);
       
-      // Ensure result.transaction exists before accessing its properties
+      // Ensure we return a properly typed result with transaction property
       return { 
         success: result.success,
         transaction: result.success && result.transaction ? result.transaction : null

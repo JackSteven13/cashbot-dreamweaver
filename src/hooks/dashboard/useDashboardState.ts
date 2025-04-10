@@ -46,8 +46,8 @@ export const useDashboardState = () => {
     dailySessionCount,
     // Fix Promise<boolean> vs Promise<void> for incrementSessionCount
     async () => { 
-      const result = await Promise.resolve(true); // Create a Promise<boolean>
-      return result; // Return boolean
+      await Promise.resolve(); // No return needed for Promise<void>
+      // Don't return anything since type is Promise<void>
     },
     async (gain, report, forceUpdate) => { return true; }, // placeholder for updateBalance returning Promise<boolean>
     setShowLimitAlert,
