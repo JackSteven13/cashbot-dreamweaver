@@ -22,7 +22,7 @@ function isCacheValid(cacheEntry: { rate: number, timestamp: number } | undefine
 /**
  * Get commission rate based on user's subscription
  * @param referrerId The referrer's user ID
- * @returns The commission rate as a decimal (0.4 to 1.0)
+ * @returns The commission rate as a decimal (0.2 to 1.0)
  */
 export async function getCommissionRateForUser(referrerId: string): Promise<number> {
   try {
@@ -47,12 +47,12 @@ export async function getCommissionRateForUser(referrerId: string): Promise<numb
         
       if (userError) {
         console.error(`[REFERRAL-ERROR] Error fetching subscription:`, userError);
-        return 0.4; // Default to freemium rate (40%)
+        return 0.2; // Default to freemium rate (20%)
       }
       
       if (!userData) {
         console.warn(`[REFERRAL] No user balance found for ${referrerId}, using default rate`);
-        return 0.4;
+        return 0.2;
       }
       
       // Calculate rate based on subscription
@@ -69,7 +69,7 @@ export async function getCommissionRateForUser(referrerId: string): Promise<numb
     }, 3, 1000);
   } catch (error) {
     console.error(`[REFERRAL-ERROR] Error getting commission rate:`, error);
-    return 0.4; // Default to freemium rate (40%)
+    return 0.2; // Default to freemium rate (20%)
   }
 }
 
@@ -90,10 +90,10 @@ export function invalidateCommissionRateCache(userId: string): void {
  */
 function getCommissionRateBySubscription(subscription: string): number {
   const rates = {
-    'starter': 0.3, // 30% (was 60%)
-    'gold': 0.4,    // 40% (was 80%)
-    'elite': 0.5,   // 50% (was 100%)
-    'freemium': 0.2 // 20% (was 40%)
+    'starter': 0.3, // 30%
+    'gold': 0.4,    // 40%
+    'elite': 1.0,   // 100% (updated from 0.5 to 1.0)
+    'freemium': 0.2 // 20%
   };
   
   return rates[subscription as keyof typeof rates] || 0.2;

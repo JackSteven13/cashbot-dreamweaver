@@ -157,12 +157,12 @@ const Dashboard = () => {
       
       <SystemTerminal
         isNewUser={isNewUser}
-        dailyLimit={dailyLimit}  // Passing as number
+        dailyLimit={dailyLimit}  // Properly typed as number
         subscription={getSubscription(userData)}
         remainingSessions={dailySessionCount}
         referralCount={userData?.referrals?.length || 0}
-        displayBalance={userData?.balance || 0}  // Passing as number
-        referralBonus={(userData?.referrals?.reduce((sum, ref) => sum + (ref.commission_rate || 0), 0) || 0)}  // Using commission_rate and passing as number
+        displayBalance={userData?.balance || 0}  // Properly typed as number
+        referralBonus={(userData?.referrals?.reduce((sum, ref) => sum + (ref.commission_rate || 0), 0) || 0)}  // Properly typed as number
         lastSessionTimestamp={lastAutoSessionTime}
         isBotActive={isBotActive && !showLimitAlert}
       />
