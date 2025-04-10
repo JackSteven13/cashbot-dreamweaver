@@ -17,7 +17,7 @@ const Terms = () => {
   const location = useLocation();
   const [showCheckoutButton, setShowCheckoutButton] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'complete' | 'accordion'>('complete');
+  const [viewMode, setViewMode] = useState<'complete' | 'accordion'>('accordion'); // Défaut sur accordion pour éviter les problèmes de longues pages
   
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -52,12 +52,12 @@ const Terms = () => {
         <div className="max-w-4xl mx-auto">
           <TermsHeader />
           
-          <Card>
+          <Card className="shadow-md">
             <CardContent className="p-0">
-              <Tabs defaultValue="complete" className="w-full" onValueChange={(value) => setViewMode(value as 'complete' | 'accordion')}>
+              <Tabs defaultValue={viewMode} className="w-full" onValueChange={(value) => setViewMode(value as 'complete' | 'accordion')}>
                 <TabsList className="w-full sticky top-0 z-10 bg-background rounded-t-lg">
-                  <TabsTrigger value="complete" className="w-1/2">Vue complète</TabsTrigger>
                   <TabsTrigger value="accordion" className="w-1/2">Vue par sections</TabsTrigger>
+                  <TabsTrigger value="complete" className="w-1/2">Vue complète</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="complete">
