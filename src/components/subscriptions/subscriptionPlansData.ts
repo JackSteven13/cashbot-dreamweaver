@@ -13,7 +13,7 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
       features: [
         'Limite de gains de 50€ par jour',
         'Accès illimité à toutes les fonctionnalités',
-        'Commission de parrainage de 100%',
+        'Commission de parrainage de 50%',
         '30% de commission récurrente',
         '10% de commission niveau 2',
         'Seuil de retrait de 1000€',
@@ -21,7 +21,7 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
         'Fonctionnalités exclusives en avant-première'
       ],
       limit: SUBSCRIPTION_LIMITS['elite'],
-      commission: 1.0, // Updated from 0.5 to 1.0 (100%)
+      commission: 0.5, // Corrigé de 1.0 à 0.5 (50%)
       current: currentSubscription === 'elite',
       disabled: currentSubscription === 'elite'
     },

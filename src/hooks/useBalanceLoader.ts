@@ -1,161 +1,87 @@
 
-import { useCallback } from 'react';
-import { supabase } from "@/integrations/supabase/client";
-import { fetchUserBalance } from '@/utils/user/balanceUtils';
-import { toast } from "@/components/ui/use-toast";
-import { balanceManager, getHighestBalance } from '@/utils/balance/balanceManager'; 
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useUserSession } from './useUserSession';
+import { balanceManager } from '@/utils/balance/balanceManager';
 
-export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
-  const loadUserBalance = useCallback(async (userId: string) => {
-    // Get balance data
-    let balanceData = null;
-    let isUserNew = false;
-    const balanceResult = await fetchUserBalance(userId);
-    
-    // Process balance data
-    if (balanceResult) {
-      balanceData = balanceResult.data;
+export const useBalanceLoader = () => {
+  const { session } = useUserSession();
+  const [balance, setBalance] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Charger le solde depuis la base de données
+  const loadBalance = async (userId: string) => {
+    try {
+      setIsUpdating(true);
       
-      // Vérification plus stricte d'un nouvel utilisateur :
-      // On considère un utilisateur comme nouveau seulement si:
-      // 1. L'API indique explicitement que c'est un nouvel utilisateur
-      // 2. Le compte a été créé dans les 5 minutes (au lieu de 10)
-      // 3. Il n'y a aucune transaction
-      // 4. Il n'a jamais vu le message de bienvenue
-      
-      const isExplicitlyNew = balanceResult.isNewUser;
-      
-      // Vérification basée sur le timestamp de création (5 minutes au lieu de 10)
-      const creationTime = balanceData?.created_at || null;
-      const isRecentlyCreated = creationTime ? 
-        (new Date().getTime() - new Date(creationTime).getTime()) < 5 * 60 * 1000 : // 5 minutes
-        false;
-      
-      // Vérifier si l'utilisateur a des transactions
-      const hasNoTransactions = !balanceData?.transactions || balanceData.transactions.length === 0;
-      
-      // Vérifier également si cet utilisateur a déjà vu le message de bienvenue
-      const welcomeMessageShown = localStorage.getItem('welcomeMessageShown') === 'true';
-      
-      // Un utilisateur est considéré comme nouveau uniquement si toutes ces conditions sont remplies
-      isUserNew = isExplicitlyNew && isRecentlyCreated && hasNoTransactions && !welcomeMessageShown;
-      
-      console.log("User status check:", {
-        userId,
-        isExplicitlyNew,
-        creationTime,
-        isRecentlyCreated,
-        hasNoTransactions,
-        welcomeShown: welcomeMessageShown,
-        finalIsNewUser: isUserNew
-      });
-      
-      // Protection critique: vérifier si le solde de la base est inférieur au solde maximum stocké
-      const highestStoredBalance = getHighestBalance(); // Obtenir le solde maximum de notre système de persistance
-      
-      // Pour les nouveaux utilisateurs, on initialise le solde et le nombre de sessions à 0
-      if (isUserNew && balanceData) {
-        console.log("Nouveau utilisateur détecté - Initialisation du solde à zéro");
-        balanceData.balance = 0;
-        balanceData.daily_session_count = 0;
+      // Récupérer le solde depuis la base de données
+      const { data, error } = await supabase
+        .from('user_balances')
+        .select('balance')
+        .eq('id', userId)
+        .maybeSingle();
         
-        // Assurer la synchronisation avec la base de données pour les nouveaux utilisateurs
-        try {
-          const { error } = await supabase
-            .from('user_balances')
-            .update({ balance: 0, daily_session_count: 0 })
-            .eq('id', userId);
-            
-          if (error) {
-            console.error("Erreur lors de la réinitialisation du solde pour nouvel utilisateur:", error);
-          }
-        } catch (err) {
-          console.error("Exception lors de la réinitialisation du solde:", err);
-        }
-      } 
-      // Si nous avons un solde stocké plus élevé que celui de la base, mettre à jour la base
-      else if (!isUserNew && highestStoredBalance > 0 && balanceData && balanceData.balance < highestStoredBalance) {
-        console.log(`Solde DB (${balanceData.balance}) inférieur au solde maximum stocké (${highestStoredBalance}). Synchronisation...`);
-        
-        try {
-          const { error } = await supabase
-            .from('user_balances')
-            .update({ 
-              balance: highestStoredBalance,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', userId);
-            
-          if (error) {
-            console.error("Erreur lors de la synchronisation du solde:", error);
-          } else {
-            console.log(`Solde mis à jour avec succès dans la base à ${highestStoredBalance}`);
-            // Mettre à jour les données locales pour refléter le changement
-            balanceData.balance = highestStoredBalance;
-          }
-        } catch (err) {
-          console.error("Exception lors de la synchronisation du solde:", err);
-        }
+      if (error) {
+        console.error("Error loading balance:", error);
+        return;
       }
-    } else {
-      // Create new balance if needed
-      try {
-        const { data: newBalance, error: balanceError } = await supabase
-          .rpc('create_user_balance', {
-            user_id: userId
-          });
-          
-        if (balanceError) {
-          throw balanceError;
-        }
+      
+      if (data) {
+        // Valeur depuis la base
+        const dbBalance = data.balance || 0;
         
-        if (newBalance) {
-          balanceData = Array.isArray(newBalance) ? newBalance[0] : newBalance;
-          // S'assurer que le solde est à 0 pour les nouveaux utilisateurs
-          if (balanceData) {
-            balanceData.balance = 0;
-            balanceData.daily_session_count = 0;
-          }
-          isUserNew = true;
-        } else {
-          throw new Error("Failed to create balance");
-        }
-      } catch (error) {
-        console.error("Failed to create balance:", error);
-        return null;
+        // Initialiser le gestionnaire de solde
+        balanceManager.initialize(dbBalance, userId);
+        
+        // Obtenir le solde du gestionnaire (peut être plus élevé si enregistré en localStorage)
+        const managerBalance = balanceManager.getCurrentBalance();
+        
+        // Mettre à jour l'état
+        setBalance(managerBalance);
+        
+        console.log(`[useBalanceLoader] Balance loaded for ${userId}: DB=${dbBalance}, Manager=${managerBalance}`);
       }
+    } catch (error) {
+      console.error("Error in useBalanceLoader:", error);
+    } finally {
+      setIsLoading(false);
+      setIsUpdating(false);
     }
-    
-    // Show welcome message for new users
-    if (isUserNew) {
-      onNewUser(true);
-      toast({
-        title: "Bienvenue sur Stream Genius !",
-        description: "Votre compte a été créé avec succès. Notre système est maintenant actif pour vous.",
-      });
-      
-      // Effacer tout cache de solde dans localStorage pour les nouveaux utilisateurs
-      localStorage.removeItem('currentBalance');
-      localStorage.removeItem('lastKnownBalance');
-      localStorage.removeItem('highestBalance');
-      localStorage.removeItem('balanceState');
-    } else {
-      // Important: explicitement mettre à jour le state pour les utilisateurs existants
-      onNewUser(false);
-      
-      // Initialiser le gestionnaire de solde avec la valeur de la base de données
-      if (balanceData) {
-        balanceManager.initialize(balanceData.balance);
-      }
-    }
-
-    return {
-      balanceData,
-      isUserNew
-    };
-  }, [onNewUser]);
-
-  return {
-    loadUserBalance
   };
+  
+  // Initialiser et s'abonner aux mises à jour du solde
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+    
+    if (session?.user?.id) {
+      // Charger le solde initial
+      loadBalance(session.user.id);
+      
+      // S'abonner aux mises à jour du gestionnaire de solde
+      unsubscribe = balanceManager.subscribe((newBalance) => {
+        console.log(`[useBalanceLoader] Balance updated to: ${newBalance}`);
+        setBalance(newBalance);
+      });
+      
+      // S'abonner aux événements de réinitialisation du solde
+      const handleBalanceReset = (event: CustomEvent) => {
+        if (event.detail?.userId === session.user.id) {
+          loadBalance(session.user.id);
+        }
+      };
+      
+      window.addEventListener('balance:reset', handleBalanceReset as EventListener);
+      return () => {
+        if (unsubscribe) unsubscribe();
+        window.removeEventListener('balance:reset', handleBalanceReset as EventListener);
+      };
+    }
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [session?.user?.id]);
+  
+  return { balance, isLoading, isUpdating, loadBalance };
 };

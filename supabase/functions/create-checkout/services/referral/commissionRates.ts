@@ -22,7 +22,7 @@ function isCacheValid(cacheEntry: { rate: number, timestamp: number } | undefine
 /**
  * Get commission rate based on user's subscription
  * @param referrerId The referrer's user ID
- * @returns The commission rate as a decimal (0.2 to 1.0)
+ * @returns The commission rate as a decimal (0.2 to 0.5)
  */
 export async function getCommissionRateForUser(referrerId: string): Promise<number> {
   try {
@@ -92,7 +92,7 @@ function getCommissionRateBySubscription(subscription: string): number {
   const rates = {
     'starter': 0.3, // 30%
     'gold': 0.4,    // 40%
-    'elite': 1.0,   // 100% (updated from 0.5 to 1.0)
+    'elite': 0.5,   // 50% (corrigé)
     'freemium': 0.2 // 20%
   };
   

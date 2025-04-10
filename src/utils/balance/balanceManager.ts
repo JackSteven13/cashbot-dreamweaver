@@ -7,6 +7,7 @@ class BalanceManager {
   private initialized: boolean = false;
   private userId: string | null = null;
   private localStorageKey: string = 'highestBalance';
+  private subscribers: Array<(balance: number) => void> = [];
   
   /**
    * Initialise le gestionnaire avec une valeur de solde
@@ -63,6 +64,9 @@ class BalanceManager {
     this.currentBalance = balance;
     this.initialized = true;
     
+    // Notifier les abonnés
+    this.notifySubscribers();
+    
     // Stocker la nouvelle valeur
     if (this.userId) {
       try {
@@ -85,6 +89,9 @@ class BalanceManager {
       this.currentBalance += amount;
     }
     
+    // Notifier les abonnés
+    this.notifySubscribers();
+    
     // Stocker la nouvelle valeur
     if (this.userId) {
       try {
@@ -103,11 +110,21 @@ class BalanceManager {
   }
   
   /**
+   * Obtenir le solde le plus élevé enregistré
+   */
+  getHighestBalance(): number {
+    return this.currentBalance;
+  }
+  
+  /**
    * Réinitialise le solde à zéro
    */
   resetBalance(): void {
     console.log("[BalanceManager] Resetting balance to zero");
     this.currentBalance = 0;
+    
+    // Notifier les abonnés
+    this.notifySubscribers();
     
     // Réinitialiser dans localStorage
     if (this.userId) {
@@ -116,6 +133,25 @@ class BalanceManager {
       } catch (e) {
         console.error("[BalanceManager] Failed to reset balance in localStorage:", e);
       }
+    }
+  }
+  
+  /**
+   * Réinitialiser les compteurs quotidiens pour un utilisateur
+   */
+  resetDailyCounters(userId: string): void {
+    if (!userId) return;
+    
+    console.log(`[BalanceManager] Resetting daily counters for user ${userId}`);
+    
+    // Réinitialiser les gains quotidiens
+    const today = new Date().toISOString().split('T')[0];
+    const todaysGainsKey = `todaysGains_${today}_${userId}`;
+    
+    try {
+      localStorage.removeItem(todaysGainsKey);
+    } catch (e) {
+      console.error("[BalanceManager] Failed to reset daily counters in localStorage:", e);
     }
   }
   
@@ -143,6 +179,31 @@ class BalanceManager {
       }
     } catch (e) {
       console.error("[BalanceManager] Failed to reset user data in localStorage:", e);
+    }
+  }
+  
+  /**
+   * S'abonner aux changements de solde
+   */
+  subscribe(callback: (balance: number) => void): () => void {
+    this.subscribers.push(callback);
+    
+    // Retourner une fonction pour se désabonner
+    return () => {
+      this.subscribers = this.subscribers.filter(cb => cb !== callback);
+    };
+  }
+  
+  /**
+   * Notifier tous les abonnés
+   */
+  private notifySubscribers(): void {
+    for (const subscriber of this.subscribers) {
+      try {
+        subscriber(this.currentBalance);
+      } catch (e) {
+        console.error("[BalanceManager] Error notifying subscriber:", e);
+      }
     }
   }
 }
