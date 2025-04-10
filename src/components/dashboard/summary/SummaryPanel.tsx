@@ -1,3 +1,4 @@
+
 import React from 'react';
 import UserBalanceCard from './userBalanceCard/UserBalanceCard';
 import SessionInfo from './SessionInfo';
@@ -67,7 +68,7 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
         <BoostButton 
           isStartingSession={isStartingSession}
           canStartSession={canStartSession}
-          handleStartSession={handleStartSession}
+          onClick={handleStartSession}
           subscription={subscription}
         />
         

@@ -6,22 +6,26 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BoostButtonProps {
   canStartSession: boolean;
-  limitReached: boolean;
-  limitPercentage: number;
+  limitReached?: boolean;
+  limitPercentage?: number;
   isStartingSession: boolean;
-  isButtonDisabled: boolean;
-  buttonRef: React.RefObject<HTMLButtonElement>;
+  isButtonDisabled?: boolean;
+  buttonRef?: React.RefObject<HTMLButtonElement>;
   onClick: () => void;
+  handleStartSession?: () => void;
+  subscription?: string;
 }
 
 export const BoostButton: React.FC<BoostButtonProps> = ({
   canStartSession,
-  limitReached,
-  limitPercentage,
+  limitReached = false,
+  limitPercentage = 0,
   isStartingSession,
-  isButtonDisabled,
+  isButtonDisabled = false,
   buttonRef,
-  onClick
+  onClick,
+  handleStartSession, // Support pour l'ancienne API
+  subscription
 }) => {
   const isMobile = useIsMobile();
   const iconSize = isMobile ? 16 : 18;
@@ -32,7 +36,13 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
     if (isButtonDisabled || isStartingSession || limitReached) return;
     
     setIsClicked(true);
-    onClick();
+    
+    // Support pour l'ancienne et la nouvelle API
+    if (handleStartSession) {
+      handleStartSession();
+    } else {
+      onClick();
+    }
     
     // Réinitialiser l'état cliqué après un délai
     setTimeout(() => {
