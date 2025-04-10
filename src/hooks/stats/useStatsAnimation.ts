@@ -14,15 +14,15 @@ export const useStatsAnimation = ({
   setDisplayedAdsCount,
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
-  // Animation redesignée pour être plus impressionnante
+  // Animation redesignée pour simuler plusieurs agents IA travaillant simultanément
   const animateCounters = useCallback(() => {
-    // Mise à jour du compteur d'annonces - accélérée
+    // Mise à jour du compteur d'annonces - accélérée considérablement
     setDisplayedAdsCount((prevCount) => {
       // Si nous avons atteint la cible, ne pas changer
       if (prevCount >= adsCount) return adsCount;
       
-      // Incrémentation progressive plus dynamique
-      const increment = Math.max(50, Math.floor((adsCount - prevCount) * 0.05));
+      // Incrémentation beaucoup plus agressive pour simuler plusieurs agents
+      const increment = Math.max(200, Math.floor((adsCount - prevCount) * 0.08));
       return Math.min(prevCount + increment, adsCount);
     });
 
@@ -31,8 +31,8 @@ export const useStatsAnimation = ({
       // Si nous avons atteint la cible, ne pas changer
       if (prevRevCount >= revenueCount) return revenueCount;
       
-      // Incrémentation progressive plus dynamique
-      const increment = Math.max(100, Math.floor((revenueCount - prevRevCount) * 0.05));
+      // Incrémentation plus dynamique et agressive
+      const increment = Math.max(350, Math.floor((revenueCount - prevRevCount) * 0.08));
       return Math.min(prevRevCount + increment, revenueCount);
     });
 

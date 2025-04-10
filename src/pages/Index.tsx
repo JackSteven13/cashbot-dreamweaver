@@ -28,7 +28,7 @@ const Index = () => {
           <div className="container mx-auto px-3 md:px-6">
             <div className="max-w-4xl mx-auto">
               <h2 className={`text-xl md:text-3xl font-bold mb-3 md:mb-6 text-center text-white ${isMobile ? 'px-2' : ''}`}>
-                Simulez vos revenus potentiels avec Stream genius
+                Simulez vos revenus potentiels avec nos agents IA Stream Genius
               </h2>
               <RevenueCalculator 
                 currentSubscription="freemium" 
@@ -46,8 +46,10 @@ const Index = () => {
         <section className="py-6 md:py-14">
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-3xl mx-auto text-center">
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 md:mb-6">Prêt à générer des revenus complémentaires ?</h2>
-              <p className="text-base md:text-lg text-muted-foreground mb-4 md:mb-8">Rejoignez notre communauté d'utilisateurs et commencez à explorer le potentiel de Stream genius.</p>
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 md:mb-6">Prêt à déployer nos agents IA pour générer des revenus automatiques ?</h2>
+              <p className="text-base md:text-lg text-muted-foreground mb-4 md:mb-8">
+                Rejoignez notre communauté d'utilisateurs et laissez nos agents d'intelligence artificielle travailler pour vous 24h/24.
+              </p>
               
               <Link to="/register" className="inline-block">
                 <button className="bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-md flex items-center justify-center transition-colors">

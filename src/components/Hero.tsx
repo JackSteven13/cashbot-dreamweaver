@@ -16,8 +16,13 @@ const Hero = () => {
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           <h1 className="text-3xl md:text-4xl lg:text-6xl font-bold tracking-tight text-balance mb-4 md:mb-6 animate-slide-down">
-            Générez des revenus complémentaires grâce au visionnage automatique de vidéos publicitaires
+            Générez des revenus complémentaires grâce à nos agents IA spécialisés dans le visionnage automatique de vidéos publicitaires
           </h1>
+          
+          <p className="text-lg md:text-xl text-muted-foreground mb-6 animate-fade-in">
+            Notre technologie utilise des agents d'intelligence artificielle qui exécutent automatiquement 
+            les actions prédéfinies pour maximiser vos revenus 24h/24.
+          </p>
           
           {/* LocationFeed with increased width on desktop */}
           <div className="w-full max-w-lg md:max-w-2xl lg:max-w-3xl mb-4 md:mb-6 animate-fade-in">

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { CheckCircle, Monitor, DollarSign, BarChart3 } from 'lucide-react';
+import { CheckCircle, Monitor, DollarSign, BarChart3, Bot } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const HowItWorks = () => {
@@ -8,19 +8,19 @@ const HowItWorks = () => {
   
   const steps = [
     {
+      icon: <Bot className="w-8 h-8" />,
+      title: "Agents IA Avancés",
+      description: "Nos agents d'intelligence artificielle travaillent en parallèle pour optimiser continuellement vos revenus."
+    },
+    {
       icon: <Monitor className="w-8 h-8" />,
       title: "Configuration Automatique",
-      description: "Notre système se configure automatiquement sur votre compte sans installation complexe."
+      description: "Notre système déploie automatiquement les agents IA sur votre compte sans installation complexe."
     },
     {
       icon: <CheckCircle className="w-8 h-8" />,
       title: "Visionnage Intelligent",
-      description: "Notre technologie visionne automatiquement des publicités ciblées et optimisées pour maximiser vos revenus."
-    },
-    {
-      icon: <BarChart3 className="w-8 h-8" />,
-      title: "Analyse et Optimisation",
-      description: "Nos algorithmes analysent en permanence les performances pour optimiser vos gains en continu."
+      description: "Les agents IA visionnent simultanément des publicités ciblées pour maximiser vos revenus."
     },
     {
       icon: <DollarSign className="w-8 h-8" />,
@@ -34,7 +34,7 @@ const HowItWorks = () => {
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center max-w-3xl mx-auto mb-10 md:mb-16">
           <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">Comment Ça Marche</h2>
-          <p className="text-base md:text-lg text-muted-foreground">Un processus simple et efficace pour générer des revenus complémentaires</p>
+          <p className="text-base md:text-lg text-muted-foreground">Notre technologie d'agents IA génère des revenus pour vous 24h/24, 7j/7</p>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-6">
