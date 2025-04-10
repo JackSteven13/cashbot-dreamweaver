@@ -1,82 +1,131 @@
 
-import React from 'react';
-import { Badge } from '@/components/ui/badge';
+import React, { useMemo } from 'react';
+import { Crown, Star, Trophy } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { CrownIcon, Users } from 'lucide-react';
 
 interface SubscriptionLevelDisplayProps {
   subscription: string;
-  referralCount?: number;
+  referralCount: number;
   limitPercentage: number;
   dailyLimit: number;
 }
 
 const SubscriptionLevelDisplay: React.FC<SubscriptionLevelDisplayProps> = ({
   subscription,
-  referralCount = 0,
+  referralCount,
   limitPercentage,
   dailyLimit
 }) => {
-  const getSubscriptionLabel = () => {
+  // Retourner les informations selon le type d'abonnement
+  const { icon, title, color, benefits } = useMemo(() => {
     switch (subscription) {
-      case 'pro':
-        return 'Pro';
       case 'elite':
-        return 'Elite';
-      case 'premium':
-        return 'Premium';
-      default:
-        return 'Freemium';
-    }
-  };
-
-  const getSubscriptionColor = () => {
-    switch (subscription) {
+        return {
+          icon: <Trophy className="h-5 w-5 text-amber-400" />,
+          title: 'Elite',
+          color: 'text-amber-400',
+          benefits: [
+            'Limite quotidienne : 10€',
+            'Retrait à partir de 50€',
+            'Sessions illimitées',
+            'Support prioritaire 24/7'
+          ]
+        };
+      case 'gold':
       case 'pro':
-        return 'text-blue-400 bg-blue-950/50 border-blue-800/30';
-      case 'elite':
-        return 'text-purple-400 bg-purple-950/50 border-purple-800/30';
-      case 'premium':
-        return 'text-amber-400 bg-amber-950/50 border-amber-800/30';
+        return {
+          icon: <Crown className="h-5 w-5 text-amber-400" />,
+          title: 'Pro',
+          color: 'text-amber-400',
+          benefits: [
+            'Limite quotidienne : 5€',
+            'Retrait à partir de 100€',
+            'Sessions illimitées',
+            'Support prioritaire'
+          ]
+        };
+      case 'starter':
+      case 'alpha':
+        return {
+          icon: <Star className="h-5 w-5 text-blue-400" />,
+          title: 'Starter',
+          color: 'text-blue-400',
+          benefits: [
+            'Limite quotidienne : 2€',
+            'Retrait à partir de 150€',
+            'Sessions illimitées'
+          ]
+        };
       default:
-        return 'text-slate-300 bg-slate-800/50 border-slate-700/30';
+        return {
+          icon: <Star className="h-5 w-5 text-slate-400" />,
+          title: 'Freemium',
+          color: 'text-slate-400',
+          benefits: [
+            'Limite quotidienne : 0.5€',
+            'Retrait à partir de 200€',
+            '1 session par jour'
+          ]
+        };
     }
-  };
+  }, [subscription]);
+  
+  // Calculer l'impact des parrainages pour freemium
+  const referralBonusText = useMemo(() => {
+    if (subscription !== 'freemium' || referralCount <= 0) return null;
+    
+    // Base du texte selon le nombre de parrainages
+    let baseText = `${referralCount} parrainage${referralCount > 1 ? 's' : ''} actif${referralCount > 1 ? 's' : ''}`;
+    
+    return {
+      text: baseText,
+      impact: referralCount >= 5 
+        ? '+100% de gains' 
+        : referralCount >= 2 
+          ? '+50% de gains'
+          : '+20% de gains'
+    };
+  }, [subscription, referralCount]);
 
-  const getProgressColor = () => {
+  // Formater le montant limite avec 2 décimales et le symbole €
+  const formattedDailyLimit = typeof dailyLimit === 'number' ? `${dailyLimit.toFixed(2)}€` : '0.00€';
+  
+  // Déterminer la couleur de la barre de progression selon le pourcentage
+  const progressColor = useMemo(() => {
     if (limitPercentage >= 90) return 'bg-red-500';
-    if (limitPercentage >= 75) return 'bg-amber-500';
+    if (limitPercentage >= 75) return 'bg-yellow-500';
     return 'bg-green-500';
-  };
-
+  }, [limitPercentage]);
+  
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <CrownIcon size={16} className={subscription !== 'freemium' ? 'text-amber-400' : 'text-slate-400'} />
-          <span className="text-sm font-medium text-slate-200">Abonnement</span>
+    <div className="subscription-level-display">
+      {/* En-tête avec icône et nom de l'abonnement */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center">
+          {icon}
+          <span className={`ml-2 font-medium ${color}`}>{title}</span>
         </div>
-        <Badge variant="outline" className={`${getSubscriptionColor()} px-2 py-0.5 text-xs`}>
-          {getSubscriptionLabel()}
-        </Badge>
+        <span className="text-xs opacity-80">Limite: {formattedDailyLimit}/jour</span>
       </div>
       
-      <div className="space-y-1">
-        <div className="flex justify-between items-center text-xs">
-          <span className="text-slate-400">Limite journalière: {dailyLimit.toFixed(2)}€</span>
-          <span className={limitPercentage >= 90 ? 'text-red-400' : limitPercentage >= 75 ? 'text-amber-400' : 'text-slate-400'}>
-            {limitPercentage.toFixed(0)}%
-          </span>
+      {/* Barre de progression */}
+      <div className="mb-3">
+        <Progress 
+          value={limitPercentage} 
+          max={100}
+          className="h-2 bg-slate-700"
+          indicatorClassName={progressColor}
+        />
+        <div className="flex justify-between mt-1 text-xs opacity-70">
+          <span>{limitPercentage}%</span>
+          <span>Limite quotidienne</span>
         </div>
-        <Progress value={limitPercentage} max={100} className="h-1.5 bg-slate-700/50">
-          <div className={`h-full ${getProgressColor()}`} style={{ width: `${limitPercentage}%` }} />
-        </Progress>
       </div>
       
-      {referralCount > 0 && (
-        <div className="flex items-center gap-1.5 mt-1">
-          <Users size={14} className="text-blue-400" />
-          <span className="text-xs text-slate-400">{referralCount} filleul{referralCount !== 1 ? 's' : ''} actif{referralCount !== 1 ? 's' : ''}</span>
+      {/* Bonus de parrainage pour freemium */}
+      {referralBonusText && (
+        <div className="text-center text-xs mt-1 p-1 bg-slate-700/50 rounded-md text-green-300">
+          {referralBonusText.text} : {referralBonusText.impact}
         </div>
       )}
     </div>

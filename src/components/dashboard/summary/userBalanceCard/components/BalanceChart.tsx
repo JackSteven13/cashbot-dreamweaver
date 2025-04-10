@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip, Cell } from 'recharts';
+import React, { useState, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, ReferenceLine, Tooltip } from 'recharts';
 
 interface BalanceChartProps {
   balance: number;
@@ -8,132 +8,131 @@ interface BalanceChartProps {
   dailyLimit: number;
 }
 
-const BalanceChart: React.FC<BalanceChartProps> = ({ 
-  balance, 
-  subscription, 
-  dailyLimit 
-}) => {
-  // Generate mock data based on current balance and limit
-  const generateChartData = () => {
-    const percentOfLimit = (balance / dailyLimit) * 100;
-    
-    // Get current day of week (0 = Sunday, 1 = Monday, etc.)
-    const today = new Date().getDay();
-    // Convert to our format (0 = Monday, 6 = Sunday)
-    const dayIndex = today === 0 ? 6 : today - 1;
-    
-    const daysOfWeek = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-    
-    // Create the data for the all days of the week
-    return daysOfWeek.map((day, index) => {
-      // For the current day, use actual balance
-      if (index === dayIndex) {
-        return { 
-          day, 
-          value: balance, 
-          limit: dailyLimit, 
-          current: true,
-          isToday: true
-        };
-      }
-      
-      // For other days, use mock data
-      // Past days have higher value than future days
-      const isFutureDay = index > dayIndex;
-      const mockValue = isFutureDay 
-        ? Math.min(dailyLimit * 0.2, dailyLimit) // Lower values for future days
-        : Math.min(dailyLimit * (0.4 + Math.random() * 0.4), dailyLimit); // Higher varied values for past days
-      
-      return { 
-        day, 
-        value: mockValue, 
-        limit: dailyLimit,
-        current: false,
-        isToday: false
-      };
-    });
-  };
-
-  const data = generateChartData();
+// Helper function to generate random past days data
+const generateDummyData = (currentBalance: number, subscription: string) => {
+  // Generate 7 days of data
+  const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+  const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, ...
+  const dayIndex = today === 0 ? 6 : today - 1; // Convert to 0 = Monday, 6 = Sunday
   
-  const getBarColor = (entry: any) => {
-    if (entry.isToday) {
-      const percentOfLimit = (entry.value / entry.limit) * 100;
-      if (percentOfLimit >= 90) return '#ef4444'; // Red
-      if (percentOfLimit >= 75) return '#f59e0b'; // Amber
-      return '#10b981'; // Green
-    }
-    return '#6366f1'; // Indigo for other days
-  };
+  // Adjust multiplier based on subscription
+  let multiplier = 0.12;
+  if (subscription === 'starter') multiplier = 0.18;
+  if (subscription === 'pro' || subscription === 'gold') multiplier = 0.22;
+  if (subscription === 'elite') multiplier = 0.25;
+  
+  // Base value - for higher subscriptions, show higher historical values
+  let baseValue = currentBalance * 0.5;
+  if (subscription === 'freemium') baseValue = currentBalance * 0.2;
+  
+  return days.map((day, index) => {
+    // Make the current day have the highest value
+    const isToday = index === dayIndex;
+    
+    // Create a pattern where earnings gradually increase
+    const factor = Math.min(1, 0.5 + (index / 12) + (Math.random() * 0.2));
+    
+    let value = baseValue * factor;
+    if (isToday) value = currentBalance * 0.8; // Today is the highest, but not the full balance
+    
+    // Randomize a bit
+    value = value * (0.9 + Math.random() * 0.2);
+    
+    return {
+      day,
+      gain: Number(value.toFixed(2)),
+      isToday
+    };
+  });
+};
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+const BalanceChart: React.FC<BalanceChartProps> = ({ 
+  balance = 0, 
+  subscription = 'freemium',
+  dailyLimit = 0.5
+}) => {
+  const [data, setData] = useState<{ day: string; gain: number; isToday: boolean }[]>([]);
+  
+  // Generate chart data
+  useEffect(() => {
+    if (typeof balance === 'number' && balance >= 0) {
+      setData(generateDummyData(balance, subscription));
+    } else {
+      // Default to empty data if balance is invalid
+      setData([]);
+    }
+  }, [balance, subscription]);
+  
+  // Format for the tooltip
+  const formatTooltip = (value: number) => {
+    return `${value.toFixed(2)}€`;
+  };
+  
+  // Custom tooltip component
+  const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      const percentOfLimit = Math.min(100, (data.value / data.limit) * 100).toFixed(0);
+      const isToday = payload[0].payload.isToday;
       
       return (
-        <div className="bg-slate-800 p-2 rounded shadow border border-slate-700 text-xs">
-          <p className="text-slate-200">{`${label}: ${data.value.toFixed(2)}€`}</p>
-          <p className="text-slate-400">{`${percentOfLimit}% de la limite`}</p>
-          {data.isToday && (
-            <p className="text-green-400 font-medium">Aujourd'hui</p>
-          )}
+        <div className="bg-slate-800 p-2 rounded shadow-md border border-slate-700 text-xs">
+          <p className="text-slate-300 mb-1">{payload[0].payload.day} {isToday ? '(Auj.)' : ''}</p>
+          <p className="text-green-300 font-medium">
+            Gain: {formatTooltip(payload[0].value)}
+          </p>
         </div>
       );
     }
+    
     return null;
   };
-
-  // Find today's index
-  const todayIndex = data.findIndex(item => item.isToday);
-
-  return (
-    <div className="balance-chart h-20">
-      <div className="flex justify-between items-center mb-1">
-        <h4 className="text-xs font-medium text-slate-300">Progression du solde</h4>
-        <span className="text-xs text-slate-400">Aujourd'hui: {balance.toFixed(2)}€</span>
+  
+  // Safety check for undefined balance
+  if (!data.length || balance === undefined || balance === null) {
+    return (
+      <div className="h-32 flex items-center justify-center text-slate-400 text-sm">
+        Chargement des données...
       </div>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-          <XAxis 
-            dataKey="day" 
-            axisLine={false}
-            tickLine={false}
-            tick={({ x, y, payload, index }) => (
-              <g transform={`translate(${x},${y})`}>
-                <text 
-                  x={0} 
-                  y={0} 
-                  dy={16} 
-                  textAnchor="middle" 
-                  fill={index === todayIndex ? '#10b981' : '#94a3b8'} 
-                  fontSize={index === todayIndex ? 12 : 10}
-                  fontWeight={index === todayIndex ? 'bold' : 'normal'}
-                >
-                  {payload.value}
-                </text>
-              </g>
-            )}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Bar 
-            dataKey="value" 
-            radius={[4, 4, 0, 0]}
-            fillOpacity={0.8}
-            name="Solde"
-            barSize={16}
-            style={{ stroke: 'none' }}
-          >
-            {/* Use recharts' ability to customize individual bars */}
-            {data.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`}
-                fill={entry.isToday ? '#10b981' : '#6366f1'} 
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+    );
+  }
+  
+  // Format daily limit for display
+  const formattedDailyLimit = typeof dailyLimit === 'number' ? dailyLimit.toFixed(2) : '0.00';
+  
+  return (
+    <div className="balance-chart pb-2 pt-1">
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="text-xs font-medium opacity-80">Historique des gains</h4>
+        <span className="text-xs text-green-300">Limite: {formattedDailyLimit}€/jour</span>
+      </div>
+      
+      <div className="h-32">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 5, right: 5, left: -35, bottom: 5 }}>
+            <XAxis 
+              dataKey="day" 
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: '#94a3b8' }}
+            />
+            <YAxis 
+              hide={true}
+              domain={[0, 'dataMax + 0.2']}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <ReferenceLine 
+              y={dailyLimit} 
+              stroke="#f97316" 
+              strokeDasharray="3 3" 
+            />
+            <Bar 
+              dataKey="gain" 
+              fill="#22c55e"
+              radius={[4, 4, 0, 0]}
+              minPointSize={2}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };

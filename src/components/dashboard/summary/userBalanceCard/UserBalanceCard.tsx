@@ -9,20 +9,22 @@ interface UserBalanceCardProps {
   displayBalance: number;
   subscription: string;
   dailyLimit: number;
-  limitPercentage: number;
   referralCount: number;
   referralBonus: number;
+  limitPercentage?: number;
   botActive?: boolean;
+  withdrawalThreshold?: number;
 }
 
 const UserBalanceCard: React.FC<UserBalanceCardProps> = ({ 
   displayBalance,
   subscription,
   dailyLimit,
-  limitPercentage,
+  limitPercentage = 0,
   referralCount,
   referralBonus,
-  botActive
+  botActive,
+  withdrawalThreshold = 0
 }) => {
   // États pour l'animation du solde
   const [animatedBalance, setAnimatedBalance] = useState(displayBalance);
@@ -88,7 +90,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         <SubscriptionLevelDisplay 
           subscription={subscription}
           referralCount={referralCount}
-          limitPercentage={limitPercentage}
+          limitPercentage={limitPercentage || 0}
           dailyLimit={dailyLimit}
         />
       </div>

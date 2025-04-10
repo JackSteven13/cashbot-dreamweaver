@@ -332,12 +332,12 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     }
   };
   
-  // Format numbers safely
-  const formattedBalance = localDisplayBalance.toFixed(2);
-  const formattedAnimatedBalance = animatedBalance.toFixed(2);
-  const formattedPreviousBalance = previousBalance.toFixed(2);
-  const formattedTotalGenerated = safeTotalGeneratedBalance.toFixed(2);
-  const formattedReferralBonus = safeReferralBonus.toFixed(2);
+  // Format numbers safely with fallbacks to prevent undefined errors
+  const formattedBalance = typeof localDisplayBalance === 'number' ? localDisplayBalance.toFixed(2) : '0.00';
+  const formattedAnimatedBalance = typeof animatedBalance === 'number' ? animatedBalance.toFixed(2) : '0.00';
+  const formattedPreviousBalance = typeof previousBalance === 'number' ? previousBalance.toFixed(2) : '0.00';
+  const formattedTotalGenerated = typeof safeTotalGeneratedBalance === 'number' ? safeTotalGeneratedBalance.toFixed(2) : '0.00';
+  const formattedReferralBonus = typeof safeReferralBonus === 'number' ? safeReferralBonus.toFixed(2) : '0.00';
   
   // Calculate if gain happened
   const isGain = animatedBalance > previousBalance;

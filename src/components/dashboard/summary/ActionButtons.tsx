@@ -63,7 +63,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     <div className="mt-6">
       <div className="grid grid-cols-2 gap-3">
         <BoostButton
-          ref={buttonRef}
           isStartingSession={isStartingSession}
           isButtonDisabled={isButtonDisabled || limitReached}
           onClick={handleBoostClick}
@@ -73,6 +72,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           limitPercentage={limitPercentage}
           canStartSession={canStartSession}
           isBotActive={isBotActive}
+          buttonRef={buttonRef}
         />
         
         <WithdrawButton

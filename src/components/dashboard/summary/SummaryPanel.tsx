@@ -7,6 +7,7 @@ import WelcomeMessage from './WelcomeMessage';
 import ReferralCard from './ReferralCard';
 import { useSummaryPanel } from '@/hooks/useSummaryPanel';
 import { toast } from '@/components/ui/use-toast';
+import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
 
 interface SummaryPanelProps {
   balance: number;
@@ -61,6 +62,9 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
   // Calculate whether the user can start a session right now
   const remainingSessions = calculateRemainingSessions(subscription, dailySessionCount);
   const currentlyCanStartSession = getCurrentlyCanStartSession(canStartSession);
+  
+  // Get the withdrawal threshold based on subscription
+  const withdrawalThreshold = getWithdrawalThreshold(subscription);
 
   const handleShareReferral = () => {
     if (navigator.share) {
@@ -92,13 +96,14 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
         <Card className="shadow-md border-slate-200/30 bg-gradient-to-br from-slate-900 to-slate-800 overflow-hidden">
           <CardContent className="p-5">
             <UserBalanceCard
-              balance={displayBalance}
-              isNewUser={isNewUser}
+              displayBalance={displayBalance}
               subscription={effectiveSubscription}
               dailyLimit={effectiveDailyLimit}
               referralCount={referralCount}
               referralBonus={referralBonus}
-              withdrawalThreshold={200}
+              limitPercentage={0}
+              botActive={isBotActive}
+              withdrawalThreshold={withdrawalThreshold}
             />
             
             <ActionButtons
