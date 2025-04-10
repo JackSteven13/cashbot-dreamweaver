@@ -103,7 +103,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         <div className="flex items-center">
           <div className="mr-2">
             {isBotActive ? (
-              <Bot className="h-5 w-5 text-blue-500" />
+              <Bot className="h-5 w-5 text-cyan-500" />
             ) : (
               <BotOff className="h-5 w-5 text-red-500" />
             )}

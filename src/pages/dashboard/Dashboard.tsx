@@ -116,6 +116,10 @@ const Dashboard = () => {
   if (effectiveSubscription === 'gold') dailyLimit = 20;
   if (effectiveSubscription === 'elite') dailyLimit = 50;
   
+  // Calculer les gains issus des parrainages
+  const referralBonus = userData?.referrals?.reduce((total, ref) => 
+    total + (ref.commission_rate || 0), 0) || 0;
+  
   return (
     <div className="dashboard-container">
       {showLimitAlert && (
@@ -162,7 +166,7 @@ const Dashboard = () => {
         remainingSessions={dailySessionCount}
         referralCount={userData?.referrals?.length || 0}
         displayBalance={userData?.balance || 0}
-        referralBonus={userData?.referrals?.reduce((sum, ref) => sum + (ref.commission_rate || 0), 0) || 0}
+        referralBonus={referralBonus}
         lastSessionTimestamp={lastAutoSessionTime}
         isBotActive={isBotActive && !showLimitAlert}
       />

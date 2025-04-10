@@ -41,12 +41,12 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
     return `${value.toFixed(2)}€`;
   };
 
-  // Styles de couleur cohérents
+  // Styles de couleur cohérents - utiliser une palette cyan uniforme
   const primaryColor = "text-cyan-400"; // Couleur principale pour les commandes
   const successColor = "text-cyan-300"; // Couleur pour les statuts OK
   const valueColor = "text-cyan-200"; // Couleur pour les valeurs
   const warningColor = "text-amber-300"; // Couleur pour les avertissements
-  const errorColor = "text-amber-300"; // Couleur pour les erreurs/inactif
+  const errorColor = "text-red-400"; // Couleur pour les erreurs/inactif
 
   return (
     <div ref={terminalRef} className="terminal-output space-y-3">

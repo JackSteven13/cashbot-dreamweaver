@@ -22,7 +22,7 @@ export const OffersButton: React.FC<OffersButtonProps> = ({ subscription }) => {
       size="lg"
       onClick={handleClick}
       className={`w-full ${
-        isPremium ? 'border-indigo-600/20 text-indigo-400' : 'border-amber-500/20 text-amber-400'
+        isPremium ? 'border-indigo-600/20 text-indigo-400' : 'border-cyan-500/20 text-cyan-400'
       }`}
     >
       <Sparkles className="mr-2" size={16} />

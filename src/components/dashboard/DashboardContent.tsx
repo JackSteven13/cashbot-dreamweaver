@@ -35,7 +35,7 @@ const DashboardContent = ({
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
   // Calculer les gains issus des parrainages
-  const referralBonus = referrals?.reduce((total, ref) => total + (ref.commission_earned || 0), 0) || 0;
+  const referralBonus = referrals?.reduce((total, ref) => total + (ref.commission_rate || 0), 0) || 0;
   
   // Compter le nombre de parrainages actifs
   const activeReferrals = referrals?.filter(ref => ref.active !== false) || [];
