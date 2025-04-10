@@ -101,6 +101,14 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
     }));
   };
 
+  // Formater le texte d'état en fonction du pourcentage réel
+  const getLimitStatusText = () => {
+    const roundedPercentage = Math.round(calculatedPercentage);
+    if (roundedPercentage >= 100) return "Limite atteinte";
+    if (roundedPercentage >= 90) return "Presque atteinte";
+    return `${roundedPercentage}%`;
+  };
+
   return (
     <div className="mb-5">
       <div className="flex justify-between items-center mb-1">
@@ -108,8 +116,8 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
           Progression de la limite journalière
         </div>
         <div className="text-xs font-medium text-gray-300 flex items-center">
-          <span className={`mr-2 ${limitReached ? 'text-red-400' : 'text-blue-300'}`}>
-            {Math.round(calculatedPercentage)}%
+          <span className={`mr-2 ${limitReached ? 'text-red-400' : calculatedPercentage >= 90 ? 'text-orange-400' : 'text-blue-300'}`}>
+            {getLimitStatusText()}
           </span> / {effectiveLimit}€ par jour
           
           {/* Indicateur d'état du bot amélioré avec possibilité de cliquer */}

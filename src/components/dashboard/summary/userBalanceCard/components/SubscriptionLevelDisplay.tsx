@@ -1,134 +1,76 @@
 
-import React, { useMemo } from 'react';
-import { Crown, Star, Trophy } from 'lucide-react';
+import React from 'react';
+import { Star } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
 interface SubscriptionLevelDisplayProps {
   subscription: string;
   referralCount?: number;
-  limitPercentage?: number;
-  dailyLimit?: number;
+  limitPercentage: number;
+  dailyLimit: number;
   isNewUser?: boolean;
 }
 
 const SubscriptionLevelDisplay: React.FC<SubscriptionLevelDisplayProps> = ({
   subscription,
   referralCount = 0,
-  limitPercentage = 0,
-  dailyLimit = 0,
+  limitPercentage,
+  dailyLimit,
   isNewUser = false
 }) => {
-  // Retourner les informations selon le type d'abonnement
-  const { icon, title, color, benefits } = useMemo(() => {
-    switch (subscription) {
-      case 'elite':
-        return {
-          icon: <Trophy className="h-5 w-5 text-amber-400" />,
-          title: 'Elite',
-          color: 'text-amber-400',
-          benefits: [
-            'Limite quotidienne : 10€',
-            'Retrait à partir de 50€',
-            'Sessions illimitées',
-            'Support prioritaire 24/7'
-          ]
-        };
-      case 'gold':
-      case 'pro':
-        return {
-          icon: <Crown className="h-5 w-5 text-amber-400" />,
-          title: 'Pro',
-          color: 'text-amber-400',
-          benefits: [
-            'Limite quotidienne : 5€',
-            'Retrait à partir de 100€',
-            'Sessions illimitées',
-            'Support prioritaire'
-          ]
-        };
-      case 'starter':
-      case 'alpha':
-        return {
-          icon: <Star className="h-5 w-5 text-blue-400" />,
-          title: 'Starter',
-          color: 'text-blue-400',
-          benefits: [
-            'Limite quotidienne : 2€',
-            'Retrait à partir de 150€',
-            'Sessions illimitées'
-          ]
-        };
-      default:
-        return {
-          icon: <Star className="h-5 w-5 text-slate-400" />,
-          title: 'Freemium',
-          color: 'text-slate-400',
-          benefits: [
-            'Limite quotidienne : 0.5€',
-            'Retrait à partir de 200€',
-            '1 session par jour'
-          ]
-        };
-    }
-  }, [subscription]);
+  // Arrondissement du pourcentage pour l'affichage
+  const displayPercentage = Math.round(limitPercentage);
   
-  // Calculer l'impact des parrainages pour freemium
-  const referralBonusText = useMemo(() => {
-    if (subscription !== 'freemium' || referralCount <= 0) return null;
-    
-    // Base du texte selon le nombre de parrainages
-    let baseText = `${referralCount} parrainage${referralCount > 1 ? 's' : ''} actif${referralCount > 1 ? 's' : ''}`;
-    
-    return {
-      text: baseText,
-      impact: referralCount >= 5 
-        ? '+100% de gains' 
-        : referralCount >= 2 
-          ? '+50% de gains'
-          : '+20% de gains'
-    };
-  }, [subscription, referralCount]);
-
-  // Formater le montant limite avec 2 décimales et le symbole €
-  const formattedDailyLimit = typeof dailyLimit === 'number' ? `${dailyLimit.toFixed(2)}€` : '0.00€';
-  
-  // Déterminer la couleur de la barre de progression selon le pourcentage
-  const progressColor = useMemo(() => {
-    if (limitPercentage >= 90) return 'bg-red-500';
-    if (limitPercentage >= 75) return 'bg-yellow-500';
+  // Déterminer la couleur de la barre de progression en fonction du pourcentage
+  const getProgressColor = () => {
+    if (displayPercentage >= 100) return 'bg-red-500';
+    if (displayPercentage > 90) return 'bg-orange-500';
+    if (displayPercentage > 75) return 'bg-amber-500';
     return 'bg-green-500';
-  }, [limitPercentage]);
+  };
+  
+  // Déterminer le message d'état limite à afficher
+  const getLimitStatusText = () => {
+    if (displayPercentage >= 100) return 'Limite atteinte';
+    if (displayPercentage > 90) return 'Presque atteinte';
+    if (displayPercentage > 75) return 'En progression';
+    return 'Disponible';
+  };
   
   return (
-    <div className="subscription-level-display">
-      {/* En-tête avec icône et nom de l'abonnement */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center">
-          {icon}
-          <span className={`ml-2 font-medium ${color}`}>{title}</span>
+    <div>
+      <div className="flex justify-between items-center mb-1">
+        <div className="flex items-center space-x-1">
+          <Star className="h-4 w-4 text-slate-400" />
+          <span className="text-sm font-medium text-slate-300 capitalize">
+            {subscription}
+          </span>
         </div>
-        <span className="text-xs opacity-80">Limite: {formattedDailyLimit}/jour</span>
+        <span className="text-xs text-slate-400">
+          Limite: {dailyLimit}€/jour
+        </span>
       </div>
       
-      {/* Barre de progression */}
-      <div className="mb-3">
-        <Progress 
-          value={limitPercentage} 
-          max={100}
-          className={`h-2 bg-slate-700 ${progressColor}`}
-        />
-        <div className="flex justify-between mt-1 text-xs opacity-70">
-          <span>{limitPercentage}%</span>
+      <div className="relative">
+        <div className="flex justify-between text-xs text-slate-400 mb-1">
           <span>Limite quotidienne</span>
+          <span className={`${
+            displayPercentage >= 100 ? 'text-red-400' : 
+            displayPercentage > 90 ? 'text-orange-400' : 
+            'text-slate-300'
+          }`}>
+            {displayPercentage}% - {getLimitStatusText()}
+          </span>
         </div>
+        
+        <Progress value={displayPercentage} className="h-2 bg-slate-700">
+          <div 
+            className={`h-full rounded-full ${getProgressColor()}`} 
+            style={{ width: `${Math.min(100, displayPercentage)}%` }}
+          />
+        </Progress>
       </div>
-      
-      {/* Bonus de parrainage pour freemium */}
-      {referralBonusText && (
-        <div className="text-center text-xs mt-1 p-1 bg-slate-700/50 rounded-md text-green-300">
-          {referralBonusText.text} : {referralBonusText.impact}
-        </div>
-      )}
     </div>
   );
 };

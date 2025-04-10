@@ -24,11 +24,8 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
       const today = new Date().toISOString().split('T')[0];
       
       // Fetch today's transactions from supabase to get actual daily gains
-      // For now, we'll estimate based on the subscription limit for UI purposes only
-      const estimatedTodaysGains = Math.min(effectiveLimit * 0.9, 
-        SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
-      
-      setTodaysGains(estimatedTodaysGains);
+      // For now, we'll use currentBalance as the best approximation for UI purposes
+      setTodaysGains(currentBalance);
     };
     
     calculateTodaysGains();
@@ -50,12 +47,14 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
   // Daily limit calculations - based on TODAY's gains, not total balance
   const limitPercentage = Math.min(100, (todaysGains / effectiveLimit) * 100);
   const isLimitReached = limitPercentage >= 100;
-  const isNearLimit = limitPercentage >= 90;
+  const isNearLimit = limitPercentage >= 90 && limitPercentage < 100;
 
+  // Si la limite est atteinte (100%), on affiche "Limite journalière atteinte"
+  // Si on est proche (≥90% mais <100%), on affiche "Limite journalière presque atteinte"
   return (
     <Alert 
       className={`mb-4 md:mb-6 ${isLimitReached ? 'bg-amber-50 border-amber-300' : 'bg-yellow-50 border-yellow-200'}`}
-      variant={isLimitReached ? "destructive" : "warning"} // Utilisez les variants pour la cohérence
+      variant={isLimitReached ? "destructive" : "warning"}
     >
       <AlertTitle className={`text-sm md:text-base ${isLimitReached ? 'text-amber-800' : 'text-yellow-800'}`}>
         {isLimitReached ? 'Limite journalière atteinte' : 'Limite journalière presque atteinte'}
