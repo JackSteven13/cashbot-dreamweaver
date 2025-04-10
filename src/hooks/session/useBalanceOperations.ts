@@ -6,6 +6,7 @@ import { useUpdateBalance } from './operations/updateBalance';
 import { useResetBalance } from './operations/resetBalance';
 import { BalanceOperationsProps } from './types/balanceTypes';
 
+// Utiliser export type pour ré-exporter les types
 export type { BalanceUpdateResult } from './types/balanceTypes';
 
 export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOperationsProps) => {

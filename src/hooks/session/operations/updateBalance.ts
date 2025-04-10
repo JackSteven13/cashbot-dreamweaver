@@ -39,11 +39,11 @@ export const useUpdateBalance = (
 
       const newBalanceValue = balance + gainAmount;
       
-      // Convert numeric balance to string for Supabase
+      // Convertir le solde numérique en nombre pour Supabase
       const { data: updatedBalance, error: updateError } = await supabase
         .from('user_balances')
         .update({ 
-          balance: newBalanceValue.toString(),
+          balance: newBalanceValue,
           updated_at: new Date().toISOString()
         })
         .eq('id', userId)
@@ -73,7 +73,7 @@ export const useUpdateBalance = (
 
       let newBalance = balance;
       if (updatedBalance) {
-        // Convert string balance to number
+        // Convertir le solde string en number
         newBalance = typeof updatedBalance.balance === 'string'
           ? parseFloat(updatedBalance.balance) || 0
           : updatedBalance.balance || 0;

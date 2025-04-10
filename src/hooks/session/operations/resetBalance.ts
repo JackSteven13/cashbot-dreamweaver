@@ -22,11 +22,11 @@ export const useResetBalance = (
     setError(null);
 
     try {
-      // Convert the number 0 to string "0" for Supabase
+      // Convertir le nombre 0 en nombre pour Supabase
       const { error: resetError } = await supabase
         .from('user_balances')
         .update({ 
-          balance: "0",
+          balance: 0,
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
