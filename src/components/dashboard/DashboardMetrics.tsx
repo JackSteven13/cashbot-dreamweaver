@@ -17,6 +17,7 @@ interface DashboardMetricsProps {
   referrals?: any[];
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
+  userId?: string;
 }
 
 const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
@@ -32,7 +33,8 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
   canStartSession = true,
   referrals = [],
   lastSessionTimestamp,
-  isBotActive = true
+  isBotActive = true,
+  userId
 }) => {
   // S'assurer que les nouveaux utilisateurs commencent toujours avec un solde à 0
   const displayBalance = isNewUser ? 0 : balance;
@@ -68,6 +70,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
       <TransactionsPanel
         transactions={safeTransactions}
         subscription={subscription}
+        userId={userId}
       />
     </div>
   );

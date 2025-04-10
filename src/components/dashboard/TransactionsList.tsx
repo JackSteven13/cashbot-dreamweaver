@@ -4,16 +4,19 @@ import { Button } from '@/components/ui/button';
 import SessionCard from '@/components/SessionCard';
 import { Transaction } from '@/types/userData';
 import { PlusCircle } from 'lucide-react';
+import { generateInitialTransactions } from '@/utils/initialTransactionsGenerator';
 
 interface TransactionsListProps {
   transactions: Transaction[];
   isNewUser?: boolean;
   subscription?: string;
+  userId?: string;
 }
 
-const TransactionsList = ({ transactions, isNewUser = false, subscription }: TransactionsListProps) => {
+const TransactionsList = ({ transactions, isNewUser = false, subscription, userId }: TransactionsListProps) => {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
   const [uniqueTransactions, setUniqueTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false);
   
   // Filtrer les transactions en dédupliquant par ID et date+montant
   useEffect(() => {
@@ -54,6 +57,35 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
     console.log("Transactions uniques après déduplication:", uniqueTxs);
     setUniqueTransactions(uniqueTxs);
   }, [transactions]);
+  
+  // Si l'utilisateur a un solde mais pas de transactions, essayer de générer des transactions initiales
+  useEffect(() => {
+    const attemptGenerateInitialTransactions = async () => {
+      // Vérifier si nous avons un ID utilisateur et un solde positif mais pas de transactions
+      if (userId && uniqueTransactions.length === 0 && !isNewUser) {
+        try {
+          // Récupérer le solde actuel depuis le localStorage
+          const storedBalance = localStorage.getItem('lastKnownBalance') || localStorage.getItem('currentBalance');
+          const balance = storedBalance ? parseFloat(storedBalance) : 0;
+          
+          if (balance > 0) {
+            console.log("Tentative de génération de transactions initiales pour l'historique");
+            setLoading(true);
+            // Générer des transactions initiales
+            await generateInitialTransactions(userId, balance);
+            setLoading(false);
+            // Rafraîchir la page pour afficher les nouvelles transactions
+            window.dispatchEvent(new CustomEvent('transactions:generated'));
+          }
+        } catch (error) {
+          console.error("Erreur lors de la génération des transactions initiales:", error);
+          setLoading(false);
+        }
+      }
+    };
+    
+    attemptGenerateInitialTransactions();
+  }, [userId, uniqueTransactions.length, isNewUser]);
     
   // Afficher 3 transactions récentes par défaut, ou toutes si showAllTransactions est true
   const displayedTransactions = showAllTransactions 
@@ -104,7 +136,11 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
         )}
       </div>
       
-      {displayedTransactions.length > 0 ? (
+      {loading ? (
+        <div className="text-center p-8 bg-blue-50 rounded-lg border border-blue-100">
+          <p className="text-[#334e68]">Récupération de l'historique des transactions...</p>
+        </div>
+      ) : displayedTransactions.length > 0 ? (
         <div className="space-y-4">
           {displayedTransactions.map((transaction, index) => {
             // Utiliser gain s'il est disponible, sinon amount
@@ -129,11 +165,11 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
             </>
           ) : (
             <>
-              <p className="text-[#334e68]">Aucune session récente.</p>
+              <p className="text-[#334e68]">Aucune session récente trouvée malgré un solde positif.</p>
               <div className="flex flex-col items-center mt-4">
                 <PlusCircle className="h-8 w-8 text-blue-400 mb-2" />
                 <p className="text-sm text-[#486581]">
-                  Lancez une analyse manuelle ou attendez la prochaine session automatique.
+                  Lancez une analyse manuelle ou attendez la synchronisation de votre historique.
                 </p>
               </div>
             </>

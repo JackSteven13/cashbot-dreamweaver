@@ -7,9 +7,10 @@ import TransactionsList from '@/components/dashboard/TransactionsList';
 interface TransactionsPanelProps {
   transactions: Transaction[];
   subscription: string;
+  userId?: string;
 }
 
-const TransactionsPanel: React.FC<TransactionsPanelProps> = ({ transactions, subscription }) => {
+const TransactionsPanel: React.FC<TransactionsPanelProps> = ({ transactions, subscription, userId }) => {
   // S'assurer que transactions est un tableau
   const safeTransactions = Array.isArray(transactions) ? transactions : [];
   const [sortedTransactions, setSortedTransactions] = useState<Transaction[]>([]);
@@ -57,8 +58,9 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({ transactions, sub
       <CardContent>
         <TransactionsList 
           transactions={sortedTransactions} 
-          isNewUser={sortedTransactions.length === 0}
+          isNewUser={sortedTransactions.length === 0 && !userId}
           subscription={subscription}
+          userId={userId}
         />
       </CardContent>
     </Card>

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { formatTimestamp } from '@/utils/formatters';
@@ -86,7 +85,8 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
     const filteredLines = newLines.filter(line => 
       !line.includes('Current balance:') && 
       !line.includes('sessions available') &&
-      !line.includes('Bot status:')
+      !line.includes('Bot status:') &&
+      !line.includes('Total accumulated earnings:')
     );
     
     // Ajouter les lignes mises à jour
@@ -106,8 +106,9 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
     // Ajouter le statut du bot (toujours mis à jour)
     filteredLines.push(`> Bot status: ${isBotActive ? 'ACTIVE' : 'INACTIVE'}`);
     
-    // Ajouter des lignes pour montrer l'accumulation progressive
-    if (!hasCumulativeEarningsLine && cumulativeEarnings > 0 && !isNewUser) {
+    // Ajouter des lignes pour montrer l'accumulation progressive uniquement si
+    // le solde est différent des gains cumulés (éviter la duplication d'information)
+    if (cumulativeEarnings > 0 && !isNewUser && Math.abs(cumulativeEarnings - displayBalance) > 0.01) {
       filteredLines.push('');
       filteredLines.push(`> Total accumulated earnings: ${cumulativeEarnings.toFixed(2)}€`);
     }
