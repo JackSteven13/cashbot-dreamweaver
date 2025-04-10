@@ -1,133 +1,73 @@
 
-import React, { useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import React from 'react';
 import UserBalanceCard from './userBalanceCard/UserBalanceCard';
-import ActionButtons from './ActionButtons';
-import WelcomeMessage from './WelcomeMessage';
-import ReferralCard from './ReferralCard';
-import { useSummaryPanel } from '@/hooks/useSummaryPanel';
-import { toast } from '@/components/ui/use-toast';
-import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
+import UserActionsCard from './UserActionsCard';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SummaryPanelProps {
   balance: number;
   referralLink: string;
+  referralCount?: number;
+  referralBonus?: number;
   isStartingSession: boolean;
   handleStartSession: () => void;
   handleWithdrawal?: () => void;
-  transactions?: any[];
   isNewUser?: boolean;
   subscription: string;
   dailySessionCount?: number;
   canStartSession?: boolean;
-  referralCount?: number;
-  referralBonus?: number;
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
+  transactions?: any[];
 }
 
 const SummaryPanel: React.FC<SummaryPanelProps> = ({
   balance,
   referralLink,
+  referralCount = 0,
+  referralBonus = 0,
   isStartingSession,
   handleStartSession,
   handleWithdrawal,
   isNewUser = false,
-  subscription = 'freemium',
+  subscription,
   dailySessionCount = 0,
   canStartSession = true,
-  referralCount = 0,
-  referralBonus = 0,
   lastSessionTimestamp,
-  isBotActive = true
+  isBotActive = true,
+  transactions = []
 }) => {
-  const {
-    displayBalance,
-    isButtonDisabled,
-    isWithdrawing,
-    effectiveSubscription,
-    effectiveDailyLimit,
-    onWithdraw,
-    onBoostClick,
-    calculateRemainingSessions,
-    getCurrentlyCanStartSession
-  } = useSummaryPanel({
-    balance,
-    subscription,
-    handleWithdrawal,
-    handleStartSession,
-    referralCount
-  });
+  const isMobile = useIsMobile();
   
-  // Calculate whether the user can start a session right now
-  const remainingSessions = calculateRemainingSessions(subscription, dailySessionCount);
-  const currentlyCanStartSession = getCurrentlyCanStartSession(canStartSession);
+  // Transformer les props pour le rendu mobile vs desktop
+  const renderForMobile = isMobile;
   
-  // Get the withdrawal threshold based on subscription
-  const withdrawalThreshold = getWithdrawalThreshold(subscription);
-
-  const handleShareReferral = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'Mon lien de parrainage Stream Genius',
-        text: 'Rejoins Stream Genius et gagne de l\'argent avec l\'analyse publicitaire! Utilise mon lien de parrainage:',
-        url: referralLink
-      }).catch(() => {
-        navigator.clipboard.writeText(referralLink);
-        toast({
-          title: "Lien copié !",
-          description: "Votre lien de parrainage a été copié dans le presse-papier",
-        });
-      });
-    } else {
-      navigator.clipboard.writeText(referralLink);
-      toast({
-        title: "Lien copié !",
-        description: "Votre lien de parrainage a été copié dans le presse-papier",
-      });
-    }
-  };
-
   return (
-    <div className="mb-6">
-      <WelcomeMessage isNewUser={isNewUser} />
+    <div className={`grid ${renderForMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-3 gap-4 md:gap-6'} mb-8`}>
+      <div className={renderForMobile ? 'col-span-1' : 'col-span-1 md:col-span-2'}>
+        <UserBalanceCard 
+          balance={balance}
+          referralBonus={referralBonus}
+          isNewUser={isNewUser}
+          subscription={subscription}
+          isBotActive={isBotActive}
+          transactions={transactions} // Passer les transactions
+        />
+      </div>
       
-      <div className="grid grid-cols-1 gap-6">
-        <Card className="shadow-md border-slate-200/30 bg-gradient-to-br from-slate-900 to-slate-800 overflow-hidden">
-          <CardContent className="p-5">
-            <UserBalanceCard
-              displayBalance={displayBalance}
-              subscription={effectiveSubscription}
-              dailyLimit={effectiveDailyLimit}
-              referralCount={referralCount}
-              referralBonus={referralBonus}
-              limitPercentage={0}
-              botActive={isBotActive}
-              withdrawalThreshold={withdrawalThreshold}
-            />
-            
-            <ActionButtons
-              isStartingSession={isStartingSession}
-              isButtonDisabled={isButtonDisabled}
-              isWithdrawing={isWithdrawing}
-              subscription={subscription}
-              effectiveSubscription={effectiveSubscription}
-              dailyLimit={effectiveDailyLimit}
-              canStartSession={currentlyCanStartSession}
-              onBoostClick={() => onBoostClick(canStartSession)}
-              onWithdraw={onWithdraw}
-              remainingSessions={remainingSessions}
-              lastSessionTimestamp={lastSessionTimestamp}
-              currentBalance={displayBalance}
-              isBotActive={isBotActive}
-              onShareReferral={handleShareReferral}
-            />
-          </CardContent>
-        </Card>
-        
-        <ReferralCard 
-          referralLink={referralLink} 
+      <div className="col-span-1">
+        <UserActionsCard
+          isStartingSession={isStartingSession}
+          handleStartSession={handleStartSession}
+          handleWithdrawal={handleWithdrawal}
+          referralLink={referralLink}
           referralCount={referralCount}
+          isNewUser={isNewUser}
+          dailySessionCount={dailySessionCount}
+          subscription={subscription}
+          canStartSession={canStartSession}
+          lastSessionTimestamp={lastSessionTimestamp}
+          balance={balance}
         />
       </div>
     </div>

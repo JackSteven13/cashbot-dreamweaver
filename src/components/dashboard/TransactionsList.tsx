@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import SessionCard from '@/components/SessionCard';
 import { Transaction } from '@/types/userData';
@@ -13,34 +13,70 @@ interface TransactionsListProps {
 
 const TransactionsList = ({ transactions, isNewUser = false, subscription }: TransactionsListProps) => {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const [uniqueTransactions, setUniqueTransactions] = useState<Transaction[]>([]);
   
-  // S'assurer que transactions est un tableau avant de l'utiliser
-  const safeTransactions = Array.isArray(transactions) ? transactions : [];
-  
-  // Filtrer les transactions valides (avec une date et un montant positif)
-  const validTransactions = safeTransactions.filter(tx => 
-    tx && 
-    tx.date && 
-    ((typeof tx.gain === 'number' && tx.gain > 0) || (typeof tx.amount === 'number' && tx.amount > 0))
-  );
-  
-  console.log("Transactions reçues:", safeTransactions);
-  console.log("Transactions valides après filtrage:", validTransactions);
-  
+  // Filtrer les transactions en dédupliquant par ID et date+montant
+  useEffect(() => {
+    // S'assurer que transactions est un tableau avant de traiter
+    if (!Array.isArray(transactions)) {
+      console.log("Transactions n'est pas un tableau:", transactions);
+      setUniqueTransactions([]);
+      return;
+    }
+    
+    // Vérifier que nous avons des transactions valides
+    const validTransactions = transactions.filter(tx => 
+      tx && 
+      tx.date && 
+      ((typeof tx.gain === 'number' && tx.gain > 0) || 
+       (typeof tx.amount === 'number' && tx.amount > 0))
+    );
+    
+    console.log("Transactions valides avant déduplication:", validTransactions);
+    
+    // Utiliser un Map pour dédupliquer par ID
+    const transactionMap = new Map();
+    
+    validTransactions.forEach(tx => {
+      const key = tx.id || `${tx.date}_${tx.gain || tx.amount}`;
+      if (!transactionMap.has(key)) {
+        transactionMap.set(key, tx);
+      }
+    });
+    
+    const uniqueTxs = Array.from(transactionMap.values());
+    console.log("Transactions uniques après déduplication:", uniqueTxs);
+    setUniqueTransactions(uniqueTxs);
+  }, [transactions]);
+    
   // Afficher 3 transactions récentes par défaut, ou toutes si showAllTransactions est true
   const displayedTransactions = showAllTransactions 
-    ? validTransactions 
-    : validTransactions.slice(0, 3);
+    ? uniqueTransactions 
+    : uniqueTransactions.slice(0, 3);
     
   const handleViewFullHistory = () => {
     setShowAllTransactions(true);
+  };
+  
+  // Format de date personnalisé pour l'affichage
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'short'
+      });
+    } catch (e) {
+      console.error("Erreur de formatage de date:", e);
+      return dateString;
+    }
   };
   
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold text-[#1e3a5f]">Sessions récentes</h2>
-        {validTransactions.length > 3 && !showAllTransactions && (
+        {uniqueTransactions.length > 3 && !showAllTransactions && (
           <Button 
             variant="outline" 
             size="sm"
@@ -50,7 +86,7 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
             Voir l'historique complet
           </Button>
         )}
-        {showAllTransactions && validTransactions.length > 3 && (
+        {showAllTransactions && uniqueTransactions.length > 3 && (
           <Button 
             variant="outline" 
             size="sm" 
@@ -64,14 +100,18 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
       
       {displayedTransactions.length > 0 ? (
         <div className="space-y-4">
-          {displayedTransactions.map((transaction, index) => (
-            <SessionCard 
-              key={transaction.id || index}
-              date={transaction.date}
-              gain={transaction.gain || transaction.amount || 0}
-              report={transaction.report || transaction.type || ''}
-            />
-          ))}
+          {displayedTransactions.map((transaction, index) => {
+            // Utiliser gain s'il est disponible, sinon amount
+            const transactionValue = transaction.gain || transaction.amount || 0;
+            return (
+              <SessionCard 
+                key={transaction.id || `transaction_${index}`}
+                date={formatDate(transaction.date)}
+                gain={transactionValue}
+                report={transaction.report || transaction.type || ''}
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="text-center p-8 bg-blue-50 rounded-lg border border-blue-100">
@@ -96,10 +136,10 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
       )}
       
       {/* Afficher un message si l'historique est réduit et qu'il y a plus de transactions */}
-      {!showAllTransactions && validTransactions.length > 3 && (
+      {!showAllTransactions && uniqueTransactions.length > 3 && (
         <div className="text-center mt-4">
           <p className="text-sm text-[#486581]">
-            {validTransactions.length - 3} {validTransactions.length - 3 > 1 ? 'autres sessions' : 'autre session'} non affichée{validTransactions.length - 3 > 1 ? 's' : ''}.
+            {uniqueTransactions.length - 3} {uniqueTransactions.length - 3 > 1 ? 'autres sessions' : 'autre session'} non affichée{uniqueTransactions.length - 3 > 1 ? 's' : ''}.
           </p>
         </div>
       )}
