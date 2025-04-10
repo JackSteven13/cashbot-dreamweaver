@@ -26,6 +26,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   // (moins de 30% du seuil atteint)
   const shouldShowReferralSuggestion = progress < 30;
   
+  // Créer le lien de parrainage (cette fonction devrait exister ailleurs dans le code)
+  const referralLink = `${window.location.origin}?ref=invite`;
+  
   return (
     <div className="mt-2 mb-4">
       <div className="flex justify-between text-xs mb-1">
@@ -35,14 +38,38 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           
           {shouldShowReferralSuggestion && (
             <div className="ml-1">
-              <ReferralSuggestion 
-                triggerElement={
-                  <button className="p-0.5 hover:bg-slate-700 rounded-full transition-colors">
-                    <InfoIcon size={14} className="text-amber-400" />
-                  </button>
-                }
-                subscription={subscription}
+              <InfoIcon 
+                size={14} 
+                className="text-amber-400 cursor-pointer" 
+                onClick={() => {
+                  // Afficher la fenêtre modale ou tooltip de suggestion de parrainage ici
+                  const modal = document.getElementById('referral-suggestion-modal');
+                  if (modal) {
+                    modal.classList.remove('hidden');
+                  }
+                }}
               />
+              
+              {/* Modal pour le parrainage */}
+              <div id="referral-suggestion-modal" className="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div className="relative max-w-md mx-auto">
+                  <ReferralSuggestion 
+                    referralLink={referralLink}
+                    withdrawalThreshold={actualThreshold}
+                  />
+                  <button 
+                    className="absolute top-2 right-2 text-white bg-blue-600 rounded-full p-1"
+                    onClick={() => {
+                      const modal = document.getElementById('referral-suggestion-modal');
+                      if (modal) {
+                        modal.classList.add('hidden');
+                      }
+                    }}
+                  >
+                    X
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

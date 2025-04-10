@@ -28,6 +28,7 @@ const DashboardLayout = ({
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
       <Sidebar 
+        username={username}
         selectedNavItem={selectedNavItem} 
         setSelectedNavItem={setSelectedNavItem} 
       />

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Users, Link2Icon } from 'lucide-react';
+import { Users, Link2Icon, Gift } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 interface ReferralSuggestionProps {
@@ -55,7 +55,7 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
           <div className="bg-blue-50 text-blue-800 p-3 rounded">
             <div className="flex items-start">
               <div className="mr-2 mt-0.5 text-amber-500">
-                <gift className="h-5 w-5" />
+                <Gift className="h-5 w-5" />
               </div>
               <p className="text-sm">
                 Atteignez votre seuil de retrait de <span className="font-bold">{withdrawalThreshold}€</span> plus 
