@@ -1,36 +1,32 @@
 
-// Re-export constants from utils/subscription/constants.ts
-import { 
-  SUBSCRIPTION_LIMITS as SUB_LIMITS, 
-  WITHDRAWAL_THRESHOLDS as W_THRESHOLDS,
-  MANUAL_SESSION_GAIN_PERCENTAGES,
-  WITHDRAWAL_FEES
-} from '@/utils/subscription/constants';
+// Limites de sessions selon le forfait
+export const SESSION_LIMITS = {
+  'freemium': 1,      // 1 session par jour
+  'starter': 3,       // 3 sessions par jour
+  'gold': 10,         // 10 sessions par jour  
+  'elite': 50         // 50 sessions par jour
+};
 
-// Taux de commission pour les parrainages directs (montant perçu sur l'abonnement du filleul)
+// Limites de revenus journaliers selon le forfait 
+export const DAILY_REVENUE_LIMITS = {
+  'freemium': 0.50,   // 0,50€ par jour
+  'starter': 5.00,    // 5€ par jour
+  'gold': 20.00,      // 20€ par jour
+  'elite': 50.00      // 50€ par jour
+};
+
+// Taux de commission pour le parrainage selon l'abonnement
 export const COMMISSION_RATES = {
-  'freemium': 0.2,  // 20%
-  'starter': 0.3,   // 30% 
-  'gold': 0.4,      // 40%
-  'elite': 0.5      // 50%
+  'freemium': 0.20,   // 20% de commission
+  'starter': 0.30,    // 30% de commission
+  'gold': 0.40,       // 40% de commission
+  'elite': 0.50       // 50% de commission
 };
 
-// Taux de commission récurrente (pourcentage perçu chaque mois)
-export const RECURRING_COMMISSION_RATES = {
-  'freemium': 0,     // 0%
-  'starter': 0.05,   // 5%
-  'gold': 0.1,       // 10%
-  'elite': 0.15      // 15%
+// Seuils de retrait selon l'abonnement
+export const WITHDRAWAL_THRESHOLDS = {
+  'freemium': 200,    // 200€ minimum
+  'starter': 100,     // 100€ minimum
+  'gold': 50,         // 50€ minimum
+  'elite': 25         // 25€ minimum
 };
-
-// Taux de commission pour le niveau 2 (filleuls de filleuls)
-export const LEVEL2_COMMISSION_RATES = {
-  'freemium': 0,     // 0%
-  'starter': 0,      // 0%
-  'gold': 0.05,      // 5%
-  'elite': 0.1       // 10%
-};
-
-// Export the constants that other files are trying to import
-export const SUBSCRIPTION_LIMITS = SUB_LIMITS;
-export const WITHDRAWAL_THRESHOLDS = W_THRESHOLDS;

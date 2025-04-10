@@ -1,3 +1,4 @@
+
 /**
  * Détermine si un retrait est autorisé en fonction de l'abonnement et des parrainages
  * @param subscription Type d'abonnement

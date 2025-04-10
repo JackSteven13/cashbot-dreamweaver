@@ -1,10 +1,10 @@
-
-import React, { useState, useEffect, useRef } from 'react';
-import ActionButtons from './ActionButtons';
+import React from 'react';
 import UserBalanceCard from './userBalanceCard/UserBalanceCard';
-import ReferralCard from './ReferralCard';
-import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
-import { calculateLimitPercentage } from '@/utils/balance/limitCalculations';
+import SessionInfo from './SessionInfo';
+import { WithdrawButton } from './buttons/WithdrawButton';
+import { BoostButton } from './buttons/BoostButton';
+import { ReferralSuggestion } from './buttons/ReferralSuggestion';
+import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
 
 interface SummaryPanelProps {
   balance: number;
@@ -13,7 +13,7 @@ interface SummaryPanelProps {
   handleStartSession: () => void;
   handleWithdrawal?: () => void;
   isNewUser?: boolean;
-  subscription: string;
+  subscription?: string;
   dailySessionCount?: number;
   canStartSession?: boolean;
   referralCount?: number;
@@ -37,67 +37,48 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
   lastSessionTimestamp,
   isBotActive = true
 }) => {
-  // Calcul du forfait effectif (tenant compte des essais, etc.)
-  const effectiveSubscription = getEffectiveSubscription(subscription);
-  const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  // Obtenir le seuil de retrait pour cet abonnement
+  const withdrawalThreshold = getWithdrawalThreshold(subscription);
   
-  // Calcul du pourcentage de la limite atteint
-  const limitPercentage = calculateLimitPercentage(balance, dailyLimit);
-  
-  // Référence au bouton (pour dévérouillage éventuel)
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  
-  // Vérifier si le solde dépasse la limite journalière
-  const limitReached = balance >= dailyLimit;
-  
-  // État pour suivre si le retrait est en cours
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-  
-  // Gérer le retrait en capturant l'état transitoire
-  const handleWithdrawalWithState = () => {
-    setIsWithdrawing(true);
-    
-    // Appeler le handler original s'il existe
-    if (handleWithdrawal) {
-      handleWithdrawal();
-    }
-    
-    // Réinitialiser l'état après un délai
-    setTimeout(() => {
-      setIsWithdrawing(false);
-    }, 3000);
-  };
+  // S'assurer que les nouveaux utilisateurs commencent toujours avec un solde à 0
+  const displayBalance = isNewUser ? 0 : balance;
+  const effectiveSubscription = subscription;
+  const effectiveDailyLimit = 0.5; // Valeur par défaut, sera mise à jour par le hook
 
   return (
-    <div className="summary-panel space-y-4">
+    <div className="grid grid-cols-1 gap-4 mb-6">
       <UserBalanceCard 
-        displayBalance={balance}
-        subscription={subscription}
-        dailyLimit={dailyLimit}
-        limitPercentage={limitPercentage}
+        balance={displayBalance} 
+        subscription={effectiveSubscription}
+        dailyLimit={effectiveDailyLimit}
+        isNewUser={isNewUser}
         referralCount={referralCount}
         referralBonus={referralBonus}
-        botActive={isBotActive}
+        withdrawalThreshold={withdrawalThreshold}
       />
       
-      <ActionButtons
-        canStartSession={canStartSession}
-        isButtonDisabled={isStartingSession || false}
-        isStartingSession={isStartingSession || false}
-        isWithdrawing={isWithdrawing}
-        subscription={subscription}
-        currentBalance={balance}
-        dailyLimit={dailyLimit}
-        onBoostClick={handleStartSession}
-        onWithdraw={handleWithdrawalWithState}
+      <SessionInfo 
+        dailySessionCount={dailySessionCount}
+        lastSessionTimestamp={lastSessionTimestamp}
         isBotActive={isBotActive}
       />
       
-      <ReferralCard 
-        referralLink={referralLink}
-        referralCount={referralCount}
-        subscription={subscription}
-      />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <BoostButton 
+          isStartingSession={isStartingSession}
+          canStartSession={canStartSession}
+          handleStartSession={handleStartSession}
+          subscription={subscription}
+        />
+        
+        <WithdrawButton 
+          onClick={handleWithdrawal || (() => {})}
+          isButtonDisabled={!handleWithdrawal}
+          isWithdrawing={false}
+          currentBalance={balance}
+          subscription={subscription}
+        />
+      </div>
     </div>
   );
 };

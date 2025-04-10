@@ -30,6 +30,9 @@ export const useSummaryPanel = ({
   const [effectiveDailyLimit, setEffectiveDailyLimit] = useState(
     SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5
   );
+  const [withdrawalThreshold, setWithdrawalThreshold] = useState(
+    getWithdrawalThreshold(subscription)
+  );
   const [referralSuggestion, setReferralSuggestion] = useState<{
     amountNeeded: number;
     estimatedReferrals: number;
@@ -46,6 +49,10 @@ export const useSummaryPanel = ({
     // Calculer les suggestions de parrainage
     const suggestion = calculateReferralToReachThreshold(subscription, balance);
     setReferralSuggestion(suggestion);
+    
+    // Mettre à jour le seuil de retrait
+    const threshold = getWithdrawalThreshold(subscription);
+    setWithdrawalThreshold(threshold);
   }, [balance, subscription]);
   
   useEffect(() => {
@@ -58,6 +65,10 @@ export const useSummaryPanel = ({
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     console.log("Limite journalière effective:", limit);
     setEffectiveDailyLimit(limit);
+    
+    // Mettre à jour le seuil de retrait
+    const threshold = getWithdrawalThreshold(effectiveSub);
+    setWithdrawalThreshold(threshold);
     
     return () => {
       if (clickTimeoutRef.current) {
@@ -74,7 +85,6 @@ export const useSummaryPanel = ({
     
     try {
       // Vérifier le seuil minimum de retrait
-      const withdrawalThreshold = getWithdrawalThreshold(subscription);
       if (displayBalance < withdrawalThreshold) {
         toast({
           title: "Montant insuffisant",
@@ -169,6 +179,7 @@ export const useSummaryPanel = ({
     isWithdrawing,
     effectiveSubscription,
     effectiveDailyLimit,
+    withdrawalThreshold,
     latestBalanceRef,
     referralSuggestion,
     onWithdraw,

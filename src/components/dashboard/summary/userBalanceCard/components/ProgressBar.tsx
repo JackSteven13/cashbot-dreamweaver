@@ -2,22 +2,25 @@
 import React from 'react';
 import { InfoIcon } from 'lucide-react';
 import { ReferralSuggestion } from '../../buttons/ReferralSuggestion';
+import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
 
 interface ProgressBarProps {
   displayBalance: number;
-  withdrawalThreshold: number;
+  withdrawalThreshold?: number;
   subscription?: string;
 }
 
 const ProgressBar: React.FC<ProgressBarProps> = ({
   displayBalance = 0,
-  withdrawalThreshold = 200,
+  withdrawalThreshold,
   subscription = 'freemium'
 }) => {
+  // Obtenir le seuil de retrait basé sur l'abonnement si non fourni
+  const actualThreshold = withdrawalThreshold || getWithdrawalThreshold(subscription);
+  
   // Ensure valid numbers and calculate progress
   const safeBalance = typeof displayBalance === 'number' ? displayBalance : 0;
-  const safeThreshold = typeof withdrawalThreshold === 'number' ? withdrawalThreshold : 200;
-  const progress = Math.min(100, (safeBalance / safeThreshold) * 100);
+  const progress = Math.min(100, (safeBalance / actualThreshold) * 100);
   
   // Déterminer si nous devons montrer une suggestion de parrainage
   // (moins de 30% du seuil atteint)
@@ -28,7 +31,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       <div className="flex justify-between text-xs mb-1">
         <span>Progression retrait</span>
         <div className="flex items-center">
-          <span>{safeBalance.toFixed(2)}€ / {safeThreshold}€</span>
+          <span>{safeBalance.toFixed(2)}€ / {actualThreshold}€</span>
           
           {shouldShowReferralSuggestion && (
             <div className="ml-1">
@@ -38,6 +41,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
                     <InfoIcon size={14} className="text-amber-400" />
                   </button>
                 }
+                subscription={subscription}
               />
             </div>
           )}

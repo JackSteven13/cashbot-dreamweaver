@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { ArrowUpCircle, InfoIcon, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useNavigate } from 'react-router-dom';
+import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
 import { 
   Tooltip, 
   TooltipContent, 
@@ -26,6 +28,7 @@ interface WithdrawButtonProps {
   onClick: () => void;
   minWithdrawalAmount?: number;
   currentBalance?: number;
+  subscription?: string;
 }
 
 export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
@@ -33,13 +36,24 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
   isButtonDisabled,
   onClick,
   minWithdrawalAmount = 5,
-  currentBalance = 0
+  currentBalance = 0,
+  subscription = 'freemium'
 }) => {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const iconSize = isMobile ? 16 : 18;
-  const insufficientBalance = currentBalance < minWithdrawalAmount;
+  
+  // Obtenir le seuil de retrait réel basé sur l'abonnement
+  const withdrawalThreshold = getWithdrawalThreshold(subscription);
+  const insufficientBalance = currentBalance < withdrawalThreshold;
   const showTooltip = insufficientBalance && !isWithdrawing;
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  
+  // Navigation vers la page de parrainage
+  const handleGoToReferrals = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate('/dashboard/referrals');
+  };
   
   return (
     <TooltipProvider delayDuration={300}>
@@ -69,7 +83,7 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
           
           {insufficientBalance && (
             <TooltipContent side="bottom" align="center" className="max-w-[220px] text-center">
-              <p>Solde minimum de {minWithdrawalAmount}€ requis pour retirer</p>
+              <p>Solde minimum de {withdrawalThreshold}€ requis pour retirer</p>
             </TooltipContent>
           )}
         </Tooltip>
@@ -108,11 +122,7 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
                     size="sm" 
                     variant="default" 
                     className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Naviguer vers la page de parrainage
-                      window.location.href = "/dashboard/referrals";
-                    }}
+                    onClick={handleGoToReferrals}
                   >
                     Commencer à parrainer
                   </Button>

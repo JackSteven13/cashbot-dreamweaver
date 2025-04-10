@@ -12,6 +12,7 @@ import Payment from '../pages/Payment';
 import PaymentSuccess from '../pages/PaymentSuccess';
 import Terms from '../pages/Terms';
 import Contact from '../pages/Contact';
+import ReferralsPage from '../pages/dashboard/ReferralsPage';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -20,6 +21,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/dashboard/referrals" element={<Dashboard />} />
       <Route path="/about" element={<About />} />
       <Route path="/offres" element={<Offres />} />
       <Route path="/payment" element={<Payment />} />

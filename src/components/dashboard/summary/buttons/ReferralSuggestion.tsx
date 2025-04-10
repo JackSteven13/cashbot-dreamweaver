@@ -3,6 +3,8 @@ import React from 'react';
 import { Users, Gift, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useNavigate } from 'react-router-dom';
+import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
 import {
   Popover,
   PopoverContent,
@@ -17,13 +19,29 @@ import {
 interface ReferralSuggestionProps {
   triggerElement: React.ReactNode;
   onStartReferral?: () => void;
+  subscription?: string;
 }
 
 export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
   triggerElement,
-  onStartReferral = () => window.location.href = "/dashboard/referrals"
+  onStartReferral,
+  subscription = 'freemium'
 }) => {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  
+  // Déterminer le seuil de retrait en fonction de l'abonnement
+  const withdrawalThreshold = getWithdrawalThreshold(subscription);
+
+  // Fonction par défaut pour démarrer le parrainage
+  const handleStartReferral = () => {
+    if (onStartReferral) {
+      onStartReferral();
+    } else {
+      // Naviguer vers la page de parrainage
+      navigate('/dashboard/referrals');
+    }
+  };
 
   // Sur mobile, on utilise un Popover qui s'ouvre au clic
   if (isMobile) {
@@ -33,7 +51,11 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
           {triggerElement}
         </PopoverTrigger>
         <PopoverContent className="w-80 p-4">
-          <ReferralSuggestionContent onStartReferral={onStartReferral} />
+          <ReferralSuggestionContent 
+            onStartReferral={handleStartReferral}
+            withdrawalThreshold={withdrawalThreshold}
+            subscription={subscription}
+          />
         </PopoverContent>
       </Popover>
     );
@@ -46,14 +68,22 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
         {triggerElement}
       </HoverCardTrigger>
       <HoverCardContent side="top" align="center" className="w-80 p-4">
-        <ReferralSuggestionContent onStartReferral={onStartReferral} />
+        <ReferralSuggestionContent 
+          onStartReferral={handleStartReferral} 
+          withdrawalThreshold={withdrawalThreshold}
+          subscription={subscription}
+        />
       </HoverCardContent>
     </HoverCard>
   );
 };
 
 // Contenu réutilisable pour le Popover et le HoverCard
-const ReferralSuggestionContent: React.FC<{ onStartReferral: () => void }> = ({ onStartReferral }) => {
+const ReferralSuggestionContent: React.FC<{ 
+  onStartReferral: () => void;
+  withdrawalThreshold: number;
+  subscription?: string;
+}> = ({ onStartReferral, withdrawalThreshold, subscription = 'freemium' }) => {
   return (
     <div className="space-y-3">
       <div className="flex items-start gap-2">
@@ -68,9 +98,9 @@ const ReferralSuggestionContent: React.FC<{ onStartReferral: () => void }> = ({ 
       
       <div className="bg-blue-50 border border-blue-100 rounded-md p-2 flex items-start gap-2">
         <Gift className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-        <p className="text-xs text-blue-800">
-          Atteignez votre seuil de retrait plus rapidement grâce aux revenus récurrents de vos filleuls !
-        </p>
+        <div className="text-xs text-blue-800">
+          <p>Atteignez votre seuil de retrait de <span className="font-semibold">{withdrawalThreshold}€</span> plus rapidement grâce aux revenus récurrents de vos filleuls !</p>
+        </div>
       </div>
       
       <Button 
@@ -79,7 +109,7 @@ const ReferralSuggestionContent: React.FC<{ onStartReferral: () => void }> = ({ 
         className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 mt-1"
         onClick={onStartReferral}
       >
-        <span>Commencer maintenant</span>
+        <span>Commencer à parrainer</span>
         <ArrowRight className="h-4 w-4 ml-1" />
       </Button>
     </div>

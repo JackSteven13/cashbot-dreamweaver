@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   LogOut, 
   Home,
   BarChart3,
+  Users,
 } from 'lucide-react';
 import Button from '@/components/Button';
 import { forceSignOut } from "@/utils/auth/sessionUtils";
@@ -40,9 +42,10 @@ const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
     }
   };
 
-  // Removed wallet and referrals menu items, keeping only dashboard
+  // Ajout d'un élément de menu pour les parrainages
   const menuItems = [
-    { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3, path: '/' },
+    { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3, path: '/dashboard' },
+    { id: 'referrals', label: 'Parrainages', icon: Users, path: '/dashboard/referrals' },
   ];
   
   return (

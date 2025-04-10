@@ -1,3 +1,4 @@
+
 import { Routes, Route, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardContent from '@/components/dashboard/DashboardContent';
@@ -9,6 +10,7 @@ import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
 import { useReferralNotifications } from '@/hooks/useReferralNotifications';
 import { useTransactionReconciliation } from '@/hooks/useTransactionReconciliation';
 import { memo, useEffect, useRef, useMemo, useState } from 'react';
+import ReferralsPage from './dashboard/ReferralsPage';
 
 // Composant principal avec transitions améliorées
 const Dashboard = memo(() => {
@@ -44,6 +46,9 @@ const Dashboard = memo(() => {
     isLoading,
     isBotActive
   } = useDashboardState();
+  
+  // Déterminer si nous sommes sur la page des parrainages
+  const isReferralsPage = location.pathname === '/dashboard/referrals';
   
   // Hook de réconciliation de transactions
   useTransactionReconciliation(userData, isLoading);
@@ -156,6 +161,9 @@ const Dashboard = memo(() => {
                     lastSessionTimestamp={lastSessionTimestamp}
                     isBotActive={isBotActive}
                   />
+                } />
+                <Route path="referrals" element={
+                  <ReferralsPage />
                 } />
               </Routes>
             </DashboardLayout>
