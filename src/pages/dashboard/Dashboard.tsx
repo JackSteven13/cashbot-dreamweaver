@@ -161,9 +161,9 @@ const Dashboard = () => {
       
       <SystemTerminal
         isNewUser={isNewUser}
-        dailyLimit={dailyLimit} // Using number type
+        dailyLimit={dailyLimit} // Using number type directly
         subscription={getSubscription(userData)}
-        remainingSessions={dailySessionCount} // Using number type
+        remainingSessions={dailySessionCount} // Using number type directly
         referralCount={userData?.referrals?.length || 0}
         displayBalance={userData?.balance || 0}
         referralBonus={referralBonus}

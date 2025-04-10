@@ -131,10 +131,15 @@ export const useBalanceOperations = () => {
       // Reset balance - only pass the user ID
       const result = await resetUserBalance(session.user.id);
       
+      // Check if result has transaction property before accessing it
+      const transaction = result && typeof result === 'object' && 'transaction' in result 
+        ? result.transaction 
+        : null;
+      
       // Ensure we return a properly typed result with transaction property
       return { 
         success: result.success,
-        transaction: result.success && result.transaction ? result.transaction : null
+        transaction: transaction
       };
     } catch (error) {
       console.error("Error in resetBalance:", error);
