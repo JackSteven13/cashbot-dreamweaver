@@ -1,9 +1,9 @@
 
 /**
- * Generates a random amount within a specified range
- * @param min Minimum value
- * @param max Maximum value
- * @returns Random number between min and max
+ * Génère un montant aléatoire entre min et max
+ * @param min Montant minimum
+ * @param max Montant maximum
+ * @returns Montant généré
  */
 export const getRandomAmount = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;

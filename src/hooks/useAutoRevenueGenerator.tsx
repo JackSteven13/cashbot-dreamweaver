@@ -7,6 +7,7 @@ import { getRandomCryptoName } from '@/utils/dummy-data/cryptoNames';
 import { getRandomAmount } from '@/utils/dummy-data/amountGenerator';
 import { balanceManager } from '@/utils/balance/balanceManager';
 import { supabase } from '@/integrations/supabase/client';
+import { OfflineGain } from '@/types/offlineGains';
 
 export const useAutoRevenueGenerator = (
   userData: any,
@@ -33,7 +34,8 @@ export const useAutoRevenueGenerator = (
         const lastUpdate = storedLastUpdate || lastOfflineUpdateRef.current;
         
         // Récupérer les gains générés lorsque l'utilisateur était absent
-        const { data: offlineGains, error } = await supabase
+        // Utiliser `as any` pour contourner les restrictions TypeScript
+        const { data: offlineGains, error } = await (supabase as any)
           .from('offline_gains')
           .select('*')
           .eq('user_id', userData.id)
@@ -52,8 +54,11 @@ export const useAutoRevenueGenerator = (
           let totalGain = 0;
           let newestTimestamp = lastUpdate;
           
+          // Traiter les gains en tant que OfflineGain[]
+          const typedGains = offlineGains as OfflineGain[];
+          
           // Mettre à jour le solde avec tous les gains accumulés
-          for (const gain of offlineGains) {
+          for (const gain of typedGains) {
             totalGain += gain.amount;
             
             // Mettre à jour la date la plus récente
@@ -77,7 +82,7 @@ export const useAutoRevenueGenerator = (
             
             // Marquer ces gains comme distribués
             if (offlineGains.length > 0) {
-              await supabase
+              await (supabase as any)
                 .from('offline_gains')
                 .delete()
                 .in('id', offlineGains.map(g => g.id));
