@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserFetchRefactored } from '@/hooks/fetch/useUserFetchRefactored';
@@ -18,6 +19,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   
+  // First, get the user data
   const { 
     userData, 
     isNewUser, 
@@ -27,6 +29,16 @@ const Dashboard = () => {
     setShowLimitAlert 
   } = useUserFetchRefactored();
   
+  // Define updateBalance function before using it
+  const { updateBalance, resetBalance } = useBalanceActions({
+    userData: userData,
+    dailySessionCount: dailySessionCount,
+    setUserData: () => {}, // No direct state update needed here
+    setDailySessionCount: () => {}, // No direct state update needed here
+    setShowLimitAlert: setShowLimitAlert
+  });
+  
+  // Now we can use updateBalance in other hooks
   const { 
     lastAutoSessionTime,
     activityLevel,
@@ -38,14 +50,6 @@ const Dashboard = () => {
     updateBalance,
     setShowLimitAlert
   );
-  
-  const { updateBalance, resetBalance } = useBalanceActions({
-    userData: userData,
-    dailySessionCount: dailySessionCount,
-    setUserData: () => {}, // No direct state update needed here
-    setDailySessionCount: () => {}, // No direct state update needed here
-    setShowLimitAlert: setShowLimitAlert
-  });
   
   const [isStartingSession, setIsStartingSession] = useState(false);
   
