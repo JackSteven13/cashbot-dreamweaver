@@ -1,3 +1,4 @@
+
 import { toast } from "@/components/ui/use-toast";
 import { 
   updateUserBalance,
@@ -127,10 +128,10 @@ export const useBalanceOperations = () => {
       // Update local storage with current subscription
       localStorage.setItem('subscription', userBalanceData.subscription);
       
-      // Reset balance
-      const result = await resetUserBalance(session.user.id, userBalanceData.balance);
+      // Reset balance - only pass the user ID
+      const result = await resetUserBalance(session.user.id);
       
-      // Make sure the transaction property is properly typed in the result
+      // Safety check to handle if transaction is undefined
       return { 
         success: result.success,
         transaction: result.success && result.transaction ? result.transaction : null

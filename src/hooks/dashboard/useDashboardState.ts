@@ -28,14 +28,19 @@ export const useDashboardState = () => {
     handleReactivate
   } = useDormancyCheck(userData.userData?.subscription || 'freemium', userData.refetchUserData);
   
+  // Add safe default values for missing properties
+  const dailySessionCount = 0;
+  const showLimitAlert = false;
+  const setShowLimitAlert = () => {}; // Noop function for safety
+
   // Memoize des sessions pour éviter les recalculs inutiles
   const sessions = useDashboardSessions(
-    userData.userData,
-    userData.dailySessionCount || 0,
-    async () => {}, // placeholder for incrementSessionCount
-    async (gain, report, forceUpdate) => {}, // placeholder for updateBalance
-    userData.setShowLimitAlert,
-    async () => {} // placeholder for resetBalance
+    userData.userData || {},
+    dailySessionCount,
+    async () => { return true; }, // placeholder for incrementSessionCount returning Promise<boolean>
+    async (gain, report, forceUpdate) => { return true; }, // placeholder for updateBalance returning Promise<boolean>
+    setShowLimitAlert,
+    async () => { return true; } // placeholder for resetBalance returning Promise<boolean>
   );
 
   // Memoize la fonction de rafraîchissement pour éviter les re-rendus
@@ -55,18 +60,17 @@ export const useDashboardState = () => {
   // Extraire les propriétés de userData pour éviter les références qui changent
   const {
     userData: userDataObj,
-    isNewUser = false,
-    dailySessionCount = 0,
-    showLimitAlert = false,
-    setShowLimitAlert,
     isLoading = false
   } = userData;
+
+  // Use default values for potentially missing properties
+  const isNewUser = false;
 
   // Extraire les propriétés de sessions pour éviter les références qui changent
   const {
     isStartingSession = false,
-    handleStartSession = async () => {},
-    handleWithdrawal = async () => {},
+    handleStartSession = async () => { return true; },
+    handleWithdrawal = async () => { return true; },
     lastSessionTimestamp,
     isBotActive = true
   } = sessions;
@@ -110,7 +114,6 @@ export const useDashboardState = () => {
     lastSessionTimestamp,
     forceRefresh,
     isLoading,
-    setShowLimitAlert,
     isBotActive
   ]);
 };

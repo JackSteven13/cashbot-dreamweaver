@@ -22,6 +22,7 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
 
   const { fetchUserData, resetDailyCounters } = useUserDataFetching(
     loadUserProfile,
+    // Make sure we're passing loadBalance correctly and not accessing a non-existent loadUserBalance
     loadBalance,
     updateUserData,
     setIsLoading,

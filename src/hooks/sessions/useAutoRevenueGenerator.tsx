@@ -25,13 +25,13 @@ export const useAutoRevenueGenerator = (
     checkLimitAndUpdateBot 
   } = useBotStatus(true);
 
-  // Intégrer les opérations de session
+  // Intégrer les opérations de session - ensure userData is safe to use
   const { 
     generateAutomaticRevenue, 
     isSessionInProgress, 
     getCurrentBalance 
   } = useSessionOperations(
-    userData,
+    userData || { balance: 0, subscription: 'freemium', transactions: [], referrals: [] },
     updateBalance,
     setShowLimitAlert,
     todaysGainsRef,
@@ -197,7 +197,7 @@ export const useAutoRevenueGenerator = (
     isSessionInProgress: () => isSessionInProgress(),
     isBotActive,
     updateBotStatus,
-    resetBotActivity: () => resetBotActivity(userData.subscription, userData.balance),
+    resetBotActivity: () => resetBotActivity(userData?.subscription || 'freemium', userData?.balance || 0),
     consecutiveDays: consecutiveDaysRef.current
   };
 };
