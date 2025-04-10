@@ -6,6 +6,7 @@ import { updateUserBalance } from '@/utils/balance/updateBalance';
 import { getRandomCryptoName } from '@/utils/dummy-data/cryptoNames';
 import { getRandomAmount } from '@/utils/dummy-data/amountGenerator';
 import { balanceManager } from '@/utils/balance/balanceManager';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useAutoRevenueGenerator = (
   userData: any,
@@ -18,6 +19,90 @@ export const useAutoRevenueGenerator = (
   const [botActive, setBotActive] = useState(true); // Bot actif par défaut
   const sessionGainRef = useRef<number>(0);
   const initialSessionExecutedRef = useRef(false);
+  const lastOfflineUpdateRef = useRef<string | null>(null);
+  
+  // Effet pour synchroniser les gains générés hors-ligne
+  useEffect(() => {
+    if (!userData?.id) return;
+    
+    const syncOfflineGains = async () => {
+      try {
+        // Récupérer la date de la dernière mise à jour
+        const lastUpdateKey = `lastOfflineUpdate_${userData.id}`;
+        const storedLastUpdate = localStorage.getItem(lastUpdateKey) || null;
+        const lastUpdate = storedLastUpdate || lastOfflineUpdateRef.current;
+        
+        // Récupérer les gains générés lorsque l'utilisateur était absent
+        const { data: offlineGains, error } = await supabase
+          .from('offline_gains')
+          .select('*')
+          .eq('user_id', userData.id)
+          .gt('created_at', lastUpdate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+          .order('created_at', { ascending: true });
+          
+        if (error) {
+          console.error("Erreur lors de la récupération des gains hors ligne:", error);
+          return;
+        }
+        
+        if (offlineGains && offlineGains.length > 0) {
+          console.log(`Récupération de ${offlineGains.length} gains générés hors ligne`);
+          
+          // Traiter séquentiellement les gains avec un délai pour l'expérience utilisateur
+          let totalGain = 0;
+          let newestTimestamp = lastUpdate;
+          
+          // Mettre à jour le solde avec tous les gains accumulés
+          for (const gain of offlineGains) {
+            totalGain += gain.amount;
+            
+            // Mettre à jour la date la plus récente
+            if (!newestTimestamp || new Date(gain.created_at) > new Date(newestTimestamp)) {
+              newestTimestamp = gain.created_at;
+            }
+          }
+          
+          if (totalGain > 0) {
+            // Générer un rapport consolidé
+            const report = `Revenus générés pendant votre absence: ${offlineGains.length} analyses publicitaires effectuées automatiquement pour un total de ${totalGain.toFixed(2)}€`;
+            
+            // Mettre à jour le solde avec le montant total
+            await updateBalance(totalGain, report, true);
+            
+            toast({
+              title: "Revenus générés pendant votre absence",
+              description: `Nos bots ont continué à travailler: ${totalGain.toFixed(2)}€ ajoutés à votre compte.`,
+              duration: 6000
+            });
+            
+            // Marquer ces gains comme distribués
+            if (offlineGains.length > 0) {
+              await supabase
+                .from('offline_gains')
+                .delete()
+                .in('id', offlineGains.map(g => g.id));
+            }
+          }
+          
+          // Mettre à jour la référence de dernière mise à jour
+          if (newestTimestamp) {
+            lastOfflineUpdateRef.current = newestTimestamp;
+            localStorage.setItem(lastUpdateKey, newestTimestamp);
+          }
+        }
+      } catch (e) {
+        console.error("Erreur lors de la synchronisation des gains hors ligne:", e);
+      }
+    };
+    
+    // Exécuter la synchronisation au chargement
+    syncOfflineGains();
+    
+    // Configurer une synchronisation périodique
+    const syncInterval = setInterval(syncOfflineGains, 15 * 60 * 1000); // Toutes les 15 minutes
+    
+    return () => clearInterval(syncInterval);
+  }, [userData?.id, updateBalance]);
   
   // Effet pour écouter les changements d'état du bot
   useEffect(() => {
