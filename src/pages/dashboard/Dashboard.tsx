@@ -118,6 +118,10 @@ const Dashboard = () => {
     ? parseInt(dailySessionCount, 10) 
     : dailySessionCount;
   
+  // Convert numeric values to strings for components that expect strings
+  const dailySessionCountString = numericDailySessionCount.toString();
+  const remainingSessionsString = numericDailySessionCount.toString();
+  
   return (
     <div className="dashboard-container">
       {showLimitAlert && (
@@ -149,7 +153,7 @@ const Dashboard = () => {
         transactions={userData?.transactions || []}
         isNewUser={isNewUser}
         subscription={getSubscription(userData)}
-        dailySessionCount={numericDailySessionCount} // Fixed: Now passing number
+        dailySessionCount={dailySessionCountString}
         canStartSession={!showLimitAlert}
         referrals={userData?.referrals || []}
         lastSessionTimestamp={lastAutoSessionTime}
@@ -161,7 +165,7 @@ const Dashboard = () => {
         isNewUser={isNewUser}
         dailyLimit={dailyLimit}
         subscription={getSubscription(userData)}
-        remainingSessions={numericDailySessionCount} // Fixed: Now passing number
+        remainingSessions={remainingSessionsString}
         referralCount={userData?.referrals?.length || 0}
         displayBalance={userData?.balance || 0}
         referralBonus={referralBonus}
