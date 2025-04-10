@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
@@ -27,12 +28,14 @@ export const useDashboardState = () => {
     handleReactivate
   } = useDormancyCheck(
     userData.userData?.subscription || 'freemium',
-    // Fix Promise<void> vs Promise<boolean> by adapting the function to not return a value
+    // Return boolean to match the expected function signature
     async () => {
       try {
         await userData.refetchUserData();
+        return true; // Return boolean as expected by useDormancyCheck
       } catch (error) {
         console.error("Error refetching user data:", error);
+        return false;
       }
     }
   );
@@ -46,29 +49,35 @@ export const useDashboardState = () => {
   const sessions = useDashboardSessions(
     userData.userData || {},
     dailySessionCount,
-    // Fix Promise<boolean> vs Promise<void> for incrementSessionCount by adapting the function
+    // Return boolean as expected
     async () => { 
       try {
         await Promise.resolve(); 
+        return true;
       } catch (error) {
         console.error("Error incrementing session count:", error);
+        return false;
       }
     },
-    // Adapt updateBalance function to match expected type
+    // Return boolean as expected
     async (gain, report, forceUpdate) => {
       try {
         await Promise.resolve();
+        return true;
       } catch (error) {
         console.error("Error updating balance:", error);
+        return false;
       }
     },
     setShowLimitAlert,
-    // Modified to match expected Promise<void> instead of Promise<boolean>
+    // Return boolean as expected
     async () => { 
       try {
         await Promise.resolve();
+        return true;
       } catch (error) {
         console.error("Error resetting balance:", error);
+        return false;
       }
     }
   );
@@ -80,8 +89,10 @@ export const useDashboardState = () => {
     
     try {
       await userData.refetchUserData();
+      return true;
     } catch (error) {
       console.error("Error refreshing user data:", error);
+      return false;
     }
   }, [userData.refetchUserData]);
 

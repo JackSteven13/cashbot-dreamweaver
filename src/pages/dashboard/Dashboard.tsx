@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserFetchRefactored } from '@/hooks/fetch/useUserFetchRefactored';
@@ -19,7 +18,6 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   
-  // First, get the user data
   const { 
     userData, 
     isNewUser, 
@@ -29,26 +27,22 @@ const Dashboard = () => {
     setShowLimitAlert 
   } = useUserFetchRefactored();
   
-  // Define updateBalance function before using it
   const { updateBalance, resetBalance } = useBalanceActions({
     userData: userData,
     dailySessionCount: dailySessionCount,
-    setUserData: () => {}, // No direct state update needed here
-    setDailySessionCount: () => {}, // No direct state update needed here
+    setUserData: () => {},
+    setDailySessionCount: () => {},
     setShowLimitAlert: setShowLimitAlert
   });
   
-  // Bot state management
   const [localBotActive, setLocalBotActive] = useState(true);
   
-  // Effect to disable bot when daily limit is reached
   useEffect(() => {
     if (showLimitAlert) {
       setLocalBotActive(false);
     }
   }, [showLimitAlert]);
   
-  // Now we can use updateBalance in other hooks
   const { 
     lastAutoSessionTime,
     activityLevel,
@@ -109,14 +103,12 @@ const Dashboard = () => {
     }
   }, [resetBalance, toast]);
   
-  // Daily limit calculation
   const effectiveSubscription = getSubscription(userData);
   let dailyLimit = 0.5; // Default for freemium
   if (effectiveSubscription === 'starter') dailyLimit = 5;
   if (effectiveSubscription === 'gold') dailyLimit = 20;
   if (effectiveSubscription === 'elite') dailyLimit = 50;
   
-  // Calculer les gains issus des parrainages
   const referralBonus = userData?.referrals?.reduce((total, ref) => 
     total + (ref.commission_rate || 0), 0) || 0;
   
@@ -151,7 +143,7 @@ const Dashboard = () => {
         transactions={userData?.transactions || []}
         isNewUser={isNewUser}
         subscription={getSubscription(userData)}
-        dailySessionCount={dailySessionCount}
+        dailySessionCount={dailySessionCount.toString()}
         canStartSession={!showLimitAlert}
         referrals={userData?.referrals || []}
         lastSessionTimestamp={lastAutoSessionTime}
@@ -163,7 +155,7 @@ const Dashboard = () => {
         isNewUser={isNewUser}
         dailyLimit={dailyLimit}
         subscription={getSubscription(userData)}
-        remainingSessions={dailySessionCount}
+        remainingSessions={dailySessionCount.toString()}
         referralCount={userData?.referrals?.length || 0}
         displayBalance={userData?.balance || 0}
         referralBonus={referralBonus}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -33,7 +32,6 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
   const { toast } = useToast();
   const { session } = useAuthSession();
 
-  // Fetch initial balance when component mounts or userId changes
   useEffect(() => {
     if (userId) {
       fetchBalance();
@@ -95,17 +93,17 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
     setError(null);
 
     try {
-      // Get the JWT token from the session
       const token = session?.access_token;
       if (!token && !forceUpdate) {
         throw new Error('Authentication required');
       }
 
-      // Update the balance in the database
+      const newBalanceValue = balance + gainAmount;
+      
       const { data: updatedBalance, error: updateError } = await supabase
         .from('user_balances')
         .update({ 
-          balance: balance + gainAmount,
+          balance: newBalanceValue.toString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', userId)
@@ -116,14 +114,12 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
         throw new Error(updateError.message);
       }
 
-      // Create transaction object
       const transaction: Transaction = {
         date: new Date().toISOString().split('T')[0],
         gain: gainAmount,
         report: reportMessage
       };
 
-      // Add a transaction record
       const { error: transactionError } = await supabase
         .from('transactions')
         .insert({
@@ -133,16 +129,13 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
 
       if (transactionError) {
         console.error('Error adding transaction:', transactionError);
-        // Continue even if transaction logging fails
       }
 
-      // Update local state
       let newBalance = balance;
       if (updatedBalance) {
         newBalance = parseFloat(updatedBalance.balance) || 0;
         setBalance(newBalance);
       } else {
-        // Fallback to local calculation if no data returned
         newBalance = balance + gainAmount;
         setBalance(newBalance);
       }
@@ -176,11 +169,10 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
     setError(null);
 
     try {
-      // Reset the balance to 0 in the database
       const { error: resetError } = await supabase
         .from('user_balances')
         .update({ 
-          balance: 0,
+          balance: "0",
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
@@ -189,14 +181,12 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
         throw new Error(resetError.message);
       }
 
-      // Create withdrawal transaction
       const transaction: Transaction = {
         date: new Date().toISOString().split('T')[0],
-        gain: -balance, // Negative amount for withdrawal
+        gain: -balance,
         report: `Retrait de ${balance.toFixed(2)}€`
       };
 
-      // Add a withdrawal transaction record
       const { error: transactionError } = await supabase
         .from('transactions')
         .insert({
@@ -206,10 +196,8 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
 
       if (transactionError) {
         console.error('Error adding withdrawal transaction:', transactionError);
-        // Continue even if transaction logging fails
       }
 
-      // Update local state
       setBalance(0);
       
       toast({

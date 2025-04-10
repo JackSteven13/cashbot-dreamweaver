@@ -40,6 +40,11 @@ const DashboardContent = ({
   // Compter le nombre de parrainages actifs
   const activeReferrals = referrals?.filter(ref => ref.active !== false) || [];
   
+  // Convert dailySessionCount to string for components that expect string
+  const dailySessionCountStr = typeof dailySessionCount === 'number' 
+    ? dailySessionCount.toString() 
+    : dailySessionCount;
+  
   return (
     <main className="flex-1 overflow-auto py-4">
       <div className="container mx-auto px-2">
@@ -68,7 +73,7 @@ const DashboardContent = ({
             transactions={transactions}
             isNewUser={isNewUser}
             subscription={subscription}
-            dailySessionCount={dailySessionCount}
+            dailySessionCount={dailySessionCountStr}
             canStartSession={!isDormant}
             referrals={referrals}
             lastSessionTimestamp={lastSessionTimestamp}
@@ -79,7 +84,7 @@ const DashboardContent = ({
             isNewUser={isNewUser}
             dailyLimit={dailyLimit}
             subscription={subscription}
-            remainingSessions={dailySessionCount}
+            remainingSessions={dailySessionCountStr}
             referralCount={activeReferrals.length}
             displayBalance={balance}
             referralBonus={referralBonus}
