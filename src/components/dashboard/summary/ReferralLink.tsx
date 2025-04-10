@@ -18,7 +18,7 @@ interface ReferralLinkProps {
   referrals?: any[];
   subscription?: string;
   isTopReferrer?: boolean;
-  referralCount?: number;
+  referralCount?: number; // Add this prop to match SummaryPanel usage
 }
 
 const ReferralLink: React.FC<ReferralLinkProps> = ({ 

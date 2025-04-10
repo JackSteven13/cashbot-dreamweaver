@@ -18,7 +18,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   return (
     <div className="mt-2 mb-4">
       <div className="flex justify-between text-xs mb-1">
-        <span>Seuil de retrait</span>
+        <span>Progression retrait</span>
         <span>{safeBalance.toFixed(2)}€ / {safeThreshold}€</span>
       </div>
       <div className="h-2 w-full bg-gray-700 rounded-full overflow-hidden">
@@ -26,9 +26,6 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           className="h-full bg-gradient-to-r from-blue-400 to-blue-600"
           style={{ width: `${progress}%` }}
         />
-      </div>
-      <div className="text-xs text-gray-500 mt-1">
-        Vous devez atteindre {safeThreshold}€ pour pouvoir effectuer un retrait
       </div>
     </div>
   );

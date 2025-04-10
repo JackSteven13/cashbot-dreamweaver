@@ -52,15 +52,13 @@ export const useStatsCounter = ({
   useEffect(() => {
     initializeCounters();
     
-    // Système d'animation redessiné pour être plus naturel et aléatoire
+    // Completely redesigned animation system for stability
     let animationFrameId: number;
     let lastUpdateTime = 0;
     
     const updateAnimation = (timestamp: number) => {
-      // Intervalle aléatoire entre les mises à jour pour simuler des publicités de durées variables
-      const updateInterval = Math.random() * 1000 + 1000; // Entre 1 et 2 secondes
-      
-      if (timestamp - lastUpdateTime > updateInterval || lastUpdateTime === 0) {
+      // Extremely slow animation - only update every 2 seconds
+      if (timestamp - lastUpdateTime > 2000 || lastUpdateTime === 0) {
         animateCounters();
         lastUpdateTime = timestamp;
       }
@@ -70,23 +68,14 @@ export const useStatsCounter = ({
     
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Mises à jour des compteurs réels à intervalles irréguliers pour simuler des publicités de durées différentes
-    const scheduleNextIncrement = () => {
-      const randomInterval = Math.floor(Math.random() * 4000) + 6000; // Entre 6 et 10 secondes
-      return setTimeout(() => {
-        incrementCountersRandomly();
-        const nextTimeout = scheduleNextIncrement();
-        return nextTimeout;
-      }, randomInterval);
-    };
-    
-    let incrementTimeoutId = scheduleNextIncrement();
+    // Greatly reduced update frequency - only update actual values every 10 seconds
+    const activityInterval = setInterval(incrementCountersRandomly, 10000);
     
     const resetTimeout = scheduleCycleUpdate();
     
     return () => {
       if (resetTimeout) clearTimeout(resetTimeout);
-      clearTimeout(incrementTimeoutId);
+      clearInterval(activityInterval);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
   }, [

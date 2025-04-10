@@ -41,7 +41,7 @@ export const getCommissionRate = (subscription: string): number => {
     'freemium': 0.2, // 20%
     'starter': 0.3,  // 30%
     'gold': 0.4,     // 40%
-    'elite': 0.5     // 50% (updated from 1.0 to 0.5)
+    'elite': 0.5     // 50%
   };
   
   return rates[subscription] || rates['freemium'];

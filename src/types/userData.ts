@@ -23,7 +23,6 @@ export interface Referral {
 }
 
 export interface UserData {
-  id?: string; // Adding id property to fix the TypeScript errors
   username: string;
   balance: number;
   subscription: string;
@@ -42,6 +41,5 @@ export interface UserData {
     full_name?: string;
     email?: string;
     id?: string;
-    subscription?: string; // Add subscription property to profile
-  };
+  }; // Add profile property to fix the error
 }

@@ -1,127 +1,104 @@
 
-import React, { forwardRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Activity, AlertTriangle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PlayCircle, Clock, AlertTriangle } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
-export interface BoostButtonProps {
+interface BoostButtonProps {
+  canStartSession: boolean;
+  limitReached: boolean;
+  limitPercentage: number;
   isStartingSession: boolean;
   isButtonDisabled: boolean;
+  buttonRef: React.RefObject<HTMLButtonElement>;
   onClick: () => void;
-  remainingSessions: number | string;
-  lastSessionTimestamp?: string;
-  subscription: string;
-  limitPercentage: number;
-  canStartSession: boolean;
-  isBotActive?: boolean;
-  buttonRef?: React.RefObject<HTMLButtonElement>;
 }
 
-export const BoostButton = forwardRef<HTMLButtonElement, BoostButtonProps>(
-  ({
-    isStartingSession,
-    isButtonDisabled,
-    onClick,
-    remainingSessions,
-    lastSessionTimestamp,
-    subscription,
-    limitPercentage,
-    canStartSession,
-    isBotActive = true,
-    buttonRef
-  }, ref) => {
-    // Calculer depuis combien de temps la dernière session a été lancée
-    let timeAgo = '';
-    if (lastSessionTimestamp) {
-      const lastSession = new Date(lastSessionTimestamp);
-      const now = new Date();
-      const diffInHours = Math.floor((now.getTime() - lastSession.getTime()) / (1000 * 60 * 60));
-      
-      if (diffInHours < 24) {
-        timeAgo = `(il y a ${diffInHours}h)`;
-      } else {
-        const diffInDays = Math.floor(diffInHours / 24);
-        timeAgo = `(il y a ${diffInDays} jour${diffInDays > 1 ? 's' : ''})`;
-      }
-    }
+export const BoostButton: React.FC<BoostButtonProps> = ({
+  canStartSession,
+  limitReached,
+  limitPercentage,
+  isStartingSession,
+  isButtonDisabled,
+  buttonRef,
+  onClick
+}) => {
+  const isMobile = useIsMobile();
+  const iconSize = isMobile ? 16 : 18;
+  const [isClicked, setIsClicked] = useState(false);
+  
+  // Gérer le clic avec un feedback visuel supplémentaire
+  const handleClick = () => {
+    if (isButtonDisabled || isStartingSession || limitReached) return;
     
-    // Déterminer le texte du bouton selon l'état
-    const getButtonText = () => {
-      if (isStartingSession) return 'Démarrage...';
-      if (!canStartSession && limitPercentage >= 100) return 'Limite atteinte';
-      if (subscription === 'freemium' && remainingSessions === 0) return 'Limite freemium';
-      return 'Boost rapide';
-    };
+    setIsClicked(true);
+    onClick();
     
-    const getButtonIcon = () => {
-      if (isStartingSession) return <Clock className="animate-spin mr-2" size={16} />;
-      if (!canStartSession && limitPercentage >= 100) return <AlertTriangle className="mr-2" size={16} />;
-      return <PlayCircle className="mr-2" size={16} />;
-    };
-    
-    // Déterminer la couleur du bouton
-    const getButtonVariant = () => {
-      if (!canStartSession || (subscription === 'freemium' && remainingSessions === 0)) {
-        return 'destructive';
-      }
-      return 'default';
-    };
-
-    const getBottomText = () => {
-      if (isButtonDisabled) return '';
-      if (subscription === 'freemium' && typeof remainingSessions === 'number') {
-        return `${remainingSessions} session${remainingSessions !== 1 ? 's' : ''} restante${remainingSessions !== 1 ? 's' : ''}`;
-      }
-      if (remainingSessions === 'illimitées') {
-        return 'Sessions illimitées';
-      }
-      return '';
-    };
-    
-    const getStatusColor = () => {
-      if (!isBotActive) return 'text-red-400';
-      if (limitPercentage >= 100) return 'text-red-400';
-      if (limitPercentage >= 75) return 'text-yellow-400';
-      return 'text-green-400';
-    };
-    
-    // Calculer le statut d'activité du bot
-    const getBotStatus = () => {
-      if (!isBotActive) return 'Bot inactif';
-      if (limitPercentage >= 100) return 'Limite atteinte';
-      return 'Bot actif';
-    };
-    
+    // Réinitialiser l'état cliqué après un délai
+    setTimeout(() => {
+      setIsClicked(false);
+    }, 1000);
+  };
+  
+  // Les classes pour l'animation
+  const animationClass = isStartingSession 
+    ? 'boost-button-active' 
+    : isClicked 
+      ? 'boost-button-clicked'
+      : 'boost-button-pulse';
+  
+  if (canStartSession && !limitReached) {
     return (
-      <div className="flex flex-col">
-        <Button
-          ref={buttonRef || ref}
-          variant={getButtonVariant() as any}
-          size="lg"
-          disabled={isButtonDisabled || !canStartSession || (subscription === 'freemium' && remainingSessions === 0)}
-          onClick={onClick}
-          className="w-full relative overflow-hidden"
-        >
-          {getButtonIcon()}
-          <span>{getButtonText()}</span>
-          {limitPercentage > 0 && limitPercentage < 100 && (
-            <div 
-              className="absolute bottom-0 left-0 h-1 bg-green-500"
-              style={{ width: `${limitPercentage}%`, transition: 'width 0.5s ease-in-out' }}
-            />
-          )}
-        </Button>
+      <Button 
+        ref={buttonRef}
+        className={`w-full bg-gradient-to-r from-[#3b82f6] to-[#1d4ed8] hover:from-[#2563eb] hover:to-[#1e40af] text-white relative overflow-hidden shadow-md py-1.5 ${animationClass}`}
+        disabled={isButtonDisabled || isStartingSession || limitReached}
+        onClick={handleClick}
+        size={isMobile ? "sm" : "default"}
+      >
+        {/* Visual indicator of progress towards limit */}
+        <div 
+          className="absolute bottom-0 left-0 h-1 bg-white/50" 
+          style={{ width: `${limitPercentage}%` }}
+        />
         
-        <div className="flex justify-between items-center mt-1 px-1 text-xs text-slate-400">
-          <span className={`${getStatusColor()}`}>
-            {getBotStatus()}
+        {isStartingSession ? (
+          <span className="flex items-center">
+            <Activity className="animate-pulse mr-1.5" size={iconSize} />
+            <span className="processing-dots">Analyse en cours</span>
           </span>
-          <span>
-            {getBottomText()} {lastSessionTimestamp && timeAgo}
+        ) : limitReached ? (
+          <span className="flex items-center">
+            <AlertTriangle className="mr-1.5" size={iconSize} />
+            Limite atteinte
           </span>
-        </div>
-      </div>
+        ) : (
+          <span className="flex items-center">
+            <Zap className="mr-1.5" size={iconSize} />
+            Lancer l'analyse
+          </span>
+        )}
+      </Button>
+    );
+  } else {
+    return (
+      <Button 
+        className="w-full bg-slate-300 hover:bg-slate-300 text-slate-600 cursor-not-allowed shadow-md py-1.5"
+        disabled={true}
+        size={isMobile ? "sm" : "default"}
+      >
+        {limitReached ? (
+          <span className="flex items-center">
+            <AlertTriangle className="mr-1.5" size={iconSize} />
+            Limite atteinte
+          </span>
+        ) : (
+          <span className="flex items-center">
+            <Zap className="mr-1.5" size={iconSize} />
+            Lancer l'analyse
+          </span>
+        )}
+      </Button>
     );
   }
-);
-
-BoostButton.displayName = 'BoostButton';
+};

@@ -1,6 +1,6 @@
-import { UserData } from "@/types/userData";
+
+import { UserData, Transaction } from "@/types/userData";
 import { useUserSession } from './useUserSession';
-import { BalanceUpdateResult } from './session/useBalanceOperations';
 
 interface BalanceActionsResult {
   updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>;
@@ -16,13 +16,8 @@ interface UseBalanceActionsProps {
   setShowLimitAlert: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-interface TempTransaction {
+interface TempTransaction extends Transaction {
   id: string;
-  date: string;
-  gain: number;
-  amount: number;
-  report: string;
-  type: string;
 }
 
 export const useBalanceActions = ({

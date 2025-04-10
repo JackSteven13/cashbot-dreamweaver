@@ -1,3 +1,4 @@
+
 /**
  * Détermine si un retrait est autorisé en fonction de l'abonnement et des parrainages
  * @param subscription Type d'abonnement
@@ -25,20 +26,16 @@ export function isWithdrawalAllowed(
  * @param subscription Type d'abonnement
  * @returns Montant minimum pour un retrait
  */
-export const getWithdrawalThreshold = (subscription: string): number => {
-  switch (subscription) {
-    case 'elite':
-      return 50;
-    case 'pro':
-      return 100;
-    case 'starter':
-    case 'alpha':
-      return 150;
-    case 'freemium':
-    default:
-      return 200;
-  }
-};
+export function getWithdrawalThreshold(subscription: string = 'freemium'): number {
+  const thresholds: Record<string, number> = {
+    'freemium': 200,  // 200€ minimum pour freemium
+    'starter': 100,   // 100€ minimum pour starter
+    'gold': 50,       // 50€ minimum pour gold
+    'elite': 25       // 25€ minimum pour elite
+  };
+  
+  return thresholds[subscription] || 200;
+}
 
 /**
  * Calcule les frais de retrait en fonction de l'ancienneté du compte et de l'abonnement

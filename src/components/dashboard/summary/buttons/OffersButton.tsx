@@ -1,32 +1,26 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Sparkles } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 
-export interface OffersButtonProps {
-  subscription: string;
+interface OffersButtonProps {
+  limitReached: boolean;
 }
 
-export const OffersButton: React.FC<OffersButtonProps> = ({ subscription }) => {
-  const navigate = useNavigate();
-  const isPremium = subscription !== 'freemium';
-  
-  const handleClick = () => {
-    navigate('/offres');
-  };
+export const OffersButton: React.FC<OffersButtonProps> = ({
+  limitReached
+}) => {
+  const isMobile = useIsMobile();
   
   return (
-    <Button
-      variant="outline"
-      size="lg"
-      onClick={handleClick}
-      className={`w-full ${
-        isPremium ? 'border-indigo-600/20 text-indigo-400' : 'border-cyan-500/20 text-cyan-400'
-      }`}
-    >
-      <Sparkles className="mr-2" size={16} />
-      <span>{isPremium ? 'Gérer mon abonnement' : 'Découvrir nos offres'}</span>
-    </Button>
+    <Link to="/offres" className="w-full block">
+      <Button 
+        className="w-full bg-gradient-to-r from-[#1A1F2C] to-[#1e3a5f] hover:from-[#1e3a5f] hover:to-[#1A1F2C] text-white shadow-md transition-all duration-300 py-1.5"
+        size={isMobile ? "sm" : "default"}
+      >
+        {limitReached ? "Augmenter limite" : "Voir offres"}
+      </Button>
+    </Link>
   );
 };

@@ -1,67 +1,93 @@
 
 import React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 
-export interface SystemInfoProps {
-  isNewUser?: boolean;
-  subscription?: string;
+interface SystemInfoProps {
+  isNewUser: boolean;
   onFeedbackClick?: () => void;
 }
 
-export const SystemInfo: React.FC<SystemInfoProps> = ({ 
-  isNewUser = false,
-  subscription = 'freemium',
+export const SystemInfo: React.FC<SystemInfoProps> = ({
+  isNewUser,
   onFeedbackClick
 }) => {
   return (
-    <div className="mb-4">
-      <div className="text-green-400 mb-1.5">$ system.bootSequence()</div>
-      
-      <div className="pl-4 text-gray-400">
-        <div className="mb-1">{'>'} Initialisation... <span className="text-green-400">OK</span></div>
-        <div className="mb-1">{'>'} Vérification système... <span className="text-green-400">OK</span></div>
-        <div className="mb-1">{'>'} Chargement algorithmes... <span className="text-green-400">OK</span></div>
-        <div className="mb-1">
-          {'>'} Compte: <span className={isNewUser ? "text-yellow-400" : "text-green-400"}>
-            {isNewUser ? 'Nouveau' : 'Vérifié'}
-          </span>
-        </div>
-        <div className="mb-1">
-          {'>'} Plan: <span className="text-blue-400">{subscription}</span>
-        </div>
-        <div>{'>'} Système prêt</div>
-        
-        {onFeedbackClick && (
-          <button 
-            onClick={onFeedbackClick}
-            className="mt-2 text-xs text-blue-400 hover:text-blue-300 cursor-pointer"
-          >
-            [Envoyer feedback]
-          </button>
-        )}
-      </div>
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="font-bold text-lg">System Status</h3>
+      {!isNewUser && (
+        <button
+          onClick={onFeedbackClick}
+          className="text-xs text-blue-400 hover:text-blue-300"
+        >
+          Send Feedback
+        </button>
+      )}
     </div>
   );
 };
 
-export const SystemInfoGrid: React.FC<SystemInfoProps> = ({ 
-  isNewUser = false,
-  subscription = 'freemium'
+interface SystemInfoGridProps {
+  subscription: string;
+  tempProEnabled?: boolean;
+  dailyLimit: number;
+  remainingSessions: number | string;
+  referralBonus?: number;
+  botActive?: boolean;
+}
+
+export const SystemInfoGrid: React.FC<SystemInfoGridProps> = ({
+  subscription,
+  tempProEnabled,
+  dailyLimit,
+  remainingSessions,
+  referralBonus = 0,
+  botActive = true
 }) => {
-  return (
-    <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
-      <div className="bg-slate-800 p-2 rounded">
-        <span className="text-gray-400">STATUS:</span> <span className="text-green-400">ACTIVE</span>
-      </div>
-      <div className="bg-slate-800 p-2 rounded">
-        <span className="text-gray-400">USER:</span> <span className={isNewUser ? "text-yellow-400" : "text-green-400"}>
-          {isNewUser ? 'NEW' : 'VERIFIED'}
+  // Format subscription display
+  const formatSubscription = () => {
+    let subName = subscription.charAt(0).toUpperCase() + subscription.slice(1);
+    
+    if (tempProEnabled && subscription === 'freemium') {
+      return (
+        <span>
+          {subName} <Badge variant="outline" className="ml-1 bg-blue-900/30 text-blue-400 border-blue-700">Pro Trial</Badge>
         </span>
+      );
+    }
+    
+    return subName;
+  };
+  
+  return (
+    <div className="grid grid-cols-2 gap-3 mt-4 mb-5 text-xs">
+      <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+        <div className="text-gray-400 mb-1">Abonnement</div>
+        <div className="font-medium text-white flex items-center">
+          {formatSubscription()}
+        </div>
       </div>
-      <div className="bg-slate-800 p-2 rounded">
-        <span className="text-gray-400">PLAN:</span> <span className="text-blue-400">{subscription.toUpperCase()}</span>
+      
+      <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+        <div className="text-gray-400 mb-1">Limite journalière</div>
+        <div className="font-medium text-white">{dailyLimit.toFixed(2)}€ / jour</div>
       </div>
-      <div className="bg-slate-800 p-2 rounded">
-        <span className="text-gray-400">VERSION:</span> <span className="text-purple-400">2.3.1</span>
+      
+      <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+        <div className="text-gray-400 mb-1">Sessions restantes</div>
+        <div className="font-medium text-white">
+          {subscription === 'freemium' ? remainingSessions : '∞'}
+        </div>
+      </div>
+      
+      <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+        <div className="text-gray-400 mb-1">Statut du bot</div>
+        <div className="font-medium flex items-center">
+          <span className={`inline-flex h-2 w-2 mr-2 rounded-full ${botActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
+          <span className={`${botActive ? 'text-green-400' : 'text-red-400'}`}>
+            {botActive ? 'Actif' : 'Inactif'}
+          </span>
+        </div>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, BotOff } from 'lucide-react';
 import { balanceManager, getHighestBalance } from '@/utils/balance/balanceManager';
@@ -13,7 +14,7 @@ interface BalanceDisplayProps {
   referralBonus?: number;
   totalGeneratedBalance?: number;
   isBotActive?: boolean;
-  subscription?: string;
+  subscription?: string; // Ajout du type d'abonnement
 }
 
 const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
@@ -125,28 +126,10 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     return () => window.removeEventListener('session:start', handleSessionStart);
   }, [localDisplayBalance]);
   
-  // Vérifier si la limite journalière est atteinte (pas le solde total)
+  // Vérifier si la limite est atteinte
   const isLimitReached = () => {
     const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    
-    // Récupérer la date d'aujourd'hui au format YYYY-MM-DD
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Récupérer les gains du jour depuis le localStorage
-    const todaysGainsKey = `todaysGains_${today}`;
-    let todaysGains = 0;
-    
-    try {
-      const storedGains = localStorage.getItem(todaysGainsKey);
-      if (storedGains) {
-        todaysGains = parseFloat(storedGains);
-      }
-    } catch (e) {
-      console.error("Erreur lors de la récupération des gains quotidiens:", e);
-    }
-    
-    // Comparer les gains du jour avec la limite quotidienne
-    return todaysGains >= dailyLimit;
+    return localDisplayBalance >= dailyLimit;
   };
   
   // Écouter les événements de changement d'état du bot et de solde
@@ -249,62 +232,18 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 
   // Function to toggle bot status manually
   const handleBotToggle = () => {
-    // Vérifier d'abord si la limite journalière est atteinte
+    // Vérifier d'abord si la limite est atteinte
     const limitReached = isLimitReached();
     
-    // Si le bot est inactif à cause de la limite atteinte, vérifier si c'est un nouveau jour
+    // Si la limite est atteinte et qu'on essaie d'activer le bot, bloquer et afficher un toast
     if (limitReached && !localBotActive) {
-      // Vérifier si nous sommes dans un nouveau jour (après minuit)
-      const now = new Date();
-      const lastResetKey = 'lastLimitResetDate';
-      const lastResetDate = localStorage.getItem(lastResetKey) || '';
-      const currentDate = now.toISOString().split('T')[0]; // Format YYYY-MM-DD
-      
-      if (lastResetDate !== currentDate) {
-        // C'est un nouveau jour, permettre la réactivation
-        console.log("Nouveau jour détecté! Réinitialisation des compteurs");
-        localStorage.setItem(lastResetKey, currentDate);
-        
-        // Réinitialiser le compteur des gains du jour
-        const todaysGainsKey = `todaysGains_${currentDate}`;
-        localStorage.setItem(todaysGainsKey, '0');
-        
-        // Forcer la réinitialisation des compteurs
-        window.dispatchEvent(new CustomEvent('balance:force-reset', { 
-          detail: { reason: 'new-day' }
-        }));
-        
-        // Activer le bot
-        const newStatus = true;
-        setLocalBotActive(newStatus);
-        window.dispatchEvent(new CustomEvent('bot:external-status-change', {
-          detail: { 
-            active: newStatus,
-            checkLimit: true,
-            subscription: subscription,
-            balance: localDisplayBalance
-          }
-        }));
-        
-        // Montrer un toast pour informer l'utilisateur
-        toast({
-          title: "Nouvelle journée, nouvelles opportunités!",
-          description: "Vos limites journalières ont été réinitialisées. Les analyses ont repris.",
-          variant: "default",
-          duration: 5000
-        });
-        
-        return;
-      } else {
-        // Même jour, limite toujours active
-        toast({
-          title: "Impossible d'activer l'analyse",
-          description: "Vous avez atteint votre limite journalière de gains. Revenez demain ou passez à un forfait supérieur.",
-          variant: "destructive",
-          duration: 5000
-        });
-        return;
-      }
+      toast({
+        title: "Impossible d'activer l'analyse",
+        description: "Vous avez atteint votre limite journalière de gains. Revenez demain ou passez à un forfait supérieur.",
+        variant: "destructive",
+        duration: 5000
+      });
+      return;
     }
     
     const newStatus = !localBotActive;
@@ -319,24 +258,14 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         balance: localDisplayBalance
       }
     }));
-    
-    // Si on active le bot, afficher un toast de confirmation
-    if (newStatus) {
-      toast({
-        title: "Analyse activée",
-        description: "Le système d'analyse automatique est maintenant en cours d'exécution.",
-        variant: "default",
-        duration: 3000
-      });
-    }
   };
   
-  // Format numbers safely with fallbacks to prevent undefined errors
-  const formattedBalance = typeof localDisplayBalance === 'number' ? localDisplayBalance.toFixed(2) : '0.00';
-  const formattedAnimatedBalance = typeof animatedBalance === 'number' ? animatedBalance.toFixed(2) : '0.00';
-  const formattedPreviousBalance = typeof previousBalance === 'number' ? previousBalance.toFixed(2) : '0.00';
-  const formattedTotalGenerated = typeof safeTotalGeneratedBalance === 'number' ? safeTotalGeneratedBalance.toFixed(2) : '0.00';
-  const formattedReferralBonus = typeof safeReferralBonus === 'number' ? safeReferralBonus.toFixed(2) : '0.00';
+  // Format numbers safely
+  const formattedBalance = localDisplayBalance.toFixed(2);
+  const formattedAnimatedBalance = animatedBalance.toFixed(2);
+  const formattedPreviousBalance = previousBalance.toFixed(2);
+  const formattedTotalGenerated = safeTotalGeneratedBalance.toFixed(2);
+  const formattedReferralBonus = safeReferralBonus.toFixed(2);
   
   // Calculate if gain happened
   const isGain = animatedBalance > previousBalance;
@@ -358,7 +287,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           <div className="flex flex-wrap justify-center gap-1 px-2">
             <span>Bonus parrainage: {formattedReferralBonus}€</span>
             <span className="hidden sm:inline">|</span>
-            <span>Solde cumulé: {formattedTotalGenerated}€</span>
+            <span>Total généré: {formattedTotalGenerated}€</span>
           </div>
         </div>
         

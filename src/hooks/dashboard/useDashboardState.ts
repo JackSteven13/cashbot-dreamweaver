@@ -5,114 +5,73 @@ import { useDashboardSessions } from '@/hooks/useDashboardSessions';
 import { useDormancyCheck } from '@/hooks/useDormancyCheck';
 
 export const useDashboardState = () => {
-  // Use useRef for data that shouldn't trigger re-render
+  // Utiliser useRef pour les données qui ne devraient pas déclencher de re-rendu
   const renderCountRef = useRef(0);
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
   const [renderKey, setRenderKey] = useState(Date.now());
   const initialRenderComplete = useRef(false);
   
-  // Debug effect to count renders
+  // Effet de debug pour compter les rendus
   useEffect(() => {
     renderCountRef.current += 1;
     console.log(`Dashboard render count: ${renderCountRef.current}`);
   });
   
-  // Use useMemo to avoid unnecessary re-renders
+  // Utiliser useMemo pour éviter les re-rendus inutiles
   const userData = useUserData();
   
-  // Optimize dormancy check with memoized data
+  // Optimiser la vérification de dormance avec les données mémorisées
   const {
     isDormant,
     dormancyData,
     isChecking,
     handleReactivate
-  } = useDormancyCheck(
-    userData.userData?.subscription || 'freemium',
-    // Fixed to return boolean as expected by useDormancyCheck
-    async () => {
-      try {
-        await userData.refetchUserData();
-        return true; // Return true to indicate success
-      } catch (error) {
-        console.error("Error refetching user data:", error);
-        return false; // Return false to indicate failure
-      }
-    }
-  );
+  } = useDormancyCheck(userData.userData?.subscription || 'freemium', userData.refreshUserData);
   
-  // Add safe default values for missing properties
-  const dailySessionCount = 0;
-  const showLimitAlert = false;
-  const setShowLimitAlert = () => {}; // Noop function for safety
-
-  // Memoize sessions to avoid unnecessary recalculations
+  // Memoize des sessions pour éviter les recalculs inutiles
   const sessions = useDashboardSessions(
-    userData.userData || {},
-    dailySessionCount,
-    // Fixed to return boolean as expected by useDashboardSessions
-    async () => { 
-      try {
-        await Promise.resolve();
-        return true; // Return true to indicate success
-      } catch (error) {
-        console.error("Error incrementing session count:", error);
-        return false; // Return false to indicate failure
-      }
-    },
-    // Fixed to return boolean as expected
-    async (gain, report, forceUpdate) => {
-      try {
-        await Promise.resolve();
-        return true; // Return true to indicate success
-      } catch (error) {
-        console.error("Error updating balance:", error);
-        return false; // Return false to indicate failure
-      }
-    },
-    setShowLimitAlert,
-    // Fixed to return boolean as expected
-    async () => { 
-      try {
-        await Promise.resolve();
-        return true; // Return true to indicate success
-      } catch (error) {
-        console.error("Error resetting balance:", error);
-        return false; // Return false to indicate failure
-      }
-    }
+    userData.userData,
+    userData.dailySessionCount,
+    userData.incrementSessionCount,
+    userData.updateBalance,
+    userData.setShowLimitAlert,
+    userData.resetBalance
   );
 
-  // Memoize refresh function to avoid re-renders
+  // Memoize la fonction de rafraîchissement pour éviter les re-rendus
   const forceRefresh = useCallback(async () => {
-    console.log("Forcing dashboard refresh");
+    console.log("Forçage du rafraîchissement du dashboard");
     setRenderKey(Date.now());
     
     try {
-      await userData.refetchUserData();
+      await userData.refreshUserData();
+      return true; // Retourner true pour satisfaire le type Promise<boolean>
     } catch (error) {
       console.error("Error refreshing user data:", error);
+      return false; // Retourner false en cas d'erreur
     }
-  }, [userData.refetchUserData]);
+  }, [userData.refreshUserData]);
 
-  // Extract properties from userData to avoid changing references
+  // Extraire les propriétés de userData pour éviter les références qui changent
   const {
     userData: userDataObj,
-    isLoading = false
+    isNewUser,
+    dailySessionCount,
+    showLimitAlert,
+    setShowLimitAlert,
+    isLoading
   } = userData;
 
-  // Use default values for potentially missing properties
-  const isNewUser = false;
-
-  // Extract properties from sessions to avoid changing references
+  // Extraire les propriétés de sessions pour éviter les références qui changent
   const {
-    isStartingSession = false,
-    handleStartSession = async () => {},
-    handleWithdrawal = async () => {},
+    isStartingSession,
+    handleStartSession,
+    handleWithdrawal,
     lastSessionTimestamp,
-    isBotActive = true
+    isBotActive
   } = sessions;
 
-  // Return a memoized object to avoid changing references
+  // Retourner un objet mémorisé pour éviter les références changeantes
   return useMemo(() => ({
     selectedNavItem,
     setSelectedNavItem,
@@ -151,6 +110,7 @@ export const useDashboardState = () => {
     lastSessionTimestamp,
     forceRefresh,
     isLoading,
+    setShowLimitAlert,
     isBotActive
   ]);
 };

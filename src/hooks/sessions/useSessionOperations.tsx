@@ -49,7 +49,7 @@ export const useSessionOperations = (
           // Comparer avec la valeur existante et utiliser la plus élevée
           const maxBalance = Math.max(
             parsedBalance, 
-            userData?.balance || 0,
+            userData.balance || 0,
             highestBalanceRef.current || 0
           );
           cumulativeBalanceRef.current = maxBalance;
@@ -61,14 +61,14 @@ export const useSessionOperations = (
           localStorage.setItem('lastKnownBalance', maxBalance.toString());
           localStorage.setItem('highestBalance', maxBalance.toString());
         } else {
-          cumulativeBalanceRef.current = userData?.balance || 0;
+          cumulativeBalanceRef.current = userData.balance || 0;
         }
       } else {
-        cumulativeBalanceRef.current = userData?.balance || 0;
+        cumulativeBalanceRef.current = userData.balance || 0;
       }
     } catch (e) {
       console.error("Failed to read from localStorage:", e);
-      cumulativeBalanceRef.current = userData?.balance || 0;
+      cumulativeBalanceRef.current = userData.balance || 0;
     }
     
     // Écouter les événements de mise à jour du solde pour maintenir la cohérence
@@ -97,7 +97,7 @@ export const useSessionOperations = (
     return () => {
       window.removeEventListener('balance:local-update' as any, handleBalanceUpdate);
     };
-  }, [userData?.balance]);
+  }, [userData.balance]);
 
   /**
    * Generate automatic revenue based on subscription type and limits
@@ -125,13 +125,10 @@ export const useSessionOperations = (
       
       // Calculate today's gains from transactions
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      
-      // Safety check - ensure userData and transactions are defined
-      const userTransactions = userData?.transactions || [];
-      const todaysTransactions = userTransactions.filter(tx => 
-        tx?.date?.startsWith(today) && tx?.gain > 0
+      const todaysTransactions = userData.transactions.filter(tx => 
+        tx.date.startsWith(today) && tx.gain > 0
       );
-      const todaysGains = todaysTransactions.reduce((sum, tx) => sum + (tx?.gain || 0), 0);
+      const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
       todaysGainsRef.current = todaysGains;
 
       // Toujours récupérer le solde le plus à jour depuis localStorage ou notre référence
@@ -148,16 +145,16 @@ export const useSessionOperations = (
               currentPersistedBalance = parsedBalance;
               cumulativeBalanceRef.current = parsedBalance;
             } else {
-              currentPersistedBalance = userData?.balance || 0;
+              currentPersistedBalance = userData.balance || 0;
               cumulativeBalanceRef.current = currentPersistedBalance;
             }
           } else {
-            currentPersistedBalance = userData?.balance || 0;
+            currentPersistedBalance = userData.balance || 0;
             cumulativeBalanceRef.current = currentPersistedBalance;
           }
         } catch (e) {
           console.error("Failed to read from localStorage:", e);
-          currentPersistedBalance = userData?.balance || 0;
+          currentPersistedBalance = userData.balance || 0;
           cumulativeBalanceRef.current = currentPersistedBalance;
         }
       }
@@ -180,7 +177,7 @@ export const useSessionOperations = (
         });
         
         triggerDashboardEvent('limit-reached', { 
-          subscription: userData?.subscription || 'freemium',
+          subscription: userData.subscription,
           background: true
         });
         

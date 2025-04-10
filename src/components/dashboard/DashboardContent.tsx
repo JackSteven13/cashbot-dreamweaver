@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import DashboardMetrics from './DashboardMetrics';
@@ -21,7 +20,7 @@ const DashboardContent = ({
   lastSessionTimestamp,
   isBotActive = true
 }) => {
-  // Extract relevant properties to avoid unnecessary re-renders
+  // Extraire les propriétés pertinentes pour éviter les re-rendus inutiles
   const {
     balance = 0,
     subscription = 'freemium',
@@ -31,22 +30,14 @@ const DashboardContent = ({
     referrals = []
   } = userData || {};
   
-  // Calculate daily limit based on subscription
+  // Calculer la limite journalière basée sur l'abonnement
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
-  // Calculate referral bonus
-  const referralBonus = referrals?.reduce((total, ref) => total + (ref.commission_rate || 0), 0) || 0;
+  // Calculer les gains issus des parrainages
+  const referralBonus = referrals?.reduce((total, ref) => total + (ref.commission_earned || 0), 0) || 0;
   
-  // Count active referrals
+  // Compter le nombre de parrainages actifs
   const activeReferrals = referrals?.filter(ref => ref.active !== false) || [];
-  
-  // Convert dailySessionCount to number for components that expect number
-  const numericDailySessionCount = typeof dailySessionCount === 'string' 
-    ? parseInt(dailySessionCount, 10) 
-    : dailySessionCount;
-  
-  // Ensure dailySessionCount is also available as string for display
-  const dailySessionCountStr = numericDailySessionCount.toString();
   
   return (
     <main className="flex-1 overflow-auto py-4">
@@ -76,7 +67,7 @@ const DashboardContent = ({
             transactions={transactions}
             isNewUser={isNewUser}
             subscription={subscription}
-            dailySessionCount={dailySessionCountStr}
+            dailySessionCount={dailySessionCount}
             canStartSession={!isDormant}
             referrals={referrals}
             lastSessionTimestamp={lastSessionTimestamp}
@@ -87,7 +78,7 @@ const DashboardContent = ({
             isNewUser={isNewUser}
             dailyLimit={dailyLimit}
             subscription={subscription}
-            remainingSessions={numericDailySessionCount}
+            remainingSessions={dailySessionCount}
             referralCount={activeReferrals.length}
             displayBalance={balance}
             referralBonus={referralBonus}

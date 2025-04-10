@@ -1,4 +1,3 @@
-
 import { Routes, Route, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardContent from '@/components/dashboard/DashboardContent';

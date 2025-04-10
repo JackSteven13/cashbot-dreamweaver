@@ -21,7 +21,7 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
         'Fonctionnalités exclusives en avant-première'
       ],
       limit: SUBSCRIPTION_LIMITS['elite'],
-      commission: 0.5, // Corrigé de 1.0 à 0.5 (50%)
+      commission: 0.5,
       current: currentSubscription === 'elite',
       disabled: currentSubscription === 'elite'
     },

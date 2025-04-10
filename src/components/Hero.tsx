@@ -16,11 +16,12 @@ const Hero = () => {
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           <h1 className="text-3xl md:text-4xl lg:text-6xl font-bold tracking-tight text-balance mb-4 md:mb-6 animate-slide-down">
-            Gagnez de l'argent automatiquement avec l'IA
+            Générez des revenus complémentaires grâce à nos agents IA spécialisés dans le visionnage automatique de vidéos publicitaires
           </h1>
           
           <p className="text-lg md:text-xl text-muted-foreground mb-6 animate-fade-in">
-            Notre technologie IA visionne des publicités pour vous et génère des revenus 24h/24, sans effort de votre part.
+            Notre technologie utilise des agents d'intelligence artificielle qui exécutent automatiquement 
+            les actions prédéfinies pour maximiser vos revenus 24h/24.
           </p>
           
           {/* LocationFeed with increased width on desktop */}

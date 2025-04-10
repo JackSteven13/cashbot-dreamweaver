@@ -18,6 +18,6 @@ export const COMMISSION_RATES = {
   'freemium': 0.2,    // 20% (was 40%)
   'starter': 0.3,     // 30% (was 60%)
   'gold': 0.4,        // 40% (was 80%)
-  'elite': 0.5,       // 50% (corrigé de 1.0)
+  'elite': 0.5,       // 50% (was 100%)
   'default': 0.2      // 20% (was 40%) par défaut
 };

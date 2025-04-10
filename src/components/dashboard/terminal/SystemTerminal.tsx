@@ -1,20 +1,18 @@
 
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Bot, BotOff, RefreshCw } from 'lucide-react';
+import { Bot, BotOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import TerminalOutput from './TerminalOutput';
-import { Button } from '@/components/ui/button';
-import { toast } from "@/components/ui/use-toast";
 
 interface SystemTerminalProps {
   isNewUser?: boolean;
-  dailyLimit: number;
+  dailyLimit?: number;
   subscription?: string;
   remainingSessions?: number;
   referralCount?: number;
-  displayBalance: number;
-  referralBonus: number;
+  displayBalance?: number;
+  referralBonus?: number;
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
 }
@@ -33,7 +31,6 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   // State pour gérer l'état visuel du terminal
   const [animationActive, setAnimationActive] = useState(false);
   const [scrollToBottom, setScrollToBottom] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
   
   // Animer le terminal en réponse aux événements
   useEffect(() => {
@@ -70,30 +67,6 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
     }
   };
   
-  // Fonction pour forcer la réinitialisation du système
-  const handleForceReset = () => {
-    if (isResetting) return;
-    
-    setIsResetting(true);
-    
-    // Déclenchement de l'événement de réinitialisation
-    window.dispatchEvent(new CustomEvent('balance:force-reset', { 
-      detail: { reason: 'manual-reset' } 
-    }));
-    
-    toast({
-      title: "Réinitialisation en cours...",
-      description: "Le système d'analyse est en cours de redémarrage.",
-      variant: "default",
-      duration: 3000
-    });
-    
-    // Réinitialiser l'état après un délai
-    setTimeout(() => {
-      setIsResetting(false);
-    }, 5000);
-  };
-  
   return (
     <Card className={cn(
       "min-h-[400px] shadow-md border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-200",
@@ -103,7 +76,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         <div className="flex items-center">
           <div className="mr-2">
             {isBotActive ? (
-              <Bot className="h-5 w-5 text-cyan-500" />
+              <Bot className="h-5 w-5 text-blue-500" />
             ) : (
               <BotOff className="h-5 w-5 text-red-500" />
             )}
@@ -112,25 +85,13 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
             Système {isBotActive ? 'Actif' : 'Inactif'}
           </h2>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button 
-            variant="outline" 
-            size="icon"
-            className="h-7 w-7"
-            onClick={handleForceReset}
-            disabled={isResetting}
-            title="Redémarrer le système"
-          >
-            <RefreshCw className={cn("h-4 w-4", isResetting && "animate-spin")} />
-          </Button>
-          <div className="flex space-x-1">
-            {Array(3).fill(0).map((_, i) => (
-              <div 
-                key={i}
-                className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"
-              />
-            ))}
-          </div>
+        <div className="flex space-x-1">
+          {Array(3).fill(0).map((_, i) => (
+            <div 
+              key={i}
+              className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"
+            />
+          ))}
         </div>
       </div>
       

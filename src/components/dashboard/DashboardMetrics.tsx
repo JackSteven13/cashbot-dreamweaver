@@ -17,7 +17,6 @@ interface DashboardMetricsProps {
   referrals?: any[];
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
-  userId?: string;
 }
 
 const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
@@ -33,18 +32,13 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
   canStartSession = true,
   referrals = [],
   lastSessionTimestamp,
-  isBotActive = true,
-  userId
+  isBotActive = true
 }) => {
   // S'assurer que les nouveaux utilisateurs commencent toujours avec un solde à 0
   const displayBalance = isNewUser ? 0 : balance;
   
-  // S'assurer que transactions est un tableau
-  const safeTransactions = Array.isArray(transactions) ? transactions : [];
-  
   // Calculer les gains issus des parrainages
   const referralBonus = isNewUser ? 0 : (referrals?.reduce((total, ref) => total + (ref.commission_earned || 0), 0) || 0);
-  
   // Compter le nombre de parrainages actifs
   const activeReferralCount = isNewUser ? 0 : (referrals?.filter(ref => ref.active !== false)?.length || 0);
   
@@ -64,13 +58,11 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
         referralBonus={referralBonus}
         lastSessionTimestamp={lastSessionTimestamp}
         isBotActive={isBotActive}
-        transactions={safeTransactions} // Ajouter les transactions pour les charts
       />
       
       <TransactionsPanel
-        transactions={safeTransactions}
+        transactions={isNewUser ? [] : transactions}
         subscription={subscription}
-        userId={userId}
       />
     </div>
   );

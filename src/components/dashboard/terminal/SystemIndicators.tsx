@@ -5,19 +5,17 @@ import { Cpu, Signal, Bot, BotOff } from 'lucide-react';
 interface SystemIndicatorsProps {
   showAnalysis?: boolean;
   botActive?: boolean;
-  isBotActive?: boolean;
 }
 
 export const SystemIndicators: React.FC<SystemIndicatorsProps> = ({ 
   showAnalysis = false,
-  botActive,
-  isBotActive = true
+  botActive = true
 }) => {
   // Simulate varying CPU load
   const randomLoad = Math.floor(Math.random() * 30) + 20;
   
   // State local pour suivre l'état du bot
-  const [localBotActive, setLocalBotActive] = useState<boolean>(isBotActive || botActive || true);
+  const [localBotActive, setLocalBotActive] = useState(botActive);
   
   // Écouter les événements de changement d'état du bot
   useEffect(() => {
@@ -32,12 +30,12 @@ export const SystemIndicators: React.FC<SystemIndicatorsProps> = ({
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     
     // Synchroniser avec la prop botActive au montage et lorsqu'elle change
-    setLocalBotActive(isBotActive || botActive || true);
+    setLocalBotActive(botActive);
     
     return () => {
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
     };
-  }, [isBotActive, botActive]);
+  }, [botActive]);
   
   // Function to toggle bot status manually
   const handleBotToggle = () => {

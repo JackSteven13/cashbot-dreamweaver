@@ -11,7 +11,7 @@ import { toast } from '@/components/ui/use-toast';
 
 export const useUserDataFetching = (
   loadUserProfile: (userId: string, userEmail?: string | null) => Promise<any>,
-  loadBalance: (userId?: string) => Promise<any>,
+  loadUserBalance: (userId: string) => Promise<any>,
   updateUserData: (data: Partial<UserFetcherState>) => void,
   setIsLoading: (loading: boolean) => void,
   isNewUser: boolean
@@ -42,7 +42,7 @@ export const useUserDataFetching = (
       const refreshedProfile = await loadUserProfile(session.user.id, session.user.email);
       
       // Récupérer les données de solde
-      const balanceResult = await loadBalance();
+      const balanceResult = await loadUserBalance(session.user.id);
       if (!balanceResult) {
         setIsLoading(false);
         return;
@@ -97,7 +97,7 @@ export const useUserDataFetching = (
       console.error("Error in fetchUserData:", error);
       setIsLoading(false);
     }
-  }, [loadUserProfile, loadBalance, isNewUser, updateUserData, setIsLoading]);
+  }, [loadUserProfile, loadUserBalance, isNewUser, updateUserData, setIsLoading]);
 
   // Fonction pour réinitialiser uniquement les compteurs de sessions quotidiens
   const resetDailyCounters = useCallback(async () => {
