@@ -82,75 +82,80 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
     const hasCumulativeEarningsLine = lines.some(line => line.includes('Total accumulated earnings:'));
     const hasDaysActiveLine = lines.some(line => line.includes('Days of continuous activity:'));
     
-    if (!hasReferralLine && referralCount > 0) {
-      newLines.push(`> ${referralCount} active referrals detected (+${referralBonus.toFixed(2)}% bonus)`);
+    // Supprimer les anciennes lignes avec des informations obsolètes
+    const filteredLines = newLines.filter(line => 
+      !line.includes('Current balance:') && 
+      !line.includes('sessions available') &&
+      !line.includes('Bot status:')
+    );
+    
+    // Ajouter les lignes mises à jour
+    if (referralCount > 0 && !hasReferralLine) {
+      filteredLines.push(`> ${referralCount} active referrals detected (+${referralBonus.toFixed(2)}% bonus)`);
     }
     
-    if (!hasBalanceLine) {
-      newLines.push(`> Current balance: ${displayBalance.toFixed(2)}€`);
-    }
+    // Ajouter le solde actuel (toujours mis à jour)
+    filteredLines.push(`> Current balance: ${displayBalance.toFixed(2)}€`);
     
-    if (!hasSessionLine) {
-      const sessionText = subscription === 'freemium' 
-        ? `${remainingSessions} manual sessions available today`
-        : 'Unlimited sessions available';
-      newLines.push(`> ${sessionText}`);
-    }
+    // Ajouter les sessions disponibles (toujours mises à jour)
+    const sessionText = subscription === 'freemium' 
+      ? `${remainingSessions} manual sessions available today`
+      : 'Unlimited sessions available';
+    filteredLines.push(`> ${sessionText}`);
     
-    if (!hasBotStatusLine) {
-      newLines.push(`> Bot status: ${isBotActive ? 'ACTIVE' : 'INACTIVE'}`);
-    }
+    // Ajouter le statut du bot (toujours mis à jour)
+    filteredLines.push(`> Bot status: ${isBotActive ? 'ACTIVE' : 'INACTIVE'}`);
     
     // Ajouter des lignes pour montrer l'accumulation progressive
     if (!hasCumulativeEarningsLine && cumulativeEarnings > 0 && !isNewUser) {
-      newLines.push('');
-      newLines.push(`> Total accumulated earnings: ${cumulativeEarnings.toFixed(2)}€`);
+      filteredLines.push('');
+      filteredLines.push(`> Total accumulated earnings: ${cumulativeEarnings.toFixed(2)}€`);
     }
     
     if (!hasDaysActiveLine && daysActive > 0 && !isNewUser) {
-      newLines.push(`> Days of continuous activity: ${daysActive}`);
+      filteredLines.push(`> Days of continuous activity: ${daysActive}`);
       
       // Ajouter un message motivant selon le nombre de jours
       if (daysActive >= 30) {
-        newLines.push("> MILESTONE ACHIEVED: 30+ days of consistent earnings!");
+        filteredLines.push("> MILESTONE ACHIEVED: 30+ days of consistent earnings!");
       } else if (daysActive >= 15) {
-        newLines.push("> IMPRESSIVE: Your consistency is building financial momentum!");
+        filteredLines.push("> IMPRESSIVE: Your consistency is building financial momentum!");
       } else if (daysActive >= 7) {
-        newLines.push("> WELL DONE: A full week of continuous earnings growth!");
+        filteredLines.push("> WELL DONE: A full week of continuous earnings growth!");
       } else if (daysActive >= 3) {
-        newLines.push("> GOOD START: Keep going to maximize your earnings potential!");
+        filteredLines.push("> GOOD START: Keep going to maximize your earnings potential!");
       }
     }
     
     // Ajouter une ligne pour la dernière session si disponible
     if (lastSessionTimestamp) {
       const timestamp = formatTimestamp(lastSessionTimestamp);
-      const hasLastSessionLine = lines.some(line => line.includes('Last session:'));
+      const hasLastSessionLine = filteredLines.some(line => line.includes('Last session:'));
       
       if (!hasLastSessionLine) {
-        newLines.push(`> Last session: ${timestamp}`);
+        filteredLines.push(`> Last session: ${timestamp}`);
       }
     }
     
     // Ajouter un message si l'utilisateur est vraiment nouveau (vérification stricte)
-    if (isNewUser && !lines.some(line => line.includes('Welcome new user'))) {
+    if (isNewUser && !filteredLines.some(line => line.includes('Welcome new user'))) {
       // Vérifier s'il s'agit vraiment d'un nouvel utilisateur en vérifiant le localStorage
       const welcomeShown = localStorage.getItem('welcomeMessageShown') === 'true';
       
       // Ne montrer le message que pour les utilisateurs qui n'ont jamais vu le message de bienvenue
       if (!welcomeShown) {
-        newLines.push('');
-        newLines.push('> Welcome new user! Please start with the guide below.');
-        newLines.push('> Your journey to financial freedom begins here.');
+        filteredLines.push('');
+        filteredLines.push('> Welcome new user! Please start with the guide below.');
+        filteredLines.push('> Your journey to financial freedom begins here.');
       }
     }
     
     // Mettre à jour les lignes seulement si elles ont changé
-    if (newLines.length !== lines.length) {
-      setLines(newLines);
+    if (JSON.stringify(filteredLines) !== JSON.stringify(lines)) {
+      setLines(filteredLines);
     }
   }, [subscription, remainingSessions, referralCount, displayBalance, 
-      referralBonus, isNewUser, lastSessionTimestamp, isBotActive, lines, 
+      referralBonus, isNewUser, lastSessionTimestamp, isBotActive, 
       cumulativeEarnings, daysActive]);
   
   // Effet pour ajouter des lignes lors d'événements spécifiques
@@ -177,8 +182,7 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
       setLines(prev => [
         ...prev, 
         `> Analysis complete: +${gain.toFixed(2)}€ added to your balance`, 
-        `> New balance: ${(displayBalance + gain).toFixed(2)}€`,
-        `> Total accumulated: ${(cumulativeEarnings + gain).toFixed(2)}€`
+        `> New balance: ${(displayBalance + gain).toFixed(2)}€`
       ]);
       
       // Déclencher un événement pour mettre à jour les jours consécutifs si nécessaire

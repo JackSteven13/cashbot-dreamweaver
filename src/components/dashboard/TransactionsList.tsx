@@ -17,13 +17,15 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
   // S'assurer que transactions est un tableau avant de l'utiliser
   const safeTransactions = Array.isArray(transactions) ? transactions : [];
   
-  // Filtrer les transactions valides (avec une date et un montant ou un gain)
+  // Filtrer les transactions valides (avec une date et un montant positif)
   const validTransactions = safeTransactions.filter(tx => 
-    tx && tx.date && (typeof tx.gain === 'number' || typeof tx.amount === 'number')
+    tx && 
+    tx.date && 
+    ((typeof tx.gain === 'number' && tx.gain > 0) || (typeof tx.amount === 'number' && tx.amount > 0))
   );
   
   console.log("Transactions reçues:", safeTransactions);
-  console.log("Transactions valides:", validTransactions);
+  console.log("Transactions valides après filtrage:", validTransactions);
   
   // Afficher 3 transactions récentes par défaut, ou toutes si showAllTransactions est true
   const displayedTransactions = showAllTransactions 
