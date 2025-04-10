@@ -136,10 +136,17 @@ export const useBalanceOperations = () => {
         ? result.transaction 
         : null;
       
+      // Create default transaction object if result doesn't have one
+      const defaultTransaction = transaction || {
+        date: new Date().toISOString(),
+        gain: 0,
+        report: "Balance reset"
+      };
+      
       // Ensure we return a properly typed result with transaction property
       return { 
         success: result.success,
-        transaction: transaction
+        transaction: defaultTransaction
       };
     } catch (error) {
       console.error("Error in resetBalance:", error);

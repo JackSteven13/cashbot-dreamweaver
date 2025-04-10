@@ -67,12 +67,13 @@ export const useDashboardState = () => {
       }
     },
     setShowLimitAlert,
+    // Modified to match expected Promise<void> instead of Promise<boolean>
     async () => { 
       try {
-        return true;
+        await Promise.resolve();
+        // No return value needed for void promise
       } catch (error) {
         console.error("Error resetting balance:", error);
-        return false;
       }
     }
   );

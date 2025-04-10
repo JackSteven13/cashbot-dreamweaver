@@ -9,9 +9,9 @@ import { toast } from "@/components/ui/use-toast";
 
 interface SystemTerminalProps {
   isNewUser?: boolean;
-  dailyLimit: number;
+  dailyLimit: number;  // Changed from string to number
   subscription?: string;
-  remainingSessions?: number;
+  remainingSessions?: number;  // Changed from string to number
   referralCount?: number;
   displayBalance: number;
   referralBonus: number;

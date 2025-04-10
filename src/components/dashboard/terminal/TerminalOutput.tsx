@@ -1,15 +1,18 @@
 
 import React, { useEffect, useRef } from 'react';
-import { calculateLimitPercentage } from '@/utils/balance/limitCalculations';
+import { formatTimestamp } from '@/utils/timeUtils';
+import Guide from './Guide';
+import NewUserGuide from './NewUserGuide';
+import SystemIndicators from './SystemIndicators';
 
 interface TerminalOutputProps {
   isNewUser?: boolean;
   subscription?: string;
-  remainingSessions?: number;
   referralCount?: number;
-  dailyLimit: number;
+  remainingSessions?: number; // Changed from string to number
+  dailyLimit: number; // Changed from string to number
   displayBalance: number;
-  referralBonus: number;
+  referralBonus?: number;
   scrollToBottom?: boolean;
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
@@ -18,8 +21,8 @@ interface TerminalOutputProps {
 const TerminalOutput: React.FC<TerminalOutputProps> = ({
   isNewUser = false,
   subscription = 'freemium',
-  remainingSessions = 0,
   referralCount = 0,
+  remainingSessions = 0,
   dailyLimit = 0.5,
   displayBalance = 0,
   referralBonus = 0,
@@ -28,65 +31,48 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
   isBotActive = true
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
-  
-  // Défiler jusqu'au bas lorsque le contenu change
+
   useEffect(() => {
     if (scrollToBottom && terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
-  }, [scrollToBottom, isNewUser, displayBalance, isBotActive]);
-  
-  // Calculer le pourcentage de la limite journalière
-  const limitPercentage = calculateLimitPercentage(displayBalance, dailyLimit);
-  const isLimitReached = limitPercentage >= 100;
+  }, [scrollToBottom]);
+
+  const lastTimestamp = lastSessionTimestamp ? formatTimestamp(lastSessionTimestamp) : 'N/A';
 
   return (
-    <div ref={terminalRef} className="terminal-output space-y-3">
-      {/* Affichage style console comme sur l'image */}
-      <div>
-        <div className="text-green-400">$ system.bootSequence()</div>
-        <div className="pl-4">
-          <div><span className="text-green-400">&gt; Initialisation...</span> <span className="text-green-500">OK</span></div>
-          <div><span className="text-green-400">&gt; Vérification système...</span> <span className="text-green-500">OK</span></div>
-          <div><span className="text-green-400">&gt; Chargement algorithmes...</span> <span className="text-green-500">OK</span></div>
-          <div><span className="text-green-400">&gt; Compte:</span> Vérifié</div>
-          <div><span className="text-green-400">&gt; Plan:</span> {subscription}</div>
-          <div><span className="text-green-400">&gt; Système prêt</span></div>
-        </div>
-      </div>
-
-      <div>
-        <div className="text-green-400">$ system.checkAccountStatus()</div>
-        <div className="pl-4">
-          <div><span className="text-green-400">&gt; Compte actif:</span> Oui</div>
-          <div><span className="text-green-400">&gt; Plan:</span> {subscription}</div>
-          <div><span className="text-green-400">&gt; Solde actuel:</span> {displayBalance.toFixed(2)}€</div>
-          <div><span className="text-green-400">&gt; Limite journalière:</span> {dailyLimit.toFixed(2)}€</div>
-          <div><span className="text-green-400">&gt; Sessions restantes:</span> {remainingSessions}</div>
-        </div>
-      </div>
-
-      <div>
-        <div className="text-green-400">$ system.getActivity()</div>
-        <div className="pl-4">
-          <div><span className="text-green-400">&gt; Bot:</span> {isBotActive ? 'Actif' : 'Inactif'}</div>
-        </div>
-      </div>
+    <div ref={terminalRef} className="terminal-output space-y-1">
+      <p>$ Initialisation du système de génération...</p>
+      <p>$ Chargement des modules d'analyse: <span className="text-cyan-500">OK</span></p>
+      <p>$ Connexion à la base de données: <span className="text-cyan-500">OK</span></p>
+      <p>$ Synchronisation des paramètres utilisateur: <span className="text-cyan-500">OK</span></p>
       
-      {isLimitReached && (
-        <div>
-          <div className="text-green-400">$ system.showCountdown()</div>
-          <div className="pl-4">
-            <div><span className="text-green-400">&gt; Prochaine réinitialisation:</span> 00:00:00</div>
-          </div>
-        </div>
+      <SystemIndicators isBotActive={isBotActive} />
+      
+      <p>$ Configuration actuelle:</p>
+      <p>  - Forfait: <span className="text-yellow-400">{subscription.toUpperCase()}</span></p>
+      <p>  - Limite journalière: <span className="text-yellow-400">{dailyLimit}€</span></p>
+      <p>  - Balance actuelle: <span className="text-green-400">{displayBalance.toFixed(2)}€</span></p>
+      
+      {referralCount > 0 && (
+        <p>  - Bonus parrainage: <span className="text-purple-400">{referralBonus.toFixed(2)}€</span></p>
       )}
       
-      {/* Cursor clignotant */}
-      <div className="flex items-center">
-        <span className="text-green-400">$</span>
-        <span className="ml-1 w-2 h-4 bg-green-500 animate-pulse"></span>
-      </div>
+      {lastSessionTimestamp && (
+        <p>  - Dernière session: <span className="text-blue-400">{lastTimestamp}</span></p>
+      )}
+      
+      <p>$ Status: <span className="text-cyan-500">Prêt</span></p>
+      
+      {isNewUser ? (
+        <NewUserGuide />
+      ) : (
+        <Guide 
+          subscription={subscription}
+          remainingSessions={remainingSessions}
+          referralCount={referralCount}
+        />
+      )}
     </div>
   );
 };
