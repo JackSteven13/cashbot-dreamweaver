@@ -4,7 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 import { toast } from "@/components/ui/use-toast";
 
-interface SystemProgressBarProps {
+export interface SystemProgressBarProps {
   displayBalance: number;
   dailyLimit: number;
   limitPercentage: number;
@@ -109,6 +109,9 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
     return `${roundedPercentage}%`;
   };
 
+  // Handle case when displayBalance or other number props might be undefined
+  const formattedDisplayBalance = typeof displayBalance === 'number' ? displayBalance.toFixed(2) : '0.00';
+
   return (
     <div className="mb-5">
       <div className="flex justify-between items-center mb-1">
@@ -151,7 +154,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
         />
       </Progress>
       <div className="mt-1 text-xs text-gray-400 flex justify-between w-full">
-        <span>Solde total: <span className="text-white">{displayBalance.toFixed(2)}€</span></span>
+        <span>Solde total: <span className="text-white">{formattedDisplayBalance}€</span></span>
         <span className="text-gray-400 text-xs">
           {limitReached ? (
             <span className="text-red-400">Limite atteinte</span>

@@ -58,6 +58,7 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
     <div ref={terminalRef} className="space-y-2">
       <SystemInfo 
         isNewUser={isNewUser}
+        subscription={subscription}
       />
       
       <div className="text-green-400">

@@ -146,12 +146,12 @@ const Dashboard = () => {
       
       <SystemTerminal
         isNewUser={isNewUser}
-        dailyLimit={0.5}
+        dailyLimit={0.5} // This now matches the expected number type
         subscription={getSubscription(userData)}
         remainingSessions={dailySessionCount}
         referralCount={userData?.referrals?.length || 0}
-        displayBalance={userData?.balance || 0}
-        referralBonus={0}
+        displayBalance={userData?.balance || 0} // This now matches the expected number type
+        referralBonus={0} // This now matches the expected number type
         lastSessionTimestamp={lastAutoSessionTime}
         isBotActive={isBotActive}
       />
