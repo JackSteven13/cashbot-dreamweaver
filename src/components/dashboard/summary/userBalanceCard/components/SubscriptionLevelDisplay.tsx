@@ -13,8 +13,8 @@ interface SubscriptionLevelDisplayProps {
 const SubscriptionLevelDisplay: React.FC<SubscriptionLevelDisplayProps> = ({
   subscription,
   referralCount,
-  limitPercentage,
-  dailyLimit
+  limitPercentage = 0,
+  dailyLimit = 0
 }) => {
   // Retourner les informations selon le type d'abonnement
   const { icon, title, color, benefits } = useMemo(() => {
@@ -113,8 +113,7 @@ const SubscriptionLevelDisplay: React.FC<SubscriptionLevelDisplayProps> = ({
         <Progress 
           value={limitPercentage} 
           max={100}
-          className="h-2 bg-slate-700"
-          indicatorClassName={progressColor}
+          className={`h-2 bg-slate-700 ${progressColor}`}
         />
         <div className="flex justify-between mt-1 text-xs opacity-70">
           <span>{limitPercentage}%</span>
