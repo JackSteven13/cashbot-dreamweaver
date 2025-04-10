@@ -4,6 +4,7 @@ import { useBotStatus } from './useBotStatus';
 import { useSessionOperations } from './useSessionOperations';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
+import { addTransaction } from '@/utils/user/transactionUtils';
 
 export const useAutoRevenueGenerator = (
   userData: UserData,
@@ -176,6 +177,11 @@ export const useAutoRevenueGenerator = (
         const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
         lastRevenueDateRef.current = today;
         localStorage.setItem('lastRevenueDate', today);
+        
+        // S'assurer qu'une transaction est également créée
+        if (userData.id) {
+          addTransaction(userData.id, amount, `Analyse automatique complétée: +${amount.toFixed(2)}€`);
+        }
       }
     };
     
@@ -184,7 +190,7 @@ export const useAutoRevenueGenerator = (
     return () => {
       window.removeEventListener('revenue:generated' as any, handleRevenueGenerated);
     };
-  }, []);
+  }, [userData.id]);
 
   return {
     generateAutomaticRevenue,

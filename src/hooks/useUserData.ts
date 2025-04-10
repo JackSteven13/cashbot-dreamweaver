@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUserDataFetcher } from './useUserDataFetcher';
 import { UserData } from '@/types/userData';
@@ -10,6 +9,7 @@ export const useUserData = () => {
   const balanceSyncRef = useRef(false);
   const localBalanceRef = useRef<number | null>(null);
   const highestEverBalanceRef = useRef<number | null>(null);
+  const transactionsGeneratedRef = useRef(false);
   
   useEffect(() => {
     userDataActions.fetchUserData().then(() => {
@@ -126,8 +126,30 @@ export const useUserData = () => {
           detail: { balance: maxBalance }
         }));
       }
+      
+      // Vérifier si nous avons des transactions et générer des transactions historiques si nécessaire
+      import('@/utils/initialTransactionsGenerator').then(module => {
+        if (!transactionsGeneratedRef.current && 
+            !isNewUser && 
+            userData && 
+            userData.balance > 0 && 
+            (!userData.transactions || userData.transactions.length === 0)) {
+          
+          console.log("Solde positif mais aucune transaction, génération de l'historique...");
+          transactionsGeneratedRef.current = true;
+          
+          module.generateInitialTransactions(userData.id, userData.balance)
+            .then(success => {
+              if (success) {
+                console.log("Transactions d'historique générées avec succès");
+                // Recharger les données pour afficher les nouvelles transactions
+                setTimeout(() => userDataActions.fetchUserData(), 1000);
+              }
+            });
+        }
+      });
     }
-  }, [userData?.balance]);
+  }, [userData?.balance, userData?.transactions, isNewUser, userData?.id, userDataActions]);
   
   const refreshUserData = useCallback(async (): Promise<boolean> => {
     await userDataActions.fetchUserData();
@@ -226,3 +248,5 @@ export const useUserData = () => {
     resetDailyCounters: userDataActions.resetDailyCounters
   };
 };
+
+export default useUserData;

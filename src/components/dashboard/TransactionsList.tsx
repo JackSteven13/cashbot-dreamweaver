@@ -24,21 +24,27 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
       return;
     }
     
-    // Vérifier que nous avons des transactions valides
+    console.log("Transactions brutes reçues dans TransactionsList:", transactions);
+    
+    // Vérifier que nous avons des transactions valides (avec une date et un montant/gain non nul)
     const validTransactions = transactions.filter(tx => 
       tx && 
       tx.date && 
-      ((typeof tx.gain === 'number' && tx.gain > 0) || 
-       (typeof tx.amount === 'number' && tx.amount > 0))
+      (
+        (typeof tx.gain === 'number' && tx.gain > 0) || 
+        (typeof tx.amount === 'number' && tx.amount > 0)
+      )
     );
     
     console.log("Transactions valides avant déduplication:", validTransactions);
     
-    // Utiliser un Map pour dédupliquer par ID
+    // Utiliser un Map pour dédupliquer par ID ou combinaison date+montant
     const transactionMap = new Map();
     
     validTransactions.forEach(tx => {
-      const key = tx.id || `${tx.date}_${tx.gain || tx.amount}`;
+      // Utiliser l'ID comme clé si disponible, sinon créer une clé composite
+      const key = tx.id || `${tx.date}_${tx.gain || tx.amount}_${tx.report || tx.type || 'transaction'}`;
+      
       if (!transactionMap.has(key)) {
         transactionMap.set(key, tx);
       }
@@ -108,7 +114,7 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
                 key={transaction.id || `transaction_${index}`}
                 date={formatDate(transaction.date)}
                 gain={transactionValue}
-                report={transaction.report || transaction.type || ''}
+                report={transaction.report || transaction.type || 'Session'}
               />
             );
           })}
