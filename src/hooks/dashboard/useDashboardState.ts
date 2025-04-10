@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { useUserData } from '@/hooks/useUserData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
@@ -28,14 +27,12 @@ export const useDashboardState = () => {
     handleReactivate
   } = useDormancyCheck(
     userData.userData?.subscription || 'freemium',
-    // Fix Promise<void> vs Promise<boolean> by creating a wrapper function that returns boolean
+    // Fix Promise<void> vs Promise<boolean> by adapting the function to not return a value
     async () => {
       try {
         await userData.refetchUserData();
-        return true; // Return boolean to match expected type
       } catch (error) {
         console.error("Error refetching user data:", error);
-        return false; // Return boolean instead of void
       }
     }
   );
@@ -49,35 +46,29 @@ export const useDashboardState = () => {
   const sessions = useDashboardSessions(
     userData.userData || {},
     dailySessionCount,
-    // Fix Promise<boolean> vs Promise<void> for incrementSessionCount by creating a wrapper
+    // Fix Promise<boolean> vs Promise<void> for incrementSessionCount by adapting the function
     async () => { 
       try {
         await Promise.resolve(); 
-        return true; // Return boolean to match expected type
       } catch (error) {
         console.error("Error incrementing session count:", error);
-        return false; // Return boolean to match expected type
       }
     },
     // Adapt updateBalance function to match expected type
     async (gain, report, forceUpdate) => {
       try {
         await Promise.resolve();
-        return true; // Return boolean to match expected type
       } catch (error) {
         console.error("Error updating balance:", error);
-        return false; // Return boolean to match expected type
       }
     },
     setShowLimitAlert,
-    // Modified to match expected Promise<boolean> instead of Promise<void>
+    // Modified to match expected Promise<void> instead of Promise<boolean>
     async () => { 
       try {
         await Promise.resolve();
-        return true; // Return boolean to match expected type
       } catch (error) {
         console.error("Error resetting balance:", error);
-        return false; // Return boolean to match expected type
       }
     }
   );
@@ -89,10 +80,8 @@ export const useDashboardState = () => {
     
     try {
       await userData.refetchUserData();
-      return true; // Return boolean to match expected type
     } catch (error) {
       console.error("Error refreshing user data:", error);
-      return false; // Return boolean to match expected type
     }
   }, [userData.refetchUserData]);
 

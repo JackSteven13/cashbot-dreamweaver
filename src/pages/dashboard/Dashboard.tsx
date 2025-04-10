@@ -151,7 +151,7 @@ const Dashboard = () => {
         transactions={userData?.transactions || []}
         isNewUser={isNewUser}
         subscription={getSubscription(userData)}
-        dailySessionCount={dailySessionCount.toString()}
+        dailySessionCount={dailySessionCount}
         canStartSession={!showLimitAlert}
         referrals={userData?.referrals || []}
         lastSessionTimestamp={lastAutoSessionTime}
@@ -163,7 +163,7 @@ const Dashboard = () => {
         isNewUser={isNewUser}
         dailyLimit={dailyLimit}
         subscription={getSubscription(userData)}
-        remainingSessions={dailySessionCount.toString()}
+        remainingSessions={dailySessionCount}
         referralCount={userData?.referrals?.length || 0}
         displayBalance={userData?.balance || 0}
         referralBonus={referralBonus}
