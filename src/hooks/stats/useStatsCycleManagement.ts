@@ -36,6 +36,13 @@ export const useStatsCycleManagement = ({
       setDisplayedAdsCount(0);
       setDisplayedRevenueCount(0);
       
+      // Réactiver le bot pour le nouveau jour
+      window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
+        detail: { active: true } 
+      }));
+      
+      console.log("RÉINITIALISATION DU CYCLE À MINUIT - Bot réactivé!");
+      
       // Planifier la prochaine réinitialisation
       scheduleCycleUpdate();
     }, timeUntilMidnight);

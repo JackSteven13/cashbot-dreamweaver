@@ -46,8 +46,40 @@ export const useAutoRevenueGenerator = (
         // Utiliser l'API du hook pour vérifier et mettre à jour l'état du bot
         checkLimitAndUpdateBot(userData.subscription, userData.balance);
       }
+      
+      // Configurer la vérification de réinitialisation à minuit
+      const checkMidnightReset = () => {
+        const now = new Date();
+        // Si c'est un nouveau jour (00:00-00:05), réinitialiser l'activité du bot
+        if (now.getHours() === 0 && now.getMinutes() < 5) {
+          console.log("MINUIT DÉTECTÉ - Réinitialisation du bot et des limites!");
+          resetBotActivity();
+          todaysGainsRef.current = 0;
+          
+          // Forcer l'activation du bot
+          updateBotStatus(true);
+          
+          // Démarrer une session après la réinitialisation
+          setTimeout(() => {
+            if (isBotActive) {
+              console.log("Démarrage d'une première session après réinitialisation");
+              generateAutomaticRevenue(true);
+            }
+          }, 3000);
+        }
+      };
+      
+      // Exécuter la vérification immédiatement pour traiter les cas où l'app redémarre juste après minuit
+      checkMidnightReset();
+      
+      // Configurer l'intervalle pour vérifier régulièrement
+      const midnightCheckInterval = setInterval(checkMidnightReset, 60000);
+      
+      return () => {
+        clearInterval(midnightCheckInterval);
+      };
     }
-  }, [userData, checkLimitAndUpdateBot]);
+  }, [userData, checkLimitAndUpdateBot, resetBotActivity, isBotActive, generateAutomaticRevenue]);
 
   // Écouter les changements explicites d'état du bot
   useEffect(() => {
@@ -67,6 +99,14 @@ export const useAutoRevenueGenerator = (
           updateBotStatus(false);
         } else {
           updateBotStatus(isActive);
+          
+          // Si on active le bot, lancer une session après un court délai
+          if (isActive) {
+            setTimeout(() => {
+              console.log("Bot activé - démarrage d'une première session");
+              generateAutomaticRevenue(true);
+            }, 2000);
+          }
         }
       } else if (typeof isActive === 'boolean') {
         // Si on désactive, le faire sans vérification
@@ -79,7 +119,7 @@ export const useAutoRevenueGenerator = (
     return () => {
       window.removeEventListener('bot:external-status-change' as any, handleExternalBotChange);
     };
-  }, [updateBotStatus, getDailyLimit, getCurrentBalance, setShowLimitAlert]);
+  }, [updateBotStatus, getDailyLimit, getCurrentBalance, setShowLimitAlert, generateAutomaticRevenue]);
 
   return {
     generateAutomaticRevenue,

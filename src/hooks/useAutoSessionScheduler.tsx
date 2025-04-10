@@ -1,6 +1,6 @@
-
 import { useRef, useEffect } from 'react';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
+import { toast } from "@/components/ui/use-toast";
 
 /**
  * Hook for scheduling automatic sessions
@@ -18,6 +18,7 @@ export const useAutoSessionScheduler = (
   const persistentBalanceRef = useRef<number>(userData?.balance || 0);
   const highestBalanceRef = useRef<number>(0);
   const globalBalanceSyncRef = useRef<NodeJS.Timeout | null>(null);
+  const forceResetTriggeredRef = useRef<boolean>(false);
 
   // Effect to simulate automatic ad analysis
   useEffect(() => {
@@ -98,7 +99,7 @@ export const useAutoSessionScheduler = (
       
       // Check if 2-3 minutes have passed since the last session
       const timeSinceLastSession = Date.now() - lastAutoSessionTimeRef.current;
-      const randomInterval = Math.random() * 60000 + 120000; // Between 2 and 3 minutes
+      const randomInterval = Math.random() * 60000 + 60000; // Between 1 and 2 minutes (accéléré)
       
       // Vérifier également qu'on n'a pas atteint la limite journalière
       if (timeSinceLastSession >= randomInterval && persistentBalanceRef.current < dailyLimit && botStatusRef.current) {
@@ -108,6 +109,53 @@ export const useAutoSessionScheduler = (
       }
     }, 30000); // Check every 30 seconds
 
+    // Écouteur pour forcer une réinitialisation complète (nouveau jour ou réinitialisation manuelle)
+    const handleForceReset = (event: CustomEvent) => {
+      const reason = event.detail?.reason || 'manual';
+      
+      console.log(`[Scheduler] Réinitialisation forcée du système: ${reason}`);
+      
+      // Réinitialiser toutes les valeurs
+      persistentBalanceRef.current = 0;
+      highestBalanceRef.current = 0;
+      initialSessionExecutedRef.current = false;
+      todaysGainsRef.current = 0;
+      
+      // Réinitialiser le localStorage
+      localStorage.removeItem('highestBalance');
+      localStorage.removeItem('currentBalance');
+      localStorage.removeItem('lastKnownBalance');
+      
+      // Activer le bot
+      botStatusRef.current = true;
+      window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
+        detail: { active: true } 
+      }));
+      
+      // Déclencher une mise à jour de l'interface
+      window.dispatchEvent(new CustomEvent('balance:reset-complete', { 
+        detail: { success: true } 
+      }));
+      
+      // Marquer la réinitialisation comme traitée
+      forceResetTriggeredRef.current = true;
+      
+      // Programmer une première session après un court délai
+      setTimeout(() => {
+        console.log("[Scheduler] Première session après réinitialisation");
+        generateAutomaticRevenue(true);
+        lastAutoSessionTimeRef.current = Date.now();
+      }, 3000);
+      
+      // Afficher un toast pour informer l'utilisateur
+      toast({
+        title: "Système réinitialisé",
+        description: "Le système d'analyse a été réinitialisé et va recommencer à générer des revenus.",
+        variant: "default",
+        duration: 5000
+      });
+    };
+    
     // Écouter les changements d'état du bot
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
@@ -168,15 +216,42 @@ export const useAutoSessionScheduler = (
     window.addEventListener('balance:local-update' as any, handleBalanceUpdate);
     window.addEventListener('balance:force-update' as any, handleBalanceUpdate);
     window.addEventListener('balance:force-sync' as any, handleForceSyncBalance);
+    window.addEventListener('balance:force-reset' as any, handleForceReset);
+    
+    // Vérifier si c'est un nouveau jour
+    const checkNewDay = () => {
+      const now = new Date();
+      const lastResetKey = 'lastSystemResetDate';
+      const lastResetDate = localStorage.getItem(lastResetKey) || '';
+      const currentDate = now.toISOString().split('T')[0]; // Format YYYY-MM-DD
+      
+      if (lastResetDate !== currentDate && !forceResetTriggeredRef.current) {
+        console.log("[Scheduler] Nouveau jour détecté! Réinitialisation automatique");
+        localStorage.setItem(lastResetKey, currentDate);
+        
+        // Forcer la réinitialisation
+        handleForceReset(new CustomEvent('balance:force-reset', {
+          detail: { reason: 'new-day-auto' }
+        }));
+      }
+    };
+    
+    // Exécuter la vérification immédiatement
+    checkNewDay();
+    
+    // Programmer des vérifications régulières
+    const dailyCheckInterval = setInterval(checkNewDay, 5 * 60000); // Vérifier toutes les 5 minutes
 
     return () => {
       clearTimeout(initialTimeout);
       clearInterval(autoSessionInterval);
+      clearInterval(dailyCheckInterval);
       if (globalBalanceSyncRef.current) clearInterval(globalBalanceSyncRef.current);
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
       window.removeEventListener('balance:local-update' as any, handleBalanceUpdate);
       window.removeEventListener('balance:force-update' as any, handleBalanceUpdate);
       window.removeEventListener('balance:force-sync' as any, handleForceSyncBalance);
+      window.removeEventListener('balance:force-reset' as any, handleForceReset);
     };
   }, [isBotActive, userData.subscription, generateAutomaticRevenue, todaysGainsRef]);
 
@@ -185,6 +260,11 @@ export const useAutoSessionScheduler = (
     lastAutoSessionTime: lastAutoSessionTimeRef.current,
     getLastAutoSessionTime: () => lastAutoSessionTimeRef.current,
     isInitialSessionExecuted: () => initialSessionExecutedRef.current,
-    getCurrentPersistentBalance: () => Math.max(persistentBalanceRef.current, highestBalanceRef.current)
+    getCurrentPersistentBalance: () => Math.max(persistentBalanceRef.current, highestBalanceRef.current),
+    forceSystemReset: (reason: string = 'manual') => {
+      window.dispatchEvent(new CustomEvent('balance:force-reset', {
+        detail: { reason }
+      }));
+    }
   };
 };

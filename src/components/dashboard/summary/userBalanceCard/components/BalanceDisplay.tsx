@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, BotOff } from 'lucide-react';
 import { balanceManager, getHighestBalance } from '@/utils/balance/balanceManager';
@@ -235,15 +234,55 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     // Vérifier d'abord si la limite est atteinte
     const limitReached = isLimitReached();
     
-    // Si la limite est atteinte et qu'on essaie d'activer le bot, bloquer et afficher un toast
+    // Si le bot est inactif à cause de la limite atteinte, vérifier si c'est un nouveau jour
     if (limitReached && !localBotActive) {
-      toast({
-        title: "Impossible d'activer l'analyse",
-        description: "Vous avez atteint votre limite journalière de gains. Revenez demain ou passez à un forfait supérieur.",
-        variant: "destructive",
-        duration: 5000
-      });
-      return;
+      // Vérifier si nous sommes dans un nouveau jour (après minuit)
+      const now = new Date();
+      const lastResetKey = 'lastLimitResetDate';
+      const lastResetDate = localStorage.getItem(lastResetKey) || '';
+      const currentDate = now.toISOString().split('T')[0]; // Format YYYY-MM-DD
+      
+      if (lastResetDate !== currentDate) {
+        // C'est un nouveau jour, permettre la réactivation
+        console.log("Nouveau jour détecté! Réinitialisation des compteurs");
+        localStorage.setItem(lastResetKey, currentDate);
+        
+        // Forcer la réinitialisation des compteurs
+        window.dispatchEvent(new CustomEvent('balance:force-reset', { 
+          detail: { reason: 'new-day' }
+        }));
+        
+        // Activer le bot
+        const newStatus = true;
+        setLocalBotActive(newStatus);
+        window.dispatchEvent(new CustomEvent('bot:external-status-change', {
+          detail: { 
+            active: newStatus,
+            checkLimit: true,
+            subscription: subscription,
+            balance: localDisplayBalance
+          }
+        }));
+        
+        // Montrer un toast pour informer l'utilisateur
+        toast({
+          title: "Nouvelle journée, nouvelles opportunités!",
+          description: "Vos limites journalières ont été réinitialisées. Les analyses ont repris.",
+          variant: "default",
+          duration: 5000
+        });
+        
+        return;
+      } else {
+        // Même jour, limite toujours active
+        toast({
+          title: "Impossible d'activer l'analyse",
+          description: "Vous avez atteint votre limite journalière de gains. Revenez demain ou passez à un forfait supérieur.",
+          variant: "destructive",
+          duration: 5000
+        });
+        return;
+      }
     }
     
     const newStatus = !localBotActive;
@@ -258,6 +297,16 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         balance: localDisplayBalance
       }
     }));
+    
+    // Si on active le bot, afficher un toast de confirmation
+    if (newStatus) {
+      toast({
+        title: "Analyse activée",
+        description: "Le système d'analyse automatique est maintenant en cours d'exécution.",
+        variant: "default",
+        duration: 3000
+      });
+    }
   };
   
   // Format numbers safely

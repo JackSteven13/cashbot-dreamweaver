@@ -1,9 +1,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Bot, BotOff } from 'lucide-react';
+import { Bot, BotOff, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import TerminalOutput from './TerminalOutput';
+import { Button } from '@/components/ui/button';
+import { toast } from "@/components/ui/use-toast";
 
 interface SystemTerminalProps {
   isNewUser?: boolean;
@@ -31,6 +33,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   // State pour gérer l'état visuel du terminal
   const [animationActive, setAnimationActive] = useState(false);
   const [scrollToBottom, setScrollToBottom] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   
   // Animer le terminal en réponse aux événements
   useEffect(() => {
@@ -67,6 +70,30 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
     }
   };
   
+  // Fonction pour forcer la réinitialisation du système
+  const handleForceReset = () => {
+    if (isResetting) return;
+    
+    setIsResetting(true);
+    
+    // Déclenchement de l'événement de réinitialisation
+    window.dispatchEvent(new CustomEvent('balance:force-reset', { 
+      detail: { reason: 'manual-reset' } 
+    }));
+    
+    toast({
+      title: "Réinitialisation en cours...",
+      description: "Le système d'analyse est en cours de redémarrage.",
+      variant: "default",
+      duration: 3000
+    });
+    
+    // Réinitialiser l'état après un délai
+    setTimeout(() => {
+      setIsResetting(false);
+    }, 5000);
+  };
+  
   return (
     <Card className={cn(
       "min-h-[400px] shadow-md border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-200",
@@ -85,13 +112,25 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
             Système {isBotActive ? 'Actif' : 'Inactif'}
           </h2>
         </div>
-        <div className="flex space-x-1">
-          {Array(3).fill(0).map((_, i) => (
-            <div 
-              key={i}
-              className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"
-            />
-          ))}
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            size="icon"
+            className="h-7 w-7"
+            onClick={handleForceReset}
+            disabled={isResetting}
+            title="Redémarrer le système"
+          >
+            <RefreshCw className={cn("h-4 w-4", isResetting && "animate-spin")} />
+          </Button>
+          <div className="flex space-x-1">
+            {Array(3).fill(0).map((_, i) => (
+              <div 
+                key={i}
+                className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"
+              />
+            ))}
+          </div>
         </div>
       </div>
       
