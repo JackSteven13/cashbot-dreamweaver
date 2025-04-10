@@ -20,7 +20,7 @@ export const COMMISSION_RATES = {
   'freemium': 0.20,   // 20% de commission
   'starter': 0.30,    // 30% de commission
   'gold': 0.40,       // 40% de commission
-  'elite': 0.50       // 50% de commission
+  'elite': 0.50       // 50% de commission (modifié de 100%)
 };
 
 // Taux de commission récurrente selon l'abonnement
@@ -49,3 +49,14 @@ export const WITHDRAWAL_THRESHOLDS = {
 
 // Export SUBSCRIPTION_LIMITS pour la compatibilité avec d'autres fichiers
 export const SUBSCRIPTION_LIMITS = DAILY_REVENUE_LIMITS;
+
+// Créer un export unifié pour faciliter l'importation
+export default {
+  SESSION_LIMITS,
+  DAILY_REVENUE_LIMITS,
+  COMMISSION_RATES,
+  RECURRING_COMMISSION_RATES,
+  LEVEL2_COMMISSION_RATES,
+  WITHDRAWAL_THRESHOLDS,
+  SUBSCRIPTION_LIMITS
+};

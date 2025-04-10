@@ -1,117 +1,86 @@
 
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { 
-  LogOut, 
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
   Home,
-  BarChart3,
-  Users,
+  Settings,
+  BarChart,
+  HelpCircle,
+  LogOut,
+  ChevronRight,
 } from 'lucide-react';
-import Button from '@/components/Button';
-import { forceSignOut } from "@/utils/auth/sessionUtils";
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
+  username: string;
   selectedNavItem: string;
   setSelectedNavItem: (item: string) => void;
+  onLogout?: () => void;
 }
 
-const Sidebar = ({ selectedNavItem, setSelectedNavItem }: SidebarProps) => {
-  const navigate = useNavigate();
-  const [isHovering, setIsHovering] = useState('');
-  
-  // Function to handle logout with proper cleanup
-  const handleLogout = async () => {
-    try {
-      // Use forceSignOut to completely clear all auth data
-      await forceSignOut();
-      
-      // Clear any additional stored user data
-      localStorage.removeItem('user_registered');
-      localStorage.removeItem('username');
-      localStorage.removeItem('user_balance');
-      localStorage.removeItem('daily_session_count');
-      localStorage.removeItem('subscription');
-      
-      // Navigate to login page instead of home page
-      navigate('/login', { replace: true });
-    } catch (error) {
-      console.error("Error during logout:", error);
-      // If error during logout, still try to navigate away
-      navigate('/login', { replace: true });
-    }
-  };
+const Sidebar: React.FC<SidebarProps> = ({
+  username,
+  selectedNavItem,
+  setSelectedNavItem,
+  onLogout,
+}) => {
+  const isMobile = useIsMobile();
 
-  // Ajout d'un élément de menu pour les parrainages
-  const menuItems = [
-    { id: 'dashboard', label: 'Tableau de bord', icon: BarChart3, path: '/dashboard' },
-    { id: 'referrals', label: 'Parrainages', icon: Users, path: '/dashboard/referrals' },
+  const navItems = [
+    { id: 'dashboard', label: 'Tableau de bord', icon: Home, path: '/dashboard' },
+    { id: 'analytics', label: 'Statistiques', icon: BarChart, path: '/analytics' },
+    { id: 'settings', label: 'Paramètres', icon: Settings, path: '/settings' },
+    { id: 'help', label: 'Aide', icon: HelpCircle, path: '/help' },
   ];
-  
+
   return (
-    <div className="hidden md:flex w-64 flex-col bg-gradient-to-b from-[#1A1F2C] to-[#1e3a5f] border-r border-[#2d5f8a]/30">
-      <div className="p-6 flex items-center justify-center">
-        <Link to="/" className="flex items-center space-x-2">
-          <img src="/logo.png" alt="Stream Genius" className="h-8 w-8" />
-          <span className="text-2xl font-semibold tracking-tight text-white">Stream genius</span>
-        </Link>
-      </div>
-      
-      <div className="flex-1 px-3 py-6 space-y-2">
-        {menuItems.map(item => (
-          <Button 
-            key={item.id}
-            variant="ghost" 
-            fullWidth 
-            className={cn(
-              "justify-start border-transparent text-white py-3 mb-1 relative overflow-hidden group transition-all duration-300",
-              selectedNavItem === item.id ? 
-                "bg-[#9b87f5]/20 text-white font-medium" : 
-                "hover:bg-[#9b87f5]/10 text-white/80"
-            )}
-            onClick={() => {
-              setSelectedNavItem(item.id);
-              navigate(item.path);
-            }}
-            onMouseEnter={() => setIsHovering(item.id)}
-            onMouseLeave={() => setIsHovering('')}
-          >
-            <item.icon 
-              size={18} 
+    <div className="hidden md:flex flex-col bg-gray-900 text-gray-100 w-64 p-3 h-full">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">Xavier</h2>
+          {isMobile && (
+            <button className="p-2">
+              <ChevronRight size={24} />
+            </button>
+          )}
+        </div>
+        <div className="flex flex-col space-y-1">
+          {navItems.map((item) => (
+            <Link
+              key={item.id}
+              to={item.path}
               className={cn(
-                "mr-3 transition-all duration-300",
-                isHovering === item.id && "text-[#9b87f5] animate-pulse"
-              )} 
-            />
-            {item.label}
-            {selectedNavItem === item.id && (
-              <span className="absolute inset-y-0 left-0 w-1 bg-[#9b87f5] rounded-tr-md rounded-br-md animate-pulse" />
-            )}
-          </Button>
-        ))}
+                "flex items-center space-x-3 rounded-md px-3 py-2 transition-colors",
+                selectedNavItem === item.id
+                  ? "bg-gray-800 text-white"
+                  : "text-gray-400 hover:bg-gray-800 hover:text-gray-100"
+              )}
+              onClick={() => setSelectedNavItem(item.id)}
+            >
+              <item.icon className="h-5 w-5" />
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </div>
       </div>
-      
-      <div className="p-4 mt-auto space-y-2">
-        <Button 
-          variant="ghost" 
-          fullWidth 
-          className="justify-start border-transparent text-white hover:bg-[#9b87f5]/10 group transition-colors"
-          onClick={() => {
-            navigate('/');
-          }}
+      <div className="mt-auto space-y-3">
+        <div className="flex items-center space-x-3 rounded-md px-3 py-2 text-gray-300">
+          <div className="h-8 w-8 rounded-full bg-gray-800 flex items-center justify-center text-xl font-semibold">
+            {username ? username[0]?.toUpperCase() : "U"}
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{username}</span>
+            <span className="text-xs text-gray-500">Connecté</span>
+          </div>
+        </div>
+        <button
+          onClick={onLogout}
+          className="flex w-full items-center space-x-3 rounded-md px-3 py-2 text-gray-400 hover:bg-gray-800 hover:text-gray-100"
         >
-          <Home size={18} className="mr-3 group-hover:text-[#9b87f5] transition-colors" />
-          Retour à l'accueil
-        </Button>
-        <Button 
-          variant="ghost" 
-          fullWidth 
-          className="justify-start border-transparent text-white hover:bg-[#9b87f5]/10 group transition-colors"
-          onClick={handleLogout}
-        >
-          <LogOut size={18} className="mr-3 group-hover:text-[#9b87f5] transition-colors" />
-          Déconnexion
-        </Button>
+          <LogOut className="h-5 w-5" />
+          <span>Déconnexion</span>
+        </button>
       </div>
     </div>
   );

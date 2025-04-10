@@ -10,7 +10,6 @@ import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
 import { useReferralNotifications } from '@/hooks/useReferralNotifications';
 import { useTransactionReconciliation } from '@/hooks/useTransactionReconciliation';
 import { memo, useEffect, useRef, useMemo, useState } from 'react';
-import ReferralsPage from './dashboard/ReferralsPage';
 
 // Composant principal avec transitions améliorées
 const Dashboard = memo(() => {
@@ -161,9 +160,6 @@ const Dashboard = memo(() => {
                     lastSessionTimestamp={lastSessionTimestamp}
                     isBotActive={isBotActive}
                   />
-                } />
-                <Route path="referrals" element={
-                  <ReferralsPage />
                 } />
               </Routes>
             </DashboardLayout>

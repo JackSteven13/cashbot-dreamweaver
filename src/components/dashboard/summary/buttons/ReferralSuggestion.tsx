@@ -1,119 +1,78 @@
 
 import React from 'react';
-import { Users, Gift, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useNavigate } from 'react-router-dom';
-import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
+import { Users, Link2Icon } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 
 interface ReferralSuggestionProps {
-  triggerElement: React.ReactNode;
-  onStartReferral?: () => void;
-  subscription?: string;
+  referralLink: string;
+  referralCount?: number;
+  withdrawalThreshold?: number;
 }
 
 export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
-  triggerElement,
-  onStartReferral,
-  subscription = 'freemium'
+  referralLink,
+  referralCount = 0,
+  withdrawalThreshold = 200
 }) => {
-  const isMobile = useIsMobile();
-  const navigate = useNavigate();
-  
-  // Déterminer le seuil de retrait en fonction de l'abonnement
-  const withdrawalThreshold = getWithdrawalThreshold(subscription);
-
-  // Fonction par défaut pour démarrer le parrainage
   const handleStartReferral = () => {
-    if (onStartReferral) {
-      onStartReferral();
-    } else {
-      // Naviguer vers la page de parrainage
-      navigate('/dashboard/referrals');
-    }
+    // Copier le lien dans le presse-papiers au lieu de naviguer
+    navigator.clipboard.writeText(referralLink)
+      .then(() => {
+        toast({
+          title: "Lien de parrainage copié !",
+          description: "Partagez-le avec vos amis pour gagner des commissions.",
+          className: "bg-green-500 text-white"
+        });
+      })
+      .catch(() => {
+        toast({
+          title: "Erreur",
+          description: "Impossible de copier le lien. Veuillez réessayer.",
+          variant: "destructive"
+        });
+      });
   };
 
-  // Sur mobile, on utilise un Popover qui s'ouvre au clic
-  if (isMobile) {
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          {triggerElement}
-        </PopoverTrigger>
-        <PopoverContent className="w-80 p-4">
-          <ReferralSuggestionContent 
-            onStartReferral={handleStartReferral}
-            withdrawalThreshold={withdrawalThreshold}
-            subscription={subscription}
-          />
-        </PopoverContent>
-      </Popover>
-    );
-  }
-
-  // Sur desktop, on utilise un HoverCard
   return (
-    <HoverCard openDelay={100} closeDelay={200}>
-      <HoverCardTrigger asChild>
-        {triggerElement}
-      </HoverCardTrigger>
-      <HoverCardContent side="top" align="center" className="w-80 p-4">
-        <ReferralSuggestionContent 
-          onStartReferral={handleStartReferral} 
-          withdrawalThreshold={withdrawalThreshold}
-          subscription={subscription}
-        />
-      </HoverCardContent>
-    </HoverCard>
-  );
-};
-
-// Contenu réutilisable pour le Popover et le HoverCard
-const ReferralSuggestionContent: React.FC<{ 
-  onStartReferral: () => void;
-  withdrawalThreshold: number;
-  subscription?: string;
-}> = ({ onStartReferral, withdrawalThreshold, subscription = 'freemium' }) => {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-start gap-2">
-        <Users className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-        <div>
-          <h4 className="font-semibold text-slate-800 mb-1">Gagnez plus avec le parrainage</h4>
-          <p className="text-sm text-slate-600">
-            Parrainez des amis et gagnez <span className="font-medium text-green-600">20-50%</span> de leurs abonnements annuels, automatiquement.
-          </p>
+    <div className="relative z-10 pb-6 pt-2 sm:pt-0 hover:-translate-y-0.5 transition-transform duration-300">
+      {/* Affichage du parrainage */}
+      <div className="bg-blue-900 p-4 rounded-lg shadow-md relative overflow-hidden">
+        <Users className="absolute -right-2 -top-2 text-blue-800 opacity-10" size={60} />
+        
+        <div className="flex flex-col space-y-4">
+          <div>
+            <h4 className="text-blue-300 font-medium mb-1 flex items-center">
+              <Users size={16} className="mr-1.5" />
+              Gagnez plus avec le parrainage
+            </h4>
+            
+            <p className="text-sm text-blue-100">
+              Parrainez des amis et gagnez <span className="font-semibold">20-50%</span> de 
+              leurs abonnements annuels, automatiquement.
+            </p>
+          </div>
+          
+          <div className="bg-blue-50 text-blue-800 p-3 rounded">
+            <div className="flex items-start">
+              <div className="mr-2 mt-0.5 text-amber-500">
+                <gift className="h-5 w-5" />
+              </div>
+              <p className="text-sm">
+                Atteignez votre seuil de retrait de <span className="font-bold">{withdrawalThreshold}€</span> plus 
+                rapidement grâce aux revenus récurrents de vos filleuls !
+              </p>
+            </div>
+          </div>
+          
+          <button 
+            onClick={handleStartReferral}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center transition-colors"
+          >
+            <span>Commencer à parrainer</span>
+            <Link2Icon size={18} className="ml-2" />
+          </button>
         </div>
       </div>
-      
-      <div className="bg-blue-50 border border-blue-100 rounded-md p-2 flex items-start gap-2">
-        <Gift className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
-        <div className="text-xs text-blue-800">
-          <p>Atteignez votre seuil de retrait de <span className="font-semibold">{withdrawalThreshold}€</span> plus rapidement grâce aux revenus récurrents de vos filleuls !</p>
-        </div>
-      </div>
-      
-      <Button 
-        size="sm" 
-        variant="default" 
-        className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 mt-1"
-        onClick={onStartReferral}
-      >
-        <span>Commencer à parrainer</span>
-        <ArrowRight className="h-4 w-4 ml-1" />
-      </Button>
     </div>
   );
 };
-
-export default ReferralSuggestion;
