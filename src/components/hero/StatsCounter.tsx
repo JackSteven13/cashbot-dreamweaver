@@ -10,9 +10,10 @@ interface StatsCounterProps {
 }
 
 const StatsCounter = ({
-  dailyAdsTarget = 850000, // Considérablement augmenté pour refléter plusieurs agents IA
-  dailyRevenueTarget = 1750000 // Augmenté proportionnellement
+  dailyAdsTarget = 850000, // Ajusté pour représenter plusieurs agents IA travaillant en parallèle
+  dailyRevenueTarget = 1750000 
 }: StatsCounterProps) => {
+  // Utiliser notre hook personnalisé pour gérer les compteurs avec progression plus naturelle
   const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
     dailyAdsTarget,
     dailyRevenueTarget

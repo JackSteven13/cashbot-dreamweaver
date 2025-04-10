@@ -43,24 +43,37 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Logique d'incrémentation repensée pour une progression plus réaliste
+  // Logique d'incrémentation repensée pour une progression plus naturelle et imprévisible
   const incrementCountersRandomly = useCallback(() => {
-    // Incrémentations plus modestes et réalistes
+    // Simuler le travail de multiples agents IA analysant des publicités de durées différentes
     setAdsCount(prevAdsCount => {
-      // Seulement incrémenter, jamais diminuer
       if (prevAdsCount >= dailyAdsTarget) return dailyAdsTarget;
       
-      // Calculer un pourcentage plus petit de la cible quotidienne à ajouter
-      const increment = Math.floor(dailyAdsTarget * 0.0025); // 0.25% au lieu de 1%
-      const newAdsCount = Math.min(prevAdsCount + increment, dailyAdsTarget);
+      // Générer une incrémentation aléatoire qui simule plusieurs agents IA travaillant en parallèle
+      // Plus le nombre est grand, plus l'impression qu'il y a plusieurs agents est forte
+      const baseIncrement = Math.floor(Math.random() * 400) + 100; // Entre 100 et 500 pubs par mise à jour
       
-      // Toujours mettre à jour les revenus en même temps que les annonces, avec un ratio fixe
+      // Variation selon l'heure de la journée (plus actif aux heures de pointe)
+      const now = new Date();
+      const hourFactor = getHourFactor(now.getHours());
+      
+      // Calculer l'incrément final avec facteur horaire
+      const adjustedIncrement = Math.floor(baseIncrement * hourFactor);
+      
+      // S'assurer que nous ne dépassons pas la cible
+      const newAdsCount = Math.min(prevAdsCount + adjustedIncrement, dailyAdsTarget);
+      
+      // Toujours mettre à jour les revenus en même temps que les annonces, mais avec variabilité
       setRevenueCount(prevRevenueCount => {
         if (prevRevenueCount >= dailyRevenueTarget) return dailyRevenueTarget;
         
-        // Utiliser un revenu fixe par annonce pour la stabilité
+        // Calculer le revenu moyen par publicité avec une variabilité
+        const adsIncrement = newAdsCount - prevAdsCount;
         const averageRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
-        const revenueIncrement = Math.floor((newAdsCount - prevAdsCount) * averageRevenuePerAd);
+        
+        // Ajouter de la variabilité aux revenus pour simuler des publicités de valeurs différentes
+        const variabilityFactor = 0.8 + Math.random() * 0.5; // Entre 0.8 et 1.3
+        const revenueIncrement = Math.floor(adsIncrement * averageRevenuePerAd * variabilityFactor);
         
         return Math.min(prevRevenueCount + revenueIncrement, dailyRevenueTarget);
       });
@@ -68,6 +81,23 @@ export const useStatsCycleManagement = ({
       return newAdsCount;
     });
   }, [dailyAdsTarget, dailyRevenueTarget, setAdsCount, setRevenueCount]);
+
+  // Fonction utilitaire pour obtenir un facteur multiplicateur selon l'heure
+  // Les agents IA sont plus actifs pendant certaines périodes de la journée
+  const getHourFactor = (hour: number): number => {
+    // Heures de pointe: 9h-12h et 14h-19h
+    if ((hour >= 9 && hour <= 12) || (hour >= 14 && hour <= 19)) {
+      return 1.1 + Math.random() * 0.4; // Entre 1.1 et 1.5
+    } 
+    // Heures de faible activité: 1h-6h
+    else if (hour >= 1 && hour <= 6) {
+      return 0.5 + Math.random() * 0.3; // Entre 0.5 et 0.8
+    }
+    // Heures normales: reste de la journée
+    else {
+      return 0.8 + Math.random() * 0.4; // Entre 0.8 et 1.2
+    }
+  };
 
   return {
     scheduleCycleUpdate,
