@@ -15,7 +15,7 @@ export const OffersButton: React.FC<OffersButtonProps> = ({ subscription }) => {
     <Button
       variant="outline"
       size="lg"
-      onClick={() => window.location.href = '/offers'}
+      onClick={() => window.location.href = '/offres'}
       className={`w-full ${
         isPremium ? 'border-indigo-600/20 text-indigo-400' : 'border-amber-500/20 text-amber-400'
       }`}
