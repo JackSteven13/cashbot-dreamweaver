@@ -30,3 +30,13 @@ export {
   calculateReferralBonus,
   applyReferralBonus
 } from './referralUtils';
+
+// Add new utility function to safely get subscription
+export const getSubscription = (userData: any): string => {
+  if (!userData) return 'freemium';
+  
+  // Try to get subscription from different locations in the userData object
+  return userData.subscription || 
+         (userData.profile && userData.profile.subscription) || 
+         'freemium';
+};

@@ -4,20 +4,20 @@ import { useUserFetchRefactored } from '@/hooks/fetch/useUserFetchRefactored';
 import { useBalanceActions } from '@/hooks/useBalanceActions';
 import { useSessionOperations } from '@/hooks/sessions/useSessionOperations';
 import { useAutoSessions } from '@/hooks/sessions/useAutoSessions';
-import { DailyLimitAlert } from '@/components/dashboard/DailyLimitAlert';
-import { SystemTerminal } from '@/components/dashboard/terminal/SystemTerminal';
+import DailyLimitAlert from '@/components/dashboard/DailyLimitAlert';
+import SystemTerminal from '@/components/dashboard/terminal/SystemTerminal';
 import { Button } from '@/components/ui/button';
-import { PowerIcon } from '@radix-ui/react-icons';
+import { Power as PowerIcon } from 'lucide-react';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import { useToast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getSubscription } from '@/utils/userDataUtils';
 
 const Dashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   
-  // Fetch user data and actions
   const { 
     userData, 
     isNewUser, 
@@ -27,19 +27,6 @@ const Dashboard = () => {
     setShowLimitAlert 
   } = useUserFetchRefactored();
   
-  // Balance actions
-  const { updateBalance, resetBalance } = useBalanceActions({
-    userData: userData,
-    dailySessionCount: dailySessionCount,
-    setUserData: () => {}, // No direct state update needed here
-    setDailySessionCount: () => {}, // No direct state update needed here
-    setShowLimitAlert: setShowLimitAlert
-  });
-  
-  // State for session management
-  const [isStartingSession, setIsStartingSession] = useState(false);
-  
-  // Automatic session management
   const { 
     lastAutoSessionTime,
     activityLevel,
@@ -52,20 +39,26 @@ const Dashboard = () => {
     setShowLimitAlert
   );
   
-  // Manual session start handler
+  const { updateBalance, resetBalance } = useBalanceActions({
+    userData: userData,
+    dailySessionCount: dailySessionCount,
+    setUserData: () => {}, // No direct state update needed here
+    setDailySessionCount: () => {}, // No direct state update needed here
+    setShowLimitAlert: setShowLimitAlert
+  });
+  
+  const [isStartingSession, setIsStartingSession] = useState(false);
+  
   const handleStartSession = useCallback(async () => {
     if (isStartingSession) return;
     
     setIsStartingSession(true);
     
     try {
-      // Simulate session processing
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Generate random gain (replace with actual logic)
       const randomGain = Math.random() * 0.5;
       
-      // Update balance
       await updateBalance(randomGain, "Manual session gain");
       
       toast({
@@ -84,10 +77,8 @@ const Dashboard = () => {
     }
   }, [isStartingSession, updateBalance, toast]);
   
-  // Withdrawal handler
   const handleWithdrawal = useCallback(async () => {
     try {
-      // Reset balance
       await resetBalance();
       
       toast({
@@ -104,7 +95,6 @@ const Dashboard = () => {
     }
   }, [resetBalance, toast]);
   
-  // Bot status change handler
   const handleBotStatusChange = (active: boolean) => {
     if (active) {
       generateAutomaticRevenue(true);
@@ -116,7 +106,7 @@ const Dashboard = () => {
       {showLimitAlert && (
         <DailyLimitAlert 
           show={showLimitAlert}
-          subscription={userData?.profile?.subscription || 'freemium'}
+          subscription={getSubscription(userData)}
           currentBalance={userData?.balance || 0}
         />
       )}
@@ -141,7 +131,7 @@ const Dashboard = () => {
         handleWithdrawal={handleWithdrawal}
         transactions={userData?.transactions || []}
         isNewUser={isNewUser}
-        subscription={userData?.profile?.subscription || 'freemium'}
+        subscription={getSubscription(userData)}
         dailySessionCount={dailySessionCount}
         canStartSession={true}
         referrals={userData?.referrals || []}
@@ -153,7 +143,7 @@ const Dashboard = () => {
       <SystemTerminal
         isNewUser={isNewUser}
         dailyLimit={0.5}
-        subscription={userData?.profile?.subscription || 'freemium'}
+        subscription={getSubscription(userData)}
         remainingSessions={dailySessionCount}
         referralCount={userData?.referrals?.length || 0}
         displayBalance={userData?.balance || 0}

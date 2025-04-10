@@ -42,5 +42,6 @@ export interface UserData {
     full_name?: string;
     email?: string;
     id?: string;
-  }; // Add profile property to fix the error
+    subscription?: string; // Add subscription property to profile
+  };
 }
