@@ -146,12 +146,12 @@ const Dashboard = () => {
       
       <SystemTerminal
         isNewUser={isNewUser}
-        dailyLimit={0.5} // Passing a number here, which matches the type in SystemTerminal
+        dailyLimit={0.5}
         subscription={getSubscription(userData)}
         remainingSessions={dailySessionCount}
         referralCount={userData?.referrals?.length || 0}
-        displayBalance={userData?.balance || 0} // Passing a number here, which matches the type in SystemTerminal
-        referralBonus={0} // Passing a number here, which matches the type in SystemTerminal
+        displayBalance={userData?.balance || 0}
+        referralBonus={0}
         lastSessionTimestamp={lastAutoSessionTime}
         isBotActive={isBotActive}
       />

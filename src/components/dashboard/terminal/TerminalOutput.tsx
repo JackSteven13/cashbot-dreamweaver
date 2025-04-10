@@ -11,9 +11,9 @@ interface TerminalOutputProps {
   subscription?: string;
   remainingSessions?: number;
   referralCount?: number;
-  dailyLimit?: number; // This should be number type
-  displayBalance?: number; // This should be number type
-  referralBonus?: number; // This should be number type
+  dailyLimit: number; // Updated type to number
+  displayBalance: number; // Updated type to number
+  referralBonus: number; // Updated type to number
   lastSessionTimestamp?: string;
   scrollToBottom?: boolean;
   isBotActive?: boolean;
