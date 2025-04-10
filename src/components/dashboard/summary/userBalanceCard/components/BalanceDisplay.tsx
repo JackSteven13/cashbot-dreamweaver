@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, BotOff } from 'lucide-react';
 import { balanceManager, getHighestBalance } from '@/utils/balance/balanceManager';
@@ -13,7 +14,7 @@ interface BalanceDisplayProps {
   referralBonus?: number;
   totalGeneratedBalance?: number;
   isBotActive?: boolean;
-  subscription?: string; // Ajout du type d'abonnement
+  subscription?: string;
 }
 
 const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
@@ -336,7 +337,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           <div className="flex flex-wrap justify-center gap-1 px-2">
             <span>Bonus parrainage: {formattedReferralBonus}€</span>
             <span className="hidden sm:inline">|</span>
-            <span>Total généré: {formattedTotalGenerated}€</span>
+            <span>Solde cumulé: {formattedTotalGenerated}€</span>
           </div>
         </div>
         

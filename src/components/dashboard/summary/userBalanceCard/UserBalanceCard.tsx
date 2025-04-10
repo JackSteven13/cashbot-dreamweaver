@@ -31,7 +31,7 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   
   // Calculer les valeurs dérivées pour l'affichage
   const totalGenerated = useMemo(() => {
-    // Le total généré est maintenant égal au solde affiché
+    // Le solde cumulé est égal au solde affiché actuellement
     return displayBalance;
   }, [displayBalance]);
   
