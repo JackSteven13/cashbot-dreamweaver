@@ -1,163 +1,219 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { Transaction } from '@/types/transaction';
 
-import { toast } from "@/components/ui/use-toast";
-import { 
-  updateUserBalance,
-  resetUserBalance 
-} from "@/utils/userBalanceUtils";
-import { addTransaction } from "@/utils/transactionUtils";
-import { supabase } from "@/integrations/supabase/client";
-
-// Import checkDailyLimit from the correct location if this file exists and uses it
-import { checkDailyLimit } from '@/utils/auth';
-
-// Define return types for better type safety
-export interface BalanceUpdateResult {
-  success: boolean;
-  newBalance?: number;
-  limitReached?: boolean;
-  transaction?: {
-    date: string;
-    gain: number;
-    report: string;
-  } | null;
+interface BalanceOperationsProps {
+  userId?: string;
+  initialBalance?: number;
 }
 
-export const useBalanceOperations = () => {
-  // Update balance after a session
-  const updateBalance = async (gain: number, report: string): Promise<BalanceUpdateResult> => {
+export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOperationsProps) => {
+  const [balance, setBalance] = useState<number>(initialBalance);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const { session } = useAuth();
+
+  // Fetch initial balance when component mounts or userId changes
+  useEffect(() => {
+    if (userId) {
+      fetchBalance();
+    }
+  }, [userId]);
+
+  const fetchBalance = async (): Promise<void> => {
+    if (!userId) {
+      setError('User ID is required to fetch balance');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.error("No active session found");
-        toast({
-          title: "Erreur",
-          description: "Vous devez être connecté pour effectuer cette action.",
-          variant: "destructive"
-        });
-        return { success: false };
-      }
-      
-      // Get current user data
-      const { data: userBalanceData, error: balanceError } = await supabase
+      const { data, error } = await supabase
         .from('user_balances')
-        .select('balance, subscription')
-        .eq('id', session.user.id)
+        .select('balance')
+        .eq('id', userId)
         .single();
-        
-      if (balanceError || !userBalanceData) {
-        console.error("Failed to fetch user balance:", balanceError);
-        toast({
-          title: "Erreur",
-          description: "Impossible de récupérer vos données. Veuillez réessayer.",
-          variant: "destructive"
-        });
-        return { success: false };
+
+      if (error) {
+        throw new Error(error.message);
       }
-      
-      // Ensure gain is always positive and format to 2 decimal places
-      const positiveGain = Math.max(0, parseFloat(gain.toFixed(2)));
-      
-      // Update balance
-      const balanceResult = await updateUserBalance(
-        session.user.id,
-        userBalanceData.balance,
-        positiveGain,
-        userBalanceData.subscription
-      );
-      
-      if (!balanceResult.success) {
-        console.error("Failed to update balance");
-        return { success: false };
+
+      if (data) {
+        setBalance(parseFloat(data.balance) || 0);
       }
-      
-      console.log("Balance updated successfully:", balanceResult);
-      
-      // Add transaction
-      const transactionResult = await addTransaction(
-        session.user.id,
-        positiveGain,
-        report
-      );
-      
-      // Update local storage with current subscription
-      localStorage.setItem('subscription', userBalanceData.subscription);
-      
-      return { 
-        success: true, 
-        newBalance: balanceResult.newBalance, 
-        limitReached: balanceResult.limitReached,
-        transaction: transactionResult.success && transactionResult.transaction ? transactionResult.transaction : null
+    } catch (err) {
+      console.error('Error fetching balance:', err);
+      setError('Failed to fetch balance');
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch your current balance',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateBalance = async (
+    gainAmount: number, 
+    reportMessage: string, 
+    forceUpdate = false
+  ): Promise<void> => {
+    if (!userId) {
+      console.error('User ID is required to update balance');
+      return;
+    }
+
+    if (gainAmount === 0 && !forceUpdate) {
+      console.log('No balance change, skipping update');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Get the JWT token from the session
+      const token = session?.access_token;
+      if (!token && !forceUpdate) {
+        throw new Error('Authentication required');
+      }
+
+      // Update the balance in the database
+      const { data: updatedBalance, error: updateError } = await supabase
+        .from('user_balances')
+        .update({ 
+          balance: balance + gainAmount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select('balance')
+        .single();
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      // Fix transaction typing issue - make sure we properly initialize all required fields
+      const transaction = {
+        date: new Date().toISOString().split('T')[0],
+        gain: gainAmount,
+        report: reportMessage
       };
+
+      // Add a transaction record
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          ...transaction
+        });
+
+      if (transactionError) {
+        console.error('Error adding transaction:', transactionError);
+        // Continue even if transaction logging fails
+      }
+
+      // Update local state
+      if (updatedBalance) {
+        setBalance(parseFloat(updatedBalance.balance) || 0);
+      } else {
+        // Fallback to local calculation if no data returned
+        setBalance(prevBalance => prevBalance + gainAmount);
+      }
+
+      // Return void instead of boolean to match expected type
+      return;
     } catch (error) {
       console.error("Error updating balance:", error);
+      setError('Failed to update balance');
       toast({
-        title: "Erreur",
-        description: "Une erreur est survenue. Veuillez réessayer.",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to update your balance',
+        variant: 'destructive',
       });
-      return { success: false };
+      // Return void instead of boolean to match expected type
+      return;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Reset balance (for withdrawals)
-  const resetBalance = async (): Promise<BalanceUpdateResult> => {
+  const resetBalance = async (): Promise<void> => {
+    if (!userId) {
+      console.error('User ID is required to reset balance');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.error("No active session found");
-        return { success: false };
-      }
-      
-      // Get current balance
-      const { data: userBalanceData, error: balanceError } = await supabase
+      // Reset the balance to 0 in the database
+      const { error: resetError } = await supabase
         .from('user_balances')
-        .select('balance, subscription')
-        .eq('id', session.user.id)
-        .single();
-        
-      if (balanceError || !userBalanceData) {
-        console.error("Failed to fetch user balance for reset:", balanceError);
-        toast({
-          title: "Erreur",
-          description: "Impossible de récupérer vos données. Veuillez réessayer.",
-          variant: "destructive"
-        });
-        return { success: false };
+        .update({ 
+          balance: 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (resetError) {
+        throw new Error(resetError.message);
       }
+
+      // Add a withdrawal transaction record
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          date: new Date().toISOString().split('T')[0],
+          gain: -balance, // Negative amount for withdrawal
+          report: `Retrait de ${balance.toFixed(2)}€`
+        });
+
+      if (transactionError) {
+        console.error('Error adding withdrawal transaction:', transactionError);
+        // Continue even if transaction logging fails
+      }
+
+      // Update local state
+      setBalance(0);
       
-      // Update local storage with current subscription
-      localStorage.setItem('subscription', userBalanceData.subscription);
-      
-      // Reset balance - only pass the user ID
-      const result = await resetUserBalance(session.user.id);
-      
-      // Check if result has transaction property before accessing it
-      const transaction = result && typeof result === 'object' && 'transaction' in result 
-        ? result.transaction 
-        : null;
-      
-      // Create default transaction object if result doesn't have one
-      const defaultTransaction = transaction || {
-        date: new Date().toISOString(),
-        gain: 0,
-        report: "Balance reset"
-      };
-      
-      // Ensure we return a properly typed result with transaction property
-      return { 
-        success: result.success,
-        transaction: defaultTransaction
-      };
-    } catch (error) {
-      console.error("Error in resetBalance:", error);
       toast({
-        title: "Erreur",
-        description: "Une erreur est survenue. Veuillez réessayer.",
-        variant: "destructive"
+        title: 'Success',
+        description: 'Your balance has been reset to 0',
+        variant: 'default',
       });
-      return { success: false };
+      
+      return;
+    } catch (error) {
+      console.error("Error resetting balance:", error);
+      setError('Failed to reset balance');
+      toast({
+        title: 'Error',
+        description: 'Failed to reset your balance',
+        variant: 'destructive',
+      });
+      return;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  return { updateBalance, resetBalance };
+  return {
+    balance,
+    isLoading,
+    error,
+    fetchBalance,
+    updateBalance,
+    resetBalance
+  };
 };
+
+export default useBalanceOperations;

@@ -32,10 +32,10 @@ export const useDashboardState = () => {
     async () => {
       try {
         await userData.refetchUserData();
-        return true;
+        return;
       } catch (error) {
         console.error("Error refetching user data:", error);
-        return false;
+        return;
       }
     }
   );
@@ -60,7 +60,7 @@ export const useDashboardState = () => {
     // Adapt updateBalance function to match expected type
     async (gain, report, forceUpdate) => {
       try {
-        const result = await Promise.resolve(true);
+        await Promise.resolve();
         return;
       } catch (error) {
         console.error("Error updating balance:", error);
@@ -85,10 +85,10 @@ export const useDashboardState = () => {
     
     try {
       await userData.refetchUserData();
-      return true; // Retourner true pour satisfaire le type Promise<boolean>
+      return;
     } catch (error) {
       console.error("Error refreshing user data:", error);
-      return false; // Retourner false en cas d'erreur
+      return;
     }
   }, [userData.refetchUserData]);
 
@@ -104,8 +104,8 @@ export const useDashboardState = () => {
   // Extraire les propriétés de sessions pour éviter les références qui changent
   const {
     isStartingSession = false,
-    handleStartSession = async () => { return true; },
-    handleWithdrawal = async () => { return true; },
+    handleStartSession = async () => {},
+    handleWithdrawal = async () => {},
     lastSessionTimestamp,
     isBotActive = true
   } = sessions;

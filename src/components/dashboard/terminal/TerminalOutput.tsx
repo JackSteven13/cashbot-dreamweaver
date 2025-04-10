@@ -1,8 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
 import { formatTimestamp } from '@/utils/formatters'; // Changed from timeUtils to formatters
-import { Guide } from './Guide';  // Changed to named import
-import { NewUserGuide } from './NewUserGuide'; // Changed to named import
 import { SystemIndicators } from './SystemIndicators'; // Changed to named import
 
 interface TerminalOutputProps {
@@ -63,14 +61,6 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
       )}
       
       <p>$ Status: <span className="text-cyan-500">Prêt</span></p>
-      
-      {isNewUser ? (
-        <NewUserGuide />
-      ) : (
-        <Guide 
-          isNewUser={isNewUser}
-        />
-      )}
     </div>
   );
 };

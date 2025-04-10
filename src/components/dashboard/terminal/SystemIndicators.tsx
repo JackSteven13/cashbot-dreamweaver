@@ -17,7 +17,7 @@ export const SystemIndicators: React.FC<SystemIndicatorsProps> = ({
   const randomLoad = Math.floor(Math.random() * 30) + 20;
   
   // State local pour suivre l'état du bot
-  const [localBotActive, setLocalBotActive] = useState(isBotActive || botActive || true);
+  const [localBotActive, setLocalBotActive] = useState<boolean>(isBotActive || botActive || true);
   
   // Écouter les événements de changement d'état du bot
   useEffect(() => {
