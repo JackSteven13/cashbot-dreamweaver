@@ -1,6 +1,7 @@
 
 import { useCallback } from 'react';
 import { calculateTimeUntilMidnight } from '@/utils/timeUtils';
+import { toast } from '@/components/ui/use-toast';
 
 interface UseStatsCycleManagementParams {
   setAdsCount: React.Dispatch<React.SetStateAction<number>>;
@@ -30,9 +31,34 @@ export const useStatsCycleManagement = ({
     console.log(`Prochaine réinitialisation des compteurs dans ${hoursUntilMidnight} heures et ${minutesUntilMidnight} minutes`);
     
     const resetTimeout = setTimeout(() => {
-      // Réinitialiser les compteurs à minuit, heure de Paris
-      setAdsCount(0);
-      setRevenueCount(0);
+      // Récupérer les valeurs actuelles
+      let previousAds = 0;
+      let previousRevenue = 0;
+      
+      try {
+        const savedAds = localStorage.getItem('totalProcessedAds');
+        const savedRevenue = localStorage.getItem('totalGeneratedRevenue');
+        
+        if (savedAds) previousAds = parseInt(savedAds, 10);
+        if (savedRevenue) previousRevenue = parseInt(savedRevenue, 10);
+      } catch (e) {
+        console.error("Erreur lors de la récupération des totaux:", e);
+      }
+      
+      // Ajouter les compteurs du jour aux totaux
+      setAdsCount(currentAds => {
+        const newTotal = previousAds + currentAds;
+        localStorage.setItem('totalProcessedAds', newTotal.toString());
+        return dailyAdsTarget; // Réinitialiser pour le nouveau jour
+      });
+      
+      setRevenueCount(currentRevenue => {
+        const newTotal = previousRevenue + currentRevenue;
+        localStorage.setItem('totalGeneratedRevenue', newTotal.toString());
+        return dailyRevenueTarget; // Réinitialiser pour le nouveau jour
+      });
+      
+      // Réinitialiser les compteurs affichés pour le nouveau jour
       setDisplayedAdsCount(0);
       setDisplayedRevenueCount(0);
       
@@ -41,6 +67,12 @@ export const useStatsCycleManagement = ({
         detail: { active: true } 
       }));
       
+      toast({
+        title: "Nouveau cycle commencé!",
+        description: "Vos revenus d'hier ont été sécurisés, et un nouveau jour de gains commence.",
+        duration: 5000
+      });
+      
       console.log("RÉINITIALISATION DU CYCLE À MINUIT - Bot réactivé!");
       
       // Planifier la prochaine réinitialisation
@@ -48,7 +80,7 @@ export const useStatsCycleManagement = ({
     }, timeUntilMidnight);
     
     return resetTimeout;
-  }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
+  }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount, dailyAdsTarget, dailyRevenueTarget]);
   
   // Logique d'incrémentation repensée pour une progression plus naturelle et imprévisible
   const incrementCountersRandomly = useCallback(() => {
@@ -84,6 +116,20 @@ export const useStatsCycleManagement = ({
         
         return Math.min(prevRevenueCount + revenueIncrement, dailyRevenueTarget);
       });
+      
+      // Sauvegarder les totaux progressifs
+      try {
+        const savedAds = localStorage.getItem('totalProcessedAds') || '0';
+        const totalAds = parseInt(savedAds, 10) + adjustedIncrement;
+        localStorage.setItem('totalProcessedAds', totalAds.toString());
+        
+        // Mettre à jour les compteurs cumulatifs pour l'affichage
+        window.dispatchEvent(new CustomEvent('stats:totals-updated', {
+          detail: { totalAds: totalAds }
+        }));
+      } catch (e) {
+        console.error("Erreur lors de la sauvegarde des totaux:", e);
+      }
       
       return newAdsCount;
     });

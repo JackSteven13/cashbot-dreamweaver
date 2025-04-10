@@ -3,6 +3,7 @@ import { useRef, useEffect } from 'react';
 import { useBotStatus } from './useBotStatus';
 import { useSessionOperations } from './useSessionOperations';
 import { UserData } from '@/types/userData';
+import { toast } from '@/components/ui/use-toast';
 
 export const useAutoRevenueGenerator = (
   userData: UserData,
@@ -12,6 +13,8 @@ export const useAutoRevenueGenerator = (
   getDailyLimit: () => number
 ) => {
   const isInitialMount = useRef(true);
+  const lastRevenueDateRef = useRef<string | null>(null);
+  const consecutiveDaysRef = useRef<number>(0);
 
   // Utiliser le hook de gestion d'état du bot avec vérification de limite
   const { 
@@ -45,16 +48,59 @@ export const useAutoRevenueGenerator = (
       if (userData?.subscription && userData?.balance !== undefined) {
         // Utiliser l'API du hook pour vérifier et mettre à jour l'état du bot
         checkLimitAndUpdateBot(userData.subscription, userData.balance);
+        
+        // Récupérer la date du dernier revenu et des jours consécutifs depuis localStorage
+        try {
+          const lastDate = localStorage.getItem('lastRevenueDate');
+          const consecutiveDays = localStorage.getItem('consecutiveDays');
+          
+          if (lastDate) {
+            lastRevenueDateRef.current = lastDate;
+          }
+          
+          if (consecutiveDays) {
+            const days = parseInt(consecutiveDays, 10);
+            if (!isNaN(days)) {
+              consecutiveDaysRef.current = days;
+            }
+          }
+        } catch (e) {
+          console.error("Erreur lors de la récupération des données de suivi:", e);
+        }
       }
       
       // Configurer la vérification de réinitialisation à minuit
       const checkMidnightReset = () => {
         const now = new Date();
+        const today = now.toISOString().split('T')[0]; // Format YYYY-MM-DD
+        
         // Si c'est un nouveau jour (00:00-00:05), réinitialiser l'activité du bot
         if (now.getHours() === 0 && now.getMinutes() < 5) {
           console.log("MINUIT DÉTECTÉ - Réinitialisation du bot et des limites!");
           resetBotActivity();
           todaysGainsRef.current = 0;
+          
+          // Vérifier si c'est un nouveau jour par rapport au dernier revenu
+          if (lastRevenueDateRef.current !== today) {
+            // Incrémenter les jours consécutifs si le jour précédent avait des revenus
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayString = yesterday.toISOString().split('T')[0];
+            
+            if (lastRevenueDateRef.current === yesterdayString) {
+              consecutiveDaysRef.current += 1;
+              localStorage.setItem('consecutiveDays', consecutiveDaysRef.current.toString());
+              
+              // Afficher un toast pour féliciter l'utilisateur
+              if (consecutiveDaysRef.current > 1) {
+                toast({
+                  title: `${consecutiveDaysRef.current} jours consécutifs!`,
+                  description: "Votre constance est récompensée. Continuez ainsi pour maximiser vos revenus!",
+                  duration: 6000
+                });
+              }
+            }
+          }
           
           // Forcer l'activation du bot
           updateBotStatus(true);
@@ -121,11 +167,31 @@ export const useAutoRevenueGenerator = (
     };
   }, [updateBotStatus, getDailyLimit, getCurrentBalance, setShowLimitAlert, generateAutomaticRevenue]);
 
+  // Mettre à jour la date du dernier revenu lorsqu'un revenu est généré
+  useEffect(() => {
+    const handleRevenueGenerated = (event: CustomEvent) => {
+      const amount = event.detail?.amount;
+      
+      if (amount && amount > 0) {
+        const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+        lastRevenueDateRef.current = today;
+        localStorage.setItem('lastRevenueDate', today);
+      }
+    };
+    
+    window.addEventListener('revenue:generated' as any, handleRevenueGenerated);
+    
+    return () => {
+      window.removeEventListener('revenue:generated' as any, handleRevenueGenerated);
+    };
+  }, []);
+
   return {
     generateAutomaticRevenue,
     isSessionInProgress: () => isSessionInProgress(),
     isBotActive,
     updateBotStatus,
-    resetBotActivity: () => resetBotActivity(userData.subscription, userData.balance)
+    resetBotActivity: () => resetBotActivity(userData.subscription, userData.balance),
+    consecutiveDays: consecutiveDaysRef.current
   };
 };

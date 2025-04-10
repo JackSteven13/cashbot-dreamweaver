@@ -37,6 +37,38 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
     `> Current subscription: ${subscription.toUpperCase()}`,
     `> Daily revenue limit: ${dailyLimit.toFixed(2)}€`,
   ]);
+  const [cumulativeEarnings, setCumulativeEarnings] = useState<number>(0);
+  const [daysActive, setDaysActive] = useState<number>(0);
+  
+  // Récupérer les statistiques cumulées au montage du composant
+  useEffect(() => {
+    try {
+      // Récupérer les jours consécutifs d'activité
+      const consecutiveDays = localStorage.getItem('consecutiveDays');
+      if (consecutiveDays) {
+        const days = parseInt(consecutiveDays, 10);
+        if (!isNaN(days)) {
+          setDaysActive(days);
+        }
+      }
+      
+      // Récupérer les gains cumulés (en utilisant highestBalance pour fiabilité)
+      const highestBalance = localStorage.getItem('highestBalance');
+      if (highestBalance) {
+        const balance = parseFloat(highestBalance);
+        if (!isNaN(balance)) {
+          setCumulativeEarnings(balance);
+        } else {
+          setCumulativeEarnings(displayBalance);
+        }
+      } else {
+        setCumulativeEarnings(displayBalance);
+      }
+    } catch (e) {
+      console.error("Erreur lors de la récupération des statistiques:", e);
+      setCumulativeEarnings(displayBalance);
+    }
+  }, [displayBalance]);
   
   // Effet pour ajouter des lignes supplémentaires en fonction des paramètres
   useEffect(() => {
@@ -47,6 +79,8 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
     const hasBalanceLine = lines.some(line => line.includes('Current balance:'));
     const hasSessionLine = lines.some(line => line.includes('sessions available'));
     const hasBotStatusLine = lines.some(line => line.includes('Bot status:'));
+    const hasCumulativeEarningsLine = lines.some(line => line.includes('Total accumulated earnings:'));
+    const hasDaysActiveLine = lines.some(line => line.includes('Days of continuous activity:'));
     
     if (!hasReferralLine && referralCount > 0) {
       newLines.push(`> ${referralCount} active referrals detected (+${referralBonus.toFixed(2)}% bonus)`);
@@ -65,6 +99,27 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
     
     if (!hasBotStatusLine) {
       newLines.push(`> Bot status: ${isBotActive ? 'ACTIVE' : 'INACTIVE'}`);
+    }
+    
+    // Ajouter des lignes pour montrer l'accumulation progressive
+    if (!hasCumulativeEarningsLine && cumulativeEarnings > 0 && !isNewUser) {
+      newLines.push('');
+      newLines.push(`> Total accumulated earnings: ${cumulativeEarnings.toFixed(2)}€`);
+    }
+    
+    if (!hasDaysActiveLine && daysActive > 0 && !isNewUser) {
+      newLines.push(`> Days of continuous activity: ${daysActive}`);
+      
+      // Ajouter un message motivant selon le nombre de jours
+      if (daysActive >= 30) {
+        newLines.push("> MILESTONE ACHIEVED: 30+ days of consistent earnings!");
+      } else if (daysActive >= 15) {
+        newLines.push("> IMPRESSIVE: Your consistency is building financial momentum!");
+      } else if (daysActive >= 7) {
+        newLines.push("> WELL DONE: A full week of continuous earnings growth!");
+      } else if (daysActive >= 3) {
+        newLines.push("> GOOD START: Keep going to maximize your earnings potential!");
+      }
     }
     
     // Ajouter une ligne pour la dernière session si disponible
@@ -86,6 +141,7 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
       if (!welcomeShown) {
         newLines.push('');
         newLines.push('> Welcome new user! Please start with the guide below.');
+        newLines.push('> Your journey to financial freedom begins here.');
       }
     }
     
@@ -94,7 +150,8 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
       setLines(newLines);
     }
   }, [subscription, remainingSessions, referralCount, displayBalance, 
-      referralBonus, isNewUser, lastSessionTimestamp, isBotActive, lines]);
+      referralBonus, isNewUser, lastSessionTimestamp, isBotActive, lines, 
+      cumulativeEarnings, daysActive]);
   
   // Effet pour ajouter des lignes lors d'événements spécifiques
   useEffect(() => {
@@ -111,11 +168,23 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
     const handleAnalysisComplete = (event: CustomEvent) => {
       const gain = event.detail?.gain || 0;
       
+      // Mettre à jour les gains cumulés
+      setCumulativeEarnings(prev => {
+        const newTotal = prev + gain;
+        return newTotal;
+      });
+      
       setLines(prev => [
         ...prev, 
         `> Analysis complete: +${gain.toFixed(2)}€ added to your balance`, 
-        `> New balance: ${(displayBalance + gain).toFixed(2)}€`
+        `> New balance: ${(displayBalance + gain).toFixed(2)}€`,
+        `> Total accumulated: ${(cumulativeEarnings + gain).toFixed(2)}€`
       ]);
+      
+      // Déclencher un événement pour mettre à jour les jours consécutifs si nécessaire
+      window.dispatchEvent(new CustomEvent('revenue:generated', { 
+        detail: { amount: gain } 
+      }));
     };
     
     window.addEventListener('terminal:update', handleTerminalUpdate as EventListener);
@@ -127,7 +196,7 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
       window.removeEventListener('session:start', handleSessionStart);
       window.removeEventListener('analysis:complete', handleAnalysisComplete as EventListener);
     };
-  }, [displayBalance]);
+  }, [displayBalance, cumulativeEarnings]);
   
   // Scroll vers le bas du terminal quand de nouvelles lignes sont ajoutées
   useEffect(() => {
@@ -145,7 +214,13 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
             className={cn(
               "terminal-line", 
               line.includes('ERROR') && "text-red-500",
-              line.includes('+') && line.includes('€') && "text-blue-400"
+              line.includes('+') && line.includes('€') && "text-blue-400",
+              line.includes('MILESTONE') && "text-yellow-300 font-bold",
+              line.includes('IMPRESSIVE') && "text-green-300 font-bold",
+              line.includes('WELL DONE') && "text-cyan-300 font-bold",
+              line.includes('GOOD START') && "text-blue-300 font-bold",
+              line.includes('Total accumulated') && "text-emerald-300",
+              line.includes('financial freedom') && "text-yellow-200 italic"
             )}
           >
             {line}
