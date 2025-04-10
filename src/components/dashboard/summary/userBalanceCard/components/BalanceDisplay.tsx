@@ -126,10 +126,28 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     return () => window.removeEventListener('session:start', handleSessionStart);
   }, [localDisplayBalance]);
   
-  // Vérifier si la limite est atteinte
+  // Vérifier si la limite journalière est atteinte (pas le solde total)
   const isLimitReached = () => {
     const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    return localDisplayBalance >= dailyLimit;
+    
+    // Récupérer la date d'aujourd'hui au format YYYY-MM-DD
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Récupérer les gains du jour depuis le localStorage
+    const todaysGainsKey = `todaysGains_${today}`;
+    let todaysGains = 0;
+    
+    try {
+      const storedGains = localStorage.getItem(todaysGainsKey);
+      if (storedGains) {
+        todaysGains = parseFloat(storedGains);
+      }
+    } catch (e) {
+      console.error("Erreur lors de la récupération des gains quotidiens:", e);
+    }
+    
+    // Comparer les gains du jour avec la limite quotidienne
+    return todaysGains >= dailyLimit;
   };
   
   // Écouter les événements de changement d'état du bot et de solde
@@ -232,7 +250,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 
   // Function to toggle bot status manually
   const handleBotToggle = () => {
-    // Vérifier d'abord si la limite est atteinte
+    // Vérifier d'abord si la limite journalière est atteinte
     const limitReached = isLimitReached();
     
     // Si le bot est inactif à cause de la limite atteinte, vérifier si c'est un nouveau jour
@@ -247,6 +265,10 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         // C'est un nouveau jour, permettre la réactivation
         console.log("Nouveau jour détecté! Réinitialisation des compteurs");
         localStorage.setItem(lastResetKey, currentDate);
+        
+        // Réinitialiser le compteur des gains du jour
+        const todaysGainsKey = `todaysGains_${currentDate}`;
+        localStorage.setItem(todaysGainsKey, '0');
         
         // Forcer la réinitialisation des compteurs
         window.dispatchEvent(new CustomEvent('balance:force-reset', { 

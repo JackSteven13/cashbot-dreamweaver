@@ -36,8 +36,23 @@ export const useSessionGain = () => {
     
     const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
     
+    // Récupérer également les gains du jour depuis localStorage pour plus de fiabilité
+    let storedTodaysGains = 0;
+    const todaysGainsKey = `todaysGains_${today}`;
+    try {
+      const storedGains = localStorage.getItem(todaysGainsKey);
+      if (storedGains) {
+        storedTodaysGains = parseFloat(storedGains);
+      }
+    } catch (e) {
+      console.error("Erreur lors de la récupération des gains quotidiens:", e);
+    }
+    
+    // Utiliser la valeur maximale entre les deux sources
+    const effectiveTodaysGains = Math.max(todaysGains, storedTodaysGains);
+    
     // Calculer le montant restant pour aujourd'hui (non lié au solde total)
-    const remainingAmount = dailyLimit - todaysGains;
+    const remainingAmount = dailyLimit - effectiveTodaysGains;
     
     // Vérification finale avant d'appliquer le gain
     if (remainingAmount <= 0) {
@@ -55,13 +70,13 @@ export const useSessionGain = () => {
     // Calculer le gain en utilisant la fonction utilitaire
     const randomGain = calculateManualSessionGain(
       effectiveSub, 
-      todaysGains, // Passer les gains du jour, pas le solde total
+      effectiveTodaysGains, // Passer les gains du jour, pas le solde total
       userData.referrals.length
     );
     
     // Vérification finale pour s'assurer que nous ne dépassons pas la limite
     const { shouldProceed, finalGain } = checkFinalGainLimit(
-      todaysGains, // Utiliser les gains du jour au lieu du solde total
+      effectiveTodaysGains, // Utiliser les gains du jour au lieu du solde total
       randomGain,
       dailyLimit,
       setShowLimitAlert
@@ -73,6 +88,15 @@ export const useSessionGain = () => {
     
     // Calculer le nouveau solde (le solde total augmente)
     const newBalance = currentBalance + finalGain;
+    
+    // Mettre à jour les gains quotidiens dans localStorage
+    try {
+      const newTodaysGains = effectiveTodaysGains + finalGain;
+      localStorage.setItem(todaysGainsKey, newTodaysGains.toString());
+      console.log(`Gains quotidiens mis à jour: ${effectiveTodaysGains} -> ${newTodaysGains}`);
+    } catch (e) {
+      console.error("Erreur lors de la mise à jour des gains quotidiens:", e);
+    }
     
     // Persister le nouveau solde dans localStorage pour éviter les pertes lors des rechargements de page
     try {
