@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
+import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip, Cell } from 'recharts';
 
 interface BalanceChartProps {
   balance: number;
@@ -123,12 +123,10 @@ const BalanceChart: React.FC<BalanceChartProps> = ({
             name="Solde"
             barSize={16}
             style={{ stroke: 'none' }}
-            fill="#6366f1"  // Set a default fill color here
-            isAnimationActive={true}
           >
             {/* Use recharts' ability to customize individual bars */}
             {data.map((entry, index) => (
-              <cell 
+              <Cell 
                 key={`cell-${index}`}
                 fill={entry.isToday ? '#10b981' : '#6366f1'} 
               />
