@@ -12,7 +12,7 @@ export const COMMISSION_RATES = {
   'freemium': 0.2,  // 20%
   'starter': 0.3,   // 30% 
   'gold': 0.4,      // 40%
-  'elite': 0.5      // 50% (corrigé de 1.0)
+  'elite': 0.5      // 50% (corrigé)
 };
 
 // Taux de commission récurrente (pourcentage perçu chaque mois)

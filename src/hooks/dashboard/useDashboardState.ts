@@ -32,10 +32,10 @@ export const useDashboardState = () => {
     async () => {
       try {
         await userData.refetchUserData();
-        return;
+        return true; // Changed to return boolean to match expected type
       } catch (error) {
         console.error("Error refetching user data:", error);
-        return;
+        return false; // Return boolean instead of void
       }
     }
   );
@@ -53,27 +53,31 @@ export const useDashboardState = () => {
     async () => { 
       try {
         await Promise.resolve(); 
+        return true; // Return boolean to match expected type
       } catch (error) {
         console.error("Error incrementing session count:", error);
+        return false; // Return boolean to match expected type
       }
     },
     // Adapt updateBalance function to match expected type
     async (gain, report, forceUpdate) => {
       try {
         await Promise.resolve();
-        return;
+        return true; // Return boolean to match expected type
       } catch (error) {
         console.error("Error updating balance:", error);
+        return false; // Return boolean to match expected type
       }
     },
     setShowLimitAlert,
-    // Modified to match expected Promise<void> instead of Promise<boolean>
+    // Modified to match expected Promise<boolean> instead of Promise<void>
     async () => { 
       try {
         await Promise.resolve();
-        // No return value needed for void promise
+        return true; // Return boolean to match expected type
       } catch (error) {
         console.error("Error resetting balance:", error);
+        return false; // Return boolean to match expected type
       }
     }
   );
@@ -85,10 +89,10 @@ export const useDashboardState = () => {
     
     try {
       await userData.refetchUserData();
-      return;
+      return true; // Return boolean to match expected type
     } catch (error) {
       console.error("Error refreshing user data:", error);
-      return;
+      return false; // Return boolean to match expected type
     }
   }, [userData.refetchUserData]);
 
