@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Bot, BotOff, RefreshCw } from 'lucide-react';
@@ -8,12 +9,12 @@ import { toast } from "@/components/ui/use-toast";
 
 interface SystemTerminalProps {
   isNewUser?: boolean;
-  dailyLimit: number; // Changed to number type
+  dailyLimit: number;
   subscription?: string;
   remainingSessions?: number;
   referralCount?: number;
-  displayBalance: number; // Changed to number type
-  referralBonus: number; // Changed to number type
+  displayBalance: number;
+  referralBonus: number;
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
 }

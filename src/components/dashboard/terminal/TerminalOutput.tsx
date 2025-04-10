@@ -1,21 +1,17 @@
 
 import React, { useEffect, useRef } from 'react';
-import { SystemInfo } from './SystemInfo';
-import { SystemProgressBar } from './SystemProgressBar';
-import { SessionCountdown } from './SessionCountdown';
-import { NewUserGuide } from './NewUserGuide';
-import { useSessionCountdown } from '@/hooks/useSessionCountdown';
+import { cn } from '@/lib/utils';
 
 interface TerminalOutputProps {
   isNewUser?: boolean;
   subscription?: string;
   remainingSessions?: number;
   referralCount?: number;
-  dailyLimit: number; // Explicitly typed as number
-  displayBalance: number; // Explicitly typed as number
-  referralBonus: number; // Explicitly typed as number
-  lastSessionTimestamp?: string;
+  dailyLimit: number;
+  displayBalance: number;
+  referralBonus: number;
   scrollToBottom?: boolean;
+  lastSessionTimestamp?: string;
   isBotActive?: boolean;
 }
 
@@ -24,129 +20,121 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({
   subscription = 'freemium',
   remainingSessions = 0,
   referralCount = 0,
-  dailyLimit = 0.5,
-  displayBalance = 0,
-  referralBonus = 0,
-  lastSessionTimestamp,
+  dailyLimit,
+  displayBalance,
+  referralBonus,
   scrollToBottom = false,
+  lastSessionTimestamp,
   isBotActive = true
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
-  
-  // Use the countdown hook to get countdown time
-  const { timeRemaining, isCountingDown } = useSessionCountdown(
-    remainingSessions,
-    subscription,
-    lastSessionTimestamp
-  );
 
-  // Auto-scroll to bottom when new content is added
+  // Défilement automatique vers le bas du terminal
   useEffect(() => {
     if (scrollToBottom && terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [scrollToBottom]);
 
-  // Format the balance for display
-  const formattedBalance = displayBalance.toFixed(2);
-  const formattedDailyLimit = dailyLimit.toFixed(2);
-  
-  // Calculate percentage for progress bar
-  const limitPercentage = Math.min(100, (displayBalance / dailyLimit) * 100);
+  // Fonction pour formater les valeurs monétaires
+  const formatCurrency = (value: number) => {
+    return `${value.toFixed(2)}€`;
+  };
+
+  // Styles de couleur cohérents
+  const primaryColor = "text-cyan-400"; // Couleur principale pour les commandes
+  const successColor = "text-cyan-300"; // Couleur pour les statuts OK
+  const valueColor = "text-cyan-200"; // Couleur pour les valeurs
+  const warningColor = "text-amber-300"; // Couleur pour les avertissements
+  const errorColor = "text-amber-300"; // Couleur pour les erreurs/inactif
 
   return (
-    <div ref={terminalRef} className="space-y-2">
-      <SystemInfo 
-        isNewUser={isNewUser}
-        subscription={subscription}
-      />
-      
-      <div className="text-green-400">
-        $ system.checkAccountStatus()
-      </div>
-      
-      <div className="pl-4">
-        {isNewUser ? (
-          <NewUserGuide />
-        ) : (
-          <>
-            <div className="text-gray-400">
-              {'>'} Compte actif: <span className="text-green-400">Oui</span>
-            </div>
-            <div className="text-gray-400">
-              {'>'} Plan: <span className="text-blue-400">{subscription}</span>
-            </div>
-            <div className="text-gray-400">
-              {'>'} Solde actuel: <span className="text-yellow-400">{formattedBalance}€</span>
-            </div>
-            {referralCount > 0 && (
-              <div className="text-gray-400">
-                {'>'} Parrainages actifs: <span className="text-purple-400">{referralCount}</span>
-              </div>
-            )}
-            {referralBonus > 0 && (
-              <div className="text-gray-400">
-                {'>'} Bonus de parrainage: <span className="text-purple-400">{referralBonus.toFixed(2)}€</span>
-              </div>
-            )}
-            <div className="text-gray-400">
-              {'>'} Limite journalière: <span className="text-red-400">{formattedDailyLimit}€</span>
-            </div>
-            {typeof remainingSessions === 'number' ? (
-              <div className="text-gray-400">
-                {'>'} Sessions restantes: <span className="text-cyan-400">
-                  {subscription !== 'freemium' ? 'illimitées' : remainingSessions}
-                </span>
-              </div>
-            ) : null}
-          </>
-        )}
-      </div>
-      
-      <div className="text-green-400">
-        $ system.getActivity()
-      </div>
-      
-      <div className="pl-4">
-        <div className="text-gray-400">
-          {'>'} Bot: <span className={isBotActive ? "text-green-400" : "text-red-400"}>
-            {isBotActive ? 'Actif' : 'Inactif'}
-          </span>
+    <div ref={terminalRef} className="terminal-output space-y-3">
+      {/* Séquence de démarrage */}
+      <div className="terminal-section">
+        <div className={primaryColor}>$ system.bootSequence()</div>
+        <div className="ml-4">
+          &gt; Initialisation... <span className={successColor}>OK</span>
         </div>
-        
+        <div className="ml-4">
+          &gt; Vérification système... <span className={successColor}>OK</span>
+        </div>
+        <div className="ml-4">
+          &gt; Chargement algorithmes... <span className={successColor}>OK</span>
+        </div>
+        <div className="ml-4">
+          &gt; Compte: <span className={valueColor}>Vérifié</span>
+        </div>
+        <div className="ml-4">
+          &gt; Plan: <span className={valueColor}>{subscription}</span>
+        </div>
+        <div className="ml-4">
+          &gt; Système prêt
+        </div>
+      </div>
+
+      {/* Vérification du compte */}
+      <div className="terminal-section">
+        <div className={primaryColor}>$ system.checkAccountStatus()</div>
+        <div className="ml-4">
+          &gt; Compte actif: <span className={valueColor}>Oui</span>
+        </div>
+        <div className="ml-4">
+          &gt; Plan: <span className={valueColor}>{subscription}</span>
+        </div>
+        <div className="ml-4">
+          &gt; Solde actuel: <span className={valueColor}>{formatCurrency(displayBalance)}</span>
+        </div>
+        <div className="ml-4">
+          &gt; Limite journalière: <span className={valueColor}>{formatCurrency(dailyLimit)}</span>
+        </div>
+        <div className="ml-4">
+          &gt; Sessions restantes: <span className={remainingSessions === 0 ? warningColor : valueColor}>{remainingSessions}</span>
+        </div>
+      </div>
+
+      {/* Activité du système */}
+      <div className="terminal-section">
+        <div className={primaryColor}>$ system.getActivity()</div>
+        <div className="ml-4">
+          &gt; Bot: <span className={isBotActive ? successColor : errorColor}>{isBotActive ? 'Actif' : 'Inactif'}</span>
+        </div>
         {lastSessionTimestamp && (
-          <div className="text-gray-400">
-            {'>'} Dernière analyse: <span className="text-blue-400">
-              {new Date(lastSessionTimestamp).toLocaleTimeString('fr-FR', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}
-            </span>
-          </div>
-        )}
-        
-        {isBotActive && (
-          <div className="mt-1">
-            <SystemProgressBar 
-              displayBalance={displayBalance}
-              dailyLimit={dailyLimit}
-              limitPercentage={limitPercentage}
-              subscription={subscription}
-              botActive={isBotActive}
-            />
+          <div className="ml-4">
+            &gt; Dernière session: <span className={valueColor}>{new Date(lastSessionTimestamp).toLocaleTimeString()}</span>
           </div>
         )}
       </div>
+
+      {/* Décompte ou message selon l'état */}
+      <div className="terminal-section">
+        {isBotActive ? (
+          <div className={primaryColor}>$ system.showCountdown()</div>
+        ) : (
+          <div className={errorColor}>$ system.reactivate()</div>
+        )}
+      </div>
       
-      {!isNewUser && subscription === 'freemium' && remainingSessions === 0 && (
-        <>
-          <div className="text-amber-400">
-            $ system.showCountdown()
+      {/* Message pour nouveau compte */}
+      {isNewUser && (
+        <div className="terminal-section mt-4 border-t border-gray-800 pt-2">
+          <div className={warningColor}>
+            [INFORMATION] Nouveau compte détecté. Accès aux tutoriels débloqué.
           </div>
-          <div className="pl-4">
-            <SessionCountdown timeRemaining={timeRemaining} />
+        </div>
+      )}
+      
+      {/* Info référence si applicable */}
+      {referralCount > 0 && (
+        <div className="terminal-section border-t border-gray-800 pt-2">
+          <div className={primaryColor}>$ system.referralStatus()</div>
+          <div className="ml-4">
+            &gt; Affiliés actifs: <span className={valueColor}>{referralCount}</span>
           </div>
-        </>
+          <div className="ml-4">
+            &gt; Bonus généré: <span className={valueColor}>{formatCurrency(referralBonus)}</span>
+          </div>
+        </div>
       )}
     </div>
   );

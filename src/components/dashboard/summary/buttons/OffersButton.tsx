@@ -2,20 +2,25 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export interface OffersButtonProps {
   subscription: string;
 }
 
 export const OffersButton: React.FC<OffersButtonProps> = ({ subscription }) => {
-  // Déterminer si le bouton doit être affiché différemment selon l'abonnement
+  const navigate = useNavigate();
   const isPremium = subscription !== 'freemium';
+  
+  const handleClick = () => {
+    navigate('/offres');
+  };
   
   return (
     <Button
       variant="outline"
       size="lg"
-      onClick={() => window.location.href = '/offres'}
+      onClick={handleClick}
       className={`w-full ${
         isPremium ? 'border-indigo-600/20 text-indigo-400' : 'border-amber-500/20 text-amber-400'
       }`}
