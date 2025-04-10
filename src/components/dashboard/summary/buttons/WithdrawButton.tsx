@@ -70,41 +70,45 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
             </Button>
             
             {showTooltip && (
-              <HoverCard>
-                <HoverCardTrigger asChild>
-                  <button 
-                    className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center p-1 focus:outline-none"
-                    aria-label="Plus d'informations sur le retrait"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <InfoIcon size={16} className="text-amber-500" />
-                  </button>
-                </HoverCardTrigger>
-                <HoverCardContent className="w-80 p-4 bg-white border border-amber-100 shadow-lg">
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-amber-800">Solde minimum requis</h4>
-                    <p className="text-sm text-gray-600">
-                      Vous avez besoin d'un solde de <span className="font-bold">{minWithdrawalAmount}€</span> pour effectuer un retrait. Votre solde actuel est de <span className="font-bold">{currentBalance.toFixed(2)}€</span>.
-                    </p>
-                    <div className="bg-blue-50 p-3 rounded-md border border-blue-100 mt-2">
-                      <p className="text-sm font-medium text-blue-800 flex items-center">
-                        <Share2 className="h-4 w-4 mr-2 text-blue-600" />
-                        Augmentez vos revenus rapidement
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 p-0 rounded-full bg-amber-100 hover:bg-amber-200"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <InfoIcon size={14} className="text-amber-500" />
+                      <span className="sr-only">Plus d'informations</span>
+                    </Button>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80 p-4 bg-white border border-amber-100 shadow-lg">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-amber-800">Solde minimum requis</h4>
+                      <p className="text-sm text-gray-600">
+                        Vous avez besoin d'un solde de <span className="font-bold">{minWithdrawalAmount}€</span> pour effectuer un retrait. Votre solde actuel est de <span className="font-bold">{currentBalance.toFixed(2)}€</span>.
                       </p>
-                      <p className="text-xs text-blue-700 mt-1">
-                        Partagez votre lien de parrainage pour gagner jusqu'à 35% de commission et atteindre votre seuil de retrait plus rapidement!
-                      </p>
-                      <Button 
-                        size="sm" 
-                        className="mt-2 w-full bg-blue-600 hover:bg-blue-700"
-                        onClick={handleShareClick}
-                      >
-                        Partager mon lien
-                      </Button>
+                      <div className="bg-blue-50 p-3 rounded-md border border-blue-100 mt-2">
+                        <p className="text-sm font-medium text-blue-800 flex items-center">
+                          <Share2 className="h-4 w-4 mr-2 text-blue-600" />
+                          Augmentez vos revenus rapidement
+                        </p>
+                        <p className="text-xs text-blue-700 mt-1">
+                          Partagez votre lien de parrainage pour gagner jusqu'à 35% de commission et atteindre votre seuil de retrait plus rapidement!
+                        </p>
+                        <Button 
+                          size="sm" 
+                          className="mt-2 w-full bg-blue-600 hover:bg-blue-700"
+                          onClick={handleShareClick}
+                        >
+                          Partager mon lien
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </HoverCardContent>
-              </HoverCard>
+                  </HoverCardContent>
+                </HoverCard>
+              </div>
             )}
           </div>
         </TooltipTrigger>

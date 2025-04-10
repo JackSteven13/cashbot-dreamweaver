@@ -14,9 +14,16 @@ interface TransactionsListProps {
 const TransactionsList = ({ transactions, isNewUser = false, subscription }: TransactionsListProps) => {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
   
-  // Vérifier que les transactions sont valides et non vides
-  const validTransactions = Array.isArray(transactions) ? 
-    transactions.filter(tx => tx && typeof tx.gain === 'number' && tx.date) : [];
+  // S'assurer que transactions est un tableau avant de l'utiliser
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  
+  // Filtrer les transactions valides (avec une date et un montant ou un gain)
+  const validTransactions = safeTransactions.filter(tx => 
+    tx && tx.date && (typeof tx.gain === 'number' || typeof tx.amount === 'number')
+  );
+  
+  console.log("Transactions reçues:", safeTransactions);
+  console.log("Transactions valides:", validTransactions);
   
   // Afficher 3 transactions récentes par défaut, ou toutes si showAllTransactions est true
   const displayedTransactions = showAllTransactions 
@@ -26,10 +33,6 @@ const TransactionsList = ({ transactions, isNewUser = false, subscription }: Tra
   const handleViewFullHistory = () => {
     setShowAllTransactions(true);
   };
-  
-  // Debug
-  console.log("Transactions reçues:", transactions);
-  console.log("Transactions valides:", validTransactions);
   
   return (
     <div className="mb-8">

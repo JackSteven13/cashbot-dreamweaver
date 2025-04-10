@@ -10,6 +10,9 @@ interface TransactionsPanelProps {
 }
 
 const TransactionsPanel: React.FC<TransactionsPanelProps> = ({ transactions, subscription }) => {
+  // S'assurer que transactions est un tableau
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  
   return (
     <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm mb-4 md:mb-8">
       <CardHeader className="pb-2">
@@ -19,8 +22,8 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({ transactions, sub
       </CardHeader>
       <CardContent>
         <TransactionsList 
-          transactions={transactions} 
-          isNewUser={transactions.length === 0}
+          transactions={safeTransactions} 
+          isNewUser={safeTransactions.length === 0}
           subscription={subscription}
         />
       </CardContent>
