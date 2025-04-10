@@ -9,12 +9,12 @@ import { toast } from "@/components/ui/use-toast";
 
 interface SystemTerminalProps {
   isNewUser?: boolean;
-  dailyLimit?: number; // Changed from string to number
+  dailyLimit?: number; // Ensuring this is number type
   subscription?: string;
   remainingSessions?: number;
   referralCount?: number;
-  displayBalance?: number; // Changed from string to number
-  referralBonus?: number; // Changed from string to number
+  displayBalance?: number; // Ensuring this is number type
+  referralBonus?: number; // Ensuring this is number type
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
 }
