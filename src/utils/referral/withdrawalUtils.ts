@@ -1,4 +1,3 @@
-
 /**
  * Détermine si un retrait est autorisé en fonction de l'abonnement et des parrainages
  * @param subscription Type d'abonnement
@@ -35,6 +34,39 @@ export function getWithdrawalThreshold(subscription: string = 'freemium'): numbe
   };
   
   return thresholds[subscription] || 200;
+}
+
+/**
+ * Calcule combien un utilisateur pourrait gagner via le parrainage pour atteindre son seuil
+ * @param subscription Type d'abonnement
+ * @param currentBalance Solde actuel de l'utilisateur
+ * @returns Informations sur le montant manquant et le nombre estimé de parrainages nécessaires
+ */
+export function calculateReferralToReachThreshold(
+  subscription: string = 'freemium',
+  currentBalance: number = 0
+): { 
+  amountNeeded: number, 
+  estimatedReferrals: number 
+} {
+  const threshold = getWithdrawalThreshold(subscription);
+  const amountNeeded = Math.max(0, threshold - currentBalance);
+  
+  // Estimer le gain moyen par parrainage selon le forfait
+  const averageReferralGain: Record<string, number> = {
+    'freemium': 10,
+    'starter': 20,
+    'gold': 30,
+    'elite': 40
+  };
+  
+  const avgGain = averageReferralGain[subscription] || 10;
+  const estimatedReferrals = Math.ceil(amountNeeded / avgGain);
+  
+  return {
+    amountNeeded,
+    estimatedReferrals
+  };
 }
 
 /**

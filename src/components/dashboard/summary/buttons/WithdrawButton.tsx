@@ -1,9 +1,24 @@
 
-import React from 'react';
-import { ArrowUpCircle, InfoIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowUpCircle, InfoIcon, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 interface WithdrawButtonProps {
   isWithdrawing: boolean;
@@ -24,12 +39,13 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
   const iconSize = isMobile ? 16 : 18;
   const insufficientBalance = currentBalance < minWithdrawalAmount;
   const showTooltip = insufficientBalance && !isWithdrawing;
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   
   return (
     <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="w-full relative">
+      <div className="w-full relative">
+        <Tooltip>
+          <TooltipTrigger asChild>
             <Button 
               variant="outline"
               className={`w-full border-slate-500 text-slate-600 hover:bg-slate-50 shadow-sm whitespace-normal py-1.5 transition-all duration-300 ${
@@ -49,20 +65,63 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
                 <span>Retirer</span>
               )}
             </Button>
-            
-            {showTooltip && (
-              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+          </TooltipTrigger>
+          
+          {insufficientBalance && (
+            <TooltipContent side="bottom" align="center" className="max-w-[220px] text-center">
+              <p>Solde minimum de {minWithdrawalAmount}€ requis pour retirer</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+        
+        {showTooltip && (
+          <HoverCard openDelay={100} closeDelay={200}>
+            <HoverCardTrigger asChild>
+              <Button
+                variant="ghost" 
+                size="icon" 
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center h-6 w-6 p-0 hover:bg-slate-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsInfoOpen(!isInfoOpen);
+                }}
+              >
                 <InfoIcon size={16} className="text-amber-500" />
+              </Button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" align="center" className="w-80 bg-white border-amber-200 p-4 shadow-lg">
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <Users className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-slate-800 mb-1">Atteignez votre seuil de retrait plus rapidement !</h4>
+                    <p className="text-sm text-slate-600">
+                      Parrainez des amis et gagnez <span className="font-medium text-green-600">20-50%</span> de leurs abonnements mensuels sans limite de filleuls.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-blue-50 border border-blue-100 rounded-md p-2 text-xs text-blue-800">
+                  <p>💡 Chaque parrainage actif vous rapporte des revenus passifs mensuels, même pendant votre sommeil !</p>
+                </div>
+                <div className="pt-1">
+                  <Button 
+                    size="sm" 
+                    variant="default" 
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Naviguer vers la page de parrainage
+                      window.location.href = "/dashboard/referrals";
+                    }}
+                  >
+                    Commencer à parrainer
+                  </Button>
+                </div>
               </div>
-            )}
-          </div>
-        </TooltipTrigger>
-        {insufficientBalance && (
-          <TooltipContent side="bottom" align="center" className="max-w-[220px] text-center">
-            <p>Solde minimum de {minWithdrawalAmount}€ requis pour retirer</p>
-          </TooltipContent>
+            </HoverCardContent>
+          </HoverCard>
         )}
-      </Tooltip>
+      </div>
     </TooltipProvider>
   );
 };

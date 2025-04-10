@@ -1,7 +1,12 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscriptionUtils';
-import { isWithdrawalAllowed, getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
+import { 
+  isWithdrawalAllowed, 
+  getWithdrawalThreshold, 
+  calculateReferralToReachThreshold 
+} from '@/utils/referral/withdrawalUtils';
 
 interface UseSummaryPanelProps {
   balance: number;
@@ -25,6 +30,11 @@ export const useSummaryPanel = ({
   const [effectiveDailyLimit, setEffectiveDailyLimit] = useState(
     SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5
   );
+  const [referralSuggestion, setReferralSuggestion] = useState<{
+    amountNeeded: number;
+    estimatedReferrals: number;
+  } | null>(null);
+  
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const latestBalanceRef = useRef(balance);
   
@@ -32,7 +42,11 @@ export const useSummaryPanel = ({
     console.log("Balance prop changed to:", balance);
     latestBalanceRef.current = balance;
     setDisplayBalance(Math.max(0, balance));
-  }, [balance]);
+    
+    // Calculer les suggestions de parrainage
+    const suggestion = calculateReferralToReachThreshold(subscription, balance);
+    setReferralSuggestion(suggestion);
+  }, [balance, subscription]);
   
   useEffect(() => {
     // Vérifier l'abonnement effectif (avec essai Pro)
@@ -139,13 +153,13 @@ export const useSummaryPanel = ({
     }, 3000);
   };
   
-  const calculateRemainingSessions = (subscriptionType: string, dailySessionCount = 0) => {
+  const calculateRemainingSessions = (subscriptionType: string, dailySessionCount = 0): number | string => {
     return subscriptionType === 'freemium' && effectiveSubscription === 'freemium' 
       ? Math.max(0, 1 - dailySessionCount) 
       : 'illimitées';
   };
   
-  const getCurrentlyCanStartSession = (canStartSession: boolean) => {
+  const getCurrentlyCanStartSession = (canStartSession: boolean): boolean => {
     return canStartSession && (latestBalanceRef.current < effectiveDailyLimit);
   };
 
@@ -156,6 +170,7 @@ export const useSummaryPanel = ({
     effectiveSubscription,
     effectiveDailyLimit,
     latestBalanceRef,
+    referralSuggestion,
     onWithdraw,
     onBoostClick,
     calculateRemainingSessions,
