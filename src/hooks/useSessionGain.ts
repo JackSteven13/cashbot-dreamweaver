@@ -31,7 +31,7 @@ export const useSessionGain = () => {
     
     // Calculer les gains d'aujourd'hui pour la vérification des limites (utiliser les transactions)
     const todaysTransactions = userData.transactions.filter(tx => 
-      tx.date.startsWith(today) && tx.gain > 0
+      tx.date?.startsWith(today) && tx.gain > 0
     );
     
     const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);

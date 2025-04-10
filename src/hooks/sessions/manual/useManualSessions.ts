@@ -4,7 +4,7 @@ import { toast } from '@/components/ui/use-toast';
 import { getEffectiveSubscription, SUBSCRIPTION_LIMITS } from '@/utils/subscription/subscriptionStatus';
 import { useSessionProtection } from './useSessionProtection';
 import { useLimitChecking } from './useLimitChecking';
-import { useSessionGain } from './useSessionGain';
+import { useSessionGain } from '@/hooks/useSessionGain';
 import { UseManualSessionsProps, UseManualSessionsReturn } from './types';
 
 export const useManualSessions = ({
@@ -39,7 +39,7 @@ export const useManualSessions = ({
     canStartNewSession 
   } = useSessionProtection();
   
-  const { checkSessionLimit } = useLimitChecking();
+  const { checkSessionLimit, getTodaysGains } = useLimitChecking();
   const { calculateSessionGain } = useSessionGain();
 
   const handleStartSession = async () => {
@@ -53,12 +53,29 @@ export const useManualSessions = ({
       return;
     }
     
+    // Obtenir les gains quotidiens
+    const todaysGains = getTodaysGains(userData);
+    
+    // Vérifier si la limite journalière est déjà atteinte
+    const effectiveSub = getEffectiveSubscription(userData.subscription);
+    const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    
+    if (todaysGains >= dailyLimit) {
+      setShowLimitAlert(true);
+      toast({
+        title: "Limite journalière atteinte",
+        description: `Vous avez atteint votre limite de gain journalier de ${dailyLimit}€. Revenez demain ou passez à un forfait supérieur.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Sauvegarder le solde actuel pour éviter toute réinitialisation visuelle
     const startingBalance = currentBalanceRef.current;
     
     // Vérifier la limite de session basée sur l'abonnement
     // Important: utiliser startingBalance et non currentBalanceRef.current pour le check
-    if (!checkSessionLimit(userData, dailySessionCount, startingBalance, setShowLimitAlert)) {
+    if (!checkSessionLimit(userData, dailySessionCount, todaysGains, setShowLimitAlert)) {
       return;
     }
     
@@ -77,9 +94,6 @@ export const useManualSessions = ({
       if (userData.subscription === 'freemium') {
         await incrementSessionCount();
       }
-      
-      // TRÈS IMPORTANT: Ne pas réinitialiser l'affichage du solde pendant le traitement
-      // mais utiliser la référence locale pour le calcul
       
       // Calculer le gain pour la session - NE PAS RÉINITIALISER le solde
       const { success, finalGain, newBalance } = await calculateSessionGain(
@@ -118,8 +132,9 @@ export const useManualSessions = ({
         // Vérifier si la limite est maintenant atteinte
         const effectiveSub = getEffectiveSubscription(userData.subscription);
         const effectiveLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS];
+        const updatedTodaysGains = getTodaysGains(userData) + finalGain;
         
-        if (newBalance >= effectiveLimit) {
+        if (updatedTodaysGains >= effectiveLimit) {
           setShowLimitAlert(true);
         }
       }

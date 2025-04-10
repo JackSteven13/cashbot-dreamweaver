@@ -6,6 +6,8 @@ import { WithdrawButton } from './buttons/WithdrawButton';
 import { BoostButton } from './buttons/BoostButton';
 import { ReferralSuggestion } from './buttons/ReferralSuggestion';
 import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
+import { useLimitChecking } from '@/hooks/sessions/manual/useLimitChecking';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 
 interface SummaryPanelProps {
   balance: number;
@@ -21,6 +23,7 @@ interface SummaryPanelProps {
   referralBonus?: number;
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
+  transactions?: any[];
 }
 
 const SummaryPanel: React.FC<SummaryPanelProps> = ({
@@ -36,22 +39,36 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
   referralCount = 0,
   referralBonus = 0,
   lastSessionTimestamp,
-  isBotActive = true
+  isBotActive = true,
+  transactions = []
 }) => {
   // Obtenir le seuil de retrait pour cet abonnement
   const withdrawalThreshold = getWithdrawalThreshold(subscription);
+  const { checkNearLimit } = useLimitChecking();
+  
+  // Calculer la limite quotidienne
+  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  
+  // Calculer les gains d'aujourd'hui
+  const today = new Date().toISOString().split('T')[0];
+  const todaysTransactions = transactions?.filter(tx => tx.date?.startsWith(today) && tx.gain > 0) || [];
+  const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
+  
+  // Calculer le pourcentage de limite
+  const limitPercentage = Math.min(100, (todaysGains / dailyLimit) * 100);
+  
+  // Déterminer si la limite est atteinte
+  const isLimitReached = todaysGains >= dailyLimit;
   
   // S'assurer que les nouveaux utilisateurs commencent toujours avec un solde à 0
   const displayBalance = isNewUser ? 0 : balance;
-  const effectiveSubscription = subscription;
-  const effectiveDailyLimit = 0.5; // Valeur par défaut, sera mise à jour par le hook
 
   return (
     <div className="grid grid-cols-1 gap-4 mb-6">
       <UserBalanceCard 
         balance={displayBalance} 
-        subscription={effectiveSubscription}
-        dailyLimit={effectiveDailyLimit}
+        subscription={subscription}
+        dailyLimit={dailyLimit}
         isNewUser={isNewUser}
         referralCount={referralCount}
         referralBonus={referralBonus}
@@ -67,9 +84,11 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
       <div className="flex flex-col sm:flex-row gap-3">
         <BoostButton 
           isStartingSession={isStartingSession}
-          canStartSession={canStartSession}
+          canStartSession={canStartSession && !isLimitReached}
           onClick={handleStartSession}
           subscription={subscription}
+          limitReached={isLimitReached}
+          limitPercentage={limitPercentage}
         />
         
         <WithdrawButton 

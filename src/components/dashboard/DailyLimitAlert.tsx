@@ -5,34 +5,38 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLimitChecking } from '@/hooks/sessions/manual/useLimitChecking';
+import { UserData } from '@/types/userData';
 
 interface DailyLimitAlertProps {
   show: boolean;
   subscription: string;
   currentBalance: number;
+  userData?: UserData;
+  isLimitReached?: boolean;
 }
 
-const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, currentBalance }) => {
+const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, currentBalance, userData, isLimitReached: propIsLimitReached }) => {
   const [effectiveSubscription, setEffectiveSubscription] = useState(subscription);
   const [effectiveLimit, setEffectiveLimit] = useState(0);
   const [todaysGains, setTodaysGains] = useState(0);
+  const [isLimitReached, setIsLimitReached] = useState(propIsLimitReached || false);
   const isMobile = useIsMobile();
+  const { getTodaysGains } = useLimitChecking();
   
   // Calculate today's gains
   useEffect(() => {
-    const calculateTodaysGains = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Fetch today's transactions from supabase to get actual daily gains
-      // For now, we'll estimate based on the subscription limit for UI purposes only
-      const estimatedTodaysGains = Math.min(effectiveLimit * 0.9, 
-        SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
-      
-      setTodaysGains(estimatedTodaysGains);
-    };
+    if (!userData) return;
+
+    // Obtenir les gains d'aujourd'hui depuis les transactions
+    const actualTodaysGains = getTodaysGains(userData);
+    setTodaysGains(actualTodaysGains);
     
-    calculateTodaysGains();
-  }, [currentBalance, subscription, effectiveLimit]);
+    // Vérifier si la limite est atteinte
+    const limit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    setIsLimitReached(actualTodaysGains >= limit);
+    
+  }, [userData, effectiveSubscription, getTodaysGains]);
   
   // Check if temporary Pro mode is activated
   useEffect(() => {
@@ -49,8 +53,7 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
 
   // Daily limit calculations - based on TODAY's gains, not total balance
   const limitPercentage = Math.min(100, (todaysGains / effectiveLimit) * 100);
-  const isLimitReached = limitPercentage >= 100;
-  const isNearLimit = limitPercentage >= 90;
+  const isNearLimit = limitPercentage >= 80 && limitPercentage < 100;
 
   return (
     <Alert 

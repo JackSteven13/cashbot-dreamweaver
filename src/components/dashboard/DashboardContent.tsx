@@ -1,10 +1,12 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import DashboardMetrics from './DashboardMetrics';
 import DailyLimitAlert from './DailyLimitAlert';
 import DormancyAlert from './DormancyAlert';
 import SystemTerminal from './terminal/SystemTerminal';
-import { SUBSCRIPTION_LIMITS } from '@/components/dashboard/summary/constants';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
+import { useLimitChecking } from '@/hooks/sessions/manual/useLimitChecking';
 
 const DashboardContent = ({
   userData,
@@ -29,9 +31,17 @@ const DashboardContent = ({
     transactions = [],
     referrals = []
   } = userData || {};
+
+  const { getTodaysGains } = useLimitChecking();
   
   // Calculer la limite journalière basée sur l'abonnement
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  
+  // Calculer les gains du jour
+  const todaysGains = userData ? getTodaysGains(userData) : 0;
+  
+  // Déterminer si la limite est atteinte (en utilisant les gains quotidiens)
+  const isLimitReached = todaysGains >= dailyLimit;
   
   // Calculer les gains issus des parrainages
   const referralBonus = referrals?.reduce((total, ref) => total + (ref.commission_earned || 0), 0) || 0;
@@ -54,6 +64,8 @@ const DashboardContent = ({
             show={showLimitAlert}
             subscription={subscription}
             currentBalance={balance}
+            userData={userData}
+            isLimitReached={isLimitReached}
           />
         )}
         
@@ -68,7 +80,7 @@ const DashboardContent = ({
             isNewUser={isNewUser}
             subscription={subscription}
             dailySessionCount={dailySessionCount}
-            canStartSession={!isDormant}
+            canStartSession={!isDormant && !isLimitReached}
             referrals={referrals}
             lastSessionTimestamp={lastSessionTimestamp}
             isBotActive={isBotActive}
