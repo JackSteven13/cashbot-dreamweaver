@@ -95,7 +95,7 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
                           Augmentez vos revenus rapidement
                         </p>
                         <p className="text-xs text-blue-700 mt-1">
-                          Partagez votre lien de parrainage pour gagner jusqu'à 35% de commission!
+                          Partagez votre lien de parrainage pour gagner 20% de commission!
                         </p>
                         <Button 
                           size="sm" 

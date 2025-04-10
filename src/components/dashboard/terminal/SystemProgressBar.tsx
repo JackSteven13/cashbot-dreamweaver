@@ -51,21 +51,21 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
       const isActive = event.detail?.active;
       if (typeof isActive === 'boolean') {
         console.log(`SystemProgressBar received bot status update: ${isActive ? 'active' : 'inactive'}`);
-        setLocalBotActive(isActive);
+        setLocalBotActive(isActive && !limitReached);
       }
     };
     
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     
-    setLocalBotActive(botActive);
+    setLocalBotActive(botActive && !limitReached);
     
     return () => {
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
     };
-  }, [botActive]);
+  }, [botActive, limitReached]);
   
   const toggleBotStatus = () => {
-    if (limitReached && !localBotActive) {
+    if (limitReached) {
       toast({
         title: "Impossible d'activer l'analyse",
         description: "Vous avez atteint votre limite journalière de gains. Revenez demain ou passez à un forfait supérieur.",
@@ -113,10 +113,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
           <div 
             className="ml-2 flex items-center cursor-pointer" 
             onClick={toggleBotStatus}
-            title={limitReached && !localBotActive 
-              ? "Analyse impossible : limite journalière atteinte" 
-              : "Cliquez pour activer/désactiver l'analyse automatique"
-            }
+            title={limitReached ? "Analyse impossible : limite journalière atteinte" : "Cliquez pour activer/désactiver l'analyse automatique"}
           >
             <span className={`inline-flex h-2 w-2 rounded-full ${
               limitReached ? 'bg-red-500' : (localBotActive ? 'bg-green-500' : 'bg-red-500')

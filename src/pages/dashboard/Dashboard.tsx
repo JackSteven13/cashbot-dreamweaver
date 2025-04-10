@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserFetchRefactored } from '@/hooks/fetch/useUserFetchRefactored';
 import { useBalanceActions } from '@/hooks/useBalanceActions';
@@ -38,6 +38,16 @@ const Dashboard = () => {
     setShowLimitAlert: setShowLimitAlert
   });
   
+  // Bot state management
+  const [localBotActive, setLocalBotActive] = useState(true);
+  
+  // Effect to disable bot when daily limit is reached
+  useEffect(() => {
+    if (showLimitAlert) {
+      setLocalBotActive(false);
+    }
+  }, [showLimitAlert]);
+  
   // Now we can use updateBalance in other hooks
   const { 
     lastAutoSessionTime,
@@ -54,7 +64,7 @@ const Dashboard = () => {
   const [isStartingSession, setIsStartingSession] = useState(false);
   
   const handleStartSession = useCallback(async () => {
-    if (isStartingSession) return;
+    if (isStartingSession || showLimitAlert) return;
     
     setIsStartingSession(true);
     
@@ -79,7 +89,7 @@ const Dashboard = () => {
     } finally {
       setIsStartingSession(false);
     }
-  }, [isStartingSession, updateBalance, toast]);
+  }, [isStartingSession, updateBalance, toast, showLimitAlert]);
   
   const handleWithdrawal = useCallback(async () => {
     try {
@@ -99,11 +109,12 @@ const Dashboard = () => {
     }
   }, [resetBalance, toast]);
   
-  const handleBotStatusChange = (active: boolean) => {
-    if (active) {
-      generateAutomaticRevenue(true);
-    }
-  };
+  // Daily limit calculation
+  const effectiveSubscription = getSubscription(userData);
+  let dailyLimit = 0.5; // Default for freemium
+  if (effectiveSubscription === 'starter') dailyLimit = 5;
+  if (effectiveSubscription === 'gold') dailyLimit = 20;
+  if (effectiveSubscription === 'elite') dailyLimit = 50;
   
   return (
     <div className="dashboard-container">
@@ -137,23 +148,23 @@ const Dashboard = () => {
         isNewUser={isNewUser}
         subscription={getSubscription(userData)}
         dailySessionCount={dailySessionCount}
-        canStartSession={true}
+        canStartSession={!showLimitAlert}
         referrals={userData?.referrals || []}
         lastSessionTimestamp={lastAutoSessionTime}
-        isBotActive={isBotActive}
+        isBotActive={isBotActive && !showLimitAlert}
         userId={userData?.profile?.id || userData?.id}
       />
       
       <SystemTerminal
         isNewUser={isNewUser}
-        dailyLimit={0.5}
+        dailyLimit={dailyLimit}
         subscription={getSubscription(userData)}
         remainingSessions={dailySessionCount}
         referralCount={userData?.referrals?.length || 0}
         displayBalance={userData?.balance || 0}
-        referralBonus={0}
+        referralBonus={userData?.referrals?.reduce((sum, ref) => sum + (ref.commission_earned || 0), 0) || 0}
         lastSessionTimestamp={lastAutoSessionTime}
-        isBotActive={isBotActive}
+        isBotActive={isBotActive && !showLimitAlert}
       />
     </div>
   );
