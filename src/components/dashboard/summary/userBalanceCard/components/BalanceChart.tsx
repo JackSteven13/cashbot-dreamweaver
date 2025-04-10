@@ -123,10 +123,17 @@ const BalanceChart: React.FC<BalanceChartProps> = ({
             name="Solde"
             barSize={16}
             style={{ stroke: 'none' }}
-            fill={(entry) => {
-              return entry.isToday ? '#10b981' : '#6366f1';
-            }}
-          />
+            fill="#6366f1"  // Set a default fill color here
+            isAnimationActive={true}
+          >
+            {/* Use recharts' ability to customize individual bars */}
+            {data.map((entry, index) => (
+              <cell 
+                key={`cell-${index}`}
+                fill={entry.isToday ? '#10b981' : '#6366f1'} 
+              />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
