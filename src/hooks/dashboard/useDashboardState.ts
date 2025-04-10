@@ -28,12 +28,14 @@ export const useDashboardState = () => {
     handleReactivate
   } = useDormancyCheck(
     userData.userData?.subscription || 'freemium',
-    // Adapter la fonction pour retourner void au lieu de boolean
+    // Fix return type to match boolean as expected by useDormancyCheck
     async () => {
       try {
         await userData.refetchUserData();
+        return true; // Return true to indicate success
       } catch (error) {
         console.error("Error refetching user data:", error);
+        return false; // Return false to indicate failure
       }
     }
   );
@@ -47,29 +49,35 @@ export const useDashboardState = () => {
   const sessions = useDashboardSessions(
     userData.userData || {},
     dailySessionCount,
-    // Adapter pour retourner void au lieu de boolean
+    // Fix return type to match boolean as expected by useDashboardSessions
     async () => { 
       try {
         await Promise.resolve();
+        return true; // Return true to indicate success
       } catch (error) {
         console.error("Error incrementing session count:", error);
+        return false; // Return false to indicate failure
       }
     },
-    // Adapter pour retourner void au lieu de boolean
+    // Fix return type to match boolean as expected
     async (gain, report, forceUpdate) => {
       try {
         await Promise.resolve();
+        return true; // Return true to indicate success
       } catch (error) {
         console.error("Error updating balance:", error);
+        return false; // Return false to indicate failure
       }
     },
     setShowLimitAlert,
-    // Adapter pour retourner void au lieu de boolean
+    // Fix return type to match boolean as expected
     async () => { 
       try {
         await Promise.resolve();
+        return true; // Return true to indicate success
       } catch (error) {
         console.error("Error resetting balance:", error);
+        return false; // Return false to indicate failure
       }
     }
   );
