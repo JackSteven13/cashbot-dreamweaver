@@ -20,4 +20,4 @@ export const useUserSession = () => {
 };
 
 // Re-export the BalanceUpdateResult interface for consumers
-export type { BalanceUpdateResult } from "./session/useBalanceOperations";
+export type { BalanceUpdateResult } from "./session/types/balanceTypes";

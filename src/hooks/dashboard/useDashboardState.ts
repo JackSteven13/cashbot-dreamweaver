@@ -5,22 +5,22 @@ import { useDashboardSessions } from '@/hooks/useDashboardSessions';
 import { useDormancyCheck } from '@/hooks/useDormancyCheck';
 
 export const useDashboardState = () => {
-  // Utiliser useRef pour les données qui ne devraient pas déclencher de re-rendu
+  // Use useRef for data that shouldn't trigger re-render
   const renderCountRef = useRef(0);
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
   const [renderKey, setRenderKey] = useState(Date.now());
   const initialRenderComplete = useRef(false);
   
-  // Effet de debug pour compter les rendus
+  // Debug effect to count renders
   useEffect(() => {
     renderCountRef.current += 1;
     console.log(`Dashboard render count: ${renderCountRef.current}`);
   });
   
-  // Utiliser useMemo pour éviter les re-rendus inutiles
+  // Use useMemo to avoid unnecessary re-renders
   const userData = useUserData();
   
-  // Optimiser la vérification de dormance avec les données mémorisées
+  // Optimize dormancy check with memoized data
   const {
     isDormant,
     dormancyData,
@@ -28,14 +28,12 @@ export const useDashboardState = () => {
     handleReactivate
   } = useDormancyCheck(
     userData.userData?.subscription || 'freemium',
-    // Return boolean to match the expected function signature
+    // Create an async function that returns void to match useDormancyCheck's expected signature
     async () => {
       try {
         await userData.refetchUserData();
-        return true; // Return boolean as expected by useDormancyCheck
       } catch (error) {
         console.error("Error refetching user data:", error);
-        return false;
       }
     }
   );
@@ -45,58 +43,50 @@ export const useDashboardState = () => {
   const showLimitAlert = false;
   const setShowLimitAlert = () => {}; // Noop function for safety
 
-  // Memoize des sessions pour éviter les recalculs inutiles
+  // Memoize sessions to avoid unnecessary recalculations
   const sessions = useDashboardSessions(
     userData.userData || {},
     dailySessionCount,
-    // Return boolean as expected
+    // Create async function that returns void to match expected signature
     async () => { 
       try {
         await Promise.resolve(); 
-        return true;
       } catch (error) {
         console.error("Error incrementing session count:", error);
-        return false;
       }
     },
-    // Return boolean as expected
+    // Create async function that returns void to match expected signature
     async (gain, report, forceUpdate) => {
       try {
         await Promise.resolve();
-        return true;
       } catch (error) {
         console.error("Error updating balance:", error);
-        return false;
       }
     },
     setShowLimitAlert,
-    // Return boolean as expected
+    // Create async function that returns void to match expected signature
     async () => { 
       try {
         await Promise.resolve();
-        return true;
       } catch (error) {
         console.error("Error resetting balance:", error);
-        return false;
       }
     }
   );
 
-  // Memoize la fonction de rafraîchissement pour éviter les re-rendus
+  // Memoize refresh function to avoid re-renders
   const forceRefresh = useCallback(async () => {
-    console.log("Forçage du rafraîchissement du dashboard");
+    console.log("Forcing dashboard refresh");
     setRenderKey(Date.now());
     
     try {
       await userData.refetchUserData();
-      return true;
     } catch (error) {
       console.error("Error refreshing user data:", error);
-      return false;
     }
   }, [userData.refetchUserData]);
 
-  // Extraire les propriétés de userData pour éviter les références qui changent
+  // Extract properties from userData to avoid changing references
   const {
     userData: userDataObj,
     isLoading = false
@@ -105,7 +95,7 @@ export const useDashboardState = () => {
   // Use default values for potentially missing properties
   const isNewUser = false;
 
-  // Extraire les propriétés de sessions pour éviter les références qui changent
+  // Extract properties from sessions to avoid changing references
   const {
     isStartingSession = false,
     handleStartSession = async () => {},
@@ -114,7 +104,7 @@ export const useDashboardState = () => {
     isBotActive = true
   } = sessions;
 
-  // Retourner un objet mémorisé pour éviter les références changeantes
+  // Return a memoized object to avoid changing references
   return useMemo(() => ({
     selectedNavItem,
     setSelectedNavItem,

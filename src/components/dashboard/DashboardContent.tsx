@@ -21,7 +21,7 @@ const DashboardContent = ({
   lastSessionTimestamp,
   isBotActive = true
 }) => {
-  // Extraire les propriétés pertinentes pour éviter les re-rendus inutiles
+  // Extract relevant properties to avoid unnecessary re-renders
   const {
     balance = 0,
     subscription = 'freemium',
@@ -31,13 +31,13 @@ const DashboardContent = ({
     referrals = []
   } = userData || {};
   
-  // Calculer la limite journalière basée sur l'abonnement
+  // Calculate daily limit based on subscription
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
-  // Calculer les gains issus des parrainages
+  // Calculate referral bonus
   const referralBonus = referrals?.reduce((total, ref) => total + (ref.commission_rate || 0), 0) || 0;
   
-  // Compter le nombre de parrainages actifs
+  // Count active referrals
   const activeReferrals = referrals?.filter(ref => ref.active !== false) || [];
   
   // Convert dailySessionCount to string for components that expect string
