@@ -5,16 +5,18 @@ import { Progress } from '@/components/ui/progress';
 
 interface SubscriptionLevelDisplayProps {
   subscription: string;
-  referralCount: number;
-  limitPercentage: number;
-  dailyLimit: number;
+  referralCount?: number;
+  limitPercentage?: number;
+  dailyLimit?: number;
+  isNewUser?: boolean;
 }
 
 const SubscriptionLevelDisplay: React.FC<SubscriptionLevelDisplayProps> = ({
   subscription,
-  referralCount,
+  referralCount = 0,
   limitPercentage = 0,
-  dailyLimit = 0
+  dailyLimit = 0,
+  isNewUser = false
 }) => {
   // Retourner les informations selon le type d'abonnement
   const { icon, title, color, benefits } = useMemo(() => {

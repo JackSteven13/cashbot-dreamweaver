@@ -54,6 +54,9 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
   // Obtenir la limite quotidienne selon l'abonnement
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
+  // Calcul du pourcentage de la limite atteinte
+  const limitPercentage = Math.min(100, (balance / dailyLimit) * 100);
+  
   return (
     <Card className="bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-slate-800/10 shadow-lg overflow-hidden">
       <div className="p-5">
@@ -71,8 +74,10 @@ const UserBalanceCard: React.FC<UserBalanceCardProps> = ({
         <div className="border-t border-slate-700/50 my-3"></div>
         
         <SubscriptionLevelDisplay 
-          subscription={subscription} 
-          balance={balance}
+          subscription={subscription}
+          referralCount={0}
+          limitPercentage={limitPercentage}
+          dailyLimit={dailyLimit}
           isNewUser={isNewUser}
         />
         
