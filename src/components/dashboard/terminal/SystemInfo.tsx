@@ -4,11 +4,13 @@ import React from 'react';
 export interface SystemInfoProps {
   isNewUser?: boolean;
   subscription?: string;
+  onFeedbackClick?: () => void;
 }
 
 export const SystemInfo: React.FC<SystemInfoProps> = ({ 
   isNewUser = false,
-  subscription = 'freemium'
+  subscription = 'freemium',
+  onFeedbackClick
 }) => {
   return (
     <div className="mb-4">
@@ -27,6 +29,15 @@ export const SystemInfo: React.FC<SystemInfoProps> = ({
           {'>'} Plan: <span className="text-blue-400">{subscription}</span>
         </div>
         <div>{'>'} Système prêt</div>
+        
+        {onFeedbackClick && (
+          <button 
+            onClick={onFeedbackClick}
+            className="mt-2 text-xs text-blue-400 hover:text-blue-300 cursor-pointer"
+          >
+            [Envoyer feedback]
+          </button>
+        )}
       </div>
     </div>
   );
