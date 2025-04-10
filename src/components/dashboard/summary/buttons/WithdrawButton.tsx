@@ -1,9 +1,19 @@
 
 import React from 'react';
-import { ArrowUpCircle, InfoIcon } from 'lucide-react';
+import { ArrowUpCircle, InfoIcon, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from '@/components/ui/tooltip';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 interface WithdrawButtonProps {
   isWithdrawing: boolean;
@@ -11,6 +21,7 @@ interface WithdrawButtonProps {
   onClick: () => void;
   minWithdrawalAmount?: number;
   currentBalance?: number;
+  onShareReferral?: () => void;
 }
 
 export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
@@ -18,12 +29,20 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
   isButtonDisabled,
   onClick,
   minWithdrawalAmount = 5,
-  currentBalance = 0
+  currentBalance = 0,
+  onShareReferral
 }) => {
   const isMobile = useIsMobile();
   const iconSize = isMobile ? 16 : 18;
   const insufficientBalance = currentBalance < minWithdrawalAmount;
   const showTooltip = insufficientBalance && !isWithdrawing;
+  
+  const handleShareClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onShareReferral) {
+      onShareReferral();
+    }
+  };
   
   return (
     <TooltipProvider delayDuration={300}>
@@ -51,9 +70,41 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
             </Button>
             
             {showTooltip && (
-              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-                <InfoIcon size={16} className="text-amber-500" />
-              </div>
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <button 
+                    className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center p-1 focus:outline-none"
+                    aria-label="Plus d'informations sur le retrait"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <InfoIcon size={16} className="text-amber-500" />
+                  </button>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80 p-4 bg-white border border-amber-100 shadow-lg">
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-amber-800">Solde minimum requis</h4>
+                    <p className="text-sm text-gray-600">
+                      Vous avez besoin d'un solde de <span className="font-bold">{minWithdrawalAmount}€</span> pour effectuer un retrait. Votre solde actuel est de <span className="font-bold">{currentBalance.toFixed(2)}€</span>.
+                    </p>
+                    <div className="bg-blue-50 p-3 rounded-md border border-blue-100 mt-2">
+                      <p className="text-sm font-medium text-blue-800 flex items-center">
+                        <Share2 className="h-4 w-4 mr-2 text-blue-600" />
+                        Augmentez vos revenus rapidement
+                      </p>
+                      <p className="text-xs text-blue-700 mt-1">
+                        Partagez votre lien de parrainage pour gagner jusqu'à 35% de commission et atteindre votre seuil de retrait plus rapidement!
+                      </p>
+                      <Button 
+                        size="sm" 
+                        className="mt-2 w-full bg-blue-600 hover:bg-blue-700"
+                        onClick={handleShareClick}
+                      >
+                        Partager mon lien
+                      </Button>
+                    </div>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
             )}
           </div>
         </TooltipTrigger>

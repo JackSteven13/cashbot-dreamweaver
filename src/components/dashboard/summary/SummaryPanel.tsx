@@ -1,10 +1,12 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import ActionButtons from './ActionButtons';
+import React, { useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import UserBalanceCard from './userBalanceCard/UserBalanceCard';
+import ActionButtons from './ActionButtons';
+import WelcomeMessage from './WelcomeMessage';
 import ReferralCard from './ReferralCard';
-import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
-import { calculateLimitPercentage } from '@/utils/balance/limitCalculations';
+import { useSummaryPanel } from '@/hooks/useSummaryPanel';
+import { toast } from '@/components/ui/use-toast';
 
 interface SummaryPanelProps {
   balance: number;
@@ -12,6 +14,7 @@ interface SummaryPanelProps {
   isStartingSession: boolean;
   handleStartSession: () => void;
   handleWithdrawal?: () => void;
+  transactions?: any[];
   isNewUser?: boolean;
   subscription: string;
   dailySessionCount?: number;
@@ -37,67 +40,91 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
   lastSessionTimestamp,
   isBotActive = true
 }) => {
-  // Calcul du forfait effectif (tenant compte des essais, etc.)
-  const effectiveSubscription = getEffectiveSubscription(subscription);
-  const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  const {
+    displayBalance,
+    isButtonDisabled,
+    isWithdrawing,
+    effectiveSubscription,
+    effectiveDailyLimit,
+    onWithdraw,
+    onBoostClick,
+    calculateRemainingSessions,
+    getCurrentlyCanStartSession
+  } = useSummaryPanel({
+    balance,
+    subscription,
+    handleWithdrawal,
+    handleStartSession,
+    referralCount
+  });
   
-  // Calcul du pourcentage de la limite atteint
-  const limitPercentage = calculateLimitPercentage(balance, dailyLimit);
-  
-  // Référence au bouton (pour dévérouillage éventuel)
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  
-  // Vérifier si le solde dépasse la limite journalière
-  const limitReached = balance >= dailyLimit;
-  
-  // État pour suivre si le retrait est en cours
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-  
-  // Gérer le retrait en capturant l'état transitoire
-  const handleWithdrawalWithState = () => {
-    setIsWithdrawing(true);
-    
-    // Appeler le handler original s'il existe
-    if (handleWithdrawal) {
-      handleWithdrawal();
+  // Calculate whether the user can start a session right now
+  const remainingSessions = calculateRemainingSessions(subscription, dailySessionCount);
+  const currentlyCanStartSession = getCurrentlyCanStartSession(canStartSession);
+
+  const handleShareReferral = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'Mon lien de parrainage Stream Genius',
+        text: 'Rejoins Stream Genius et gagne de l\'argent avec l\'analyse publicitaire! Utilise mon lien de parrainage:',
+        url: referralLink
+      }).catch(() => {
+        navigator.clipboard.writeText(referralLink);
+        toast({
+          title: "Lien copié !",
+          description: "Votre lien de parrainage a été copié dans le presse-papier",
+        });
+      });
+    } else {
+      navigator.clipboard.writeText(referralLink);
+      toast({
+        title: "Lien copié !",
+        description: "Votre lien de parrainage a été copié dans le presse-papier",
+      });
     }
-    
-    // Réinitialiser l'état après un délai
-    setTimeout(() => {
-      setIsWithdrawing(false);
-    }, 3000);
   };
 
   return (
-    <div className="summary-panel space-y-4">
-      <UserBalanceCard 
-        displayBalance={balance}
-        subscription={subscription}
-        dailyLimit={dailyLimit}
-        limitPercentage={limitPercentage}
-        referralCount={referralCount}
-        referralBonus={referralBonus}
-        botActive={isBotActive}
-      />
+    <div className="mb-6">
+      <WelcomeMessage isNewUser={isNewUser} />
       
-      <ActionButtons
-        canStartSession={canStartSession}
-        isButtonDisabled={isStartingSession || false}
-        isStartingSession={isStartingSession || false}
-        isWithdrawing={isWithdrawing}
-        subscription={subscription}
-        currentBalance={balance}
-        dailyLimit={dailyLimit}
-        onBoostClick={handleStartSession}
-        onWithdraw={handleWithdrawalWithState}
-        isBotActive={isBotActive}
-      />
-      
-      <ReferralCard 
-        referralLink={referralLink}
-        referralCount={referralCount}
-        subscription={subscription}
-      />
+      <div className="grid grid-cols-1 gap-6">
+        <Card className="shadow-md border-slate-200/30 bg-gradient-to-br from-slate-900 to-slate-800 overflow-hidden">
+          <CardContent className="p-5">
+            <UserBalanceCard
+              balance={displayBalance}
+              isNewUser={isNewUser}
+              subscription={effectiveSubscription}
+              dailyLimit={effectiveDailyLimit}
+              referralCount={referralCount}
+              referralBonus={referralBonus}
+              withdrawalThreshold={200}
+            />
+            
+            <ActionButtons
+              isStartingSession={isStartingSession}
+              isButtonDisabled={isButtonDisabled}
+              isWithdrawing={isWithdrawing}
+              subscription={subscription}
+              effectiveSubscription={effectiveSubscription}
+              dailyLimit={effectiveDailyLimit}
+              canStartSession={currentlyCanStartSession}
+              onBoostClick={() => onBoostClick(canStartSession)}
+              onWithdraw={onWithdraw}
+              remainingSessions={remainingSessions}
+              lastSessionTimestamp={lastSessionTimestamp}
+              currentBalance={displayBalance}
+              isBotActive={isBotActive}
+              onShareReferral={handleShareReferral}
+            />
+          </CardContent>
+        </Card>
+        
+        <ReferralCard 
+          referralLink={referralLink} 
+          referralCount={referralCount}
+        />
+      </div>
     </div>
   );
 };
