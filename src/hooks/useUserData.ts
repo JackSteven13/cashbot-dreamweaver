@@ -32,12 +32,10 @@ export const useUserData = () => {
           return;
         }
         
-        // Pour les utilisateurs existants, vérifier si nous avons déjà un solde en cache
         const highestBalance = getHighestBalance();
         const storedBalance = localStorage.getItem('currentBalance');
         const apiBalance = userData.balance || 0;
         
-        // Déterminer la valeur maximale entre toutes ces sources
         const maxBalance = Math.max(
           highestBalance || 0,
           storedBalance ? parseFloat(storedBalance) : 0,
@@ -46,18 +44,15 @@ export const useUserData = () => {
         
         console.log(`[useUserData] Max balance determined: ${maxBalance} (API: ${apiBalance}, Highest: ${highestBalance})`);
         
-        // Si le solde maximum est supérieur au solde de l'API, synchroniser
         if (maxBalance > apiBalance) {
           console.log(`[useUserData] Restoring higher balance: ${maxBalance} (server: ${apiBalance})`);
           localBalanceRef.current = maxBalance;
           highestEverBalanceRef.current = maxBalance;
           
-          // Toujours sauvegarder dans localStorage pour redondance
           localStorage.setItem('highestBalance', maxBalance.toString());
           localStorage.setItem('currentBalance', maxBalance.toString());
           localStorage.setItem('lastKnownBalance', maxBalance.toString());
           
-          // Déclencher un événement global pour synchroniser l'UI
           window.dispatchEvent(new CustomEvent('balance:force-sync', { 
             detail: { balance: maxBalance }
           }));
@@ -67,23 +62,17 @@ export const useUserData = () => {
       }
     });
     
-    // Vérification périodique de la cohérence et réinitialisation à minuit
     const checkInterval = setInterval(() => {
       const now = new Date();
       
-      // Réinitialisation à minuit
       if (now.getHours() === 0 && now.getMinutes() <= 5) {
         userDataActions.resetDailyCounters();
-        
-        // Ne pas réinitialiser le solde, seulement les compteurs quotidiens
         balanceManager.resetDailyCounters();
       }
       
-      // Vérification de cohérence toutes les minutes
       const highestBalance = getHighestBalance();
       const currentDb = userData?.balance || 0;
       
-      // Si notre solde local est plus élevé que celui dans la BD, forcer la synchronisation
       if (highestBalance > currentDb) {
         console.log(`[useUserData] Balance inconsistency: local=${highestBalance}, db=${currentDb}. Forcing sync...`);
         window.dispatchEvent(new CustomEvent('balance:force-sync', { 
@@ -95,7 +84,6 @@ export const useUserData = () => {
     return () => clearInterval(checkInterval);
   }, []);
   
-  // Quand userData change, mettre à jour nos références locales si nécessaire
   useEffect(() => {
     if (userData?.balance !== undefined) {
       const highestBalance = getHighestBalance();
@@ -103,7 +91,6 @@ export const useUserData = () => {
       const storedBalance = localStorage.getItem('currentBalance');
       const apiBalance = userData.balance;
       
-      // Déterminer le solde maximum entre toutes les sources
       const maxBalance = Math.max(
         highestBalance || 0,
         storedHighestBalance ? parseFloat(storedHighestBalance) : 0,
@@ -114,12 +101,10 @@ export const useUserData = () => {
       localBalanceRef.current = maxBalance;
       highestEverBalanceRef.current = maxBalance;
       
-      // Toujours sauvegarder pour persistance
       localStorage.setItem('highestBalance', maxBalance.toString());
       localStorage.setItem('currentBalance', maxBalance.toString());
       localStorage.setItem('lastKnownBalance', maxBalance.toString());
       
-      // Si différence significative, forcer la synchronisation de l'UI
       if (Math.abs(apiBalance - maxBalance) > 0.01) {
         console.log(`[useUserData] Syncing UI with correct balance: ${maxBalance} (API: ${apiBalance})`);
         window.dispatchEvent(new CustomEvent('balance:force-sync', { 
@@ -127,7 +112,6 @@ export const useUserData = () => {
         }));
       }
       
-      // Vérifier si nous avons des transactions et générer des transactions historiques si nécessaire
       import('@/utils/initialTransactionsGenerator').then(module => {
         if (!transactionsGeneratedRef.current && 
             !isNewUser && 
@@ -138,18 +122,22 @@ export const useUserData = () => {
           console.log("Solde positif mais aucune transaction, génération de l'historique...");
           transactionsGeneratedRef.current = true;
           
-          module.generateInitialTransactions(userData.id, userData.balance)
-            .then(success => {
-              if (success) {
-                console.log("Transactions d'historique générées avec succès");
-                // Recharger les données pour afficher les nouvelles transactions
-                setTimeout(() => userDataActions.fetchUserData(), 1000);
-              }
-            });
+          const userId = userData.id || (userData.profile?.id || '');
+          if (userId) {
+            module.generateInitialTransactions(userId, userData.balance)
+              .then(success => {
+                if (success) {
+                  console.log("Transactions d'historique générées avec succès");
+                  setTimeout(() => userDataActions.fetchUserData(), 1000);
+                }
+              });
+          } else {
+            console.error("Cannot generate transactions: missing user ID");
+          }
         }
       });
     }
-  }, [userData?.balance, userData?.transactions, isNewUser, userData?.id, userDataActions]);
+  }, [userData?.balance, userData?.transactions, isNewUser, userData?.id, userData?.profile?.id, userDataActions]);
   
   const refreshUserData = useCallback(async (): Promise<boolean> => {
     await userDataActions.fetchUserData();
@@ -169,7 +157,6 @@ export const useUserData = () => {
     const positiveGain = Math.max(0, gain);
     
     if (userData?.balance !== undefined) {
-      // Obtenir le solde le plus à jour possible
       const highestBalance = getHighestBalance();
       const currentBalance = Math.max(
         localBalanceRef.current || 0,
@@ -179,21 +166,17 @@ export const useUserData = () => {
       
       const newBalance = currentBalance + positiveGain;
       
-      // Mettre à jour le gestionnaire central de solde
       balanceManager.updateBalance(positiveGain);
       
-      // Toujours sauvegarder dans localStorage
       localStorage.setItem('currentBalance', newBalance.toString());
       localStorage.setItem('lastKnownBalance', newBalance.toString());
       localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
       
-      // Mettre à jour notre référence
       localBalanceRef.current = newBalance;
       highestEverBalanceRef.current = newBalance;
       
       console.log(`[useUserData] Balance updated locally: ${currentBalance} + ${positiveGain} = ${newBalance}`);
       
-      // Forcer la mise à jour de l'UI si demandé
       if (forceUpdate) {
         window.dispatchEvent(new CustomEvent('balance:force-update', { 
           detail: { newBalance: newBalance }
@@ -205,7 +188,6 @@ export const useUserData = () => {
   }, [refreshUserData, userData?.balance, isNewUser]);
   
   const resetBalance = useCallback(async (): Promise<void> => {
-    // Effacer toutes les références au solde
     localStorage.removeItem('currentBalance');
     localStorage.removeItem('lastKnownBalance');
     localStorage.removeItem('lastBalanceUpdateTime');
@@ -215,14 +197,11 @@ export const useUserData = () => {
     localBalanceRef.current = null;
     highestEverBalanceRef.current = null;
     
-    // Réinitialiser le gestionnaire central
     balanceManager.resetBalance();
     
-    // Forcer une mise à jour complète depuis la BD
     await refreshUserData();
   }, [refreshUserData]);
   
-  // Toujours utiliser le solde le plus élevé pour l'affichage
   const effectiveBalance = isNewUser ? 
     0 : 
     Math.max(

@@ -23,6 +23,7 @@ export interface Referral {
 }
 
 export interface UserData {
+  id?: string; // Adding id property to fix the TypeScript errors
   username: string;
   balance: number;
   subscription: string;
