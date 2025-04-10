@@ -86,7 +86,7 @@ export const useBalanceOperations = () => {
         success: true, 
         newBalance: balanceResult.newBalance, 
         limitReached: balanceResult.limitReached,
-        transaction: transactionResult.success ? transactionResult.transaction : null
+        transaction: transactionResult.success && transactionResult.transaction ? transactionResult.transaction : null
       };
     } catch (error) {
       console.error("Error updating balance:", error);
@@ -131,7 +131,7 @@ export const useBalanceOperations = () => {
       // Reset balance - only pass the user ID
       const result = await resetUserBalance(session.user.id);
       
-      // Safety check to handle if transaction is undefined
+      // Ensure result.transaction exists before accessing its properties
       return { 
         success: result.success,
         transaction: result.success && result.transaction ? result.transaction : null

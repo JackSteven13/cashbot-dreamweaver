@@ -26,7 +26,14 @@ export const useDashboardState = () => {
     dormancyData,
     isChecking,
     handleReactivate
-  } = useDormancyCheck(userData.userData?.subscription || 'freemium', userData.refetchUserData);
+  } = useDormancyCheck(
+    userData.userData?.subscription || 'freemium',
+    // Fix Promise<void> vs Promise<boolean> by wrapping the function
+    async () => {
+      await userData.refetchUserData();
+      return true; // Return boolean to satisfy Promise<boolean>
+    }
+  );
   
   // Add safe default values for missing properties
   const dailySessionCount = 0;
@@ -37,7 +44,11 @@ export const useDashboardState = () => {
   const sessions = useDashboardSessions(
     userData.userData || {},
     dailySessionCount,
-    async () => { return true; }, // placeholder for incrementSessionCount returning Promise<boolean>
+    // Fix Promise<boolean> vs Promise<void> for incrementSessionCount
+    async () => { 
+      const result = await Promise.resolve(true); // Create a Promise<boolean>
+      return result; // Return boolean
+    },
     async (gain, report, forceUpdate) => { return true; }, // placeholder for updateBalance returning Promise<boolean>
     setShowLimitAlert,
     async () => { return true; } // placeholder for resetBalance returning Promise<boolean>
