@@ -28,11 +28,11 @@ export const useDashboardState = () => {
     handleReactivate
   } = useDormancyCheck(
     userData.userData?.subscription || 'freemium',
-    // Fix Promise<void> vs Promise<boolean> by creating a wrapper function
+    // Fix Promise<void> vs Promise<boolean> by creating a wrapper function that returns boolean
     async () => {
       try {
         await userData.refetchUserData();
-        return true; // Changed to return boolean to match expected type
+        return true; // Return boolean to match expected type
       } catch (error) {
         console.error("Error refetching user data:", error);
         return false; // Return boolean instead of void

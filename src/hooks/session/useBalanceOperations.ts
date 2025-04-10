@@ -1,12 +1,29 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/hooks/auth/useAuth';
-import { Transaction } from '@/types/transaction';
+import { useAuthSession } from "./useAuthSession";
 
 interface BalanceOperationsProps {
   userId?: string;
   initialBalance?: number;
+}
+
+export interface BalanceUpdateResult {
+  success: boolean;
+  newBalance?: number;
+  limitReached?: boolean;
+  transaction?: {
+    date: string;
+    gain: number;
+    report: string;
+  };
+}
+
+interface Transaction {
+  date: string;
+  gain: number;
+  report: string;
 }
 
 export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOperationsProps) => {
@@ -14,7 +31,7 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { session } = useAuth();
+  const { session } = useAuthSession();
 
   // Fetch initial balance when component mounts or userId changes
   useEffect(() => {
@@ -63,15 +80,15 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
     gainAmount: number, 
     reportMessage: string, 
     forceUpdate = false
-  ): Promise<void> => {
+  ): Promise<BalanceUpdateResult> => {
     if (!userId) {
       console.error('User ID is required to update balance');
-      return;
+      return { success: false };
     }
 
     if (gainAmount === 0 && !forceUpdate) {
       console.log('No balance change, skipping update');
-      return;
+      return { success: true, newBalance: balance };
     }
 
     setIsLoading(true);
@@ -99,8 +116,8 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
         throw new Error(updateError.message);
       }
 
-      // Fix transaction typing issue - make sure we properly initialize all required fields
-      const transaction = {
+      // Create transaction object
+      const transaction: Transaction = {
         date: new Date().toISOString().split('T')[0],
         gain: gainAmount,
         report: reportMessage
@@ -120,15 +137,21 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
       }
 
       // Update local state
+      let newBalance = balance;
       if (updatedBalance) {
-        setBalance(parseFloat(updatedBalance.balance) || 0);
+        newBalance = parseFloat(updatedBalance.balance) || 0;
+        setBalance(newBalance);
       } else {
         // Fallback to local calculation if no data returned
-        setBalance(prevBalance => prevBalance + gainAmount);
+        newBalance = balance + gainAmount;
+        setBalance(newBalance);
       }
 
-      // Return void instead of boolean to match expected type
-      return;
+      return {
+        success: true,
+        newBalance,
+        transaction
+      };
     } catch (error) {
       console.error("Error updating balance:", error);
       setError('Failed to update balance');
@@ -137,17 +160,16 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
         description: 'Failed to update your balance',
         variant: 'destructive',
       });
-      // Return void instead of boolean to match expected type
-      return;
+      return { success: false };
     } finally {
       setIsLoading(false);
     }
   };
 
-  const resetBalance = async (): Promise<void> => {
+  const resetBalance = async (): Promise<BalanceUpdateResult> => {
     if (!userId) {
       console.error('User ID is required to reset balance');
-      return;
+      return { success: false };
     }
 
     setIsLoading(true);
@@ -167,14 +189,19 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
         throw new Error(resetError.message);
       }
 
+      // Create withdrawal transaction
+      const transaction: Transaction = {
+        date: new Date().toISOString().split('T')[0],
+        gain: -balance, // Negative amount for withdrawal
+        report: `Retrait de ${balance.toFixed(2)}€`
+      };
+
       // Add a withdrawal transaction record
       const { error: transactionError } = await supabase
         .from('transactions')
         .insert({
           user_id: userId,
-          date: new Date().toISOString().split('T')[0],
-          gain: -balance, // Negative amount for withdrawal
-          report: `Retrait de ${balance.toFixed(2)}€`
+          ...transaction
         });
 
       if (transactionError) {
@@ -191,7 +218,11 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
         variant: 'default',
       });
       
-      return;
+      return { 
+        success: true, 
+        newBalance: 0,
+        transaction
+      };
     } catch (error) {
       console.error("Error resetting balance:", error);
       setError('Failed to reset balance');
@@ -200,7 +231,7 @@ export const useBalanceOperations = ({ userId, initialBalance = 0 }: BalanceOper
         description: 'Failed to reset your balance',
         variant: 'destructive',
       });
-      return;
+      return { success: false };
     } finally {
       setIsLoading(false);
     }

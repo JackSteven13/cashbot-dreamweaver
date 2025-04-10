@@ -151,19 +151,19 @@ const Dashboard = () => {
         transactions={userData?.transactions || []}
         isNewUser={isNewUser}
         subscription={getSubscription(userData)}
-        dailySessionCount={dailySessionCount}
+        dailySessionCount={dailySessionCount.toString()}
         canStartSession={!showLimitAlert}
         referrals={userData?.referrals || []}
         lastSessionTimestamp={lastAutoSessionTime}
         isBotActive={isBotActive && !showLimitAlert}
-        userId={userData?.profile?.id || userData?.id}
+        userId={userData?.profile?.id || userData?.id || ''}
       />
       
       <SystemTerminal
         isNewUser={isNewUser}
         dailyLimit={dailyLimit}
         subscription={getSubscription(userData)}
-        remainingSessions={dailySessionCount}
+        remainingSessions={dailySessionCount.toString()}
         referralCount={userData?.referrals?.length || 0}
         displayBalance={userData?.balance || 0}
         referralBonus={referralBonus}
