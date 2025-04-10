@@ -12,7 +12,7 @@ interface UserActionsCardProps {
   referralLink: string;
   referralCount: number;
   isNewUser?: boolean;
-  dailySessionCount: number;
+  dailySessionCount: number | string;  // Allow both types
   subscription: string;
   canStartSession?: boolean;
   lastSessionTimestamp?: string;
@@ -35,8 +35,13 @@ const UserActionsCard: React.FC<UserActionsCardProps> = ({
   // Obtenir la limite quotidienne selon l'abonnement
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
+  // Convert dailySessionCount to number if it's a string
+  const numericDailySessionCount = typeof dailySessionCount === 'string' 
+    ? parseInt(dailySessionCount, 10) 
+    : dailySessionCount;
+  
   // Calculer les sessions restantes selon l'abonnement
-  const remainingSessions = subscription !== 'freemium' ? 'illimitées' : Math.max(0, 1 - dailySessionCount);
+  const remainingSessions = subscription !== 'freemium' ? 'illimitées' : Math.max(0, 1 - numericDailySessionCount);
   
   // Afficher un message différent selon que l'utilisateur est nouveau ou non
   const welcomeMessage = isNewUser 
