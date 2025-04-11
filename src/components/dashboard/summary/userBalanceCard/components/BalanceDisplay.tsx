@@ -1,11 +1,11 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, BotOff } from 'lucide-react';
-import { balanceManager, getHighestBalance } from '@/utils/balance/balanceManager';
+import { balanceManager } from '@/utils/balance/balanceManager';
 import { animateBalanceUpdate } from '@/utils/animations/animateBalanceUpdate';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from '@/integrations/supabase/client';
+import { createMoneyParticles } from '@/utils/animations';
 
 interface BalanceDisplayProps {
   displayBalance: number;
@@ -36,12 +36,13 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const [localDisplayBalance, setLocalDisplayBalance] = useState(displayBalance);
   const [localBotActive, setLocalBotActive] = useState(isBotActive);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
   
   // Ref pour la fonction d'animation et la valeur initiale
   const balanceRef = useRef<HTMLDivElement>(null);
   const initialBalanceValue = useRef(displayBalance);
   const minimumDisplayBalance = useRef(displayBalance);
-  const highestBalanceValue = useRef(getHighestBalance() || displayBalance);
+  const highestBalanceValue = useRef(displayBalance);
   
   // Obtenir l'ID utilisateur actuel
   useEffect(() => {
@@ -60,7 +61,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     if (!userId) return;
     
     // Initialiser les références avec la valeur maximale disponible
-    const highestBalance = getHighestBalance();
+    const highestBalance = balanceManager.getHighestBalance();
     highestBalanceValue.current = Math.max(highestBalance, displayBalance);
     minimumDisplayBalance.current = Math.max(highestBalance, displayBalance);
     initialBalanceValue.current = Math.max(highestBalance, displayBalance);
@@ -85,11 +86,17 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         console.log(`[BalanceDisplay] Updating from subscription: ${localDisplayBalance} -> ${currentMax}`);
         
         // Animer doucement vers la nouvelle valeur
+        setIsAnimating(true);
         animateBalanceUpdate(
           localDisplayBalance, 
           currentMax, 
           800, 
-          (value) => setLocalDisplayBalance(value)
+          (value) => {
+            setLocalDisplayBalance(value);
+            if (value === currentMax) {
+              setIsAnimating(false);
+            }
+          }
         );
         
         // Mettre à jour notre référence du maximum
@@ -181,38 +188,118 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       }
     };
     
-    // Écouter les mises à jour cohérentes provenant du gestionnaire de solde
-    const handleConsistentBalanceUpdate = (event: CustomEvent) => {
+    // AMÉLIORATION: Améliorer la gestion des mises à jour de solde pour assurer l'animation
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      const amount = event.detail?.amount;
       const currentBalance = event.detail?.currentBalance;
-      const highestBalance = event.detail?.highestBalance;
       const eventUserId = event.detail?.userId;
+      const shouldAnimate = event.detail?.animate !== false; // Activer l'animation par défaut
       
       // Ne traiter que les événements pour cet utilisateur
       if (eventUserId && eventUserId !== userId) {
         return;
       }
       
-      // Toujours utiliser la valeur la plus élevée disponible
-      const maxBalance = Math.max(
-        currentBalance || 0,
-        highestBalance || 0,
-        highestBalanceValue.current || 0
-      );
-      
-      if (maxBalance > localDisplayBalance) {
-        console.log(`[BalanceDisplay] Consistent update: ${localDisplayBalance} -> ${maxBalance}`);
+      if (typeof currentBalance === 'number' && currentBalance >= 0) {
+        // Si un solde complet est fourni, l'utiliser
+        console.log(`[BalanceDisplay] Update balance for user ${userId} with full value: ${currentBalance}`);
         
-        // Mettre à jour nos références en premier
-        highestBalanceValue.current = maxBalance;
-        minimumDisplayBalance.current = Math.max(minimumDisplayBalance.current, maxBalance);
+        // Déterminer si nous devons animer
+        if (shouldAnimate && currentBalance > localDisplayBalance) {
+          // Activer l'animation
+          setIsAnimating(true);
+          
+          // Créer des particules d'argent si nous avons une référence à l'élément
+          if (balanceRef.current && amount > 0) {
+            createMoneyParticles(balanceRef.current, 8);
+          }
+          
+          // Animer doucement vers la nouvelle valeur
+          animateBalanceUpdate(
+            localDisplayBalance,
+            currentBalance,
+            1200, // Animation un peu plus longue pour une meilleure visibilité
+            (value) => {
+              setLocalDisplayBalance(value);
+              if (value === currentBalance) {
+                setIsAnimating(false);
+              }
+            }
+          );
+          
+          // Ajouter la classe pulse pour l'effet visuel
+          if (balanceRef.current) {
+            balanceRef.current.classList.add('pulse-balance');
+            setTimeout(() => {
+              if (balanceRef.current) {
+                balanceRef.current.classList.remove('pulse-balance');
+              }
+            }, 1500);
+          }
+        } else {
+          // Mise à jour sans animation
+          setLocalDisplayBalance(currentBalance);
+        }
         
-        // Animer vers la nouvelle valeur
-        animateBalanceUpdate(
-          localDisplayBalance, 
-          maxBalance, 
-          800, 
-          (value) => setLocalDisplayBalance(value)
-        );
+        // Persister immédiatement
+        const userBalanceKey = `user_balance_${userId}`;
+        const userHighestBalanceKey = `highest_balance_${userId}`;
+        const userLastKnownBalanceKey = `last_balance_${userId}`;
+        
+        localStorage.setItem(userBalanceKey, currentBalance.toString());
+        localStorage.setItem(userHighestBalanceKey, currentBalance.toString());
+        localStorage.setItem(userLastKnownBalanceKey, currentBalance.toString());
+        
+      } else if (typeof amount === 'number' && amount > 0) {
+        // Sinon ajouter le montant au solde actuel
+        console.log(`[BalanceDisplay] Update balance for user ${userId} with increment: +${amount}`);
+        
+        // Créer des particules d'argent pour l'effet visuel
+        if (balanceRef.current && shouldAnimate) {
+          createMoneyParticles(balanceRef.current, 8);
+        }
+        
+        // Calculer le nouveau solde
+        const newBalance = parseFloat((localDisplayBalance + amount).toFixed(2));
+        
+        if (shouldAnimate) {
+          // Activer l'animation
+          setIsAnimating(true);
+          
+          // Ajouter la classe pulse pour l'effet visuel
+          if (balanceRef.current) {
+            balanceRef.current.classList.add('pulse-balance');
+            setTimeout(() => {
+              if (balanceRef.current) {
+                balanceRef.current.classList.remove('pulse-balance');
+              }
+            }, 1500);
+          }
+          
+          // Animer doucement vers la nouvelle valeur
+          animateBalanceUpdate(
+            localDisplayBalance,
+            newBalance,
+            1200, // Animation un peu plus longue pour une meilleure visibilité
+            (value) => {
+              setLocalDisplayBalance(value);
+              if (value === newBalance) {
+                setIsAnimating(false);
+              }
+            }
+          );
+        } else {
+          setLocalDisplayBalance(newBalance);
+        }
+        
+        // Persister immédiatement
+        const userBalanceKey = `user_balance_${userId}`;
+        const userHighestBalanceKey = `highest_balance_${userId}`;
+        const userLastKnownBalanceKey = `last_balance_${userId}`;
+        
+        localStorage.setItem(userBalanceKey, newBalance.toString());
+        localStorage.setItem(userHighestBalanceKey, newBalance.toString());
+        localStorage.setItem(userLastKnownBalanceKey, newBalance.toString());
       }
     };
     
@@ -278,10 +365,14 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       minimumDisplayBalance.current = 0;
     };
     
+    // S'assurer d'écouter tous les types d'événements de mise à jour du solde
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
-    window.addEventListener('balance:consistent-update' as any, handleConsistentBalanceUpdate);
+    window.addEventListener('balance:update' as any, handleBalanceUpdate);
+    window.addEventListener('balance:local-update' as any, handleBalanceUpdate);
+    window.addEventListener('balance:consistent-update' as any, handleBalanceUpdate);
+    window.addEventListener('balance:force-update' as any, handleBalanceUpdate);
     window.addEventListener('balance:force-sync' as any, handleForceSyncBalance);
-    window.addEventListener('session:start' as any, handleSessionStart);
+    window.addEventListener('session:start' as any, handleBalanceUpdate);
     window.addEventListener('balance:reset-complete' as any, handleBalanceReset);
     
     // Synchroniser avec la prop isBotActive
@@ -289,9 +380,12 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     
     return () => {
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
-      window.removeEventListener('balance:consistent-update' as any, handleConsistentBalanceUpdate);
+      window.removeEventListener('balance:update' as any, handleBalanceUpdate);
+      window.removeEventListener('balance:local-update' as any, handleBalanceUpdate);
+      window.removeEventListener('balance:consistent-update' as any, handleBalanceUpdate);
+      window.removeEventListener('balance:force-update' as any, handleBalanceUpdate);
       window.removeEventListener('balance:force-sync' as any, handleForceSyncBalance);
-      window.removeEventListener('session:start' as any, handleSessionStart);
+      window.removeEventListener('session:start' as any, handleBalanceUpdate);
       window.removeEventListener('balance:reset-complete' as any, handleBalanceReset);
     };
   }, [isBotActive, localDisplayBalance, userId]);
@@ -340,13 +434,13 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const isGain = animatedBalance > previousBalance;
   
   return (
-    <div className="pt-4 pb-6 text-center" ref={balanceRef}>
+    <div className={`pt-4 pb-6 text-center balance-display ${isAnimating ? 'glow-effect' : ''}`} ref={balanceRef}>
       <div className="relative">
         <h3 className="text-md opacity-80 mb-1">Solde actuel</h3>
         <div className="flex items-center justify-center">
-          <div className="text-5xl font-bold">
-            <span className={`transition-colors duration-300 ${balanceAnimating ? (isGain ? 'text-green-300' : 'text-white') : 'text-white'}`}>
-              {balanceAnimating ? formattedAnimatedBalance : formattedBalance}
+          <div className={`text-5xl font-bold ${isAnimating ? 'text-green-300' : 'text-white'} transition-colors duration-300`}>
+            <span>
+              {formattedBalance}
             </span>
             <span className="text-2xl ml-0.5">€</span>
           </div>

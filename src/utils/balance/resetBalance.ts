@@ -11,10 +11,9 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
   
   // Obtenir le solde le plus fiable depuis notre gestionnaire centralisé
   const managerBalance = balanceManager.getCurrentBalance();
-  const highestBalance = balanceManager.getHighestBalance();
   
   // Toujours utiliser la valeur maximum
-  currentBalance = Math.max(currentBalance, managerBalance, highestBalance);
+  currentBalance = Math.max(currentBalance, managerBalance);
   
   console.log(`[resetBalance] Using current balance: ${currentBalance} for withdrawal`);
   
@@ -55,7 +54,7 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
       const transactionResult = await addTransaction(userId, -currentBalance, report);
       
       // Informer le gestionnaire de solde de la réinitialisation (retrait complet)
-      balanceManager.updateBalance(0, true);
+      balanceManager.updateBalance(-currentBalance);
       
       // Informer tous les composants de réinitialiser leur état de solde
       window.dispatchEvent(new CustomEvent('balance:reset', {
@@ -87,3 +86,4 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
   
   return { success: false, transaction: null };
 };
+

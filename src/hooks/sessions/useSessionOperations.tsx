@@ -4,6 +4,7 @@ import { toast } from '@/components/ui/use-toast';
 import { triggerDashboardEvent } from '@/utils/animations';
 import { UserData } from '@/types/userData';
 import { calculateAutoSessionGain } from '@/utils/subscription';
+import { animateBalanceUpdate } from '@/utils/animations/animateBalanceUpdate';
 
 /**
  * Hook for session operations
@@ -202,13 +203,14 @@ export const useSessionOperations = (
         return;
       }
       
-      // TOUJOURS utiliser background:true pour tous les événements automatiques
-      triggerDashboardEvent('analysis-start', { background: true });
+      // Assurer une animation fluide en déclenchant l'événement de début d'analyse
+      triggerDashboardEvent('analysis-start', { background: true, animate: true });
       
       // Simuler l'animation du terminal dans le dashboard - sans écran de chargement
       triggerDashboardEvent('terminal-update', { 
         line: "Initialisation de l'analyse du contenu vidéo...",
-        background: true
+        background: true,
+        animate: true
       });
       
       // Attendre un court instant pour le retour visuel
@@ -216,7 +218,8 @@ export const useSessionOperations = (
       
       triggerDashboardEvent('terminal-update', { 
         line: "Traitement des données algorithmiques...",
-        background: true
+        background: true,
+        animate: true
       });
       
       // Attendre un autre court instant
@@ -235,7 +238,6 @@ export const useSessionOperations = (
       }
       
       // Calculer le gain en utilisant la fonction utilitaire (en respectant la limite journalière)
-      // AMÉLIORATION: Booster les gains en freemium pour une meilleure expérience utilisateur
       let baseGain = calculateAutoSessionGain(
         userData.subscription, 
         todaysGains, 
@@ -243,7 +245,6 @@ export const useSessionOperations = (
       );
       
       // Boost pour les utilisateurs récents (moins d'une semaine)
-      // Pour s'assurer que Jacques obtient plus rapidement des gains
       const userCreationDate = userData?.profile?.created_at ? new Date(userData.profile.created_at) : 
                                userData?.registeredAt || null;
       const currentDate = new Date();
@@ -262,7 +263,8 @@ export const useSessionOperations = (
       // Mettre à jour le terminal avec un message de succès
       triggerDashboardEvent('terminal-update', { 
         line: `Analyse complétée. Optimisation des résultats: ${randomGain.toFixed(2)}€`,
-        background: true
+        background: true,
+        animate: true
       });
       
       // Mettre à jour le tracker des gains journaliers
@@ -291,10 +293,12 @@ export const useSessionOperations = (
       console.log(`[SessionOperations] Updated cumulative balance: ${currentPersistedBalance} + ${randomGain} = ${updatedBalance}`);
       
       // Déclencher l'événement d'analyse complète avec le gain
+      // IMPORTANT: S'assurer que le noEffects est false pour permettre les animations
       triggerDashboardEvent('analysis-complete', { 
         gain: randomGain, 
-        noEffects: false, // Activer les effets visuels pour une meilleure expérience
-        background: true 
+        noEffects: false, 
+        background: false, // Passer à false pour permettre les animations
+        animate: true // Ajout d'un flag spécifique pour l'animation
       });
       
       // Mettre à jour le solde de l'utilisateur avec forceUpdate à true pour mise à jour UI immédiate
@@ -304,27 +308,30 @@ export const useSessionOperations = (
         true // Toujours forcer la mise à jour UI immédiate
       );
       
-      // Déclencher directement l'événement de mise à jour du solde avec le solde actuel et le gain
-      const balanceEvent = new CustomEvent('balance:update', {
+      // AMÉLIORATION: Déclencher directement l'événement de mise à jour du solde 
+      // avec animation visible pour une meilleure expérience utilisateur
+      window.dispatchEvent(new CustomEvent('balance:update', {
         detail: { 
           amount: randomGain,
-          currentBalance: updatedBalance
+          currentBalance: updatedBalance,
+          animate: true,
+          userId: userData.id
         }
-      });
-      window.dispatchEvent(balanceEvent);
+      }));
 
-      // Force-update balance display to ensure consistent UI
+      // AMÉLIORATION: Forcer la mise à jour de l'affichage du solde avec animation
       window.dispatchEvent(new CustomEvent('balance:force-update', {
         detail: { 
           newBalance: updatedBalance,
           gain: randomGain,
-          transactionDate: new Date().toISOString()
+          animate: true,
+          transactionDate: new Date().toISOString(),
+          userId: userData.id
         }
       }));
 
       // Afficher une notification pour la première session ou aléatoirement pour les suivantes
-      // AMÉLIORATION: Notification toast plus visible et plus informative
-      if (isFirst || Math.random() > 0.4) { // 60% de chance au lieu de 40%
+      if (isFirst || Math.random() > 0.4) {
         toast({
           title: `+${randomGain.toFixed(2)}€ Générés!`,
           description: `Algorithme d'analyse vidéo: génération réussie. Total: ${updatedBalance.toFixed(2)}€`,
