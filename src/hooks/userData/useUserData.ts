@@ -9,8 +9,10 @@ import { usePeriodicChecks } from './usePeriodicChecks';
  */
 export const useUserData = () => {
   // Utiliser les hooks individuels pour chaque fonctionnalité
-  const { userData, isNewUser, dailySessionCount, showLimitAlert, isLoading, 
-    userActions, refreshUserData } = useUserDataState();
+  const { 
+    userData, isNewUser, dailySessionCount, showLimitAlert, isLoading, isBotActive,
+    dailyLimitProgress, userActions, refreshUserData, generateAutomaticRevenue
+  } = useUserDataState();
   
   // Synchronisation du solde
   const { effectiveBalance } = useBalanceSynchronization(userData, isNewUser);
@@ -47,6 +49,9 @@ export const useUserData = () => {
     dailySessionCount,
     showLimitAlert,
     isLoading,
+    isBotActive,
+    dailyLimitProgress,
+    generateAutomaticRevenue,
     setShowLimitAlert: userActions.setShowLimitAlert,
     refreshUserData,
     incrementSessionCount,

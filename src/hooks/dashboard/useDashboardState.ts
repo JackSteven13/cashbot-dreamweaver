@@ -1,87 +1,83 @@
 
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { useUserData } from '@/hooks/useUserData';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useUserData } from '@/hooks/userData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
 import { useDormancyCheck } from '@/hooks/useDormancyCheck';
 
+/**
+ * Hook pour gérer l'état global du dashboard
+ */
 export const useDashboardState = () => {
-  // Utiliser useRef pour les données qui ne devraient pas déclencher de re-rendu
-  const renderCountRef = useRef(0);
+  // Compteur pour forcer les re-rendus
+  const [renderKey, setRenderKey] = useState(0);
+  
+  // État de navigation
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
-  const [renderKey, setRenderKey] = useState(Date.now());
-  const initialRenderComplete = useRef(false);
   
-  // Effet de debug pour compter les rendus
-  useEffect(() => {
-    renderCountRef.current += 1;
-    console.log(`Dashboard render count: ${renderCountRef.current}`);
-  });
-  
-  // Utiliser useMemo pour éviter les re-rendus inutiles
-  const userData = useUserData();
-  
-  // Optimiser la vérification de dormance avec les données mémorisées
+  // Utiliser les hooks de données utilisateur
   const {
-    isDormant,
-    dormancyData,
-    isChecking,
-    handleReactivate
-  } = useDormancyCheck(userData.userData?.subscription || 'freemium', userData.refreshUserData);
-  
-  // Memoize des sessions pour éviter les recalculs inutiles
-  const sessions = useDashboardSessions(
-    userData.userData,
-    userData.dailySessionCount,
-    userData.incrementSessionCount,
-    userData.updateBalance,
-    userData.setShowLimitAlert,
-    userData.resetBalance
-  );
-
-  // Memoize la fonction de rafraîchissement pour éviter les re-rendus
-  const forceRefresh = useCallback(async () => {
-    console.log("Forçage du rafraîchissement du dashboard");
-    setRenderKey(Date.now());
-    
-    try {
-      await userData.refreshUserData();
-      return true; // Retourner true pour satisfaire le type Promise<boolean>
-    } catch (error) {
-      console.error("Error refreshing user data:", error);
-      return false; // Retourner false en cas d'erreur
-    }
-  }, [userData.refreshUserData]);
-
-  // Extraire les propriétés de userData pour éviter les références qui changent
-  const {
-    userData: userDataObj,
+    userData,
     isNewUser,
     dailySessionCount,
     showLimitAlert,
+    isLoading,
+    isBotActive,
+    dailyLimitProgress,
+    generateAutomaticRevenue,
     setShowLimitAlert,
-    isLoading
-  } = userData;
-
-  // Extraire les propriétés de sessions pour éviter les références qui changent
+    refreshUserData,
+    incrementSessionCount,
+    updateBalance,
+    resetBalance,
+    resetDailyCounters
+  } = useUserData();
+  
+  // Vérification de la dormance du compte
+  const { isDormant, isChecking, dormancyData, handleReactivate } = useDormancyCheck(userData);
+  
+  // Gestion des sessions
   const {
     isStartingSession,
     handleStartSession,
     handleWithdrawal,
     lastSessionTimestamp,
-    isBotActive
-  } = sessions;
-
-  // Retourner un objet mémorisé pour éviter les références changeantes
-  return useMemo(() => ({
+    localBalance
+  } = useDashboardSessions({
+    userData,
+    dailySessionCount,
+    incrementSessionCount,
+    updateBalance,
+    setShowLimitAlert,
+    resetBalance
+  });
+  
+  // Force refresh pour les erreurs
+  const forceRefresh = useCallback(() => {
+    refreshUserData();
+    setRenderKey(prev => prev + 1);
+  }, [refreshUserData]);
+  
+  // Démarrer la génération automatique si possible
+  useEffect(() => {
+    // Vérifier si l'utilisateur peut bénéficier de revenus automatiques
+    if (userData && !isNewUser && !isDormant && isBotActive && !isChecking) {
+      // Initier la première génération automatique après un court délai
+      const startTimer = setTimeout(() => {
+        generateAutomaticRevenue(true);
+      }, 15000);
+      
+      return () => clearTimeout(startTimer);
+    }
+  }, [userData, isNewUser, isDormant, isBotActive, isChecking, generateAutomaticRevenue]);
+  
+  return {
     selectedNavItem,
     setSelectedNavItem,
     renderKey,
-    initialRenderComplete,
-    userData: userDataObj,
+    userData,
     isNewUser,
     dailySessionCount,
     showLimitAlert,
-    setShowLimitAlert,
     isDormant,
     dormancyData,
     isChecking,
@@ -92,25 +88,9 @@ export const useDashboardState = () => {
     lastSessionTimestamp,
     forceRefresh,
     isLoading,
-    isBotActive
-  }), [
-    selectedNavItem,
-    renderKey,
-    userDataObj,
-    isNewUser,
-    dailySessionCount,
-    showLimitAlert,
-    isDormant,
-    dormancyData,
-    isChecking,
-    handleReactivate,
-    isStartingSession,
-    handleStartSession, 
-    handleWithdrawal,
-    lastSessionTimestamp,
-    forceRefresh,
-    isLoading,
-    setShowLimitAlert,
-    isBotActive
-  ]);
+    isBotActive,
+    dailyLimitProgress
+  };
 };
+
+export default useDashboardState;

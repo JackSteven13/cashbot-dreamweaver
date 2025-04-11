@@ -10,14 +10,15 @@ import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
 import { useReferralNotifications } from '@/hooks/useReferralNotifications';
 import { useTransactionReconciliation } from '@/hooks/useTransactionReconciliation';
-import { memo, useEffect, useRef, useMemo, useState } from 'react';
+import { memo, useEffect, useRef, useMemo, useState, useLayoutEffect } from 'react';
 
-// Composant principal avec transitions améliorées
+// Composant principal avec stabilité améliorée
 const Dashboard = memo(() => {
   const location = useLocation();
   const renderCountRef = useRef(0);
   const initialRenderCompleteRef = useRef(false);
   const [transitionStage, setTransitionStage] = useState('init');
+  const prevPathRef = useRef(location.pathname);
   
   // Hooks stables avec dépendances minimales
   const {
@@ -58,43 +59,54 @@ const Dashboard = memo(() => {
   // Utiliser notre hook de notifications
   useReferralNotifications();
   
+  // Effet pour prévenir les rechargements complets inutiles
+  useLayoutEffect(() => {
+    if (prevPathRef.current !== location.pathname) {
+      // Si c'est juste un changement de route interne, ne pas réinitialiser l'état
+      prevPathRef.current = location.pathname;
+    }
+  }, [location.pathname]);
+  
   // Effet pour gérer les transitions de chargement
   useEffect(() => {
+    // Utiliser un ID pour annuler les transitions précédentes
+    const transitionId = Date.now();
+    
     if (isAuthChecking || isLoading || !isReady || isChecking) {
       setTransitionStage('loading');
-    } else if (authError || (!isAuthChecking && !userData?.username)) {
+      return;
+    }
+    
+    if (authError || (!isAuthChecking && !userData?.username)) {
       setTransitionStage('error');
-    } else if (!isAuthChecking && !authError && isReady && userData?.username) {
+      return;
+    }
+    
+    if (!isAuthChecking && !authError && isReady && userData?.username) {
       // Ajouter une légère transition pour éviter les flashs
       const timer = setTimeout(() => {
-        setTransitionStage('ready');
+        // Vérifier que ce n'est pas une transition obsolète
+        if (transitionId === Date.now()) {
+          setTransitionStage('ready');
+        }
       }, 200);
       return () => clearTimeout(timer);
     }
   }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
   
-  // Effet de debug limité pour tracer les rendus
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') {
-      renderCountRef.current += 1;
-      console.log(`Dashboard render count: ${renderCountRef.current}`);
-    }
-  });
-  
-  // Calculs memoizés pour éviter les re-calculs
-  const { isLoading_Combined, hasError, canShowDashboard } = useMemo(() => {
+  // Calculer une fois les états composés pour éviter les re-calculs
+  const combinedState = useMemo(() => {
     const isLoadingCombined = isAuthChecking || isLoading || !isReady || isChecking;
-    const hasErrorValue = authError || (!isLoadingCombined && !userData?.username);
-    const canShowDashboardValue = !isLoadingCombined && !authError && isReady && userData?.username;
+    const hasError = authError || (!isLoadingCombined && !userData?.username);
+    const canShowDashboard = !isLoadingCombined && !authError && isReady && userData?.username;
     
     return {
-      isLoading_Combined: isLoadingCombined,
-      hasError: hasErrorValue,
-      canShowDashboard: canShowDashboardValue
+      isLoadingCombined,
+      hasError,
+      canShowDashboard
     };
   }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
   
-  // Rendu conditionnel avec transitions fluides
   return (
     <>
       {/* Effet d'initialisation */}
@@ -110,26 +122,26 @@ const Dashboard = memo(() => {
       {/* Rendu avec transitions douces entre les états */}
       <div className="relative min-h-screen">
         {/* Écran de chargement avec transition */}
-        {isLoading_Combined && (
+        {combinedState.isLoadingCombined && (
           <div className="absolute inset-0 z-50">
             <DashboardLoading />
           </div>
         )}
         
         {/* Affichage des erreurs */}
-        {hasError && !isLoading_Combined && (
+        {combinedState.hasError && !combinedState.isLoadingCombined && (
           <div className={`absolute inset-0 z-40 transition-opacity duration-300 ${transitionStage === 'error' ? 'opacity-100' : 'opacity-0'}`}>
             <DashboardError errorType={authError ? "auth" : "data"} onRefresh={forceRefresh} />
           </div>
         )}
         
         {/* Contenu principal avec animation d'entrée */}
-        {canShowDashboard && (
+        {combinedState.canShowDashboard && userData && (
           <div 
             className={`transition-opacity duration-300 ${transitionStage === 'ready' ? 'opacity-100' : 'opacity-0'}`}
           >
             <DashboardLayout
-              key={renderKey}
+              key={`layout-${renderKey}`}
               username={userData.username}
               subscription={userData.subscription}
               selectedNavItem={selectedNavItem}
@@ -154,7 +166,7 @@ const Dashboard = memo(() => {
                   />
                 } />
                 <Route path="transactions" element={
-                  <TransactionsPage />
+                  <TransactionsPage key={`transactions-${renderKey}`} />
                 } />
               </Routes>
             </DashboardLayout>
