@@ -87,7 +87,7 @@ export const updateUserBalance = async (
         const dbReturnedBalance = data?.[0]?.balance;
         if (typeof dbReturnedBalance === 'number' && !isNaN(dbReturnedBalance)) {
           // Initialisation du gestionnaire avec la valeur de la base
-          balanceManager.updateBalance(dbReturnedBalance);
+          balanceManager.initialize(dbReturnedBalance);
         } else {
           // Sinon, mettre à jour avec la valeur calculée localement
           balanceManager.updateBalance(positiveGain);

@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 // État local pour le solde
 let currentBalance = 0;
+let currentUserId = null;
+const subscribers = new Set();
 
 /**
  * Récupère le solde le plus élevé enregistré
@@ -14,6 +16,58 @@ export const getHighestBalance = (): number => {
     return stored ? parseFloat(stored) : 0;
   } catch (e) {
     return 0;
+  }
+};
+
+/**
+ * Récupère le solde actuel
+ */
+export const getBalance = (): number => {
+  return currentBalance;
+};
+
+/**
+ * S'abonner aux mises à jour du solde
+ */
+export const subscribe = (callback) => {
+  subscribers.add(callback);
+  
+  // Envoyer l'état actuel immédiatement
+  callback({
+    lastKnownBalance: currentBalance,
+    userId: currentUserId
+  });
+  
+  // Renvoyer une fonction de désabonnement
+  return () => {
+    subscribers.delete(callback);
+  };
+};
+
+/**
+ * Notifier tous les abonnés d'un changement de solde
+ */
+const notifySubscribers = () => {
+  subscribers.forEach(callback => {
+    callback({
+      lastKnownBalance: currentBalance,
+      userId: currentUserId
+    });
+  });
+};
+
+/**
+ * Initialiser le gestionnaire avec un solde et un ID utilisateur
+ */
+export const initialize = (balance, userId = null) => {
+  if (typeof balance === 'number' && !isNaN(balance)) {
+    currentBalance = balance;
+    
+    if (userId) {
+      currentUserId = userId;
+    }
+    
+    notifySubscribers();
   }
 };
 
@@ -38,11 +92,17 @@ const updateBalance = (amount: number): number => {
       
       // Ajouter au compteur de gains quotidiens
       addDailyGain(amount);
+      
+      // Notifier les abonnés
+      notifySubscribers();
     } 
     // Pour une réinitialisation, mettre à zéro
     else if (amount === 0) {
       currentBalance = 0;
       localStorage.removeItem('currentBalance');
+      
+      // Notifier les abonnés
+      notifySubscribers();
     }
     
     return currentBalance;
@@ -69,6 +129,9 @@ const forceUpdate = (newBalance: number): number => {
     localStorage.setItem('currentBalance', currentBalance.toString());
     localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
     
+    // Notifier les abonnés
+    notifySubscribers();
+    
     return currentBalance;
   } catch (e) {
     console.error("Erreur lors de la mise à jour forcée du solde:", e);
@@ -86,8 +149,30 @@ const resetBalance = (): void => {
     localStorage.removeItem('currentBalance');
     localStorage.removeItem('lastKnownBalance');
     localStorage.removeItem('lastBalanceUpdateTime');
+    
+    // Notifier les abonnés
+    notifySubscribers();
   } catch (e) {
     console.error("Erreur lors de la réinitialisation du solde:", e);
+  }
+};
+
+/**
+ * Nettoyer les données de solde d'un utilisateur
+ */
+export const cleanupUserBalanceData = (): void => {
+  currentBalance = 0;
+  currentUserId = null;
+  
+  try {
+    localStorage.removeItem('currentBalance');
+    localStorage.removeItem('lastKnownBalance');
+    localStorage.removeItem('lastBalanceUpdateTime');
+    localStorage.removeItem('highestBalance');
+    localStorage.removeItem('dailyGains');
+    localStorage.removeItem('lastGainDate');
+  } catch (e) {
+    console.error("Erreur lors du nettoyage des données de solde:", e);
   }
 };
 
@@ -190,6 +275,10 @@ export default {
   resetBalance,
   resetDailyCounters,
   getHighestBalance,
+  getBalance,
+  initialize,
+  subscribe,
   addTransaction,
-  syncWithDatabase
+  syncWithDatabase,
+  cleanupUserBalanceData
 };

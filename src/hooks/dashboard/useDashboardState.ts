@@ -33,7 +33,7 @@ export const useDashboardState = () => {
   } = useUserData();
   
   // Vérification de la dormance du compte
-  const { isDormant, isChecking, dormancyData, handleReactivate } = useDormancyCheck(userData);
+  const { isDormant, isChecking, dormancyData, handleReactivate } = useDormancyCheck(userData, showLimitAlert);
   
   // Gestion des sessions
   const {
@@ -41,7 +41,8 @@ export const useDashboardState = () => {
     handleStartSession,
     handleWithdrawal,
     lastSessionTimestamp,
-    localBalance
+    localBalance,
+    isBotActive: sessionBotActive
   } = useDashboardSessions({
     userData,
     dailySessionCount,
@@ -88,7 +89,7 @@ export const useDashboardState = () => {
     lastSessionTimestamp,
     forceRefresh,
     isLoading,
-    isBotActive,
+    isBotActive: sessionBotActive || isBotActive,
     dailyLimitProgress
   };
 };

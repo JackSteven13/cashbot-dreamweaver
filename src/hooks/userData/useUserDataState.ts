@@ -33,7 +33,7 @@ export const useUserDataState = () => {
       setUserData(newData);
       
       // Mise à jour du compteur de sessions quotidiennes
-      if (typeof newData.dailySessionCount === 'number') {
+      if (typeof newData?.dailySessionCount === 'number') {
         setDailySessionCount(newData.dailySessionCount);
       }
     }
