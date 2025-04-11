@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUserData } from '@/hooks/useUserData';
 import { TransactionsPanel } from '@/components/dashboard/transactions';
@@ -24,8 +24,8 @@ const TransactionsPage = () => {
     }
   }, [userData, isLoading, retryCount, refreshUserData]);
   
-  // Gestionnaire de rafraîchissement manuel
-  const handleManualRefresh = async () => {
+  // Gestionnaire de rafraîchissement manuel mémorisé pour éviter les recréations
+  const handleManualRefresh = useCallback(async () => {
     try {
       toast({
         title: "Actualisation en cours",
@@ -47,7 +47,11 @@ const TransactionsPage = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [refreshUserData]);
+  
+  // Garantir qu'un tableau vide est fourni si userData?.transactions n'est pas défini
+  const transactions = userData?.transactions || [];
+  const subscription = userData?.subscription || 'freemium';
   
   return (
     <div className="w-full p-4">
@@ -71,8 +75,8 @@ const TransactionsPage = () => {
           ) : (
             <TransactionsPanel 
               key={refreshKey}
-              transactions={userData?.transactions || []}
-              subscription={userData?.subscription || 'freemium'}
+              transactions={transactions}
+              subscription={subscription}
               isNewUser={false}
             />
           )}

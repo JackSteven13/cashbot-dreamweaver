@@ -51,8 +51,9 @@ const Dashboard = memo(() => {
   const isReferralsPage = location.pathname === '/dashboard/referrals';
   const isTransactionsPage = location.pathname === '/dashboard/transactions';
   
-  // Hook de réconciliation de transactions
-  useTransactionReconciliation(userData, isLoading);
+  // Hook de réconciliation de transactions - Passe une référence stable
+  const stableUserData = useMemo(() => userData, [userData?.balance, userData?.transactions?.length]);
+  useTransactionReconciliation(stableUserData, isLoading);
   
   // Utiliser notre hook de notifications
   useReferralNotifications();
@@ -71,25 +72,6 @@ const Dashboard = memo(() => {
       return () => clearTimeout(timer);
     }
   }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
-  
-  // Effet de debug avec scope limité
-  useEffect(() => {
-    renderCountRef.current += 1;
-    console.log(`Dashboard render count: ${renderCountRef.current}`);
-  });
-  
-  // Écouter les événements de mise à jour des parrainages
-  useEffect(() => {
-    const handleReferralUpdate = () => {
-      forceRefresh();
-    };
-    
-    window.addEventListener('referral:update', handleReferralUpdate);
-    
-    return () => {
-      window.removeEventListener('referral:update', handleReferralUpdate);
-    };
-  }, [forceRefresh]);
   
   // Calculs memoizés pour éviter les re-calculs
   const { isLoading_Combined, hasError, canShowDashboard } = useMemo(() => {
