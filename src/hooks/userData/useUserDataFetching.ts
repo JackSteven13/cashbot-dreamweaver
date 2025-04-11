@@ -57,7 +57,13 @@ export const useUserDataFetching = (
         dailySessionCount: balanceResult.balanceData.daily_session_count || 0,
         transactions: transactions || [],
         referrals: [],
-        referralLink: ''
+        referralLink: '',
+        profile: {
+          created_at: profile.created_at,
+          full_name: profile.full_name,
+          email: profile.email,
+          id: profile.id
+        }
       };
       
       // Mettre à jour l'état avec les données récupérées

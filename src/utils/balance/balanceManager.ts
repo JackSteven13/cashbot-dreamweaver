@@ -269,6 +269,7 @@ try {
 
 export { getDailyGains, addDailyGain, resetDailyGains };
 
+// Exporter explicitement les méthodes - This fixes the callable expression issue
 export default {
   updateBalance,
   forceUpdate,
