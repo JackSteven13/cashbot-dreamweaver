@@ -1,7 +1,7 @@
 
 import React, { memo } from 'react';
 import { Transaction } from '@/types/userData';
-import { useTransactions } from './useTransactions';
+import { useTransactions } from './hooks/useTransactions';
 import { 
   TransactionListItem, 
   TransactionEmptyState, 

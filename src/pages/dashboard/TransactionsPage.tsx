@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUserData } from '@/hooks/useUserData';
+import { useUserData } from '@/hooks/userData/useUserData';
 import { TransactionsPanel } from '@/components/dashboard/transactions';
 import { toast } from '@/components/ui/use-toast';
 
