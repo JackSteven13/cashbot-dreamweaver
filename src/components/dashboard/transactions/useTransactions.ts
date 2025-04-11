@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Transaction } from '@/types/userData';
-import { fetchUserTransactions } from '@/hooks/user/transactionUtils';
+import { fetchUserTransactions } from '@/utils/user/transactionUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
@@ -53,9 +53,9 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     };
   }, []);
   
-  // Separate effect for handling transaction updates
+  // Separate effect for handling transaction updates with better dependency handling
   useEffect(() => {
-    if (initialTransactions && initialTransactions.length > 0) {
+    if (initialTransactions && initialTransactions.length > 0 && isMountedRef.current) {
       setTransactions(initialTransactions);
       try {
         localStorage.setItem(transactionsCacheKey, JSON.stringify(initialTransactions));
@@ -74,7 +74,7 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     }
   }, [showAllTransactions]);
   
-  // Handle real-time transaction updates
+  // Handle real-time transaction updates with better cleanup
   useEffect(() => {
     const handleTransactionRefresh = async (event: CustomEvent) => {
       const userId = event.detail?.userId;
@@ -89,7 +89,8 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
         }
         lastFetchRef.current = now;
         
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data } = await supabase.auth.getSession();
+        const session = data?.session;
         
         if (session?.user?.id === userId) {
           const updatedTransactions = await fetchUserTransactions(userId);
@@ -117,7 +118,8 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
       const { userId, gain, report, date } = event.detail || {};
       
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data } = await supabase.auth.getSession();
+        const session = data?.session;
         
         if (session?.user?.id === userId) {
           // Optimistically update UI
@@ -164,10 +166,12 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     };
   }, []);
   
-  // Manual refresh handler - more efficient implementation
+  // Manual refresh handler with improved error handling and feedback
   const handleManualRefresh = useCallback(async (): Promise<void> => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession();
+      const session = data?.session;
+      
       if (!session?.user?.id || !isMountedRef.current) return;
       
       const refreshedTransactions = await fetchUserTransactions(session.user.id);
@@ -219,4 +223,3 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     hiddenTransactionsCount: validTransactions.length > 3 ? validTransactions.length - 3 : 0
   };
 };
-
