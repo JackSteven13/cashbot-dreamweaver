@@ -1,27 +1,39 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUserData } from '@/hooks/useUserData';
 import { TransactionsPanel } from '@/components/dashboard/transactions';
 import { toast } from '@/components/ui/use-toast';
 
-const TransactionsPage = () => {
+// Memoizer le composant pour éviter les re-rendus inutiles
+const TransactionsPage = memo(() => {
   const { userData, isLoading, refreshUserData } = useUserData();
   const [refreshKey, setRefreshKey] = useState(() => Date.now());
   const [retryCount, setRetryCount] = useState(0);
   
   // Ajouter un effet pour rafraîchir automatiquement les données si nécessaire
   useEffect(() => {
+    let isMounted = true;
+    
     if (!userData && !isLoading && retryCount < 3) {
       const timer = setTimeout(() => {
-        console.log("Tentative de récupération des transactions...");
-        refreshUserData();
-        setRefreshKey(Date.now());
-        setRetryCount(prev => prev + 1);
+        if (isMounted) {
+          console.log("Tentative de récupération des transactions...");
+          refreshUserData();
+          setRefreshKey(Date.now());
+          setRetryCount(prev => prev + 1);
+        }
       }, 2000);
       
-      return () => clearTimeout(timer);
+      return () => {
+        isMounted = false;
+        clearTimeout(timer);
+      };
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [userData, isLoading, retryCount, refreshUserData]);
   
   // Gestionnaire de rafraîchissement manuel mémorisé pour éviter les recréations
@@ -60,8 +72,9 @@ const TransactionsPage = () => {
         <button 
           onClick={handleManualRefresh}
           className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
+          disabled={isLoading}
         >
-          Actualiser
+          {isLoading ? "Chargement..." : "Actualiser"}
         </button>
       </div>
       
@@ -84,6 +97,7 @@ const TransactionsPage = () => {
       </Card>
     </div>
   );
-};
+});
 
+TransactionsPage.displayName = 'TransactionsPage';
 export default TransactionsPage;

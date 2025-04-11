@@ -29,6 +29,9 @@ const TransactionsPanel = memo(({
     handleManualRefresh,
     hiddenTransactionsCount
   } = useTransactions(transactions);
+  
+  // Log pour debug
+  console.log(`TransactionsPanel render - ${transactions.length} transactions`);
 
   return (
     <div className="space-y-4">
@@ -44,7 +47,7 @@ const TransactionsPanel = memo(({
           <div className="space-y-4 mt-4">
             {displayedTransactions.map((transaction, index) => (
               <TransactionListItem 
-                key={`${transaction.id || index}-${refreshKey}`}
+                key={`${transaction.id || ''}-${index}-${refreshKey}`}
                 transaction={transaction}
                 refreshKey={refreshKey}
                 index={index}

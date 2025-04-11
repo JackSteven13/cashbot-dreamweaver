@@ -73,6 +73,14 @@ const Dashboard = memo(() => {
     }
   }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
   
+  // Effet de debug limité pour tracer les rendus
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      renderCountRef.current += 1;
+      console.log(`Dashboard render count: ${renderCountRef.current}`);
+    }
+  });
+  
   // Calculs memoizés pour éviter les re-calculs
   const { isLoading_Combined, hasError, canShowDashboard } = useMemo(() => {
     const isLoadingCombined = isAuthChecking || isLoading || !isReady || isChecking;
@@ -128,7 +136,7 @@ const Dashboard = memo(() => {
               setSelectedNavItem={setSelectedNavItem}
             >
               <Routes>
-                <Route index element={
+                <Route path="/" element={
                   <DashboardContent
                     key={`content-${renderKey}`}
                     isDormant={isDormant}
