@@ -1,7 +1,3 @@
-
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
-
 // Define the interface outside the class to avoid syntax errors and circular references
 interface BalanceState {
   currentBalance: number;
@@ -217,7 +213,7 @@ class BalanceManagerClass {
       const { data, error } = await supabase
         .from('user_balances')
         .select('balance')
-        .eq('user_id', this.userId)
+        .eq('id', this.userId)
         .single();
 
       if (error) throw error;
@@ -231,7 +227,7 @@ class BalanceManagerClass {
         const { error: updateError } = await supabase
           .from('user_balances')
           .update({ balance: this.currentBalance })
-          .eq('user_id', this.userId);
+          .eq('id', this.userId);
 
         if (updateError) throw updateError;
         
@@ -347,6 +343,28 @@ class BalanceManagerClass {
       })
     );
   }
+
+  // Nouvelle fonction pour forcer la mise à jour du solde
+  public forceUpdate(newBalance: number): void {
+    if (newBalance >= 0) {
+      this.currentBalance = newBalance;
+      
+      if (newBalance > this.highestBalance) {
+        this.highestBalance = newBalance;
+      }
+      
+      this.saveToStorage();
+      this.dispatchBalanceUpdateEvent(newBalance);
+      this.notifySubscribers();
+      
+      // Sync with database immediately
+      if (this.userId) {
+        this.syncWithDatabase().catch(err => 
+          console.error("Error syncing after force update:", err)
+        );
+      }
+    }
+  }
 }
 
 // Create singleton instance
@@ -370,7 +388,9 @@ export const BalanceManager = {
   resetDailyCounters: () => balanceManager.resetDailyCounters(),
   initialize: (balance: number, userId?: string) => balanceManager.initialize(balance, userId),
   subscribe: (callback: (state: BalanceState) => void) => balanceManager.subscribe(callback),
-  cleanupUserBalanceData: () => balanceManager.cleanupUserBalanceData()
+  cleanupUserBalanceData: () => balanceManager.cleanupUserBalanceData(),
+  // Ajouter la nouvelle méthode à l'objet exporté
+  forceUpdate: (newBalance: number) => balanceManager.forceUpdate(newBalance)
 };
 
 export default balanceManager;

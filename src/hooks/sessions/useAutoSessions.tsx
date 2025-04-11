@@ -8,6 +8,7 @@ import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAni
 import { toast } from '@/components/ui/use-toast';
 import { addTransaction } from '@/hooks/user/transactionUtils';
 import balanceManager from '@/utils/balance/balanceManager';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useAutoSessions = (
   userData: any,
@@ -43,6 +44,14 @@ export const useAutoSessions = (
       );
       const todaysGains = todaysTransactions.reduce((sum: number, tx: any) => sum + (tx.gain || 0), 0);
       todaysGainsRef.current = todaysGains;
+      
+      // Stocker les gains quotidiens pour la persistance
+      try {
+        localStorage.setItem('todaysGains', todaysGains.toString());
+        localStorage.setItem('todaysGainsDate', today);
+      } catch (e) {
+        console.error("Failed to store today's gains in localStorage:", e);
+      }
     }
   }, [userData?.balance, userData?.transactions]);
 
@@ -56,6 +65,19 @@ export const useAutoSessions = (
     isInitialSessionExecuted,
     getCurrentPersistentBalance
   } = useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
+  
+  // Synchronisez le solde avec la base de données périodiquement
+  useEffect(() => {
+    const syncTimerId = setInterval(() => {
+      if (userData?.profile?.id) {
+        balanceManager.syncWithDatabase().catch(err => 
+          console.error("Error during periodic balance sync:", err)
+        );
+      }
+    }, 30000); // Toutes les 30 secondes
+    
+    return () => clearInterval(syncTimerId);
+  }, [userData?.profile?.id]);
   
   // Listen for bot status changes
   useEffect(() => {
@@ -73,8 +95,27 @@ export const useAutoSessions = (
         setIsBotActive(newStatus);
         botActiveRef.current = newStatus;
         console.log("Bot status updated to:", newStatus);
+        
+        // Enregistrer l'état du bot dans le localStorage
+        try {
+          localStorage.setItem(`botActive_${userData?.profile?.id}`, newStatus.toString());
+        } catch (e) {
+          console.error("Failed to store bot status in localStorage:", e);
+        }
       }
     };
+    
+    // Restaurer l'état du bot à partir du localStorage
+    try {
+      const storedBotStatus = localStorage.getItem(`botActive_${userData?.profile?.id}`);
+      if (storedBotStatus !== null) {
+        const isActive = storedBotStatus === 'true';
+        setIsBotActive(isActive);
+        botActiveRef.current = isActive;
+      }
+    } catch (e) {
+      console.error("Failed to restore bot status from localStorage:", e);
+    }
     
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('bot:external-status-change' as any, handleBotStatusChange);
@@ -103,19 +144,44 @@ export const useAutoSessions = (
       
       // Get today's transactions to accurately calculate today's gains
       const today = new Date().toISOString().split('T')[0];
-      const todaysTransactions = userData.transactions.filter((tx: any) => 
-        tx.date?.startsWith(today) && tx.gain > 0
-      );
-      const todaysGains = todaysTransactions.reduce((sum: number, tx: any) => sum + (tx.gain || 0), 0);
-      todaysGainsRef.current = todaysGains;
+      const storedGainsDate = localStorage.getItem('todaysGainsDate');
+      
+      // Si la date stockée n'est pas aujourd'hui, réinitialiser les gains
+      if (storedGainsDate !== today) {
+        todaysGainsRef.current = 0;
+        localStorage.setItem('todaysGains', '0');
+        localStorage.setItem('todaysGainsDate', today);
+      } else {
+        // Restaurer les gains d'aujourd'hui depuis le localStorage
+        const storedGains = localStorage.getItem('todaysGains');
+        if (storedGains) {
+          todaysGainsRef.current = parseFloat(storedGains);
+        }
+      }
+      
+      // Vérifier aussi dans les transactions si disponibles
+      if (userData?.transactions) {
+        const todaysTransactions = userData.transactions.filter((tx: any) => 
+          tx.date?.startsWith(today) && tx.gain > 0
+        );
+        const calculatedGains = todaysTransactions.reduce((sum: number, tx: any) => sum + (tx.gain || 0), 0);
+        
+        // Prendre la valeur la plus élevée entre les transactions et le localStorage
+        todaysGainsRef.current = Math.max(todaysGainsRef.current, calculatedGains);
+        localStorage.setItem('todaysGains', todaysGainsRef.current.toString());
+      }
       
       // Check if we've reached the limit
-      const remainingAllowedGains = Math.max(0, dailyLimit - todaysGains);
+      const remainingAllowedGains = Math.max(0, dailyLimit - todaysGainsRef.current);
       if (remainingAllowedGains <= 0.01) {
         setIsBotActive(false);
         botActiveRef.current = false;
         setShowLimitAlert(true);
         terminalAnimation.complete(0);
+        
+        // Enregistrer l'état du bot
+        localStorage.setItem(`botActive_${userData?.profile?.id}`, 'false');
+        
         return;
       }
       
@@ -142,22 +208,37 @@ export const useAutoSessions = (
       // Create a descriptive message for the transaction
       const transactionReport = `Notre système d'analyse de contenu vidéo a généré ${finalGain.toFixed(2)}€ de revenus. Performance basée sur le niveau d'abonnement ${userData.subscription}.`;
       
+      // Mettre à jour les gains quotidiens immédiatement
+      todaysGainsRef.current += finalGain;
+      localStorage.setItem('todaysGains', todaysGainsRef.current.toString());
+      
       // Use balance manager to sync consistently
       if (userData?.profile?.id) {
         // Add the transaction first
-        await balanceManager.addTransaction(userData.profile.id, finalGain, transactionReport);
+        const transactionResult = await balanceManager.addTransaction(userData.profile.id, finalGain, transactionReport);
         
-        // Then update the balance with force update for immediate UI update
-        await updateBalance(
-          finalGain,
-          transactionReport,
-          true
-        );
-        
-        // Trigger refresh event
-        window.dispatchEvent(new CustomEvent('transactions:refresh', {
-          detail: { userId: userData.profile.id }
-        }));
+        if (transactionResult) {
+          // Recalculer le nouveau solde
+          const newBalance = (userData.balance || 0) + finalGain;
+          
+          // Force update balance manager
+          balanceManager.forceUpdate(newBalance);
+          
+          // Then update the balance with force update for immediate UI update
+          await updateBalance(
+            finalGain,
+            transactionReport,
+            true
+          );
+          
+          // Trigger refresh event
+          window.dispatchEvent(new CustomEvent('transactions:refresh', {
+            detail: { userId: userData.profile.id }
+          }));
+          
+          // Also sync with database immediately after transaction
+          await balanceManager.syncWithDatabase();
+        }
       }
       
       // Display a notification to confirm automatic generation
@@ -172,20 +253,28 @@ export const useAutoSessions = (
       // Complete the animation with the obtained gain
       terminalAnimation.complete(finalGain);
       
-      // Update our reference of today's gains
-      todaysGainsRef.current += finalGain;
-      
       // If limit reached, deactivate the bot
       if (todaysGainsRef.current >= dailyLimit) {
         setIsBotActive(false);
         botActiveRef.current = false;
         setShowLimitAlert(true);
         
+        // Enregistrer l'état du bot
+        localStorage.setItem(`botActive_${userData?.profile?.id}`, 'false');
+        
         toast({
           title: `Limite journalière atteinte`,
           description: `Le robot d'analyse est désactivé jusqu'à demain.`,
           duration: 5000,
         });
+      }
+      
+      // Sync with database after any changes
+      if (userData?.profile?.id) {
+        await supabase
+          .from('user_balances')
+          .update({ daily_session_count: Math.ceil(todaysGainsRef.current / 0.1) })
+          .eq('id', userData.profile.id);
       }
     } catch (error) {
       console.error("Error in generateAutomaticRevenue:", error);
