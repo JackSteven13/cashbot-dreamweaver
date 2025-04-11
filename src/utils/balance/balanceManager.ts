@@ -1,4 +1,7 @@
 // Define the interface outside the class to avoid syntax errors and circular references
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
+
 interface BalanceState {
   currentBalance: number;
   highestBalance: number;
