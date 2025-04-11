@@ -1,7 +1,7 @@
 
-export { default as TransactionEmptyState } from './TransactionEmptyState';
+export { TransactionEmptyState } from './TransactionEmptyState';
 export { default as TransactionFooter } from './TransactionFooter';
 export { default as TransactionListActions } from './TransactionListActions';
 export { default as TransactionListItem } from './TransactionListItem';
 export { default as TransactionsPanel } from './TransactionsPanel';
-export { default as useTransactions } from './useTransactions';
+export { useTransactions } from './useTransactions';
