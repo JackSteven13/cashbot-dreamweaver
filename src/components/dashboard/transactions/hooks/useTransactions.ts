@@ -4,6 +4,7 @@ import { Transaction } from '@/types/userData';
 import { useTransactionsState } from './useTransactionsState';
 import { useTransactionsStorage } from './useTransactionsStorage';
 import { useTransactionsRefresh } from './useTransactionsRefresh';
+import { useTransactionDisplay } from './useTransactionDisplay';
 
 export const useTransactions = (initialTransactions: Transaction[]) => {
   // Utiliser les hooks spécifiques pour chaque fonctionnalité
@@ -87,3 +88,4 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     hiddenTransactionsCount
   };
 };
+
