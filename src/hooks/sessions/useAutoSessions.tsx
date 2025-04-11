@@ -6,39 +6,50 @@ import { useDailyLimits } from './useDailyLimits';
 import { useActivitySimulation } from './useActivitySimulation';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
 import { toast } from '@/components/ui/use-toast';
-import { addTransaction } from '@/hooks/user/transactionUtils'; // Importer la fonction pour ajouter une transaction
+import { addTransaction } from '@/hooks/user/transactionUtils';
+import balanceManager from '@/utils/balance/balanceManager';
 
 export const useAutoSessions = (
   userData: any,
   updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>,
   setShowLimitAlert: (show: boolean) => void
 ) => {
-  // Références pour garantir la stabilité des données
+  // References to ensure data stability
   const todaysGainsRef = useRef(0);
   const lastKnownBalanceRef = useRef(userData?.balance || 0);
   
-  // State pour suivre l'activité du bot
+  // State to track bot activity
   const [isBotActive, setIsBotActive] = useState(true);
   const botActiveRef = useRef(true);
   
-  // Mettre à jour lastKnownBalanceRef quand userData.balance change
+  // Update lastKnownBalanceRef when userData.balance changes
   useEffect(() => {
     if (userData?.balance !== undefined && userData.balance !== lastKnownBalanceRef.current) {
       lastKnownBalanceRef.current = userData.balance;
       
-      // Stocker également en localStorage pour persistence entre les rendus
+      // Also store in localStorage for persistence between renders
       try {
         localStorage.setItem('lastKnownBalance', userData.balance.toString());
       } catch (e) {
         console.error("Failed to store balance in localStorage:", e);
       }
     }
-  }, [userData?.balance]);
+    
+    // Calculate today's gains from transactions
+    if (userData?.transactions) {
+      const today = new Date().toISOString().split('T')[0];
+      const todaysTransactions = userData.transactions.filter((tx: any) => 
+        tx.date?.startsWith(today) && tx.gain > 0
+      );
+      const todaysGains = todaysTransactions.reduce((sum: number, tx: any) => sum + (tx.gain || 0), 0);
+      todaysGainsRef.current = todaysGains;
+    }
+  }, [userData?.balance, userData?.transactions]);
 
-  // Custom hooks pour la logique de génération automatique
+  // Custom hooks for automatic generation logic
   const { getDailyLimit } = useDailyLimits(userData?.subscription);
   
-  // Planificateur de sessions automatiques
+  // Automatic session scheduler
   const { 
     lastAutoSessionTime,
     getLastAutoSessionTime,
@@ -46,19 +57,19 @@ export const useAutoSessions = (
     getCurrentPersistentBalance
   } = useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
   
-  // Écouter les changements d'état du bot
+  // Listen for bot status changes
   useEffect(() => {
     const handleBotStatusChange = (event: CustomEvent) => {
       const newStatus = event.detail?.active;
       const userId = event.detail?.userId;
       
-      // Vérifier si l'événement concerne cet utilisateur
+      // Only handle events for this user
       if (userId && userData?.profile?.id && userId !== userData.profile.id) {
         return;
       }
       
       if (typeof newStatus === 'boolean') {
-        // Mettre à jour l'état local et la référence
+        // Update local state and reference
         setIsBotActive(newStatus);
         botActiveRef.current = newStatus;
         console.log("Bot status updated to:", newStatus);
@@ -74,24 +85,31 @@ export const useAutoSessions = (
     };
   }, [userData?.profile?.id]);
 
-  // Fonction pour générer des revenus automatiques avec animation améliorée
+  // Function to generate automatic revenue with improved animation
   async function generateAutomaticRevenue(isFirst = false): Promise<void> {
     if (!botActiveRef.current) {
       console.log("Bot is inactive, no automatic revenue will be generated");
       return;
     }
     
-    // Créer une séquence d'animation qui n'affiche pas l'écran de chargement
+    // Create an animation sequence that doesn't display the loading screen
     const terminalAnimation = createBackgroundTerminalSequence([
       "Initialisation de l'analyse du contenu vidéo..."
     ]);
     
     try {
-      // Calculer le gain potentiel
+      // Calculate potential gain
       const dailyLimit = getDailyLimit();
-      const todaysGains = todaysGainsRef.current;
       
-      // Vérifier si on a atteint la limite
+      // Get today's transactions to accurately calculate today's gains
+      const today = new Date().toISOString().split('T')[0];
+      const todaysTransactions = userData.transactions.filter((tx: any) => 
+        tx.date?.startsWith(today) && tx.gain > 0
+      );
+      const todaysGains = todaysTransactions.reduce((sum: number, tx: any) => sum + (tx.gain || 0), 0);
+      todaysGainsRef.current = todaysGains;
+      
+      // Check if we've reached the limit
       const remainingAllowedGains = Math.max(0, dailyLimit - todaysGains);
       if (remainingAllowedGains <= 0.01) {
         setIsBotActive(false);
@@ -101,47 +119,48 @@ export const useAutoSessions = (
         return;
       }
       
-      // Ajouter des lignes d'animation progressivement
+      // Add animation lines progressively
       terminalAnimation.addLine("Traitement des données algorithmiques...");
       
-      // Court délai pour simuler un traitement
+      // Short delay to simulate processing
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Générer un gain aléatoire entre 0.01 et 0.1, limité par le montant restant disponible
+      // Generate a random gain between 0.01 and 0.1, limited by the remaining allowed amount
       const baseGain = Math.min(
         Math.random() * 0.09 + 0.01,
         remainingAllowedGains
       );
       
-      // Arrondir à 2 décimales
+      // Round to 2 decimals
       const finalGain = parseFloat(baseGain.toFixed(2));
       
-      // Simuler un court délai supplémentaire
+      // Simulate an additional short delay
       await new Promise(resolve => setTimeout(resolve, 600));
       
       terminalAnimation.addLine(`Analyse complétée. Optimisation des résultats: ${finalGain.toFixed(2)}€`);
       
-      // Créer un message descriptif pour la transaction
+      // Create a descriptive message for the transaction
       const transactionReport = `Notre système d'analyse de contenu vidéo a généré ${finalGain.toFixed(2)}€ de revenus. Performance basée sur le niveau d'abonnement ${userData.subscription}.`;
       
-      // Ajouter explicitement la transaction à l'historique
+      // Use balance manager to sync consistently
       if (userData?.profile?.id) {
-        await addTransaction(userData.profile.id, finalGain, transactionReport);
+        // Add the transaction first
+        await balanceManager.addTransaction(userData.profile.id, finalGain, transactionReport);
         
-        // Notifier pour actualiser l'interface utilisateur
+        // Then update the balance with force update for immediate UI update
+        await updateBalance(
+          finalGain,
+          transactionReport,
+          true
+        );
+        
+        // Trigger refresh event
         window.dispatchEvent(new CustomEvent('transactions:refresh', {
           detail: { userId: userData.profile.id }
         }));
       }
       
-      // Mettre à jour le solde en utilisant forceUpdate=true pour une mise à jour UI immédiate
-      await updateBalance(
-        finalGain,
-        transactionReport,
-        true // Force update pour mise à jour UI immédiate
-      );
-      
-      // Afficher une notification pour confirmer la génération automatique
+      // Display a notification to confirm automatic generation
       if (isFirst || Math.random() > 0.7) {
         toast({
           title: `Gains automatiques +${finalGain.toFixed(2)}€`,
@@ -150,28 +169,34 @@ export const useAutoSessions = (
         });
       }
       
-      // Terminer l'animation avec le gain obtenu
+      // Complete the animation with the obtained gain
       terminalAnimation.complete(finalGain);
       
-      // Mettre à jour notre référence des gains du jour
+      // Update our reference of today's gains
       todaysGainsRef.current += finalGain;
       
-      // Si limite atteinte, désactiver le bot
+      // If limit reached, deactivate the bot
       if (todaysGainsRef.current >= dailyLimit) {
         setIsBotActive(false);
         botActiveRef.current = false;
         setShowLimitAlert(true);
+        
+        toast({
+          title: `Limite journalière atteinte`,
+          description: `Le robot d'analyse est désactivé jusqu'à demain.`,
+          duration: 5000,
+        });
       }
     } catch (error) {
       console.error("Error in generateAutomaticRevenue:", error);
-      // Terminer l'animation même en cas d'erreur
+      // Complete the animation even in case of error
       terminalAnimation.complete(0);
     }
   }
 
   return {
     lastAutoSessionTime: getLastAutoSessionTime(),
-    activityLevel: "medium", // Placeholder pour compatibilité
+    activityLevel: "medium", // Placeholder for compatibility
     generateAutomaticRevenue,
     isBotActive
   };

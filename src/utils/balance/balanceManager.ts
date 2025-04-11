@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
@@ -15,10 +16,15 @@ class BalanceManagerClass {
   private userId: string | null = null;
   private initialized: boolean = false;
   private subscribers: Array<(state: BalanceState) => void> = [];
+  private lastSyncTime: number = 0;
+  private syncLock: boolean = false;
 
   constructor() {
-    // Initialiser avec localStorage si disponible
+    // Initialize with localStorage if available
     this.loadFromStorage();
+    
+    // Add periodic sync to ensure consistency
+    setInterval(() => this.periodicSync(), 60000); // Every 60 seconds
   }
 
   private loadFromStorage(): void {
@@ -34,7 +40,7 @@ class BalanceManagerClass {
       if (storedHighestBalance) {
         this.highestBalance = parseFloat(storedHighestBalance);
       } else if (storedBalance) {
-        // Si pas de highest mais balance existante, utiliser cette valeur
+        // If no highest but existing balance, use this value
         this.highestBalance = parseFloat(storedBalance);
       }
 
@@ -55,6 +61,10 @@ class BalanceManagerClass {
       localStorage.setItem('highestBalance', this.highestBalance.toString());
       if (this.userId) {
         localStorage.setItem('lastActiveUserId', this.userId);
+        // Also save with user-specific keys for better data isolation
+        localStorage.setItem(`balance_${this.userId}`, this.currentBalance.toString());
+        localStorage.setItem(`highestBalance_${this.userId}`, this.highestBalance.toString());
+        localStorage.setItem('lastBalanceUpdateTime', Date.now().toString());
       }
     } catch (error) {
       console.error('Error saving balance to storage:', error);
@@ -62,7 +72,7 @@ class BalanceManagerClass {
   }
 
   public updateBalance(newBalance: number): void {
-    // Toujours utiliser la valeur la plus élevée pour éviter les régressions
+    // Use the higher value to prevent regressions
     if (newBalance > this.currentBalance) {
       this.currentBalance = newBalance;
       
@@ -72,6 +82,13 @@ class BalanceManagerClass {
       
       this.saveToStorage();
       this.dispatchBalanceUpdateEvent(newBalance);
+      
+      // Sync with database immediately for important updates
+      if (this.userId) {
+        this.syncWithDatabase().catch(err => 
+          console.error("Error syncing after balance update:", err)
+        );
+      }
       
       // Notify subscribers
       this.notifySubscribers();
@@ -92,12 +109,43 @@ class BalanceManagerClass {
 
   public setUserId(userId: string): void {
     if (this.userId !== userId) {
+      const oldUserId = this.userId;
       this.userId = userId;
       this.saveToStorage();
+      
+      // Load user-specific data if available
+      try {
+        const userSpecificBalance = localStorage.getItem(`balance_${userId}`);
+        const userSpecificHighest = localStorage.getItem(`highestBalance_${userId}`);
+        
+        if (userSpecificBalance) {
+          const parsedBalance = parseFloat(userSpecificBalance);
+          if (parsedBalance > this.currentBalance) {
+            this.currentBalance = parsedBalance;
+          }
+        }
+        
+        if (userSpecificHighest) {
+          const parsedHighest = parseFloat(userSpecificHighest);
+          if (parsedHighest > this.highestBalance) {
+            this.highestBalance = parsedHighest;
+          }
+        }
+        
+        // If user changed, sync to ensure we have the latest data
+        if (oldUserId !== userId) {
+          this.syncWithDatabase().catch(err => 
+            console.error("Error syncing after user change:", err)
+          );
+        }
+      } catch (error) {
+        console.error("Error loading user-specific balance:", error);
+      }
     }
   }
   
   public initialize(balance: number, userId?: string): void {
+    // Always use the higher balance to prevent regressions
     if (balance > this.currentBalance) {
       this.currentBalance = balance;
       
@@ -112,6 +160,13 @@ class BalanceManagerClass {
     
     this.saveToStorage();
     this.notifySubscribers();
+    
+    // Initial sync with database after initialization
+    if (this.userId) {
+      this.syncWithDatabase().catch(err => 
+        console.error("Error during initial sync:", err)
+      );
+    }
   }
   
   public subscribe(callback: (state: BalanceState) => void): () => void {
@@ -134,11 +189,31 @@ class BalanceManagerClass {
     this.subscribers.forEach(callback => callback(state));
   }
 
+  private async periodicSync(): Promise<void> {
+    // Don't sync too frequently or if another sync is in progress
+    const now = Date.now();
+    if (this.syncLock || now - this.lastSyncTime < 30000) {
+      return;
+    }
+    
+    if (this.userId) {
+      this.syncLock = true;
+      try {
+        await this.syncWithDatabase();
+        this.lastSyncTime = now;
+      } catch (error) {
+        console.error("Error during periodic sync:", error);
+      } finally {
+        this.syncLock = false;
+      }
+    }
+  }
+
   public async syncWithDatabase(): Promise<boolean> {
     if (!this.userId) return false;
 
     try {
-      // Récupérer le solde actuel depuis la base de données
+      // Get current balance from database
       const { data, error } = await supabase
         .from('user_balances')
         .select('balance')
@@ -149,9 +224,9 @@ class BalanceManagerClass {
 
       const dbBalance = data?.balance || 0;
 
-      // Si notre solde local est plus élevé, mettre à jour la base de données
+      // If our local balance is higher, update the database
       if (this.currentBalance > dbBalance) {
-        console.log(`Solde DB (${dbBalance}) inférieur au solde maximum stocké (${this.currentBalance}). Synchronisation...`);
+        console.log(`DB balance (${dbBalance}) is lower than stored balance (${this.currentBalance}). Syncing...`);
         
         const { error: updateError } = await supabase
           .from('user_balances')
@@ -160,13 +235,13 @@ class BalanceManagerClass {
 
         if (updateError) throw updateError;
         
-        console.log(`Solde mis à jour avec succès dans la base à ${this.currentBalance}`);
+        console.log(`Balance successfully updated in database to ${this.currentBalance}`);
         return true;
       }
 
-      // Si la DB a un solde plus élevé, mettre à jour notre cache local
+      // If DB has a higher balance, update our local cache
       if (dbBalance > this.currentBalance) {
-        console.log(`Solde DB (${dbBalance}) supérieur au solde local (${this.currentBalance}). Mise à jour locale...`);
+        console.log(`DB balance (${dbBalance}) is higher than local balance (${this.currentBalance}). Updating local...`);
         this.currentBalance = dbBalance;
         
         if (dbBalance > this.highestBalance) {
@@ -175,6 +250,7 @@ class BalanceManagerClass {
         
         this.saveToStorage();
         this.dispatchBalanceUpdateEvent(dbBalance);
+        this.notifySubscribers();
         return true;
       }
 
@@ -201,7 +277,10 @@ class BalanceManagerClass {
 
       if (error) throw error;
       
-      // Déclencher un événement pour signaler qu'une nouvelle transaction a été ajoutée
+      // Update local balance after transaction
+      this.updateBalance(this.currentBalance + gain);
+      
+      // Trigger event to signal a new transaction was added
       window.dispatchEvent(new CustomEvent('transaction:added', {
         detail: { 
           userId, 
@@ -251,17 +330,26 @@ class BalanceManagerClass {
   private dispatchBalanceUpdateEvent(balance: number): void {
     window.dispatchEvent(
       new CustomEvent('balance:local-update', {
-        detail: { balance }
+        detail: { 
+          balance,
+          userId: this.userId
+        }
       })
     );
   }
 
   private dispatchBalanceResetEvent(): void {
-    window.dispatchEvent(new CustomEvent('balance:reset-complete'));
+    window.dispatchEvent(
+      new CustomEvent('balance:reset-complete', {
+        detail: {
+          userId: this.userId
+        }
+      })
+    );
   }
 }
 
-// Créer une instance singleton
+// Create singleton instance
 const balanceManager = new BalanceManagerClass();
 
 // Export getHighestBalance function
@@ -269,7 +357,7 @@ export const getHighestBalance = (): number => {
   return balanceManager.getHighestBalance();
 };
 
-// Exporter aussi la classe pour compatibilité
+// Also export the class for compatibility
 export const BalanceManager = {
   updateBalance: (balance: number) => balanceManager.updateBalance(balance),
   getBalance: () => balanceManager.getBalance(),
