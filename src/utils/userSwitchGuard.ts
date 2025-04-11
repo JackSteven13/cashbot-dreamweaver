@@ -1,10 +1,12 @@
 
 import { getSavedSession } from './auth/sessionStorage';
 import { supabase } from '@/integrations/supabase/client';
-import { BalanceManager } from './balance/balanceManager';
+import { balanceManager } from './balance/balanceManager';
 
-// Re-export the cleanupUserBalanceData function from BalanceManager
-export const cleanupUserBalanceData = BalanceManager.cleanupUserBalanceData;
+// Re-exporter la fonction cleanupUserBalanceData pour la rendre disponible
+export const cleanupUserBalanceData = () => {
+  balanceManager.cleanupUserBalanceData();
+};
 
 /**
  * Fonction pour détecter un changement d'utilisateur et nettoyer les données locales

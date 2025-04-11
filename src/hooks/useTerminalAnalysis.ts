@@ -54,10 +54,11 @@ export const useTerminalAnalysis = () => {
           'Initialisation de l\'analyse réseau...',
         ]);
       } else {
-        // Ce chemin ne doit pas être pris pour les revenus générés automatiquement,
-        // uniquement pour les actions manuelles comme les clics sur les boutons
+        // Lorsque l'utilisateur lance l'analyse manuellement, nous utilisons aussi le mode arrière-plan
+        // pour éviter la page de chargement intermédiaire
+        console.log("Using background mode for manual analysis to improve UX");
         setShowAnalysis(true);
-        setIsBackgroundMode(false);
+        setIsBackgroundMode(true); // Forcer le mode arrière-plan pour toutes les analyses
         setAnalysisComplete(false);
         setTerminalLines([
           'Initialisation de l\'analyse réseau...',
@@ -77,11 +78,10 @@ export const useTerminalAnalysis = () => {
         `Analyse terminée avec succès! Revenus générés: ${gain.toFixed(2)}€`
       ]);
       setAnalysisComplete(true);
-      setIsBackgroundMode(isBackgroundProcess);
+      setIsBackgroundMode(true); // Toujours utiliser le mode arrière-plan
       
-      // Masquer le terminal après 5 secondes pour les processus en arrière-plan,
-      // mais garder visible plus longtemps pour les processus au premier plan
-      const hideDelay = isBackgroundProcess ? 5000 : 8000;
+      // Masquer le terminal après 3 secondes pour améliorer l'expérience utilisateur
+      const hideDelay = 3000;
       
       setTimeout(() => {
         setShowAnalysis(false);
@@ -102,7 +102,7 @@ export const useTerminalAnalysis = () => {
       
       setLimitReached(true);
       setShowAnalysis(true);
-      setIsBackgroundMode(isBackground);
+      setIsBackgroundMode(isBackground || true); // Toujours utiliser le mode arrière-plan
       setTerminalLines([
         `Limite journalière de ${dailyLimit}€ atteinte.`,
         'Le bot est temporairement hors-service.'

@@ -48,6 +48,14 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
       }));
       
       console.log("Limite atteinte dans SystemProgressBar, bot désactivé");
+      
+      // Afficher un toast pour informer l'utilisateur
+      toast({
+        title: "Limite journalière atteinte",
+        description: `Vous avez atteint votre limite de gain journalier de ${limit.toFixed(2)}€. Le bot est maintenant en pause.`,
+        variant: "destructive",
+        duration: 6000
+      });
     }
   }, [subscription, displayBalance, dailyLimit, limitPercentage, localBotActive]);
   
@@ -55,21 +63,44 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
   useEffect(() => {
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
+      const checkLimit = event.detail?.checkLimit;
+      
       if (typeof isActive === 'boolean') {
         console.log(`SystemProgressBar received bot status update: ${isActive ? 'active' : 'inactive'}`);
-        setLocalBotActive(isActive);
+        
+        // Si on active le bot mais que la limite est atteinte, empêcher l'activation
+        if (isActive && limitReached && checkLimit) {
+          console.log("Tentative d'activation du bot avec limite atteinte, bloqué");
+          
+          // Renvoyer immédiatement l'information que le bot doit rester inactif
+          window.dispatchEvent(new CustomEvent('bot:force-status', { 
+            detail: { active: false, reason: 'limit_reached' } 
+          }));
+          
+          // Afficher un toast pour informer l'utilisateur
+          toast({
+            title: "Limite journalière atteinte",
+            description: `Vous avez atteint votre limite de gain journalier de ${effectiveLimit.toFixed(2)}€. Revenez demain ou passez à un forfait supérieur.`,
+            variant: "destructive",
+            duration: 5000
+          });
+        } else {
+          setLocalBotActive(isActive);
+        }
       }
     };
     
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
+    window.addEventListener('bot:external-status-change' as any, handleBotStatusChange);
     
     // Synchroniser avec la prop botActive au montage
     setLocalBotActive(botActive);
     
     return () => {
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
+      window.removeEventListener('bot:external-status-change' as any, handleBotStatusChange);
     };
-  }, [botActive]);
+  }, [botActive, limitReached, effectiveLimit]);
   
   // Fonction pour basculer manuellement l'état du bot
   const toggleBotStatus = () => {
@@ -77,7 +108,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
     if (limitReached && !localBotActive) {
       toast({
         title: "Impossible d'activer l'analyse",
-        description: "Vous avez atteint votre limite journalière de gains. Revenez demain ou passez à un forfait supérieur.",
+        description: `Vous avez atteint votre limite journalière de ${effectiveLimit.toFixed(2)}€. Revenez demain ou passez à un forfait supérieur.`,
         variant: "destructive",
         duration: 5000
       });
@@ -110,7 +141,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
         <div className="text-xs font-medium text-gray-300 flex items-center">
           <span className={`mr-2 ${limitReached ? 'text-red-400' : 'text-blue-300'}`}>
             {Math.round(calculatedPercentage)}%
-          </span> / {effectiveLimit}€ par jour
+          </span> / {effectiveLimit.toFixed(2)}€ par jour
           
           {/* Indicateur d'état du bot amélioré avec possibilité de cliquer */}
           <div 
@@ -125,7 +156,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
               limitReached ? 'bg-red-500' : (localBotActive ? 'bg-green-500' : 'bg-red-500')
             }`}></span>
             <span className="ml-1 text-xs text-gray-400">
-              {limitReached ? 'Limite atteinte' : (localBotActive ? 'Bot actif' : 'Bot inactif')}
+              {limitReached ? 'Limite atteinte' : (localBotActive ? 'Bot actif' : 'Bot en pause')}
             </span>
           </div>
         </div>
@@ -148,7 +179,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
           {limitReached ? (
             <span className="text-red-400">Limite atteinte</span>
           ) : (
-            <span>(Limite: {effectiveLimit}€/jour)</span>
+            <span>(Limite: {effectiveLimit.toFixed(2)}€/jour)</span>
           )}
         </span>
       </div>

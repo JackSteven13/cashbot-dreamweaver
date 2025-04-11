@@ -17,7 +17,7 @@ interface Referral {
   referrer_id: string;
   status: string;
   commission_rate: number;
-  // Add fields that might be missing or have different names
+  // Ces champs peuvent être présents ou absents selon la structure de données
   active?: boolean;
   commission_earned?: number;
 }
@@ -48,15 +48,36 @@ export const useReferralSystem = (userId?: string): UseReferralSystemReturn => {
       
       if (fetchError) throw fetchError;
       
-      // Calculate statistics
-      // Check if status is 'active' instead of using the 'active' property directly
-      const activeReferrals = (referrals as Referral[] || []).filter(ref => ref.status === 'active');
-      setReferralCount(activeReferrals.length);
+      // Calculate statistics - handle different data structures
+      let activeReferrals: Referral[] = [];
       
-      // Use commission_rate if commission_earned is not available
-      const commission = activeReferrals.reduce((sum, ref) => 
-        sum + (ref.commission_earned !== undefined ? ref.commission_earned : ref.commission_rate || 0), 0);
-      setTotalCommission(commission);
+      if (referrals && Array.isArray(referrals)) {
+        // First check by status field (primary method)
+        activeReferrals = referrals.filter(ref => 
+          ref.status === 'active' || ref.active === true
+        );
+        
+        // If no active referrals found by status, try alternative property if exists
+        if (activeReferrals.length === 0 && referrals.some(ref => 'active' in ref)) {
+          activeReferrals = referrals.filter(ref => ref.active);
+        }
+        
+        setReferralCount(activeReferrals.length);
+        
+        // Calculate commission with fallbacks
+        const commission = activeReferrals.reduce((sum, ref) => {
+          // Try commission_earned first, fallback to commission_rate
+          const amount = 'commission_earned' in ref && ref.commission_earned !== undefined
+            ? ref.commission_earned
+            : (ref.commission_rate || 0);
+          return sum + amount;
+        }, 0);
+        
+        setTotalCommission(commission);
+      } else {
+        setReferralCount(0);
+        setTotalCommission(0);
+      }
       
     } catch (err) {
       console.error('Error fetching referral data:', err);

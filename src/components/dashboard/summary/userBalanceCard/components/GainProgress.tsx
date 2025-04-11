@@ -54,7 +54,6 @@ const GainProgress: React.FC<GainProgressProps> = ({
       <Progress 
         value={percentage} 
         className="h-2 bg-gray-200 dark:bg-gray-700"
-        // Use style instead of indicatorClassName
         style={{ 
           ['--progress-background' as any]: getProgressColor().replace('bg-', '--'),
           transition: animate ? 'all 500ms' : 'none'
