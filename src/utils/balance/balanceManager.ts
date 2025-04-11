@@ -1,6 +1,13 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+
+// Define the interface outside the class to avoid syntax errors and circular references
+interface BalanceState {
+  currentBalance: number;
+  highestBalance: number;
+  userId: string | null;
+  lastKnownBalance: number;
+}
 
 class BalanceManagerClass {
   private currentBalance: number = 0;
@@ -8,14 +15,6 @@ class BalanceManagerClass {
   private userId: string | null = null;
   private initialized: boolean = false;
   private subscribers: Array<(state: BalanceState) => void> = [];
-
-  // Define a proper type for the balance state to avoid infinite type instantiation
-  interface BalanceState {
-    currentBalance: number;
-    highestBalance: number;
-    userId: string | null;
-    lastKnownBalance: number;
-  }
 
   constructor() {
     // Initialiser avec localStorage si disponible
@@ -253,14 +252,6 @@ class BalanceManagerClass {
   private dispatchBalanceResetEvent(): void {
     window.dispatchEvent(new CustomEvent('balance:reset-complete'));
   }
-}
-
-// Define the proper interface outside the class to avoid circular references
-interface BalanceState {
-  currentBalance: number;
-  highestBalance: number;
-  userId: string | null;
-  lastKnownBalance: number;
 }
 
 // Créer une instance singleton
