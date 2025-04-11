@@ -33,6 +33,7 @@ export const animateBalance = (
   setLocalBalance: (value: number) => void
 ): Promise<void> => {
   return new Promise((resolve) => {
+    // Pass onComplete as the sixth parameter instead of fifth
     animateBalanceUpdate(
       startBalance,
       newBalance,
@@ -40,7 +41,8 @@ export const animateBalance = (
       (value) => {
         setLocalBalance(value);
       },
-      () => resolve()
+      undefined, // Use default easing function
+      () => resolve() // This is the onComplete callback
     );
   });
 };

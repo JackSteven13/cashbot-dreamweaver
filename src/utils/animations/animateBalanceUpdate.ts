@@ -8,18 +8,21 @@ export function animateBalanceUpdate(
   endValue: number,
   duration: number,
   onUpdate: (value: number) => void,
-  easing: (t: number) => number = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+  easing: (t: number) => number = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2,
+  onComplete?: () => void
 ) {
   // Garantir que l'animation va toujours vers le haut, jamais vers le bas
   if (endValue < startValue) {
     console.warn(`Attempted to animate balance from ${startValue} to lower value ${endValue}. Using starting value instead.`);
     onUpdate(startValue);
+    if (onComplete) onComplete();
     return;
   }
   
   // Si les valeurs sont identiques ou très proches, pas besoin d'animer
   if (Math.abs(endValue - startValue) < 0.001) {
     onUpdate(endValue);
+    if (onComplete) onComplete();
     return;
   }
   
@@ -67,6 +70,11 @@ export function animateBalanceUpdate(
       const finalValue = parseFloat(endValue.toFixed(2));
       if (finalValue !== lastValue) {
         onUpdate(finalValue);
+      }
+      
+      // Call completion callback if provided
+      if (onComplete) {
+        onComplete();
       }
     }
   };
