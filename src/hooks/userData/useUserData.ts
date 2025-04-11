@@ -11,7 +11,7 @@ export const useUserData = () => {
   // Utiliser les hooks individuels pour chaque fonctionnalité
   const { 
     userData, isNewUser, dailySessionCount, showLimitAlert, isLoading, isBotActive,
-    dailyLimitProgress, userActions, refreshUserData, generateAutomaticRevenue
+    dailyLimitProgress, userActions, refreshUserData: fetchUserData, generateAutomaticRevenue
   } = useUserDataState();
   
   // Synchronisation du solde
@@ -19,6 +19,17 @@ export const useUserData = () => {
   
   // Vérifications périodiques
   usePeriodicChecks(userData, refreshUserData);
+  
+  // Wrapper pour refreshUserData qui retourne un boolean
+  const refreshUserData = useCallback(async (): Promise<boolean> => {
+    try {
+      await fetchUserData();
+      return true;
+    } catch (error) {
+      console.error("Erreur lors du rafraîchissement des données:", error);
+      return false;
+    }
+  }, [fetchUserData]);
   
   // Méthode pour incrémenter le nombre de sessions
   const incrementSessionCount = useCallback(async (): Promise<void> => {

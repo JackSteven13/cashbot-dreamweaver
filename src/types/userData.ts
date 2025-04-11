@@ -2,10 +2,12 @@
 export interface Transaction {
   id?: string; // Adding id as optional property
   date: string;
-  amount: number;
-  type: string;
+  amount?: number;
+  type?: string;
   report: string;
   gain?: number; // Keep the original 'gain' for backward compatibility
+  created_at?: string;
+  user_id?: string;
 }
 
 export interface Referral {
@@ -31,6 +33,7 @@ export interface UserData {
   transactions: Transaction[];
   registeredAt?: Date;
   email?: string;
+  dailySessionCount?: number; // Add this to fix the error
   paymentMethods?: Array<{
     type: string;
     lastFour: string;
@@ -41,5 +44,5 @@ export interface UserData {
     full_name?: string;
     email?: string;
     id?: string;
-  }; // Add profile property to fix the error
+  }; 
 }
