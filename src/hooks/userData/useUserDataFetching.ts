@@ -1,7 +1,7 @@
 
 import { useCallback } from 'react';
-import { UserData } from '@/types/userData';
 import { supabase } from '@/integrations/supabase/client';
+import { UserData } from '@/types/userData';
 
 export const useUserDataFetching = (
   loadUserProfile: (userId: string, userEmail?: string | null) => Promise<any>,
@@ -50,7 +50,6 @@ export const useUserDataFetching = (
       
       // Construire les données utilisateur complètes
       const userData: UserData = {
-        id: userId,
         username: profile.full_name || 'Utilisateur',
         email: userEmail || '',
         balance: balanceResult.balanceData.balance || 0,
@@ -58,8 +57,7 @@ export const useUserDataFetching = (
         dailySessionCount: balanceResult.balanceData.daily_session_count || 0,
         transactions: transactions || [],
         referrals: [],
-        referralLink: '',
-        createdAt: profile.created_at || new Date().toISOString()
+        referralLink: ''
       };
       
       // Mettre à jour l'état avec les données récupérées

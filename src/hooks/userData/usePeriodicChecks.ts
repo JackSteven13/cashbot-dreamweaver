@@ -1,40 +1,46 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
-import balanceManager, { getHighestBalance } from '@/utils/balance/balanceManager';
+import balanceManager from '@/utils/balance/balanceManager';
 
-/**
- * Hook pour gérer les vérifications périodiques
- */
 export const usePeriodicChecks = (
-  userData: UserData | null,
-  refreshUserData: () => Promise<boolean>
+  userData: UserData | null, 
+  refreshUserData: () => Promise<void>
 ) => {
-  // Effet pour les vérifications périodiques
+  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Configurer des vérifications périodiques pour la synchronisation
   useEffect(() => {
-    // Vérification périodique de la cohérence et réinitialisation à minuit
-    const checkInterval = setInterval(() => {
-      const now = new Date();
-      
-      // Réinitialisation à minuit
-      if (now.getHours() === 0 && now.getMinutes() <= 5) {
-        // Ne pas réinitialiser le solde, seulement les compteurs quotidiens
-        balanceManager.resetDailyCounters();
-      }
-      
-      // Vérification de cohérence toutes les minutes
-      const highestBalance = getHighestBalance();
-      const currentDb = userData?.balance || 0;
-      
-      // Si notre solde local est plus élevé que celui dans la BD, forcer la synchronisation
-      if (highestBalance > currentDb) {
-        console.log(`[useUserData] Balance inconsistency: local=${highestBalance}, db=${currentDb}. Forcing sync...`);
-        window.dispatchEvent(new CustomEvent('balance:force-sync', { 
-          detail: { balance: highestBalance }
-        }));
-      }
-    }, 60000);
+    // Ne pas démarrer de synchronisation s'il n'y a pas de données utilisateur
+    if (!userData) return;
     
-    return () => clearInterval(checkInterval);
+    // Synchroniser immédiatement au démarrage
+    const initialTimer = setTimeout(() => {
+      balanceManager.syncWithDatabase();
+    }, 5000);
+    
+    // Configurer la synchronisation périodique
+    syncIntervalRef.current = setInterval(() => {
+      // Synchroniser le solde avec la base de données toutes les 5 minutes
+      balanceManager.syncWithDatabase();
+      
+      // Rafraîchir les données utilisateur toutes les 15 minutes
+      const now = new Date();
+      const minutes = now.getMinutes();
+      if (minutes % 15 === 0) {
+        refreshUserData();
+      }
+    }, 300000); // 5 minutes
+    
+    // Nettoyage à la destruction
+    return () => {
+      clearTimeout(initialTimer);
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+        syncIntervalRef.current = null;
+      }
+    };
   }, [userData, refreshUserData]);
+  
+  return null; // Ce hook ne retourne pas d'état
 };
