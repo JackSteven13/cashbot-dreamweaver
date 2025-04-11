@@ -1,8 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { SUBSCRIPTION_LIMITS } from "@/utils/subscription";
-import { balanceManager } from "./balanceManager";
+import balanceManager from "./balanceManager";
 
 // Update user balance with retry mechanism
 export const updateUserBalance = async (

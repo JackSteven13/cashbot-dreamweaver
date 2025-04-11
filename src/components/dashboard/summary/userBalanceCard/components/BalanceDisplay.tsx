@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, BotOff } from 'lucide-react';
-import { balanceManager } from '@/utils/balance/balanceManager';
+import balanceManager from '@/utils/balance/balanceManager';
 import { animateBalanceUpdate } from '@/utils/animations/animateBalanceUpdate';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import { toast } from "@/components/ui/use-toast";

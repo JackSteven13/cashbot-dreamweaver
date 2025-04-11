@@ -7,18 +7,33 @@ interface GainProgressProps {
   currentGain: number;
   subscription: string;
   animate?: boolean;
+  // New props to support different APIs and backward compatibility
+  currentValue?: number;
+  maxValue?: number;
+  showTooltip?: boolean;
+  tooltipText?: string;
+  className?: string;
 }
 
 const GainProgress: React.FC<GainProgressProps> = ({ 
   currentGain = 0, 
   subscription = 'freemium',
-  animate = false 
+  animate = false,
+  currentValue,
+  maxValue,
+  showTooltip = false,
+  tooltipText,
+  className = ''
 }) => {
   // Déterminer la limite en fonction de l'abonnement
-  const limit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  const limit = maxValue !== undefined ? maxValue : 
+    (SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
+  
+  // Use either currentValue or currentGain for backward compatibility
+  const value = currentValue !== undefined ? currentValue : currentGain;
   
   // Calculer le pourcentage de progression (max 100%)
-  const percentage = Math.min(100, (currentGain / limit) * 100);
+  const percentage = Math.min(100, (value / limit) * 100);
   
   // Déterminer la couleur en fonction du pourcentage
   const getProgressColor = () => {
@@ -29,20 +44,29 @@ const GainProgress: React.FC<GainProgressProps> = ({
   };
 
   return (
-    <div className="w-full space-y-1">
+    <div className={`w-full space-y-1 ${className}`}>
       <div className="flex justify-between items-center text-xs">
         <span className="text-gray-600 dark:text-gray-400">Gains quotidiens</span>
         <span className="font-medium">
-          {currentGain.toFixed(2)}€ / {limit.toFixed(2)}€
+          {value.toFixed(2)}€ / {limit.toFixed(2)}€
         </span>
       </div>
       <Progress 
         value={percentage} 
         className="h-2 bg-gray-200 dark:bg-gray-700"
-        indicatorClassName={`${getProgressColor()} ${animate ? 'transition-all duration-500' : ''}`}
+        // Use style instead of indicatorClassName
+        style={{ 
+          ['--progress-background' as any]: getProgressColor().replace('bg-', '--'),
+          transition: animate ? 'all 500ms' : 'none'
+        }}
       />
+      {showTooltip && tooltipText && (
+        <div className="text-xs opacity-75 mt-1">{tooltipText}</div>
+      )}
     </div>
   );
 };
 
+// Export both as default and named export for backward compatibility
+export { GainProgress };
 export default GainProgress;

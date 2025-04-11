@@ -12,6 +12,16 @@ interface UseReferralSystemReturn {
   refreshReferrals: () => Promise<void>;
 }
 
+interface Referral {
+  id: string;
+  referrer_id: string;
+  status: string;
+  commission_rate: number;
+  // Add fields that might be missing or have different names
+  active?: boolean;
+  commission_earned?: number;
+}
+
 export const useReferralSystem = (userId?: string): UseReferralSystemReturn => {
   const [referralLink, setReferralLink] = useState<string>('');
   const [referralCount, setReferralCount] = useState<number>(0);
@@ -39,11 +49,13 @@ export const useReferralSystem = (userId?: string): UseReferralSystemReturn => {
       if (fetchError) throw fetchError;
       
       // Calculate statistics
-      const activeReferrals = referrals?.filter(ref => ref.active !== false) || [];
+      // Check if status is 'active' instead of using the 'active' property directly
+      const activeReferrals = (referrals as Referral[] || []).filter(ref => ref.status === 'active');
       setReferralCount(activeReferrals.length);
       
+      // Use commission_rate if commission_earned is not available
       const commission = activeReferrals.reduce((sum, ref) => 
-        sum + (ref.commission_earned || 0), 0);
+        sum + (ref.commission_earned || ref.commission_rate || 0), 0);
       setTotalCommission(commission);
       
     } catch (err) {

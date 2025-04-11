@@ -1,8 +1,7 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUserDataFetcher } from './useUserDataFetcher';
 import { UserData } from '@/types/userData';
-import { balanceManager, getHighestBalance } from '@/utils/balance/balanceManager';
+import balanceManager, { getHighestBalance } from '@/utils/balance/balanceManager';
 
 export const useUserData = () => {
   const [userDataFetcher, userDataActions] = useUserDataFetcher();

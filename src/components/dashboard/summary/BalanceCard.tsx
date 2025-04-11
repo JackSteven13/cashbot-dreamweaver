@@ -3,11 +3,11 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import BalanceDisplay from './userBalanceCard/components/BalanceDisplay';
 import ActionButtons from './userBalanceCard/components/ActionButtons';
-import { GainProgress } from './userBalanceCard/components/GainProgress';
+import GainProgress from './userBalanceCard/components/GainProgress';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import { Sparkles } from 'lucide-react';
 import { animateBalanceUpdate } from '@/utils/animations/animateBalanceUpdate';
-import { balanceManager } from '@/utils/balance/balanceManager';
+import balanceManager from '@/utils/balance/balanceManager';
 
 interface BalanceCardProps {
   balance: number;

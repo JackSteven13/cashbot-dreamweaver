@@ -1,9 +1,8 @@
-
 import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { fetchUserBalance } from '@/utils/user/balanceUtils';
 import { toast } from "@/components/ui/use-toast";
-import { balanceManager, getHighestBalance } from '@/utils/balance/balanceManager'; 
+import balanceManager, { getHighestBalance } from '@/utils/balance/balanceManager'; 
 
 export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
   const loadUserBalance = useCallback(async (userId: string) => {

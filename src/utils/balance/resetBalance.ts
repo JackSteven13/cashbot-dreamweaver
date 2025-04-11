@@ -1,8 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { addTransaction } from '../transactionUtils';
-import { balanceManager } from "./balanceManager";
+import balanceManager from "./balanceManager";
 
 // Reset user balance with retry mechanism
 export const resetUserBalance = async (userId: string, currentBalance: number) => {
@@ -86,4 +85,3 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
   
   return { success: false, transaction: null };
 };
-
