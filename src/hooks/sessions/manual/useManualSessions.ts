@@ -4,10 +4,11 @@ import { toast } from '@/components/ui/use-toast';
 import { getEffectiveSubscription, SUBSCRIPTION_LIMITS } from '@/utils/subscription/subscriptionStatus';
 import { useSessionProtection } from './useSessionProtection';
 import { useLimitChecking } from './useLimitChecking';
-import { useSessionGain } from '@/hooks/useSessionGain';
+import { useSessionGain } from './useSessionGain';
 import { UseManualSessionsProps, UseManualSessionsReturn } from './types';
-import { animateBalanceUpdate } from '@/utils/animations/animateBalanceUpdate';
-import { createMoneyParticles } from '@/utils/animations';
+import { startBalanceAnimation, stopBalanceAnimation, animateBalance } from './useBalanceAnimation';
+import { dispatchSessionStart, dispatchBalanceUpdate, dispatchForceBalanceUpdate } from './useSessionEvents';
+import { checkDailyLimit, updateLimitAlertStatus } from './useSessionValidation';
 
 export const useManualSessions = ({
   userData,
@@ -19,10 +20,10 @@ export const useManualSessions = ({
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [localBalance, setLocalBalance] = useState(userData.balance);
   
-  // Maintenir une référence locale au solde actuel pour éviter les conditions de course
+  // Maintain local reference to current balance to avoid race conditions
   const currentBalanceRef = useRef<number>(userData.balance);
   
-  // Mettre à jour la référence quand userData change
+  // Update reference when userData changes
   useEffect(() => {
     if (currentBalanceRef.current !== userData.balance) {
       console.log("Updating balance reference from", currentBalanceRef.current, "to", userData.balance);
@@ -31,7 +32,7 @@ export const useManualSessions = ({
     }
   }, [userData.balance]);
   
-  // Hooks pour la gestion des sessions
+  // Hooks for session management
   const { 
     checkBoostLimit, 
     updateBoostCount, 
@@ -45,130 +46,90 @@ export const useManualSessions = ({
   const { calculateSessionGain } = useSessionGain();
 
   const handleStartSession = async () => {
-    // Vérifier si nous pouvons démarrer une nouvelle session
+    // Check if we can start a new session
     if (!canStartNewSession()) {
       return;
     }
     
-    // Vérifier la limite de boost pour prévenir les abus
+    // Check boost limit to prevent abuse
     if (checkBoostLimit()) {
       return;
     }
     
-    // Obtenir les gains quotidiens
+    // Get today's gains
     const todaysGains = getTodaysGains(userData);
     
-    // Vérifier si la limite journalière est déjà atteinte
-    const effectiveSub = getEffectiveSubscription(userData.subscription);
-    const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    
-    if (todaysGains >= dailyLimit) {
-      setShowLimitAlert(true);
-      toast({
-        title: "Limite journalière atteinte",
-        description: `Vous avez atteint votre limite de gain journalier de ${dailyLimit}€. Revenez demain ou passez à un forfait supérieur.`,
-        variant: "destructive"
-      });
+    // Check if daily limit is already reached
+    if (!checkDailyLimit(userData, todaysGains, setShowLimitAlert)) {
       return;
     }
     
-    // Sauvegarder le solde actuel pour éviter toute réinitialisation visuelle
+    // Save current balance to avoid visual resets
     const startingBalance = currentBalanceRef.current;
     
-    // Vérifier la limite de session basée sur l'abonnement
-    // Important: utiliser startingBalance et non currentBalanceRef.current pour le check
+    // Check session limit based on subscription
     if (!checkSessionLimit(userData, dailySessionCount, todaysGains, setShowLimitAlert)) {
       return;
     }
     
-    // Définir la protection anti-rebond pour empêcher les clics rapides
+    // Set click debounce to prevent rapid clicks
     setClickDebounce();
     
-    // Déclencher l'événement de démarrage de session pour les animations UI
-    window.dispatchEvent(new CustomEvent('session:start'));
+    // Trigger session start event for UI animations
+    dispatchSessionStart();
     
     try {
-      // Définir tous les verrous et drapeaux
+      // Set all locks and flags
       setLocks();
       setIsStartingSession(true);
       
-      // Incrémenter le compteur de sessions quotidiennes pour les comptes freemium
+      // Increment daily session count for freemium accounts
       if (userData.subscription === 'freemium') {
         await incrementSessionCount();
       }
       
-      // AMÉLIORATION: Commencer par déclencher des animations visuelles
-      document.querySelectorAll('.balance-display').forEach((el) => {
-        if (el instanceof HTMLElement) {
-          el.classList.add('glow-effect');
-          createMoneyParticles(el, 5); // Créer des particules d'argent pour le feedback visuel
-        }
-      });
+      // Start visual animations
+      startBalanceAnimation();
       
-      // Calculer le gain pour la session - NE PAS RÉINITIALISER le solde
+      // Calculate gain for the session - don't reset the balance
       const { success, finalGain, newBalance } = await calculateSessionGain(
         userData,
-        startingBalance, // Utiliser le solde préservé
+        startingBalance,
         setShowLimitAlert
       );
       
       if (success && finalGain > 0) {
         console.log("Session successful, updating UI balance from", startingBalance, "to", newBalance);
         
-        // AMÉLIORATION IMPORTANTE: Animer la transition du solde pour une expérience fluide
-        // au lieu de simplement définir la nouvelle valeur
-        animateBalanceUpdate(
-          startingBalance,
-          newBalance,
-          1500, // durée d'animation plus longue pour une meilleure visibilité
-          (value) => {
-            setLocalBalance(value);
-          }
-        );
+        // Animate balance transition for smoother experience
+        await animateBalance(startingBalance, newBalance, setLocalBalance);
         
-        // Mettre à jour la référence locale avant l'appel API
+        // Update local reference before API call
         currentBalanceRef.current = newBalance;
         
-        // Diffuser l'événement de mise à jour du solde pour les animations UI
-        window.dispatchEvent(new CustomEvent('balance:update', { 
-          detail: { 
-            amount: finalGain,
-            animate: true,
-            userId: userData.profile?.id 
-          } 
-        }));
+        // Dispatch balance update event for UI animations
+        dispatchBalanceUpdate(finalGain, userData.profile?.id);
         
-        // NOUVELLE APPROCHE: Forcer une mise à jour complète du solde pour garantir la cohérence visuelle
-        window.dispatchEvent(new CustomEvent('balance:force-update', { 
-          detail: { 
-            newBalance: newBalance,
-            gain: finalGain,
-            animate: true,
-            userId: userData.profile?.id
-          } 
-        }));
+        // NEW APPROACH: Force complete balance update for visual consistency
+        dispatchForceBalanceUpdate(newBalance, finalGain, userData.profile?.id);
         
-        // Ajouter un petit délai pour permettre aux animations de se terminer
+        // Add small delay to allow animations to complete
         await new Promise(resolve => setTimeout(resolve, 2000));
         
-        // Mettre à jour le solde utilisateur dans la base de données avec le drapeau de mise à jour forcée UI
+        // Update user balance in database with UI force update flag
         await updateBalance(
           finalGain,
           `Session manuelle : Notre technologie a optimisé le processus et généré ${finalGain.toFixed(2)}€ de revenus pour votre compte ${userData.subscription}.`,
-          true // Drapeau de mise à jour forcée UI
+          true // UI force update flag
         );
         
-        // Mettre à jour le compteur de boost pour la limitation de débit
+        // Update boost counter for rate limiting
         updateBoostCount();
         
-        // Vérifier si la limite est maintenant atteinte
+        // Check if limit is now reached
         const effectiveSub = getEffectiveSubscription(userData.subscription);
         const effectiveLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS];
-        const updatedTodaysGains = getTodaysGains(userData) + finalGain;
-        
-        if (updatedTodaysGains >= effectiveLimit) {
-          setShowLimitAlert(true);
-        }
+        updateLimitAlertStatus(todaysGains, finalGain, effectiveSub, effectiveLimit, setShowLimitAlert);
       }
     } catch (error) {
       console.error("Error during session:", error);
@@ -178,18 +139,14 @@ export const useManualSessions = ({
         variant: "destructive"
       });
     } finally {
-      // AMÉLIORATION: Assurer une transition fluide de l'état de chargement
-      // en ajoutant un léger délai pour permettre aux animations de se compléter
+      // Ensure smooth transition from loading state
+      // Add slight delay to allow animations to complete
       setTimeout(() => {
         setIsStartingSession(false);
         clearLocks();
         
-        // Retirer les effets visuels après l'animation
-        document.querySelectorAll('.balance-display').forEach((el) => {
-          if (el instanceof HTMLElement) {
-            el.classList.remove('glow-effect');
-          }
-        });
+        // Remove visual effects after animation
+        stopBalanceAnimation();
       }, 1500);
     }
   };
@@ -197,7 +154,7 @@ export const useManualSessions = ({
   return {
     isStartingSession,
     handleStartSession,
-    localBalance // Exporter le solde local pour les mises à jour directes de l'UI
+    localBalance // Export local balance for direct UI updates
   };
 };
 
