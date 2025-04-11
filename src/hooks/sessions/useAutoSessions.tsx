@@ -75,7 +75,7 @@ export const useAutoSessions = (
   }, [userData?.profile?.id]);
 
   // Fonction pour générer des revenus automatiques avec animation améliorée
-  async function generateAutomaticRevenue(isFirst = false) {
+  async function generateAutomaticRevenue(isFirst = false): Promise<void> {
     if (!botActiveRef.current) {
       console.log("Bot is inactive, no automatic revenue will be generated");
       return;
@@ -162,13 +162,10 @@ export const useAutoSessions = (
         botActiveRef.current = false;
         setShowLimitAlert(true);
       }
-      
-      return finalGain;
     } catch (error) {
       console.error("Error in generateAutomaticRevenue:", error);
       // Terminer l'animation même en cas d'erreur
       terminalAnimation.complete(0);
-      return 0;
     }
   }
 

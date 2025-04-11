@@ -117,7 +117,6 @@ class BalanceManagerClass {
     this.notifySubscribers();
   }
   
-  // Fixed subscribe method - using explicit BalanceState type
   public subscribe(callback: (state: BalanceState) => void): () => void {
     this.subscribers.push(callback);
     
@@ -127,7 +126,6 @@ class BalanceManagerClass {
     };
   }
   
-  // Fixed method to notify subscribers - using explicit BalanceState type
   private notifySubscribers(): void {
     const state: BalanceState = {
       currentBalance: this.currentBalance,
