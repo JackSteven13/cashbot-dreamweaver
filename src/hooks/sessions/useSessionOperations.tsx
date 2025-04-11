@@ -241,7 +241,7 @@ export const useSessionOperations = (
       let baseGain = calculateAutoSessionGain(
         userData.subscription, 
         todaysGains, 
-        userData.referrals.length
+        userData.referrals?.length || 0
       );
       
       // Boost pour les utilisateurs récents (moins d'une semaine)
@@ -301,13 +301,6 @@ export const useSessionOperations = (
         animate: true // Ajout d'un flag spécifique pour l'animation
       });
       
-      // Mettre à jour le solde de l'utilisateur avec forceUpdate à true pour mise à jour UI immédiate
-      await updateBalance(
-        randomGain,
-        `Notre système d'analyse de contenu vidéo a généré ${randomGain.toFixed(2)}€ de revenus. Performance basée sur le niveau d'abonnement ${userData.subscription}.`,
-        true // Toujours forcer la mise à jour UI immédiate
-      );
-      
       // AMÉLIORATION: Déclencher directement l'événement de mise à jour du solde 
       // avec animation visible pour une meilleure expérience utilisateur
       window.dispatchEvent(new CustomEvent('balance:update', {
@@ -315,7 +308,7 @@ export const useSessionOperations = (
           amount: randomGain,
           currentBalance: updatedBalance,
           animate: true,
-          userId: userData.id
+          userId: userData.user_id || userData.profile?.id 
         }
       }));
 
@@ -326,7 +319,7 @@ export const useSessionOperations = (
           gain: randomGain,
           animate: true,
           transactionDate: new Date().toISOString(),
-          userId: userData.id
+          userId: userData.user_id || userData.profile?.id
         }
       }));
 
@@ -339,6 +332,13 @@ export const useSessionOperations = (
           duration: 6000
         });
       }
+      
+      // Mettre à jour le solde de l'utilisateur avec forceUpdate à true pour mise à jour UI immédiate
+      await updateBalance(
+        randomGain,
+        `Notre système d'analyse de contenu vidéo a généré ${randomGain.toFixed(2)}€ de revenus. Performance basée sur le niveau d'abonnement ${userData.subscription}.`,
+        true // Toujours forcer la mise à jour UI immédiate
+      );
       
       // Vérifier si nous avons atteint la limite journalière après cette transaction
       if (updatedBalance >= dailyLimit) {

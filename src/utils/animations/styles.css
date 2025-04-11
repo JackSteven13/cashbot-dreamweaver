@@ -1,0 +1,139 @@
+
+/* Styles for balance animations */
+.balance-display {
+  position: relative;
+  transition: all 300ms ease;
+}
+
+.balance-display.glow-effect {
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.8);
+}
+
+.pulse-balance {
+  animation: pulse-green 1.5s ease-out;
+}
+
+@keyframes pulse-green {
+  0% {
+    text-shadow: 0 0 0px rgba(74, 222, 128, 0);
+  }
+  50% {
+    text-shadow: 0 0 15px rgba(74, 222, 128, 0.8);
+  }
+  100% {
+    text-shadow: 0 0 0px rgba(74, 222, 128, 0);
+  }
+}
+
+.blink-activity {
+  animation: blink-fade 2s infinite;
+}
+
+@keyframes blink-fade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Money particles animation */
+@keyframes float-up {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.money-particle {
+  position: absolute;
+  animation: float-up 2s ease-out forwards;
+}
+
+/* Processing dots animation for buttons */
+.processing-dots:after {
+  content: '';
+  animation: processing-dots 1.5s infinite;
+}
+
+@keyframes processing-dots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+
+/* Boost button animation */
+.boost-button-pulse {
+  position: relative;
+  overflow: hidden;
+}
+
+.boost-button-pulse:after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  animation: pulse-white 2s infinite;
+}
+
+.boost-button-clicked:after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 1;
+  animation: button-click 1s forwards;
+}
+
+.boost-button-active {
+  background: linear-gradient(-45deg, #3b82f6, #1d4ed8, #3b82f6, #1d4ed8);
+  background-size: 400% 400%;
+  animation: gradient 3s ease infinite;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes pulse-white {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+@keyframes button-click {
+  0% {
+    opacity: 1;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}

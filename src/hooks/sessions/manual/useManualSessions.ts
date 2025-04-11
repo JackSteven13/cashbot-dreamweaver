@@ -6,6 +6,8 @@ import { useSessionProtection } from './useSessionProtection';
 import { useLimitChecking } from './useLimitChecking';
 import { useSessionGain } from '@/hooks/useSessionGain';
 import { UseManualSessionsProps, UseManualSessionsReturn } from './types';
+import { animateBalanceUpdate } from '@/utils/animations/animateBalanceUpdate';
+import { createMoneyParticles } from '@/utils/animations';
 
 export const useManualSessions = ({
   userData,
@@ -95,6 +97,14 @@ export const useManualSessions = ({
         await incrementSessionCount();
       }
       
+      // AMÉLIORATION: Commencer par déclencher des animations visuelles
+      document.querySelectorAll('.balance-display').forEach((el) => {
+        if (el instanceof HTMLElement) {
+          el.classList.add('glow-effect');
+          createMoneyParticles(el, 5); // Créer des particules d'argent pour le feedback visuel
+        }
+      });
+      
       // Calculer le gain pour la session - NE PAS RÉINITIALISER le solde
       const { success, finalGain, newBalance } = await calculateSessionGain(
         userData,
@@ -105,15 +115,37 @@ export const useManualSessions = ({
       if (success && finalGain > 0) {
         console.log("Session successful, updating UI balance from", startingBalance, "to", newBalance);
         
-        // Mettre à jour l'état local immédiatement pour refléter le changement dans l'UI
-        setLocalBalance(newBalance);
+        // AMÉLIORATION IMPORTANTE: Animer la transition du solde pour une expérience fluide
+        // au lieu de simplement définir la nouvelle valeur
+        animateBalanceUpdate(
+          startingBalance,
+          newBalance,
+          1500, // durée d'animation plus longue pour une meilleure visibilité
+          (value) => {
+            setLocalBalance(value);
+          }
+        );
         
         // Mettre à jour la référence locale avant l'appel API
         currentBalanceRef.current = newBalance;
         
         // Diffuser l'événement de mise à jour du solde pour les animations UI
         window.dispatchEvent(new CustomEvent('balance:update', { 
-          detail: { amount: finalGain } 
+          detail: { 
+            amount: finalGain,
+            animate: true,
+            userId: userData.user_id || userData.profile?.id
+          } 
+        }));
+        
+        // NOUVELLE APPROCHE: Forcer une mise à jour complète du solde pour garantir la cohérence visuelle
+        window.dispatchEvent(new CustomEvent('balance:force-update', { 
+          detail: { 
+            newBalance: newBalance,
+            gain: finalGain,
+            animate: true,
+            userId: userData.user_id || userData.profile?.id
+          } 
         }));
         
         // Ajouter un petit délai pour permettre aux animations de se terminer
@@ -146,11 +178,19 @@ export const useManualSessions = ({
         variant: "destructive"
       });
     } finally {
-      // Ajouter un léger délai avant de terminer pour permettre aux animations de se compléter
+      // AMÉLIORATION: Assurer une transition fluide de l'état de chargement
+      // en ajoutant un léger délai pour permettre aux animations de se compléter
       setTimeout(() => {
         setIsStartingSession(false);
         clearLocks();
-      }, 500);
+        
+        // Retirer les effets visuels après l'animation
+        document.querySelectorAll('.balance-display').forEach((el) => {
+          if (el instanceof HTMLElement) {
+            el.classList.remove('glow-effect');
+          }
+        });
+      }, 1500);
     }
   };
 
