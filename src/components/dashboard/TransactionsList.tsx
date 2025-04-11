@@ -2,12 +2,10 @@
 import React, { memo } from 'react';
 import { useTransactions } from './transactions/useTransactions';
 import { Transaction } from '@/types/userData';
-import { 
-  TransactionListItem, 
-  TransactionEmptyState,
-  TransactionListActions,
-  TransactionFooter 
-} from './transactions';
+import TransactionListItem from './transactions/TransactionListItem';
+import TransactionEmptyState from './transactions/TransactionEmptyState';
+import TransactionListActions from './transactions/TransactionListActions';
+import TransactionFooter from './transactions/TransactionFooter';
 
 interface TransactionsListProps {
   transactions: Transaction[];
@@ -15,7 +13,6 @@ interface TransactionsListProps {
   subscription?: string;
 }
 
-// Utiliser memo pour éviter les rendus inutiles
 const TransactionsList = memo(({ 
   transactions: initialTransactions, 
   isNewUser = false,

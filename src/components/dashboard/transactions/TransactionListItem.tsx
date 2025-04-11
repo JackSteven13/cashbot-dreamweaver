@@ -11,7 +11,6 @@ interface TransactionListItemProps {
   subscription?: string;
 }
 
-// Utiliser memo pour éviter les rendus inutiles
 const TransactionListItem = memo(({ 
   transaction, 
   refreshKey, 

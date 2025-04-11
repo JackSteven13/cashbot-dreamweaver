@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { toast } from "@/hooks/use-toast";
+import { RefreshCw } from 'lucide-react';
 
 interface TransactionListActionsProps {
   showAllTransactions: boolean;
@@ -10,59 +10,35 @@ interface TransactionListActionsProps {
   onManualRefresh: () => Promise<void>;
 }
 
-const TransactionListActions = ({
+const TransactionListActions: React.FC<TransactionListActionsProps> = ({
   showAllTransactions,
   setShowAllTransactions,
   validTransactionsCount,
   onManualRefresh
-}: TransactionListActionsProps) => {
-  
-  const handleViewFullHistory = () => {
-    setShowAllTransactions(true);
-  };
-  
-  const handleManualRefresh = async () => {
-    await onManualRefresh();
-    toast({
-      title: "Transactions actualisées",
-      description: "La liste des transactions a été mise à jour.",
-      duration: 2000
-    });
-  };
+}) => {
+  // Ne rien afficher s'il n'y a pas assez de transactions
+  if (validTransactionsCount <= 3) return null;
   
   return (
-    <div className="flex items-center justify-between mb-6">
-      <h2 className="text-2xl font-semibold text-[#1e3a5f]">Sessions récentes</h2>
-      <div className="flex gap-2">
-        {validTransactionsCount > 3 && !showAllTransactions && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleViewFullHistory}
-            className="border-[#cbd5e0] bg-[#f0f4f8] text-[#334e68] hover:bg-[#e2e8f0]"
-          >
-            Voir l'historique complet
-          </Button>
-        )}
-        {showAllTransactions && validTransactionsCount > 3 && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="border-[#cbd5e0] bg-[#f0f4f8] text-[#334e68] hover:bg-[#e2e8f0]"
-            onClick={() => setShowAllTransactions(false)}
-          >
-            Réduire l'historique
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleManualRefresh}
-          className="text-[#334e68] hover:bg-[#e2e8f0]"
-        >
-          Actualiser
-        </Button>
-      </div>
+    <div className="flex justify-between items-center mb-4">
+      <Button 
+        variant="ghost"
+        size="sm"
+        onClick={() => setShowAllTransactions(!showAllTransactions)}
+        className="text-xs font-normal text-slate-600 hover:text-slate-900"
+      >
+        {showAllTransactions ? 'Afficher les récentes' : 'Afficher tout'}
+      </Button>
+      
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onManualRefresh}
+        className="text-xs font-normal text-slate-600 hover:text-slate-900"
+      >
+        <RefreshCw className="h-3 w-3 mr-1" />
+        Actualiser
+      </Button>
     </div>
   );
 };

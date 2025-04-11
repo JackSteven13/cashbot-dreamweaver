@@ -1,31 +1,25 @@
 
 import React from 'react';
-import { PlusCircle } from 'lucide-react';
 
 interface TransactionEmptyStateProps {
-  isNewUser: boolean;
+  isNewUser?: boolean;
 }
 
-const TransactionEmptyState = ({ isNewUser }: TransactionEmptyStateProps) => {
+const TransactionEmptyState: React.FC<TransactionEmptyStateProps> = ({ isNewUser = false }) => {
   return (
-    <div className="text-center p-8 bg-blue-50 rounded-lg border border-blue-100">
-      {isNewUser ? (
-        <>
-          <p className="text-[#334e68] font-medium">Bienvenue sur Stream Genius !</p>
-          <p className="text-[#334e68] mt-2">Le système commencera bientôt à générer des revenus pour vous.</p>
-          <p className="text-sm text-[#486581] mt-2">Votre première session sera automatiquement lancée.</p>
-        </>
-      ) : (
-        <>
-          <p className="text-[#334e68]">Aucune session récente.</p>
-          <div className="flex flex-col items-center mt-4">
-            <PlusCircle className="h-8 w-8 text-blue-400 mb-2" />
-            <p className="text-sm text-[#486581]">
-              Lancez une analyse manuelle ou attendez la prochaine session automatique.
-            </p>
-          </div>
-        </>
-      )}
+    <div className="text-center py-6 bg-slate-50/50 dark:bg-slate-800/30 rounded-lg">
+      <div className="flex flex-col items-center justify-center space-y-2">
+        <p className="text-slate-600 dark:text-slate-300">
+          {isNewUser 
+            ? "Bienvenue ! Lancez votre première session pour commencer." 
+            : "Aucune session à afficher."}
+        </p>
+        {isNewUser && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">
+            Cliquez sur le bouton "Lancer une session" pour générer vos premiers revenus.
+          </p>
+        )}
+      </div>
     </div>
   );
 };
