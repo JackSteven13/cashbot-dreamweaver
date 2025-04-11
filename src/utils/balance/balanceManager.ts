@@ -114,6 +114,7 @@ class BalanceManagerClass {
     }
     
     this.saveToStorage();
+    this.notifySubscribers();
   }
   
   // Fixed subscribe method - using explicit BalanceState type
@@ -204,6 +205,17 @@ class BalanceManagerClass {
         });
 
       if (error) throw error;
+      
+      // Déclencher un événement pour signaler qu'une nouvelle transaction a été ajoutée
+      window.dispatchEvent(new CustomEvent('transaction:added', {
+        detail: { 
+          userId, 
+          gain, 
+          report, 
+          date: today 
+        }
+      }));
+      
       return true;
     } catch (error) {
       console.error('Error adding transaction:', error);

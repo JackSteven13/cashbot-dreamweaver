@@ -5,6 +5,8 @@ import { useAutoSessionScheduler } from './useAutoSessionScheduler';
 import { useDailyLimits } from './useDailyLimits';
 import { useActivitySimulation } from './useActivitySimulation';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
+import { toast } from '@/components/ui/use-toast';
+import { addTransaction } from '@/hooks/user/transactionUtils'; // Importer la fonction pour ajouter une transaction
 
 export const useAutoSessions = (
   userData: any,
@@ -36,6 +38,14 @@ export const useAutoSessions = (
   // Custom hooks pour la logique de génération automatique
   const { getDailyLimit } = useDailyLimits(userData?.subscription);
   
+  // Planificateur de sessions automatiques
+  const { 
+    lastAutoSessionTime,
+    getLastAutoSessionTime,
+    isInitialSessionExecuted,
+    getCurrentPersistentBalance
+  } = useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
+  
   // Écouter les changements d'état du bot
   useEffect(() => {
     const handleBotStatusChange = (event: CustomEvent) => {
@@ -65,7 +75,7 @@ export const useAutoSessions = (
   }, [userData?.profile?.id]);
 
   // Fonction pour générer des revenus automatiques avec animation améliorée
-  const generateAutomaticRevenue = async (isFirst = false) => {
+  async function generateAutomaticRevenue(isFirst = false) {
     if (!botActiveRef.current) {
       console.log("Bot is inactive, no automatic revenue will be generated");
       return;
@@ -111,12 +121,34 @@ export const useAutoSessions = (
       
       terminalAnimation.addLine(`Analyse complétée. Optimisation des résultats: ${finalGain.toFixed(2)}€`);
       
+      // Créer un message descriptif pour la transaction
+      const transactionReport = `Notre système d'analyse de contenu vidéo a généré ${finalGain.toFixed(2)}€ de revenus. Performance basée sur le niveau d'abonnement ${userData.subscription}.`;
+      
+      // Ajouter explicitement la transaction à l'historique
+      if (userData?.profile?.id) {
+        await addTransaction(userData.profile.id, finalGain, transactionReport);
+        
+        // Notifier pour actualiser l'interface utilisateur
+        window.dispatchEvent(new CustomEvent('transactions:refresh', {
+          detail: { userId: userData.profile.id }
+        }));
+      }
+      
       // Mettre à jour le solde en utilisant forceUpdate=true pour une mise à jour UI immédiate
       await updateBalance(
         finalGain,
-        `Notre système d'analyse de contenu vidéo a généré ${finalGain.toFixed(2)}€ de revenus. Performance basée sur le niveau d'abonnement ${userData.subscription}.`,
+        transactionReport,
         true // Force update pour mise à jour UI immédiate
       );
+      
+      // Afficher une notification pour confirmer la génération automatique
+      if (isFirst || Math.random() > 0.7) {
+        toast({
+          title: `Gains automatiques +${finalGain.toFixed(2)}€`,
+          description: `L'analyse automatique de contenu vidéo a généré des revenus.`,
+          duration: 3000,
+        });
+      }
       
       // Terminer l'animation avec le gain obtenu
       terminalAnimation.complete(finalGain);
@@ -138,10 +170,10 @@ export const useAutoSessions = (
       terminalAnimation.complete(0);
       return 0;
     }
-  };
+  }
 
   return {
-    lastAutoSessionTime: 0, // Placeholder pour compatibilité
+    lastAutoSessionTime: getLastAutoSessionTime(),
     activityLevel: "medium", // Placeholder pour compatibilité
     generateAutomaticRevenue,
     isBotActive

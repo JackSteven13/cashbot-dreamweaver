@@ -1,9 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import SessionCard from '@/components/SessionCard';
 import { Transaction } from '@/types/userData';
 import { PlusCircle } from 'lucide-react';
+import { fetchUserTransactions } from '@/hooks/user/transactionUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TransactionsListProps {
   transactions: Transaction[];
@@ -11,8 +13,70 @@ interface TransactionsListProps {
   subscription?: string;
 }
 
-const TransactionsList = ({ transactions, isNewUser = false, subscription }: TransactionsListProps) => {
+const TransactionsList = ({ transactions: initialTransactions, isNewUser = false, subscription }: TransactionsListProps) => {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions || []);
+  
+  // Effet pour écouter les événements de nouvelles transactions
+  useEffect(() => {
+    // Mettre à jour les transactions quand les props changent
+    setTransactions(initialTransactions);
+    
+    // Fonction pour actualiser les transactions
+    const handleTransactionRefresh = async (event: CustomEvent) => {
+      const userId = event.detail?.userId;
+      
+      if (!userId) return;
+      
+      // Obtenir la session actuelle
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Vérifier si l'événement concerne l'utilisateur actuel
+      if (session?.user?.id === userId) {
+        console.log("Refreshing transactions for user:", userId);
+        
+        // Récupérer les transactions mises à jour
+        const updatedTransactions = await fetchUserTransactions(userId);
+        if (updatedTransactions && updatedTransactions.length > 0) {
+          setTransactions(updatedTransactions);
+        }
+      }
+    };
+    
+    // Fonction pour ajouter une nouvelle transaction à la liste
+    const handleTransactionAdded = async (event: CustomEvent) => {
+      const { userId, gain, report, date } = event.detail || {};
+      
+      // Obtenir la session actuelle
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Vérifier si l'événement concerne l'utilisateur actuel
+      if (session?.user?.id === userId) {
+        console.log("New transaction added:", { gain, report });
+        
+        // Ajouter la nouvelle transaction au début de la liste
+        const newTransaction: Transaction = {
+          id: `temp-${Date.now()}`, // ID temporaire
+          date,
+          amount: gain,
+          type: report,
+          report,
+          gain
+        };
+        
+        setTransactions(prev => [newTransaction, ...prev]);
+      }
+    };
+    
+    // Écouter l'événement de rafraîchissement des transactions
+    window.addEventListener('transactions:refresh' as any, handleTransactionRefresh);
+    window.addEventListener('transaction:added' as any, handleTransactionAdded);
+    
+    return () => {
+      window.removeEventListener('transactions:refresh' as any, handleTransactionRefresh);
+      window.removeEventListener('transaction:added' as any, handleTransactionAdded);
+    };
+  }, [initialTransactions]);
   
   // Vérifier que les transactions sont valides et non vides
   const validTransactions = Array.isArray(transactions) ? 
