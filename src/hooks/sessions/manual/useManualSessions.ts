@@ -134,7 +134,7 @@ export const useManualSessions = ({
           detail: { 
             amount: finalGain,
             animate: true,
-            userId: userData.user_id || userData.profile?.id
+            userId: userData.profile?.id 
           } 
         }));
         
@@ -144,7 +144,7 @@ export const useManualSessions = ({
             newBalance: newBalance,
             gain: finalGain,
             animate: true,
-            userId: userData.user_id || userData.profile?.id
+            userId: userData.profile?.id
           } 
         }));
         

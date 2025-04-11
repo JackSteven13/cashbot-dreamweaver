@@ -118,3 +118,25 @@ export const getHighestBalance = () => {
   // Return the highest value
   return Math.max(managerBalance, storedHighestBalance);
 };
+
+// Add the missing cleanupUserBalanceData function
+export const cleanupUserBalanceData = (userId: string) => {
+  try {
+    // Clean up user-specific localStorage items
+    const keysToCleanup = [
+      `user_balance_${userId}`,
+      `highest_balance_${userId}`,
+      `last_balance_${userId}`,
+      `last_session_${userId}`,
+      `daily_gains_${userId}`
+    ];
+    
+    keysToCleanup.forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
+    console.log(`Cleaned up data for user ${userId}`);
+  } catch (error) {
+    console.error("Error cleaning up user balance data:", error);
+  }
+};

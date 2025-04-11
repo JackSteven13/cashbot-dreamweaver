@@ -1,4 +1,3 @@
-
 import { useRef, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { triggerDashboardEvent } from '@/utils/animations';
@@ -308,7 +307,7 @@ export const useSessionOperations = (
           amount: randomGain,
           currentBalance: updatedBalance,
           animate: true,
-          userId: userData.user_id || userData.profile?.id 
+          userId: userData.profile?.id 
         }
       }));
 
@@ -319,7 +318,7 @@ export const useSessionOperations = (
           gain: randomGain,
           animate: true,
           transactionDate: new Date().toISOString(),
-          userId: userData.user_id || userData.profile?.id
+          userId: userData.profile?.id
         }
       }));
 
