@@ -34,7 +34,9 @@ export const getCurrentSession = async () => {
       
       if (now > tokenExpiry) {
         console.log("Session expired, attempting automatic refresh...");
-        return await refreshSession();
+        // Using supabase.auth directly instead of imported refreshSession to avoid circular dependency
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        return refreshData.session;
       }
       
       return data.session;
