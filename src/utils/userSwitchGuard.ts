@@ -1,11 +1,10 @@
-
 import { getSavedSession } from './auth/sessionStorage';
 import { supabase } from '@/integrations/supabase/client';
-import { balanceManager } from './balance/balanceManager';
+import { BalanceManager } from './balance/balanceManager';
 
 // Re-exporter la fonction cleanupUserBalanceData pour la rendre disponible
 export const cleanupUserBalanceData = () => {
-  balanceManager.cleanupUserBalanceData();
+  BalanceManager.cleanupUserBalanceData();
 };
 
 /**

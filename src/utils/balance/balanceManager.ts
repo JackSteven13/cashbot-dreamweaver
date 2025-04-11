@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
@@ -115,7 +116,7 @@ class BalanceManagerClass {
     this.saveToStorage();
   }
   
-  // Added subscribe method
+  // Fixed subscribe method - using explicit BalanceState type
   public subscribe(callback: (state: BalanceState) => void): () => void {
     this.subscribers.push(callback);
     
@@ -125,7 +126,7 @@ class BalanceManagerClass {
     };
   }
   
-  // Added method to notify subscribers
+  // Fixed method to notify subscribers - using explicit BalanceState type
   private notifySubscribers(): void {
     const state: BalanceState = {
       currentBalance: this.currentBalance,
