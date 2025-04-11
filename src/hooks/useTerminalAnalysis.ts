@@ -9,6 +9,7 @@ export const useTerminalAnalysis = () => {
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
   const [countdownTime, setCountdownTime] = useState<string>('');
+  const [isBackgroundMode, setIsBackgroundMode] = useState(false);
 
   // Format countdown time as HH:MM:SS
   const formatCountdown = (milliseconds: number): string => {
@@ -27,10 +28,12 @@ export const useTerminalAnalysis = () => {
     const handleTerminalUpdate = (event: Event) => {
       const customEvent = event as CustomEvent;
       const line = customEvent.detail?.line;
+      const isBackground = customEvent.detail?.background === true;
       
       if (line) {
         setTerminalLines(prev => [...prev, line]);
         setShowAnalysis(true);
+        setIsBackgroundMode(isBackground);
       }
     };
 
@@ -45,6 +48,7 @@ export const useTerminalAnalysis = () => {
       if (isBackgroundProcess) {
         console.log("Skipping loading screen for background analysis-start event");
         setShowAnalysis(true);
+        setIsBackgroundMode(true);
         setAnalysisComplete(false);
         setTerminalLines([
           'Initialisation de l\'analyse réseau...',
@@ -53,6 +57,7 @@ export const useTerminalAnalysis = () => {
         // Ce chemin ne doit pas être pris pour les revenus générés automatiquement,
         // uniquement pour les actions manuelles comme les clics sur les boutons
         setShowAnalysis(true);
+        setIsBackgroundMode(false);
         setAnalysisComplete(false);
         setTerminalLines([
           'Initialisation de l\'analyse réseau...',
@@ -72,8 +77,12 @@ export const useTerminalAnalysis = () => {
         `Analyse terminée avec succès! Revenus générés: ${gain.toFixed(2)}€`
       ]);
       setAnalysisComplete(true);
+      setIsBackgroundMode(isBackgroundProcess);
       
-      // Masquer le terminal après 5 secondes
+      // Masquer le terminal après 5 secondes pour les processus en arrière-plan,
+      // mais garder visible plus longtemps pour les processus au premier plan
+      const hideDelay = isBackgroundProcess ? 5000 : 8000;
+      
       setTimeout(() => {
         setShowAnalysis(false);
         // Réinitialiser les lignes du terminal après la fin de l'animation
@@ -81,7 +90,7 @@ export const useTerminalAnalysis = () => {
           setTerminalLines([]);
           setAnalysisComplete(false);
         }, 300);
-      }, 5000);
+      }, hideDelay);
     };
 
     // Listen for daily limit reached events
@@ -89,9 +98,11 @@ export const useTerminalAnalysis = () => {
       const customEvent = event as CustomEvent;
       const subscription = customEvent.detail?.subscription || 'freemium';
       const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      const isBackground = customEvent.detail?.background === true;
       
       setLimitReached(true);
       setShowAnalysis(true);
+      setIsBackgroundMode(isBackground);
       setTerminalLines([
         `Limite journalière de ${dailyLimit}€ atteinte.`,
         'Le bot est temporairement hors-service.'
@@ -143,7 +154,14 @@ export const useTerminalAnalysis = () => {
     };
   }, [showAnalysis]);
 
-  return { showAnalysis, terminalLines, analysisComplete, limitReached, countdownTime };
+  return { 
+    showAnalysis, 
+    terminalLines, 
+    analysisComplete, 
+    limitReached, 
+    countdownTime,
+    isBackgroundMode
+  };
 };
 
 export default useTerminalAnalysis;
