@@ -1,108 +1,102 @@
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import DashboardMetrics from './DashboardMetrics';
-import LimitReachedAlert from './alerts/LimitReachedAlert';
-import DormantAccountAlert from './alerts/DormantAccountAlert';
-import FirstTimeWelcome from './welcome/FirstTimeWelcome';
-import { useReferralSystem } from '@/hooks/useReferralSystem';
-import { useTerminalAnalysis } from '@/hooks/useTerminalAnalysis';
-import TerminalOverlay from './terminal/TerminalOverlay';
+import BotControlPanel from './bot/BotControlPanel';
+import { Progress } from '@/components/ui/progress';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
+import { getDailyGains } from '@/utils/balance/balanceManager';
 
 interface DashboardContentProps {
+  userData: any;
+  isStartingSession: boolean;
+  handleStartSession: () => void;
+  handleWithdrawal?: () => void;
+  isNewUser: boolean;
+  dailySessionCount: number;
+  showLimitAlert: boolean;
   isDormant?: boolean;
   dormancyData?: any;
-  showLimitAlert?: boolean;
-  isNewUser?: boolean;
-  userData: any;
-  isStartingSession?: boolean;
-  handleStartSession?: () => void;
-  handleWithdrawal?: () => void;
-  dailySessionCount?: number;
   handleReactivate?: () => void;
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
 }
 
 const DashboardContent: React.FC<DashboardContentProps> = ({
-  isDormant = false,
-  dormancyData = {},
-  showLimitAlert = false,
-  isNewUser = false,
-  userData = {},
-  isStartingSession = false,
+  userData,
+  isStartingSession,
   handleStartSession,
   handleWithdrawal,
+  isNewUser,
   dailySessionCount = 0,
+  showLimitAlert,
+  isDormant = false,
+  dormancyData,
   handleReactivate,
   lastSessionTimestamp,
   isBotActive = true
 }) => {
-  // Utiliser le hook de terminal avec le support du mode arrière-plan
-  const { 
-    showAnalysis, 
-    terminalLines, 
-    analysisComplete, 
-    limitReached, 
-    countdownTime,
-    isBackgroundMode 
-  } = useTerminalAnalysis();
-
-  // Utiliser le système de parrainage pour l'affichage du lien
-  const { referralLink } = useReferralSystem(userData?.profile?.id);
+  // État local pour suivre la progression de la limite quotidienne
+  const [limitProgress, setLimitProgress] = useState<number>(0);
   
-  // Memoizer les props qui ne devraient pas déclencher de re-rendu inutile
-  const memoizedUserData = useMemo(() => userData, [
-    userData.username,
-    userData.balance,
-    userData.subscription,
-    userData.transactions?.length
-  ]);
-  
-  // Extraire des données supplémentaires pour les rapports
-  const canStartSession = !showLimitAlert && !isStartingSession;
+  // Calculer la progression de la limite quotidienne
+  React.useEffect(() => {
+    const dailyGains = getDailyGains();
+    const dailyLimit = SUBSCRIPTION_LIMITS[userData?.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    const progressPercentage = Math.min(100, (dailyGains / dailyLimit) * 100);
+    setLimitProgress(progressPercentage);
+    
+    // Écouter les mises à jour des gains quotidiens
+    const handleDailyGainsUpdate = () => {
+      const updatedGains = getDailyGains();
+      const updatedProgress = Math.min(100, (updatedGains / dailyLimit) * 100);
+      setLimitProgress(updatedProgress);
+    };
+    
+    window.addEventListener('dailyGains:updated' as any, handleDailyGainsUpdate);
+    window.addEventListener('dailyGains:reset' as any, handleDailyGainsUpdate);
+    
+    return () => {
+      window.removeEventListener('dailyGains:updated' as any, handleDailyGainsUpdate);
+      window.removeEventListener('dailyGains:reset' as any, handleDailyGainsUpdate);
+    };
+  }, [userData?.subscription]);
   
   return (
-    <div className="dashboard-content h-full">
-      {/* First-time welcome modal */}
-      {isNewUser && <FirstTimeWelcome referralLink={referralLink} />}
+    <div className="px-4 md:px-6 py-6 md:py-8 max-w-6xl mx-auto animate-fadein">
+      {/* Afficher la limite quotidienne */}
+      <div className="mb-6">
+        <div className="flex justify-between mb-2">
+          <span className="text-sm font-medium">
+            Limite quotidienne ({userData?.subscription || 'freemium'})
+          </span>
+          <span className="text-sm font-medium">
+            {getDailyGains().toFixed(2)}€ / {SUBSCRIPTION_LIMITS[userData?.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5}€
+          </span>
+        </div>
+        <Progress value={limitProgress} className="h-2" />
+      </div>
       
-      {/* Alert for dormant accounts */}
-      {isDormant && !isNewUser && (
-        <DormantAccountAlert 
-          data={dormancyData} 
-          onReactivate={handleReactivate}
-        />
-      )}
+      {/* Contrôle du bot d'analyse */}
+      <BotControlPanel 
+        isBotActive={isBotActive}
+        showLimitReached={showLimitAlert}
+        subscription={userData?.subscription || 'freemium'}
+        userId={userData?.profile?.id}
+      />
       
-      {/* Alert for daily limit reached */}
-      {showLimitAlert && !isNewUser && !isDormant && (
-        <LimitReachedAlert subscription={userData?.subscription || 'freemium'} />
-      )}
-      
-      {/* Terminal overlay with background mode support */}
-      {showAnalysis && (
-        <TerminalOverlay 
-          lines={terminalLines}
-          complete={analysisComplete}
-          limitReached={limitReached}
-          countdownTime={countdownTime}
-          isBackground={isBackgroundMode}
-        />
-      )}
-      
-      {/* Main dashboard metrics */}
+      {/* Métriques du tableau de bord */}
       <DashboardMetrics
-        balance={userData.balance || 0}
-        referralLink={referralLink}
+        balance={userData?.balance || 0}
+        referralLink={userData?.referralLink || ''}
         isStartingSession={isStartingSession}
         handleStartSession={handleStartSession}
         handleWithdrawal={handleWithdrawal}
-        transactions={userData.transactions || []}
+        transactions={userData?.transactions || []}
         isNewUser={isNewUser}
-        subscription={userData.subscription || 'freemium'}
+        subscription={userData?.subscription || 'freemium'}
         dailySessionCount={dailySessionCount}
-        canStartSession={canStartSession}
-        referrals={userData.referrals || []}
+        canStartSession={!isDormant && !showLimitAlert}
+        referrals={userData?.referrals || []}
         lastSessionTimestamp={lastSessionTimestamp}
         isBotActive={isBotActive}
       />

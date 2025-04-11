@@ -16,6 +16,7 @@ interface TransactionsListProps {
 const TransactionsList = ({ transactions: initialTransactions, isNewUser = false, subscription }: TransactionsListProps) => {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions || []);
+  const [refreshKey, setRefreshKey] = useState(0); // Pour forcer le rendu
   
   // Effet pour écouter les événements de nouvelles transactions
   useEffect(() => {
@@ -28,18 +29,24 @@ const TransactionsList = ({ transactions: initialTransactions, isNewUser = false
       
       if (!userId) return;
       
-      // Obtenir la session actuelle
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Vérifier si l'événement concerne l'utilisateur actuel
-      if (session?.user?.id === userId) {
-        console.log("Refreshing transactions for user:", userId);
+      try {
+        // Obtenir la session actuelle
+        const { data: { session } } = await supabase.auth.getSession();
         
-        // Récupérer les transactions mises à jour
-        const updatedTransactions = await fetchUserTransactions(userId);
-        if (updatedTransactions && updatedTransactions.length > 0) {
-          setTransactions(updatedTransactions);
+        // Vérifier si l'événement concerne l'utilisateur actuel
+        if (session?.user?.id === userId) {
+          console.log("Refreshing transactions for user:", userId);
+          
+          // Récupérer les transactions mises à jour
+          const updatedTransactions = await fetchUserTransactions(userId);
+          if (updatedTransactions && updatedTransactions.length > 0) {
+            setTransactions(updatedTransactions);
+            // Forcer le rendu
+            setRefreshKey(prev => prev + 1);
+          }
         }
+      } catch (error) {
+        console.error("Error refreshing transactions:", error);
       }
     };
     
@@ -47,26 +54,58 @@ const TransactionsList = ({ transactions: initialTransactions, isNewUser = false
     const handleTransactionAdded = async (event: CustomEvent) => {
       const { userId, gain, report, date } = event.detail || {};
       
-      // Obtenir la session actuelle
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Vérifier si l'événement concerne l'utilisateur actuel
-      if (session?.user?.id === userId) {
-        console.log("New transaction added:", { gain, report });
+      try {
+        // Obtenir la session actuelle
+        const { data: { session } } = await supabase.auth.getSession();
         
-        // Ajouter la nouvelle transaction au début de la liste
-        const newTransaction: Transaction = {
-          id: `temp-${Date.now()}`, // ID temporaire
-          date,
-          amount: gain,
-          type: report,
-          report,
-          gain
-        };
-        
-        setTransactions(prev => [newTransaction, ...prev]);
+        // Vérifier si l'événement concerne l'utilisateur actuel
+        if (session?.user?.id === userId) {
+          console.log("New transaction added:", { gain, report });
+          
+          // Ajouter la nouvelle transaction au début de la liste
+          const newTransaction: Transaction = {
+            id: `temp-${Date.now()}`, // ID temporaire
+            date,
+            amount: gain,
+            type: report,
+            report,
+            gain
+          };
+          
+          setTransactions(prev => [newTransaction, ...prev]);
+          
+          // Attendre un peu puis synchroniser avec la base de données
+          setTimeout(async () => {
+            const updatedTransactions = await fetchUserTransactions(userId);
+            if (updatedTransactions && updatedTransactions.length > 0) {
+              setTransactions(updatedTransactions);
+              // Forcer le rendu
+              setRefreshKey(prev => prev + 1);
+            }
+          }, 500);
+        }
+      } catch (error) {
+        console.error("Error handling transaction added:", error);
       }
     };
+    
+    // Configurer un intervalle d'actualisation
+    const refreshInterval = setInterval(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+          const refreshedTransactions = await fetchUserTransactions(session.user.id);
+          if (refreshedTransactions && refreshedTransactions.length > 0 && 
+              JSON.stringify(refreshedTransactions) !== JSON.stringify(transactions)) {
+            console.log("Auto-refreshing transactions");
+            setTransactions(refreshedTransactions);
+            setRefreshKey(prev => prev + 1);
+          }
+        }
+      } catch (error) {
+        console.error("Error in refresh interval:", error);
+      }
+    }, 30000); // Toutes les 30 secondes
     
     // Écouter l'événement de rafraîchissement des transactions
     window.addEventListener('transactions:refresh' as any, handleTransactionRefresh);
@@ -75,12 +114,13 @@ const TransactionsList = ({ transactions: initialTransactions, isNewUser = false
     return () => {
       window.removeEventListener('transactions:refresh' as any, handleTransactionRefresh);
       window.removeEventListener('transaction:added' as any, handleTransactionAdded);
+      clearInterval(refreshInterval);
     };
   }, [initialTransactions]);
   
   // Vérifier que les transactions sont valides et non vides
   const validTransactions = Array.isArray(transactions) ? 
-    transactions.filter(tx => tx && typeof tx.gain === 'number' && tx.date) : [];
+    transactions.filter(tx => tx && (typeof tx.gain === 'number' || typeof tx.amount === 'number') && tx.date) : [];
   
   // Afficher 3 transactions récentes par défaut, ou toutes si showAllTransactions est true
   const displayedTransactions = showAllTransactions 
@@ -91,41 +131,68 @@ const TransactionsList = ({ transactions: initialTransactions, isNewUser = false
     setShowAllTransactions(true);
   };
   
-  // Debug
-  console.log("Transactions reçues:", transactions);
-  console.log("Transactions valides:", validTransactions);
+  // Fonction pour rafraîchir manuellement les transactions
+  const handleManualRefresh = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        const refreshedTransactions = await fetchUserTransactions(session.user.id);
+        if (refreshedTransactions) {
+          setTransactions(refreshedTransactions);
+          setRefreshKey(prev => prev + 1);
+          toast({
+            title: "Transactions actualisées",
+            description: "La liste des transactions a été mise à jour.",
+            duration: 2000
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error manually refreshing transactions:", error);
+    }
+  };
   
   return (
-    <div className="mb-8">
+    <div className="mb-8" key={refreshKey}>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold text-[#1e3a5f]">Sessions récentes</h2>
-        {validTransactions.length > 3 && !showAllTransactions && (
-          <Button 
-            variant="outline" 
+        <div className="flex gap-2">
+          {validTransactions.length > 3 && !showAllTransactions && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleViewFullHistory}
+              className="border-[#cbd5e0] bg-[#f0f4f8] text-[#334e68] hover:bg-[#e2e8f0]"
+            >
+              Voir l'historique complet
+            </Button>
+          )}
+          {showAllTransactions && validTransactions.length > 3 && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-[#cbd5e0] bg-[#f0f4f8] text-[#334e68] hover:bg-[#e2e8f0]"
+              onClick={() => setShowAllTransactions(false)}
+            >
+              Réduire l'historique
+            </Button>
+          )}
+          <Button
+            variant="ghost"
             size="sm"
-            onClick={handleViewFullHistory}
-            className="border-[#cbd5e0] bg-[#f0f4f8] text-[#334e68] hover:bg-[#e2e8f0]"
+            onClick={handleManualRefresh}
+            className="text-[#334e68] hover:bg-[#e2e8f0]"
           >
-            Voir l'historique complet
+            Actualiser
           </Button>
-        )}
-        {showAllTransactions && validTransactions.length > 3 && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="border-[#cbd5e0] bg-[#f0f4f8] text-[#334e68] hover:bg-[#e2e8f0]"
-            onClick={() => setShowAllTransactions(false)}
-          >
-            Réduire l'historique
-          </Button>
-        )}
+        </div>
       </div>
       
       {displayedTransactions.length > 0 ? (
         <div className="space-y-4">
           {displayedTransactions.map((transaction, index) => (
             <SessionCard 
-              key={transaction.id || index}
+              key={`${transaction.id || ''}-${index}-${refreshKey}`}
               date={transaction.date}
               gain={transaction.gain || transaction.amount || 0}
               report={transaction.report || transaction.type || ''}

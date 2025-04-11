@@ -1,3 +1,4 @@
+
 // Define the interface outside the class to avoid syntax errors and circular references
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -7,6 +8,7 @@ interface BalanceState {
   highestBalance: number;
   userId: string | null;
   lastKnownBalance: number;
+  dailyGains: number; // Ajouter les gains quotidiens à l'état
 }
 
 class BalanceManagerClass {
@@ -17,38 +19,72 @@ class BalanceManagerClass {
   private subscribers: Array<(state: BalanceState) => void> = [];
   private lastSyncTime: number = 0;
   private syncLock: boolean = false;
+  private dailyGains: number = 0; // Pour suivre les gains quotidiens
+  private dailyGainsDate: string = ''; // Pour réinitialiser les gains chaque jour
 
   constructor() {
     // Initialize with localStorage if available
     this.loadFromStorage();
     
     // Add periodic sync to ensure consistency
-    setInterval(() => this.periodicSync(), 60000); // Every 60 seconds
+    setInterval(() => this.periodicSync(), 30000); // Every 30 seconds
+    
+    // Vérifier et réinitialiser les gains quotidiens à minuit
+    this.checkAndResetDailyGains();
+    setInterval(() => this.checkAndResetDailyGains(), 60000); // Vérifier chaque minute
   }
 
   private loadFromStorage(): void {
     try {
-      const storedBalance = localStorage.getItem('currentBalance');
-      const storedHighestBalance = localStorage.getItem('highestBalance');
+      // Charger l'ID utilisateur en premier pour charger les bonnes données
       const storedUserId = localStorage.getItem('lastActiveUserId');
-
-      if (storedBalance) {
-        this.currentBalance = parseFloat(storedBalance);
-      }
-
-      if (storedHighestBalance) {
-        this.highestBalance = parseFloat(storedHighestBalance);
-      } else if (storedBalance) {
-        // If no highest but existing balance, use this value
-        this.highestBalance = parseFloat(storedBalance);
-      }
-
       if (storedUserId) {
         this.userId = storedUserId;
       }
+      
+      // Charger les données spécifiques à l'utilisateur si disponibles
+      if (this.userId) {
+        const userBalance = localStorage.getItem(`balance_${this.userId}`);
+        const userHighestBalance = localStorage.getItem(`highestBalance_${this.userId}`);
+        const userDailyGains = localStorage.getItem(`dailyGains_${this.userId}`);
+        const userDailyGainsDate = localStorage.getItem(`dailyGainsDate_${this.userId}`);
+        
+        if (userBalance) {
+          this.currentBalance = parseFloat(userBalance);
+        }
+        
+        if (userHighestBalance) {
+          this.highestBalance = parseFloat(userHighestBalance);
+        } else if (userBalance) {
+          this.highestBalance = parseFloat(userBalance);
+        }
+        
+        if (userDailyGains) {
+          this.dailyGains = parseFloat(userDailyGains);
+        }
+        
+        if (userDailyGainsDate) {
+          this.dailyGainsDate = userDailyGainsDate;
+        }
+        
+        console.log(`BalanceManager: Loaded user-specific data for ${this.userId}: balance=${this.currentBalance}, highest=${this.highestBalance}, daily=${this.dailyGains}`);
+      } else {
+        // Fallback to generic storage if no user ID
+        const storedBalance = localStorage.getItem('currentBalance');
+        const storedHighestBalance = localStorage.getItem('highestBalance');
+        
+        if (storedBalance) {
+          this.currentBalance = parseFloat(storedBalance);
+        }
+        
+        if (storedHighestBalance) {
+          this.highestBalance = parseFloat(storedHighestBalance);
+        } else if (storedBalance) {
+          this.highestBalance = parseFloat(storedBalance);
+        }
+      }
 
       this.initialized = true;
-      console.log(`BalanceManager initialized with balance: ${this.currentBalance}, highest: ${this.highestBalance}`);
     } catch (error) {
       console.error('Error loading balance from storage:', error);
     }
@@ -56,13 +92,17 @@ class BalanceManagerClass {
 
   private saveToStorage(): void {
     try {
+      // Toujours sauvegarder dans le stockage global comme fallback
       localStorage.setItem('currentBalance', this.currentBalance.toString());
       localStorage.setItem('highestBalance', this.highestBalance.toString());
+      
+      // Si nous avons un ID utilisateur, enregistrer spécifiquement pour cet utilisateur
       if (this.userId) {
         localStorage.setItem('lastActiveUserId', this.userId);
-        // Also save with user-specific keys for better data isolation
         localStorage.setItem(`balance_${this.userId}`, this.currentBalance.toString());
         localStorage.setItem(`highestBalance_${this.userId}`, this.highestBalance.toString());
+        localStorage.setItem(`dailyGains_${this.userId}`, this.dailyGains.toString());
+        localStorage.setItem(`dailyGainsDate_${this.userId}`, this.dailyGainsDate);
         localStorage.setItem('lastBalanceUpdateTime', Date.now().toString());
       }
     } catch (error) {
@@ -71,6 +111,12 @@ class BalanceManagerClass {
   }
 
   public updateBalance(newBalance: number): void {
+    // Si c'est un ajout, l'ajouter aux gains quotidiens
+    const gain = newBalance - this.currentBalance;
+    if (gain > 0) {
+      this.addToDailyGains(gain);
+    }
+    
     // Use the higher value to prevent regressions
     if (newBalance > this.currentBalance) {
       this.currentBalance = newBalance;
@@ -94,6 +140,69 @@ class BalanceManagerClass {
     }
   }
 
+  // Ajouter un montant aux gains quotidiens
+  private addToDailyGains(amount: number): void {
+    // Vérifier si nous sommes sur un nouveau jour
+    const today = new Date().toISOString().split('T')[0];
+    if (this.dailyGainsDate !== today) {
+      // Nouveau jour, réinitialiser les gains quotidiens
+      this.dailyGains = amount;
+      this.dailyGainsDate = today;
+    } else {
+      // Même jour, ajouter au cumul
+      this.dailyGains += amount;
+    }
+    
+    // Sauvegarder dans le localStorage
+    if (this.userId) {
+      localStorage.setItem(`dailyGains_${this.userId}`, this.dailyGains.toString());
+      localStorage.setItem(`dailyGainsDate_${this.userId}`, this.dailyGainsDate);
+    }
+    
+    console.log(`BalanceManager: Daily gains updated to ${this.dailyGains} for ${this.userId || 'unknown'}`);
+    
+    // Déclencher un événement pour la mise à jour des gains quotidiens
+    window.dispatchEvent(new CustomEvent('dailyGains:updated', {
+      detail: { 
+        userId: this.userId,
+        dailyGains: this.dailyGains,
+        date: this.dailyGainsDate
+      }
+    }));
+  }
+
+  // Vérifier et réinitialiser les gains quotidiens à minuit
+  private checkAndResetDailyGains(): void {
+    const today = new Date().toISOString().split('T')[0];
+    if (this.dailyGainsDate !== today && this.dailyGainsDate !== '') {
+      console.log(`BalanceManager: Resetting daily gains. Old date: ${this.dailyGainsDate}, New date: ${today}`);
+      this.dailyGains = 0;
+      this.dailyGainsDate = today;
+      
+      // Sauvegarder dans le localStorage
+      if (this.userId) {
+        localStorage.setItem(`dailyGains_${this.userId}`, '0');
+        localStorage.setItem(`dailyGainsDate_${this.userId}`, today);
+      }
+      
+      // Déclencher un événement pour la réinitialisation des gains quotidiens
+      window.dispatchEvent(new CustomEvent('dailyGains:reset', {
+        detail: { 
+          userId: this.userId,
+          date: today
+        }
+      }));
+      
+      // Réactiver le bot automatiquement au début de la journée
+      window.dispatchEvent(new CustomEvent('bot:status-change', {
+        detail: { 
+          userId: this.userId,
+          active: true
+        }
+      }));
+    }
+  }
+
   public getBalance(): number {
     return this.currentBalance;
   }
@@ -105,38 +214,62 @@ class BalanceManagerClass {
   public getCurrentBalance(): number {
     return this.currentBalance;
   }
+  
+  public getDailyGains(): number {
+    // Vérifier si les gains sont pour aujourd'hui
+    const today = new Date().toISOString().split('T')[0];
+    if (this.dailyGainsDate !== today) {
+      return 0; // Nouveau jour, pas encore de gains
+    }
+    return this.dailyGains;
+  }
 
   public setUserId(userId: string): void {
     if (this.userId !== userId) {
       const oldUserId = this.userId;
       this.userId = userId;
-      this.saveToStorage();
       
       // Load user-specific data if available
       try {
         const userSpecificBalance = localStorage.getItem(`balance_${userId}`);
         const userSpecificHighest = localStorage.getItem(`highestBalance_${userId}`);
+        const userDailyGains = localStorage.getItem(`dailyGains_${userId}`);
+        const userDailyGainsDate = localStorage.getItem(`dailyGainsDate_${userId}`);
         
+        // Réinitialiser d'abord
+        this.currentBalance = 0;
+        this.highestBalance = 0;
+        this.dailyGains = 0;
+        
+        // Charger les données utilisateur
         if (userSpecificBalance) {
-          const parsedBalance = parseFloat(userSpecificBalance);
-          if (parsedBalance > this.currentBalance) {
-            this.currentBalance = parsedBalance;
-          }
+          this.currentBalance = parseFloat(userSpecificBalance);
         }
         
         if (userSpecificHighest) {
-          const parsedHighest = parseFloat(userSpecificHighest);
-          if (parsedHighest > this.highestBalance) {
-            this.highestBalance = parsedHighest;
-          }
+          this.highestBalance = parseFloat(userSpecificHighest);
         }
         
-        // If user changed, sync to ensure we have the latest data
-        if (oldUserId !== userId) {
-          this.syncWithDatabase().catch(err => 
-            console.error("Error syncing after user change:", err)
-          );
+        if (userDailyGains) {
+          this.dailyGains = parseFloat(userDailyGains);
         }
+        
+        if (userDailyGainsDate) {
+          this.dailyGainsDate = userDailyGainsDate;
+        } else {
+          this.dailyGainsDate = new Date().toISOString().split('T')[0]; // Aujourd'hui
+        }
+        
+        this.saveToStorage();
+        console.log(`BalanceManager: Loaded data for user ${userId}: balance=${this.currentBalance}, highest=${this.highestBalance}, daily=${this.dailyGains}`);
+        
+        // If user changed, sync to ensure we have the latest data
+        this.syncWithDatabase().catch(err => 
+          console.error("Error syncing after user change:", err)
+        );
+        
+        // Notifier les abonnés du changement d'utilisateur
+        this.notifySubscribers();
       } catch (error) {
         console.error("Error loading user-specific balance:", error);
       }
@@ -182,7 +315,8 @@ class BalanceManagerClass {
       currentBalance: this.currentBalance,
       highestBalance: this.highestBalance,
       userId: this.userId,
-      lastKnownBalance: this.currentBalance
+      lastKnownBalance: this.currentBalance,
+      dailyGains: this.dailyGains // Inclure les gains quotidiens
     };
     
     this.subscribers.forEach(callback => callback(state));
@@ -215,13 +349,14 @@ class BalanceManagerClass {
       // Get current balance from database
       const { data, error } = await supabase
         .from('user_balances')
-        .select('balance')
+        .select('balance, daily_session_count')
         .eq('id', this.userId)
         .single();
 
       if (error) throw error;
 
       const dbBalance = data?.balance || 0;
+      const dbDailyCount = data?.daily_session_count || 0;
 
       // If our local balance is higher, update the database
       if (this.currentBalance > dbBalance) {
@@ -229,7 +364,10 @@ class BalanceManagerClass {
         
         const { error: updateError } = await supabase
           .from('user_balances')
-          .update({ balance: this.currentBalance })
+          .update({ 
+            balance: this.currentBalance,
+            daily_session_count: Math.ceil(this.dailyGains / 0.1) // Estimer le nombre de sessions basé sur les gains quotidiens
+          })
           .eq('id', this.userId);
 
         if (updateError) throw updateError;
@@ -289,6 +427,13 @@ class BalanceManagerClass {
         }
       }));
       
+      // Déclencher un événement global pour forcer le rafraîchissement des transactions
+      window.dispatchEvent(new CustomEvent('transactions:refresh', {
+        detail: { 
+          userId
+        }
+      }));
+      
       return true;
     } catch (error) {
       console.error('Error adding transaction:', error);
@@ -309,18 +454,34 @@ class BalanceManagerClass {
   }
   
   public resetDailyCounters(): void {
-    // This method only resets daily counters, not the actual balance
+    // Réinitialiser les gains quotidiens
+    const today = new Date().toISOString().split('T')[0];
+    this.dailyGains = 0;
+    this.dailyGainsDate = today;
+    
+    // Sauvegarder dans le localStorage
+    if (this.userId) {
+      localStorage.setItem(`dailyGains_${this.userId}`, '0');
+      localStorage.setItem(`dailyGainsDate_${this.userId}`, today);
+    }
+    
     localStorage.removeItem('todaySessionCount');
     localStorage.removeItem('lastAutoSessionDate');
     localStorage.removeItem('lastAutoSessionTime');
     
     // Dispatch an event to notify components
-    window.dispatchEvent(new CustomEvent('dailyCounters:reset'));
+    window.dispatchEvent(new CustomEvent('dailyCounters:reset', {
+      detail: {
+        userId: this.userId,
+        date: today
+      }
+    }));
   }
 
   public cleanupUserBalanceData(): void {
     this.currentBalance = 0;
     this.highestBalance = 0;
+    this.dailyGains = 0;
     this.saveToStorage();
     this.dispatchBalanceResetEvent();
     this.notifySubscribers();
@@ -347,7 +508,7 @@ class BalanceManagerClass {
     );
   }
 
-  // Nouvelle fonction pour forcer la mise à jour du solde
+  // Méthode pour forcer la mise à jour du solde
   public forceUpdate(newBalance: number): void {
     if (newBalance >= 0) {
       this.currentBalance = newBalance;
@@ -378,12 +539,18 @@ export const getHighestBalance = (): number => {
   return balanceManager.getHighestBalance();
 };
 
+// Exporter une fonction pour obtenir les gains quotidiens
+export const getDailyGains = (): number => {
+  return balanceManager.getDailyGains();
+};
+
 // Also export the class for compatibility
 export const BalanceManager = {
   updateBalance: (balance: number) => balanceManager.updateBalance(balance),
   getBalance: () => balanceManager.getBalance(),
   getHighestBalance: () => balanceManager.getHighestBalance(),
   getCurrentBalance: () => balanceManager.getCurrentBalance(),
+  getDailyGains: () => balanceManager.getDailyGains(),
   setUserId: (userId: string) => balanceManager.setUserId(userId),
   syncWithDatabase: () => balanceManager.syncWithDatabase(),
   addTransaction: (userId: string, gain: number, report: string) => balanceManager.addTransaction(userId, gain, report),
@@ -392,7 +559,6 @@ export const BalanceManager = {
   initialize: (balance: number, userId?: string) => balanceManager.initialize(balance, userId),
   subscribe: (callback: (state: BalanceState) => void) => balanceManager.subscribe(callback),
   cleanupUserBalanceData: () => balanceManager.cleanupUserBalanceData(),
-  // Ajouter la nouvelle méthode à l'objet exporté
   forceUpdate: (newBalance: number) => balanceManager.forceUpdate(newBalance)
 };
 
