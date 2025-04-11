@@ -1,5 +1,7 @@
 
-import React, { useEffect, useState, useRef, memo } from 'react';
+import React, { memo } from 'react';
+import { Button } from '@/components/ui/button';
+import { ChevronUp } from 'lucide-react';
 
 interface TransactionFooterProps {
   showAllTransactions: boolean;
@@ -10,47 +12,21 @@ const TransactionFooter = memo(({
   showAllTransactions, 
   hiddenTransactionsCount 
 }: TransactionFooterProps) => {
-  const [localCount, setLocalCount] = useState(hiddenTransactionsCount);
-  const isMountedRef = useRef(true);
-  const localStorageKey = 'hiddenTransactionsCount';
-  
-  // Effect for persistence with better cleanup
-  useEffect(() => {
-    if (hiddenTransactionsCount > 0) {
-      try {
-        localStorage.setItem(localStorageKey, hiddenTransactionsCount.toString());
-        setLocalCount(hiddenTransactionsCount);
-      } catch (e) {
-        console.error("Failed to store transaction count:", e);
-      }
-    } else {
-      // Try to retrieve from localStorage
-      try {
-        const storedCount = localStorage.getItem(localStorageKey);
-        if (storedCount && isMountedRef.current) {
-          const count = parseInt(storedCount, 10);
-          if (!isNaN(count) && count > 0) {
-            setLocalCount(count);
-          }
-        }
-      } catch (e) {
-        console.error("Failed to retrieve transaction count:", e);
-      }
-    }
-    
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [hiddenTransactionsCount]);
-  
-  // Don't render anything if showing all transactions or no hidden transactions
-  if (showAllTransactions || localCount <= 0) return null;
+  if (!showAllTransactions || hiddenTransactionsCount <= 0) {
+    return null;
+  }
   
   return (
-    <div className="text-center mt-4">
-      <p className="text-sm text-[#486581]">
-        {localCount} {localCount > 1 ? 'autres sessions' : 'autre session'} non affichée{localCount > 1 ? 's' : ''}.
-      </p>
+    <div className="mt-4 text-center">
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className="text-sm flex items-center justify-center"
+      >
+        <ChevronUp className="h-4 w-4 mr-1" />
+        Retour en haut
+      </Button>
     </div>
   );
 });
