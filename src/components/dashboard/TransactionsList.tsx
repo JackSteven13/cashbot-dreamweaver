@@ -2,10 +2,7 @@
 import React, { memo } from 'react';
 import { useTransactions } from './transactions/useTransactions';
 import { Transaction } from '@/types/userData';
-import TransactionListItem from './transactions/TransactionListItem';
-import TransactionEmptyState from './transactions/TransactionEmptyState';
-import TransactionListActions from './transactions/TransactionListActions';
-import TransactionFooter from './transactions/TransactionFooter';
+import { TransactionListItem, TransactionEmptyState, TransactionListActions, TransactionFooter } from './transactions';
 
 interface TransactionsListProps {
   transactions: Transaction[];

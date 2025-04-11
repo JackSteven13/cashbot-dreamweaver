@@ -219,3 +219,4 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     hiddenTransactionsCount: validTransactions.length > 3 ? validTransactions.length - 3 : 0
   };
 };
+

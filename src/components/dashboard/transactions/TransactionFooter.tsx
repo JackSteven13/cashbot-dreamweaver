@@ -1,12 +1,12 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, memo } from 'react';
 
 interface TransactionFooterProps {
   showAllTransactions: boolean;
   hiddenTransactionsCount: number;
 }
 
-const TransactionFooter = ({ 
+const TransactionFooter = memo(({ 
   showAllTransactions, 
   hiddenTransactionsCount 
 }: TransactionFooterProps) => {
@@ -53,6 +53,9 @@ const TransactionFooter = ({
       </p>
     </div>
   );
-};
+});
+
+// Set display name for debugging
+TransactionFooter.displayName = 'TransactionFooter';
 
 export default TransactionFooter;
