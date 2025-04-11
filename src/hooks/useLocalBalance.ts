@@ -19,7 +19,12 @@ interface UseLocalBalanceResult {
 export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps): UseLocalBalanceResult => {
   // Utiliser une fonction pour récupérer le solde persisté de façon fiable
   const getPersistedBalance = (): number => {
-    // Utiliser des clés spécifiques à l'utilisateur
+    if (!userId) {
+      console.warn('No userId provided to useLocalBalance');
+      return initialBalance;
+    }
+    
+    // Utiliser UNIQUEMENT des clés spécifiques à l'utilisateur
     const userBalanceKey = `user_balance_${userId}`;
     const userHighestBalanceKey = `highest_balance_${userId}`;
     const userLastKnownBalanceKey = `last_balance_${userId}`;
@@ -29,14 +34,6 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
       localStorage.getItem(userHighestBalanceKey),
       localStorage.getItem(userLastKnownBalanceKey)
     ];
-    
-    // Vérifier aussi les anciennes clés génériques pour compatibilité
-    if (userId) {
-      sources.push(
-        localStorage.getItem('currentBalance'),
-        localStorage.getItem('lastKnownBalance')
-      );
-    }
     
     // Trouver la valeur maximale parmi toutes les sources (y compris initialBalance)
     let highestValue = initialBalance;
@@ -64,6 +61,7 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
         // Nettoyer les anciennes clés génériques pour éviter les confusions
         localStorage.removeItem('currentBalance');
         localStorage.removeItem('lastKnownBalance');
+        localStorage.removeItem('highestBalance');
       } catch (e) {
         console.error("Failed to persist initial balance:", e);
       }
@@ -106,7 +104,7 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
       
       previousBalanceRef.current = localBalance;
       
-      // Informer les autres composants du changement
+      // Informer les autres composants du changement avec l'ID utilisateur
       window.dispatchEvent(new CustomEvent('balance:local-update', {
         detail: { balance: localBalance, userId }
       }));

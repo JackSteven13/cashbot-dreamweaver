@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { cleanupUserBalanceData } from './balance/balanceManager';
 
 /**
  * Fonction pour détecter un changement d'utilisateur et nettoyer les données locales
@@ -20,7 +21,10 @@ export const checkUserSwitch = async () => {
     if (storedUserId && currentUserId !== storedUserId) {
       console.log(`Changement d'utilisateur détecté: ${storedUserId} -> ${currentUserId}`);
       
-      // Nettoyer les données spécifiques à l'utilisateur
+      // Nettoyer les données spécifiques à l'ancien utilisateur
+      cleanupUserBalanceData(storedUserId);
+      
+      // Nettoyer les données génériques qui pourraient être partagées
       localStorage.removeItem('currentBalance');
       localStorage.removeItem('lastKnownBalance');
       localStorage.removeItem('highestBalance');
