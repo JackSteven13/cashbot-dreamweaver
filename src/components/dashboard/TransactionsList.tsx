@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import SessionCard from '@/components/SessionCard';
@@ -6,6 +5,7 @@ import { Transaction } from '@/types/userData';
 import { PlusCircle } from 'lucide-react';
 import { fetchUserTransactions } from '@/hooks/user/transactionUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from "@/components/ui/use-toast";
 
 interface TransactionsListProps {
   transactions: Transaction[];
@@ -18,30 +18,23 @@ const TransactionsList = ({ transactions: initialTransactions, isNewUser = false
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions || []);
   const [refreshKey, setRefreshKey] = useState(0); // Pour forcer le rendu
   
-  // Effet pour écouter les événements de nouvelles transactions
   useEffect(() => {
-    // Mettre à jour les transactions quand les props changent
     setTransactions(initialTransactions);
     
-    // Fonction pour actualiser les transactions
     const handleTransactionRefresh = async (event: CustomEvent) => {
       const userId = event.detail?.userId;
       
       if (!userId) return;
       
       try {
-        // Obtenir la session actuelle
         const { data: { session } } = await supabase.auth.getSession();
         
-        // Vérifier si l'événement concerne l'utilisateur actuel
         if (session?.user?.id === userId) {
           console.log("Refreshing transactions for user:", userId);
           
-          // Récupérer les transactions mises à jour
           const updatedTransactions = await fetchUserTransactions(userId);
           if (updatedTransactions && updatedTransactions.length > 0) {
             setTransactions(updatedTransactions);
-            // Forcer le rendu
             setRefreshKey(prev => prev + 1);
           }
         }
@@ -50,21 +43,17 @@ const TransactionsList = ({ transactions: initialTransactions, isNewUser = false
       }
     };
     
-    // Fonction pour ajouter une nouvelle transaction à la liste
     const handleTransactionAdded = async (event: CustomEvent) => {
       const { userId, gain, report, date } = event.detail || {};
       
       try {
-        // Obtenir la session actuelle
         const { data: { session } } = await supabase.auth.getSession();
         
-        // Vérifier si l'événement concerne l'utilisateur actuel
         if (session?.user?.id === userId) {
           console.log("New transaction added:", { gain, report });
           
-          // Ajouter la nouvelle transaction au début de la liste
           const newTransaction: Transaction = {
-            id: `temp-${Date.now()}`, // ID temporaire
+            id: `temp-${Date.now()}`,
             date,
             amount: gain,
             type: report,
@@ -74,12 +63,10 @@ const TransactionsList = ({ transactions: initialTransactions, isNewUser = false
           
           setTransactions(prev => [newTransaction, ...prev]);
           
-          // Attendre un peu puis synchroniser avec la base de données
           setTimeout(async () => {
             const updatedTransactions = await fetchUserTransactions(userId);
             if (updatedTransactions && updatedTransactions.length > 0) {
               setTransactions(updatedTransactions);
-              // Forcer le rendu
               setRefreshKey(prev => prev + 1);
             }
           }, 500);
@@ -89,7 +76,6 @@ const TransactionsList = ({ transactions: initialTransactions, isNewUser = false
       }
     };
     
-    // Configurer un intervalle d'actualisation
     const refreshInterval = setInterval(async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -105,9 +91,8 @@ const TransactionsList = ({ transactions: initialTransactions, isNewUser = false
       } catch (error) {
         console.error("Error in refresh interval:", error);
       }
-    }, 30000); // Toutes les 30 secondes
+    }, 30000);
     
-    // Écouter l'événement de rafraîchissement des transactions
     window.addEventListener('transactions:refresh' as any, handleTransactionRefresh);
     window.addEventListener('transaction:added' as any, handleTransactionAdded);
     
@@ -118,11 +103,9 @@ const TransactionsList = ({ transactions: initialTransactions, isNewUser = false
     };
   }, [initialTransactions]);
   
-  // Vérifier que les transactions sont valides et non vides
   const validTransactions = Array.isArray(transactions) ? 
     transactions.filter(tx => tx && (typeof tx.gain === 'number' || typeof tx.amount === 'number') && tx.date) : [];
   
-  // Afficher 3 transactions récentes par défaut, ou toutes si showAllTransactions est true
   const displayedTransactions = showAllTransactions 
     ? validTransactions 
     : validTransactions.slice(0, 3);
@@ -131,7 +114,6 @@ const TransactionsList = ({ transactions: initialTransactions, isNewUser = false
     setShowAllTransactions(true);
   };
   
-  // Fonction pour rafraîchir manuellement les transactions
   const handleManualRefresh = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -221,7 +203,6 @@ const TransactionsList = ({ transactions: initialTransactions, isNewUser = false
         </div>
       )}
       
-      {/* Afficher un message si l'historique est réduit et qu'il y a plus de transactions */}
       {!showAllTransactions && validTransactions.length > 3 && (
         <div className="text-center mt-4">
           <p className="text-sm text-[#486581]">

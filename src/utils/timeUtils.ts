@@ -1,8 +1,9 @@
 
 /**
  * Get current time in Paris timezone
+ * @returns Date string formatted for Paris timezone
  */
-export function getParisTime() {
+export function getParisTime(): string {
   return new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
 }
 

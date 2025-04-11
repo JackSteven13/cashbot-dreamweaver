@@ -33,7 +33,9 @@ export const useStatsInitialization = ({
   
   // Calculate bi-weekly progress
   const getBiWeeklyProgress = useCallback(() => {
-    const parisTime = getParisTime();
+    const parisTimeString = getParisTime();
+    // Convert the Paris time string to a Date object
+    const parisTime = new Date(parisTimeString);
     const currentDay = parisTime.getDate();
     
     // Determine which 14-day period we're in
