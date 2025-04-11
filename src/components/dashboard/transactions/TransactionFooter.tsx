@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 interface TransactionFooterProps {
   showAllTransactions: boolean;
@@ -11,32 +11,39 @@ const TransactionFooter = ({
   hiddenTransactionsCount 
 }: TransactionFooterProps) => {
   const [localCount, setLocalCount] = useState(hiddenTransactionsCount);
+  const isMountedRef = useRef(true);
+  const localStorageKey = 'hiddenTransactionsCount';
   
-  // Store transaction count in localStorage for persistence
+  // Effect for persistence with better cleanup
   useEffect(() => {
     if (hiddenTransactionsCount > 0) {
       try {
-        localStorage.setItem('hiddenTransactionsCount', hiddenTransactionsCount.toString());
+        localStorage.setItem(localStorageKey, hiddenTransactionsCount.toString());
         setLocalCount(hiddenTransactionsCount);
       } catch (e) {
-        console.error("Failed to store transaction count in localStorage:", e);
+        console.error("Failed to store transaction count:", e);
       }
     } else {
       // Try to retrieve from localStorage
       try {
-        const storedCount = localStorage.getItem('hiddenTransactionsCount');
-        if (storedCount) {
+        const storedCount = localStorage.getItem(localStorageKey);
+        if (storedCount && isMountedRef.current) {
           const count = parseInt(storedCount, 10);
           if (!isNaN(count) && count > 0) {
             setLocalCount(count);
           }
         }
       } catch (e) {
-        console.error("Failed to retrieve transaction count from localStorage:", e);
+        console.error("Failed to retrieve transaction count:", e);
       }
     }
+    
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [hiddenTransactionsCount]);
   
+  // Don't render anything if showing all transactions or no hidden transactions
   if (showAllTransactions || localCount <= 0) return null;
   
   return (

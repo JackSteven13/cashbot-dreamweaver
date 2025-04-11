@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { useTransactions } from './transactions/useTransactions';
 import { Transaction } from '@/types/userData';
 import { 
@@ -15,7 +15,8 @@ interface TransactionsListProps {
   subscription?: string;
 }
 
-const TransactionsList = ({ 
+// Utiliser memo pour éviter les rendus inutiles
+const TransactionsList = memo(({ 
   transactions: initialTransactions, 
   isNewUser = false,
   subscription = 'freemium'
@@ -43,7 +44,7 @@ const TransactionsList = ({
         <div className="space-y-4">
           {displayedTransactions.map((transaction, index) => (
             <TransactionListItem
-              key={`${transaction.id || ''}-${index}`}
+              key={`${transaction.id || ''}-${index}-${refreshKey}`}
               transaction={transaction}
               refreshKey={refreshKey}
               index={index}
@@ -61,6 +62,9 @@ const TransactionsList = ({
       />
     </div>
   );
-};
+});
+
+// Set display name for debugging
+TransactionsList.displayName = 'TransactionsList';
 
 export default TransactionsList;

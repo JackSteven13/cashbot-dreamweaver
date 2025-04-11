@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import SessionCard from '@/components/SessionCard';
 import { Transaction } from '@/types/userData';
 import { useSessionCountdown } from '@/hooks/useSessionCountdown';
@@ -11,7 +11,8 @@ interface TransactionListItemProps {
   subscription?: string;
 }
 
-const TransactionListItem = ({ 
+// Utiliser memo pour éviter les rendus inutiles
+const TransactionListItem = memo(({ 
   transaction, 
   refreshKey, 
   index,
@@ -25,9 +26,9 @@ const TransactionListItem = ({
   );
   
   return (
-    <div className="transaction-item">
+    <div className="transaction-item" data-index={index}>
       <SessionCard 
-        key={`${transaction.id || ''}-${index}-${refreshKey}`}
+        key={`${transaction.id || ''}-${refreshKey}`}
         date={transaction.date}
         gain={transaction.gain || transaction.amount || 0}
         report={transaction.report || transaction.type || ''}
@@ -41,6 +42,9 @@ const TransactionListItem = ({
       )}
     </div>
   );
-};
+});
+
+// Set display name for debugging
+TransactionListItem.displayName = 'TransactionListItem';
 
 export default TransactionListItem;
