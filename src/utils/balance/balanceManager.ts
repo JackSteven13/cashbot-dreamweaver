@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
@@ -87,7 +86,6 @@ class BalanceManagerClass {
     return this.highestBalance;
   }
   
-  // Added method to get current balance
   public getCurrentBalance(): number {
     return this.currentBalance;
   }
@@ -99,7 +97,6 @@ class BalanceManagerClass {
     }
   }
   
-  // Added initialize method
   public initialize(balance: number, userId?: string): void {
     if (balance > this.currentBalance) {
       this.currentBalance = balance;
@@ -233,7 +230,6 @@ class BalanceManagerClass {
     this.notifySubscribers();
   }
   
-  // Add resetDailyCounters method
   public resetDailyCounters(): void {
     // This method only resets daily counters, not the actual balance
     localStorage.removeItem('todaySessionCount');
