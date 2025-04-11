@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface TransactionFooterProps {
   showAllTransactions: boolean;
@@ -10,12 +10,39 @@ const TransactionFooter = ({
   showAllTransactions, 
   hiddenTransactionsCount 
 }: TransactionFooterProps) => {
-  if (showAllTransactions || hiddenTransactionsCount <= 0) return null;
+  const [localCount, setLocalCount] = useState(hiddenTransactionsCount);
+  
+  // Store transaction count in localStorage for persistence
+  useEffect(() => {
+    if (hiddenTransactionsCount > 0) {
+      try {
+        localStorage.setItem('hiddenTransactionsCount', hiddenTransactionsCount.toString());
+        setLocalCount(hiddenTransactionsCount);
+      } catch (e) {
+        console.error("Failed to store transaction count in localStorage:", e);
+      }
+    } else {
+      // Try to retrieve from localStorage
+      try {
+        const storedCount = localStorage.getItem('hiddenTransactionsCount');
+        if (storedCount) {
+          const count = parseInt(storedCount, 10);
+          if (!isNaN(count) && count > 0) {
+            setLocalCount(count);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to retrieve transaction count from localStorage:", e);
+      }
+    }
+  }, [hiddenTransactionsCount]);
+  
+  if (showAllTransactions || localCount <= 0) return null;
   
   return (
     <div className="text-center mt-4">
       <p className="text-sm text-[#486581]">
-        {hiddenTransactionsCount} {hiddenTransactionsCount > 1 ? 'autres sessions' : 'autre session'} non affichée{hiddenTransactionsCount > 1 ? 's' : ''}.
+        {localCount} {localCount > 1 ? 'autres sessions' : 'autre session'} non affichée{localCount > 1 ? 's' : ''}.
       </p>
     </div>
   );

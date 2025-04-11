@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Transaction } from '@/types/userData';
 import { fetchUserTransactions } from '@/hooks/user/transactionUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 export const useTransactions = (initialTransactions: Transaction[]) => {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
@@ -10,7 +11,39 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    // Restore showAllTransactions state from localStorage
+    try {
+      const storedShowAll = localStorage.getItem('showAllTransactions');
+      if (storedShowAll) {
+        setShowAllTransactions(storedShowAll === 'true');
+      }
+    } catch (e) {
+      console.error("Error retrieving showAllTransactions from localStorage:", e);
+    }
+
     setTransactions(initialTransactions);
+    
+    // Store initialTransactions in localStorage for persistence
+    if (initialTransactions && initialTransactions.length > 0) {
+      try {
+        localStorage.setItem('cachedTransactions', JSON.stringify(initialTransactions));
+      } catch (e) {
+        console.error("Failed to cache transactions in localStorage:", e);
+      }
+    } else {
+      // Try to restore transactions from localStorage if initialTransactions is empty
+      try {
+        const cachedTransactions = localStorage.getItem('cachedTransactions');
+        if (cachedTransactions) {
+          const parsed = JSON.parse(cachedTransactions);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTransactions(parsed);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to restore cached transactions:", e);
+      }
+    }
     
     const handleTransactionRefresh = async (event: CustomEvent) => {
       const userId = event.detail?.userId;
@@ -27,6 +60,13 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
           if (updatedTransactions && updatedTransactions.length > 0) {
             setTransactions(updatedTransactions);
             setRefreshKey(prev => prev + 1);
+            
+            // Update localStorage cache
+            try {
+              localStorage.setItem('cachedTransactions', JSON.stringify(updatedTransactions));
+            } catch (e) {
+              console.error("Failed to update cached transactions:", e);
+            }
           }
         }
       } catch (error) {
@@ -52,13 +92,29 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
             gain
           };
           
-          setTransactions(prev => [newTransaction, ...prev]);
+          setTransactions(prev => {
+            const updated = [newTransaction, ...prev];
+            // Update localStorage cache
+            try {
+              localStorage.setItem('cachedTransactions', JSON.stringify(updated));
+            } catch (e) {
+              console.error("Failed to update cached transactions:", e);
+            }
+            return updated;
+          });
           
           setTimeout(async () => {
             const updatedTransactions = await fetchUserTransactions(userId);
             if (updatedTransactions && updatedTransactions.length > 0) {
               setTransactions(updatedTransactions);
               setRefreshKey(prev => prev + 1);
+              
+              // Update localStorage cache
+              try {
+                localStorage.setItem('cachedTransactions', JSON.stringify(updatedTransactions));
+              } catch (e) {
+                console.error("Failed to update cached transactions:", e);
+              }
             }
           }, 500);
         }
@@ -77,6 +133,13 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
             console.log("Auto-refreshing transactions");
             setTransactions(refreshedTransactions);
             setRefreshKey(prev => prev + 1);
+            
+            // Update localStorage cache
+            try {
+              localStorage.setItem('cachedTransactions', JSON.stringify(refreshedTransactions));
+            } catch (e) {
+              console.error("Failed to update cached transactions:", e);
+            }
           }
         }
       } catch (error) {
@@ -93,6 +156,15 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
       clearInterval(refreshInterval);
     };
   }, [initialTransactions]);
+  
+  // Update localStorage when showAllTransactions changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('showAllTransactions', showAllTransactions.toString());
+    } catch (e) {
+      console.error("Error storing showAllTransactions in localStorage:", e);
+    }
+  }, [showAllTransactions]);
 
   const validTransactions = Array.isArray(transactions) ? 
     transactions.filter(tx => tx && (typeof tx.gain === 'number' || typeof tx.amount === 'number') && tx.date) : [];
@@ -101,7 +173,7 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     ? validTransactions 
     : validTransactions.slice(0, 3);
   
-  const handleManualRefresh = async () => {
+  const handleManualRefresh = async (): Promise<void> => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.id) {
@@ -109,13 +181,29 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
         if (refreshedTransactions) {
           setTransactions(refreshedTransactions);
           setRefreshKey(prev => prev + 1);
-          return true;
+          
+          // Update localStorage cache
+          try {
+            localStorage.setItem('cachedTransactions', JSON.stringify(refreshedTransactions));
+          } catch (e) {
+            console.error("Failed to update cached transactions:", e);
+          }
+          
+          toast({
+            title: "Liste mise à jour",
+            description: "Les transactions ont été actualisées.",
+            duration: 3000,
+          });
         }
       }
-      return false;
     } catch (error) {
       console.error("Error manually refreshing transactions:", error);
-      return false;
+      toast({
+        title: "Erreur",
+        description: "Impossible de rafraîchir les transactions.",
+        variant: "destructive",
+        duration: 3000,
+      });
     }
   };
   

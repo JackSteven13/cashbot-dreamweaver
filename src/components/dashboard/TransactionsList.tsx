@@ -17,7 +17,8 @@ interface TransactionsListProps {
 
 const TransactionsList = ({ 
   transactions: initialTransactions, 
-  isNewUser = false
+  isNewUser = false,
+  subscription = 'freemium'
 }: TransactionsListProps) => {
   const {
     showAllTransactions,
@@ -46,6 +47,7 @@ const TransactionsList = ({
               transaction={transaction}
               refreshKey={refreshKey}
               index={index}
+              subscription={subscription}
             />
           ))}
         </div>
