@@ -33,7 +33,7 @@ export interface UserData {
   transactions: Transaction[];
   registeredAt?: Date;
   email?: string;
-  dailySessionCount?: number; // Add this to fix the error
+  dailySessionCount?: number;
   paymentMethods?: Array<{
     type: string;
     lastFour: string;
