@@ -1,214 +1,136 @@
 
 /**
- * Gestionnaire de solde centralisé qui maintient une cohérence entre
- * les différents composants qui affichent ou manipulent le solde de l'utilisateur
+ * BalanceManager - Gestionnaire central des opérations de solde utilisateur
+ * Fournit des méthodes pour toutes les opérations liées au solde utilisateur
  */
 
-type BalanceSubscriber = (state: BalanceState) => void;
+import { supabase } from '@/integrations/supabase/client';
 
-interface BalanceState {
-  lastKnownBalance: number;
-  timestamp: number;
-  userId: string | null;
-}
-
-class BalanceManager {
-  private static instance: BalanceManager;
-  private subscribers: BalanceSubscriber[] = [];
-  private state: BalanceState = {
-    lastKnownBalance: 0,
-    timestamp: Date.now(),
-    userId: null
-  };
+export class BalanceManager {
+  private userId: string;
+  private currentBalance: number = 0;
   private highestBalance: number = 0;
-  
-  private constructor() {
-    // Initialiser depuis localStorage si disponible
+  private subscription: string = 'freemium';
+
+  constructor(userId: string, initialBalance: number = 0, subscription: string = 'freemium') {
+    this.userId = userId;
+    this.currentBalance = initialBalance;
+    this.subscription = subscription;
+    this.highestBalance = initialBalance;
+  }
+
+  /**
+   * Récupère le solde actuel de l'utilisateur depuis la base de données
+   */
+  async getCurrentBalance(): Promise<number> {
     try {
-      const storedBalance = localStorage.getItem('lastKnownBalance');
-      const storedHighestBalance = localStorage.getItem('highestBalance');
+      const { data, error } = await supabase
+        .from('user_balances')
+        .select('balance')
+        .eq('id', this.userId)
+        .single();
+
+      if (error) throw error;
       
-      if (storedBalance) {
-        const parsedBalance = parseFloat(storedBalance);
-        if (!isNaN(parsedBalance)) {
-          this.state.lastKnownBalance = parsedBalance;
-        }
-      }
-      
-      if (storedHighestBalance) {
-        const parsedHighest = parseFloat(storedHighestBalance);
-        if (!isNaN(parsedHighest)) {
-          this.highestBalance = parsedHighest;
-        }
-      }
-    } catch (e) {
-      console.error("Failed to read balance from localStorage:", e);
+      this.currentBalance = data?.balance || 0;
+      return this.currentBalance;
+    } catch (error) {
+      console.error('Error getting current balance:', error);
+      return this.currentBalance; // Return cached value in case of error
     }
   }
-  
+
   /**
-   * Obtenir l'instance unique du gestionnaire de solde
+   * Met à jour le solde de l'utilisateur dans la base de données
    */
-  public static getInstance(): BalanceManager {
-    if (!BalanceManager.instance) {
-      BalanceManager.instance = new BalanceManager();
-    }
-    return BalanceManager.instance;
-  }
-  
-  /**
-   * Initialise le gestionnaire avec un solde connu et un ID utilisateur
-   */
-  public initialize(balance: number, userId: string | null = null): void {
-    if (balance > this.state.lastKnownBalance) {
-      this.state.lastKnownBalance = balance;
-      this.highestBalance = Math.max(this.highestBalance, balance);
-      this.state.timestamp = Date.now();
-      
-      try {
-        localStorage.setItem('lastKnownBalance', balance.toString());
-        localStorage.setItem('highestBalance', this.highestBalance.toString());
-      } catch (e) {
-        console.error("Failed to write balance to localStorage:", e);
-      }
-    }
-    
-    if (userId) {
-      this.state.userId = userId;
-      
-      // Essayer de récupérer des valeurs spécifiques à cet utilisateur
-      try {
-        const userBalanceKey = `user_balance_${userId}`;
-        const userHighestBalanceKey = `highest_balance_${userId}`;
-        
-        const storedUserBalance = localStorage.getItem(userBalanceKey);
-        const storedUserHighest = localStorage.getItem(userHighestBalanceKey);
-        
-        if (storedUserBalance) {
-          const parsedUserBalance = parseFloat(storedUserBalance);
-          if (!isNaN(parsedUserBalance)) {
-            if (parsedUserBalance > this.state.lastKnownBalance) {
-              this.state.lastKnownBalance = parsedUserBalance;
-            }
-          }
-        }
-        
-        if (storedUserHighest) {
-          const parsedUserHighest = parseFloat(storedUserHighest);
-          if (!isNaN(parsedUserHighest)) {
-            this.highestBalance = Math.max(this.highestBalance, parsedUserHighest);
-          }
-        }
-      } catch (e) {
-        console.error("Failed to read user-specific balance from localStorage:", e);
-      }
-    }
-  }
-  
-  /**
-   * Met à jour le solde et notifie tous les abonnés
-   */
-  public updateBalance(balance: number, userId: string | null = null): void {
-    // Assurons-nous que le solde ne diminue jamais
-    if (balance >= this.state.lastKnownBalance) {
-      this.state.lastKnownBalance = balance;
-      this.highestBalance = Math.max(this.highestBalance, balance);
-      this.state.timestamp = Date.now();
-      
-      if (userId) {
-        this.state.userId = userId;
-      }
-      
-      // Persister le solde
-      try {
-        localStorage.setItem('lastKnownBalance', balance.toString());
-        localStorage.setItem('highestBalance', this.highestBalance.toString());
-        localStorage.setItem('currentBalance', balance.toString());
-        
-        if (this.state.userId) {
-          const userBalanceKey = `user_balance_${this.state.userId}`;
-          const userHighestBalanceKey = `highest_balance_${this.state.userId}`;
-          localStorage.setItem(userBalanceKey, balance.toString());
-          localStorage.setItem(userHighestBalanceKey, this.highestBalance.toString());
-        }
-      } catch (e) {
-        console.error("Failed to write balance to localStorage:", e);
-      }
-      
-      // Notifier les abonnés
-      this.notifySubscribers();
-    } else {
-      console.log(`Rejected balance update: new (${balance}) < current (${this.state.lastKnownBalance})`);
-    }
-  }
-  
-  /**
-   * Réinitialise le solde à 0 (par exemple après un retrait)
-   */
-  public resetBalance(): void {
-    this.state.lastKnownBalance = 0;
-    this.state.timestamp = Date.now();
-    
+  async updateBalance(amount: number, report: string): Promise<boolean> {
     try {
-      localStorage.setItem('lastKnownBalance', '0');
-      localStorage.setItem('currentBalance', '0');
+      const newBalance = this.currentBalance + amount;
       
-      if (this.state.userId) {
-        const userBalanceKey = `user_balance_${this.state.userId}`;
-        localStorage.setItem(userBalanceKey, '0');
+      // Ensure balance doesn't go below zero
+      const finalBalance = Math.max(0, newBalance);
+      
+      const { error } = await supabase
+        .from('user_balances')
+        .update({ 
+          balance: finalBalance,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', this.userId);
+
+      if (error) throw error;
+      
+      // Update local cache
+      this.currentBalance = finalBalance;
+      
+      // Update highest balance if needed
+      if (finalBalance > this.highestBalance) {
+        this.highestBalance = finalBalance;
       }
-    } catch (e) {
-      console.error("Failed to reset balance in localStorage:", e);
-    }
-    
-    this.notifySubscribers();
-  }
-  
-  /**
-   * S'abonne aux changements de solde
-   * @returns Fonction de désabonnement
-   */
-  public subscribe(subscriber: BalanceSubscriber): () => void {
-    this.subscribers.push(subscriber);
-    
-    // Notifier immédiatement le nouvel abonné avec l'état actuel
-    subscriber(this.state);
-    
-    // Retourner une fonction de désabonnement
-    return () => {
-      const index = this.subscribers.indexOf(subscriber);
-      if (index !== -1) {
-        this.subscribers.splice(index, 1);
-      }
-    };
-  }
-  
-  /**
-   * Notifie tous les abonnés du nouvel état
-   */
-  private notifySubscribers(): void {
-    for (const subscriber of this.subscribers) {
-      try {
-        subscriber(this.state);
-      } catch (e) {
-        console.error("Error in balance subscriber:", e);
-      }
+      
+      // If successful, also record the transaction
+      await this.recordTransaction(amount, report);
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating balance:', error);
+      return false;
     }
   }
   
   /**
-   * Récupère le dernier solde connu
+   * Enregistre une transaction dans l'historique
    */
-  public getLastKnownBalance(): number {
-    return this.state.lastKnownBalance;
+  private async recordTransaction(amount: number, report: string): Promise<void> {
+    try {
+      await supabase
+        .from('transactions')
+        .insert({
+          user_id: this.userId,
+          amount,
+          report,
+          date: new Date().toISOString(),
+          subscription: this.subscription
+        });
+    } catch (error) {
+      console.error('Error recording transaction:', error);
+    }
   }
   
   /**
-   * Récupère le solde le plus élevé jamais atteint
+   * Réinitialise les compteurs quotidiens sans affecter le solde
    */
-  public getHighestBalance(): number {
+  async resetDailyCounters(): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('user_balances')
+        .update({ 
+          daily_session_count: 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', this.userId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error resetting daily counters:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Obtient la valeur la plus élevée atteinte par le solde
+   */
+  getHighestBalance(): number {
     return this.highestBalance;
   }
+  
+  /**
+   * Nettoie les données utilisateur lors du changement d'utilisateur
+   */
+  static cleanupUserBalanceData(): void {
+    // Reset any cached balance data in localStorage if needed
+    localStorage.removeItem('lastBalanceUpdate');
+    localStorage.removeItem('lastSessionTime');
+  }
 }
-
-export const balanceManager = BalanceManager.getInstance();
