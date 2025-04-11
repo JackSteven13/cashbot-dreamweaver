@@ -85,12 +85,12 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     // Créer une séquence d'animation qui ne bloque pas l'écran
     const terminalAnimation = createBackgroundTerminalSequence([
       "Initialisation de l'analyse vidéo..."
-    ], true); // Force background mode
+    ]); // Fixed by removing extra argument
     
     setIsLocallyProcessing(true);
     
     setTimeout(() => {
-      terminalAnimation.addLine("Traitement des données en cours...", true);
+      terminalAnimation.addLine("Traitement des données en cours..."); // Fixed by removing extra argument
       
       // Lancement différé de la fonction principale pour permettre aux animations de s'afficher
       setTimeout(() => {

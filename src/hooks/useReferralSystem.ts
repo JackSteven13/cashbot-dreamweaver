@@ -17,9 +17,13 @@ interface Referral {
   referrer_id: string;
   status: string;
   commission_rate: number;
-  // Ces champs peuvent être présents ou absents selon la structure de données
+  // Add additional optional types for flexibility
   active?: boolean;
   commission_earned?: number;
+  plan_type?: string;
+  referred_user_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const useReferralSystem = (userId?: string): UseReferralSystemReturn => {
@@ -53,13 +57,19 @@ export const useReferralSystem = (userId?: string): UseReferralSystemReturn => {
       
       if (referrals && Array.isArray(referrals)) {
         // First check by status field (primary method)
-        activeReferrals = referrals.filter(ref => 
-          ref.status === 'active' || ref.active === true
-        );
+        activeReferrals = referrals.filter(ref => {
+          // Check status field first
+          if (ref.status === 'active') return true;
+          
+          // Fall back to active property if it exists
+          if ('active' in ref && ref.active === true) return true;
+          
+          return false;
+        });
         
         // If no active referrals found by status, try alternative property if exists
         if (activeReferrals.length === 0 && referrals.some(ref => 'active' in ref)) {
-          activeReferrals = referrals.filter(ref => ref.active);
+          activeReferrals = referrals.filter(ref => 'active' in ref && ref.active === true);
         }
         
         setReferralCount(activeReferrals.length);

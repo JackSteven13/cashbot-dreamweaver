@@ -53,11 +53,7 @@ const GainProgress: React.FC<GainProgressProps> = ({
       </div>
       <Progress 
         value={percentage} 
-        className="h-2 bg-gray-200 dark:bg-gray-700"
-        style={{ 
-          ['--progress-background' as any]: getProgressColor().replace('bg-', '--'),
-          transition: animate ? 'all 500ms' : 'none'
-        }}
+        className={`h-2 bg-gray-200 dark:bg-gray-700 ${getProgressColor()}`}
       />
       {showTooltip && tooltipText && (
         <div className="text-xs opacity-75 mt-1">{tooltipText}</div>

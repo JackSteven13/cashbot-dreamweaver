@@ -7,6 +7,7 @@ class BalanceManagerClass {
   private highestBalance: number = 0;
   private userId: string | null = null;
   private initialized: boolean = false;
+  private subscribers: Array<(state: any) => void> = [];
 
   constructor() {
     // Initialiser avec localStorage si disponible
@@ -64,6 +65,9 @@ class BalanceManagerClass {
       
       this.saveToStorage();
       this.dispatchBalanceUpdateEvent(newBalance);
+      
+      // Notify subscribers
+      this.notifySubscribers();
     }
   }
 
@@ -74,12 +78,56 @@ class BalanceManagerClass {
   public getHighestBalance(): number {
     return this.highestBalance;
   }
+  
+  // Added method to get current balance
+  public getCurrentBalance(): number {
+    return this.currentBalance;
+  }
 
   public setUserId(userId: string): void {
     if (this.userId !== userId) {
       this.userId = userId;
       this.saveToStorage();
     }
+  }
+  
+  // Added initialize method
+  public initialize(balance: number, userId?: string): void {
+    if (balance > this.currentBalance) {
+      this.currentBalance = balance;
+      
+      if (balance > this.highestBalance) {
+        this.highestBalance = balance;
+      }
+    }
+    
+    if (userId) {
+      this.userId = userId;
+    }
+    
+    this.saveToStorage();
+  }
+  
+  // Added subscribe method
+  public subscribe(callback: (state: any) => void): () => void {
+    this.subscribers.push(callback);
+    
+    // Return unsubscribe function
+    return () => {
+      this.subscribers = this.subscribers.filter(sub => sub !== callback);
+    };
+  }
+  
+  // Added method to notify subscribers
+  private notifySubscribers(): void {
+    const state = {
+      currentBalance: this.currentBalance,
+      highestBalance: this.highestBalance,
+      userId: this.userId,
+      lastKnownBalance: this.currentBalance
+    };
+    
+    this.subscribers.forEach(callback => callback(state));
   }
 
   public async syncWithDatabase(): Promise<boolean> {
@@ -133,9 +181,7 @@ class BalanceManagerClass {
     }
   }
 
-  public async addTransaction(gain: number, report: string): Promise<boolean> {
-    if (!this.userId) return false;
-
+  public async addTransaction(userId: string, gain: number, report: string): Promise<boolean> {
     try {
       // Get current date as YYYY-MM-DD
       const today = new Date().toISOString().split('T')[0];
@@ -143,7 +189,7 @@ class BalanceManagerClass {
       const { error } = await supabase
         .from('transactions')
         .insert({
-          user_id: this.userId,
+          user_id: userId,
           gain: gain,
           report: report,
           date: today
@@ -166,6 +212,18 @@ class BalanceManagerClass {
     this.currentBalance = 0;
     this.saveToStorage();
     this.dispatchBalanceResetEvent();
+    this.notifySubscribers();
+  }
+  
+  // Add resetDailyCounters method
+  public resetDailyCounters(): void {
+    // This method only resets daily counters, not the actual balance
+    localStorage.removeItem('todaySessionCount');
+    localStorage.removeItem('lastAutoSessionDate');
+    localStorage.removeItem('lastAutoSessionTime');
+    
+    // Dispatch an event to notify components
+    window.dispatchEvent(new CustomEvent('dailyCounters:reset'));
   }
 
   public cleanupUserBalanceData(): void {
@@ -173,6 +231,7 @@ class BalanceManagerClass {
     this.highestBalance = 0;
     this.saveToStorage();
     this.dispatchBalanceResetEvent();
+    this.notifySubscribers();
   }
 
   private dispatchBalanceUpdateEvent(balance: number): void {
@@ -190,6 +249,12 @@ class BalanceManagerClass {
 
 // Créer une instance singleton
 export const balanceManager = new BalanceManagerClass();
+
+// Export getHighestBalance function
+export const getHighestBalance = (): number => {
+  return balanceManager.getHighestBalance();
+};
+
 // Exporter aussi la classe pour compatibilité
 export const BalanceManager = {
   updateBalance: (balance: number) => balanceManager.updateBalance(balance),
@@ -197,7 +262,7 @@ export const BalanceManager = {
   getHighestBalance: () => balanceManager.getHighestBalance(),
   setUserId: (userId: string) => balanceManager.setUserId(userId),
   syncWithDatabase: () => balanceManager.syncWithDatabase(),
-  addTransaction: (gain: number, report: string) => balanceManager.addTransaction(gain, report),
+  addTransaction: (userId: string, gain: number, report: string) => balanceManager.addTransaction(userId, gain, report),
   resetBalance: () => balanceManager.resetBalance(),
   cleanupUserBalanceData: () => balanceManager.cleanupUserBalanceData()
 };

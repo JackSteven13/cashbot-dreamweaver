@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, BotOff } from 'lucide-react';
-import balanceManager from '@/utils/balance/balanceManager';
+import balanceManager, { getHighestBalance } from '@/utils/balance/balanceManager';
 import { animateBalanceUpdate } from '@/utils/animations/animateBalanceUpdate';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import { toast } from "@/components/ui/use-toast";
@@ -62,7 +62,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     if (!userId) return;
     
     // Initialiser les références avec la valeur maximale disponible
-    const highestBalance = balanceManager.getHighestBalance();
+    const highestBalance = getHighestBalance();
     highestBalanceValue.current = Math.max(highestBalance, displayBalance);
     minimumDisplayBalance.current = Math.max(highestBalance, displayBalance);
     initialBalanceValue.current = Math.max(highestBalance, displayBalance);

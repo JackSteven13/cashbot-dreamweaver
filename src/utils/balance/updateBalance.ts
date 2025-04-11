@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { SUBSCRIPTION_LIMITS } from "@/utils/subscription";
@@ -14,7 +15,7 @@ export const updateUserBalance = async (
   const positiveGain = Math.max(0, parseFloat(gain.toFixed(2)));
   
   // Utiliser le gestionnaire centralisé pour la valeur la plus fiable
-  const latestBalance = balanceManager.getCurrentBalance();
+  const latestBalance = balanceManager.getBalance();
   // Toujours utiliser la valeur la plus élevée comme référence
   const effectiveCurrentBalance = Math.max(currentBalance, latestBalance);
   
@@ -86,7 +87,7 @@ export const updateUserBalance = async (
         const dbReturnedBalance = data?.[0]?.balance;
         if (typeof dbReturnedBalance === 'number' && !isNaN(dbReturnedBalance)) {
           // Initialisation du gestionnaire avec la valeur de la base
-          balanceManager.initialize(dbReturnedBalance);
+          balanceManager.updateBalance(dbReturnedBalance);
         } else {
           // Sinon, mettre à jour avec la valeur calculée localement
           balanceManager.updateBalance(positiveGain);

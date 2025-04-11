@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { addTransaction } from '../transactionUtils';
@@ -9,7 +10,7 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
   let retryCount = 0;
   
   // Obtenir le solde le plus fiable depuis notre gestionnaire centralisé
-  const managerBalance = balanceManager.getCurrentBalance();
+  const managerBalance = balanceManager.getBalance();
   
   // Toujours utiliser la valeur maximum
   currentBalance = Math.max(currentBalance, managerBalance);
@@ -53,7 +54,7 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
       const transactionResult = await addTransaction(userId, -currentBalance, report);
       
       // Informer le gestionnaire de solde de la réinitialisation (retrait complet)
-      balanceManager.updateBalance(-currentBalance);
+      balanceManager.resetBalance();
       
       // Informer tous les composants de réinitialiser leur état de solde
       window.dispatchEvent(new CustomEvent('balance:reset', {
