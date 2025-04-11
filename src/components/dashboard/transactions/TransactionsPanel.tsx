@@ -1,6 +1,5 @@
 
 import React, { memo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Transaction } from '@/types/userData';
 import { useTransactions } from './useTransactions';
 import { 
@@ -32,19 +31,16 @@ const TransactionsPanel = memo(({
   } = useTransactions(transactions);
 
   return (
-    <Card className="mb-6">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xl">Transactions récentes</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <TransactionListActions 
-          showAllTransactions={showAllTransactions}
-          setShowAllTransactions={setShowAllTransactions}
-          validTransactionsCount={validTransactions.length}
-          onManualRefresh={handleManualRefresh}
-        />
-        
-        {validTransactions.length > 0 ? (
+    <div className="space-y-4">
+      {validTransactions.length > 0 ? (
+        <>
+          <TransactionListActions 
+            showAllTransactions={showAllTransactions}
+            setShowAllTransactions={setShowAllTransactions}
+            validTransactionsCount={validTransactions.length}
+            onManualRefresh={handleManualRefresh}
+          />
+          
           <div className="space-y-4 mt-4">
             {displayedTransactions.map((transaction, index) => (
               <TransactionListItem 
@@ -61,11 +57,11 @@ const TransactionsPanel = memo(({
               hiddenTransactionsCount={hiddenTransactionsCount}
             />
           </div>
-        ) : (
-          <TransactionEmptyState isNewUser={isNewUser} />
-        )}
-      </CardContent>
-    </Card>
+        </>
+      ) : (
+        <TransactionEmptyState isNewUser={isNewUser} />
+      )}
+    </div>
   );
 });
 

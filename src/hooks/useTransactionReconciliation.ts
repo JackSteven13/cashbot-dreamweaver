@@ -1,35 +1,59 @@
 
-import { useEffect } from 'react';
-import { addTransaction } from '@/utils/user/transactionUtils'; // Fixed import path to match the actual location
-import { getCurrentSession } from '@/utils/auth/sessionUtils';
+import { useEffect, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
-export const useTransactionReconciliation = (
-  userData: any,
-  isLoading: boolean
-) => {
+/**
+ * Hook pour réconcilier et synchroniser les transactions
+ */
+export const useTransactionReconciliation = (userData: any, isLoading: boolean) => {
+  const reconciliationPerformedRef = useRef(false);
+  const userIdRef = useRef<string | null>(null);
+  
+  // Réconcilier les transactions et le solde
   useEffect(() => {
-    const reconcileTransactions = async () => {
-      // Ne pas exécuter si on est en train de charger ou si les données ne sont pas disponibles
-      if (isLoading || !userData) return;
-      
-      // Vérifier si l'utilisateur a un solde positif mais aucune transaction
-      if (userData.balance > 0 && (!userData.transactions || userData.transactions.length === 0)) {
-        console.log("Détection d'un solde positif sans transactions:", userData.balance);
+    if (isLoading || reconciliationPerformedRef.current) {
+      return;
+    }
+    
+    // Obtenir l'ID utilisateur actuel
+    const checkUserAndReconcile = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const userId = data?.session?.user?.id;
         
-        const session = await getCurrentSession();
-        if (!session) return;
+        if (!userId || userId === userIdRef.current) {
+          return;
+        }
         
-        // Créer une transaction de réconciliation
-        await addTransaction(
-          session.user.id,
-          userData.balance,
-          `Récapitulatif de solde - Sessions précédentes`
-        );
+        userIdRef.current = userId;
         
-        console.log("Transaction de réconciliation créée");
+        // Éviter les réconciliations excessives
+        if (!reconciliationPerformedRef.current && userData?.transactions) {
+          reconciliationPerformedRef.current = true;
+          
+          // Déclencher l'événement de réconciliation
+          window.dispatchEvent(new CustomEvent('transactions:reconcile', {
+            detail: { userId }
+          }));
+          
+          // Mettre à jour les transactions
+          window.dispatchEvent(new CustomEvent('transactions:refresh', {
+            detail: { userId }
+          }));
+        }
+      } catch (error) {
+        console.error("Error in transaction reconciliation:", error);
       }
     };
     
-    reconcileTransactions();
+    checkUserAndReconcile();
+    
+    return () => {
+      reconciliationPerformedRef.current = false;
+    };
   }, [userData, isLoading]);
+  
+  return null;
 };
+
+export default useTransactionReconciliation;

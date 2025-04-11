@@ -6,55 +6,39 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
 export const useTransactions = (initialTransactions: Transaction[]) => {
-  const [showAllTransactions, setShowAllTransactions] = useState(false);
+  // États stables avec initialisation optimisée
+  const [showAllTransactions, setShowAllTransactions] = useState(() => {
+    try {
+      const storedValue = localStorage.getItem('showAllTransactions');
+      return storedValue === 'true';
+    } catch {
+      return false;
+    }
+  });
+  
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Références pour éviter les fuites de mémoire
   const isMountedRef = useRef(true);
   const lastFetchRef = useRef(0);
   const transactionsCacheKey = useRef('cachedTransactions');
   const initialFetchDone = useRef(false);
   const eventHandlersSetupRef = useRef(false);
+  const throttleTimerRef = useRef<number | null>(null);
   
-  // Set user-specific cache key on mount
-  useEffect(() => {
-    const setUserSpecificCacheKey = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        if (data?.session?.user?.id) {
-          transactionsCacheKey.current = `cachedTransactions_${data.session.user.id}`;
-        }
-      } catch (e) {
-        console.error("Failed to get user for cache key:", e);
-      }
-    };
-    
-    setUserSpecificCacheKey();
-    
-    // Restore UI preferences from localStorage on mount only
-    try {
-      const storedShowAll = localStorage.getItem('showAllTransactions');
-      if (storedShowAll) {
-        setShowAllTransactions(storedShowAll === 'true');
-      }
-    } catch (e) {
-      console.error("Error retrieving showAllTransactions preference:", e);
-    }
-    
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-  
-  // Handle initial transactions setup with proper dependency tracking
+  // Initialiser les transactions une seule fois
   useEffect(() => {
     if (!initialFetchDone.current && Array.isArray(initialTransactions)) {
+      // Prioriser les transactions passées en props
       if (initialTransactions.length > 0) {
-        // Set initial transactions from props
         setTransactions(initialTransactions);
+        initialFetchDone.current = true;
         
-        // Only cache valid transactions
+        // Sauvegarder en cache seulement les transactions valides
         const validTx = initialTransactions.filter(tx => 
-          tx && (typeof tx.gain === 'number' || typeof tx.amount === 'number') && tx.date);
+          tx && (typeof tx.gain === 'number' || typeof tx.amount === 'number') && tx.date
+        );
         
         if (validTx.length > 0) {
           try {
@@ -63,163 +47,61 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
             console.error("Failed to cache transactions:", e);
           }
         }
-        initialFetchDone.current = true;
       } else {
-        // Try to restore from cache if no initial transactions
+        // Essayer de restaurer depuis le cache si aucune transaction initiale
         try {
-          const cachedTransactions = localStorage.getItem(transactionsCacheKey.current);
-          if (cachedTransactions) {
-            const parsed = JSON.parse(cachedTransactions);
+          const cachedData = localStorage.getItem(transactionsCacheKey.current);
+          if (cachedData) {
+            const parsed = JSON.parse(cachedData);
             if (Array.isArray(parsed) && parsed.length > 0) {
               setTransactions(parsed);
               initialFetchDone.current = true;
             }
           }
         } catch (e) {
-          console.error("Failed to restore cached transactions:", e);
+          console.error("Error restoring transactions from cache:", e);
         }
       }
     }
+    
+    return () => {
+      initialFetchDone.current = false;
+    };
   }, [initialTransactions]);
   
-  // Store UI preferences when they change
-  useEffect(() => {
-    try {
-      localStorage.setItem('showAllTransactions', showAllTransactions.toString());
-    } catch (e) {
-      console.error("Error storing showAllTransactions preference:", e);
-    }
-  }, [showAllTransactions]);
-  
-  // Handle real-time transaction updates with better cleanup
-  useEffect(() => {
-    if (eventHandlersSetupRef.current) return;
-    
-    const handleTransactionRefresh = async (event: CustomEvent) => {
-      const userId = event.detail?.userId;
-      
-      if (!userId || !isMountedRef.current) return;
-      
-      try {
-        // Prevent excessive refreshes with throttling
-        const now = Date.now();
-        if (now - lastFetchRef.current < 2000) {
-          return; // Throttle to max once per 2 seconds
-        }
-        lastFetchRef.current = now;
-        
-        const { data } = await supabase.auth.getSession();
-        const session = data?.session;
-        
-        if (session?.user?.id === userId) {
-          const updatedTransactions = await fetchUserTransactions(userId);
-          if (updatedTransactions && updatedTransactions.length > 0 && isMountedRef.current) {
-            setTransactions(updatedTransactions);
-            setRefreshKey(prev => prev + 1);
-            
-            // Update localStorage cache
-            try {
-              localStorage.setItem(transactionsCacheKey.current, JSON.stringify(updatedTransactions));
-            } catch (e) {
-              console.error("Failed to update cached transactions:", e);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error refreshing transactions:", error);
-      }
-    };
-    
-    // Function to handle new transactions being added
-    const handleTransactionAdded = async (event: CustomEvent) => {
-      if (!isMountedRef.current) return;
-      
-      const { userId, gain, report, date } = event.detail || {};
-      
-      // Validate required data
-      if (!userId || gain === undefined || !report) {
-        return;
-      }
-      
-      try {
-        const { data } = await supabase.auth.getSession();
-        const session = data?.session;
-        
-        if (session?.user?.id === userId) {
-          // Optimistically update UI
-          const newTransaction: Transaction = {
-            id: `temp-${Date.now()}`,
-            date: date || new Date().toISOString(),
-            amount: gain,
-            type: report,
-            report,
-            gain
-          };
-          
-          setTransactions(prev => [newTransaction, ...prev]);
-          
-          // Refresh from server after slight delay
-          setTimeout(async () => {
-            if (!isMountedRef.current) return;
-            
-            const updatedTransactions = await fetchUserTransactions(userId);
-            if (updatedTransactions && updatedTransactions.length > 0) {
-              setTransactions(updatedTransactions);
-              setRefreshKey(prev => prev + 1);
-              
-              // Update localStorage cache
-              try {
-                localStorage.setItem(transactionsCacheKey.current, JSON.stringify(updatedTransactions));
-              } catch (e) {
-                console.error("Failed to update cached transactions:", e);
-              }
-            }
-          }, 800);
-        }
-      } catch (error) {
-        console.error("Error handling transaction added:", error);
-      }
-    };
-    
-    // Add event listeners with proper typing
-    window.addEventListener('transactions:refresh', handleTransactionRefresh as EventListener);
-    window.addEventListener('transaction:added', handleTransactionAdded as EventListener);
-    
-    eventHandlersSetupRef.current = true;
-    
-    // Clean up event listeners on unmount
-    return () => {
-      window.removeEventListener('transactions:refresh', handleTransactionRefresh as EventListener);
-      window.removeEventListener('transaction:added', handleTransactionAdded as EventListener);
-      eventHandlersSetupRef.current = false;
-    };
-  }, []);
-  
-  // Manual refresh handler with improved error handling
+  // Gestionnaire d'actualisation pour éviter les appels API trop fréquents
   const handleManualRefresh = useCallback(async (): Promise<void> => {
+    // Protection contre les appels multiples
+    if (throttleTimerRef.current) return;
+    
     try {
       const { data } = await supabase.auth.getSession();
       const session = data?.session;
       
       if (!session?.user?.id || !isMountedRef.current) return;
       
-      // Show visual feedback
+      // Feedback visuel
       toast({
         title: "Actualisation en cours",
         description: "Chargement des transactions...",
         duration: 2000,
       });
       
+      // Limiter à un appel toutes les 3 secondes
+      throttleTimerRef.current = window.setTimeout(() => {
+        throttleTimerRef.current = null;
+      }, 3000);
+      
       const refreshedTransactions = await fetchUserTransactions(session.user.id);
       if (refreshedTransactions && isMountedRef.current) {
         setTransactions(refreshedTransactions);
         setRefreshKey(prev => prev + 1);
         
-        // Update localStorage cache
+        // Mettre à jour le cache
         try {
           localStorage.setItem(transactionsCacheKey.current, JSON.stringify(refreshedTransactions));
         } catch (e) {
-          console.error("Failed to update cached transactions:", e);
+          console.error("Failed to update transaction cache:", e);
         }
         
         toast({
@@ -229,7 +111,7 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
         });
       }
     } catch (error) {
-      console.error("Error manually refreshing transactions:", error);
+      console.error("Error refreshing transactions:", error);
       if (isMountedRef.current) {
         toast({
           title: "Erreur",
@@ -241,19 +123,66 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     }
   }, []);
   
-  // Memoize the transactions filtering
+  // Sauvegarde des préférences utilisateur
+  useEffect(() => {
+    try {
+      localStorage.setItem('showAllTransactions', showAllTransactions.toString());
+    } catch (e) {
+      console.error("Error saving showAllTransactions preference:", e);
+    }
+  }, [showAllTransactions]);
+  
+  // Nettoyage à la fin
+  useEffect(() => {
+    // Récupérer l'ID utilisateur pour le cache
+    const setUserCacheKey = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session?.user?.id) {
+          transactionsCacheKey.current = `cachedTransactions_${data.session.user.id}`;
+          
+          // Essayer de restaurer les données spécifiques à l'utilisateur
+          const userCache = localStorage.getItem(transactionsCacheKey.current);
+          if (userCache && !initialFetchDone.current) {
+            try {
+              const parsed = JSON.parse(userCache);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setTransactions(parsed);
+              }
+            } catch (e) {
+              console.error("Error parsing user cache:", e);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to get user for cache key:", e);
+      }
+    };
+    
+    setUserCacheKey();
+    isMountedRef.current = true;
+    
+    return () => {
+      isMountedRef.current = false;
+      if (throttleTimerRef.current) {
+        clearTimeout(throttleTimerRef.current);
+      }
+    };
+  }, []);
+  
+  // Memoize les résultats pour éviter les re-rendus inutiles
   const { validTransactions, displayedTransactions, hiddenTransactionsCount } = useMemo(() => {
-    // Filter valid transactions
+    // Ne traiter que les transactions valides
     const validTx = Array.isArray(transactions) ? 
       transactions.filter(tx => tx && (typeof tx.gain === 'number' || typeof tx.amount === 'number') && tx.date) : [];
     
-    // Determine which transactions to display
+    // Déterminer les transactions à afficher
     const displayedTx = showAllTransactions 
       ? validTx 
       : validTx.slice(0, 3);
     
-    // Calculate how many transactions are hidden
-    const hiddenCount = validTx.length > 3 ? validTx.length - 3 : 0;
+    // Calculer combien de transactions sont masquées
+    const hiddenCount = validTx.length > 3 && !showAllTransactions ? validTx.length - 3 : 0;
     
     return {
       validTransactions: validTx,

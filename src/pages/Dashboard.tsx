@@ -47,7 +47,7 @@ const Dashboard = memo(() => {
     isBotActive
   } = useDashboardState();
   
-  // Déterminer si nous sommes sur la page des parrainages
+  // Déterminer si nous sommes sur la page des parrainages ou transactions
   const isReferralsPage = location.pathname === '/dashboard/referrals';
   const isTransactionsPage = location.pathname === '/dashboard/transactions';
   
