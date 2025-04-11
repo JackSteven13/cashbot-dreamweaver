@@ -1,37 +1,31 @@
 
-import React, { memo } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronUp } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 interface TransactionFooterProps {
   showAllTransactions: boolean;
   hiddenTransactionsCount: number;
 }
 
-const TransactionFooter = memo(({ 
-  showAllTransactions, 
-  hiddenTransactionsCount 
-}: TransactionFooterProps) => {
-  if (!showAllTransactions || hiddenTransactionsCount <= 0) {
-    return null;
-  }
+const TransactionFooter: React.FC<TransactionFooterProps> = ({
+  showAllTransactions,
+  hiddenTransactionsCount
+}) => {
+  if (showAllTransactions || hiddenTransactionsCount <= 0) return null;
   
   return (
-    <div className="mt-4 text-center">
+    <div className="pt-2 text-center">
       <Button 
         variant="ghost" 
-        size="sm" 
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        className="text-sm flex items-center justify-center"
+        size="sm"
+        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
       >
-        <ChevronUp className="h-4 w-4 mr-1" />
-        Retour en haut
+        <ChevronDown className="h-4 w-4 mr-1" />
+        {hiddenTransactionsCount} transaction{hiddenTransactionsCount > 1 ? 's' : ''} masquée{hiddenTransactionsCount > 1 ? 's' : ''}
       </Button>
     </div>
   );
-});
-
-// Set display name for debugging
-TransactionFooter.displayName = 'TransactionFooter';
+};
 
 export default TransactionFooter;

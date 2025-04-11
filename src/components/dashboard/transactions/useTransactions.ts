@@ -13,10 +13,10 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
   const lastFetchRef = useRef(0);
   const transactionsCacheKey = useRef('cachedTransactions');
   const initialFetchDone = useRef(false);
+  const eventHandlersSetupRef = useRef(false);
   
-  // Initialize state from localStorage and props only once on component mount
+  // Set user-specific cache key on mount
   useEffect(() => {
-    // Set cache key based on user ID for better isolation
     const setUserSpecificCacheKey = async () => {
       try {
         const { data } = await supabase.auth.getSession();
@@ -30,7 +30,7 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     
     setUserSpecificCacheKey();
     
-    // Restore UI preferences from localStorage
+    // Restore UI preferences from localStorage on mount only
     try {
       const storedShowAll = localStorage.getItem('showAllTransactions');
       if (storedShowAll) {
@@ -47,10 +47,11 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
   
   // Handle initial transactions setup with proper dependency tracking
   useEffect(() => {
-    if (!initialFetchDone.current) {
-      // Set initial transactions from props
-      if (Array.isArray(initialTransactions) && initialTransactions.length > 0) {
+    if (!initialFetchDone.current && Array.isArray(initialTransactions)) {
+      if (initialTransactions.length > 0) {
+        // Set initial transactions from props
         setTransactions(initialTransactions);
+        
         // Only cache valid transactions
         const validTx = initialTransactions.filter(tx => 
           tx && (typeof tx.gain === 'number' || typeof tx.amount === 'number') && tx.date);
@@ -81,26 +82,6 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     }
   }, [initialTransactions]);
   
-  // Separate update effect when initialTransactions change after initial load
-  useEffect(() => {
-    if (initialFetchDone.current && 
-        Array.isArray(initialTransactions) && 
-        initialTransactions.length > 0 && 
-        isMountedRef.current) {
-      
-      // Only update if the new transactions are different
-      if (JSON.stringify(initialTransactions) !== JSON.stringify(transactions)) {
-        setTransactions(initialTransactions);
-        
-        try {
-          localStorage.setItem(transactionsCacheKey.current, JSON.stringify(initialTransactions));
-        } catch (e) {
-          console.error("Failed to cache updated transactions:", e);
-        }
-      }
-    }
-  }, [initialTransactions, transactions]);
-  
   // Store UI preferences when they change
   useEffect(() => {
     try {
@@ -112,13 +93,15 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
   
   // Handle real-time transaction updates with better cleanup
   useEffect(() => {
+    if (eventHandlersSetupRef.current) return;
+    
     const handleTransactionRefresh = async (event: CustomEvent) => {
       const userId = event.detail?.userId;
       
       if (!userId || !isMountedRef.current) return;
       
       try {
-        // Prevent excessive refreshes
+        // Prevent excessive refreshes with throttling
         const now = Date.now();
         if (now - lastFetchRef.current < 2000) {
           return; // Throttle to max once per 2 seconds
@@ -198,17 +181,21 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
       }
     };
     
-    // Define event types properly
+    // Add event listeners with proper typing
     window.addEventListener('transactions:refresh', handleTransactionRefresh as EventListener);
     window.addEventListener('transaction:added', handleTransactionAdded as EventListener);
     
+    eventHandlersSetupRef.current = true;
+    
+    // Clean up event listeners on unmount
     return () => {
       window.removeEventListener('transactions:refresh', handleTransactionRefresh as EventListener);
       window.removeEventListener('transaction:added', handleTransactionAdded as EventListener);
+      eventHandlersSetupRef.current = false;
     };
   }, []);
   
-  // Manual refresh handler with improved error handling and feedback
+  // Manual refresh handler with improved error handling
   const handleManualRefresh = useCallback(async (): Promise<void> => {
     try {
       const { data } = await supabase.auth.getSession();
@@ -254,7 +241,7 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     }
   }, []);
   
-  // Memoize the transactions filtering to prevent unnecessary recalculations
+  // Memoize the transactions filtering
   const { validTransactions, displayedTransactions, hiddenTransactionsCount } = useMemo(() => {
     // Filter valid transactions
     const validTx = Array.isArray(transactions) ? 

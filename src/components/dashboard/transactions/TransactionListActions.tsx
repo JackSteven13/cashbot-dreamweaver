@@ -1,7 +1,7 @@
 
-import React, { memo } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface TransactionListActionsProps {
   showAllTransactions: boolean;
@@ -10,55 +10,46 @@ interface TransactionListActionsProps {
   onManualRefresh: () => Promise<void>;
 }
 
-const TransactionListActions = memo(({
+const TransactionListActions: React.FC<TransactionListActionsProps> = ({
   showAllTransactions,
   setShowAllTransactions,
   validTransactionsCount,
   onManualRefresh
-}: TransactionListActionsProps) => {
-  // Only show the toggle button if we have more than 3 transactions
-  const shouldShowToggle = validTransactionsCount > 3;
-  
+}) => {
+  if (validTransactionsCount === 0) return null;
+
   return (
     <div className="flex justify-between items-center mb-4">
-      <div className="flex items-center">
-        <h2 className="text-lg font-medium">Transactions récentes</h2>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="ml-2" 
-          onClick={onManualRefresh}
-          aria-label="Rafraîchir les transactions"
-        >
-          <RefreshCcw className="h-4 w-4" />
-        </Button>
-      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-sm font-normal flex items-center gap-1"
+        onClick={() => setShowAllTransactions(!showAllTransactions)}
+      >
+        {showAllTransactions ? (
+          <>
+            <ChevronUp className="w-4 h-4" />
+            Voir moins
+          </>
+        ) : (
+          <>
+            <ChevronDown className="w-4 h-4" />
+            Voir tout
+          </>
+        )}
+      </Button>
       
-      {shouldShowToggle && (
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => setShowAllTransactions(!showAllTransactions)}
-          className="text-sm flex items-center"
-        >
-          {showAllTransactions ? (
-            <>
-              <ChevronUp className="h-4 w-4 mr-1" />
-              Réduire
-            </>
-          ) : (
-            <>
-              <ChevronDown className="h-4 w-4 mr-1" />
-              Voir tout
-            </>
-          )}
-        </Button>
-      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onManualRefresh}
+        className="text-sm font-normal"
+      >
+        <RefreshCw className="w-4 h-4 mr-1" />
+        Actualiser
+      </Button>
     </div>
   );
-});
-
-// Set display name for debugging
-TransactionListActions.displayName = 'TransactionListActions';
+};
 
 export default TransactionListActions;

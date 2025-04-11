@@ -5,6 +5,7 @@ import DashboardContent from '@/components/dashboard/DashboardContent';
 import DashboardLoading from '@/components/dashboard/DashboardLoading';
 import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
+import TransactionsPage from '@/pages/dashboard/TransactionsPage';
 import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
 import { useReferralNotifications } from '@/hooks/useReferralNotifications';
@@ -48,6 +49,7 @@ const Dashboard = memo(() => {
   
   // Déterminer si nous sommes sur la page des parrainages
   const isReferralsPage = location.pathname === '/dashboard/referrals';
+  const isTransactionsPage = location.pathname === '/dashboard/transactions';
   
   // Hook de réconciliation de transactions
   useTransactionReconciliation(userData, isLoading);
@@ -160,6 +162,9 @@ const Dashboard = memo(() => {
                     lastSessionTimestamp={lastSessionTimestamp}
                     isBotActive={isBotActive}
                   />
+                } />
+                <Route path="transactions" element={
+                  <TransactionsPage />
                 } />
               </Routes>
             </DashboardLayout>

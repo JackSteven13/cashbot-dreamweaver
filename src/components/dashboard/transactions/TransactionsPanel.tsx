@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Transaction } from '@/types/userData';
 import { useTransactions } from './useTransactions';
@@ -16,11 +16,11 @@ interface TransactionsPanelProps {
   isNewUser?: boolean;
 }
 
-const TransactionsPanel: React.FC<TransactionsPanelProps> = ({ 
+const TransactionsPanel = memo(({ 
   transactions = [],
   subscription = 'freemium',
   isNewUser = false
-}) => {
+}: TransactionsPanelProps) => {
   const {
     showAllTransactions,
     setShowAllTransactions,
@@ -48,7 +48,7 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
           <div className="space-y-4 mt-4">
             {displayedTransactions.map((transaction, index) => (
               <TransactionListItem 
-                key={transaction.id || `transaction-${index}`}
+                key={`${transaction.id || index}-${refreshKey}`}
                 transaction={transaction}
                 refreshKey={refreshKey}
                 index={index}
@@ -67,6 +67,8 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
       </CardContent>
     </Card>
   );
-};
+});
+
+TransactionsPanel.displayName = 'TransactionsPanel';
 
 export default TransactionsPanel;
