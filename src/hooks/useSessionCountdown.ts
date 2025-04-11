@@ -29,7 +29,7 @@ export const useSessionCountdown = (dailySessionCount: number, subscription: str
       if (lastSessionTimestamp) {
         // Si nous avons un timestamp de dernière session, calculer le temps restant sur une période de 24h
         const lastSessionTime = new Date(lastSessionTimestamp).getTime();
-        const currentTime = new Date(getParisTime()).getTime();
+        const currentTime = Date.now();
         const elapsedTime = currentTime - lastSessionTime;
         const fullDayMs = 24 * 60 * 60 * 1000; // 24 heures en millisecondes
         
