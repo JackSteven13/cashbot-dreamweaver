@@ -7,7 +7,15 @@ class BalanceManagerClass {
   private highestBalance: number = 0;
   private userId: string | null = null;
   private initialized: boolean = false;
-  private subscribers: Array<(state: any) => void> = [];
+  private subscribers: Array<(state: BalanceState) => void> = [];
+
+  // Define a proper type for the balance state to avoid infinite type instantiation
+  interface BalanceState {
+    currentBalance: number;
+    highestBalance: number;
+    userId: string | null;
+    lastKnownBalance: number;
+  }
 
   constructor() {
     // Initialiser avec localStorage si disponible
@@ -109,7 +117,7 @@ class BalanceManagerClass {
   }
   
   // Added subscribe method
-  public subscribe(callback: (state: any) => void): () => void {
+  public subscribe(callback: (state: BalanceState) => void): () => void {
     this.subscribers.push(callback);
     
     // Return unsubscribe function
@@ -120,7 +128,7 @@ class BalanceManagerClass {
   
   // Added method to notify subscribers
   private notifySubscribers(): void {
-    const state = {
+    const state: BalanceState = {
       currentBalance: this.currentBalance,
       highestBalance: this.highestBalance,
       userId: this.userId,
@@ -247,8 +255,16 @@ class BalanceManagerClass {
   }
 }
 
+// Define the proper interface outside the class to avoid circular references
+interface BalanceState {
+  currentBalance: number;
+  highestBalance: number;
+  userId: string | null;
+  lastKnownBalance: number;
+}
+
 // Créer une instance singleton
-export const balanceManager = new BalanceManagerClass();
+const balanceManager = new BalanceManagerClass();
 
 // Export getHighestBalance function
 export const getHighestBalance = (): number => {
@@ -260,10 +276,14 @@ export const BalanceManager = {
   updateBalance: (balance: number) => balanceManager.updateBalance(balance),
   getBalance: () => balanceManager.getBalance(),
   getHighestBalance: () => balanceManager.getHighestBalance(),
+  getCurrentBalance: () => balanceManager.getCurrentBalance(),
   setUserId: (userId: string) => balanceManager.setUserId(userId),
   syncWithDatabase: () => balanceManager.syncWithDatabase(),
   addTransaction: (userId: string, gain: number, report: string) => balanceManager.addTransaction(userId, gain, report),
   resetBalance: () => balanceManager.resetBalance(),
+  resetDailyCounters: () => balanceManager.resetDailyCounters(),
+  initialize: (balance: number, userId?: string) => balanceManager.initialize(balance, userId),
+  subscribe: (callback: (state: BalanceState) => void) => balanceManager.subscribe(callback),
   cleanupUserBalanceData: () => balanceManager.cleanupUserBalanceData()
 };
 
