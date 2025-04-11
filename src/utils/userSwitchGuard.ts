@@ -1,3 +1,4 @@
+
 import { getSavedSession } from './auth/sessionStorage';
 import { supabase } from '@/integrations/supabase/client';
 import { BalanceManager } from './balance/balanceManager';
@@ -25,7 +26,7 @@ export const checkUserSwitch = async () => {
       console.log(`Changement d'utilisateur détecté: ${storedUserId} -> ${currentUserId}`);
       
       // Nettoyer les données spécifiques à l'ancien utilisateur
-      cleanupUserBalanceData(storedUserId);
+      cleanupUserBalanceData();
       
       // Nettoyer les données génériques qui pourraient être partagées
       localStorage.removeItem('currentBalance');

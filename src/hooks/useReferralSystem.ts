@@ -55,7 +55,7 @@ export const useReferralSystem = (userId?: string): UseReferralSystemReturn => {
       
       // Use commission_rate if commission_earned is not available
       const commission = activeReferrals.reduce((sum, ref) => 
-        sum + (ref.commission_earned || ref.commission_rate || 0), 0);
+        sum + (ref.commission_earned !== undefined ? ref.commission_earned : ref.commission_rate || 0), 0);
       setTotalCommission(commission);
       
     } catch (err) {

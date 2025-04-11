@@ -4,8 +4,8 @@ import { Progress } from '@/components/ui/progress';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
 interface GainProgressProps {
-  currentGain: number;
-  subscription: string;
+  currentGain?: number;
+  subscription?: string;
   animate?: boolean;
   // New props to support different APIs and backward compatibility
   currentValue?: number;

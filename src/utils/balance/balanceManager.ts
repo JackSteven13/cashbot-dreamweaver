@@ -102,15 +102,15 @@ export class BalanceManager {
   /**
    * Record a transaction to the database
    */
-  private async recordTransaction(amount: number, report: string): Promise<void> {
-    if (!this.userId) return;
+  private async recordTransaction(userId: string, gain: number, report: string): Promise<void> {
+    if (!userId) return;
     
     try {
       await supabase
         .from('transactions')
         .insert({
-          user_id: this.userId,
-          gain: amount,
+          user_id: userId,
+          gain: gain,
           report,
           date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
         });
@@ -230,13 +230,18 @@ export class BalanceManager {
   /**
    * Clean up user balance data on logout
    */
-  public static cleanupUserBalanceData(): void {
+  public static cleanupUserBalanceData(userId?: string): void {
     // Reset any cached balance data in localStorage
     localStorage.removeItem('currentBalance');
     localStorage.removeItem('highestBalance');
     localStorage.removeItem('lastKnownBalance');
     localStorage.removeItem('lastBalanceUpdateTime');
     localStorage.removeItem('lastSessionTime');
+    
+    if (userId) {
+      localStorage.removeItem(`user_balance_${userId}`);
+      localStorage.removeItem(`highest_balance_${userId}`);
+    }
     
     // Reset the singleton instance
     if (BalanceManager.instance) {
@@ -250,10 +255,10 @@ export class BalanceManager {
 // Create and export a singleton instance
 export const balanceManager = BalanceManager.getInstance();
 
-// Export a helper function to get highest balance
+// Export helper functions for convenience
 export const getHighestBalance = (): number => {
   return balanceManager.getHighestBalance();
 };
 
-// Export class and instance for flexible usage
+// Also export class and instance for flexible usage
 export default balanceManager;

@@ -205,6 +205,8 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
         />
         
         <GainProgress 
+          currentGain={isNewUser ? 0 : balance}
+          subscription={subscription}
           currentValue={isNewUser ? 0 : balance} 
           maxValue={dailyLimit} 
           showTooltip={true} 
