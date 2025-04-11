@@ -1,5 +1,4 @@
 
-import { BrowserRouter as Router } from 'react-router-dom';
 import AppRoutes from './routes/AppRoutes';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { QueryProvider } from '@/components/QueryProvider';
@@ -8,20 +7,18 @@ import { Toaster } from '@/components/ui/toaster'; // On garde également l'anci
 
 function App() {
   return (
-    <Router>
-      <ThemeProvider defaultTheme="dark">
-        <QueryProvider>
-          <AppRoutes />
-          <ToastNotification 
-            position="top-right" 
-            theme="dark"
-            richColors={true}
-            offset="1rem"
-          />
-          <Toaster /> {/* Conserver l'ancien système de notification pour compatibilité */}
-        </QueryProvider>
-      </ThemeProvider>
-    </Router>
+    <ThemeProvider defaultTheme="dark">
+      <QueryProvider>
+        <AppRoutes />
+        <ToastNotification 
+          position="top-right" 
+          theme="dark"
+          richColors={true}
+          offset="1rem"
+        />
+        <Toaster /> {/* Conserver l'ancien système de notification pour compatibilité */}
+      </QueryProvider>
+    </ThemeProvider>
   );
 }
 
