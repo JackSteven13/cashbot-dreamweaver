@@ -33,6 +33,13 @@ export interface UserProfile {
   referrer_id?: string;
 }
 
+export interface PaymentMethod {
+  id: string;
+  type: string;
+  lastFour: string;
+  isDefault?: boolean;
+}
+
 export interface UserData {
   username: string;
   balance: number;
@@ -46,4 +53,5 @@ export interface UserData {
   lastLogin?: Date;
   isActive?: boolean;
   profile?: UserProfile;
+  paymentMethods?: PaymentMethod[];
 }

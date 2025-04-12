@@ -7,14 +7,27 @@ import { useUserData } from '@/hooks/useUserData';
 import { toast } from 'sonner';
 import { COMMISSION_RATES } from '@/components/dashboard/summary/constants';
 
+interface EnhancedReferral {
+  id: string;
+  referred_user_id: string;
+  referrer_id: string;
+  plan_type: string;
+  commission_rate: number;
+  status: string;
+  created_at: string;
+  updated_at?: string;
+  active?: boolean;
+  commission_earned?: number;
+  username?: string;
+  joinDate?: string;
+}
+
 const ReferralsPage = () => {
   const { userData, isLoading } = useUserData();
   const [copied, setCopied] = useState(false);
   
-  // Récupérer le lien de parrainage
   const referralLink = userData?.referralLink || `${window.location.origin}/register?ref=user123`;
   
-  // Fonction pour copier le lien de parrainage
   const handleCopyLink = () => {
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
@@ -22,19 +35,17 @@ const ReferralsPage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Process referrals to make sure they have the 'active' property
   const processedReferrals = React.useMemo(() => {
     if (!userData?.referrals) return [];
     
     return userData.referrals.map(referral => ({
       ...referral,
       active: referral.status === 'active',
-      username: referral.username || `User-${referral.referred_user_id.substring(0, 6)}`,
-      joinDate: referral.joinDate || referral.created_at
-    }));
+      username: `User-${referral.referred_user_id.substring(0, 6)}`,
+      joinDate: referral.created_at
+    } as EnhancedReferral));
   }, [userData?.referrals]);
 
-  // Get commission rate based on subscription
   const commissionRate = userData?.subscription ? 
     COMMISSION_RATES[userData.subscription as keyof typeof COMMISSION_RATES] || 0.2 : 
     0.2;
@@ -158,13 +169,11 @@ const ReferralsPage = () => {
   );
 };
 
-// Calculer le bonus total de parrainage
 const calculateReferralBonus = (referrals: Array<{ active: boolean }>) => {
   if (!referrals || referrals.length === 0) return 0;
   
-  // Compter les parrainages actifs uniquement
   const activeReferrals = referrals.filter(ref => ref.active).length;
-  return activeReferrals * 10; // Valeur moyenne pour l'affichage (ajustable)
+  return activeReferrals * 10;
 };
 
 export default ReferralsPage;

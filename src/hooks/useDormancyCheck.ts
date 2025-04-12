@@ -10,11 +10,14 @@ import {
 } from '@/utils/balance/dormancyUtils';
 import { toast } from '@/components/ui/use-toast';
 
-export const useDormancyCheck = (subscription: string, refreshUserData: () => Promise<boolean>) => {
+export const useDormancyCheck = (userData: any, showLimitAlert: boolean) => {
   const [isDormant, setIsDormant] = useState(false);
   const [dormancyData, setDormancyData] = useState<any>(null);
   const [isChecking, setIsChecking] = useState(false);
   const { session } = useUserSession();
+  
+  // Safely get the subscription value
+  const subscription = userData?.subscription || 'freemium';
 
   // Check for dormancy on component mount
   useEffect(() => {
@@ -34,7 +37,7 @@ export const useDormancyCheck = (subscription: string, refreshUserData: () => Pr
           );
           
           // Calculate reactivation fee
-          const reactivationFee = calculateReactivationFee(dormancyStatus.subscription || 'freemium');
+          const reactivationFee = calculateReactivationFee(subscription);
           
           setIsDormant(true);
           setDormancyData({
@@ -71,7 +74,7 @@ export const useDormancyCheck = (subscription: string, refreshUserData: () => Pr
     if (!session || !dormancyData) return;
     
     try {
-      const result = await reactivateAccount(session.user.id, dormancyData.subscription);
+      const result = await reactivateAccount(session.user.id, subscription);
       
       if (result.success) {
         toast({
@@ -81,9 +84,6 @@ export const useDormancyCheck = (subscription: string, refreshUserData: () => Pr
         
         setIsDormant(false);
         setDormancyData(null);
-        
-        // Refresh user data
-        await refreshUserData();
       } else {
         toast({
           title: "Erreur",

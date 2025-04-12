@@ -5,11 +5,19 @@ import { Button } from '@/components/ui/button';
 import { useUserData } from '@/hooks/useUserData';
 import { CreditCard, Wallet, ArrowDownToLine, ArrowUpToLine } from 'lucide-react';
 
+// Define payment method type
+interface PaymentMethod {
+  id: string;
+  type: string;
+  lastFour: string;
+  isDefault?: boolean;
+}
+
 const WalletPage = () => {
   const { userData, isLoading } = useUserData();
 
   // Default payment methods if none exist
-  const paymentMethods = userData?.paymentMethods || [];
+  const paymentMethods: PaymentMethod[] = [];
 
   return (
     <div className="w-full">
@@ -96,7 +104,7 @@ const WalletPage = () => {
                     <p className="text-sm text-muted-foreground">{new Date(transaction.date).toLocaleDateString()}</p>
                   </div>
                   <div className={`font-bold ${transaction.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {transaction.amount > 0 ? '+' : ''}{transaction.amount.toFixed(2)} €
+                    {transaction.amount > 0 ? '+' : ''}{transaction.amount ? transaction.amount.toFixed(2) : '0.00'} €
                   </div>
                 </div>
               ))}
