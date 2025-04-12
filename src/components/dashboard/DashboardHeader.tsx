@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { User, ChevronDown } from 'lucide-react';
 
@@ -9,17 +9,36 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
-  // Simplifié pour traiter tous les utilisateurs de la même façon
-  const displayName = useMemo(() => {
-    // Nettoyage du nom avec remplacement par défaut
-    if (!username || username.trim() === '') {
-      return 'Utilisateur';
+  // État pour le nom utilisateur avec mécanisme de persistance local
+  const [displayName, setDisplayName] = useState<string>('Utilisateur');
+  
+  // Mettre à jour le nom affiché quand username change
+  useEffect(() => {
+    // Vérifier si le nom d'utilisateur est valide
+    if (username && username !== 'Utilisateur') {
+      setDisplayName(username);
+      
+      // Sauvegarder dans le localStorage pour persistance
+      try {
+        localStorage.setItem('lastKnownUsername', username);
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde du nom d'utilisateur:", error);
+      }
+    } else {
+      // Essayer de récupérer depuis le localStorage si le nom n'est pas disponible
+      const savedName = localStorage.getItem('lastKnownUsername');
+      if (savedName && savedName !== 'Utilisateur') {
+        setDisplayName(savedName);
+      }
     }
-    
-    // Limiter la longueur pour éviter les problèmes d'affichage
-    const cleanName = username.trim();
-    return cleanName.length > 20 ? cleanName.substring(0, 20) + '...' : cleanName;
   }, [username]);
+
+  // Nettoyer et formater le nom affiché
+  const formattedName = useMemo(() => {
+    // Limiter la longueur pour éviter les problèmes d'affichage
+    const cleanName = displayName?.trim() || 'Utilisateur';
+    return cleanName.length > 20 ? cleanName.substring(0, 20) + '...' : cleanName;
+  }, [displayName]);
 
   // Convertir "alpha" en "starter" pour l'affichage
   const displaySubscription = subscription === "alpha" ? "starter" : subscription || "freemium";
@@ -28,11 +47,11 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
     <header className="sticky top-0 z-10 bg-[#1e3a5f] border-b border-[#2d5f8a]/30">
       <div className="flex items-center justify-between p-4">
         <h1 className="text-xl font-semibold text-white">
-          {`Bonjour, ${displayName}`}
+          {`Bonjour, ${formattedName}`}
         </h1>
         
         <div className="text-sm text-right hidden sm:block">
-          <p className="font-medium text-white">{displayName}</p>
+          <p className="font-medium text-white">{formattedName}</p>
           <p className="text-blue-200">Abonnement {displaySubscription || 'freemium'}</p>
         </div>
       </div>

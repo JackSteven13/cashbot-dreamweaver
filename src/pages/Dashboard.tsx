@@ -7,8 +7,8 @@ import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
 import TransactionsPage from '@/pages/dashboard/TransactionsPage';
 import ReferralsPage from '@/pages/dashboard/ReferralsPage';
-import { useDashboardInitialization } from '@/hooks/dashboard/initialization'; // Fixed import path
-import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
+import { useDashboardInitialization } from '@/hooks/dashboard/initialization/useDashboardInitialization'; // Correct import path
+import { useDashboardState } from '@/hooks/useDashboardState';
 import { useReferralNotifications } from '@/hooks/useReferralNotifications';
 import { useTransactionReconciliation } from '@/hooks/useTransactionReconciliation';
 import { memo, useEffect, useRef, useMemo, useState } from 'react';
@@ -62,6 +62,17 @@ const Dashboard = memo(() => {
   // Utiliser notre hook de notifications
   useReferralNotifications();
   
+  // Forcer un rafraîchissement initial des données
+  useEffect(() => {
+    if (userData?.username === 'Utilisateur' || !userData?.profile?.full_name) {
+      console.log("Rafraîchissement forcé des données utilisateur au démarrage");
+      const initTimer = setTimeout(() => {
+        forceRefresh();
+      }, 300);
+      return () => clearTimeout(initTimer);
+    }
+  }, [userData, forceRefresh]);
+  
   // Effet pour prévenir les rechargements complets inutiles
   useEffect(() => {
     if (prevPathRef.current !== location.pathname) {
@@ -79,7 +90,7 @@ const Dashboard = memo(() => {
         setTransitionStage('ready');
         forcedTransitionRef.current = true;
       }
-    }, 4000); // Délai maximum de 4 secondes (réduit)
+    }, 2000); // Délai maximum réduit à 2 secondes pour plus de réactivité
     
     return () => {
       if (maxWaitTimeRef.current) {

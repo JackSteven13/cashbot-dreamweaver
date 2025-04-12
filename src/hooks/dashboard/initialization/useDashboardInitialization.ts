@@ -16,6 +16,7 @@ export const useDashboardInitialization = () => {
   const cleanupFunctionsRef = useRef<Array<() => void>>([]);
   const initializing = useRef(false);
   const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const maxAttemptsRef = useRef(0);
   
   const navigate = useNavigate();
   
@@ -36,10 +37,11 @@ export const useDashboardInitialization = () => {
     
     initializing.current = true;
     initializationAttempted.current = true;
+    maxAttemptsRef.current++;
     
     try {
       // Laisser tout le processus se dérouler dans un seul flux
-      console.log("Initialisation du dashboard démarrée");
+      console.log(`Initialisation du dashboard démarrée (tentative ${maxAttemptsRef.current})`);
       
       // Exécuter toutes les vérifications en parallèle lorsque possible
       if (!mountedRef.current) return;
@@ -65,6 +67,16 @@ export const useDashboardInitialization = () => {
       console.error("Erreur lors de l'initialisation du dashboard:", error);
       
       if (mountedRef.current) {
+        // Si nombre de tentatives < 3, réessayer
+        if (maxAttemptsRef.current < 3) {
+          console.log(`Nouvelle tentative d'initialisation (${maxAttemptsRef.current}/3)...`);
+          setTimeout(() => {
+            initializing.current = false;
+            initializeDashboard();
+          }, 1000);
+          return;
+        }
+        
         setAuthError("Une erreur est survenue lors de l'initialisation.");
         
         toast({
@@ -87,8 +99,9 @@ export const useDashboardInitialization = () => {
   // Effet de montage avec un démarrage plus rapide
   useEffect(() => {
     mountedRef.current = true;
+    maxAttemptsRef.current = 0;
     
-    // Démarrer l'initialisation avec un court délai
+    // Démarrer l'initialisation immédiatement
     initTimeoutRef.current = setTimeout(() => {
       if (mountedRef.current && !initializing.current) {
         initializeDashboard();

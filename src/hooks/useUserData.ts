@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUserDataFetcher } from './useUserDataFetcher';
 import { UserData } from '@/types/userData';
 import balanceManager, { getHighestBalance } from '@/utils/balance/balanceManager';
+import { supabase } from "@/integrations/supabase/client";
 
 export const useUserData = () => {
   const [userDataFetcher, userDataActions] = useUserDataFetcher();
@@ -10,6 +11,30 @@ export const useUserData = () => {
   const balanceSyncRef = useRef(false);
   const localBalanceRef = useRef<number | null>(null);
   const highestEverBalanceRef = useRef<number | null>(null);
+  const fetchAttemptsRef = useRef(0);
+  
+  // Effet de chargement initial avec tentatives de récupération multiples
+  useEffect(() => {
+    const fetchData = async () => {
+      await userDataActions.fetchUserData();
+      
+      // Si les données sont manquantes après la première tentative, réessayer
+      if (!userData || !userData.profile || !userData.profile.full_name) {
+        if (fetchAttemptsRef.current < 3) {
+          fetchAttemptsRef.current++;
+          console.log(`Tentative ${fetchAttemptsRef.current} de récupération des données utilisateur...`);
+          
+          setTimeout(() => {
+            userDataActions.fetchUserData();
+          }, 1000 * fetchAttemptsRef.current); // Délai croissant entre les tentatives
+        }
+      } else {
+        console.log("Données utilisateur récupérées avec succès:", userData.profile.full_name);
+      }
+    };
+    
+    fetchData();
+  }, []);
   
   useEffect(() => {
     userDataActions.fetchUserData().then(() => {
@@ -47,7 +72,7 @@ export const useUserData = () => {
         console.log(`[useUserData] Max balance determined: ${maxBalance} (API: ${apiBalance}, Highest: ${highestBalance})`);
         
         // Si le solde maximum est supérieur au solde de l'API, synchroniser
-        if (maxBalance > apiBalance) {
+        if (maxBalance > apiBalance && apiBalance >= 0) {
           console.log(`[useUserData] Restoring higher balance: ${maxBalance} (server: ${apiBalance})`);
           localBalanceRef.current = maxBalance;
           highestEverBalanceRef.current = maxBalance;
@@ -61,6 +86,21 @@ export const useUserData = () => {
           window.dispatchEvent(new CustomEvent('balance:force-sync', { 
             detail: { balance: maxBalance }
           }));
+          
+          // Synchroniser également avec la base de données si le solde local est plus élevé
+          if (userData.profile && userData.profile.id && maxBalance > apiBalance) {
+            supabase
+              .from('user_balances')
+              .update({ balance: maxBalance })
+              .eq('id', userData.profile.id)
+              .then(({ error }) => {
+                if (error) {
+                  console.error("Erreur lors de la synchronisation du solde avec la BD:", error);
+                } else {
+                  console.log("Solde synchronisé avec la base de données:", maxBalance);
+                }
+              });
+          }
         }
         
         balanceSyncRef.current = true;
@@ -84,20 +124,35 @@ export const useUserData = () => {
       const currentDb = userData?.balance || 0;
       
       // Si notre solde local est plus élevé que celui dans la BD, forcer la synchronisation
-      if (highestBalance > currentDb) {
+      if (highestBalance > currentDb && currentDb >= 0) {
         console.log(`[useUserData] Balance inconsistency: local=${highestBalance}, db=${currentDb}. Forcing sync...`);
         window.dispatchEvent(new CustomEvent('balance:force-sync', { 
           detail: { balance: highestBalance }
         }));
+        
+        // Synchroniser avec la BD
+        if (userData?.profile?.id) {
+          supabase
+            .from('user_balances')
+            .update({ balance: highestBalance })
+            .eq('id', userData.profile.id)
+            .then(({ error }) => {
+              if (error) {
+                console.error("Erreur lors de la synchronisation du solde avec la BD:", error);
+              } else {
+                console.log("Solde synchronisé avec la base de données:", highestBalance);
+              }
+            });
+        }
       }
     }, 60000);
     
     return () => clearInterval(checkInterval);
-  }, []);
+  }, [userData?.profile?.id]);
   
   // Quand userData change, mettre à jour nos références locales si nécessaire
   useEffect(() => {
-    if (userData?.balance !== undefined) {
+    if (userData?.balance !== undefined && userData.balance >= 0) {
       const highestBalance = getHighestBalance();
       const storedHighestBalance = localStorage.getItem('highestBalance');
       const storedBalance = localStorage.getItem('currentBalance');
@@ -130,8 +185,10 @@ export const useUserData = () => {
   }, [userData?.balance]);
   
   const refreshUserData = useCallback(async (): Promise<boolean> => {
-    await userDataActions.fetchUserData();
-    return true;
+    // Si les données sont manquantes après la première tentative, réessayer
+    fetchAttemptsRef.current = 0;
+    console.log("Forçage de l'actualisation des données utilisateur");
+    return userDataActions.fetchUserData();
   }, [userDataActions]);
   
   const incrementSessionCount = useCallback(async (): Promise<void> => {
@@ -218,11 +275,14 @@ export const useUserData = () => {
     dailySessionCount,
     showLimitAlert,
     isLoading,
+    isBotActive: true, // Par défaut, considérer le bot comme actif
+    dailyLimitProgress: 0, // À calculer par les hooks consommateurs
     setShowLimitAlert: userDataActions.setShowLimitAlert,
     refreshUserData,
     incrementSessionCount,
     updateBalance,
     resetBalance,
-    resetDailyCounters: userDataActions.resetDailyCounters
+    resetDailyCounters: userDataActions.resetDailyCounters,
+    generateAutomaticRevenue: async () => {} // Fonction factice à remplacer par les hooks consommateurs
   };
 };

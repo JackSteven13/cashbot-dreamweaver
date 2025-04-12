@@ -97,11 +97,21 @@ export const useDashboardState = () => {
     }
   }, [userData, isNewUser, isDormant, isBotActive, isChecking, generateAutomaticRevenue]);
   
+  // Effet pour forcer un rafraîchissement initial des données utilisateur
+  useEffect(() => {
+    // Forcer un rafraîchissement des données au premier rendu
+    const initialDataTimer = setTimeout(() => {
+      refreshUserData();
+    }, 500);
+    
+    return () => clearTimeout(initialDataTimer);
+  }, [refreshUserData]);
+  
   // Vérifier la cohérence des données utilisateur pour éviter les états inconsistants
   useEffect(() => {
     // Si le solde est défini mais le nom d'utilisateur est manquant, forcer un rafraîchissement
-    if (userData && userData.balance > 0 && (!userData.profile || !userData.profile.full_name)) {
-      console.log("Détection d'incohérence: solde présent mais profil incomplet", userData);
+    if (userData && (!userData.profile || !userData.profile.full_name || userData.profile.full_name === 'Utilisateur')) {
+      console.log("Détection d'incohérence dans le profil utilisateur, récupération des données complètes");
       refreshUserData();
     }
   }, [userData, refreshUserData]);
