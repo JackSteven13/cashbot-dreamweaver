@@ -5,17 +5,20 @@ import { toast } from "@/components/ui/use-toast";
 import { useAuthCheck } from './useAuthCheck';
 import { useAuthStateListener } from './useAuthStateListener';
 import { useUserDataSync } from './useUserDataSync';
+import { applyUserSwitchGuard } from '@/utils/userSwitchGuard';
 
 export const useDashboardInitialization = () => {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [fastInit, setFastInit] = useState(false); // Pour le chargement rapide des données
   
   const mountedRef = useRef(true);
   const initializationAttempted = useRef(false);
   const cleanupFunctionsRef = useRef<Array<() => void>>([]);
   const initializing = useRef(false);
   const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const fastInitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const maxAttemptsRef = useRef(0);
   
   const navigate = useNavigate();
@@ -30,6 +33,21 @@ export const useDashboardInitialization = () => {
     cleanupFunctionsRef.current.push(cleanup);
   }, []);
   
+  // Fonction pour un chargement rapide des données du cache
+  const initializeFastLoad = useCallback(() => {
+    // Vérifier s'il y a des données utilisateur en cache
+    const cachedName = localStorage.getItem('lastKnownUsername');
+    const cachedSubscription = localStorage.getItem('subscription');
+    const cachedBalance = localStorage.getItem('currentBalance');
+    
+    // Si oui, permettre un affichage immédiat
+    if (cachedName || cachedSubscription || cachedBalance) {
+      console.log("Données en cache trouvées, initialisation rapide");
+      setFastInit(true);
+      setIsReady(true);
+    }
+  }, []);
+  
   // Fonction d'initialisation principale avec un timeout plus court
   const initializeDashboard = useCallback(async () => {
     // Vérifier si l'initialisation est déjà en cours ou déjà tentée
@@ -38,6 +56,9 @@ export const useDashboardInitialization = () => {
     initializing.current = true;
     initializationAttempted.current = true;
     maxAttemptsRef.current++;
+    
+    // Vérifier s'il y a eu un changement d'utilisateur
+    applyUserSwitchGuard();
     
     try {
       // Laisser tout le processus se dérouler dans un seul flux
@@ -55,6 +76,7 @@ export const useDashboardInitialization = () => {
         const authCleanup = setupAuthListener();
         if (authCleanup) addCleanupFunction(authCleanup);
         
+        // Synchroniser les données utilisateur
         await syncUserData();
         
         if (!mountedRef.current) return;
@@ -101,16 +123,27 @@ export const useDashboardInitialization = () => {
     mountedRef.current = true;
     maxAttemptsRef.current = 0;
     
-    // Démarrer l'initialisation immédiatement
+    // Initialiser rapidement avec les données en cache
+    fastInitTimeoutRef.current = setTimeout(() => {
+      if (mountedRef.current) {
+        initializeFastLoad();
+      }
+    }, 100);
+    
+    // Démarrer l'initialisation complète peu après
     initTimeoutRef.current = setTimeout(() => {
       if (mountedRef.current && !initializing.current) {
         initializeDashboard();
       }
-    }, 100); // Délai très court
+    }, 300); // Délai légèrement plus long pour laisser le fast init agir
     
     return () => {
       console.log("Démontage du hook useDashboardInitialization");
       mountedRef.current = false;
+      
+      if (fastInitTimeoutRef.current) {
+        clearTimeout(fastInitTimeoutRef.current);
+      }
       
       if (initTimeoutRef.current) {
         clearTimeout(initTimeoutRef.current);
@@ -127,14 +160,15 @@ export const useDashboardInitialization = () => {
       
       cleanupFunctionsRef.current = [];
     };
-  }, [initializeDashboard]);
+  }, [initializeDashboard, initializeFastLoad]);
   
   // Exposer les états pour permettre au Dashboard de rendre en conséquence
   return useMemo(() => ({
     isAuthChecking,
     isReady,
+    fastInit,
     authError
-  }), [isAuthChecking, isReady, authError]);
+  }), [isAuthChecking, isReady, fastInit, authError]);
 };
 
 export default useDashboardInitialization;

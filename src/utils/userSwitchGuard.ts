@@ -40,6 +40,9 @@ export const checkUserSwitch = async () => {
       localStorage.removeItem('balanceState');
       localStorage.removeItem('botActive');
       
+      // Nettoyer le cache du username
+      localStorage.removeItem('lastKnownUsername');
+      
       // Mettre à jour l'ID utilisateur
       localStorage.setItem('lastActiveUserId', currentUserId);
       localStorage.setItem('lastActive', new Date().toISOString());

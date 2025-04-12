@@ -10,7 +10,10 @@ interface DashboardHeaderProps {
 
 const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
   // État pour le nom utilisateur avec mécanisme de persistance local
-  const [displayName, setDisplayName] = useState<string>('Utilisateur');
+  const [displayName, setDisplayName] = useState<string>(() => {
+    // Essayer de récupérer le nom sauvegardé au premier rendu
+    return localStorage.getItem('lastKnownUsername') || 'Utilisateur';
+  });
   
   // Mettre à jour le nom affiché quand username change
   useEffect(() => {
@@ -23,12 +26,6 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
         localStorage.setItem('lastKnownUsername', username);
       } catch (error) {
         console.error("Erreur lors de la sauvegarde du nom d'utilisateur:", error);
-      }
-    } else {
-      // Essayer de récupérer depuis le localStorage si le nom n'est pas disponible
-      const savedName = localStorage.getItem('lastKnownUsername');
-      if (savedName && savedName !== 'Utilisateur') {
-        setDisplayName(savedName);
       }
     }
   }, [username]);

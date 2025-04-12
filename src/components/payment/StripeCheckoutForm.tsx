@@ -32,12 +32,14 @@ const StripeCheckoutForm = ({
   const [termsAccepted, setTermsAccepted] = useState(true); // Pré-cochée par défaut
   const [redirectAttempted, setRedirectAttempted] = useState(false);
   const [showMobileHelper, setShowMobileHelper] = useState(false);
+  const [stripeWindowOpened, setStripeWindowOpened] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
   
   // Créer le lien vers les CGV avec le plan sélectionné
   const termsLink = selectedPlan ? `/terms?plan=${selectedPlan}` : '/terms';
   
+  // Traiter le clic sur le bouton de checkout
   const handleCheckout = () => {
     if (!termsAccepted) {
       toast({
@@ -48,30 +50,52 @@ const StripeCheckoutForm = ({
       return;
     }
     
+    // Si nous avons déjà une URL Stripe et que l'utilisateur clique à nouveau
+    if (stripeUrl && redirectAttempted) {
+      openStripePayment();
+      return;
+    }
+    
     setRedirectAttempted(false);
     onCheckout();
+  };
+  
+  // Fonction pour ouvrir la fenêtre de paiement Stripe
+  const openStripePayment = () => {
+    if (!stripeUrl) return;
+    
+    const opened = openStripeWindow(stripeUrl);
+    setStripeWindowOpened(opened);
+    
+    if (opened) {
+      toast({
+        title: "Redirection en cours",
+        description: "Vous êtes redirigé vers la page de paiement Stripe...",
+        duration: 3000
+      });
+    } else {
+      // Si la fenêtre n'a pas pu être ouverte (probablement bloquée)
+      toast({
+        title: "Popup bloqué",
+        description: "Votre navigateur semble bloquer les popups. Veuillez autoriser les popups pour ce site.",
+        variant: "destructive",
+        duration: 8000
+      });
+      setShowMobileHelper(true);
+    }
   };
   
   // Ouvrir automatiquement la fenêtre Stripe une fois l'URL disponible
   useEffect(() => {
     if (stripeUrl && !redirectAttempted && termsAccepted) {
       setRedirectAttempted(true);
+      openStripePayment();
       
-      // Notification légère
-      toast({
-        title: "Redirection en cours",
-        description: "Vous êtes redirigé vers la page de paiement Stripe...",
-        duration: 3000
-      });
-      
-      // Ouvrir la fenêtre Stripe automatiquement
-      openStripeWindow(stripeUrl);
-      
-      // Sur mobile, afficher l'aide après un court délai si nécessaire
+      // Sur mobile, afficher l'aide après un court délai
       if (isMobile) {
         setTimeout(() => {
           setShowMobileHelper(true);
-        }, 5000);
+        }, 3000);
       }
     }
   }, [stripeUrl, redirectAttempted, termsAccepted, isMobile]);
@@ -135,7 +159,8 @@ const StripeCheckoutForm = ({
         disabled={!termsAccepted || (isStripeProcessing && !stripeUrl)}
       >
         {isStripeProcessing && !stripeUrl ? 'Préparation du paiement...' : (
-          isUpgrade ? `Procéder à la mise à niveau (${formatPrice(proratedPrice)})` : 'Procéder au paiement'
+          stripeUrl ? 'Continuer vers le paiement' : 
+          (isUpgrade ? `Procéder à la mise à niveau (${formatPrice(proratedPrice)})` : 'Procéder au paiement')
         )}
       </Button>
       
@@ -143,7 +168,7 @@ const StripeCheckoutForm = ({
         <Button 
           fullWidth 
           className="bg-blue-600 hover:bg-blue-700 text-white text-base py-3 md:py-4 flex justify-center items-center gap-2 shadow-md mt-3"
-          onClick={() => openStripeWindow(stripeUrl)}
+          onClick={() => openStripePayment()}
         >
           <ExternalLink size={20} />
           Ouvrir à nouveau la page de paiement
@@ -151,8 +176,8 @@ const StripeCheckoutForm = ({
       )}
       
       <MobilePaymentHelper 
-        isVisible={showMobileHelper} 
-        onHelp={() => openStripeWindow(stripeUrl || '')}
+        isVisible={showMobileHelper && !!stripeUrl} 
+        onHelp={() => openStripePayment()}
       />
     </div>
   );

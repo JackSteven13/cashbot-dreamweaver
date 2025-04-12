@@ -39,27 +39,42 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
       while (attempts < maxAttempts && !syncSuccess && mountedRef.current) {
         try {
           // Add progressive delay between attempts
-          await new Promise(resolve => setTimeout(resolve, 300 * (attempts + 1)));
+          if (attempts > 0) {
+            await new Promise(resolve => setTimeout(resolve, 300 * attempts));
+          }
           
-          const { data: userBalanceData, error } = await supabase
-            .from('user_balances')
-            .select('subscription')
-            .eq('id', session.user.id)
-            .maybeSingle();
+          // Récupérer les données utilisateur avec une requête parallèle
+          const [userBalanceResult, profileResult] = await Promise.all([
+            supabase.from('user_balances').select('subscription, balance').eq('id', session.user.id).maybeSingle(),
+            supabase.from('profiles').select('full_name, email').eq('id', session.user.id).maybeSingle()
+          ]);
           
-          if (!error && userBalanceData) {
-            // Update localStorage if necessary
-            const localSubscription = localStorage.getItem('subscription');
+          // Vérifier les résultats et mettre à jour le localStorage
+          if (!userBalanceResult.error && userBalanceResult.data) {
+            const userData = userBalanceResult.data;
+            // Mettre à jour l'abonnement dans localStorage
+            if (userData.subscription) {
+              localStorage.setItem('subscription', userData.subscription);
+            }
             
-            if (localSubscription !== userBalanceData.subscription) {
-              console.log(`Syncing subscription: ${localSubscription} -> ${userBalanceData.subscription}`);
-              localStorage.setItem('subscription', userBalanceData.subscription);
+            // Mettre à jour le solde dans localStorage
+            if (userData.balance !== undefined) {
+              localStorage.setItem('currentBalance', String(userData.balance));
+              localStorage.setItem('lastKnownBalance', String(userData.balance));
             }
             
             syncSuccess = true;
-          } else {
+          }
+          
+          // Récupérer et stocker le nom d'utilisateur
+          if (!profileResult.error && profileResult.data && profileResult.data.full_name) {
+            localStorage.setItem('lastKnownUsername', profileResult.data.full_name);
+            syncSuccess = true;
+          }
+          
+          if (!syncSuccess) {
             attempts++;
-            console.log(`Sync attempt ${attempts}/${maxAttempts} failed, retrying...`);
+            console.log(`Sync attempt ${attempts}/${maxAttempts} incomplete, retrying...`);
           }
         } catch (err) {
           attempts++;
@@ -72,6 +87,11 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
       if (forceRefresh === 'true') {
         console.log("Force refresh detected, clearing flag");
         localStorage.removeItem('forceRefreshBalance');
+        
+        // Déclencher un événement pour forcer la mise à jour de l'interface
+        window.dispatchEvent(new CustomEvent('balance:force-sync', { 
+          detail: { balance: localStorage.getItem('currentBalance') }
+        }));
       }
       
       localStorage.removeItem('data_syncing');
