@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Share2, Copy, Users, Gift } from 'lucide-react';
 import { useUserData } from '@/hooks/useUserData';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { COMMISSION_RATES } from '@/components/dashboard/summary/constants';
 
 interface EnhancedReferral {
@@ -32,7 +32,9 @@ const ReferralsPage = () => {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
-    toast.success("Lien de parrainage copié !");
+    toast({
+      title: "Lien de parrainage copié !"
+    });
     setTimeout(() => setCopied(false), 2000);
   };
 

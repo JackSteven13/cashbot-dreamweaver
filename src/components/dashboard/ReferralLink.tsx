@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Copy, CheckCheck, Award, Users, DollarSign, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';

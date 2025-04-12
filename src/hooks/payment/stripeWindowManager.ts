@@ -1,70 +1,51 @@
 
 /**
- * Gestionnaire pour l'ouverture des fenêtres Stripe
- * Résout les problèmes d'ouverture de popup bloqués
- */
-
-// Fenêtre de paiement Stripe active
-let activeStripeWindow: Window | null = null;
-
-/**
  * Ouvre une fenêtre Stripe de manière fiable
- * @param stripeUrl URL de la page de checkout Stripe
- * @returns boolean indiquant si la fenêtre a été ouverte avec succès
+ * Gère les cas spécifiques pour mobile et desktop
  */
-export const openStripeWindow = (stripeUrl: string): boolean => {
-  // Si une fenêtre est déjà ouverte, la fermer d'abord
-  if (activeStripeWindow && !activeStripeWindow.closed) {
-    try {
-      activeStripeWindow.focus();
-      return true;
-    } catch (e) {
-      console.log("Impossible de refocaliser la fenêtre Stripe existante, ouverture d'une nouvelle fenêtre");
-    }
+export const openStripeWindow = (url: string): boolean => {
+  if (!url) {
+    console.error("URL invalide pour le paiement Stripe");
+    return false;
   }
   
   try {
-    // Essayer d'abord d'ouvrir dans un nouvel onglet
-    const newWindow = window.open(stripeUrl, '_blank');
+    console.log("Tentative d'ouverture de la fenêtre Stripe");
     
-    // Vérifier si la fenêtre a été ouverte avec succès
-    if (newWindow && !newWindow.closed) {
-      activeStripeWindow = newWindow;
+    // Test si nous sommes sur mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // Sur mobile, on redirige directement
+      console.log("Appareil mobile détecté, redirection directe");
+      window.location.href = url;
       return true;
     }
     
-    // Si l'onglet n'a pas pu être ouvert, essayer la redirection
-    console.log("L'ouverture d'un nouvel onglet a échoué, tentative de redirection directe");
-    window.location.href = stripeUrl;
+    // Sur desktop, on essaie d'ouvrir dans une nouvelle fenêtre
+    const stripeWindow = window.open(url, '_blank');
+    
+    // Vérifier si la fenêtre a été ouverte avec succès
+    if (stripeWindow) {
+      stripeWindow.focus();
+      return true;
+    }
+    
+    // Si l'ouverture de la fenêtre a échoué (popup bloqué), on redirige directement
+    console.warn("Impossible d'ouvrir une nouvelle fenêtre, tentative de redirection directe");
+    window.location.href = url;
     return true;
+    
   } catch (error) {
     console.error("Erreur lors de l'ouverture de la fenêtre Stripe:", error);
     
-    // En dernier recours, essayer la redirection directe
+    // En cas d'erreur, on essaie quand même la redirection directe
     try {
-      window.location.href = stripeUrl;
+      window.location.href = url;
       return true;
     } catch (e) {
-      console.error("La redirection vers Stripe a également échoué:", e);
+      console.error("Échec de la redirection directe:", e);
       return false;
     }
   }
-};
-
-/**
- * Vérifie si une fenêtre Stripe est active
- * @returns true si une fenêtre Stripe est actuellement ouverte
- */
-export const isStripeWindowActive = (): boolean => {
-  return activeStripeWindow !== null && !activeStripeWindow.closed;
-};
-
-/**
- * Ferme la fenêtre Stripe active
- */
-export const closeStripeWindow = (): void => {
-  if (activeStripeWindow && !activeStripeWindow.closed) {
-    activeStripeWindow.close();
-  }
-  activeStripeWindow = null;
 };

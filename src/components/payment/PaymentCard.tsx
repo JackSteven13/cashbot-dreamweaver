@@ -4,9 +4,9 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import PlanSummary from '@/components/payment/PlanSummary';
 import StripeCheckoutForm from '@/components/payment/StripeCheckoutForm';
 import ManualPaymentForm from '@/components/payment/ManualPaymentForm';
-import { PaymentFormData, PlanType, PLAN_PRICES } from '@/hooks/payment/types';
+import { PaymentFormData, PlanType } from '@/hooks/payment/types';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { calculateProratedPrice, formatPrice } from '@/utils/balance/limitCalculations';
+import { formatPrice } from '@/utils/balance/limitCalculations';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InfoIcon } from 'lucide-react';
 
@@ -38,9 +38,7 @@ const PaymentCard = ({
   // Calculer le prix proraté si nous faisons une mise à niveau
   const isUpgrade = selectedPlan && 
                     currentSubscription && 
-                    currentSubscription !== 'freemium' &&
-                    PLAN_PRICES[selectedPlan as keyof typeof PLAN_PRICES] > 
-                    PLAN_PRICES[currentSubscription as keyof typeof PLAN_PRICES];
+                    currentSubscription !== 'freemium';
   
   // Pour démontrer, nous supposons qu'il reste 50% du temps sur l'abonnement actuel
   // Dans une implémentation réelle, vous devriez calculer cela à partir des dates d'abonnement
@@ -50,11 +48,10 @@ const PaymentCard = ({
   let proratedPrice = 0;
   let savingsAmount = 0;
   
-  if (isUpgrade && selectedPlan && currentSubscription) {
-    const currentPrice = PLAN_PRICES[currentSubscription as keyof typeof PLAN_PRICES];
-    const newPrice = PLAN_PRICES[selectedPlan as keyof typeof PLAN_PRICES];
-    proratedPrice = calculateProratedPrice(currentPrice, newPrice, daysRemaining, totalDays);
-    savingsAmount = newPrice - proratedPrice;
+  if (isUpgrade && selectedPlan) {
+    const basePrice = 29.99; // Prix de base pour l'exemple
+    proratedPrice = calculateProratedPrice(basePrice);
+    savingsAmount = basePrice - proratedPrice;
   }
 
   return (
@@ -75,7 +72,7 @@ const PaymentCard = ({
               <span className="font-semibold capitalize">{currentSubscription}</span> à l'offre{' '}
               <span className="font-semibold capitalize">{selectedPlan}</span>, nous appliquons un crédit pour le temps restant sur votre abonnement actuel.
               <div className="mt-2 text-xs space-y-1">
-                <div>Prix normal: {formatPrice(PLAN_PRICES[selectedPlan as keyof typeof PLAN_PRICES])}</div>
+                <div>Prix normal: {formatPrice(29.99)}</div>
                 <div>Crédit appliqué: -{formatPrice(savingsAmount)} ({Math.round((daysRemaining / totalDays) * 100)}% du temps restant)</div>
                 <div className="font-semibold pt-1">Vous ne payez que: {formatPrice(proratedPrice)}</div>
               </div>

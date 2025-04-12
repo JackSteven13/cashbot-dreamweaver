@@ -1,6 +1,10 @@
 
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchCompleteUserData } from '@/utils/user/userDataFetch';
+import { fetchUserTransactions } from './transactionUtils';
+import { checkDailyLimit } from '@/utils/subscription';
+import { generateReferralLink } from '@/utils/referralUtils';
 import { UserFetcherState } from './useUserDataState';
 import { getCurrentSession } from '@/utils/auth/sessionUtils';
 import { toast } from '@/components/ui/use-toast';
@@ -26,6 +30,14 @@ export const useUserDataFetching = (
         return;
       }
 
+      // Récupérer toutes les données utilisateur en incluant les parrainages
+      const userData = await fetchCompleteUserData(session.user.id, session.user.email);
+      
+      if (!userData || !userData.balance) {
+        setIsLoading(false);
+        return;
+      }
+      
       // Récupérer le profil utilisateur
       const refreshedProfile = await loadUserProfile(session.user.id, session.user.email);
       
@@ -38,72 +50,49 @@ export const useUserDataFetching = (
       
       const { balanceData } = balanceResult;
 
-      // Récupérer explicitement les transactions
-      const { data: transactionsData, error: transactionsError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false });
-
-      if (transactionsError) {
-        console.error("Error fetching transactions:", transactionsError);
-      }
+      // Récupérer explicitement les transactions avec le nouveau service
+      const transactionsData = await fetchUserTransactions(session.user.id);
       
+      console.log("Transactions récupérées:", transactionsData);
+      
+      // Calculate today's gains by filtering transactions from today
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const todaysTransactions = transactionsData.filter(tx => 
+        tx.date && tx.date.startsWith(today) && tx.gain > 0
+      );
+      const todaysGains = todaysTransactions.reduce((sum, tx) => sum + (tx.gain || 0), 0);
+
       // Déterminer le nom d'affichage de l'utilisateur
       const displayName = refreshedProfile?.full_name || 
                          session.user.user_metadata?.full_name || 
                          (session.user.email ? session.user.email.split('@')[0] : 'utilisateur');
 
-      // Calculate today's gains by filtering transactions from today
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      const transactions = transactionsData || [];
-      const todaysTransactions = transactions.filter(tx => 
-        tx.created_at && tx.created_at.startsWith(today) && (tx.gain > 0 || tx.amount > 0)
-      );
-      
-      const todaysGains = todaysTransactions.reduce((sum, tx) => {
-        // Calculer les gains totaux en utilisant gain ou amount selon ce qui est disponible
-        return sum + (typeof tx.gain === 'number' ? tx.gain : (typeof tx.amount === 'number' ? tx.amount : 0));
-      }, 0);
-
-      // Calculer la progression de la limite quotidienne
-      const dailyLimit = getDailyLimitForSubscription(balanceData?.subscription || 'freemium');
-      const dailyLimitProgress = Math.min(100, (todaysGains / dailyLimit) * 100);
-      
-      // Stocker les gains quotidiens dans localStorage pour la persistance
-      localStorage.setItem(`dailyGains_${session.user.id}`, todaysGains.toString());
-      localStorage.setItem(`dailyLimitProgress_${session.user.id}`, dailyLimitProgress.toString());
-
-      // Déclencher un événement pour mettre à jour la jauge de limite quotidienne
-      window.dispatchEvent(new CustomEvent('dailyGains:updated', { 
-        detail: { gains: todaysGains, progress: dailyLimitProgress } 
-      }));
-
       // Créer l'objet de données utilisateur
-      const userData = {
+      const newUserData = {
         username: displayName,
         balance: balanceData?.balance || 0,
         subscription: balanceData?.subscription || 'freemium',
-        transactions: transactions,
-        profile: { ...refreshedProfile, id: session.user.id, full_name: displayName }
+        referrals: userData.referrals || [],
+        referralLink: userData.referralLink || generateReferralLink(session.user.id),
+        email: session.user.email || undefined,
+        transactions: transactionsData
       };
       
       const newDailySessionCount = balanceData?.daily_session_count || 0;
       
-      // Vérifier si la limite quotidienne est atteinte
-      const limitReached = todaysGains >= dailyLimit;
+      // Vérifier si la limite quotidienne est atteinte - based on today's transactions
+      const limitReached = checkDailyLimit(todaysGains, balanceData?.subscription || 'freemium');
       
       // Mettre à jour les données avec protection contre les boucles
       updateUserData({
-        userData,
-        isNewUser: balanceResult.isNewUser || isNewUser,
+        userData: newUserData,
+        isNewUser: userData.isNewUser || isNewUser,
         dailySessionCount: newDailySessionCount,
         showLimitAlert: limitReached,
-        isLoading: false,
-        dailyLimitProgress
+        isLoading: false
       });
       
-      console.log("Données utilisateur mises à jour:", userData);
+      console.log("Données utilisateur mises à jour:", newUserData);
     } catch (error) {
       console.error("Error in fetchUserData:", error);
       setIsLoading(false);
@@ -140,13 +129,6 @@ export const useUserDataFetching = (
       
       console.log("Réinitialisation du compteur de sessions quotidien réussie");
       
-      // Réinitialiser les données de limite quotidienne
-      localStorage.setItem(`dailyGains_${session.user.id}`, '0');
-      localStorage.setItem(`dailyLimitProgress_${session.user.id}`, '0');
-      
-      // Déclencher un événement pour réinitialiser la jauge
-      window.dispatchEvent(new CustomEvent('dailyGains:reset'));
-      
       // Rafraîchir les données
       await fetchUserData();
       
@@ -160,19 +142,3 @@ export const useUserDataFetching = (
     resetDailyCounters
   };
 };
-
-// Fonction pour obtenir la limite quotidienne selon l'abonnement
-function getDailyLimitForSubscription(subscription: string): number {
-  switch (subscription) {
-    case 'starter':
-    case 'alpha':
-      return 2;
-    case 'gold':
-      return 5;
-    case 'elite':
-      return 10;
-    case 'freemium':
-    default:
-      return 0.5;
-  }
-}

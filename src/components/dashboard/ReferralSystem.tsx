@@ -79,7 +79,6 @@ const ReferralSystem: React.FC<ReferralSystemProps> = ({ referralLink, className
   
   return (
     <div className={className}>
-      {/* Bouton pour ouvrir la boîte de dialogue */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button 
