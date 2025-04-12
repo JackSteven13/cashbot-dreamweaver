@@ -48,9 +48,29 @@
   }
 }
 
+/* Animation du compteur de solde */
+@keyframes count-up {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  20% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+}
+
 /* Classes CSS pour appliquer les animations */
 .pulse-animation {
-  animation: pulse-balance 1s cubic-bezier(0.215, 0.61, 0.355, 1);
+  animation: pulse-balance 1.5s cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 
 .money-particle {
@@ -66,4 +86,48 @@
 
 .glow-effect {
   animation: glow-effect 3s infinite;
+}
+
+.count-up {
+  animation: count-up 1.5s forwards;
+}
+
+/* Animation de transition pour les changements de solde */
+.balance-display .text-5xl {
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+/* Animation de saut pour le nouveau solde */
+@keyframes bounce-in {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.bounce-in {
+  animation: bounce-in 0.6s ease forwards;
+}
+
+/* Animation de nombre flottant pour montrer le gain */
+.floating-number {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  color: rgb(134, 239, 172);
+  font-size: 1rem;
+  opacity: 0;
+  transform: translateY(0);
+  animation: count-up 2s forwards;
+}
+
+/* Animation des symboles de monnaie */
+.currency-symbol {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.pulse-animation .currency-symbol {
+  animation: bounce-in 0.6s ease 0.1s forwards;
 }

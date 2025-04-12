@@ -23,7 +23,7 @@ export const useUserDataState = () => {
     const cachedSubscription = localStorage.getItem('subscription');
     
     if (cachedName) {
-      return {
+      const initialData: UserData = {
         username: cachedName,
         subscription: cachedSubscription || 'freemium',
         balance: 0,
@@ -33,9 +33,10 @@ export const useUserDataState = () => {
         profile: {
           full_name: cachedName,
           id: 'loading',
-          created_at: new Date()
+          created_at: new Date().toISOString() // Convertir en string pour respecter le type
         }
-      } as UserData;
+      };
+      return initialData;
     }
     
     return null;

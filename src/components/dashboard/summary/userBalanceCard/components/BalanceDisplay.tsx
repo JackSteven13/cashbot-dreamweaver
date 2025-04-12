@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, BotOff } from 'lucide-react';
 import balanceManager, { getHighestBalance } from '@/utils/balance/balanceManager';
@@ -214,27 +215,32 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
             createMoneyParticles(balanceRef.current, 8);
           }
           
-          // Animer doucement vers la nouvelle valeur
+          // Animer doucement vers la nouvelle valeur avec un effet d'accélération plus visible
           animateBalanceUpdate(
             localDisplayBalance,
             currentBalance,
-            1200, // Animation un peu plus longue pour une meilleure visibilité
+            2000, // Animation plus longue pour une meilleure visibilité
             (value) => {
               setLocalDisplayBalance(value);
               if (value === currentBalance) {
                 setIsAnimating(false);
               }
+            },
+            // Fonction d'easing pour une animation plus spectaculaire
+            (t) => {
+              // Fonction d'easing cubique pour une accélération puis ralentissement
+              return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
             }
           );
           
           // Ajouter la classe pulse pour l'effet visuel
           if (balanceRef.current) {
-            balanceRef.current.classList.add('pulse-balance');
+            balanceRef.current.classList.add('pulse-animation');
             setTimeout(() => {
               if (balanceRef.current) {
-                balanceRef.current.classList.remove('pulse-balance');
+                balanceRef.current.classList.remove('pulse-animation');
               }
-            }, 1500);
+            }, 2100);
           }
         } else {
           // Mise à jour sans animation
@@ -254,11 +260,6 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         // Sinon ajouter le montant au solde actuel
         console.log(`[BalanceDisplay] Update balance for user ${userId} with increment: +${amount}`);
         
-        // Créer des particules d'argent pour l'effet visuel
-        if (balanceRef.current && shouldAnimate) {
-          createMoneyParticles(balanceRef.current, 8);
-        }
-        
         // Calculer le nouveau solde
         const newBalance = parseFloat((localDisplayBalance + amount).toFixed(2));
         
@@ -266,26 +267,36 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           // Activer l'animation
           setIsAnimating(true);
           
-          // Ajouter la classe pulse pour l'effet visuel
+          // Créer des particules d'argent pour l'effet visuel
           if (balanceRef.current) {
-            balanceRef.current.classList.add('pulse-balance');
-            setTimeout(() => {
-              if (balanceRef.current) {
-                balanceRef.current.classList.remove('pulse-balance');
-              }
-            }, 1500);
+            createMoneyParticles(balanceRef.current, 8);
           }
           
-          // Animer doucement vers la nouvelle valeur
+          // Ajouter la classe pulse pour l'effet visuel
+          if (balanceRef.current) {
+            balanceRef.current.classList.add('pulse-animation');
+            setTimeout(() => {
+              if (balanceRef.current) {
+                balanceRef.current.classList.remove('pulse-animation');
+              }
+            }, 2100);
+          }
+          
+          // Animer doucement vers la nouvelle valeur avec un effet d'accélération plus visible
           animateBalanceUpdate(
             localDisplayBalance,
             newBalance,
-            1200, // Animation un peu plus longue pour une meilleure visibilité
+            2000, // Animation plus longue pour une meilleure visibilité
             (value) => {
               setLocalDisplayBalance(value);
               if (value === newBalance) {
                 setIsAnimating(false);
               }
+            },
+            // Fonction d'easing pour une animation plus spectaculaire
+            (t) => {
+              // Fonction d'easing cubique pour une accélération puis ralentissement
+              return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
             }
           );
         } else {

@@ -1,5 +1,6 @@
 
 import React, { useMemo, useEffect, useState, useRef } from 'react';
+import { animateBalanceUpdate } from '@/utils/animations/animateBalanceUpdate';
 
 interface DashboardHeaderProps {
   username: string;
@@ -32,6 +33,40 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
     }
   }, [username]);
 
+  // État pour l'animation du solde
+  const [animatedBalance, setAnimatedBalance] = useState<number | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+  
+  // Écouter les événements de mise à jour du solde
+  useEffect(() => {
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      const amount = event.detail?.amount;
+      const currentBalance = event.detail?.currentBalance;
+      
+      if (amount > 0 || (currentBalance !== undefined && currentBalance > 0)) {
+        setIsAnimating(true);
+        
+        // Utiliser la fonction d'animation pour le solde
+        animateBalanceUpdate(
+          animatedBalance || 0,
+          currentBalance || (animatedBalance || 0) + amount,
+          1500, // durée de l'animation
+          (value) => setAnimatedBalance(value),
+          undefined,
+          () => setIsAnimating(false)
+        );
+      }
+    };
+    
+    window.addEventListener('balance:update' as any, handleBalanceUpdate);
+    window.addEventListener('balance:force-update' as any, handleBalanceUpdate);
+    
+    return () => {
+      window.removeEventListener('balance:update' as any, handleBalanceUpdate);
+      window.removeEventListener('balance:force-update' as any, handleBalanceUpdate);
+    };
+  }, [animatedBalance]);
+
   // Nettoyer et formater le nom affiché
   const formattedName = useMemo(() => {
     // Limiter la longueur pour éviter les problèmes d'affichage
@@ -52,6 +87,11 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
         <div className="text-sm text-right hidden sm:block">
           <p className="font-medium text-white truncate">{formattedName}</p>
           <p className="text-blue-200">Abonnement {displaySubscription || 'freemium'}</p>
+          {animatedBalance !== null && (
+            <p className={`text-blue-100 font-medium transition-colors ${isAnimating ? 'text-green-300' : ''}`}>
+              {animatedBalance.toFixed(2)}€
+            </p>
+          )}
         </div>
       </div>
     </header>
