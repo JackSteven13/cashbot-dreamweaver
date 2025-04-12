@@ -1,84 +1,57 @@
 
-import React from 'react';
-import { InfoIcon } from 'lucide-react';
-import { ReferralSuggestion } from '../../buttons/ReferralSuggestion';
+import React, { useMemo } from 'react';
+import { Progress } from '@/components/ui/progress';
+import { HelpCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
 
 interface ProgressBarProps {
   displayBalance: number;
+  subscription: string;
   withdrawalThreshold?: number;
-  subscription?: string;
+  className?: string;
 }
 
 const ProgressBar: React.FC<ProgressBarProps> = ({
   displayBalance = 0,
-  withdrawalThreshold,
-  subscription = 'freemium'
+  subscription = 'freemium',
+  withdrawalThreshold: propsThreshold,
+  className
 }) => {
-  // Obtenir le seuil de retrait basé sur l'abonnement si non fourni
-  const actualThreshold = withdrawalThreshold || getWithdrawalThreshold(subscription);
+  // Déterminer le seuil correct - utiliser la prop si fournie, sinon la fonction utilitaire
+  const withdrawalThreshold = useMemo(() => {
+    if (propsThreshold !== undefined) return propsThreshold;
+    return getWithdrawalThreshold(subscription);
+  }, [propsThreshold, subscription]);
   
-  // Ensure valid numbers and calculate progress
-  const safeBalance = typeof displayBalance === 'number' ? displayBalance : 0;
-  const progress = Math.min(100, (safeBalance / actualThreshold) * 100);
-  
-  // Déterminer si nous devons montrer une suggestion de parrainage
-  // (moins de 30% du seuil atteint)
-  const shouldShowReferralSuggestion = progress < 30;
-  
-  // Créer le lien de parrainage (cette fonction devrait exister ailleurs dans le code)
-  const referralLink = `${window.location.origin}?ref=invite`;
+  // Calculer le pourcentage d'avancement
+  const progressPercentage = useMemo(() => {
+    if (!withdrawalThreshold || withdrawalThreshold <= 0) return 0;
+    const percentage = (displayBalance / withdrawalThreshold) * 100;
+    return Math.min(100, Math.max(0, percentage));
+  }, [displayBalance, withdrawalThreshold]);
   
   return (
-    <div className="mt-2 mb-4">
-      <div className="flex justify-between text-xs mb-1">
-        <span>Progression retrait</span>
+    <div className="mt-4 mb-2">
+      <div className="flex justify-between mb-1 items-center">
+        <span className="text-xs text-muted-foreground">Progression retrait</span>
         <div className="flex items-center">
-          <span>{safeBalance.toFixed(2)}€ / {actualThreshold}€</span>
-          
-          {shouldShowReferralSuggestion && (
-            <div className="ml-1">
-              <InfoIcon 
-                size={14} 
-                className="text-amber-400 cursor-pointer" 
-                onClick={() => {
-                  // Afficher la fenêtre modale ou tooltip de suggestion de parrainage ici
-                  const modal = document.getElementById('referral-suggestion-modal');
-                  if (modal) {
-                    modal.classList.remove('hidden');
-                  }
-                }}
-              />
-              
-              {/* Modal pour le parrainage */}
-              <div id="referral-suggestion-modal" className="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-                <div className="relative max-w-md mx-auto">
-                  <ReferralSuggestion 
-                    referralLink={referralLink}
-                    withdrawalThreshold={actualThreshold}
-                  />
-                  <button 
-                    className="absolute top-2 right-2 text-white bg-blue-600 rounded-full p-1"
-                    onClick={() => {
-                      const modal = document.getElementById('referral-suggestion-modal');
-                      if (modal) {
-                        modal.classList.add('hidden');
-                      }
-                    }}
-                  >
-                    X
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <span className="text-xs">{displayBalance.toFixed(2)}€ / {withdrawalThreshold}€</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3 w-3 ml-1 text-amber-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Seuil minimum à atteindre pour retirer vos gains. {withdrawalThreshold}€ pour un compte {subscription}.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
-      <div className="h-2 w-full bg-gray-700 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-gradient-to-r from-blue-400 to-blue-600"
-          style={{ width: `${progress}%` }}
-        />
+      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+        <Progress value={progressPercentage} className={`h-2 ${className || ''}`} />
       </div>
     </div>
   );

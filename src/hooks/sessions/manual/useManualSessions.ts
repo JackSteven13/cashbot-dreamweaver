@@ -46,6 +46,20 @@ export const useManualSessions = ({
   const { calculateSessionGain } = useSessionGain();
 
   const handleStartSession = async () => {
+    // Vérifier si le bot est actif
+    const isBotActive = localStorage.getItem(`botActive_${userData.profile?.id}`) === 'true';
+    
+    // Si le bot est en pause et qu'on essaie de démarrer une session manuelle, afficher un avertissement
+    if (!isBotActive) {
+      toast({
+        title: "Assistant d'analyse en pause",
+        description: "Activez l'assistant d'analyse avant de lancer une session.",
+        variant: "destructive",
+        duration: 5000
+      });
+      return;
+    }
+    
     // Check if we can start a new session
     if (!canStartNewSession()) {
       return;
