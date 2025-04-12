@@ -26,7 +26,6 @@ const DashboardLoading: FC = () => {
       } else {
         // Marquer toutes les phases comme terminées
         setPhasesComplete(true);
-        setProgress(100); // Fixer le progrès à 100% pour la dernière phase
       }
     }, 1800); // Augmenter le délai entre les phases pour une meilleure expérience
     
@@ -35,8 +34,11 @@ const DashboardLoading: FC = () => {
   
   // Effet pour animer la barre de progression
   useEffect(() => {
-    // Si toutes les phases sont terminées, ne pas créer de nouveaux intervalles
-    if (phasesComplete) return;
+    // Si toutes les phases sont terminées, fixer à 100%
+    if (phasesComplete) {
+      setProgress(100);
+      return;
+    }
     
     const interval = setInterval(() => {
       setProgress(prev => {

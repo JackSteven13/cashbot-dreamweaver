@@ -92,3 +92,5 @@ export const useAutomaticRevenue = (
     generateAutomaticRevenue
   };
 };
+
+export default useAutomaticRevenue;

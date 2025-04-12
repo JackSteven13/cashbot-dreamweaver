@@ -43,3 +43,5 @@ export const usePeriodicChecks = (
     };
   }, [refreshUserData]);
 };
+
+export default usePeriodicChecks;

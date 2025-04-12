@@ -35,7 +35,7 @@ export const useDashboardState = () => {
   // Vérification de la dormance du compte
   const { isDormant, isChecking, dormancyData, handleReactivate } = useDormancyCheck(userData, showLimitAlert);
   
-  // Gestion des sessions - Fix useDashboardSessions arguments
+  // Gestion des sessions
   const {
     isStartingSession,
     handleStartSession,
