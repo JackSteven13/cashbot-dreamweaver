@@ -29,8 +29,9 @@ export const useDormancyCheck = (
   // Vérifie la dormance du compte
   useEffect(() => {
     if (!userData) {
-      // Si pas de données utilisateur, considérer comme en cours de chargement
+      // Si pas de données utilisateur, considérer comme en cours de chargement mais pas dormant
       setIsChecking(true);
+      setIsDormant(false);
       return;
     }
 
@@ -41,7 +42,7 @@ export const useDormancyCheck = (
       try {
         // La vérification est simulée
         // Dans une vraie application, ceci serait une requête API
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 200)); // Réduire le délai pour plus de réactivité
 
         // Supposons qu'un compte est dormant après 30 jours d'inactivité
         const lastActivity = userData.lastLogin || userData.registeredAt || new Date();
@@ -61,12 +62,17 @@ export const useDormancyCheck = (
         // Par défaut, considérer le compte comme actif en cas d'erreur
         setIsDormant(false);
       } finally {
+        // S'assurer de toujours terminer la vérification
         setIsChecking(false);
       }
     };
 
-    // Exécuter la vérification
-    checkAccountDormancy();
+    // Exécuter la vérification avec un court délai pour éviter les blocages
+    const timer = setTimeout(() => {
+      checkAccountDormancy();
+    }, 50);
+
+    return () => clearTimeout(timer);
   }, [userData]);
 
   // Fonction pour réactiver un compte dormant
@@ -75,7 +81,7 @@ export const useDormancyCheck = (
 
     try {
       // Simuler une requête de réactivation
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 400)); // Réduire le délai pour plus de réactivité
 
       // Marquer le compte comme actif
       setIsDormant(false);
@@ -89,6 +95,7 @@ export const useDormancyCheck = (
     } catch (error) {
       console.error("Error reactivating account:", error);
     } finally {
+      // S'assurer de toujours terminer le processus
       setIsChecking(false);
     }
   }, [dormancyData]);

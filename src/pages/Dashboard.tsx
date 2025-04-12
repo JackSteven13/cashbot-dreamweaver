@@ -6,11 +6,12 @@ import DashboardLoading from '@/components/dashboard/DashboardLoading';
 import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
 import TransactionsPage from '@/pages/dashboard/TransactionsPage';
+import ReferralsPage from '@/pages/dashboard/ReferralsPage';
 import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
 import { useReferralNotifications } from '@/hooks/useReferralNotifications';
 import { useTransactionReconciliation } from '@/hooks/useTransactionReconciliation';
-import { memo, useEffect, useRef, useMemo, useState, useLayoutEffect } from 'react';
+import { memo, useEffect, useRef, useMemo, useState } from 'react';
 
 // Composant principal avec stabilité améliorée
 const Dashboard = memo(() => {
@@ -19,6 +20,7 @@ const Dashboard = memo(() => {
   const initialRenderCompleteRef = useRef(false);
   const [transitionStage, setTransitionStage] = useState('init');
   const prevPathRef = useRef(location.pathname);
+  const forcedTransitionRef = useRef(false);
   
   // Hooks stables avec dépendances minimales
   const {
@@ -48,7 +50,7 @@ const Dashboard = memo(() => {
     isBotActive
   } = useDashboardState();
   
-  // Déterminer si nous sommes sur la page des parrainages ou transactions
+  // Déterminer si nous sommes sur la page des parrainages
   const isReferralsPage = location.pathname === '/dashboard/referrals';
   const isTransactionsPage = location.pathname === '/dashboard/transactions';
   
@@ -60,52 +62,60 @@ const Dashboard = memo(() => {
   useReferralNotifications();
   
   // Effet pour prévenir les rechargements complets inutiles
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (prevPathRef.current !== location.pathname) {
       // Si c'est juste un changement de route interne, ne pas réinitialiser l'état
       prevPathRef.current = location.pathname;
     }
   }, [location.pathname]);
   
-  // Effet pour gérer les transitions de chargement
+  // Effet pour gérer les transitions de chargement - simplifié et plus réactif
   useEffect(() => {
-    // Utiliser un ID pour annuler les transitions précédentes
-    const transitionId = Date.now();
-    
-    if (isAuthChecking || isLoading || !isReady || isChecking) {
+    const checkConditions = () => {
+      // Si l'initialisation est terminée et nous avons les données utilisateur
+      if (!isAuthChecking && !authError && isReady && userData?.username && !isChecking) {
+        console.log("Conditions remplies pour afficher le dashboard");
+        setTransitionStage('ready');
+        return true;
+      }
+      
+      // Si nous avons une erreur d'authentification
+      if (authError || (!isAuthChecking && !userData?.username && !isLoading)) {
+        console.log("Erreur détectée, affichage de l'écran d'erreur");
+        setTransitionStage('error');
+        return true;
+      }
+      
+      // Sinon, rester en mode chargement
       setTransitionStage('loading');
-      return;
-    }
-    
-    if (authError || (!isAuthChecking && !userData?.username)) {
-      setTransitionStage('error');
-      return;
-    }
-    
-    if (!isAuthChecking && !authError && isReady && userData?.username) {
-      // Ajouter une légère transition pour éviter les flashs
-      const timer = setTimeout(() => {
-        // Vérifier que ce n'est pas une transition obsolète
-        if (transitionId === Date.now()) {
-          setTransitionStage('ready');
-        }
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
-  
-  // Calculer une fois les états composés pour éviter les re-calculs
-  const combinedState = useMemo(() => {
-    const isLoadingCombined = isAuthChecking || isLoading || !isReady || isChecking;
-    const hasError = authError || (!isLoadingCombined && !userData?.username);
-    const canShowDashboard = !isLoadingCombined && !authError && isReady && userData?.username;
-    
-    return {
-      isLoadingCombined,
-      hasError,
-      canShowDashboard
+      return false;
     };
-  }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData?.username]);
+    
+    // Vérifier immédiatement
+    if (checkConditions()) {
+      return;
+    }
+    
+    // Forcer la transition après un certain temps pour éviter les blocages
+    const forceTimeout = setTimeout(() => {
+      if (transitionStage !== 'ready' && !forcedTransitionRef.current) {
+        console.log("Forçage de la transition après délai");
+        forcedTransitionRef.current = true;
+        
+        // Si nous avons des données utilisateur, forcer l'affichage du dashboard
+        if (userData && userData.username) {
+          setTransitionStage('ready');
+        } else {
+          // Sinon, montrer l'écran d'erreur
+          setTransitionStage('error');
+        }
+      }
+    }, 4000); // Attendre 4 secondes maximum
+    
+    return () => {
+      clearTimeout(forceTimeout);
+    };
+  }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData, transitionStage]);
   
   return (
     <>
@@ -121,29 +131,29 @@ const Dashboard = memo(() => {
       
       {/* Rendu avec transitions douces entre les états */}
       <div className="relative min-h-screen">
-        {/* Écran de chargement avec transition */}
-        {combinedState.isLoadingCombined && (
+        {/* Écran de chargement visible uniquement si nous sommes en état de chargement */}
+        {(transitionStage === 'loading' || transitionStage === 'init') && (
           <div className="absolute inset-0 z-50">
             <DashboardLoading />
           </div>
         )}
         
         {/* Affichage des erreurs */}
-        {combinedState.hasError && !combinedState.isLoadingCombined && (
-          <div className={`absolute inset-0 z-40 transition-opacity duration-300 ${transitionStage === 'error' ? 'opacity-100' : 'opacity-0'}`}>
+        {transitionStage === 'error' && (
+          <div className="absolute inset-0 z-40 transition-opacity duration-300 opacity-100">
             <DashboardError errorType={authError ? "auth" : "data"} onRefresh={forceRefresh} />
           </div>
         )}
         
         {/* Contenu principal avec animation d'entrée */}
-        {combinedState.canShowDashboard && userData && (
+        {(transitionStage === 'ready') && userData && (
           <div 
-            className={`transition-opacity duration-300 ${transitionStage === 'ready' ? 'opacity-100' : 'opacity-0'}`}
+            className="transition-opacity duration-300 opacity-100"
           >
             <DashboardLayout
               key={`layout-${renderKey}`}
               username={userData.username}
-              subscription={userData.subscription}
+              subscription={userData.subscription || 'freemium'}
               selectedNavItem={selectedNavItem}
               setSelectedNavItem={setSelectedNavItem}
             >
@@ -167,6 +177,9 @@ const Dashboard = memo(() => {
                 } />
                 <Route path="transactions" element={
                   <TransactionsPage key={`transactions-${renderKey}`} />
+                } />
+                <Route path="referrals" element={
+                  <ReferralsPage key={`referrals-${renderKey}`} />
                 } />
               </Routes>
             </DashboardLayout>

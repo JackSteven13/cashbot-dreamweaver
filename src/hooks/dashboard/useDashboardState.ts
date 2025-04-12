@@ -40,7 +40,9 @@ export const useDashboardState = () => {
     referrals: [],
     referralLink: '',
     transactions: [],
-    dailySessionCount: 0
+    dailySessionCount: 0,
+    lastLogin: new Date(),
+    registeredAt: new Date()
   };
   
   // Vérification de la dormance du compte
@@ -64,22 +66,32 @@ export const useDashboardState = () => {
     resetBalance
   });
   
-  // Force refresh pour les erreurs
+  // Force refresh pour les erreurs avec debounce
   const forceRefresh = useCallback(() => {
+    console.log("Forçage de la mise à jour du dashboard");
     refreshUserData();
     setRenderKey(prev => prev + 1);
   }, [refreshUserData]);
   
-  // Démarrer la génération automatique si possible
+  // Démarrer la génération automatique si possible avec des gestions d'erreur
   useEffect(() => {
-    // Vérifier si l'utilisateur peut bénéficier de revenus automatiques
-    if (userData && !isNewUser && !isDormant && isBotActive && !isChecking) {
-      // Initier la première génération automatique après un court délai
-      const startTimer = setTimeout(() => {
-        generateAutomaticRevenue(true);
-      }, 15000);
-      
-      return () => clearTimeout(startTimer);
+    try {
+      // Vérifier si l'utilisateur peut bénéficier de revenus automatiques
+      if (userData && !isNewUser && !isDormant && isBotActive && !isChecking) {
+        // Initier la première génération automatique après un court délai
+        const startTimer = setTimeout(() => {
+          if (userData && !isNewUser && !isDormant) {
+            console.log("Démarrage de la génération automatique de revenus");
+            generateAutomaticRevenue(true).catch(err => {
+              console.error("Erreur lors de la génération automatique:", err);
+            });
+          }
+        }, 10000);
+        
+        return () => clearTimeout(startTimer);
+      }
+    } catch (error) {
+      console.error("Erreur dans l'effet useDashboardState:", error);
     }
   }, [userData, isNewUser, isDormant, isBotActive, isChecking, generateAutomaticRevenue]);
   
@@ -100,7 +112,7 @@ export const useDashboardState = () => {
     handleWithdrawal,
     lastSessionTimestamp,
     forceRefresh,
-    isLoading,
+    isLoading: isLoading || isChecking,
     isBotActive: sessionBotActive || isBotActive,
     dailyLimitProgress
   };

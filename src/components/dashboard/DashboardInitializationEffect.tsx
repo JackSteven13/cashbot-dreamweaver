@@ -30,6 +30,7 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
   const initializationDone = useRef(false);
   const navigationDone = useRef(false);
   const initializationAttempted = useRef(false);
+  const maxInitializationAttempts = useRef(0);
   
   // Mettre à jour la référence du chemin de façon stable
   useEffect(() => {
@@ -38,31 +39,61 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
 
   // Effet d'initialisation - exécuté une seule fois avec protection contre les boucles
   useEffect(() => {
-    // Ne jamais réinitialiser si déjà fait
-    if (initializationDone.current || initializationAttempted.current) {
+    // Ne pas réinitialiser plusieurs fois dans la même session
+    if (initializationDone.current) {
+      console.log("Initialisation déjà terminée, ignoré");
       return;
     }
     
-    // Marquer que nous avons tenté l'initialisation pour éviter les tentatives multiples
+    // Protection contre les tentatives infinies
+    if (maxInitializationAttempts.current > 5) {
+      console.log("Trop de tentatives d'initialisation, on force l'initialisation");
+      initialRenderComplete.current = true;
+      initializationDone.current = true;
+      setIsInitialized(true);
+      return;
+    }
+    
+    // Marquer que nous avons tenté l'initialisation
     initializationAttempted.current = true;
+    maxInitializationAttempts.current++;
     
     // L'initialisation n'est sécuritaire que lorsque nous avons les données utilisateur
-    // ET que les chargements initiaux sont terminés
     if (!isAuthChecking && !isLoading && userData && userData.username) {
       console.log("Initialisation du dashboard avec les données utilisateur:", userData.username);
       
-      // Marquer l'initialisation comme complète pour éviter de futurs re-rendus
+      // Marquer l'initialisation comme complète
       initialRenderComplete.current = true;
       initializationDone.current = true;
       setIsInitialized(true);
       
-      // Définir un délai pour réinitialiser le flag d'initialisation après un certain temps
-      // pour permettre une potentielle réinitialisation future
+      // Force la sélection du bon élément dans la navigation
+      if (pathname.includes('referrals')) {
+        setSelectedNavItem('referrals');
+      } else if (pathname.includes('transactions')) {
+        setSelectedNavItem('transactions');
+      } else {
+        setSelectedNavItem('dashboard');
+      }
+    } else {
+      // Si les conditions ne sont pas remplies, on programme une nouvelle tentative
       setTimeout(() => {
-        initializationAttempted.current = false;
-      }, 30000); // 30 secondes
+        console.log("Nouvelle tentative d'initialisation...");
+      }, 500); 
     }
-  }, [isAuthChecking, isLoading, userData, initialRenderComplete]);
+    
+    // Définir un délai pour forcer l'initialisation après un certain temps
+    const forceInitTimeout = setTimeout(() => {
+      if (!initializationDone.current) {
+        console.log("Forçage de l'initialisation après timeout");
+        initialRenderComplete.current = true;
+        initializationDone.current = true;
+        setIsInitialized(true);
+      }
+    }, 3000); // 3 secondes maximum
+    
+    return () => clearTimeout(forceInitTimeout);
+  }, [isAuthChecking, isLoading, userData, initialRenderComplete, pathname, setSelectedNavItem]);
 
   // Effet de navigation isolé - s'exécute uniquement lorsque l'initialisation est terminée
   useEffect(() => {
@@ -72,12 +103,20 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
     const currentPath = stablePathRef.current;
     
     // Exécuter uniquement lorsque le chemin est dashboard et pas déjà fait
-    if (currentPath === "/dashboard" && !navigationDone.current) {
+    if (currentPath.includes('/dashboard') && !navigationDone.current) {
       // Utiliser setTimeout pour décaler l'exécution et éviter les conflits avec d'autres effets
       const timerId = setTimeout(() => {
         if (userData && userData.username) {
-          console.log("Définition de l'élément de navigation sélectionné sur dashboard");
-          setSelectedNavItem('dashboard');
+          console.log("Définition de l'élément de navigation sélectionné selon le chemin");
+          
+          if (currentPath.includes('/referrals')) {
+            setSelectedNavItem('referrals');
+          } else if (currentPath.includes('/transactions')) {
+            setSelectedNavItem('transactions');
+          } else {
+            setSelectedNavItem('dashboard');
+          }
+          
           navigationDone.current = true;
         }
       }, 100);
@@ -86,11 +125,9 @@ const DashboardInitializationEffect: React.FC<DashboardInitializationEffectProps
     }
     
     // Réinitialiser le flag de navigation lorsque le chemin change
-    return () => {
-      if (stablePathRef.current !== "/dashboard") {
-        navigationDone.current = false;
-      }
-    };
+    if (stablePathRef.current !== currentPath) {
+      navigationDone.current = false;
+    }
   }, [isInitialized, userData, setSelectedNavItem]);
 
   return null;
