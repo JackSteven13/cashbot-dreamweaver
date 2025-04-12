@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { InfoCircle } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
@@ -12,7 +12,7 @@ const TransactionEmptyState: React.FC<TransactionEmptyStateProps> = ({ isNewUser
   return (
     <div className="flex flex-col items-center justify-center py-10 px-4 text-center bg-slate-50 dark:bg-slate-800/50 rounded-lg">
       <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/20 mb-4">
-        <InfoCircle className="h-6 w-6 text-blue-500 dark:text-blue-400" />
+        <Info className="h-6 w-6 text-blue-500 dark:text-blue-400" />
       </div>
       
       {isNewUser ? (

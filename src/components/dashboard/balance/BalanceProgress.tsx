@@ -1,72 +1,85 @@
 
 import React, { useEffect, useState } from 'react';
 import { Progress } from '@/components/ui/progress';
+import { Gauge } from 'lucide-react';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
+import balanceManager from '@/utils/balance/balanceManager';
+import { motion } from 'framer-motion';
 
 interface BalanceProgressProps {
-  value: number;
-  max: number;
-  subscription: string;
+  subscription?: string;
+  dailySessionCount?: number;
+  dailyLimitProgress?: number;
+  dailyGains?: number;
 }
 
-const BalanceProgress: React.FC<BalanceProgressProps> = ({ value, max, subscription }) => {
-  const [progress, setProgress] = useState(0);
+const BalanceProgress: React.FC<BalanceProgressProps> = ({
+  subscription = 'freemium',
+  dailySessionCount = 0,
+  dailyLimitProgress = 0,
+  dailyGains = 0,
+}) => {
+  const [limitProgress, setLimitProgress] = useState<number>(dailyLimitProgress || 0);
+  const [currentGains, setCurrentGains] = useState<number>(dailyGains || 0);
+  
+  // Calculate daily limit based on subscription
+  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
   useEffect(() => {
-    // Calculer le pourcentage de progression
-    const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
+    // Set initial progress
+    const initialProgress = Math.min(100, ((dailyGains || 0) / dailyLimit) * 100);
+    setLimitProgress(initialProgress);
+    setCurrentGains(dailyGains || 0);
     
-    // Animer la progression
-    const timer = setTimeout(() => {
-      setProgress(percentage);
-    }, 100);
+    // Listen for updates to daily gains
+    const handleDailyGainsUpdate = (event: Event) => {
+      if ('detail' in event) {
+        const { gains } = (event as CustomEvent).detail;
+        const newProgress = Math.min(100, (gains / dailyLimit) * 100);
+        setLimitProgress(newProgress);
+        setCurrentGains(gains);
+      }
+    };
     
-    return () => clearTimeout(timer);
-  }, [value, max]);
-  
-  // Déterminer la couleur de la barre de progression selon l'abonnement
-  const getProgressColor = () => {
-    if (progress > 80) return 'bg-red-500';
+    window.addEventListener('dailyGains:updated', handleDailyGainsUpdate);
+    window.addEventListener('dailyGains:reset', () => {
+      setLimitProgress(0);
+      setCurrentGains(0);
+    });
     
-    switch (subscription) {
-      case 'elite':
-        return 'bg-purple-600';
-      case 'gold':
-        return 'bg-amber-500';
-      case 'starter':
-      case 'alpha':
-        return 'bg-blue-500';
-      case 'freemium':
-      default:
-        return 'bg-green-500';
+    // Initial calculation
+    const storedGains = balanceManager.getDailyGains();
+    if (storedGains > 0) {
+      const progress = Math.min(100, (storedGains / dailyLimit) * 100);
+      setLimitProgress(progress);
+      setCurrentGains(storedGains);
     }
-  };
-  
-  // Obtenir le texte de la limite selon l'abonnement
-  const getLimitText = () => {
-    switch (subscription) {
-      case 'elite':
-        return 'Limite Élite';
-      case 'gold':
-        return 'Limite Gold';
-      case 'starter':
-      case 'alpha':
-        return 'Limite Starter';
-      case 'freemium':
-      default:
-        return 'Limite Gratuite';
-    }
-  };
+    
+    return () => {
+      window.removeEventListener('dailyGains:updated', handleDailyGainsUpdate);
+      window.removeEventListener('dailyGains:reset', () => {});
+    };
+  }, [dailyLimit, dailyGains, subscription]);
   
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{value} / {max} sessions</span>
-        <span>{getLimitText()}</span>
+    <div className="mb-6 animate-fadeIn">
+      <div className="flex justify-between mb-2">
+        <span className="text-sm font-medium flex items-center">
+          <Gauge className="w-4 h-4 mr-1.5 text-blue-500" />
+          Limite quotidienne ({subscription})
+        </span>
+        <motion.span 
+          className="text-sm font-medium"
+          initial={{ opacity: 0.5 }}
+          animate={{ opacity: 1 }}
+          key={currentGains}
+        >
+          {currentGains.toFixed(2)}€ / {dailyLimit}€
+        </motion.span>
       </div>
       <Progress 
-        value={progress} 
+        value={limitProgress} 
         className="h-2" 
-        indicatorClassName={getProgressColor()}
       />
     </div>
   );

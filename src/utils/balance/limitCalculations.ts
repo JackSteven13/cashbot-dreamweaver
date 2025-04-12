@@ -23,3 +23,14 @@ export function getMaxSessionsForSubscription(subscription: string): number {
 export function formatPrice(price: number): string {
   return `${price.toFixed(2)}€`;
 }
+
+/**
+ * Calcule le prix au prorata en fonction du temps restant dans le mois
+ */
+export function calculateProratedPrice(basePrice: number): number {
+  const today = new Date();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const daysRemaining = daysInMonth - today.getDate();
+  
+  return Math.max((basePrice * daysRemaining) / daysInMonth, basePrice * 0.1);
+}
