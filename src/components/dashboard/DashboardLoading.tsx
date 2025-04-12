@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 const DashboardLoading: FC = () => {
   const [loadingPhase, setLoadingPhase] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [phasesComplete, setPhasesComplete] = useState(false);
   
   const loadingMessages = [
     "Initialisation du système...",
@@ -15,27 +16,39 @@ const DashboardLoading: FC = () => {
   
   // Effet pour faire avancer les phases de chargement progressivement
   useEffect(() => {
+    // Ne pas créer de nouveaux timers si toutes les phases sont terminées
+    if (phasesComplete) return;
+    
     const timer = setTimeout(() => {
       if (loadingPhase < loadingMessages.length - 1) {
         setLoadingPhase(prev => prev + 1);
-        setProgress(0);
+        setProgress(0); // Réinitialiser le progrès pour la nouvelle phase
+      } else {
+        // Marquer toutes les phases comme terminées
+        setPhasesComplete(true);
+        setProgress(100); // Fixer le progrès à 100% pour la dernière phase
       }
-    }, 1200);
+    }, 1800); // Augmenter le délai entre les phases pour une meilleure expérience
     
     return () => clearTimeout(timer);
-  }, [loadingPhase, loadingMessages.length]);
+  }, [loadingPhase, loadingMessages.length, phasesComplete]);
   
   // Effet pour animer la barre de progression
   useEffect(() => {
+    // Si toutes les phases sont terminées, ne pas créer de nouveaux intervalles
+    if (phasesComplete) return;
+    
     const interval = setInterval(() => {
       setProgress(prev => {
-        if (prev >= 100) return 0;
-        return prev + 2;
+        // Limiter la progression à 95% pour les phases en cours
+        // Cela permettra au dernier effet de fixer à 100% quand tout est prêt
+        if (prev >= 95) return 95;
+        return prev + 1.5; // Progression plus lente et plus fluide
       });
-    }, 50);
+    }, 80); // Intervalle plus long pour une progression plus fluide
     
     return () => clearInterval(interval);
-  }, []);
+  }, [phasesComplete]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#0a0a20] px-4">

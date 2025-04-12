@@ -1,138 +1,90 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { UserData } from '@/types/userData';
-import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
-import { getDailyGains } from '@/utils/balance/balanceManager';
+import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 
-// Constantes pour les revenus automatiques
-const BOT_INTERVAL_MS = 25000; // 25 secondes entre chaque génération automatique
-const MIN_GAIN = 0.01;
-const MAX_GAIN = 0.05;
-
-/**
- * Hook pour gérer la génération automatique de revenus
- */
 export const useAutomaticRevenue = (
-  userData: UserData | null,
-  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>,
+  userData: UserData | null, 
+  updateBalance: (gain: number, report: string, forceUpdate: boolean) => Promise<void>,
   isNewUser: boolean
 ) => {
-  // États pour le suivi du bot
   const [isBotActive, setIsBotActive] = useState(false);
   const [dailyLimitProgress, setDailyLimitProgress] = useState(0);
   
-  // Référence pour le timer
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastGenerationRef = useRef<number>(0);
-  
-  // Vérifier et mettre à jour la progression de la limite quotidienne
+  // Calcul du pourcentage de la limite atteinte
   useEffect(() => {
-    if (!userData) return;
-    
-    // Calcul de la progression
-    const dailyGains = getDailyGains();
-    const subscription = userData.subscription || 'freemium';
-    const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    
-    // Mettre à jour la progression
-    const progress = Math.min(100, (dailyGains / dailyLimit) * 100);
-    setDailyLimitProgress(progress);
-    
-    // Déterminer si le bot doit être actif
-    const shouldBotBeActive = progress < 100 && !isNewUser;
-    setIsBotActive(shouldBotBeActive);
-    
-    // Enregistrer l'état du bot dans le stockage local
-    try {
-      localStorage.setItem('botActive', shouldBotBeActive.toString());
-    } catch (e) {
-      console.error('Erreur lors de l\'enregistrement de l\'état du bot:', e);
-    }
-  }, [userData, isNewUser]);
-  
-  // Fonction pour générer des revenus automatiques
-  const generateAutomaticRevenue = useCallback(async (force = false): Promise<void> => {
-    if (!userData || isNewUser) return;
-    
-    // Vérifier si le bot est actif
-    if (!isBotActive && !force) return;
-    
-    // Vérifier si la limite quotidienne est atteinte
-    if (dailyLimitProgress >= 100) {
-      console.log('Limite quotidienne atteinte, pas de génération automatique');
+    if (!userData || isNewUser) {
+      setDailyLimitProgress(0);
       return;
     }
     
-    // Vérifier si nous avons généré récemment
-    const now = Date.now();
-    if (now - lastGenerationRef.current < BOT_INTERVAL_MS && !force) {
-      console.log('Génération trop rapprochée, attente...');
-      return;
+    const effectiveSub = getEffectiveSubscription(userData.subscription);
+    const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    
+    // Calculer les gains quotidiens à partir des transactions du jour
+    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const todaysTransactions = userData.transactions.filter(tx => 
+      tx.date && tx.date.startsWith(today) && (tx.gain || 0) > 0
+    );
+    const todaysGains = todaysTransactions.reduce((sum, tx) => sum + (tx.gain || 0), 0);
+    
+    // Calculer le pourcentage de la limite quotidienne
+    const percentage = Math.min(100, (todaysGains / limit) * 100);
+    setDailyLimitProgress(percentage);
+    
+    // Si le pourcentage atteint 100%, désactiver le bot automatiquement
+    if (percentage >= 100 && isBotActive) {
+      setIsBotActive(false);
+      console.log("Désactivation automatique du bot : limite quotidienne atteinte");
     }
-    
-    // Générer un gain aléatoire
-    const subscription = userData.subscription || 'freemium';
-    let gainMultiplier = 1;
-    
-    // Ajuster le multiplicateur selon l'abonnement
-    switch (subscription) {
-      case 'gold':
-        gainMultiplier = 2.5;
-        break;
-      case 'elite':
-        gainMultiplier = 4;
-        break;
-      case 'starter':
-        gainMultiplier = 1.5;
-        break;
-      default:
-        gainMultiplier = 1;
-    }
-    
-    // Calculer le gain
-    const baseGain = MIN_GAIN + Math.random() * (MAX_GAIN - MIN_GAIN);
-    const adjustedGain = parseFloat((baseGain * gainMultiplier).toFixed(2));
-    
-    try {
-      // Mettre à jour le solde
-      await updateBalance(
-        adjustedGain,
-        `Bot: ${subscription} - Analyse automatique`,
-        true
-      );
-      
-      // Mettre à jour le timestamp
-      lastGenerationRef.current = now;
-      
-      console.log(`Revenu automatique généré: ${adjustedGain}€`);
-    } catch (error) {
-      console.error('Erreur lors de la génération de revenus automatiques:', error);
-    }
-  }, [userData, isNewUser, isBotActive, dailyLimitProgress, updateBalance]);
+  }, [userData, isBotActive, isNewUser]);
   
-  // Configurer le timer pour la génération automatique
+  // Écouter les événements externes qui modifient l'état du bot
   useEffect(() => {
-    // Nettoyer tout timer existant
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    
-    // Si le bot est actif, démarrer le timer
-    if (isBotActive && !isNewUser) {
-      timerRef.current = setInterval(() => {
-        generateAutomaticRevenue();
-      }, BOT_INTERVAL_MS);
-    }
-    
-    // Nettoyage
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+    const handleBotStatusChange = (event: CustomEvent) => {
+      const isActive = event.detail?.active;
+      if (typeof isActive === 'boolean') {
+        console.log(`Mise à jour de l'état du bot dans useAutomaticRevenue: ${isActive ? 'actif' : 'inactif'}`);
+        setIsBotActive(isActive);
       }
     };
-  }, [isBotActive, isNewUser, generateAutomaticRevenue]);
+    
+    window.addEventListener('bot:status-change' as any, handleBotStatusChange);
+    window.addEventListener('bot:external-status-change' as any, handleBotStatusChange);
+    
+    return () => {
+      window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
+      window.removeEventListener('bot:external-status-change' as any, handleBotStatusChange);
+    };
+  }, []);
+  
+  // Fonction de génération de revenus automatiques
+  const generateAutomaticRevenue = useCallback(async (forceUpdate = false) => {
+    if (!userData || isNewUser || !isBotActive) {
+      return;
+    }
+    
+    try {
+      // Générer un gain aléatoire basé sur le type d'abonnement
+      const minGain = 0.01;
+      const maxGain = 0.15;
+      const gain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
+      
+      // Créer un rapport pour la transaction
+      const report = `Analyse automatique de contenu`;
+      
+      // Mettre à jour le solde avec le gain généré
+      await updateBalance(gain, report, forceUpdate);
+      
+      console.log(`Revenu automatique généré: ${gain}€`);
+      
+      // Planifier la prochaine génération
+      return true;
+    } catch (error) {
+      console.error("Erreur lors de la génération de revenus automatiques:", error);
+      return false;
+    }
+  }, [userData, isNewUser, isBotActive, updateBalance]);
   
   return {
     isBotActive,

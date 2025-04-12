@@ -74,7 +74,7 @@ export const initialize = (balance, userId = null) => {
 /**
  * Met à jour le solde local
  */
-const updateBalance = (amount: number): number => {
+export const updateBalance = (amount: number): number => {
   try {
     // Pour un gain, ajouter au solde existant
     if (amount > 0) {
@@ -115,7 +115,7 @@ const updateBalance = (amount: number): number => {
 /**
  * Force une mise à jour avec un solde spécifique
  */
-const forceUpdate = (newBalance: number): number => {
+export const forceUpdate = (newBalance: number): number => {
   try {
     currentBalance = newBalance;
     
@@ -142,7 +142,7 @@ const forceUpdate = (newBalance: number): number => {
 /**
  * Réinitialise complètement le solde
  */
-const resetBalance = (): void => {
+export const resetBalance = (): void => {
   currentBalance = 0;
   
   try {
@@ -179,14 +179,14 @@ export const cleanupUserBalanceData = (): void => {
 /**
  * Réinitialise uniquement les compteurs quotidiens
  */
-const resetDailyCounters = (): void => {
+export const resetDailyCounters = (): void => {
   resetDailyGains();
 };
 
 /**
  * Ajoute une transaction à la base de données
  */
-const addTransaction = async (userId: string, gain: number, report: string): Promise<boolean> => {
+export const addTransaction = async (userId: string, gain: number, report: string): Promise<boolean> => {
   try {
     // Format transaction date as YYYY-MM-DD
     const today = new Date().toISOString().split('T')[0];
@@ -212,7 +212,7 @@ const addTransaction = async (userId: string, gain: number, report: string): Pro
 /**
  * Synchronise le solde avec la base de données
  */
-const syncWithDatabase = async (): Promise<boolean> => {
+export const syncWithDatabase = async (): Promise<boolean> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id) {
@@ -267,10 +267,11 @@ try {
   console.error("Erreur lors de l'initialisation du solde:", e);
 }
 
+// Exporter les fonctions de suivi des gains quotidiens
 export { getDailyGains, addDailyGain, resetDailyGains };
 
-// Exporter explicitement les méthodes - This fixes the callable expression issue
-export default {
+// Créer un objet balanceManager avec toutes les méthodes
+const balanceManager = {
   updateBalance,
   forceUpdate,
   resetBalance,
@@ -283,3 +284,6 @@ export default {
   syncWithDatabase,
   cleanupUserBalanceData
 };
+
+// Exporter explicitement les méthodes et l'objet par défaut
+export default balanceManager;

@@ -1,46 +1,45 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { UserData } from '@/types/userData';
-import balanceManager from '@/utils/balance/balanceManager';
 
+/**
+ * Hook pour exécuter des vérifications périodiques sur les données utilisateur
+ */
 export const usePeriodicChecks = (
-  userData: UserData | null, 
-  refreshUserData: () => Promise<void>
+  userData: UserData | null,
+  refreshUserData: () => Promise<boolean>
 ) => {
-  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Configurer des vérifications périodiques pour la synchronisation
+  // Vérification périodique pour maintenir les données à jour
   useEffect(() => {
-    // Ne pas démarrer de synchronisation s'il n'y a pas de données utilisateur
+    // Exécuter uniquement si nous avons déjà des données utilisateur
     if (!userData) return;
     
-    // Synchroniser immédiatement au démarrage
-    const initialTimer = setTimeout(() => {
-      balanceManager.syncWithDatabase();
-    }, 5000);
+    // Configurer la vérification périodique une fois par minute
+    const checkInterval = setInterval(() => {
+      console.log("Vérification périodique des données utilisateur");
+      refreshUserData().then(success => {
+        if (!success) {
+          console.log("Échec de la vérification périodique");
+        }
+      });
+    }, 60000); // Une fois par minute
     
-    // Configurer la synchronisation périodique
-    syncIntervalRef.current = setInterval(() => {
-      // Synchroniser le solde avec la base de données toutes les 5 minutes
-      balanceManager.syncWithDatabase();
-      
-      // Rafraîchir les données utilisateur toutes les 15 minutes
-      const now = new Date();
-      const minutes = now.getMinutes();
-      if (minutes % 15 === 0) {
-        refreshUserData();
-      }
-    }, 300000); // 5 minutes
-    
-    // Nettoyage à la destruction
     return () => {
-      clearTimeout(initialTimer);
-      if (syncIntervalRef.current) {
-        clearInterval(syncIntervalRef.current);
-        syncIntervalRef.current = null;
-      }
+      clearInterval(checkInterval);
     };
   }, [userData, refreshUserData]);
   
-  return null; // Ce hook ne retourne pas d'état
+  // Effet pour surveiller les changements globaux de solde
+  useEffect(() => {
+    const handleBalanceSync = (event: CustomEvent) => {
+      console.log("Synchronisation de solde demandée par un événement externe");
+      refreshUserData();
+    };
+    
+    window.addEventListener('balance:force-sync' as any, handleBalanceSync);
+    
+    return () => {
+      window.removeEventListener('balance:force-sync' as any, handleBalanceSync);
+    };
+  }, [refreshUserData]);
 };
