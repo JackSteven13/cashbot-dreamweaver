@@ -1,96 +1,124 @@
 
 /**
- * Fonction pour animer une mise à jour de solde avec une transition fluide
- * 
- * @param startValue Valeur de départ
- * @param endValue Valeur finale
- * @param duration Durée de l'animation en ms
- * @param onUpdate Fonction appelée à chaque frame avec la valeur actuelle
- * @param easingFn Fonction d'easing (optionnelle)
- * @param onComplete Fonction appelée quand l'animation est terminée
+ * Animates the balance update for a smoother user experience
+ * @param startValue Starting balance value
+ * @param endValue Target balance value
+ * @param duration Animation duration in milliseconds
+ * @param updateCallback Function to update the UI during animation
+ * @param easingFunction Optional easing function
+ * @param onComplete Optional callback when animation completes
  */
 export const animateBalanceUpdate = (
   startValue: number,
   endValue: number,
   duration: number = 1000,
-  onUpdate: (value: number) => void,
-  easingFn: (t: number) => number = (t) => t,
+  updateCallback: (value: number) => void,
+  easingFunction: ((t: number) => number) | undefined = undefined,
   onComplete?: () => void
 ): void => {
-  // Validation des inputs
-  if (typeof startValue !== 'number' || typeof endValue !== 'number') {
-    console.error('animateBalanceUpdate: startValue and endValue must be numbers');
-    return;
-  }
+  // Default easing function (easeOutCubic for smooth deceleration)
+  const defaultEasing = (t: number): number => {
+    return 1 - Math.pow(1 - t, 3);
+  };
 
-  // Si les valeurs sont égales, inutile d'animer
-  if (startValue === endValue) {
-    onUpdate(endValue);
-    if (onComplete) onComplete();
-    return;
-  }
-
-  // Variables de contrôle
+  const easing = easingFunction || defaultEasing;
+  const startTime = performance.now();
   const difference = endValue - startValue;
-  const startTime = Date.now();
-  
-  // Fonction d'animation récursive
-  const animate = () => {
-    // Calculer la progression (0 à 1)
-    const elapsedTime = Date.now() - startTime;
-    let progress = Math.min(elapsedTime / duration, 1);
+
+  // Add money particles effect
+  if (Math.abs(difference) > 0.01) {
+    createMoneyParticles(difference > 0);
+  }
+
+  // Animation function
+  const animate = (currentTime: number): void => {
+    let elapsed = currentTime - startTime;
     
-    // Appliquer la fonction d'easing
-    progress = easingFn(progress);
+    // Ensure we don't exceed duration
+    elapsed = Math.min(elapsed, duration);
     
-    // Calculer la valeur actuelle
-    const currentValue = startValue + difference * progress;
+    // Calculate progress (0 to 1)
+    const progress = elapsed / duration;
     
-    // Appeler le callback avec la valeur arrondie à 2 décimales pour éviter les nombres flottants excessifs
-    const roundedValue = Math.round(currentValue * 100) / 100;
-    onUpdate(roundedValue);
+    // Apply easing
+    const easedProgress = easing(progress);
     
-    // Continuer l'animation si pas terminée
-    if (progress < 1) {
+    // Calculate current value
+    const currentValue = startValue + difference * easedProgress;
+    
+    // Update the UI
+    updateCallback(currentValue);
+    
+    // Continue animation if not complete
+    if (elapsed < duration) {
       requestAnimationFrame(animate);
     } else {
-      // Animation terminée, s'assurer que la valeur finale est exacte
-      onUpdate(endValue);
-      if (onComplete) onComplete();
+      // Ensure final value is exact
+      updateCallback(endValue);
+      
+      // Call completion callback if provided
+      if (onComplete) {
+        onComplete();
+      }
     }
   };
-  
-  // Lancer l'animation
+
+  // Start animation
   requestAnimationFrame(animate);
 };
 
 /**
- * Émet un événement pour créer des particules de monnaie autour d'un élément
- * @param element Élément autour duquel créer les particules
- * @param amount Nombre de particules (défaut: 10)
+ * Creates money particle effects for balance updates
  */
-export const createMoneyParticles = (element: HTMLElement, amount: number = 10) => {
-  // Vérifier si les particules sont désactivées
-  const disableParticles = localStorage.getItem('disableBalanceParticles') === 'true';
-  if (disableParticles) return;
+const createMoneyParticles = (isPositive: boolean = true): void => {
+  // Number of particles to create
+  const particleCount = isPositive ? 8 : 4;
   
-  // Créer un événement personnalisé avec plus d'informations
-  const rect = element.getBoundingClientRect();
-  window.dispatchEvent(
-    new CustomEvent('dashboard:animation', {
-      detail: {
-        type: 'money-particles',
-        element,
-        rect: {
-          x: rect.x,
-          y: rect.y,
-          width: rect.width,
-          height: rect.height
-        },
-        amount
+  // Get balance display element
+  const balanceElement = document.querySelector('.balance-display');
+  if (!balanceElement) return;
+  
+  // Get position for particles
+  const rect = balanceElement.getBoundingClientRect();
+  const startX = rect.left + rect.width * 0.75;
+  const startY = rect.top + rect.height * 0.5;
+  
+  // Create particles
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement('div');
+    
+    // Set particle content
+    particle.textContent = isPositive ? '+' : '-';
+    particle.className = 'money-particle';
+    
+    // Random position and movement
+    const angle = (Math.random() * Math.PI * 2);
+    const distance = 50 + Math.random() * 100;
+    const tx = Math.cos(angle) * distance;
+    const ty = Math.sin(angle) * distance - 50; // Bias upward
+    
+    // Set random transform variables
+    particle.style.setProperty('--tx', `${tx}px`);
+    particle.style.setProperty('--ty', `${ty}px`);
+    particle.style.setProperty('--r', `${Math.random() * 720 - 360}deg`);
+    
+    // Style based on positive/negative
+    if (isPositive) {
+      particle.style.color = '#4ade80'; // Green for positive
+    } else {
+      particle.style.color = '#f87171'; // Red for negative
+    }
+    
+    // Position and append
+    particle.style.left = `${startX}px`;
+    particle.style.top = `${startY}px`;
+    document.body.appendChild(particle);
+    
+    // Remove after animation completes
+    setTimeout(() => {
+      if (particle.parentNode) {
+        particle.parentNode.removeChild(particle);
       }
-    })
-  );
+    }, 1500);
+  }
 };
-
-export default animateBalanceUpdate;

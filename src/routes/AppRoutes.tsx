@@ -13,6 +13,9 @@ import PaymentSuccess from '../pages/PaymentSuccess';
 import Terms from '../pages/Terms';
 import Contact from '../pages/Contact';
 import ReferralsPage from '../pages/dashboard/ReferralsPage';
+import AnalyticsPage from '../pages/dashboard/AnalyticsPage';
+import TransactionsPage from '../pages/dashboard/TransactionsPage';
+import AnalysisController from '../components/dashboard/analysis/AnalysisController';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -20,8 +23,26 @@ const AppRoutes: React.FC = () => {
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/dashboard/referrals" element={<Dashboard />} />
+      <Route path="/dashboard/*" element={
+        <AnalysisController>
+          <Dashboard />
+        </AnalysisController>
+      } />
+      <Route path="/dashboard/referrals" element={
+        <AnalysisController>
+          <Dashboard />
+        </AnalysisController>
+      } />
+      <Route path="/dashboard/transactions" element={
+        <AnalysisController>
+          <Dashboard />
+        </AnalysisController>
+      } />
+      <Route path="/dashboard/analytics" element={
+        <AnalysisController>
+          <Dashboard />
+        </AnalysisController>
+      } />
       <Route path="/about" element={<About />} />
       <Route path="/offres" element={<Offres />} />
       <Route path="/payment" element={<Payment />} />

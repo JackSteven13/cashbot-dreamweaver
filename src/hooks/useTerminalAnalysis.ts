@@ -9,7 +9,7 @@ export const useTerminalAnalysis = () => {
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
   const [countdownTime, setCountdownTime] = useState<string>('');
-  const [isBackgroundMode, setIsBackgroundMode] = useState(false);
+  const [isBackgroundMode, setIsBackgroundMode] = useState(true); // Always use background mode
 
   // Format countdown time as HH:MM:SS
   const formatCountdown = (milliseconds: number): string => {
@@ -28,64 +28,46 @@ export const useTerminalAnalysis = () => {
     const handleTerminalUpdate = (event: Event) => {
       const customEvent = event as CustomEvent;
       const line = customEvent.detail?.line;
-      const isBackground = customEvent.detail?.background === true;
       
       if (line) {
         setTerminalLines(prev => [...prev, line]);
         setShowAnalysis(true);
-        setIsBackgroundMode(isBackground);
+        setIsBackgroundMode(true); // Always use background mode
       }
     };
 
     // Listen for analysis start events
     const handleAnalysisStart = (event: Event) => {
-      const customEvent = event as CustomEvent;
+      // Always force background mode to prevent full page reloads
+      setShowAnalysis(true);
+      setIsBackgroundMode(true);
+      setAnalysisComplete(false);
+      setTerminalLines([
+        'Initialisation de l\'analyse réseau...',
+      ]);
       
-      // CRITIQUE: Toujours vérifier le flag background - correction cruciale pour éviter l'écran de chargement
-      const isBackgroundProcess = customEvent.detail?.background === true;
-      
-      // N'afficher l'UI d'analyse que si elle ne s'exécute pas en arrière-plan
-      if (isBackgroundProcess) {
-        console.log("Skipping loading screen for background analysis-start event");
-        setShowAnalysis(true);
-        setIsBackgroundMode(true);
-        setAnalysisComplete(false);
-        setTerminalLines([
-          'Initialisation de l\'analyse réseau...',
-        ]);
-      } else {
-        // Lorsque l'utilisateur lance l'analyse manuellement, nous utilisons aussi le mode arrière-plan
-        // pour éviter la page de chargement intermédiaire
-        console.log("Using background mode for manual analysis to improve UX");
-        setShowAnalysis(true);
-        setIsBackgroundMode(true); // Forcer le mode arrière-plan pour toutes les analyses
-        setAnalysisComplete(false);
-        setTerminalLines([
-          'Initialisation de l\'analyse réseau...',
-        ]);
-      }
+      console.log("Using background mode for all analyses to prevent reload");
     };
 
     // Listen for analysis complete events
     const handleAnalysisComplete = (event: Event) => {
       const customEvent = event as CustomEvent;
       const gain = customEvent.detail?.gain || 0;
-      const isBackgroundProcess = customEvent.detail?.background === true;
       
-      // Pour les processus en arrière-plan et au premier plan, mettre à jour le terminal
+      // Update terminal with success message
       setTerminalLines(prev => [
         ...prev, 
         `Analyse terminée avec succès! Revenus générés: ${gain.toFixed(2)}€`
       ]);
       setAnalysisComplete(true);
-      setIsBackgroundMode(true); // Toujours utiliser le mode arrière-plan
+      setIsBackgroundMode(true); // Always use background mode
       
-      // Masquer le terminal après 3 secondes pour améliorer l'expérience utilisateur
+      // Hide terminal after delay for better UX
       const hideDelay = 3000;
       
       setTimeout(() => {
         setShowAnalysis(false);
-        // Réinitialiser les lignes du terminal après la fin de l'animation
+        // Reset terminal lines after animation ends
         setTimeout(() => {
           setTerminalLines([]);
           setAnalysisComplete(false);
@@ -98,11 +80,10 @@ export const useTerminalAnalysis = () => {
       const customEvent = event as CustomEvent;
       const subscription = customEvent.detail?.subscription || 'freemium';
       const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-      const isBackground = customEvent.detail?.background === true;
       
       setLimitReached(true);
       setShowAnalysis(true);
-      setIsBackgroundMode(isBackground || true); // Toujours utiliser le mode arrière-plan
+      setIsBackgroundMode(true); // Always use background mode
       setTerminalLines([
         `Limite journalière de ${dailyLimit}€ atteinte.`,
         'Le bot est temporairement hors-service.'
