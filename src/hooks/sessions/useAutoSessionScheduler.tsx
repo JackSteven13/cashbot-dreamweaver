@@ -1,4 +1,3 @@
-
 import { useRef, useEffect } from 'react';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
@@ -48,8 +47,9 @@ export const useAutoSessionScheduler = (
       console.error("Failed to read persisted balance:", e);
     }
     
-    // Get the daily limit for the current subscription
-    const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    // Get the daily limit for the current subscription - Add null check
+    const subscriptionType = userData?.subscription || 'freemium';
+    const dailyLimit = SUBSCRIPTION_LIMITS[subscriptionType as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
     // Skip all auto sessions if bot is not active
     if (!isBotActive) {
@@ -127,7 +127,7 @@ export const useAutoSessionScheduler = (
       window.removeEventListener('balance:local-update' as any, handleBalanceUpdate);
       window.removeEventListener('balance:force-update' as any, handleBalanceUpdate);
     };
-  }, [isBotActive, userData.subscription, generateAutomaticRevenue, todaysGainsRef]);
+  }, [isBotActive, userData?.subscription, generateAutomaticRevenue, todaysGainsRef]);
 
   // Exposer les valeurs de référence de manière sécurisée
   return {

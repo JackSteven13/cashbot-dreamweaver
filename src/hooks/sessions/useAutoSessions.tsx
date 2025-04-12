@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useAutoRevenueGenerator } from './useAutoRevenueGenerator';
 import { useAutoSessionScheduler } from './useAutoSessionScheduler';
@@ -19,6 +18,9 @@ export const useAutoSessions = (
   // References to ensure data stability
   const todaysGainsRef = useRef(0);
   const lastKnownBalanceRef = useRef(userData?.balance || 0);
+  
+  // Create a safe userData object with default values
+  const safeUserData = userData || { subscription: 'freemium', profile: { id: null }, balance: 0 };
   
   // State to track bot activity
   const [isBotActive, setIsBotActive] = useState(true);
@@ -62,7 +64,8 @@ export const useAutoSessions = (
       todaysGainsRef.current = actualDailyGains;
       
       // Calculer le pourcentage atteint pour la limite quotidienne
-      const dailyLimit = SUBSCRIPTION_LIMITS[userData?.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      const subscription = safeUserData.subscription || 'freemium';
+      const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       const percentProgress = Math.min(100, (actualDailyGains / dailyLimit) * 100);
       setDailyLimitProgress(percentProgress);
       
@@ -71,13 +74,13 @@ export const useAutoSessions = (
         setIsBotActive(false);
         botActiveRef.current = false;
         setShowLimitAlert(true);
-        localStorage.setItem(`botActive_${userData?.profile?.id}`, 'false');
+        localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'false');
       }
     }
   };
 
   // Custom hooks for automatic generation logic
-  const { getDailyLimit } = useDailyLimits(userData?.subscription);
+  const { getDailyLimit } = useDailyLimits(safeUserData.subscription);
   
   // Automatic session scheduler
   const { 
@@ -85,7 +88,7 @@ export const useAutoSessions = (
     getLastAutoSessionTime,
     isInitialSessionExecuted,
     getCurrentPersistentBalance
-  } = useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
+  } = useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, safeUserData, isBotActive);
   
   // Synchronisez le solde avec la base de données périodiquement
   useEffect(() => {

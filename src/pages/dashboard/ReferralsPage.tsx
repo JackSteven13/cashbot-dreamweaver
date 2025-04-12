@@ -16,7 +16,7 @@ interface EnhancedReferral {
   status: string;
   created_at: string;
   updated_at?: string;
-  active?: boolean;
+  active: boolean;
   commission_earned?: number;
   username?: string;
   joinDate?: string;

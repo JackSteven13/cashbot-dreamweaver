@@ -32,11 +32,22 @@ export const useDashboardState = () => {
     resetDailyCounters
   } = useUserData();
   
+  // Ensure userData is never null for downstream hooks
+  const safeUserData = userData || {
+    username: '',
+    balance: 0,
+    subscription: 'freemium',
+    referrals: [],
+    referralLink: '',
+    transactions: [],
+    dailySessionCount: 0
+  };
+  
   // Vérification de la dormance du compte
   const { isDormant, isChecking, dormancyData, handleReactivate } = 
-    useDormancyCheck(userData, showLimitAlert);
+    useDormancyCheck(safeUserData, showLimitAlert);
   
-  // Gestion des sessions - Pass userData directly and other required parameters
+  // Gestion des sessions - Pass safe userData directly and other required parameters
   const {
     isStartingSession,
     handleStartSession,
@@ -45,7 +56,7 @@ export const useDashboardState = () => {
     localBalance,
     isBotActive: sessionBotActive
   } = useDashboardSessions({
-    userData,
+    userData: safeUserData,
     dailySessionCount,
     incrementSessionCount,
     updateBalance,
@@ -76,7 +87,7 @@ export const useDashboardState = () => {
     selectedNavItem,
     setSelectedNavItem,
     renderKey,
-    userData,
+    userData: safeUserData,
     isNewUser,
     dailySessionCount,
     showLimitAlert,
