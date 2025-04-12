@@ -4,6 +4,7 @@ import { usePaymentPage } from '@/hooks/payment/usePaymentPage';
 import PaymentLoading from '@/components/payment/PaymentLoading';
 import PaymentLayout from '@/components/payment/PaymentLayout';
 import PaymentCard from '@/components/payment/PaymentCard';
+import { PlanType } from '@/hooks/payment/types';
 
 const Payment = () => {
   const {
@@ -26,7 +27,7 @@ const Payment = () => {
   return (
     <PaymentLayout>
       <PaymentCard 
-        selectedPlan={selectedPlan}
+        selectedPlan={selectedPlan as PlanType}
         currentSubscription={currentSubscription}
         useStripeCheckout={useStripePayment}
         isStripeProcessing={isStripeProcessing}

@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { Users, Link2Icon, Gift } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatPrice } from '@/utils/balance/limitCalculations';
+import { Users } from 'lucide-react';
 
 interface ReferralSuggestionProps {
   referralLink: string;
@@ -9,70 +10,37 @@ interface ReferralSuggestionProps {
   withdrawalThreshold?: number;
 }
 
-export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
-  referralLink,
+export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({ 
+  referralLink, 
   referralCount = 0,
   withdrawalThreshold = 200
 }) => {
-  const handleStartReferral = () => {
-    // Copier le lien dans le presse-papiers au lieu de naviguer
-    navigator.clipboard.writeText(referralLink)
-      .then(() => {
-        toast({
-          title: "Lien de parrainage copié !",
-          description: "Partagez-le avec vos amis pour gagner des commissions.",
-          className: "bg-green-500 text-white"
-        });
-      })
-      .catch(() => {
-        toast({
-          title: "Erreur",
-          description: "Impossible de copier le lien. Veuillez réessayer.",
-          variant: "destructive"
-        });
-      });
-  };
-
+  // Calculer le nombre approximatif de parrainages nécessaires pour atteindre le seuil
+  const estimatedReferralsNeeded = Math.max(0, Math.ceil((withdrawalThreshold - 0) / 50));
+  
   return (
-    <div className="relative z-10 pb-6 pt-2 sm:pt-0 hover:-translate-y-0.5 transition-transform duration-300">
-      {/* Affichage du parrainage */}
-      <div className="bg-blue-900 p-4 rounded-lg shadow-md relative overflow-hidden">
-        <Users className="absolute -right-2 -top-2 text-blue-800 opacity-10" size={60} />
-        
-        <div className="flex flex-col space-y-4">
-          <div>
-            <h4 className="text-blue-300 font-medium mb-1 flex items-center">
-              <Users size={16} className="mr-1.5" />
-              Gagnez plus avec le parrainage
-            </h4>
-            
-            <p className="text-sm text-blue-100">
-              Parrainez des amis et gagnez <span className="font-semibold">20-50%</span> de 
-              leurs abonnements annuels, automatiquement.
-            </p>
-          </div>
-          
-          <div className="bg-blue-50 text-blue-800 p-3 rounded">
-            <div className="flex items-start">
-              <div className="mr-2 mt-0.5 text-amber-500">
-                <Gift className="h-5 w-5" />
-              </div>
-              <p className="text-sm">
-                Atteignez votre seuil de retrait de <span className="font-bold">{withdrawalThreshold}€</span> plus 
-                rapidement grâce aux revenus récurrents de vos filleuls !
-              </p>
-            </div>
-          </div>
-          
-          <button 
-            onClick={handleStartReferral}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded flex items-center justify-center transition-colors"
-          >
-            <span>Commencer à parrainer</span>
-            <Link2Icon size={18} className="ml-2" />
-          </button>
+    <Card className="bg-white dark:bg-slate-800 border-t-4 border-t-purple-500">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg flex items-center">
+          <Users className="h-5 w-5 mr-2 text-purple-500" />
+          Programme de parrainage
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+          {referralCount > 0 ? (
+            <>Vous avez <span className="font-semibold">{referralCount} filleul{referralCount > 1 ? 's' : ''}</span>. Continuez à inviter des amis pour augmenter vos gains.</>
+          ) : (
+            <>Parrainez environ <span className="font-semibold">{estimatedReferralsNeeded} personne{estimatedReferralsNeeded > 1 ? 's' : ''}</span> pour atteindre le seuil de retrait de {formatPrice(withdrawalThreshold)}.</>
+          )}
+        </p>
+        <div className="text-sm font-medium">
+          Votre lien unique:
         </div>
-      </div>
-    </div>
+        <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm break-all">
+          {referralLink}
+        </div>
+      </CardContent>
+    </Card>
   );
 };

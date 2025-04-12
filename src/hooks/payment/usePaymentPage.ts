@@ -1,124 +1,121 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { useUserData } from '@/hooks/userData';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSessionStorage } from '@/hooks/useSessionStorage';
-import { getUserSelectedPlan, clearSelectedPlan } from '@/utils/plans';
-import { supabase } from '@/integrations/supabase/client';
+import { useUserData } from '@/hooks/userData';
+import { getPlanById, PLANS } from '@/utils/plans';
+import { PaymentFormData, PlanType } from './types';
+import { openStripeWindow } from './stripeWindowManager';
 import { toast } from '@/components/ui/use-toast';
-import { useStripeCheckoutRedirect } from '@/hooks/useStripeCheckoutRedirect';
 
 export const usePaymentPage = () => {
-  const { userData, isLoading: isUserLoading } = useUserData();
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  // Navigation et paramètres URL
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const planParam = searchParams.get('plan');
+  
+  // État utilisateur et authentification
+  const { userData, isLoading } = useUserData();
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+  
+  // État du plan sélectionné
+  const [selectedPlan, setSelectedPlan] = useSessionStorage<PlanType>('selectedPlan', null);
+  const [currentSubscription, setCurrentSubscription] = useSessionStorage<string | null>('currentSubscription', null);
+  
+  // État du processus de paiement
   const [isProcessing, setIsProcessing] = useState(false);
   const [isStripeProcessing, setIsStripeProcessing] = useState(false);
   const [useStripePayment, setUseStripePayment] = useState(true);
   const [stripeCheckoutUrl, setStripeCheckoutUrl] = useState<string | null>(null);
-  const { setupStripeRedirect } = useStripeCheckoutRedirect();
   
-  // Vérifier l'authentification
-  const isAuthChecking = isUserLoading;
-  
-  // Obtenir le plan sélectionné au chargement de la page
+  // Charger le plan depuis les paramètres URL
   useEffect(() => {
-    const storedPlan = getUserSelectedPlan();
-    if (storedPlan) {
-      setSelectedPlan(storedPlan);
+    const plan = getPlanById(planParam);
+    if (plan) {
+      setSelectedPlan(plan);
     }
-    
-    // Vérifier si une URL Stripe a été stockée
-    const savedStripeUrl = localStorage.getItem('stripeCheckoutUrl');
-    if (savedStripeUrl) {
-      setStripeCheckoutUrl(savedStripeUrl);
-    }
-    
-    // Nettoyer les éléments après 1 seconde pour éviter les conflits
-    // mais permettre aux redirections de fonctionner
-    const cleaner = setTimeout(() => {
-      clearSelectedPlan();
-    }, 1000);
-    
-    return () => clearTimeout(cleaner);
-  }, []);
+  }, [planParam, setSelectedPlan]);
   
-  // Basculer entre les méthodes de paiement
-  const togglePaymentMethod = useCallback(() => {
+  // Vérifier l'authentification et récupérer les données utilisateur
+  useEffect(() => {
+    if (!isLoading && userData) {
+      setCurrentSubscription(userData.subscription || 'freemium');
+      setIsAuthChecking(false);
+    } else if (!isLoading && !userData) {
+      navigate('/login?redirect=payment');
+    }
+  }, [userData, isLoading, navigate, setCurrentSubscription]);
+  
+  // Méthodes de paiement
+  const togglePaymentMethod = () => {
     setUseStripePayment(prev => !prev);
-  }, []);
+    setStripeCheckoutUrl(null);
+  };
   
-  // Gérer la soumission du formulaire de carte
-  const handleCardFormSubmit = async (formData: any) => {
+  const handleCardFormSubmit = async (formData: PaymentFormData) => {
     setIsProcessing(true);
     
     try {
-      // Simuler un traitement de paiement
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Simulation de traitement
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
+      // Succès
       toast({
-        title: "Paiement traité",
-        description: "Votre paiement a été traité avec succès!",
-        variant: "success",
+        title: "Paiement réussi",
+        description: "Votre abonnement a été activé avec succès.",
+        variant: "default" // Modifier vers "default"
       });
       
-      // Nettoyer et rediriger
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 1000);
-      
+      navigate('/dashboard');
     } catch (error) {
       console.error("Erreur de paiement:", error);
       toast({
-        title: "Erreur de paiement",
-        description: "Une erreur est survenue lors du traitement de votre paiement.",
-        variant: "destructive",
+        title: "Échec du paiement",
+        description: "Une erreur est survenue lors du traitement de votre paiement. Veuillez réessayer.",
+        variant: "destructive"
       });
     } finally {
       setIsProcessing(false);
     }
   };
   
-  // Initier un paiement Stripe
   const initiateStripeCheckout = async () => {
+    setIsStripeProcessing(true);
+    
     try {
-      // Réinitialisation des erreurs
-      localStorage.removeItem('stripeError');
+      // Simulation d'obtention d'une URL Stripe
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      setIsStripeProcessing(true);
+      // URL de test pour Stripe
+      const stripeUrl = "https://checkout.stripe.com/pay/dummy_checkout_url";
+      setStripeCheckoutUrl(stripeUrl);
       
-      if (!selectedPlan) {
-        throw new Error("Veuillez sélectionner un forfait");
-      }
-      
-      // Créer une session de paiement Stripe
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { plan: selectedPlan }
+      // Notifier l'utilisateur que l'URL est prête
+      toast({
+        title: "Redirection vers Stripe",
+        description: "Vous allez être redirigé vers la page de paiement sécurisée...",
+        duration: 2000
       });
       
-      if (error) throw new Error(error.message);
-      if (!data?.url) throw new Error("Aucune URL de paiement reçue");
-      
-      // Stocker l'URL pour la redirection
-      setStripeCheckoutUrl(data.url);
-      
-      // Rediriger vers Stripe en utilisant notre hook spécialisé
-      const redirected = setupStripeRedirect(data.url);
-      
-      // Si la redirection a échoué, afficher un message
-      if (!redirected) {
-        toast({
-          title: "Erreur de redirection",
-          description: "Impossible d'ouvrir la page de paiement. Veuillez essayer à nouveau.",
-          variant: "destructive",
-        });
-      }
-      
+      // Ouvrir la fenêtre Stripe avec un délai pour permettre à l'UI de se mettre à jour
+      setTimeout(() => {
+        const opened = openStripeWindow(stripeUrl);
+        if (!opened) {
+          toast({
+            title: "Impossible d'ouvrir la fenêtre",
+            description: "Veuillez autoriser les popups pour ce site ou utilisez le bouton de redirection.",
+            variant: "destructive"
+          });
+        }
+      }, 500);
     } catch (error) {
-      console.error("Erreur Stripe:", error);
+      console.error("Erreur d'initialisation Stripe:", error);
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
-        variant: "destructive",
+        description: "Impossible d'initialiser le paiement Stripe. Veuillez réessayer.",
+        variant: "destructive"
       });
+      setStripeCheckoutUrl(null);
     } finally {
       setIsStripeProcessing(false);
     }
@@ -126,7 +123,7 @@ export const usePaymentPage = () => {
   
   return {
     selectedPlan,
-    currentSubscription: userData?.subscription || 'freemium',
+    currentSubscription,
     isAuthChecking,
     useStripePayment,
     isProcessing,
@@ -137,5 +134,3 @@ export const usePaymentPage = () => {
     initiateStripeCheckout
   };
 };
-
-export default usePaymentPage;

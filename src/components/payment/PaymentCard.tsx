@@ -54,6 +54,11 @@ const PaymentCard = ({
     savingsAmount = basePrice - proratedPrice;
   }
 
+  // Fonction pour calculer le prix au prorata
+  function calculateProratedPrice(basePrice: number): number {
+    return basePrice * (daysRemaining / totalDays);
+  }
+
   return (
     <Card className="cyber-card shadow-2xl max-w-[95vw] md:max-w-full mx-auto border border-white/10">
       <CardHeader className="py-4 px-5 md:p-6 bg-gradient-to-r from-blue-900/90 to-indigo-900/90 border-b border-white/10">

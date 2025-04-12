@@ -15,24 +15,25 @@ export const useDashboardState = () => {
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
   
   // Utiliser les hooks de données utilisateur
-  const userData = useUserData();
   const {
-    userData: userDataObj,
+    userData,
     isNewUser,
     dailySessionCount,
     showLimitAlert,
     isLoading,
     isBotActive,
     dailyLimitProgress,
-    userActions,
     generateAutomaticRevenue,
-    refreshUserData
-  } = userData;
-  
-  const { setShowLimitAlert } = userActions;
+    setShowLimitAlert: setShowLimit,
+    refreshUserData,
+    incrementSessionCount,
+    updateBalance,
+    resetBalance,
+    resetDailyCounters
+  } = useUserData();
   
   // Ensure userData is never null for downstream hooks
-  const safeUserData = useMemo(() => userDataObj || {
+  const safeUserData = userData || {
     username: 'Utilisateur',
     balance: 0,
     subscription: 'freemium',
@@ -42,7 +43,7 @@ export const useDashboardState = () => {
     dailySessionCount: 0,
     lastLogin: new Date(),
     registeredAt: new Date()
-  }, [userDataObj]);
+  };
   
   // Vérification de la dormance du compte avec timeout de sécurité
   const { isDormant, isChecking, dormancyData, handleReactivate } = 
@@ -59,10 +60,10 @@ export const useDashboardState = () => {
   } = useDashboardSessions({
     userData: safeUserData,
     dailySessionCount,
-    incrementSessionCount: userActions.incrementSessionCount,
-    updateBalance: userActions.updateBalance,
-    setShowLimitAlert,
-    resetBalance: userActions.resetBalance
+    incrementSessionCount,
+    updateBalance,
+    setShowLimitAlert: setShowLimit,
+    resetBalance
   });
   
   // Force refresh pour les erreurs avec debounce
@@ -74,14 +75,14 @@ export const useDashboardState = () => {
   
   // Démarrer la génération automatique si possible avec des gestions d'erreur
   useEffect(() => {
-    if (!userDataObj) return; // Protection contre null
+    if (!userData) return; // Protection contre null
     
     try {
       // Vérifier si l'utilisateur peut bénéficier de revenus automatiques
       if (!isNewUser && !isDormant && isBotActive && !isChecking) {
         // Initier la première génération automatique après un court délai
         const startTimer = setTimeout(() => {
-          if (userDataObj && !isNewUser && !isDormant) {
+          if (userData && !isNewUser && !isDormant) {
             console.log("Démarrage de la génération automatique de revenus");
             generateAutomaticRevenue(true).catch(err => {
               console.error("Erreur lors de la génération automatique:", err);
@@ -94,8 +95,9 @@ export const useDashboardState = () => {
     } catch (error) {
       console.error("Erreur dans l'effet useDashboardState:", error);
     }
-  }, [userDataObj, isNewUser, isDormant, isBotActive, isChecking, generateAutomaticRevenue]);
+  }, [userData, isNewUser, isDormant, isBotActive, isChecking, generateAutomaticRevenue]);
   
+  // Modifier les types de retour pour éviter les erreurs TS2322
   return {
     selectedNavItem,
     setSelectedNavItem,
@@ -115,7 +117,17 @@ export const useDashboardState = () => {
     forceRefresh,
     isLoading: isLoading || isChecking,
     isBotActive: sessionBotActive || isBotActive,
-    dailyLimitProgress
+    dailyLimitProgress,
+    // Adaptations pour correspondre aux types attendus
+    incrementSessionCount: async (): Promise<void> => {
+      await incrementSessionCount();
+    },
+    updateBalance: async (gain: number, report: string, forceUpdate?: boolean): Promise<void> => {
+      await updateBalance(gain, report, forceUpdate);
+    },
+    resetBalance: async (): Promise<void> => {
+      await resetBalance();
+    }
   };
 };
 

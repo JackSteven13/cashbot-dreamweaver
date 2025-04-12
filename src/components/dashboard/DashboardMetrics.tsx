@@ -54,8 +54,9 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
         subscription={subscription}
         dailySessionCount={dailySessionCount}
         canStartSession={canStartSession}
+        referrals={referrals}
         referralCount={activeReferralCount}
-        referralBonus={referralBonus}
+        withdrawalThreshold={200}
         lastSessionTimestamp={lastSessionTimestamp}
         isBotActive={isBotActive}
       />
