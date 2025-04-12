@@ -1,7 +1,5 @@
 
-import React, { useMemo, useEffect, useState } from 'react';
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { User, ChevronDown } from 'lucide-react';
+import React, { useMemo, useEffect, useState, useRef } from 'react';
 
 interface DashboardHeaderProps {
   username: string;
@@ -15,10 +13,14 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
     return localStorage.getItem('lastKnownUsername') || 'Utilisateur';
   });
   
-  // Mettre à jour le nom affiché quand username change
+  // Référence pour éviter les mises à jour inutiles
+  const initialNameSet = useRef(false);
+  
+  // Mettre à jour le nom affiché quand username change, mais plus intelligemment
   useEffect(() => {
     // Vérifier si le nom d'utilisateur est valide
-    if (username && username !== 'Utilisateur') {
+    if (username && username !== 'Utilisateur' && !initialNameSet.current) {
+      initialNameSet.current = true;
       setDisplayName(username);
       
       // Sauvegarder dans le localStorage pour persistance
@@ -43,12 +45,12 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
   return (
     <header className="sticky top-0 z-10 bg-[#1e3a5f] border-b border-[#2d5f8a]/30">
       <div className="flex items-center justify-between p-4">
-        <h1 className="text-xl font-semibold text-white">
+        <h1 className="text-xl font-semibold text-white truncate">
           {`Bonjour, ${formattedName}`}
         </h1>
         
         <div className="text-sm text-right hidden sm:block">
-          <p className="font-medium text-white">{formattedName}</p>
+          <p className="font-medium text-white truncate">{formattedName}</p>
           <p className="text-blue-200">Abonnement {displaySubscription || 'freemium'}</p>
         </div>
       </div>

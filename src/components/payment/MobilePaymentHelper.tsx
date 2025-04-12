@@ -9,11 +9,7 @@ interface MobilePaymentHelperProps {
   onHelp: () => void;
 }
 
-/**
- * Composant d'aide pour le paiement sur mobile
- * Affiche des instructions si l'utilisateur rencontre des difficultés
- */
-const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({ 
+const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = React.memo(({ 
   isVisible, 
   onHelp 
 }) => {
@@ -43,6 +39,7 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
       </AlertDescription>
     </Alert>
   );
-};
+});
 
+MobilePaymentHelper.displayName = 'MobilePaymentHelper';
 export default MobilePaymentHelper;

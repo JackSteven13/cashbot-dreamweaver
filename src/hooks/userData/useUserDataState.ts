@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { useUserDataFetching } from './useUserDataFetching';
 import { useProfileLoader } from '../useProfileLoader';
@@ -17,11 +17,34 @@ export interface UserFetcherState {
 
 export const useUserDataState = () => {
   // États de base pour les données utilisateur
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(() => {
+    // Tenter de récupérer des données en cache pour une apparence immédiate
+    const cachedName = localStorage.getItem('lastKnownUsername');
+    const cachedSubscription = localStorage.getItem('subscription');
+    
+    if (cachedName) {
+      return {
+        username: cachedName,
+        subscription: cachedSubscription || 'freemium',
+        balance: 0,
+        referrals: [],
+        referralLink: '',
+        transactions: [],
+        profile: {
+          full_name: cachedName,
+          id: 'loading',
+          created_at: new Date()
+        }
+      } as UserData;
+    }
+    
+    return null;
+  });
   const [isNewUser, setIsNewUser] = useState(false);
   const [dailySessionCount, setDailySessionCount] = useState(0);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const dataUpdated = useRef(false);
   
   // Hooks pour charger et gérer les données
   const { loadUserProfile } = useProfileLoader();
@@ -30,11 +53,31 @@ export const useUserDataState = () => {
   // Fonction pour mettre à jour les données utilisateur
   const updateUserData = useCallback((newData: UserData | null): void => {
     if (newData) {
-      setUserData(newData);
+      dataUpdated.current = true;
+      setUserData(prevData => {
+        // Fusionner avec les données précédentes pour éviter les flashs visuels
+        // lors des mises à jour partielles
+        return {
+          ...prevData,
+          ...newData,
+          profile: {
+            ...(prevData?.profile || {}),
+            ...(newData.profile || {})
+          }
+        };
+      });
       
       // Mise à jour du compteur de sessions quotidiennes
       if (typeof newData?.dailySessionCount === 'number') {
         setDailySessionCount(newData.dailySessionCount);
+      }
+      
+      // Mettre à jour le cache pour accélérer les chargements futurs
+      if (newData.profile?.full_name && newData.profile.full_name !== 'Utilisateur') {
+        localStorage.setItem('lastKnownUsername', newData.profile.full_name);
+      }
+      if (newData.subscription) {
+        localStorage.setItem('subscription', newData.subscription);
       }
     }
   }, []);
@@ -74,7 +117,7 @@ export const useUserDataState = () => {
       // Forcer une mise à jour UI si demandé
       if (forceUpdate) {
         window.dispatchEvent(new CustomEvent('balance:force-update', { 
-          detail: { gain, newBalance: userData.balance + gain }
+          detail: { gain, newBalance: (userData.balance || 0) + gain }
         }));
       }
     }
@@ -119,12 +162,14 @@ export const useUserDataState = () => {
     isNewUser,
     dailySessionCount,
     showLimitAlert,
-    isLoading,
+    isLoading: isLoading && !dataUpdated.current, // Ne pas montrer le chargement si on a déjà des données
     isBotActive,
     dailyLimitProgress,
     
     // Actions
     userActions,
+    updateUserData,
+    setIsLoading,
     refreshUserData: fetchUserData,
     generateAutomaticRevenue
   };

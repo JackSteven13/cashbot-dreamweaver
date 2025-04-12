@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DashboardMetrics from './DashboardMetrics';
 import BotControlPanel from './bot/BotControlPanel';
 import { Progress } from '@/components/ui/progress';
@@ -21,7 +21,8 @@ interface DashboardContentProps {
   isBotActive?: boolean;
 }
 
-const DashboardContent: React.FC<DashboardContentProps> = ({
+// Utilisons React.memo pour éviter les re-rendus inutiles
+const DashboardContent: React.FC<DashboardContentProps> = React.memo(({
   userData,
   isStartingSession,
   handleStartSession,
@@ -38,28 +39,38 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   // État local pour suivre la progression de la limite quotidienne
   const [limitProgress, setLimitProgress] = useState<number>(0);
   
+  // Mémoriser la subscription pour éviter les recalculs inutiles
+  const subscription = useMemo(() => 
+    userData?.subscription || 'freemium', 
+    [userData?.subscription]
+  );
+  
+  // Mémoriser la limite quotidienne également
+  const dailyLimit = useMemo(() => 
+    SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5,
+    [subscription]
+  );
+  
   // Calculer la progression de la limite quotidienne
   useEffect(() => {
-    const dailyGains = balanceManager.getDailyGains();
-    const dailyLimit = SUBSCRIPTION_LIMITS[userData?.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    const progressPercentage = Math.min(100, (dailyGains / dailyLimit) * 100);
-    setLimitProgress(progressPercentage);
+    const updateProgress = () => {
+      const dailyGains = balanceManager.getDailyGains();
+      const progressPercentage = Math.min(100, (dailyGains / dailyLimit) * 100);
+      setLimitProgress(progressPercentage);
+    };
+    
+    // Calculer immédiatement
+    updateProgress();
     
     // Écouter les mises à jour des gains quotidiens
-    const handleDailyGainsUpdate = () => {
-      const updatedGains = balanceManager.getDailyGains();
-      const updatedProgress = Math.min(100, (updatedGains / dailyLimit) * 100);
-      setLimitProgress(updatedProgress);
-    };
-    
-    window.addEventListener('dailyGains:updated' as any, handleDailyGainsUpdate);
-    window.addEventListener('dailyGains:reset' as any, handleDailyGainsUpdate);
+    window.addEventListener('dailyGains:updated', updateProgress);
+    window.addEventListener('dailyGains:reset', updateProgress);
     
     return () => {
-      window.removeEventListener('dailyGains:updated' as any, handleDailyGainsUpdate);
-      window.removeEventListener('dailyGains:reset' as any, handleDailyGainsUpdate);
+      window.removeEventListener('dailyGains:updated', updateProgress);
+      window.removeEventListener('dailyGains:reset', updateProgress);
     };
-  }, [userData?.subscription]);
+  }, [dailyLimit]);
   
   return (
     <div className="px-4 md:px-6 py-6 md:py-8 max-w-6xl mx-auto animate-fadein">
@@ -67,10 +78,10 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
       <div className="mb-6">
         <div className="flex justify-between mb-2">
           <span className="text-sm font-medium">
-            Limite quotidienne ({userData?.subscription || 'freemium'})
+            Limite quotidienne ({subscription})
           </span>
           <span className="text-sm font-medium">
-            {balanceManager.getDailyGains().toFixed(2)}€ / {SUBSCRIPTION_LIMITS[userData?.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5}€
+            {balanceManager.getDailyGains().toFixed(2)}€ / {dailyLimit}€
           </span>
         </div>
         <Progress value={limitProgress} className="h-2" />
@@ -80,7 +91,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
       <BotControlPanel 
         isBotActive={isBotActive}
         showLimitReached={showLimitAlert}
-        subscription={userData?.subscription || 'freemium'}
+        subscription={subscription}
         userId={userData?.profile?.id}
       />
       
@@ -93,7 +104,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         handleWithdrawal={handleWithdrawal}
         transactions={userData?.transactions || []}
         isNewUser={isNewUser}
-        subscription={userData?.subscription || 'freemium'}
+        subscription={subscription}
         dailySessionCount={dailySessionCount}
         canStartSession={!isDormant && !showLimitAlert}
         referrals={userData?.referrals || []}
@@ -102,6 +113,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
       />
     </div>
   );
-};
+});
 
+DashboardContent.displayName = 'DashboardContent';
 export default DashboardContent;
