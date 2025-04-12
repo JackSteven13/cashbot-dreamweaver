@@ -24,7 +24,7 @@ export const useDashboardState = () => {
     isBotActive,
     dailyLimitProgress,
     generateAutomaticRevenue,
-    setShowLimitAlert,
+    setShowLimitAlert: setShowLimit,
     refreshUserData,
     incrementSessionCount,
     updateBalance,
@@ -36,7 +36,7 @@ export const useDashboardState = () => {
   const { isDormant, isChecking, dormancyData, handleReactivate } = 
     useDormancyCheck(userData, showLimitAlert);
   
-  // Gestion des sessions
+  // Gestion des sessions - Update parameters to match what useDashboardSessions expects
   const {
     isStartingSession,
     handleStartSession,
@@ -49,7 +49,7 @@ export const useDashboardState = () => {
     dailySessionCount,
     incrementSessionCount,
     updateBalance,
-    setShowLimitAlert,
+    setShowLimitAlert: setShowLimit,
     resetBalance
   });
   

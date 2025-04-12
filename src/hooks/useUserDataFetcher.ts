@@ -16,7 +16,10 @@ export interface UserFetcherActions {
 export type { UserFetcherState };
 
 export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => {
-  const { state, updateUserData, setShowLimitAlert, setIsLoading } = useUserDataState();
+  // Use the state and actions from useUserDataState
+  const userDataState = useUserDataState();
+  const { updateUserData, setShowLimitAlert, setIsLoading } = userDataState;
+  
   const { loadUserProfile, isNewUser, setIsNewUser } = useProfileLoader();
   const { loadUserBalance } = useBalanceLoader(setIsNewUser);
 
@@ -29,14 +32,24 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
   );
   
   // Utiliser le hook de réinitialisation quotidienne
-  useDailyReset(resetDailyCounters, state.isLoading);
+  useDailyReset(resetDailyCounters, userDataState.isLoading);
 
-  return [
-    state,
-    {
-      setShowLimitAlert,
-      fetchUserData,
-      resetDailyCounters
-    }
-  ];
+  // Create the return value with proper structure
+  const state: UserFetcherState = {
+    userData: userDataState.userData,
+    isNewUser: userDataState.isNewUser,
+    dailySessionCount: userDataState.dailySessionCount,
+    showLimitAlert: userDataState.showLimitAlert,
+    isLoading: userDataState.isLoading,
+    isBotActive: userDataState.isBotActive,
+    dailyLimitProgress: userDataState.dailyLimitProgress
+  };
+
+  const actions: UserFetcherActions = {
+    setShowLimitAlert,
+    fetchUserData,
+    resetDailyCounters
+  };
+
+  return [state, actions];
 };

@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { useUserDataState } from './useUserDataState';
 import { useBalanceSynchronization } from './useBalanceSynchronization';
 import { usePeriodicChecks } from './usePeriodicChecks';
+import { UserData } from '@/types/userData';
 
 /**
  * Hook principal pour gérer les données utilisateur avec une meilleure organisation
@@ -11,25 +12,25 @@ export const useUserData = () => {
   // Utiliser les hooks individuels pour chaque fonctionnalité
   const { 
     userData, isNewUser, dailySessionCount, showLimitAlert, isLoading, isBotActive,
-    dailyLimitProgress, userActions, fetchUserData
+    dailyLimitProgress, userActions, refreshUserData: fetchData, generateAutomaticRevenue
   } = useUserDataState();
   
   // Synchronisation du solde
   const { effectiveBalance } = useBalanceSynchronization(userData, isNewUser);
   
-  // Vérifications périodiques
-  usePeriodicChecks(userData, refreshUserData);
-  
   // Wrapper pour fetchUserData qui retourne un boolean
   const refreshUserData = useCallback(async (): Promise<boolean> => {
     try {
-      await fetchUserData();
+      await fetchData();
       return true;
     } catch (error) {
       console.error("Erreur lors du rafraîchissement des données:", error);
       return false;
     }
-  }, [fetchUserData]);
+  }, [fetchData]);
+  
+  // Vérifications périodiques
+  usePeriodicChecks(userData, refreshUserData);
   
   // Méthode pour incrémenter le nombre de sessions
   const incrementSessionCount = useCallback(async (): Promise<void> => {
@@ -62,7 +63,7 @@ export const useUserData = () => {
     isLoading,
     isBotActive,
     dailyLimitProgress,
-    generateAutomaticRevenue: userActions.generateAutomaticRevenue,
+    generateAutomaticRevenue,
     setShowLimitAlert: userActions.setShowLimitAlert,
     refreshUserData,
     incrementSessionCount,
