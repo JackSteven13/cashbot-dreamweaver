@@ -188,7 +188,14 @@ export const useUserData = () => {
     // Si les données sont manquantes après la première tentative, réessayer
     fetchAttemptsRef.current = 0;
     console.log("Forçage de l'actualisation des données utilisateur");
-    return userDataActions.fetchUserData();
+    
+    try {
+      await userDataActions.fetchUserData();
+      return true; // Return true on successful data fetch
+    } catch (error) {
+      console.error("Erreur lors de l'actualisation des données:", error);
+      return false; // Return false on error
+    }
   }, [userDataActions]);
   
   const incrementSessionCount = useCallback(async (): Promise<void> => {
