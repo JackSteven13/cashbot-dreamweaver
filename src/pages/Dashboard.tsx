@@ -7,7 +7,7 @@ import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
 import TransactionsPage from '@/pages/dashboard/TransactionsPage';
 import ReferralsPage from '@/pages/dashboard/ReferralsPage';
-import { useDashboardInitialization } from '@/hooks/dashboard/initialization';
+import { useDashboardInitialization } from '@/hooks/dashboard/useDashboardState';
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
 import { useReferralNotifications } from '@/hooks/useReferralNotifications';
 import { useTransactionReconciliation } from '@/hooks/useTransactionReconciliation';
@@ -21,6 +21,7 @@ const Dashboard = memo(() => {
   const [transitionStage, setTransitionStage] = useState('init');
   const prevPathRef = useRef(location.pathname);
   const forcedTransitionRef = useRef(false);
+  const maxWaitTimeRef = useRef<NodeJS.Timeout | null>(null);
   
   // Hooks stables avec dépendances minimales
   const {
@@ -69,25 +70,49 @@ const Dashboard = memo(() => {
     }
   }, [location.pathname]);
   
+  // Effet pour forcer l'affichage après un délai maximum
+  useEffect(() => {
+    // Définir un délai maximum d'attente (plus court)
+    maxWaitTimeRef.current = setTimeout(() => {
+      if (transitionStage === 'loading' || transitionStage === 'init') {
+        console.log("FORÇAGE de l'affichage du tableau de bord après délai maximum");
+        setTransitionStage('ready');
+        forcedTransitionRef.current = true;
+      }
+    }, 4000); // Délai maximum de 4 secondes (réduit)
+    
+    return () => {
+      if (maxWaitTimeRef.current) {
+        clearTimeout(maxWaitTimeRef.current);
+      }
+    };
+  }, [transitionStage]);
+  
   // Effet pour gérer les transitions de chargement - simplifié et plus réactif
   useEffect(() => {
     const checkConditions = () => {
-      // Si l'initialisation est terminée et nous avons les données utilisateur
-      if (!isAuthChecking && !authError && isReady && userData?.username && !isChecking) {
-        console.log("Conditions remplies pour afficher le dashboard");
-        setTransitionStage('ready');
-        return true;
-      }
-      
-      // Si nous avons une erreur d'authentification
-      if (authError || (!isAuthChecking && !userData?.username && !isLoading)) {
+      // Si l'authentification a échoué, afficher l'écran d'erreur
+      if (authError) {
         console.log("Erreur détectée, affichage de l'écran d'erreur");
         setTransitionStage('error');
         return true;
       }
       
+      // Si l'initialisation est terminée et nous avons les données utilisateur (même partielles)
+      if (!isAuthChecking && userData) {
+        console.log("Conditions suffisantes remplies pour afficher le dashboard");
+        setTransitionStage('ready');
+        return true;
+      }
+      
+      // Si nous n'avons pas de données utilisateur mais l'authentification est terminée
+      if (!isAuthChecking && !userData && !isLoading) {
+        console.log("Authentification terminée mais pas de données, affichage de l'écran d'erreur");
+        setTransitionStage('error');
+        return true;
+      }
+      
       // Sinon, rester en mode chargement
-      setTransitionStage('loading');
       return false;
     };
     
@@ -96,27 +121,9 @@ const Dashboard = memo(() => {
       return;
     }
     
-    // Forcer la transition après un certain temps pour éviter les blocages
-    const forceTimeout = setTimeout(() => {
-      if (transitionStage !== 'ready' && !forcedTransitionRef.current) {
-        console.log("Forçage de la transition après délai");
-        forcedTransitionRef.current = true;
-        
-        // Si nous avons des données utilisateur, forcer l'affichage du dashboard
-        if (userData && userData.username) {
-          setTransitionStage('ready');
-        } else {
-          // Sinon, montrer l'écran d'erreur
-          setTransitionStage('error');
-        }
-      }
-    }, 4000); // Attendre 4 secondes maximum
-    
-    return () => {
-      clearTimeout(forceTimeout);
-    };
-  }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData, transitionStage]);
+  }, [isAuthChecking, isLoading, isReady, isChecking, authError, userData]);
   
+  // Rendu avec transitions douces entre les états
   return (
     <>
       {/* Effet d'initialisation */}
@@ -145,15 +152,15 @@ const Dashboard = memo(() => {
           </div>
         )}
         
-        {/* Contenu principal avec animation d'entrée */}
-        {(transitionStage === 'ready') && userData && (
+        {/* Contenu principal avec animation d'entrée - IMPORTANT: ne plus vérifier toutes les conditions */}
+        {(transitionStage === 'ready') && (
           <div 
             className="transition-opacity duration-300 opacity-100"
           >
             <DashboardLayout
               key={`layout-${renderKey}`}
-              username={userData.username}
-              subscription={userData.subscription || 'freemium'}
+              username={userData?.username || 'Utilisateur'}
+              subscription={userData?.subscription || 'freemium'}
               selectedNavItem={selectedNavItem}
               setSelectedNavItem={setSelectedNavItem}
             >

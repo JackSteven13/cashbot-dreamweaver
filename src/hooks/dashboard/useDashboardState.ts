@@ -34,7 +34,7 @@ export const useDashboardState = () => {
   
   // Ensure userData is never null for downstream hooks
   const safeUserData = userData || {
-    username: '',
+    username: 'Utilisateur',
     balance: 0,
     subscription: 'freemium',
     referrals: [],
@@ -45,7 +45,7 @@ export const useDashboardState = () => {
     registeredAt: new Date()
   };
   
-  // Vérification de la dormance du compte
+  // Vérification de la dormance du compte avec timeout de sécurité
   const { isDormant, isChecking, dormancyData, handleReactivate } = 
     useDormancyCheck(safeUserData, showLimitAlert);
   
@@ -75,9 +75,11 @@ export const useDashboardState = () => {
   
   // Démarrer la génération automatique si possible avec des gestions d'erreur
   useEffect(() => {
+    if (!userData) return; // Protection contre null
+    
     try {
       // Vérifier si l'utilisateur peut bénéficier de revenus automatiques
-      if (userData && !isNewUser && !isDormant && isBotActive && !isChecking) {
+      if (!isNewUser && !isDormant && isBotActive && !isChecking) {
         // Initier la première génération automatique après un court délai
         const startTimer = setTimeout(() => {
           if (userData && !isNewUser && !isDormant) {
