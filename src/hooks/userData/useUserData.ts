@@ -11,7 +11,7 @@ export const useUserData = () => {
   // Utiliser les hooks individuels pour chaque fonctionnalité
   const { 
     userData, isNewUser, dailySessionCount, showLimitAlert, isLoading, isBotActive,
-    dailyLimitProgress, userActions, refreshUserData: fetchUserData, generateAutomaticRevenue
+    dailyLimitProgress, userActions, fetchUserData
   } = useUserDataState();
   
   // Synchronisation du solde
@@ -62,7 +62,7 @@ export const useUserData = () => {
     isLoading,
     isBotActive,
     dailyLimitProgress,
-    generateAutomaticRevenue,
+    generateAutomaticRevenue: userActions.generateAutomaticRevenue,
     setShowLimitAlert: userActions.setShowLimitAlert,
     refreshUserData,
     incrementSessionCount,

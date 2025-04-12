@@ -3,9 +3,10 @@ let currentBalance = 0;
 let highestBalance = 0;
 let dailyGains = 0;
 let lastGainDate = '';
+let subscribers: Array<(state: { lastKnownBalance: number, userId?: string }) => void> = [];
 
 // Function to initialize the balance manager with values from localStorage or API
-const initialize = (initialBalance: number) => {
+const initialize = (initialBalance: number, userId?: string) => {
   // Get values from localStorage
   const storedBalance = parseFloat(localStorage.getItem('currentBalance') || '0');
   const storedHighest = parseFloat(localStorage.getItem('highestBalance') || '0');
@@ -22,7 +23,31 @@ const initialize = (initialBalance: number) => {
   initializeDailyGains();
   
   console.log(`Balance manager initialized: current=${currentBalance}, highest=${highestBalance}`);
+  
+  // Notify subscribers of the initial state
+  notifySubscribers(userId);
+  
   return currentBalance;
+};
+
+// Function to notify all subscribers of state changes
+const notifySubscribers = (userId?: string) => {
+  subscribers.forEach(callback => {
+    callback({
+      lastKnownBalance: currentBalance,
+      userId
+    });
+  });
+};
+
+// Function to subscribe to balance changes
+const subscribe = (callback: (state: { lastKnownBalance: number, userId?: string }) => void) => {
+  subscribers.push(callback);
+  
+  // Return unsubscribe function
+  return () => {
+    subscribers = subscribers.filter(cb => cb !== callback);
+  };
 };
 
 // Function to get the current balance
@@ -127,6 +152,9 @@ const updateBalance = (newGain: number) => {
     addDailyGain(newGain);
   }
   
+  // Notify subscribers
+  notifySubscribers();
+  
   return currentBalance;
 };
 
@@ -208,7 +236,8 @@ const balanceManager = {
   forceUpdate,
   addTransaction,
   syncWithDatabase,
-  cleanupUserBalanceData
+  cleanupUserBalanceData,
+  subscribe
 };
 
 export default balanceManager;

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardMetrics from './DashboardMetrics';
 import BotControlPanel from './bot/BotControlPanel';
 import { Progress } from '@/components/ui/progress';
@@ -39,7 +39,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   const [limitProgress, setLimitProgress] = useState<number>(0);
   
   // Calculer la progression de la limite quotidienne
-  React.useEffect(() => {
+  useEffect(() => {
     const dailyGains = balanceManager.getDailyGains();
     const dailyLimit = SUBSCRIPTION_LIMITS[userData?.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     const progressPercentage = Math.min(100, (dailyGains / dailyLimit) * 100);

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, BotOff } from 'lucide-react';
 import balanceManager, { getHighestBalance } from '@/utils/balance/balanceManager';
@@ -114,7 +113,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       unsubscribe(); // Se désabonner à la destruction du composant
     };
   }, [userId]);
-  
+
   // N'accepter les mises à jour de props displayBalance que si supérieures à notre maximum
   useEffect(() => {
     if (!userId) return;

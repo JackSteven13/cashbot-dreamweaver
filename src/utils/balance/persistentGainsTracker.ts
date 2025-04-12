@@ -1,5 +1,5 @@
 
-import { getDailyGains, addDailyGain, resetDailyCounters } from './balanceManager';
+import balanceManager from './balanceManager';
 
 /**
  * Outil pour suivre et persister les gains générés automatiquement
@@ -9,26 +9,26 @@ import { getDailyGains, addDailyGain, resetDailyCounters } from './balanceManage
 /**
  * Récupère les gains quotidiens depuis le stockage local
  */
-export const getDailyGains = (): number => {
-  return getDailyGains();
+export const getDailyGainsTracker = (): number => {
+  return balanceManager.getDailyGains();
 };
 
 /**
  * Ajoute un nouveau gain au total quotidien
  */
-export const addDailyGain = (gain: number): number => {
-  return addDailyGain(gain);
+export const addDailyGainTracker = (gain: number): number => {
+  return balanceManager.addDailyGain(gain);
 };
 
 /**
  * Réinitialise les compteurs quotidiens
  */
 export const resetDailyGains = (): void => {
-  resetDailyCounters();
+  balanceManager.resetDailyCounters();
 };
 
 export default {
-  getDailyGains,
-  addDailyGain,
+  getDailyGains: getDailyGainsTracker,
+  addDailyGain: addDailyGainTracker,
   resetDailyGains
 };
