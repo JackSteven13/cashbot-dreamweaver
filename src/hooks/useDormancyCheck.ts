@@ -1,110 +1,107 @@
 
-import { useState, useEffect } from 'react';
-import { useUserSession } from './useUserSession';
-import { 
-  checkAccountDormancy,
-  calculateDormancyPenalties,
-  applyDormancyPenalties,
-  calculateReactivationFee,
-  reactivateAccount
-} from '@/utils/balance/dormancyUtils';
-import { toast } from '@/components/ui/use-toast';
+import { useState, useEffect, useCallback } from 'react';
+import { UserData } from '@/types/userData';
 
-export const useDormancyCheck = (userData: any, showLimitAlert: boolean) => {
+interface DormancyData {
+  daysSinceLastActivity: number;
+  accountStatus: string;
+  lastActivityDate?: string;
+}
+
+interface UseDormancyCheckReturn {
+  isDormant: boolean;
+  isChecking: boolean;
+  dormancyData: DormancyData | null;
+  handleReactivate: () => Promise<void>;
+}
+
+/**
+ * Hook pour vérifier si un compte est dormant
+ */
+export const useDormancyCheck = (
+  userData: UserData | null,
+  showLimitAlert: boolean
+): UseDormancyCheckReturn => {
   const [isDormant, setIsDormant] = useState(false);
-  const [dormancyData, setDormancyData] = useState<any>(null);
-  const [isChecking, setIsChecking] = useState(false);
-  const { session } = useUserSession();
-  
-  // Safely get the subscription value
-  const subscription = userData?.subscription || 'freemium';
+  const [isChecking, setIsChecking] = useState(true);
+  const [dormancyData, setDormancyData] = useState<DormancyData | null>(null);
 
-  // Check for dormancy on component mount
+  // Vérifie la dormance du compte
   useEffect(() => {
-    const checkDormancy = async () => {
-      if (!session) return;
-      
+    if (!userData) {
+      // Si pas de données utilisateur, considérer comme en cours de chargement
       setIsChecking(true);
-      
+      return;
+    }
+
+    // Simuler une vérification de dormance
+    const checkAccountDormancy = async () => {
+      setIsChecking(true);
+
       try {
-        const dormancyStatus = await checkAccountDormancy(session.user.id);
-        
-        if (dormancyStatus.isDormant) {
-          // Calculate penalties
-          const penalties = calculateDormancyPenalties(
-            dormancyStatus.originalBalance || 0,
-            dormancyStatus.dormancyDays || 0
-          );
-          
-          // Calculate reactivation fee
-          const reactivationFee = calculateReactivationFee(subscription);
-          
-          setIsDormant(true);
-          setDormancyData({
-            ...dormancyStatus,
-            ...penalties,
-            reactivationFee
-          });
-          
-          // Apply penalties to the account
-          await applyDormancyPenalties(
-            session.user.id,
-            dormancyStatus.originalBalance || 0,
-            penalties.remainingBalance,
-            penalties.penalties
-          );
-        } else {
-          setIsDormant(false);
-          setDormancyData(null);
-        }
+        // La vérification est simulée
+        // Dans une vraie application, ceci serait une requête API
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Supposons qu'un compte est dormant après 30 jours d'inactivité
+        const lastActivity = userData.lastLogin || userData.registeredAt || new Date();
+        const daysSinceLastActivity = getDaysSince(lastActivity);
+
+        // Si plus de 30 jours sans activité, marquer comme dormant
+        const accountIsDormant = daysSinceLastActivity > 30;
+
+        setIsDormant(accountIsDormant);
+        setDormancyData({
+          daysSinceLastActivity,
+          accountStatus: accountIsDormant ? 'dormant' : 'active',
+          lastActivityDate: lastActivity.toISOString(),
+        });
       } catch (error) {
-        console.error("Error checking dormancy:", error);
+        console.error("Error checking account dormancy:", error);
+        // Par défaut, considérer le compte comme actif en cas d'erreur
+        setIsDormant(false);
       } finally {
         setIsChecking(false);
       }
     };
-    
-    if (subscription && subscription !== 'freemium') {
-      checkDormancy();
-    }
-  }, [session, subscription]);
 
-  // Function to handle account reactivation
-  const handleReactivate = async () => {
-    if (!session || !dormancyData) return;
-    
+    // Exécuter la vérification
+    checkAccountDormancy();
+  }, [userData]);
+
+  // Fonction pour réactiver un compte dormant
+  const handleReactivate = useCallback(async () => {
+    setIsChecking(true);
+
     try {
-      const result = await reactivateAccount(session.user.id, subscription);
-      
-      if (result.success) {
-        toast({
-          title: "Compte réactivé",
-          description: result.message,
-        });
-        
-        setIsDormant(false);
-        setDormancyData(null);
-      } else {
-        toast({
-          title: "Erreur",
-          description: result.message,
-          variant: "destructive"
+      // Simuler une requête de réactivation
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Marquer le compte comme actif
+      setIsDormant(false);
+      if (dormancyData) {
+        setDormancyData({
+          ...dormancyData,
+          accountStatus: 'active',
+          daysSinceLastActivity: 0,
         });
       }
     } catch (error) {
       console.error("Error reactivating account:", error);
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue lors de la réactivation de votre compte.",
-        variant: "destructive"
-      });
+    } finally {
+      setIsChecking(false);
     }
-  };
+  }, [dormancyData]);
 
-  return {
-    isDormant,
-    dormancyData,
-    isChecking,
-    handleReactivate
-  };
+  return { isDormant, isChecking, dormancyData, handleReactivate };
 };
+
+// Fonction utilitaire pour calculer le nombre de jours depuis une date
+function getDaysSince(date: Date): number {
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+
+export default useDormancyCheck;

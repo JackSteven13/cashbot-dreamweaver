@@ -1,3 +1,4 @@
+
 import { useRef, useEffect } from 'react';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
@@ -16,6 +17,7 @@ export const useAutoSessionScheduler = (
   const initialSessionExecutedRef = useRef<boolean>(false);
   const persistentBalanceRef = useRef<number>(userData?.balance || 0);
   const highestBalanceRef = useRef<number>(0);
+  const globalBalanceSyncRef = useRef<NodeJS.Timeout | null>(null);
 
   // Effect to simulate automatic ad analysis
   useEffect(() => {
@@ -41,20 +43,38 @@ export const useAutoSessionScheduler = (
           // Toujours utiliser la valeur la plus élevée
           persistentBalanceRef.current = Math.max(parsedBalance, persistentBalanceRef.current, highestBalanceRef.current);
           console.log(`[Scheduler] Got persisted balance: ${persistentBalanceRef.current}`);
+          
+          // Stocker également comme solde le plus élevé s'il est plus grand
+          if (persistentBalanceRef.current > highestBalanceRef.current) {
+            highestBalanceRef.current = persistentBalanceRef.current;
+            localStorage.setItem('highestBalance', highestBalanceRef.current.toString());
+          }
         }
       }
     } catch (e) {
       console.error("Failed to read persisted balance:", e);
     }
     
-    // Get the daily limit for the current subscription - Add null check
+    // Configurer une synchronisation périodique du solde
+    globalBalanceSyncRef.current = setInterval(() => {
+      // Déclencher un événement pour que tous les composants utilisent le solde le plus élevé
+      if (highestBalanceRef.current > 0) {
+        window.dispatchEvent(new CustomEvent('balance:force-sync', { 
+          detail: { balance: highestBalanceRef.current }
+        }));
+      }
+    }, 30000); // Synchroniser toutes les 30 secondes
+    
+    // Get the daily limit for the current subscription - Fix null subscription issue
     const subscriptionType = userData?.subscription || 'freemium';
     const dailyLimit = SUBSCRIPTION_LIMITS[subscriptionType as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
     // Skip all auto sessions if bot is not active
     if (!isBotActive) {
       console.log("Bot inactif, aucune session automatique ne sera programmée");
-      return () => {}; // Return empty cleanup function
+      return () => {
+        if (globalBalanceSyncRef.current) clearInterval(globalBalanceSyncRef.current);
+      };
     }
     
     // Start an initial session after a short delay if bot is active
@@ -105,13 +125,42 @@ export const useAutoSessionScheduler = (
         // Ne mettre à jour que si le nouveau solde est plus élevé
         if (newBalance > persistentBalanceRef.current) {
           persistentBalanceRef.current = newBalance;
-          highestBalanceRef.current = Math.max(highestBalanceRef.current, newBalance);
           console.log(`[Scheduler] Updated persistent balance to ${newBalance}`);
+          
+          // Mettre à jour aussi le solde le plus élevé si nécessaire
+          if (newBalance > highestBalanceRef.current) {
+            highestBalanceRef.current = newBalance;
+            console.log(`[Scheduler] Updated highest balance to ${newBalance}`);
+            
+            // S'assurer que le localStorage est aussi à jour
+            try {
+              localStorage.setItem('highestBalance', highestBalanceRef.current.toString());
+            } catch (e) {
+              console.error("Failed to store highest balance:", e);
+            }
+          }
           
           // S'assurer que le localStorage est aussi à jour
           localStorage.setItem('lastKnownBalance', newBalance.toString());
           localStorage.setItem('currentBalance', newBalance.toString());
-          localStorage.setItem('highestBalance', highestBalanceRef.current.toString());
+        }
+      }
+    };
+    
+    // Nouveau gestionnaire pour la synchronisation forcée
+    const handleForceSyncBalance = (event: CustomEvent) => {
+      const syncedBalance = event.detail?.balance;
+      if (typeof syncedBalance === 'number' && syncedBalance > 0) {
+        // Ne mettre à jour que si le solde synchronisé est plus élevé que notre maximum
+        if (syncedBalance > highestBalanceRef.current) {
+          console.log(`[Scheduler] Forced sync of highest balance: ${syncedBalance}`);
+          highestBalanceRef.current = syncedBalance;
+          persistentBalanceRef.current = syncedBalance;
+          
+          // Mettre à jour localStorage
+          localStorage.setItem('highestBalance', syncedBalance.toString());
+          localStorage.setItem('currentBalance', syncedBalance.toString());
+          localStorage.setItem('lastKnownBalance', syncedBalance.toString());
         }
       }
     };
@@ -119,13 +168,16 @@ export const useAutoSessionScheduler = (
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('balance:local-update' as any, handleBalanceUpdate);
     window.addEventListener('balance:force-update' as any, handleBalanceUpdate);
+    window.addEventListener('balance:force-sync' as any, handleForceSyncBalance);
 
     return () => {
       clearTimeout(initialTimeout);
       clearInterval(autoSessionInterval);
+      if (globalBalanceSyncRef.current) clearInterval(globalBalanceSyncRef.current);
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
       window.removeEventListener('balance:local-update' as any, handleBalanceUpdate);
       window.removeEventListener('balance:force-update' as any, handleBalanceUpdate);
+      window.removeEventListener('balance:force-sync' as any, handleForceSyncBalance);
     };
   }, [isBotActive, userData?.subscription, generateAutomaticRevenue, todaysGainsRef]);
 
