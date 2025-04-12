@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertCircle, Info } from 'lucide-react';
+import { Info, Calendar, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -12,66 +12,54 @@ interface InfoPanelProps {
   lastSessionTimestamp?: string;
 }
 
-const InfoPanel: React.FC<InfoPanelProps> = ({
+const InfoPanel: React.FC<InfoPanelProps> = ({ 
   isNewUser = false,
   subscription = 'freemium',
   dailySessionCount = 0,
   lastSessionTimestamp
 }) => {
-  // Déterminer le contenu à afficher en fonction du statut de l'utilisateur
-  const getContent = () => {
-    if (isNewUser) {
-      return {
-        icon: <Info className="h-5 w-5 text-blue-500" />,
-        title: "Bienvenue sur la plateforme!",
-        description: "Commencez par lancer votre première analyse pour générer des revenus. Consultez notre guide de démarrage pour maximiser vos gains."
-      };
-    }
+  // Get time since last session
+  const getLastSessionTime = () => {
+    if (!lastSessionTimestamp) return "Aucune session";
     
-    if (subscription === 'freemium' && dailySessionCount >= 1) {
-      return {
-        icon: <AlertCircle className="h-5 w-5 text-amber-500" />,
-        title: "Limite de sessions quotidienne atteinte",
-        description: "Vous avez atteint votre limite de sessions pour aujourd'hui. Revenez demain ou passez à un forfait supérieur pour continuer."
-      };
+    try {
+      const lastSessionDate = new Date(lastSessionTimestamp);
+      return formatDistanceToNow(lastSessionDate, { addSuffix: true, locale: fr });
+    } catch (error) {
+      return "Date inconnue";
     }
-    
-    // Afficher quand la dernière session a été effectuée
-    if (lastSessionTimestamp) {
-      const lastSessionTime = new Date(lastSessionTimestamp);
-      const timeAgo = formatDistanceToNow(lastSessionTime, { addSuffix: true, locale: fr });
-      
-      return {
-        icon: <Info className="h-5 w-5 text-blue-500" />,
-        title: "Dernière analyse",
-        description: `Votre dernière analyse a été effectuée ${timeAgo}. Vous pouvez en démarrer une nouvelle maintenant.`
-      };
-    }
-    
-    // Message par défaut
-    return {
-      icon: <Info className="h-5 w-5 text-blue-500" />,
-      title: "Prêt pour une analyse",
-      description: "Démarrez une nouvelle analyse pour générer des revenus. Les résultats seront automatiquement ajoutés à votre solde."
-    };
   };
-  
-  const content = getContent();
-  
+
   return (
-    <Card className="bg-white dark:bg-slate-800 shadow-sm border-t-4 border-t-blue-500">
+    <Card className="border border-blue-100 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
       <CardContent className="p-4">
-        <div className="flex items-start space-x-3">
-          <div className="mt-1">
-            {content.icon}
-          </div>
-          <div>
-            <h4 className="font-medium text-gray-900 dark:text-white mb-1">
-              {content.title}
-            </h4>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              {content.description}
-            </p>
+        <div className="flex items-start">
+          <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
+          <div className="space-y-2">
+            <h3 className="font-medium text-blue-800 dark:text-blue-300">
+              {isNewUser ? "Bienvenue dans votre tableau de bord !" : "Information"}
+            </h3>
+            
+            <div className="text-sm text-blue-700 dark:text-blue-200">
+              {isNewUser ? (
+                <p>
+                  Commencez par lancer votre première session d'analyse pour générer des revenus. 
+                  Votre forfait actuel <span className="font-semibold capitalize">{subscription}</span> vous 
+                  permet d'effectuer plusieurs analyses par jour.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center">
+                    <Calendar className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
+                    <span>Sessions aujourd'hui: <span className="font-semibold">{dailySessionCount}</span></span>
+                  </div>
+                  <div className="flex items-center">
+                    <Clock className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
+                    <span>Dernière session: <span className="font-semibold">{getLastSessionTime()}</span></span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>

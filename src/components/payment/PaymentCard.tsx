@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import PlanSummary from '@/components/payment/PlanSummary';
@@ -21,6 +20,11 @@ interface PaymentCardProps {
   onStripeCheckout: () => void;
   stripeCheckoutUrl?: string | null;
 }
+
+// Function to calculate prorated price based on days remaining
+const calculateProratedPrice = (basePrice: number, daysRemaining: number, totalDays: number): number => {
+  return basePrice * (daysRemaining / totalDays);
+};
 
 const PaymentCard = ({
   selectedPlan,
@@ -50,13 +54,8 @@ const PaymentCard = ({
   
   if (isUpgrade && selectedPlan) {
     const basePrice = 29.99; // Prix de base pour l'exemple
-    proratedPrice = calculateProratedPrice(basePrice);
+    proratedPrice = calculateProratedPrice(basePrice, daysRemaining, totalDays);
     savingsAmount = basePrice - proratedPrice;
-  }
-
-  // Fonction pour calculer le prix au prorata
-  function calculateProratedPrice(basePrice: number): number {
-    return basePrice * (daysRemaining / totalDays);
   }
 
   return (

@@ -1,0 +1,66 @@
+
+import { supabase } from '@/integrations/supabase/client';
+import { Transaction } from '@/types/userData';
+
+/**
+ * Récupère les transactions pour un utilisateur donné
+ */
+export const fetchUserTransactions = async (userId: string): Promise<Transaction[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error("Error fetching transactions:", error);
+      return [];
+    }
+    
+    // Formater les transactions pour les adapter au format requis par l'application
+    return data.map((tx: any) => ({
+      id: tx.id,
+      date: tx.created_at,
+      amount: tx.gain,
+      type: tx.type,
+      report: tx.description || tx.report, // Support both field names
+      gain: tx.gain, // Par convention, les montants positifs sont des gains
+    }));
+  } catch (error) {
+    console.error("Error in fetchUserTransactions:", error);
+    return [];
+  }
+};
+
+/**
+ * Ajoute une nouvelle transaction pour un utilisateur
+ */
+export const addTransaction = async (
+  userId: string,
+  gain: number,
+  description: string,
+  type: string = 'system'
+) => {
+  try {
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: userId,
+        gain: gain,
+        report: description,
+        type,
+        date: new Date().toISOString().split('T')[0]
+      });
+    
+    if (error) {
+      console.error("Error adding transaction:", error);
+      return null;
+    }
+    
+    return data ? data[0] : null;
+  } catch (error) {
+    console.error("Error in addTransaction:", error);
+    return null;
+  }
+};

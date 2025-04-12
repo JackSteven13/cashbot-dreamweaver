@@ -23,12 +23,12 @@ export const useUserData = () => {
   
   // Mettre à jour les états locaux quand les données changent
   useEffect(() => {
-    setLocalUserData(userData);
-    setLocalIsNewUser(isNewUser);
-    setLocalDailySessionCount(dailySessionCount);
-    setLocalShowLimitAlert(showLimitAlert);
-    setLocalIsBotActive(isBotActive);
-    setLocalDailyLimitProgress(dailyLimitProgress);
+    if (userData !== undefined) setLocalUserData(userData);
+    if (isNewUser !== undefined) setLocalIsNewUser(isNewUser);
+    if (dailySessionCount !== undefined) setLocalDailySessionCount(dailySessionCount);
+    if (showLimitAlert !== undefined) setLocalShowLimitAlert(showLimitAlert);
+    if (isBotActive !== undefined) setLocalIsBotActive(isBotActive);
+    if (dailyLimitProgress !== undefined) setLocalDailyLimitProgress(dailyLimitProgress);
   }, [userData, isNewUser, dailySessionCount, showLimitAlert, isBotActive, dailyLimitProgress]);
   
   // Effet de chargement initial avec tentatives de récupération multiples

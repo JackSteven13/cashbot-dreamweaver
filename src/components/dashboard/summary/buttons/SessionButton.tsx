@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { PlayCircle, Lock, Clock } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { PlayCircle, Clock, AlertCircle } from 'lucide-react';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { PLANS } from '@/utils/plans';
 
 interface SessionButtonProps {
   onClick: () => void;
@@ -25,73 +26,55 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   lastSessionTimestamp,
   isBotActive = true
 }) => {
-  // Limites de sessions quotidiennes par abonnement
-  const getSessionLimit = () => {
-    switch (subscription) {
-      case 'pro':
-      case 'premium':
-        return 'illimité';
-      case 'starter':
-        return '12';
-      case 'freemium':
-      default:
-        return '1';
-    }
-  };
-  
-  // Vérifier si l'utilisateur a atteint la limite de sessions
-  const hasReachedLimit = subscription === 'freemium' && dailySessionCount >= 1;
-  
-  // Vérifier si la dernière session est récente (moins de 10 minutes)
-  const isSessionRecent = () => {
-    if (!lastSessionTimestamp) return false;
-    
-    const lastSession = new Date(lastSessionTimestamp);
-    const now = new Date();
-    const diffMinutes = Math.floor((now.getTime() - lastSession.getTime()) / (1000 * 60));
-    
-    return diffMinutes < 10;
-  };
-  
-  const sessionDelay = isSessionRecent();
-  
-  // Déterminer le message d'infobulle approprié
+  // Get the max daily sessions based on subscription
+  const maxDailySessions = PLANS[subscription]?.dailyLimit || 1;
+  const hasReachedLimit = dailySessionCount >= maxDailySessions;
+
+  // Check if bot is in cooldown period
+  const isInCooldown = lastSessionTimestamp ? (
+    new Date().getTime() - new Date(lastSessionTimestamp).getTime() < 5 * 60 * 1000
+  ) : false;
+
+  // Determine the tooltip message
   const getTooltipMessage = () => {
-    if (!isBotActive) return "Le bot d'analyse est actuellement inactif";
-    if (!canStart) return "Opération non disponible pour le moment";
-    if (hasReachedLimit) return `Limite de ${getSessionLimit()} session(s) quotidienne(s) atteinte`;
-    if (sessionDelay) return "Veuillez attendre quelques minutes entre les sessions";
-    if (disabled) return "Action en cours...";
-    return "Commencer une nouvelle analyse";
+    if (!isBotActive) return "Le système est temporairement indisponible";
+    if (isLoading) return "Démarrage de la session...";
+    if (hasReachedLimit) return `Limite quotidienne atteinte (${dailySessionCount}/${maxDailySessions})`;
+    if (isInCooldown) return "Période de refroidissement (5 min)";
+    return "Démarrer une nouvelle session d'analyse";
   };
-  
+
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div>
+          <div className="w-full">
             <Button
               onClick={onClick}
-              disabled={disabled || !canStart || hasReachedLimit || sessionDelay || !isBotActive}
-              className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white"
+              disabled={disabled || isLoading || hasReachedLimit || isInCooldown || !isBotActive}
+              className="w-full h-11 bg-green-600 hover:bg-green-700 text-white"
               variant="default"
               size="lg"
             >
               {isLoading ? (
                 <div className="flex items-center">
                   <span className="loading loading-spinner loading-xs mr-2"></span>
-                  <span>Analyse en cours...</span>
+                  <span>Démarrage...</span>
                 </div>
               ) : (
                 <div className="flex items-center">
-                  {!canStart || hasReachedLimit || !isBotActive ? (
-                    <Lock className="mr-2 h-5 w-5" />
-                  ) : sessionDelay ? (
+                  {!isBotActive ? (
+                    <AlertCircle className="mr-2 h-5 w-5" />
+                  ) : hasReachedLimit || isInCooldown ? (
                     <Clock className="mr-2 h-5 w-5" />
                   ) : (
                     <PlayCircle className="mr-2 h-5 w-5" />
                   )}
-                  <span>Nouvelle analyse</span>
+                  <span>
+                    {!isBotActive ? "Indisponible" : 
+                     (hasReachedLimit ? "Limite atteinte" : 
+                      (isInCooldown ? "En attente" : "Démarrer"))}
+                  </span>
                 </div>
               )}
             </Button>

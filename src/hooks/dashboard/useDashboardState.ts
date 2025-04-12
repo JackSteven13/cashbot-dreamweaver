@@ -117,15 +117,18 @@ export const useDashboardState = () => {
     isLoading: isLoading || isChecking,
     isBotActive: sessionBotActive || isBotActive,
     dailyLimitProgress,
-    // Adaptations pour correspondre aux types attendus
+    // Fixed return type to void
     incrementSessionCount: async (): Promise<void> => {
       await userActions.incrementSessionCount();
+      return;
     },
     updateBalance: async (gain: number, report: string, forceUpdate?: boolean): Promise<void> => {
       await userActions.updateBalance(gain, report, forceUpdate);
+      return;
     },
     resetBalance: async (): Promise<void> => {
       await userActions.resetBalance();
+      return;
     }
   };
 };

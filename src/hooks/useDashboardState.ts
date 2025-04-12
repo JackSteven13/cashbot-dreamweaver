@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUserData } from '@/hooks/userData';
 import { useDashboardSessions } from '@/hooks/useDashboardSessions';
 import { useDormancyCheck } from '@/hooks/useDormancyCheck';
@@ -84,7 +84,7 @@ export const useDashboardState = () => {
         const startTimer = setTimeout(() => {
           if (userData && !isNewUser && !isDormant) {
             console.log("Démarrage de la génération automatique de revenus");
-            generateAutomaticRevenue(true).catch(err => {
+            generateAutomaticRevenue().catch(err => {
               console.error("Erreur lors de la génération automatique:", err);
             });
           }
@@ -121,12 +121,15 @@ export const useDashboardState = () => {
     // Adaptations pour correspondre aux types attendus
     incrementSessionCount: async (): Promise<void> => {
       await incrementSessionCount();
+      return;
     },
     updateBalance: async (gain: number, report: string, forceUpdate?: boolean): Promise<void> => {
       await updateBalance(gain, report, forceUpdate);
+      return;
     },
     resetBalance: async (): Promise<void> => {
       await resetBalance();
+      return;
     }
   };
 };

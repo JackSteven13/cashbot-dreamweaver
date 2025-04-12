@@ -1,74 +1,68 @@
 
 import { useState, useEffect } from 'react';
 
-export function useSessionStorage<T>(
-  key: string, 
-  initialValue: T
-): [T, React.Dispatch<React.SetStateAction<T>>] {
-  // État pour stocker notre valeur
-  // Passez la fonction d'état initial à useState afin que la logique
-  // ne soit exécutée qu'une fois
+export function useSessionStorage<T>(key: string, initialValue: T) {
+  // State to store our value
+  // Pass initial state function to useState so logic is only executed once
   const [storedValue, setStoredValue] = useState<T>(() => {
     if (typeof window === "undefined") {
       return initialValue;
     }
     
     try {
-      // Obtenir la valeur de sessionStorage ou retourner initialValue
+      // Get from session storage by key
       const item = window.sessionStorage.getItem(key);
+      // Parse stored json or if none return initialValue
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
-      // En cas d'erreur, retourner initialValue
+      // If error also return initialValue
       console.error("Error reading from sessionStorage:", error);
       return initialValue;
     }
   });
-  
-  // Retourner une version enveloppée de la fonction useState
-  // qui persiste la nouvelle valeur dans sessionStorage
-  const setValue = (value: React.SetStateAction<T>) => {
+
+  // Return a wrapped version of useState's setter function that ...
+  // ... persists the new value to sessionStorage.
+  const setValue = (value: T | ((val: T) => T)) => {
     try {
-      // Permettre que la valeur soit une fonction pour qu'elle ressemble
-      // au comportement de useState
+      // Allow value to be a function so we have the same API as useState
       const valueToStore =
         value instanceof Function ? value(storedValue) : value;
       
-      // Sauvegarder l'état
+      // Save state
       setStoredValue(valueToStore);
       
-      // Sauvegarder dans sessionStorage
+      // Save to session storage
       if (typeof window !== "undefined") {
         window.sessionStorage.setItem(key, JSON.stringify(valueToStore));
       }
     } catch (error) {
+      // Log any errors
       console.error("Error writing to sessionStorage:", error);
     }
   };
-  
+
+  // Listen for changes in other tabs/windows
   useEffect(() => {
-    // Gestion des changements de stockage dans d'autres onglets
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === key && event.storageArea === window.sessionStorage) {
+    function handleStorageChange(event: StorageEvent) {
+      if (event.storageArea === sessionStorage && event.key === key) {
         try {
-          const newValue = event.newValue 
-            ? JSON.parse(event.newValue) 
-            : initialValue;
-          setStoredValue(newValue);
-        } catch (e) {
-          console.error("Error parsing sessionStorage value:", e);
+          setStoredValue(event.newValue ? JSON.parse(event.newValue) : initialValue);
+        } catch (error) {
+          console.error("Error handling storage change:", error);
         }
       }
-    };
-    
-    // Écouter les changements de stockage
+    }
+
+    // Listen for storage change events
     window.addEventListener('storage', handleStorageChange);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [key, initialValue]);
-  
-  return [storedValue, setValue];
+
+  return [storedValue, setValue] as const;
 }
 
 export default useSessionStorage;

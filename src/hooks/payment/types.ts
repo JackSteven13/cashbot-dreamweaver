@@ -1,17 +1,9 @@
 
-// Update the plan types to reflect new naming convention
-export type PlanType = 'freemium' | 'starter' | 'gold' | 'elite';
+export type PlanType = 'freemium' | 'starter' | 'gold' | 'elite' | null;
 
-// Update plan prices to annual pricing structure
-export const PLAN_PRICES = {
-  'freemium': 0,
-  'starter': 99,
-  'gold': 349,
-  'elite': 549
-};
-
-export type PaymentFormData = {
+export interface PaymentFormData {
   cardNumber: string;
-  expiry: string;
-  cvc: string;
-};
+  cardHolder: string;
+  expiryDate: string;
+  cvv: string;
+}

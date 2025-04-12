@@ -10,7 +10,7 @@ import { UserData } from '@/types/userData';
 export interface UserFetcherActions {
   fetchUserData: () => Promise<void>;
   resetDailyCounters: () => Promise<void>;
-  setShowLimitAlert: (show: boolean) => void; // Ajouté pour corriger l'erreur
+  setShowLimitAlert: (show: boolean) => void;
 }
 
 export type { UserFetcherState };
@@ -21,7 +21,7 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
   const { 
     updateUserData, 
     setIsLoading, 
-    userActions // Accéder à userActions qui contient setShowLimitAlert
+    userActions
   } = userDataState;
   
   const { loadUserProfile, isNewUser, setIsNewUser } = useProfileLoader();
@@ -52,7 +52,7 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
   const actions: UserFetcherActions = {
     fetchUserData,
     resetDailyCounters,
-    setShowLimitAlert: userActions.setShowLimitAlert // Utiliser celui de userActions
+    setShowLimitAlert: userActions.setShowLimitAlert
   };
 
   return [state, actions];

@@ -4,7 +4,7 @@ import { usePaymentPage } from '@/hooks/payment/usePaymentPage';
 import PaymentLoading from '@/components/payment/PaymentLoading';
 import PaymentLayout from '@/components/payment/PaymentLayout';
 import PaymentCard from '@/components/payment/PaymentCard';
-import { PlanType } from '@/hooks/payment/types';
+import { PlanType } from '@/utils/plans';
 
 const Payment = () => {
   const {
