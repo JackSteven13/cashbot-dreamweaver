@@ -1,107 +1,117 @@
 
 import { useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { UserData } from '@/types/userData';
+import { fetchUserBalance, fetchUserTransactions } from '@/utils/user/userDataFetcher';
+import { Transaction, UserData } from '@/types/userData';
+import { syncTransactionsWithBalance, syncDailyLimitProgress } from '@/utils/transactions/transactionsSyncManager';
+import { supabase } from "@/integrations/supabase/client";
+
+type ProfileLoader = (userId: string) => Promise<any>;
+type BalanceLoader = (userId: string) => Promise<any>;
 
 export const useUserDataFetching = (
-  loadUserProfile: (userId: string, userEmail?: string | null) => Promise<any>,
-  loadUserBalance: (userId: string) => Promise<any>,
-  updateUserData: (data: UserData) => void,
-  setIsLoading: (isLoading: boolean) => void,
+  loadUserProfile: ProfileLoader,
+  loadUserBalance: BalanceLoader,
+  updateUserData: (data: any) => void,
+  setIsLoading: (loading: boolean) => void,
   isNewUser: boolean
 ) => {
-  // Fonction pour récupérer les données utilisateur
+  // Fonction pour récupérer toutes les données utilisateur et les synchroniser
   const fetchUserData = useCallback(async (): Promise<void> => {
     try {
+      console.log("Récupération des données utilisateur...");
       setIsLoading(true);
       
+      // Vérifier si l'utilisateur est connecté
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        console.error("Pas de session utilisateur");
+        console.log("Aucune session utilisateur active");
         setIsLoading(false);
         return;
       }
       
       const userId = session.user.id;
-      const userEmail = session.user.email;
       
-      // Charger le profil utilisateur
-      const profile = await loadUserProfile(userId, userEmail);
+      // 1. Récupérer le profil utilisateur
+      const profile = await loadUserProfile(userId);
+      
       if (!profile) {
-        console.error("Impossible de charger le profil utilisateur");
+        console.log("Profil utilisateur non trouvé");
         setIsLoading(false);
         return;
       }
       
-      // Charger le solde utilisateur
-      const balanceResult = await loadUserBalance(userId);
-      if (!balanceResult || !balanceResult.balanceData) {
-        console.error("Impossible de charger le solde utilisateur");
+      // 2. Récupérer le solde et les données d'abonnement
+      const balanceData = await loadUserBalance(userId);
+      
+      if (!balanceData) {
+        console.log("Données de solde non trouvées");
         setIsLoading(false);
         return;
       }
       
-      // Récupérer les transactions
-      const { data: transactions } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+      // 3. Synchroniser les transactions avec le solde pour assurer la cohérence
+      const transactions = await syncTransactionsWithBalance(userId, balanceData.balance);
       
-      // Construire les données utilisateur complètes
-      const userData: UserData = {
-        username: profile.full_name || 'Utilisateur',
-        email: userEmail || '',
-        balance: balanceResult.balanceData.balance || 0,
-        subscription: balanceResult.balanceData.subscription || 'freemium',
-        dailySessionCount: balanceResult.balanceData.daily_session_count || 0,
-        transactions: transactions || [],
-        referrals: [],
-        referralLink: '',
-        profile: {
-          created_at: profile.created_at,
-          full_name: profile.full_name,
-          email: profile.email,
-          id: profile.id
-        }
+      // 4. Synchroniser la jauge de limite quotidienne
+      const dailyLimitProgress = await syncDailyLimitProgress(userId);
+      
+      // 5. Mettre à jour les données utilisateur
+      const userData: Partial<UserData> = {
+        username: profile.full_name,
+        balance: balanceData.balance,
+        subscription: balanceData.subscription,
+        dailySessionCount: balanceData.daily_session_count,
+        transactions,
+        profile
       };
       
-      // Mettre à jour l'état avec les données récupérées
-      updateUserData(userData);
+      updateUserData({
+        userData,
+        dailyLimitProgress,
+        dailySessionCount: balanceData.daily_session_count
+      });
+      
+      console.log("Données utilisateur récupérées avec succès:", userData.username);
     } catch (error) {
       console.error("Erreur lors de la récupération des données utilisateur:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [loadUserProfile, loadUserBalance, updateUserData, setIsLoading]);
+  }, [loadUserProfile, loadUserBalance, updateUserData, setIsLoading, isNewUser]);
   
-  // Fonction pour réinitialiser les compteurs quotidiens
+  // Réinitialiser les compteurs quotidiens à minuit
   const resetDailyCounters = useCallback(async (): Promise<void> => {
     try {
+      // Vérifier si l'utilisateur est connecté
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        console.log("Aucune session utilisateur active pour réinitialiser les compteurs");
         return;
       }
       
       const userId = session.user.id;
       
-      // Réinitialiser le compteur de sessions quotidiennes
-      await supabase
+      // Réinitialiser le compteur de sessions quotidien
+      const { error } = await supabase
         .from('user_balances')
-        .update({ 
-          daily_session_count: 0,
-          updated_at: new Date().toISOString()
-        })
+        .update({ daily_session_count: 0 })
         .eq('id', userId);
       
-      // Rafraîchir les données après réinitialisation
-      await fetchUserData();
+      if (error) {
+        console.error("Erreur lors de la réinitialisation des compteurs:", error);
+        return;
+      }
       
       console.log("Compteurs quotidiens réinitialisés avec succès");
+      
+      // Mettre à jour l'état local
+      updateUserData({ dailySessionCount: 0, dailyLimitProgress: 0 });
+      localStorage.setItem(`dailySessionCount_${userId}`, '0');
+      localStorage.setItem(`dailyLimitProgress_${userId}`, '0');
     } catch (error) {
-      console.error("Erreur lors de la réinitialisation des compteurs quotidiens:", error);
+      console.error("Erreur lors de la réinitialisation des compteurs:", error);
     }
-  }, [fetchUserData]);
+  }, [updateUserData]);
   
   return {
     fetchUserData,

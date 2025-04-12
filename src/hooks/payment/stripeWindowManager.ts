@@ -1,122 +1,70 @@
 
 /**
- * Gestionnaire sécurisé pour les interactions avec la fenêtre Stripe
+ * Gestionnaire pour l'ouverture des fenêtres Stripe
+ * Résout les problèmes d'ouverture de popup bloqués
  */
 
-// Référence à la fenêtre Stripe ouverte
-let stripeWindow: Window | null = null;
-let openAttempts: number = 0;
-let isOpeningInProgress: boolean = false;
+// Fenêtre de paiement Stripe active
+let activeStripeWindow: Window | null = null;
 
 /**
- * Ouvre la fenêtre Stripe de manière sécurisée avec gestion des erreurs
- * @param url URL de la session Stripe Checkout
+ * Ouvre une fenêtre Stripe de manière fiable
+ * @param stripeUrl URL de la page de checkout Stripe
+ * @returns boolean indiquant si la fenêtre a été ouverte avec succès
  */
-export const openStripeWindow = (url: string): boolean => {
-  try {
-    if (!url) {
-      console.error("URL Stripe invalide");
-      return false;
+export const openStripeWindow = (stripeUrl: string): boolean => {
+  // Si une fenêtre est déjà ouverte, la fermer d'abord
+  if (activeStripeWindow && !activeStripeWindow.closed) {
+    try {
+      activeStripeWindow.focus();
+      return true;
+    } catch (e) {
+      console.log("Impossible de refocaliser la fenêtre Stripe existante, ouverture d'une nouvelle fenêtre");
     }
+  }
+  
+  try {
+    // Essayer d'abord d'ouvrir dans un nouvel onglet
+    const newWindow = window.open(stripeUrl, '_blank');
     
-    // Protection contre les clics multiples
-    if (isOpeningInProgress) {
-      console.log("Ouverture déjà en cours, ignorer les clics supplémentaires");
+    // Vérifier si la fenêtre a été ouverte avec succès
+    if (newWindow && !newWindow.closed) {
+      activeStripeWindow = newWindow;
       return true;
     }
     
-    isOpeningInProgress = true;
-    
-    // Fermer toute fenêtre existante pour éviter les doublons
-    if (stripeWindow && !stripeWindow.closed) {
-      stripeWindow.close();
-    }
-    
-    // Configurer les paramètres d'ouverture pour une meilleure expérience utilisateur
-    const windowFeatures = "width=600,height=700,menubar=no,toolbar=no,location=yes,status=yes";
-    
-    // Ouvrir une nouvelle fenêtre avec gestion des erreurs
-    stripeWindow = window.open(url, "stripe_checkout", windowFeatures);
-    
-    // Vérifier si la fenêtre a bien été ouverte
-    if (!stripeWindow) {
-      // Si la fenêtre n'a pas pu être ouverte, effectuer jusqu'à 3 tentatives supplémentaires
-      if (openAttempts < 3) {
-        openAttempts++;
-        console.log(`Nouvelle tentative d'ouverture (${openAttempts}/3)...`);
-        
-        // Petite pause avant de réessayer
-        setTimeout(() => {
-          isOpeningInProgress = false;
-          openStripeWindow(url);
-        }, 200);
-        return true;
-      }
-      
-      console.error("Impossible d'ouvrir la fenêtre Stripe après plusieurs tentatives");
-      isOpeningInProgress = false;
-      return false;
-    }
-    
-    // Réinitialiser le compteur de tentatives
-    openAttempts = 0;
-    
-    // Mettre le focus sur la fenêtre
-    stripeWindow.focus();
-    
-    // Ajouter un gestionnaire pour détecter la fermeture
-    const checkClosed = setInterval(() => {
-      if (stripeWindow && stripeWindow.closed) {
-        clearInterval(checkClosed);
-        console.log("Fenêtre Stripe fermée par l'utilisateur");
-        isOpeningInProgress = false;
-      }
-    }, 500);
-    
-    // Terminer l'état d'ouverture après un court délai
-    setTimeout(() => {
-      isOpeningInProgress = false;
-    }, 1000);
-    
-    console.log("Fenêtre Stripe ouverte avec succès");
+    // Si l'onglet n'a pas pu être ouvert, essayer la redirection
+    console.log("L'ouverture d'un nouvel onglet a échoué, tentative de redirection directe");
+    window.location.href = stripeUrl;
     return true;
   } catch (error) {
     console.error("Erreur lors de l'ouverture de la fenêtre Stripe:", error);
-    isOpeningInProgress = false;
-    return false;
+    
+    // En dernier recours, essayer la redirection directe
+    try {
+      window.location.href = stripeUrl;
+      return true;
+    } catch (e) {
+      console.error("La redirection vers Stripe a également échoué:", e);
+      return false;
+    }
   }
 };
 
 /**
- * Vérifie si la fenêtre Stripe est actuellement ouverte
+ * Vérifie si une fenêtre Stripe est active
+ * @returns true si une fenêtre Stripe est actuellement ouverte
  */
-export const isStripeWindowOpen = (): boolean => {
-  return !!stripeWindow && !stripeWindow.closed;
+export const isStripeWindowActive = (): boolean => {
+  return activeStripeWindow !== null && !activeStripeWindow.closed;
 };
 
 /**
- * Ferme la fenêtre Stripe si elle est ouverte
+ * Ferme la fenêtre Stripe active
  */
 export const closeStripeWindow = (): void => {
-  if (stripeWindow && !stripeWindow.closed) {
-    stripeWindow.close();
-    stripeWindow = null;
+  if (activeStripeWindow && !activeStripeWindow.closed) {
+    activeStripeWindow.close();
   }
-  isOpeningInProgress = false;
-};
-
-/**
- * Ajoute un timeout pour fermer automatiquement la fenêtre si l'utilisateur n'interagit pas
- */
-export const setupStripeWindowTimeout = (timeoutMs: number = 180000): void => {
-  if (stripeWindow) {
-    setTimeout(() => {
-      if (stripeWindow && !stripeWindow.closed) {
-        console.log("Fermeture automatique de la fenêtre Stripe après timeout");
-        stripeWindow.close();
-        stripeWindow = null;
-        isOpeningInProgress = false;
-      }
-    }, timeoutMs);
-  }
+  activeStripeWindow = null;
 };

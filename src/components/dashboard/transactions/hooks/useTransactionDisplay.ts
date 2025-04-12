@@ -3,30 +3,45 @@ import { useMemo } from 'react';
 import { Transaction } from '@/types/userData';
 
 /**
- * Hook pour calculer l'affichage des transactions
+ * Hook pour gérer l'affichage des transactions avec des fonctionnalités de filtrage
  */
 export const useTransactionDisplay = (
   transactions: Transaction[],
-  showAllTransactions: boolean
+  showAllTransactions: boolean,
+  maxDisplayed: number = 5
 ) => {
-  // Memoize les résultats pour éviter les re-rendus inutiles
-  return useMemo(() => {
-    // Ne traiter que les transactions valides
-    const validTx = Array.isArray(transactions) ? 
-      transactions.filter(tx => tx && (typeof tx.gain === 'number' || typeof tx.amount === 'number') && tx.date) : [];
+  // Filtrer les transactions valides
+  const validTransactions = useMemo(() => {
+    if (!Array.isArray(transactions)) {
+      console.warn("Les transactions ne sont pas dans un tableau valide");
+      return [];
+    }
     
-    // Déterminer les transactions à afficher
-    const displayedTx = showAllTransactions 
-      ? validTx 
-      : validTx.slice(0, 3);
+    return transactions.filter(tx => 
+      tx && 
+      (typeof tx.gain === 'number' || typeof tx.amount === 'number') && 
+      tx.date
+    );
+  }, [transactions]);
+  
+  // Sélectionner les transactions à afficher en fonction de showAllTransactions
+  const displayedTransactions = useMemo(() => {
+    const transactionsToDisplay = showAllTransactions ? validTransactions : validTransactions.slice(0, maxDisplayed);
     
-    // Calculer combien de transactions sont masquées
-    const hiddenCount = validTx.length > 3 && !showAllTransactions ? validTx.length - 3 : 0;
+    // Vérifier si un message de réconciliation est nécessaire
+    const hasBalanceReconciliationTx = transactionsToDisplay.some(tx => 
+      tx.report === "Réconciliation de solde" || tx.type === "Réconciliation de solde"
+    );
     
-    return {
-      validTransactions: validTx,
-      displayedTransactions: displayedTx,
-      hiddenTransactionsCount: hiddenCount
-    };
-  }, [transactions, showAllTransactions]);
+    return transactionsToDisplay;
+  }, [validTransactions, showAllTransactions, maxDisplayed]);
+  
+  // Calculer le nombre de transactions masquées
+  const hiddenTransactionsCount = validTransactions.length - displayedTransactions.length;
+  
+  return {
+    validTransactions,
+    displayedTransactions,
+    hiddenTransactionsCount
+  };
 };
