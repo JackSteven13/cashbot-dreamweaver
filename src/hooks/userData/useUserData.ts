@@ -18,7 +18,7 @@ export const useUserData = () => {
   const { effectiveBalance } = useBalanceSynchronization(userData, isNewUser);
   
   // Vérifications périodiques
-  usePeriodicChecks(userData, fetchUserData);
+  usePeriodicChecks(userData, refreshUserData);
   
   // Wrapper pour fetchUserData qui retourne un boolean
   const refreshUserData = useCallback(async (): Promise<boolean> => {
