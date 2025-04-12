@@ -7,7 +7,7 @@ import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
 import TransactionsPage from '@/pages/dashboard/TransactionsPage';
 import ReferralsPage from '@/pages/dashboard/ReferralsPage';
-import { useDashboardInitialization } from '@/hooks/dashboard/useDashboardState';
+import { useDashboardInitialization } from '@/hooks/dashboard/initialization'; // Fixed import path
 import { useDashboardState } from '@/hooks/dashboard/useDashboardState';
 import { useReferralNotifications } from '@/hooks/useReferralNotifications';
 import { useTransactionReconciliation } from '@/hooks/useTransactionReconciliation';
