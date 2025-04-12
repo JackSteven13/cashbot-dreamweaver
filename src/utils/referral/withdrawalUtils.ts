@@ -50,9 +50,87 @@ export const getWithdrawalProgress = (balance: number, subscription: string): nu
   return Math.min(100, Math.max(0, progress));
 };
 
+/**
+ * Vérifie si le retrait est autorisé pour le type d'abonnement et le nombre de parrainages
+ * @param subscription Type d'abonnement
+ * @param referralCount Nombre de parrainages actifs
+ * @returns True si le retrait est autorisé
+ */
+export const isWithdrawalAllowed = (subscription: string, referralCount: number): boolean => {
+  // Les comptes freemium doivent avoir au moins un parrainage
+  if (subscription?.toLowerCase() === 'freemium') {
+    return referralCount >= 1;
+  }
+  
+  // Les autres types d'abonnements peuvent toujours retirer
+  return true;
+};
+
+/**
+ * Calcule les frais de retrait en fonction de l'ancienneté et du type d'abonnement
+ * @param registrationDate Date d'inscription
+ * @param subscription Type d'abonnement
+ * @returns Pourcentage des frais (0-1)
+ */
+export const calculateWithdrawalFee = (registrationDate: Date, subscription: string): number => {
+  const today = new Date();
+  const accountAgeInDays = Math.floor((today.getTime() - registrationDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Définir les frais de base par type d'abonnement
+  let baseFee = 0.1; // 10% par défaut
+  
+  switch (subscription?.toLowerCase()) {
+    case 'elite':
+      baseFee = 0.03; // 3% pour Elite
+      break;
+    case 'gold':
+      baseFee = 0.05; // 5% pour Gold
+      break;
+    case 'starter':
+      baseFee = 0.08; // 8% pour Starter
+      break;
+    default:
+      baseFee = 0.1; // 10% pour Freemium
+  }
+  
+  // Réduire les frais en fonction de l'ancienneté (max 50% de réduction)
+  const ageDiscount = Math.min(0.5, accountAgeInDays / 365); // 50% max après 1 an
+  
+  return Math.max(0.01, baseFee * (1 - ageDiscount)); // Minimum 1%
+};
+
+/**
+ * Calcule combien de parrainages sont nécessaires pour atteindre le seuil de retrait
+ * @param subscription Type d'abonnement
+ * @param currentBalance Solde actuel
+ * @returns Objet contenant le montant nécessaire et le nombre estimé de parrainages
+ */
+export const calculateReferralToReachThreshold = (
+  subscription: string, 
+  currentBalance: number
+): { amountNeeded: number; estimatedReferrals: number } | null => {
+  // Si le solde est déjà suffisant, retourner null
+  const threshold = getWithdrawalThreshold(subscription);
+  if (currentBalance >= threshold) return null;
+  
+  const amountNeeded = threshold - currentBalance;
+  
+  // Estimer le nombre de parrainages nécessaires (supposons qu'un parrainage moyen génère 10€)
+  const avgCommissionPerReferral = 10;
+  const estimatedReferrals = Math.ceil(amountNeeded / avgCommissionPerReferral);
+  
+  return {
+    amountNeeded,
+    estimatedReferrals
+  };
+};
+
 export default {
   getWithdrawalThreshold,
   canWithdraw,
   getWithdrawalProgress,
-  WITHDRAWAL_THRESHOLDS
+  WITHDRAWAL_THRESHOLDS,
+  isWithdrawalAllowed,
+  calculateWithdrawalFee,
+  calculateReferralToReachThreshold
 };

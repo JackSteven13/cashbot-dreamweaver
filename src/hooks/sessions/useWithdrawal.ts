@@ -1,7 +1,9 @@
+
 import { useRef, useState, useEffect } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
-import { calculateWithdrawalFee, getWithdrawalThreshold, isWithdrawalAllowed } from '@/utils/referral/withdrawalUtils';
+import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
+import withdrawalUtils from '@/utils/referral/withdrawalUtils';
 
 interface WithdrawalRules {
   minimumWithdrawalAmount: number; // Montant minimum pour retirer
@@ -67,7 +69,7 @@ export const useWithdrawal = (
       return;
     }
     
-    if (!isWithdrawalAllowed(userData.subscription, referralCount)) {
+    if (!withdrawalUtils.isWithdrawalAllowed(userData.subscription, referralCount)) {
       toast({
         title: "Retrait impossible",
         description: "Les comptes freemium doivent parrainer au moins une personne pour pouvoir effectuer un retrait.",
@@ -126,7 +128,7 @@ export const useWithdrawal = (
       
       if (currentBalance >= withdrawalRules.minimumWithdrawalAmount) {
         const registerDate = userData.registeredAt || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-        const fee = calculateWithdrawalFee(registerDate, userData.subscription);
+        const fee = withdrawalUtils.calculateWithdrawalFee(registerDate, userData.subscription);
         const feeAmount = currentBalance * fee;
         const netAmount = currentBalance - feeAmount;
         
