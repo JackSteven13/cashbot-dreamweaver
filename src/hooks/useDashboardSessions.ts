@@ -6,21 +6,31 @@ import { useManualSessions } from './sessions/useManualSessions';
 import { useWithdrawal } from './sessions/useWithdrawal';
 import { useMidnightReset } from './sessions/useMidnightReset';
 
-export const useDashboardSessions = (
-  userData: UserData,
-  dailySessionCount: number,
-  incrementSessionCount: () => Promise<void>,
-  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>,
-  setShowLimitAlert: (show: boolean) => void,
-  resetBalance: () => Promise<void>
-) => {
+// Define the interface for the hook parameters
+interface DashboardSessionsProps {
+  userData: UserData | null;
+  dailySessionCount: number;
+  incrementSessionCount: () => Promise<void>;
+  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>;
+  setShowLimitAlert: (show: boolean) => void;
+  resetBalance: () => Promise<void>;
+}
+
+export const useDashboardSessions = ({
+  userData,
+  dailySessionCount,
+  incrementSessionCount,
+  updateBalance,
+  setShowLimitAlert,
+  resetBalance
+}: DashboardSessionsProps) => {
   const [lastSessionTimestamp, setLastSessionTimestamp] = useState<string | undefined>(undefined);
   const hasProcessedTransactions = useRef(false);
   const previousTransactionsLength = useRef<number | null>(null);
   
-  // Extraire le timestamp de la dernière session à partir des transactions sans créer de boucle
+  // Extract timestamp of last session from transactions without creating loops
   useEffect(() => {
-    // Vérifier si les transactions ont changé pour éviter les traitements inutiles
+    // Check if transactions have changed to avoid unnecessary processing
     if (userData?.transactions && 
         (previousTransactionsLength.current === null || 
          previousTransactionsLength.current !== userData.transactions.length) && 
@@ -29,19 +39,19 @@ export const useDashboardSessions = (
       previousTransactionsLength.current = userData.transactions.length;
       hasProcessedTransactions.current = true;
       
-      // Recherche de la dernière transaction de type "Session manuelle"
+      // Find the last transaction of type "Session manuelle"
       const manualSessions = userData.transactions.filter(
         tx => tx.report && tx.report.includes('Session manuelle')
       );
       
       if (manualSessions.length > 0) {
-        // Trier par date décroissante pour obtenir la plus récente
+        // Sort by descending date to get the most recent
         manualSessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
-        // Utiliser la date de la transaction la plus récente
+        // Use the date of the most recent transaction
         const lastManualSessionDate = manualSessions[0].date;
         
-        // Créer un timestamp ISO à partir de la date (midi pour éviter les problèmes de fuseaux horaires)
+        // Create ISO timestamp from the date (noon to avoid timezone issues)
         const lastDate = new Date(lastManualSessionDate);
         lastDate.setHours(12, 0, 0, 0);
         setLastSessionTimestamp(lastDate.toISOString());
@@ -50,18 +60,18 @@ export const useDashboardSessions = (
       }
     }
     
-    // Réinitialiser lorsque userData change significativement
+    // Reset when userData changes significantly
     return () => {
-      // Ne réinitialiser que lorsque les données utilisateur sont complètement différentes
-      // pas à chaque changement mineur dans les transactions
+      // Only reset when user data is completely different
+      // not on every minor change in transactions
       if (!userData || !userData.transactions) {
         hasProcessedTransactions.current = false;
         previousTransactionsLength.current = null;
       }
     };
-  }, [userData?.transactions]);  // Dépendance simplifiée
+  }, [userData?.transactions]);  // Simplified dependency
 
-  // Utiliser les hooks individuels pour chaque fonctionnalité
+  // Use individual hooks for each functionality
   const { 
     lastAutoSessionTime, 
     activityLevel, 
@@ -86,7 +96,7 @@ export const useDashboardSessions = (
     resetBalance
   );
 
-  // Configurer la réinitialisation de minuit
+  // Set up midnight reset
   useMidnightReset(
     userData,
     incrementSessionCount,
@@ -98,10 +108,10 @@ export const useDashboardSessions = (
     isStartingSession,
     handleStartSession,
     handleWithdrawal,
-    isProcessingWithdrawal: isProcessingWithdrawal,
+    isProcessingWithdrawal,
     lastSessionTimestamp,
-    localBalance,  // Exposer le solde local pour éviter les problèmes de synchronisation
-    isBotActive    // Exposer l'état du bot
+    localBalance,  // Expose local balance to avoid synchronization issues
+    isBotActive    // Expose bot status
   };
 };
 

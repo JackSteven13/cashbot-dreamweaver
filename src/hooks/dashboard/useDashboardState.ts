@@ -36,7 +36,7 @@ export const useDashboardState = () => {
   const { isDormant, isChecking, dormancyData, handleReactivate } = 
     useDormancyCheck(userData, showLimitAlert);
   
-  // Gestion des sessions - Update parameters to match what useDashboardSessions expects
+  // Gestion des sessions - Pass userData directly and other required parameters
   const {
     isStartingSession,
     handleStartSession,

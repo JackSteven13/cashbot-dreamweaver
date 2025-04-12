@@ -1,27 +1,36 @@
 
+// If the file already exists, let's create an augmentation to it
+// This is a supplementary type definition
+
 export interface Transaction {
-  id?: string; // Adding id as optional property
+  id?: string;
   date: string;
   amount?: number;
   type?: string;
-  report: string;
-  gain?: number; // Keep the original 'gain' for backward compatibility
-  created_at?: string;
-  user_id?: string;
+  report?: string;
+  gain?: number;
 }
 
 export interface Referral {
   id: string;
-  referrer_id: string;
   referred_user_id: string;
+  referrer_id: string;
   plan_type: string;
-  status: string;
   commission_rate: number;
+  status: string;
   created_at: string;
-  updated_at: string;
-  username?: string; // Add this for display purposes
-  joinDate?: string; // Add this for display purposes
-  active?: boolean; // Add this for status checking
+  updated_at?: string;
+  active?: boolean;
+  commission_earned?: number;
+}
+
+export interface UserProfile {
+  id?: string;
+  full_name?: string;
+  email?: string;
+  created_at?: string;
+  access_code?: string;
+  referrer_id?: string;
 }
 
 export interface UserData {
@@ -30,19 +39,11 @@ export interface UserData {
   subscription: string;
   referrals: Referral[];
   referralLink: string;
-  transactions: Transaction[];
-  registeredAt?: Date;
   email?: string;
+  transactions: Transaction[];
   dailySessionCount?: number;
-  paymentMethods?: Array<{
-    type: string;
-    lastFour: string;
-  }>;
-  totalEarnings?: number;
-  profile?: { 
-    created_at?: string;
-    full_name?: string;
-    email?: string;
-    id?: string;
-  }; 
+  registeredAt?: Date;
+  lastLogin?: Date;
+  isActive?: boolean;
+  profile?: UserProfile;
 }
