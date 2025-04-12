@@ -7,7 +7,7 @@ import { useActivitySimulation } from './useActivitySimulation';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
 import { toast } from '@/components/ui/use-toast';
 import { addTransaction } from '@/hooks/user/transactionUtils';
-import balanceManager, { getDailyGains } from '@/utils/balance/balanceManager';
+import balanceManager from '@/utils/balance/balanceManager';
 import { supabase } from '@/integrations/supabase/client';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
@@ -47,7 +47,7 @@ export const useAutoSessions = (
   // Fonction pour récupérer et synchroniser les gains quotidiens
   const updateDailyGains = () => {
     // Récupérer les gains depuis le gestionnaire de solde
-    const managerDailyGains = getDailyGains();
+    const managerDailyGains = balanceManager.getDailyGains();
     
     // Calculer aussi depuis les transactions
     if (userData?.transactions) {
@@ -168,7 +168,7 @@ export const useAutoSessions = (
       const dailyLimit = getDailyLimit();
       
       // Récupérer les gains journaliers depuis le gestionnaire de solde
-      const actualDailyGains = getDailyGains();
+      const actualDailyGains = balanceManager.getDailyGains();
       todaysGainsRef.current = actualDailyGains;
       
       // Check if we've reached the limit
@@ -244,7 +244,7 @@ export const useAutoSessions = (
           await balanceManager.syncWithDatabase();
           
           // Mettre à jour la progression de la limite quotidienne
-          const updatedGains = getDailyGains();
+          const updatedGains = balanceManager.getDailyGains();
           const percentProgress = Math.min(100, (updatedGains / dailyLimit) * 100);
           setDailyLimitProgress(percentProgress);
         }
@@ -263,7 +263,7 @@ export const useAutoSessions = (
       terminalAnimation.complete(finalGain);
       
       // If limit reached, deactivate the bot
-      if (getDailyGains() >= dailyLimit) {
+      if (balanceManager.getDailyGains() >= dailyLimit) {
         setIsBotActive(false);
         botActiveRef.current = false;
         setShowLimitAlert(true);
@@ -282,7 +282,7 @@ export const useAutoSessions = (
       if (userData?.profile?.id) {
         await supabase
           .from('user_balances')
-          .update({ daily_session_count: Math.ceil(getDailyGains() / 0.1) })
+          .update({ daily_session_count: Math.ceil(balanceManager.getDailyGains() / 0.1) })
           .eq('id', userData.profile.id);
       }
     } catch (error) {

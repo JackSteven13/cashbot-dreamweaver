@@ -4,7 +4,7 @@ import DashboardMetrics from './DashboardMetrics';
 import BotControlPanel from './bot/BotControlPanel';
 import { Progress } from '@/components/ui/progress';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
-import { getDailyGains } from '@/utils/balance/balanceManager';
+import balanceManager from '@/utils/balance/balanceManager';
 
 interface DashboardContentProps {
   userData: any;
@@ -40,14 +40,14 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   
   // Calculer la progression de la limite quotidienne
   React.useEffect(() => {
-    const dailyGains = getDailyGains();
+    const dailyGains = balanceManager.getDailyGains();
     const dailyLimit = SUBSCRIPTION_LIMITS[userData?.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     const progressPercentage = Math.min(100, (dailyGains / dailyLimit) * 100);
     setLimitProgress(progressPercentage);
     
     // Écouter les mises à jour des gains quotidiens
     const handleDailyGainsUpdate = () => {
-      const updatedGains = getDailyGains();
+      const updatedGains = balanceManager.getDailyGains();
       const updatedProgress = Math.min(100, (updatedGains / dailyLimit) * 100);
       setLimitProgress(updatedProgress);
     };
@@ -70,7 +70,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
             Limite quotidienne ({userData?.subscription || 'freemium'})
           </span>
           <span className="text-sm font-medium">
-            {getDailyGains().toFixed(2)}€ / {SUBSCRIPTION_LIMITS[userData?.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5}€
+            {balanceManager.getDailyGains().toFixed(2)}€ / {SUBSCRIPTION_LIMITS[userData?.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5}€
           </span>
         </div>
         <Progress value={limitProgress} className="h-2" />

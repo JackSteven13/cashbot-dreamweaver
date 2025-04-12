@@ -10,7 +10,7 @@ export const resetUserBalance = async (userId: string, currentBalance: number) =
   let retryCount = 0;
   
   // Obtenir le solde le plus fiable depuis notre gestionnaire centralisé
-  const managerBalance = balanceManager.getBalance();
+  const managerBalance = balanceManager.getCurrentBalance();
   
   // Toujours utiliser la valeur maximum
   currentBalance = Math.max(currentBalance, managerBalance);

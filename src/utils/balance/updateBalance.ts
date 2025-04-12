@@ -15,7 +15,7 @@ export const updateUserBalance = async (
   const positiveGain = Math.max(0, parseFloat(gain.toFixed(2)));
   
   // Utiliser le gestionnaire centralisé pour la valeur la plus fiable
-  const latestBalance = balanceManager.getBalance();
+  const latestBalance = balanceManager.getCurrentBalance();
   // Toujours utiliser la valeur la plus élevée comme référence
   const effectiveCurrentBalance = Math.max(currentBalance, latestBalance);
   
