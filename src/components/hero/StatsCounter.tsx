@@ -10,43 +10,43 @@ interface StatsCounterProps {
 }
 
 const StatsCounter = ({
-  dailyAdsTarget = 850000, // Considérablement augmenté pour refléter plusieurs agents IA
-  dailyRevenueTarget = 1750000 // Augmenté proportionnellement
+  dailyAdsTarget = 650000, // Reduced from 850000 for slower progress
+  dailyRevenueTarget = 1250000 // Reduced from 1750000 for consistency
 }: StatsCounterProps) => {
   const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
     dailyAdsTarget,
     dailyRevenueTarget
   });
   
-  // Référence pour éviter de trop rafraîchir l'interface utilisateur
+  // Reference to avoid too frequent UI refreshes
   const lastUpdateRef = useRef({
     adsCount: 0,
     revenueCount: 0,
     timestamp: 0
   });
   
-  // Valeurs formatées pour l'affichage
+  // Formatted values for display
   const [displayedAds, setDisplayedAds] = React.useState("0");
   const [displayedRevenue, setDisplayedRevenue] = React.useState("0");
   
-  // Mettre à jour l'affichage seulement si la différence est significative
-  // ou si un certain temps s'est écoulé
+  // Update the display only if the difference is significant
+  // or if a certain time has elapsed - with longer intervals
   useEffect(() => {
     const now = Date.now();
     const timeDiff = now - lastUpdateRef.current.timestamp;
     const adsDiff = Math.abs(displayedAdsCount - lastUpdateRef.current.adsCount);
     const revenueDiff = Math.abs(displayedRevenueCount - lastUpdateRef.current.revenueCount);
     
-    // Mettre à jour uniquement si:
-    // - C'est la première mise à jour
-    // - Au moins 1.5 secondes se sont écoulées depuis la dernière mise à jour
-    // - La différence dans les annonces est d'au moins 100
-    // - La différence dans les revenus est d'au moins 200
+    // Update only if:
+    // - It's the first update
+    // - At least 3 seconds have elapsed since the last update (increased from 1.5s)
+    // - The difference in ads is at least 50 (reduced from 100 for smoother updates)
+    // - The difference in revenue is at least 100 (reduced from 200)
     if (
       lastUpdateRef.current.timestamp === 0 ||
-      timeDiff > 1500 ||
-      adsDiff > 100 ||
-      revenueDiff > 200
+      timeDiff > 3000 ||
+      adsDiff > 50 ||
+      revenueDiff > 100
     ) {
       setDisplayedAds(displayedAdsCount.toLocaleString('fr-FR'));
       setDisplayedRevenue(formatRevenue(displayedRevenueCount));

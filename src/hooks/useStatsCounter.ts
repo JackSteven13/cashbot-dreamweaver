@@ -52,15 +52,14 @@ export const useStatsCounter = ({
   useEffect(() => {
     initializeCounters();
     
-    // Système d'animation repensé pour une animation plus lente et lisible
+    // Significantly redesigned animation system for much slower and more readable updates
     let animationFrameId: number;
     let lastUpdateTime = 0;
     
-    // Fonction d'animation avec des intervalles plus longs
+    // Animation function with much longer intervals (8-12 seconds)
     const updateAnimation = (timestamp: number) => {
-      // Intervalle plus long entre les mises à jour (entre 4 et 6 secondes au lieu de 1.5-3)
-      // pour ralentir significativement l'animation
-      const updateInterval = Math.random() * 2000 + 4000;
+      // Much longer interval between updates (8-12 seconds)
+      const updateInterval = Math.random() * 4000 + 8000;
       
       if (timestamp - lastUpdateTime > updateInterval || lastUpdateTime === 0) {
         animateCounters();
@@ -72,20 +71,19 @@ export const useStatsCounter = ({
     
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Intervalle variable pour les mises à jour des compteurs réels
-    // mais avec des intervalles beaucoup plus longs
+    // Variable interval for real counter updates with much longer intervals
     const createUpdateInterval = () => {
-      const minInterval = 10000; // Minimum 10 secondes (était 4000)
-      const maxInterval = 20000; // Maximum 20 secondes (était 12000)
+      const minInterval = 20000; // Minimum 20 seconds (was 10000)
+      const maxInterval = 40000; // Maximum 40 seconds (was 20000)
       const randomInterval = Math.floor(Math.random() * (maxInterval - minInterval) + minInterval);
       
       setTimeout(() => {
         incrementCountersRandomly();
-        createUpdateInterval(); // Planifier la prochaine mise à jour avec un nouvel intervalle aléatoire
+        createUpdateInterval(); // Schedule next update with a new random interval
       }, randomInterval);
     };
     
-    createUpdateInterval(); // Démarrer le cycle d'intervalles variables
+    createUpdateInterval(); // Start the cycle of variable intervals
     
     const resetTimeout = scheduleCycleUpdate();
     
