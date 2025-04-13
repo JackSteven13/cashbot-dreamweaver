@@ -16,23 +16,32 @@ export const useStatsAnimation = ({
 }: UseStatsAnimationParams) => {
   // Animation redesignée pour simuler plusieurs agents IA travaillant simultanément
   const animateCounters = useCallback(() => {
-    // Mise à jour du compteur d'annonces - accélérée considérablement
+    // Mise à jour du compteur d'annonces - avec variation aléatoire pour simuler différents agents
     setDisplayedAdsCount((prevCount) => {
       // Si nous avons atteint la cible, ne pas changer
       if (prevCount >= adsCount) return adsCount;
       
-      // Incrémentation beaucoup plus agressive pour simuler plusieurs agents
-      const increment = Math.max(200, Math.floor((adsCount - prevCount) * 0.08));
+      // Simuler plusieurs agents traitant des vidéos de durées différentes
+      // Génère un incrément entre 80 et 350 annonces pour plus de variation
+      const baseIncrement = Math.floor((adsCount - prevCount) * 0.05);
+      const variationFactor = 0.7 + Math.random() * 0.6; // 70% à 130% de l'incrément de base
+      const increment = Math.max(80, Math.min(350, Math.floor(baseIncrement * variationFactor)));
+      
       return Math.min(prevCount + increment, adsCount);
     });
 
-    // Mise à jour des revenus de manière indépendante - accélérée
+    // Mise à jour des revenus de manière indépendante avec plus de variation
     setDisplayedRevenueCount((prevRevCount) => {
       // Si nous avons atteint la cible, ne pas changer
       if (prevRevCount >= revenueCount) return revenueCount;
       
-      // Incrémentation plus dynamique et agressive
-      const increment = Math.max(350, Math.floor((revenueCount - prevRevCount) * 0.08));
+      // Simuler des publicités de valeurs différentes (entre 0.45€ et 3.30€)
+      // Créer des sauts irréguliers pour plus de réalisme
+      const baseIncrement = Math.floor((revenueCount - prevRevCount) * 0.06);
+      // Plus grande variation pour les revenus (50% à 150%)
+      const variationFactor = 0.5 + Math.random(); 
+      const increment = Math.max(150, Math.floor(baseIncrement * variationFactor));
+      
       return Math.min(prevRevCount + increment, revenueCount);
     });
 

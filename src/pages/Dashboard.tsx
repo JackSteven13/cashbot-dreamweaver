@@ -7,8 +7,8 @@ import DashboardError from '@/components/dashboard/DashboardError';
 import DashboardInitializationEffect from '@/components/dashboard/DashboardInitializationEffect';
 import TransactionsPage from '@/pages/dashboard/TransactionsPage';
 import ReferralsPage from '@/pages/dashboard/ReferralsPage';
-import { useDashboardInitialization } from '@/hooks/dashboard/initialization/useDashboardInitialization'; // Correct import path
-import { useDashboardState } from '@/hooks/useDashboardState';
+import { useDashboardInitialization } from '@/hooks/dashboard/initialization/useDashboardInitialization';
+import { useDashboard } from '@/hooks/useDashboard'; // Importation du hook useDashboard
 import { useReferralNotifications } from '@/hooks/useReferralNotifications';
 import { useTransactionReconciliation } from '@/hooks/useTransactionReconciliation';
 import { memo, useEffect, useRef, useMemo, useState } from 'react';
@@ -30,6 +30,7 @@ const Dashboard = memo(() => {
     authError
   } = useDashboardInitialization();
   
+  // Utilisation du hook useDashboard au lieu de useDashboardState
   const {
     selectedNavItem,
     setSelectedNavItem,
@@ -49,7 +50,7 @@ const Dashboard = memo(() => {
     forceRefresh,
     isLoading,
     isBotActive
-  } = useDashboardState();
+  } = useDashboard();
   
   // Déterminer si nous sommes sur la page des parrainages
   const isReferralsPage = location.pathname === '/dashboard/referrals';

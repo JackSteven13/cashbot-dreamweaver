@@ -43,26 +43,64 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Logique d'incrémentation repensée pour une progression plus réaliste
+  // Simulation améliorée de multiples agents IA travaillant en parallèle
   const incrementCountersRandomly = useCallback(() => {
-    // Incrémentations plus modestes et réalistes
+    // Calcul de l'incrément basé sur un nombre variable d'agents actifs
+    const activeAgents = 7 + Math.floor(Math.random() * 5); // Entre 7 et 11 agents actifs
+    
+    // Chaque agent traite un nombre variable d'annonces
     setAdsCount(prevAdsCount => {
-      // Seulement incrémenter, jamais diminuer
+      // Ne pas dépasser la cible quotidienne
       if (prevAdsCount >= dailyAdsTarget) return dailyAdsTarget;
       
-      // Calculer un pourcentage plus petit de la cible quotidienne à ajouter
-      const increment = Math.floor(dailyAdsTarget * 0.0025); // 0.25% au lieu de 1%
-      const newAdsCount = Math.min(prevAdsCount + increment, dailyAdsTarget);
+      let totalAdsIncrement = 0;
       
-      // Toujours mettre à jour les revenus en même temps que les annonces, avec un ratio fixe
+      // Simuler chaque agent traitant des annonces
+      for (let i = 0; i < activeAgents; i++) {
+        // Durée variable des annonces (20-60 secondes)
+        // Agents plus ou moins rapides
+        const agentEfficiency = 0.7 + Math.random() * 0.6; // 70% à 130% d'efficacité
+        const adsPerAgent = Math.floor((dailyAdsTarget * 0.0003) * agentEfficiency);
+        totalAdsIncrement += adsPerAgent;
+      }
+      
+      // Limite pour ne pas dépasser l'objectif
+      const newAdsCount = Math.min(prevAdsCount + totalAdsIncrement, dailyAdsTarget);
+      
+      // Revenus variables générés par les annonces (entre 0.45€ et 3.30€ par annonce)
       setRevenueCount(prevRevenueCount => {
         if (prevRevenueCount >= dailyRevenueTarget) return dailyRevenueTarget;
         
-        // Utiliser un revenu fixe par annonce pour la stabilité
-        const averageRevenuePerAd = dailyRevenueTarget / dailyAdsTarget;
-        const revenueIncrement = Math.floor((newAdsCount - prevAdsCount) * averageRevenuePerAd);
+        let totalRevenueIncrement = 0;
         
-        return Math.min(prevRevenueCount + revenueIncrement, dailyRevenueTarget);
+        for (let i = 0; i < totalAdsIncrement; i++) {
+          // Simuler différentes valeurs d'annonces
+          // La majorité sont de faible valeur, quelques-unes de haute valeur
+          let adValue;
+          const adTypeRandom = Math.random();
+          
+          if (adTypeRandom > 0.97) {
+            // Annonces premium (3%)
+            adValue = 2.20 + Math.random() * 1.10; // 2.20€ - 3.30€
+          } else if (adTypeRandom > 0.85) {
+            // Annonces moyennes-hautes (12%)
+            adValue = 1.10 + Math.random() * 1.10; // 1.10€ - 2.20€
+          } else if (adTypeRandom > 0.60) {
+            // Annonces moyennes (25%)
+            adValue = 0.70 + Math.random() * 0.40; // 0.70€ - 1.10€
+          } else {
+            // Annonces standards (60%)
+            adValue = 0.45 + Math.random() * 0.25; // 0.45€ - 0.70€
+          }
+          
+          totalRevenueIncrement += adValue;
+        }
+        
+        // Ajuster le montant total des revenus pour qu'il soit cohérent avec la cible journalière
+        const adjustmentFactor = dailyRevenueTarget / dailyAdsTarget;
+        totalRevenueIncrement = totalRevenueIncrement * adjustmentFactor * 0.8;
+        
+        return Math.min(prevRevenueCount + totalRevenueIncrement, dailyRevenueTarget);
       });
       
       return newAdsCount;

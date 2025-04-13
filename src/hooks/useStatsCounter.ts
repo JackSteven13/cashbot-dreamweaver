@@ -52,13 +52,17 @@ export const useStatsCounter = ({
   useEffect(() => {
     initializeCounters();
     
-    // Completely redesigned animation system for stability
+    // Système d'animation repensé pour une plus grande fluidité et variabilité
     let animationFrameId: number;
     let lastUpdateTime = 0;
     
+    // Fonction d'animation avec variation de fréquence
     const updateAnimation = (timestamp: number) => {
-      // Extremely slow animation - only update every 2 seconds
-      if (timestamp - lastUpdateTime > 2000 || lastUpdateTime === 0) {
+      // Variation du temps entre les mises à jour (entre 1.5 et 3 secondes)
+      // Simule des agents plus ou moins actifs selon les moments
+      const updateInterval = Math.random() * 1500 + 1500;
+      
+      if (timestamp - lastUpdateTime > updateInterval || lastUpdateTime === 0) {
         animateCounters();
         lastUpdateTime = timestamp;
       }
@@ -68,14 +72,25 @@ export const useStatsCounter = ({
     
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Greatly reduced update frequency - only update actual values every 10 seconds
-    const activityInterval = setInterval(incrementCountersRandomly, 10000);
+    // Intervalle variable pour les mises à jour des compteurs réels
+    // Simule le rythme de travail irrégulier des agents
+    const createUpdateInterval = () => {
+      const minInterval = 4000; // Minimum 4 secondes
+      const maxInterval = 12000; // Maximum 12 secondes
+      const randomInterval = Math.floor(Math.random() * (maxInterval - minInterval) + minInterval);
+      
+      setTimeout(() => {
+        incrementCountersRandomly();
+        createUpdateInterval(); // Planifier la prochaine mise à jour avec un nouvel intervalle aléatoire
+      }, randomInterval);
+    };
+    
+    createUpdateInterval(); // Démarrer le cycle d'intervalles variables
     
     const resetTimeout = scheduleCycleUpdate();
     
     return () => {
       if (resetTimeout) clearTimeout(resetTimeout);
-      clearInterval(activityInterval);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
   }, [
