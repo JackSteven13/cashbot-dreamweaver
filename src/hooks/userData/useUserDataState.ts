@@ -18,7 +18,7 @@ export const useUserDataState = () => {
   const [dailySessionCount, setDailySessionCount] = useState<number>(0);
   const [showLimitAlert, setShowLimitAlert] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isBotActive, setIsBotActive] = useState<boolean>(false);
+  const [isBotActive, setIsBotActive] = useState<boolean>(true); // Initialisation à true pour que le bot soit actif par défaut
   const [dailyLimitProgress, setDailyLimitProgress] = useState<number>(0);
 
   // Function to update user data
@@ -32,7 +32,7 @@ export const useUserDataState = () => {
   // User actions
   const userActions = {
     setShowLimitAlert,
-    setIsBotActive
+    setIsBotActive // Exposer cette méthode dans userActions
   };
 
   return {

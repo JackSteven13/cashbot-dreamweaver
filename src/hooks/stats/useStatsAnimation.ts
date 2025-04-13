@@ -45,7 +45,6 @@ export const useStatsAnimation = ({
       return Math.min(prevRevCount + increment, revenueCount);
     });
 
-    // Renvoie true pour indiquer que l'animation est toujours active
     return { 
       animationActive: adsCount > 0 || revenueCount > 0 
     };

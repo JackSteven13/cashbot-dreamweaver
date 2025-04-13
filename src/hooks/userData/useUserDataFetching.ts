@@ -5,7 +5,7 @@ import { UserData } from '@/types/userData';
 import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 
 export const useUserDataFetching = (
-  loadUserProfile: (userId: string) => Promise<any>,
+  loadUserProfile: (userId: string, userEmail?: string | null) => Promise<any>,
   loadUserBalance: (userId: string, isNewUser: boolean) => Promise<any>,
   updateUserData: (data: Partial<UserData>) => void,
   setIsLoading: (loading: boolean) => void,
@@ -21,7 +21,7 @@ export const useUserDataFetching = (
     
     try {
       // Load profile data
-      const profileData = await loadUserProfile(user.id);
+      const profileData = await loadUserProfile(user.id, user.email);
       
       // Load balance data
       const balanceData = await loadUserBalance(user.id, isNewUser);
@@ -31,10 +31,20 @@ export const useUserDataFetching = (
       
       // Update state with fetched data
       updateUserData({
-        ...profileData,
+        profile: profileData,
         ...balanceData,
         transactions
       });
+
+      // Activer le bot par défaut pour les nouveaux utilisateurs connectés
+      window.dispatchEvent(new CustomEvent('user:data-loaded', {
+        detail: { 
+          userId: user.id,
+          isNewUser
+        }
+      }));
+
+      console.log('User data loaded successfully:', { profileData, balanceData, transactions });
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
@@ -48,13 +58,14 @@ export const useUserDataFetching = (
     
     try {
       // Reset the daily session count
-      // This would typically be a database operation
       console.log('Resetting daily counters for user', user.id);
       
       // Update local state
       updateUserData({
         dailySessionCount: 0
       });
+      
+      window.dispatchEvent(new CustomEvent('dailyGains:reset'));
       
       return Promise.resolve();
     } catch (error) {
