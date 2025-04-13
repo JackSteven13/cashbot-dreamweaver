@@ -1,6 +1,5 @@
-
 import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Formate un message d'erreur pour l'affichage
@@ -106,4 +105,45 @@ export const handlePaymentError = (error: any): void => {
   });
   
   console.error("Erreur de paiement détaillée:", error);
+};
+
+/**
+ * Vérifie l'abonnement actuel de l'utilisateur
+ * @returns Le type d'abonnement ou null si aucun
+ */
+export const checkCurrentSubscription = async (): Promise<string | null> => {
+  try {
+    console.log("Vérification de l'abonnement actuel");
+    
+    // Vérifier si l'utilisateur est connecté
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.log("Pas de session utilisateur active");
+      return null;
+    }
+    
+    // Récupérer l'abonnement depuis la base de données
+    const { data: userData, error: userError } = await supabase
+      .from('user_balances')
+      .select('subscription')
+      .eq('id', session.user.id)
+      .single();
+    
+    if (userError) {
+      console.error("Erreur lors de la récupération de l'abonnement:", userError);
+      return null;
+    }
+    
+    if (!userData || !userData.subscription) {
+      console.log("Aucun abonnement trouvé");
+      return null;
+    }
+    
+    console.log("Abonnement trouvé:", userData.subscription);
+    return userData.subscription;
+  } catch (error) {
+    console.error("Erreur lors de la vérification de l'abonnement:", error);
+    return null;
+  }
 };
