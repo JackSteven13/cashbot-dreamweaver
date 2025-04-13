@@ -39,15 +39,26 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     if (stripeCheckoutUrl && isStripeProcessing && !didInitiateRedirect) {
       console.log("URL de paiement Stripe prête:", stripeCheckoutUrl);
       
-      // Retirer l'indicateur de chargement car l'URL est prête
-      setIsStripeProcessing(false);
-      
-      // Notification à l'utilisateur
-      toast({
-        title: "Page de paiement prête",
-        description: "Cliquez sur le bouton pour accéder à la page de paiement Stripe.",
-        duration: 10000,
-      });
+      // Ouvrir directement la page Stripe au lieu d'attendre que l'utilisateur clique
+      const opened = openStripeWindow(stripeCheckoutUrl);
+      if (opened) {
+        setDidInitiateRedirect(true);
+        setIsStripeProcessing(false);
+        toast({
+          title: "Redirection vers Stripe",
+          description: "Vous êtes redirigé vers la page de paiement sécurisée...",
+          duration: 5000,
+        });
+      } else {
+        // Si l'ouverture a échoué, informer l'utilisateur
+        setIsStripeProcessing(false);
+        toast({
+          title: "Impossible d'ouvrir la page de paiement",
+          description: "Veuillez cliquer sur le bouton pour accéder à la page de paiement",
+          variant: "destructive",
+          duration: 10000,
+        });
+      }
     }
   }, [stripeCheckoutUrl, isStripeProcessing, didInitiateRedirect]);
 
@@ -111,8 +122,15 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     // Si nous avons déjà une URL et que l'utilisateur réessaie
     if (stripeCheckoutUrl) {
       console.log("Réutilisation de l'URL existante:", stripeCheckoutUrl);
-      setDidInitiateRedirect(true);
-      openStripeWindow(stripeCheckoutUrl);
+      const opened = openStripeWindow(stripeCheckoutUrl);
+      setDidInitiateRedirect(opened);
+      if (!opened) {
+        toast({
+          title: "Impossible d'ouvrir la page de paiement",
+          description: "Votre navigateur a bloqué la popup. Veuillez autoriser les popups pour ce site.",
+          variant: "destructive"
+        });
+      }
       return;
     }
     
@@ -170,8 +188,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         throw new Error("Impossible de créer la session de paiement");
       }
       
-      // L'URL est prête, mais l'ouverture sera déclenchée par le bouton
-      setIsStripeProcessing(false);
+      // L'URL est prête, elle sera ouverte automatiquement par l'effet
 
     } catch (error: any) {
       console.error("Erreur de paiement:", error);

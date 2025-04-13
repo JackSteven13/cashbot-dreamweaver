@@ -1,120 +1,109 @@
 
-// Basic card validation
-export const validateCardPayment = (cardNumber: string, expiry: string, cvc: string) => {
-  // Remove spaces from card number
-  const cleanCardNumber = cardNumber.replace(/\s/g, '');
+import { toast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
-  if (!cleanCardNumber || cleanCardNumber.length < 15 || cleanCardNumber.length > 16 || !/^\d+$/.test(cleanCardNumber)) {
-    return false;
-  }
-
-  if (!expiry || !/^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(expiry)) {
-    return false;
-  }
-
-  if (!cvc || cvc.length < 3 || cvc.length > 4 || !/^\d+$/.test(cvc)) {
-    return false;
-  }
-
-  return true;
-};
-
-// Format an error message for display
+/**
+ * Formate un message d'erreur pour l'affichage
+ */
 export const formatErrorMessage = (error: any): string => {
+  if (!error) return "Une erreur inconnue est survenue";
+
+  // Si c'est une erreur de type Error
+  if (error instanceof Error) {
+    const message = error.message;
+    
+    // Gestion des messages d'erreur spécifiques
+    if (message.includes('SAME_PLAN')) {
+      return "Vous êtes déjà abonné à ce forfait.";
+    }
+    if (message.includes('not authenticated')) {
+      return "Vous devez être connecté pour effectuer cette action.";
+    }
+    if (message.includes('timeout')) {
+      return "La connexion au serveur de paiement a expiré. Veuillez réessayer.";
+    }
+    
+    return message;
+  }
+  
+  // Si c'est une erreur de type string
   if (typeof error === 'string') {
     return error;
   }
   
-  if (error?.message) {
+  // Si c'est une erreur avec un message
+  if (error.message) {
     return error.message;
   }
   
-  if (error?.error) {
-    return typeof error.error === 'string' 
-      ? error.error 
-      : error.error.message || 'Une erreur inconnue est survenue';
-  }
-  
-  return 'Une erreur inconnue est survenue lors du traitement du paiement';
+  // Fallback
+  return "Une erreur inattendue est survenue. Veuillez réessayer.";
 };
 
-// Get referral code from URL parameters
-export const getReferralCodeFromURL = (): string | null => {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('ref');
-};
-
-// Update local subscription info
-export const updateLocalSubscription = (subscription: string): void => {
+/**
+ * Met à jour localement les informations d'abonnement
+ */
+export const updateLocalSubscription = (subscription: string) => {
   localStorage.setItem('subscription', subscription);
-  localStorage.setItem('forceRefreshBalance', 'true');
+  localStorage.setItem('subscriptionUpdateTime', Date.now().toString());
+  
+  // Dispatch un événement pour informer l'application du changement d'abonnement
+  window.dispatchEvent(new CustomEvent('subscription:updated', {
+    detail: { subscription }
+  }));
+  
+  console.log(`Abonnement local mis à jour: ${subscription}`);
+  return true;
 };
 
-// Helper to safely open a URL
-export const safelyOpenURL = (url: string): void => {
+/**
+ * Vérifie si l'utilisateur est connecté
+ */
+export const checkUserAuthenticated = async (): Promise<boolean> => {
   try {
-    window.location.href = url;
-  } catch (error) {
-    console.error('Error redirecting to URL:', error);
+    const { data, error } = await supabase.auth.getSession();
     
-    // Fallback - create a link and click it
-    const link = document.createElement('a');
-    link.href = url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (error) {
+      throw error;
+    }
+    
+    return !!data.session;
+  } catch (error) {
+    console.error("Erreur lors de la vérification de l'authentification:", error);
+    return false;
   }
 };
 
-// Check the current user subscription from Supabase
-export const checkCurrentSubscription = async (): Promise<string | null> => {
+/**
+ * Récupère l'ID utilisateur actuel
+ */
+export const getCurrentUserId = async (): Promise<string | null> => {
   try {
-    const { supabase } = await import("@/integrations/supabase/client");
+    const { data, error } = await supabase.auth.getSession();
     
-    // Get current session
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      console.log("No active session found for subscription check");
+    if (error || !data.session) {
       return null;
     }
     
-    // First try to use the RPC function if available
-    try {
-      const { data: subscription, error: rpcError } = await supabase
-        .rpc('get_current_subscription', { 
-          user_id: session.user.id 
-        }) as { data: string | null, error: any };
-        
-      if (!rpcError && subscription) {
-        console.log("Subscription retrieved via RPC:", subscription);
-        return subscription;
-      }
-      
-      if (rpcError) {
-        console.warn("RPC error:", rpcError);
-      }
-    } catch (rpcErr) {
-      console.warn("RPC function not available:", rpcErr);
-    }
-    
-    // Fallback to direct query
-    const { data, error } = await supabase
-      .from('user_balances')
-      .select('subscription')
-      .eq('id', session.user.id)
-      .single();
-      
-    if (error) {
-      console.error("Error fetching subscription:", error);
-      return null;
-    }
-    
-    return data?.subscription || null;
-  } catch (err) {
-    console.error("Error in checkCurrentSubscription:", err);
+    return data.session.user.id;
+  } catch (error) {
+    console.error("Erreur lors de la récupération de l'ID utilisateur:", error);
     return null;
   }
+};
+
+/**
+ * Gère les erreurs de paiement et les affiche à l'utilisateur
+ */
+export const handlePaymentError = (error: any): void => {
+  const errorMessage = formatErrorMessage(error);
+  
+  toast({
+    title: "Erreur de paiement",
+    description: errorMessage,
+    variant: "destructive",
+    duration: 7000,
+  });
+  
+  console.error("Erreur de paiement détaillée:", error);
 };
