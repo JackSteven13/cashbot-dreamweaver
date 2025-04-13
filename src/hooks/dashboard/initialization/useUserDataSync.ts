@@ -70,6 +70,20 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
           if (!profileResult.error && profileResult.data && profileResult.data.full_name) {
             localStorage.setItem('lastKnownUsername', profileResult.data.full_name);
             syncSuccess = true;
+            
+            // Déclencher un événement pour signaler que le nom est disponible
+            window.dispatchEvent(new CustomEvent('username:loaded', { 
+              detail: { username: profileResult.data.full_name }
+            }));
+          } else if (session.user.user_metadata?.full_name) {
+            // Fallback sur les métadonnées utilisateur
+            localStorage.setItem('lastKnownUsername', session.user.user_metadata.full_name);
+            syncSuccess = true;
+            
+            // Déclencher un événement pour signaler que le nom est disponible
+            window.dispatchEvent(new CustomEvent('username:loaded', { 
+              detail: { username: session.user.user_metadata.full_name }
+            }));
           }
           
           if (!syncSuccess) {
