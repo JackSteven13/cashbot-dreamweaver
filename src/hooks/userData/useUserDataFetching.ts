@@ -20,6 +20,8 @@ export const useUserDataFetching = (
     setIsLoading(true);
     
     try {
+      console.log("Fetching user data for:", user.id, user.email);
+      
       // Load profile data
       const profileData = await loadUserProfile(user.id, user.email);
       
@@ -36,7 +38,7 @@ export const useUserDataFetching = (
         transactions
       });
 
-      // Activer le bot par défaut pour les nouveaux utilisateurs connectés
+      // Dispatch event to activate the bot for newly connected users
       window.dispatchEvent(new CustomEvent('user:data-loaded', {
         detail: { 
           userId: user.id,
@@ -57,7 +59,6 @@ export const useUserDataFetching = (
     if (!user?.id) return;
     
     try {
-      // Reset the daily session count
       console.log('Resetting daily counters for user', user.id);
       
       // Update local state
@@ -65,6 +66,7 @@ export const useUserDataFetching = (
         dailySessionCount: 0
       });
       
+      // Dispatch event to notify the app that daily counters were reset
       window.dispatchEvent(new CustomEvent('dailyGains:reset'));
       
       return Promise.resolve();

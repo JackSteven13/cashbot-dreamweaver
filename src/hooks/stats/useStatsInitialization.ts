@@ -1,13 +1,12 @@
 
-import { useState, useCallback } from 'react';
-import { getParisTime } from '@/utils/timeUtils';
+import { useState, useEffect, useCallback } from 'react';
 
 interface UseStatsInitializationParams {
   dailyAdsTarget: number;
   dailyRevenueTarget: number;
 }
 
-interface StatsInitializationResult {
+interface UseStatsInitializationResult {
   adsCount: number;
   revenueCount: number;
   displayedAdsCount: number;
@@ -22,71 +21,63 @@ interface StatsInitializationResult {
 export const useStatsInitialization = ({
   dailyAdsTarget,
   dailyRevenueTarget
-}: UseStatsInitializationParams): StatsInitializationResult => {
-  // Real counters tracking actual values
-  const [adsCount, setAdsCount] = useState(0);
-  const [revenueCount, setRevenueCount] = useState(0);
+}: UseStatsInitializationParams): UseStatsInitializationResult => {
+  const [adsCount, setAdsCount] = useState<number>(0);
+  const [revenueCount, setRevenueCount] = useState<number>(0);
+  const [displayedAdsCount, setDisplayedAdsCount] = useState<number>(0);
+  const [displayedRevenueCount, setDisplayedRevenueCount] = useState<number>(0);
   
-  // Displayed counters that will animate to the real values
-  const [displayedAdsCount, setDisplayedAdsCount] = useState(0);
-  const [displayedRevenueCount, setDisplayedRevenueCount] = useState(0);
-  
-  // Calculate bi-weekly progress
-  const getBiWeeklyProgress = useCallback(() => {
-    const parisTimeString = getParisTime();
-    // Convert the Paris time string to a Date object
-    const parisTime = new Date(parisTimeString);
-    const currentDay = parisTime.getDate();
+  // Calculate current progress based on time of day
+  const calculateInitialValues = useCallback(() => {
+    // Get the current hour of the day (0-23)
+    const currentHour = new Date().getHours();
     
-    // Determine which 14-day period we're in
-    let periodStartDay;
-    if (currentDay < 15) {
-      periodStartDay = 1;
-    } else if (currentDay < 29) {
-      periodStartDay = 15;
-    } else {
-      const lastDayOfMonth = new Date(parisTime.getFullYear(), parisTime.getMonth() + 1, 0).getDate();
-      periodStartDay = 29;
+    // Calculate what percentage of the day has passed
+    // We'll be more active during working hours
+    let dayPercentage = 0;
+    
+    if (currentHour < 7) {
+      // Between midnight and 7am - slower progress (night time)
+      dayPercentage = (currentHour / 24) * 0.5;
+    } else if (currentHour >= 7 && currentHour < 23) {
+      // Between 7am and 11pm - faster progress (day time)
+      const adjustedHour = currentHour - 7; // 0 to 16 hours
+      const workingDayPercent = adjustedHour / 16; // 0% to 100% of working day
       
-      // If this is a short month and we don't have a day 29, use different logic
-      if (periodStartDay > lastDayOfMonth) {
-        // Adjust for months with less than 29 days
-        const daysPassed = currentDay;
-        const totalDaysInMonth = lastDayOfMonth;
-        return daysPassed / totalDaysInMonth;
-      }
+      // Base percentage (what was achieved overnight) plus working day progress
+      dayPercentage = 0.1 + (workingDayPercent * 0.8);
+    } else {
+      // Between 11pm and midnight - almost complete
+      dayPercentage = 0.95;
     }
     
-    // Calculate days passed in this period and seconds in the current day
-    const daysPassed = currentDay - periodStartDay;
-    const hours = parisTime.getHours();
-    const minutes = parisTime.getMinutes();
-    const seconds = parisTime.getSeconds();
+    // Add some random variation (±10%)
+    const randomVariation = (Math.random() * 0.2) - 0.1;
+    dayPercentage = Math.max(0, Math.min(0.95, dayPercentage + randomVariation));
     
-    // Calculate total seconds elapsed in the 14-day period
-    const secondsInDay = hours * 3600 + minutes * 60 + seconds;
-    const totalElapsedSeconds = daysPassed * 86400 + secondsInDay;
+    // Calculate the estimated counts based on the percentage
+    const estimatedAds = Math.floor(dailyAdsTarget * dayPercentage);
+    const estimatedRevenue = Math.floor(dailyRevenueTarget * dayPercentage);
     
-    // Total seconds in a 14-day period
-    const totalSecondsIn14Days = 14 * 86400;
+    // Set the counts
+    setAdsCount(estimatedAds);
+    setRevenueCount(estimatedRevenue);
     
-    return Math.min(totalElapsedSeconds / totalSecondsIn14Days, 1);
-  }, []);
+    // Initialize displayed values to match what we calculated
+    setDisplayedAdsCount(Math.floor(estimatedAds * 0.9)); // Start slightly behind
+    setDisplayedRevenueCount(Math.floor(estimatedRevenue * 0.85)); // Start slightly behind
+  }, [dailyAdsTarget, dailyRevenueTarget]);
   
-  // Initialize counters
+  // Function to initialize the counters
   const initializeCounters = useCallback(() => {
-    const periodProgress = getBiWeeklyProgress();
-    const currentAdsCount = Math.floor(periodProgress * dailyAdsTarget);
-    const currentRevenueCount = Math.floor(periodProgress * dailyRevenueTarget);
-    
-    setAdsCount(currentAdsCount);
-    setRevenueCount(currentRevenueCount);
-    
-    // Initialize displayed counters to match real counters (no animation drop)
-    setDisplayedAdsCount(currentAdsCount);
-    setDisplayedRevenueCount(currentRevenueCount);
-  }, [getBiWeeklyProgress, dailyAdsTarget, dailyRevenueTarget]);
-
+    calculateInitialValues();
+  }, [calculateInitialValues]);
+  
+  // Initialize on mount
+  useEffect(() => {
+    initializeCounters();
+  }, [initializeCounters]);
+  
   return {
     adsCount,
     revenueCount,
@@ -99,3 +90,5 @@ export const useStatsInitialization = ({
     initializeCounters
   };
 };
+
+export default useStatsInitialization;

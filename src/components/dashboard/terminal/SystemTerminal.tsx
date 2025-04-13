@@ -31,6 +31,26 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   // State pour gérer l'état visuel du terminal
   const [animationActive, setAnimationActive] = useState(false);
   const [scrollToBottom, setScrollToBottom] = useState(false);
+  const [outputs, setOutputs] = useState<Array<{text: string, type: string}>>([]);
+  
+  // Générer les messages initiaux du terminal
+  useEffect(() => {
+    const initialOutputs = [
+      { text: "Initialisation du système...", type: "system" },
+      { text: `Status: ${isBotActive ? "Actif" : "Inactif"}`, type: "info" },
+      { text: `Abonnement: ${subscription}`, type: "info" },
+      { text: `Limite quotidienne: ${dailyLimit}€`, type: "info" },
+      { text: `Balance actuelle: ${displayBalance.toFixed(2)}€`, type: "success" },
+      { text: `Parrainages actifs: ${referralCount}`, type: "info" },
+      { text: isBotActive 
+        ? "Assistant d'analyse démarré. Génération de revenus en cours..."
+        : "Assistant d'analyse en pause. Activez-le pour générer des revenus.", 
+        type: isBotActive ? "success" : "warning" 
+      }
+    ];
+    
+    setOutputs(initialOutputs);
+  }, [isBotActive, subscription, dailyLimit, displayBalance, referralCount]);
   
   // Animer le terminal en réponse aux événements
   useEffect(() => {
@@ -42,75 +62,78 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
       setScrollToBottom(true);
     };
     
-    window.addEventListener('terminal:update', handleTerminalUpdate);
-    window.addEventListener('session:start', handleTerminalUpdate);
+    // Ajouter des entrées au terminal lorsque le bot change d'état
+    const handleBotStatusChange = (event: CustomEvent) => {
+      const { active } = event.detail;
+      
+      setOutputs(prev => [
+        ...prev, 
+        { 
+          text: active 
+            ? "Assistant d'analyse activé. Démarrage de l'analyse de contenu..." 
+            : "Assistant d'analyse désactivé. Arrêt de l'analyse de contenu.",
+          type: active ? "success" : "warning"
+        }
+      ]);
+      
+      handleTerminalUpdate();
+    };
+    
+    // Ajouter des entrées au terminal quand des données utilisateur sont chargées
+    const handleUserDataLoaded = (event: CustomEvent) => {
+      const { isNewUser } = event.detail;
+      
+      setOutputs(prev => [
+        ...prev, 
+        { 
+          text: isNewUser 
+            ? "Nouvel utilisateur détecté. Configuration du système en cours..." 
+            : "Utilisateur reconnu. Chargement des préférences...",
+          type: "info"
+        }
+      ]);
+      
+      handleTerminalUpdate();
+    };
+    
+    const handleDailyReset = () => {
+      setOutputs(prev => [
+        ...prev,
+        { text: "Réinitialisation quotidienne effectuée. Nouveaux compteurs disponibles.", type: "system" }
+      ]);
+      
+      handleTerminalUpdate();
+    };
+    
+    window.addEventListener('bot:status-change', handleBotStatusChange as EventListener);
+    window.addEventListener('user:data-loaded', handleUserDataLoaded as EventListener);
+    window.addEventListener('dailyGains:reset', handleDailyReset);
     
     return () => {
-      window.removeEventListener('terminal:update', handleTerminalUpdate);
-      window.removeEventListener('session:start', handleTerminalUpdate);
+      window.removeEventListener('bot:status-change', handleBotStatusChange as EventListener);
+      window.removeEventListener('user:data-loaded', handleUserDataLoaded as EventListener);
+      window.removeEventListener('dailyGains:reset', handleDailyReset);
     };
   }, []);
   
-  // Retourne false si le temps écoulé est < 12h
-  const shouldShowTimestamp = (lastTimestamp?: string): boolean => {
-    if (!lastTimestamp) return false;
-    
-    try {
-      const timestamp = new Date(lastTimestamp);
-      const now = new Date();
-      const diffHours = (now.getTime() - timestamp.getTime()) / (1000 * 60 * 60);
-      
-      return diffHours <= 12;
-    } catch (error) {
-      console.error("Error parsing timestamp:", error);
-      return false;
-    }
-  };
-  
   return (
     <Card className={cn(
-      "min-h-[400px] shadow-md border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-200",
-      animationActive && "border-blue-400 dark:border-blue-500"
+      "h-[450px] bg-black border-slate-800 font-mono text-sm overflow-hidden",
+      animationActive && "border-green-500/50 shadow-[0_0_15px_rgba(74,222,128,0.2)]"
     )}>
-      <div className="p-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-        <div className="flex items-center">
-          <div className="mr-2">
-            {isBotActive ? (
-              <Bot className="h-5 w-5 text-blue-500" />
-            ) : (
-              <BotOff className="h-5 w-5 text-red-500" />
-            )}
-          </div>
-          <h2 className="font-medium text-slate-800 dark:text-slate-200">
-            Système {isBotActive ? 'Actif' : 'Inactif'}
-          </h2>
-        </div>
-        <div className="flex space-x-1">
-          {Array(3).fill(0).map((_, i) => (
-            <div 
-              key={i}
-              className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"
-            />
-          ))}
+      <div className="bg-slate-900 p-2 border-b border-slate-800 flex items-center">
+        {isBotActive ? (
+          <Bot className="h-4 w-4 text-green-400 mr-2" />
+        ) : (
+          <BotOff className="h-4 w-4 text-amber-400 mr-2" />
+        )}
+        <div className="text-xs text-slate-400">
+          Système {isBotActive ? "actif" : "en pause"} | {subscription} | Limite: {dailyLimit}€/jour
         </div>
       </div>
       
-      <div className="bg-black text-green-500 font-mono text-xs p-4 h-[350px] overflow-auto">
-        <TerminalOutput 
-          isNewUser={isNewUser}
-          subscription={subscription}
-          remainingSessions={remainingSessions}
-          referralCount={referralCount}
-          dailyLimit={dailyLimit}
-          displayBalance={displayBalance}
-          referralBonus={referralBonus}
-          scrollToBottom={scrollToBottom}
-          lastSessionTimestamp={
-            shouldShowTimestamp(lastSessionTimestamp) ? 
-            lastSessionTimestamp : undefined
-          }
-          isBotActive={isBotActive}
-        />
+      <div className="p-4 h-[calc(100%-40px)] overflow-auto">
+        <TerminalOutput outputs={outputs} scrollToBottom={scrollToBottom} />
       </div>
     </Card>
   );
