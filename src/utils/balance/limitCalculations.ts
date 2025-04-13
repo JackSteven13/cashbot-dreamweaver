@@ -1,36 +1,53 @@
 
 /**
- * Détermine le nombre maximum de sessions par jour en fonction de l'abonnement
+ * Formatage d'un montant en euros
  */
-export function getMaxSessionsForSubscription(subscription: string): number {
-  switch (subscription) {
-    case 'starter':
-    case 'alpha':
-      return 12;
-    case 'gold':
-      return 24;
-    case 'elite':
-      return 50;
-    case 'freemium':
-    default:
-      return 5;
-  }
-}
+export const formatPrice = (amount: number): string => {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+};
 
 /**
- * Formate un prix en euros
+ * Calcule le pourcentage d'utilisation de la limite quotidienne
  */
-export function formatPrice(price: number): string {
-  return `${price.toFixed(2)}€`;
-}
+export const calculateUsagePercentage = (
+  currentAmount: number,
+  dailyLimit: number
+): number => {
+  if (dailyLimit <= 0) return 0;
+  const percentage = (currentAmount / dailyLimit) * 100;
+  return Math.min(Math.max(percentage, 0), 100); // Clamp entre 0 et 100
+};
 
 /**
- * Calcule le prix au prorata en fonction du temps restant dans le mois
+ * Détermine la couleur en fonction de l'utilisation
  */
-export function calculateProratedPrice(basePrice: number): number {
-  const today = new Date();
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const daysRemaining = daysInMonth - today.getDate();
-  
-  return Math.max((basePrice * daysRemaining) / daysInMonth, basePrice * 0.1);
-}
+export const getUsageColor = (percentage: number): string => {
+  if (percentage >= 90) return 'text-red-500';
+  if (percentage >= 75) return 'text-yellow-500';
+  return 'text-green-500';
+};
+
+/**
+ * Vérifie si l'utilisateur a atteint sa limite quotidienne
+ */
+export const isLimitReached = (
+  currentAmount: number,
+  dailyLimit: number
+): boolean => {
+  return currentAmount >= dailyLimit;
+};
+
+/**
+ * Calcule le montant restant pour atteindre la limite
+ */
+export const calculateRemainingAmount = (
+  currentAmount: number,
+  dailyLimit: number
+): number => {
+  return Math.max(dailyLimit - currentAmount, 0);
+};

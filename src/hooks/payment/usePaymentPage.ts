@@ -1,33 +1,61 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import useSessionStorage from '@/hooks/useSessionStorage';
 import { PaymentFormData, PlanType } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { useStripeCheckout } from './useStripeCheckout';
+import { getPlanById } from '@/utils/plans';
 
 export const usePaymentPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isLoading: isAuthChecking } = useAuth();
   
-  const [selectedPlan, setSelectedPlan] = useSessionStorage<PlanType>('selectedPlan', null);
+  // Plan sélectionné à partir de URL ou session
+  const planFromUrl = searchParams.get('plan');
+  const [selectedPlan, setSelectedPlan] = useSessionStorage<PlanType>('selectedPlan', getPlanById(planFromUrl));
+  
   const [currentSubscription, setCurrentSubscription] = useState<string | null>(null);
   const [useStripePayment, setUseStripePayment] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isStripeProcessing, setIsStripeProcessing] = useState(false);
-  const [stripeCheckoutUrl, setStripeCheckoutUrl] = useState<string | null>(null);
   
-  // Retrieve user's current subscription
+  // Utilisation du hook Stripe checkout avec le plan sélectionné
+  const { 
+    isStripeProcessing, 
+    handleStripeCheckout, 
+    actualSubscription,
+    isChecking,
+    stripeCheckoutUrl 
+  } = useStripeCheckout(selectedPlan);
+  
+  // Vérifier le plan sélectionné à partir de l'URL lors du chargement initial
+  useEffect(() => {
+    const planParam = searchParams.get('plan');
+    if (planParam) {
+      const validPlan = getPlanById(planParam);
+      if (validPlan) {
+        setSelectedPlan(validPlan);
+        console.log("Plan sélectionné depuis l'URL:", validPlan);
+      }
+    }
+  }, [searchParams, setSelectedPlan]);
+  
+  // Récupérer l'abonnement actuel de l'utilisateur
   useEffect(() => {
     const fetchSubscription = async () => {
       if (user?.id) {
         try {
           const { data, error } = await supabase
-            .rpc('get_current_subscription', { user_id: user.id });
+            .from('user_balances')
+            .select('subscription')
+            .eq('id', user.id)
+            .single();
             
           if (!error && data) {
-            setCurrentSubscription(data);
+            setCurrentSubscription(data.subscription);
           }
         } catch (error) {
           console.error('Failed to fetch subscription:', error);
@@ -38,46 +66,31 @@ export const usePaymentPage = () => {
     fetchSubscription();
   }, [user]);
   
-  // Toggle between Stripe and manual payment
+  // Toggle entre Stripe et paiement manuel
   const togglePaymentMethod = useCallback(() => {
     setUseStripePayment(prev => !prev);
-    setStripeCheckoutUrl(null);
   }, []);
   
-  // Handle Stripe checkout
-  const initiateStripeCheckout = useCallback(async () => {
-    if (!user || !selectedPlan) return;
-    
-    try {
-      setIsStripeProcessing(true);
-      // Call your Stripe checkout endpoint here
-      // For now we'll simulate with a timeout
-      setTimeout(() => {
-        // In a real implementation, this would be the URL returned from your backend
-        const mockCheckoutUrl = `https://checkout.stripe.com/${Date.now()}`;
-        setStripeCheckoutUrl(mockCheckoutUrl);
-        toast({
-          title: "Prêt pour le paiement",
-          description: "Vous allez être redirigé vers la page de paiement sécurisée.",
-          variant: "default"
-        });
-      }, 1500);
-    } catch (error) {
-      console.error('Failed to initiate Stripe checkout:', error);
+  // Gérer le checkout Stripe - réutilisation du hook
+  const initiateStripeCheckout = useCallback(() => {
+    if (!selectedPlan) {
       toast({
         title: "Erreur",
-        description: "Impossible d'initialiser le paiement. Veuillez réessayer.",
+        description: "Veuillez sélectionner un plan pour continuer",
         variant: "destructive"
       });
-    } finally {
-      setIsStripeProcessing(false);
+      return;
     }
-  }, [user, selectedPlan]);
+    
+    console.log("Initialisation du paiement Stripe pour le plan:", selectedPlan);
+    handleStripeCheckout();
+  }, [selectedPlan, handleStripeCheckout]);
   
-  // Handle manual card form submission
+  // Gestion du formulaire de carte
   const handleCardFormSubmit = useCallback((cardData: PaymentFormData) => {
     setIsProcessing(true);
-    // Simulate processing
+    // Dans un cas réel, nous traiterions le paiement ici
+    // Pour l'instant, nous simulons simplement
     setTimeout(() => {
       setIsProcessing(false);
       toast({

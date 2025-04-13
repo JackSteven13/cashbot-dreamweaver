@@ -22,7 +22,7 @@ export const PLANS: Record<string, PlanDetails> = {
   },
   starter: {
     name: "Starter",
-    price: 9.99,
+    price: 99,
     features: [
       "12 sessions d'analyse par jour",
       "Limite quotidienne de 5€",
@@ -34,7 +34,7 @@ export const PLANS: Record<string, PlanDetails> = {
   },
   gold: {
     name: "Gold",
-    price: 19.99,
+    price: 349,
     features: [
       "24 sessions d'analyse par jour",
       "Limite quotidienne de 12€",
@@ -46,7 +46,7 @@ export const PLANS: Record<string, PlanDetails> = {
   },
   elite: {
     name: "Elite",
-    price: 29.99,
+    price: 549,
     features: [
       "Sessions d'analyse illimitées",
       "Limite quotidienne de 25€",

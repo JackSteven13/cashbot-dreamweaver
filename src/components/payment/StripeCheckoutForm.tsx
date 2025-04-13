@@ -11,6 +11,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
 import MobilePaymentHelper from './MobilePaymentHelper';
 import { formatPrice } from '@/utils/balance/limitCalculations';
+import { PLANS } from '@/utils/plans';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;
@@ -38,6 +39,9 @@ const StripeCheckoutForm = ({
   
   // Créer le lien vers les CGV avec le plan sélectionné
   const termsLink = selectedPlan ? `/terms?plan=${selectedPlan}` : '/terms';
+  
+  // Récupérer le prix du plan sélectionné
+  const planPrice = selectedPlan && PLANS[selectedPlan] ? PLANS[selectedPlan].price : 0;
   
   // Traiter le clic sur le bouton de checkout
   const handleCheckout = () => {
@@ -151,6 +155,11 @@ const StripeCheckoutForm = ({
         ) : (
           <span>
             Vous serez redirigé vers la plateforme sécurisée de Stripe pour finaliser votre paiement.
+            {selectedPlan && planPrice > 0 && (
+              <span className="font-semibold block mt-2">
+                Montant: {formatPrice(planPrice)}/an
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -189,7 +198,8 @@ const StripeCheckoutForm = ({
       >
         {isStripeProcessing && !stripeUrl ? 'Préparation du paiement...' : (
           stripeUrl ? 'Continuer vers le paiement' : 
-          (isUpgrade ? `Procéder à la mise à niveau (${formatPrice(proratedPrice)})` : 'Procéder au paiement')
+          (isUpgrade ? `Procéder à la mise à niveau (${formatPrice(proratedPrice)})` : 
+          `Procéder au paiement${selectedPlan && planPrice > 0 ? ` (${formatPrice(planPrice)})` : ''}`)
         )}
       </Button>
       

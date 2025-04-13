@@ -1,12 +1,14 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { usePaymentPage } from '@/hooks/payment/usePaymentPage';
 import PaymentLoading from '@/components/payment/PaymentLoading';
 import PaymentLayout from '@/components/payment/PaymentLayout';
 import PaymentCard from '@/components/payment/PaymentCard';
-import { PlanType } from '@/hooks/payment/types';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/components/ui/use-toast';
 
 const Payment = () => {
+  const navigate = useNavigate();
   const {
     selectedPlan,
     currentSubscription,
@@ -19,6 +21,18 @@ const Payment = () => {
     handleCardFormSubmit,
     initiateStripeCheckout
   } = usePaymentPage();
+
+  // Vérifier si un plan est sélectionné
+  useEffect(() => {
+    if (!selectedPlan && !isAuthChecking) {
+      toast({
+        title: "Aucun forfait sélectionné",
+        description: "Veuillez sélectionner un forfait avant de continuer.",
+        variant: "destructive"
+      });
+      navigate('/offres');
+    }
+  }, [selectedPlan, isAuthChecking, navigate]);
 
   if (isAuthChecking) {
     return <PaymentLoading />;

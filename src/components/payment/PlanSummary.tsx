@@ -3,6 +3,8 @@ import React from 'react';
 import { PlanType } from '@/hooks/payment/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sparkles, Crown, Zap } from 'lucide-react';
+import { PLANS } from '@/utils/plans';
+import { formatPrice } from '@/utils/balance/limitCalculations';
 
 interface PlanSummaryProps {
   selectedPlan: PlanType | null;
@@ -13,6 +15,8 @@ const PlanSummary = ({ selectedPlan }: PlanSummaryProps) => {
   
   if (!selectedPlan) return null;
   
+  const planDetails = PLANS[selectedPlan];
+  const planPrice = planDetails ? planDetails.price : 0;
   const isElitePlan = selectedPlan === 'elite';
   
   // Style spécial pour le plan Élite
@@ -36,7 +40,7 @@ const PlanSummary = ({ selectedPlan }: PlanSummaryProps) => {
           <div className="flex items-center">
             <Zap className="h-3.5 w-3.5 text-purple-500 mr-1 hidden md:block" />
             <p className="text-base md:text-lg font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded">
-              549€/an
+              {formatPrice(planPrice)}/an
             </p>
           </div>
         </div>
@@ -57,7 +61,7 @@ const PlanSummary = ({ selectedPlan }: PlanSummaryProps) => {
           </p>
         </div>
         <p className="text-base md:text-lg font-bold text-[#2d5f8a]">
-          {selectedPlan === 'starter' ? '99' : selectedPlan === 'gold' ? '349' : '0'}€/an
+          {formatPrice(planPrice)}/an
         </p>
       </div>
       

@@ -202,7 +202,10 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       // Stocker l'URL pour la redirection alternative si nécessaire
       localStorage.setItem('stripeCheckoutUrl', result.url);
       
-      // L'URL est prête, elle sera ouverte automatiquement par l'effet
+      // Essayer d'ouvrir directement la page Stripe
+      const opened = openStripeWindow(result.url);
+      setDidInitiateRedirect(opened);
+      setIsStripeProcessing(false);
 
     } catch (error: any) {
       console.error("Erreur de paiement:", error);

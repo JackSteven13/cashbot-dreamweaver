@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { formatPrice } from '@/utils/balance/limitCalculations';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InfoIcon } from 'lucide-react';
+import { PLANS } from '@/utils/plans';
 
 interface PaymentCardProps {
   selectedPlan: PlanType | null;
@@ -40,23 +41,30 @@ const PaymentCard = ({
 }: PaymentCardProps) => {
   const isMobile = useIsMobile();
   
-  // Calculate prorated price if upgrading
+  // Obtenir le prix réel du plan sélectionné
+  const planPrice = selectedPlan && PLANS[selectedPlan] ? PLANS[selectedPlan].price : 0;
+  
+  // Calculer le prix proraté en cas de mise à niveau
   const isUpgrade = selectedPlan && 
                     currentSubscription && 
                     currentSubscription !== 'freemium';
   
-  // For demonstration, assuming 50% of time remains on current subscription
-  // In a real implementation, you would calculate this from subscription dates
-  const daysRemaining = 182; // Approximately 6 months
+  // Pour une démonstration, supposons que la moitié du temps reste sur l'abonnement actuel
+  // Dans une implémentation réelle, vous calculeriez cela à partir des dates d'abonnement
+  const daysRemaining = 182; // Environ 6 mois
   const totalDays = 365;
   
   let proratedPrice = 0;
   let savingsAmount = 0;
   
   if (isUpgrade && selectedPlan) {
-    const basePrice = 29.99; // Base price example
-    proratedPrice = calculateProratedPrice(basePrice, daysRemaining, totalDays);
-    savingsAmount = basePrice - proratedPrice;
+    const currentPlanPrice = currentSubscription && PLANS[currentSubscription] 
+      ? PLANS[currentSubscription].price 
+      : 0;
+    
+    const newPlanPrice = PLANS[selectedPlan].price;
+    proratedPrice = newPlanPrice - calculateProratedPrice(currentPlanPrice, daysRemaining, totalDays);
+    savingsAmount = newPlanPrice - proratedPrice;
   }
 
   return (
@@ -77,7 +85,7 @@ const PaymentCard = ({
               <span className="font-semibold capitalize">{currentSubscription}</span> à l'offre{' '}
               <span className="font-semibold capitalize">{selectedPlan}</span>, nous appliquons un crédit pour le temps restant sur votre abonnement actuel.
               <div className="mt-2 text-xs space-y-1">
-                <div>Prix normal: {formatPrice(29.99)}</div>
+                <div>Prix normal: {formatPrice(planPrice)}</div>
                 <div>Crédit appliqué: -{formatPrice(savingsAmount)} ({Math.round((daysRemaining / totalDays) * 100)}% du temps restant)</div>
                 <div className="font-semibold pt-1">Vous ne payez que: {formatPrice(proratedPrice)}</div>
               </div>

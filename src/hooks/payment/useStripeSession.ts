@@ -58,6 +58,9 @@ export const useStripeSession = () => {
           console.log("Success URL:", successUrl);
           console.log("Cancel URL:", cancelUrl);
           
+          // Simuler un délai réseau pour éviter les erreurs de course
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
           // Appel à la fonction Edge
           const { data, error } = await supabase.functions.invoke('create-checkout', {
             body: {
@@ -69,12 +72,16 @@ export const useStripeSession = () => {
           });
           
           if (error) {
+            console.error(`Erreur d'invocation de la fonction:`, error);
             throw new Error(`Erreur d'invocation de la fonction: ${error.message}`);
           }
           
           if (!data?.url) {
+            console.error(`Aucune URL retournée:`, data);
             throw new Error(`Aucune URL retournée: ${JSON.stringify(data)}`);
           }
+          
+          console.log("URL de checkout Stripe reçue:", data.url);
           
           // Stocker l'URL pour une utilisation ultérieure
           setStripeCheckoutUrl(data.url);
