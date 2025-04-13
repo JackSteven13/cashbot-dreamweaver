@@ -44,9 +44,10 @@ export const useStatsCycleManagement = ({
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
   // Simulation améliorée de multiples agents IA travaillant en parallèle
+  // mais avec des incréments plus petits pour une meilleure lisibilité
   const incrementCountersRandomly = useCallback(() => {
-    // Calcul de l'incrément basé sur un nombre variable d'agents actifs
-    const activeAgents = 7 + Math.floor(Math.random() * 5); // Entre 7 et 11 agents actifs
+    // Réduire le nombre d'agents actifs pour ralentir la progression
+    const activeAgents = 3 + Math.floor(Math.random() * 2); // Entre 3 et 4 agents actifs (était 7-11)
     
     // Chaque agent traite un nombre variable d'annonces
     setAdsCount(prevAdsCount => {
@@ -55,12 +56,13 @@ export const useStatsCycleManagement = ({
       
       let totalAdsIncrement = 0;
       
-      // Simuler chaque agent traitant des annonces
+      // Simuler chaque agent traitant des annonces, mais avec une efficacité réduite
       for (let i = 0; i < activeAgents; i++) {
         // Durée variable des annonces (20-60 secondes)
         // Agents plus ou moins rapides
         const agentEfficiency = 0.7 + Math.random() * 0.6; // 70% à 130% d'efficacité
-        const adsPerAgent = Math.floor((dailyAdsTarget * 0.0003) * agentEfficiency);
+        // Réduire significativement le nombre d'annonces par agent
+        const adsPerAgent = Math.floor((dailyAdsTarget * 0.0001) * agentEfficiency); // Réduit de 0.0003 à 0.0001
         totalAdsIncrement += adsPerAgent;
       }
       

@@ -52,15 +52,15 @@ export const useStatsCounter = ({
   useEffect(() => {
     initializeCounters();
     
-    // Système d'animation repensé pour une plus grande fluidité et variabilité
+    // Système d'animation repensé pour une animation plus lente et lisible
     let animationFrameId: number;
     let lastUpdateTime = 0;
     
-    // Fonction d'animation avec variation de fréquence
+    // Fonction d'animation avec des intervalles plus longs
     const updateAnimation = (timestamp: number) => {
-      // Variation du temps entre les mises à jour (entre 1.5 et 3 secondes)
-      // Simule des agents plus ou moins actifs selon les moments
-      const updateInterval = Math.random() * 1500 + 1500;
+      // Intervalle plus long entre les mises à jour (entre 4 et 6 secondes au lieu de 1.5-3)
+      // pour ralentir significativement l'animation
+      const updateInterval = Math.random() * 2000 + 4000;
       
       if (timestamp - lastUpdateTime > updateInterval || lastUpdateTime === 0) {
         animateCounters();
@@ -73,10 +73,10 @@ export const useStatsCounter = ({
     animationFrameId = requestAnimationFrame(updateAnimation);
     
     // Intervalle variable pour les mises à jour des compteurs réels
-    // Simule le rythme de travail irrégulier des agents
+    // mais avec des intervalles beaucoup plus longs
     const createUpdateInterval = () => {
-      const minInterval = 4000; // Minimum 4 secondes
-      const maxInterval = 12000; // Maximum 12 secondes
+      const minInterval = 10000; // Minimum 10 secondes (était 4000)
+      const maxInterval = 20000; // Maximum 20 secondes (était 12000)
       const randomInterval = Math.floor(Math.random() * (maxInterval - minInterval) + minInterval);
       
       setTimeout(() => {

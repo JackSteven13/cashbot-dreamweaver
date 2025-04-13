@@ -15,17 +15,18 @@ export const useStatsAnimation = ({
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
   // Animation redesignée pour simuler plusieurs agents IA travaillant simultanément
+  // mais avec des incréments plus petits pour une meilleure lisibilité
   const animateCounters = useCallback(() => {
-    // Mise à jour du compteur d'annonces - avec variation aléatoire pour simuler différents agents
+    // Mise à jour du compteur d'annonces - avec des incréments plus petits
     setDisplayedAdsCount((prevCount) => {
       // Si nous avons atteint la cible, ne pas changer
       if (prevCount >= adsCount) return adsCount;
       
-      // Simuler plusieurs agents traitant des vidéos de durées différentes
-      // Génère un incrément entre 80 et 350 annonces pour plus de variation
-      const baseIncrement = Math.floor((adsCount - prevCount) * 0.05);
-      const variationFactor = 0.7 + Math.random() * 0.6; // 70% à 130% de l'incrément de base
-      const increment = Math.max(80, Math.min(350, Math.floor(baseIncrement * variationFactor)));
+      // Incréments beaucoup plus petits pour une animation plus lente et lisible
+      const baseIncrement = Math.floor((adsCount - prevCount) * 0.01); // Réduit de 0.05 à 0.01
+      const variationFactor = 0.7 + Math.random() * 0.6;
+      // Limiter l'incrément à un maximum de 40 (plutôt que 350)
+      const increment = Math.max(15, Math.min(40, Math.floor(baseIncrement * variationFactor)));
       
       return Math.min(prevCount + increment, adsCount);
     });
@@ -35,12 +36,11 @@ export const useStatsAnimation = ({
       // Si nous avons atteint la cible, ne pas changer
       if (prevRevCount >= revenueCount) return revenueCount;
       
-      // Simuler des publicités de valeurs différentes (entre 0.45€ et 3.30€)
-      // Créer des sauts irréguliers pour plus de réalisme
-      const baseIncrement = Math.floor((revenueCount - prevRevCount) * 0.06);
-      // Plus grande variation pour les revenus (50% à 150%)
-      const variationFactor = 0.5 + Math.random(); 
-      const increment = Math.max(150, Math.floor(baseIncrement * variationFactor));
+      // Incréments beaucoup plus petits pour les revenus également
+      const baseIncrement = Math.floor((revenueCount - prevRevCount) * 0.01); // Réduit de 0.06 à 0.01
+      const variationFactor = 0.5 + Math.random();
+      // Limiter l'incrément à un maximum de 35 (plutôt que 150)
+      const increment = Math.max(20, Math.floor(baseIncrement * variationFactor));
       
       return Math.min(prevRevCount + increment, revenueCount);
     });
