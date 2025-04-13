@@ -12,6 +12,7 @@ const CardPaymentForm = ({ onSubmit }: CardPaymentFormProps) => {
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvc, setCvc] = useState('');
+  const [cardHolder, setCardHolder] = useState('');
 
   const formatCardNumber = (value: string) => {
     const digits = value.replace(/\D/g, '');
@@ -49,18 +50,40 @@ const CardPaymentForm = ({ onSubmit }: CardPaymentFormProps) => {
     const value = e.target.value.replace(/\D/g, '');
     setCvc(value.slice(0, 3));
   };
+  
+  const handleCardHolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCardHolder(e.target.value);
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onSubmit({
       cardNumber,
-      expiry,
-      cvc
+      cardHolder,
+      expiryDate: expiry,
+      cvv: cvc,
+      expiry, // For compatibility
+      cvc     // For compatibility
     });
   };
 
   return (
     <form id="card-payment-form" onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label htmlFor="card-holder" className="block text-sm font-medium text-[#334e68] mb-1">
+          Nom du titulaire
+        </label>
+        <Input
+          type="text"
+          id="card-holder"
+          value={cardHolder}
+          onChange={handleCardHolderChange}
+          placeholder="John Doe"
+          className="w-full"
+          required
+        />
+      </div>
+      
       <div>
         <label htmlFor="card-number" className="block text-sm font-medium text-[#334e68] mb-1">
           Numéro de carte

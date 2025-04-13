@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import PlanSummary from '@/components/payment/PlanSummary';
@@ -39,21 +40,21 @@ const PaymentCard = ({
 }: PaymentCardProps) => {
   const isMobile = useIsMobile();
   
-  // Calculer le prix proraté si nous faisons une mise à niveau
+  // Calculate prorated price if upgrading
   const isUpgrade = selectedPlan && 
                     currentSubscription && 
                     currentSubscription !== 'freemium';
   
-  // Pour démontrer, nous supposons qu'il reste 50% du temps sur l'abonnement actuel
-  // Dans une implémentation réelle, vous devriez calculer cela à partir des dates d'abonnement
-  const daysRemaining = 182; // Environ 6 mois
+  // For demonstration, assuming 50% of time remains on current subscription
+  // In a real implementation, you would calculate this from subscription dates
+  const daysRemaining = 182; // Approximately 6 months
   const totalDays = 365;
   
   let proratedPrice = 0;
   let savingsAmount = 0;
   
   if (isUpgrade && selectedPlan) {
-    const basePrice = 29.99; // Prix de base pour l'exemple
+    const basePrice = 29.99; // Base price example
     proratedPrice = calculateProratedPrice(basePrice, daysRemaining, totalDays);
     savingsAmount = basePrice - proratedPrice;
   }

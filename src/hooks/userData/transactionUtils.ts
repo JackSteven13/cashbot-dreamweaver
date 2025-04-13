@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Transaction } from '@/types/userData';
 
 /**
- * Récupère les transactions pour un utilisateur donné
+ * Fetch transactions for a given user
  */
 export const fetchUserTransactions = async (userId: string): Promise<Transaction[]> => {
   try {
@@ -18,14 +18,14 @@ export const fetchUserTransactions = async (userId: string): Promise<Transaction
       return [];
     }
     
-    // Formater les transactions pour les adapter au format requis par l'application
+    // Format transactions to adapt to application's required format
     return data.map((tx: any) => ({
       id: tx.id,
       date: tx.created_at,
-      amount: tx.amount,
+      amount: tx.gain,
       type: tx.type,
-      report: tx.description,
-      gain: tx.amount, // Par convention, les montants positifs sont des gains
+      report: tx.description || tx.report, // Support both field names
+      gain: tx.gain, // By convention, positive amounts are gains
     }));
   } catch (error) {
     console.error("Error in fetchUserTransactions:", error);
@@ -34,11 +34,11 @@ export const fetchUserTransactions = async (userId: string): Promise<Transaction
 };
 
 /**
- * Ajoute une nouvelle transaction pour un utilisateur
+ * Add a new transaction for a user
  */
 export const addTransaction = async (
   userId: string,
-  amount: number,
+  gain: number,
   description: string,
   type: string = 'system'
 ) => {
@@ -47,18 +47,18 @@ export const addTransaction = async (
       .from('transactions')
       .insert({
         user_id: userId,
-        amount,
-        description,
-        type
-      })
-      .select();
+        gain: gain,
+        report: description,
+        type,
+        date: new Date().toISOString().split('T')[0]
+      });
     
     if (error) {
       console.error("Error adding transaction:", error);
       return null;
     }
     
-    return data[0];
+    return data ? data[0] : null;
   } catch (error) {
     console.error("Error in addTransaction:", error);
     return null;

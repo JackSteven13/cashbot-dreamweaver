@@ -6,4 +6,6 @@ export interface PaymentFormData {
   cardHolder: string;
   expiryDate: string;
   cvv: string;
+  expiry?: string; // Add this for compatibility
+  cvc?: string;    // Add this for compatibility
 }

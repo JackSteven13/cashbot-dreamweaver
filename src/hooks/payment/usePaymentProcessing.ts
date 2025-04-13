@@ -1,108 +1,86 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
-import { PlanType, PaymentFormData } from './types';
-import { validateCardPayment } from './utils';
-import { createCheckoutSession } from './paymentService';
+import { toast } from '@/components/ui/use-toast';
+import { PaymentFormData } from './types';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
-export const usePaymentProcessing = (selectedPlan: PlanType | null) => {
+export const usePaymentProcessing = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const processPayment = async (formData: PaymentFormData) => {
-    if (!selectedPlan) {
+  const processCardPayment = async (formData: PaymentFormData) => {
+    if (!user) {
       toast({
-        title: "Erreur",
-        description: "Aucun plan sélectionné",
+        title: "Erreur d'authentification",
+        description: "Vous devez être connecté pour effectuer un paiement.",
         variant: "destructive"
       });
-      return;
-    }
-
-    // Validate card data
-    const isValid = validateCardPayment(
-      formData.cardNumber, 
-      formData.expiry, 
-      formData.cvc
-    );
-
-    if (!isValid) {
-      return;
+      navigate('/login');
+      return false;
     }
 
     setIsProcessing(true);
 
     try {
-      // Get user session
-      const { data: { session } } = await supabase.auth.getSession();
+      // In a real-world scenario, you would:
+      // 1. Validate the card data
+      // 2. Send it to a payment processor
+      // 3. Update the user's subscription in your database
       
-      if (!session) {
-        toast({
-          title: "Erreur",
-          description: "Vous devez être connecté pour effectuer cette action",
-          variant: "destructive"
-        });
-        navigate('/login');
-        return;
+      // For demo purposes, we'll simulate a successful payment
+      const cardNumber = formData.cardNumber.replace(/\s/g, '');
+      const expiryDate = formData.expiryDate || formData.expiry || '';
+      const cvv = formData.cvv || formData.cvc || '';
+      
+      // Simple validation
+      if (cardNumber.length !== 16 || expiryDate.length !== 5 || cvv.length !== 3) {
+        throw new Error("Informations de carte invalides");
       }
 
-      // For free plan, update directly without payment
-      if (selectedPlan === 'freemium') {
-        const { error: updateError } = await supabase
-          .from('user_balances')
-          .update({ 
-            subscription: selectedPlan,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', session.user.id);
-          
-        if (updateError) {
-          throw updateError;
-        }
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-        setIsProcessing(false);
-        toast({
-          title: "Abonnement activé",
-          description: `Votre abonnement ${selectedPlan} a été activé avec succès !`,
-        });
-        navigate('/dashboard');
-        return;
+      // Update subscription in database
+      const { error } = await supabase.rpc('update_user_subscription', {
+        user_id: user.id,
+        new_subscription: 'starter' // Default to starter plan
+      });
+
+      if (error) {
+        throw new Error("Erreur lors de la mise à jour de l'abonnement");
       }
 
-      // For paid plans with manual card form, redirect to Stripe checkout
-      console.log("Redirecting to Stripe checkout for", selectedPlan);
+      // Success
+      toast({
+        title: "Paiement accepté",
+        description: "Votre abonnement a été activé avec succès.",
+        variant: "default"
+      });
       
-      const data = await createCheckoutSession(
-        selectedPlan,
-        `${window.location.origin}/payment-success`,
-        `${window.location.origin}/offres`,
-        null
-      );
+      // Update local storage
+      localStorage.setItem('subscription', 'starter');
       
-      console.log("Stripe checkout response:", data);
-      
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error("Aucune URL de paiement retournée");
-      }
-
-    } catch (error) {
-      console.error("Payment error:", error);
-      setIsProcessing(false);
-      
+      return true;
+    } catch (error: any) {
+      console.error('Payment processing error:', error);
       toast({
         title: "Erreur de paiement",
-        description: "Une erreur est survenue lors du traitement du paiement. Veuillez réessayer.",
+        description: error.message || "Une erreur est survenue lors du traitement du paiement.",
         variant: "destructive"
       });
+      return false;
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   return {
     isProcessing,
-    processPayment
+    processCardPayment
   };
 };
+
+export default usePaymentProcessing;

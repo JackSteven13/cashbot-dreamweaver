@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import useSessionStorage from '@/hooks/useSessionStorage';
-import { PaymentFormData, PlanType } from '@/utils/plans';
+import { PaymentFormData, PlanType } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
@@ -11,7 +11,7 @@ export const usePaymentPage = () => {
   const navigate = useNavigate();
   const { user, isLoading: isAuthChecking } = useAuth();
   
-  const [selectedPlan, setSelectedPlan] = useSessionStorage<string | null>('selectedPlan', null);
+  const [selectedPlan, setSelectedPlan] = useSessionStorage<PlanType>('selectedPlan', null);
   const [currentSubscription, setCurrentSubscription] = useState<string | null>(null);
   const [useStripePayment, setUseStripePayment] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
