@@ -4,11 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { PlanType } from './types';
-import { formatErrorMessage, updateLocalSubscription } from './utils';
+import { formatErrorMessage, updateLocalSubscription, checkCurrentSubscription } from './utils';
 import { useSubscriptionCheck } from './useSubscriptionCheck';
 import { useStripeSession } from './useStripeSession';
 import { useFreemiumUpdate } from './useFreemiumUpdate';
-import { openStripeWindow } from './stripeWindowManager';
+import { openStripeWindow, checkPopupBlocker } from './stripeWindowManager';
 
 /**
  * Hook pour gérer le processus de paiement Stripe
@@ -34,35 +34,45 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     };
   }, []);
 
-  // Effet pour gérer l'URL de paiement prête
+  // Effet pour gérer l'URL de paiement prête - version améliorée
   useEffect(() => {
     if (stripeCheckoutUrl && isStripeProcessing && !didInitiateRedirect) {
       console.log("URL de paiement Stripe prête:", stripeCheckoutUrl);
       
-      // Ouvrir directement la page Stripe au lieu d'attendre que l'utilisateur clique
-      const opened = openStripeWindow(stripeCheckoutUrl);
-      if (opened) {
-        setDidInitiateRedirect(true);
+      // Vérifier d'abord si les popups sont bloqués
+      checkPopupBlocker(() => {
+        // Cette fonction est appelée si les popups sont bloqués
+        console.log("Popups bloqués détectés, préparation de la redirection alternative");
+        // Stockage temporaire de l'URL pour la redirection alternative
+        localStorage.setItem('stripeCheckoutUrl', stripeCheckoutUrl);
+        localStorage.setItem('stripeRedirectPending', 'true');
+      });
+      
+      // Essayer d'ouvrir directement la page Stripe
+      setTimeout(() => {
+        const opened = openStripeWindow(stripeCheckoutUrl);
+        setDidInitiateRedirect(opened);
         setIsStripeProcessing(false);
-        toast({
-          title: "Redirection vers Stripe",
-          description: "Vous êtes redirigé vers la page de paiement sécurisée...",
-          duration: 5000,
-        });
-      } else {
-        // Si l'ouverture a échoué, informer l'utilisateur
-        setIsStripeProcessing(false);
-        toast({
-          title: "Impossible d'ouvrir la page de paiement",
-          description: "Veuillez cliquer sur le bouton pour accéder à la page de paiement",
-          variant: "destructive",
-          duration: 10000,
-        });
-      }
+        
+        if (opened) {
+          toast({
+            title: "Redirection vers Stripe",
+            description: "Vous êtes redirigé vers la page de paiement sécurisée...",
+            duration: 5000,
+          });
+        } else {
+          toast({
+            title: "Problème de redirection",
+            description: "Cliquez sur le bouton pour accéder à la page de paiement",
+            variant: "default",
+            duration: 10000,
+          });
+        }
+      }, 500);
     }
   }, [stripeCheckoutUrl, isStripeProcessing, didInitiateRedirect]);
 
-  // Fonction pour gérer le checkout Stripe
+  // Fonction pour gérer le checkout Stripe - avec gestion améliorée des erreurs
   const handleStripeCheckout = async () => {
     if (!selectedPlan) {
       toast({
@@ -101,43 +111,44 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       return;
     }
 
-    if (isStripeProcessing && !stripeCheckoutUrl) {
-      console.log("Paiement déjà en cours, attente...");
-      
-      // Si ça prend trop de temps, on réinitialise
-      if (redirectAttemptCount.current >= maxAttempts) {
-        toast({
-          title: "Erreur de communication",
-          description: "Le serveur de paiement ne répond pas. Veuillez réessayer.",
-          variant: "destructive"
-        });
-        setIsStripeProcessing(false);
-        redirectAttemptCount.current = 0;
-      } else {
-        redirectAttemptCount.current++;
-      }
-      return;
-    }
-    
-    // Si nous avons déjà une URL et que l'utilisateur réessaie
+    // Si une URL existe déjà et que l'utilisateur réessaie
     if (stripeCheckoutUrl) {
       console.log("Réutilisation de l'URL existante:", stripeCheckoutUrl);
-      const opened = openStripeWindow(stripeCheckoutUrl);
-      setDidInitiateRedirect(opened);
-      if (!opened) {
+      
+      // Vérifier d'abord si les popups sont bloqués
+      const arePopupsBlocked = await checkPopupBlocker();
+      
+      // Si les popups ne sont pas bloqués, essayer d'ouvrir normalement
+      if (!arePopupsBlocked) {
+        const opened = openStripeWindow(stripeCheckoutUrl);
+        setDidInitiateRedirect(opened);
+        return;
+      } else {
+        // Indiquer à l'utilisateur d'utiliser la redirection alternative
         toast({
-          title: "Impossible d'ouvrir la page de paiement",
-          description: "Votre navigateur a bloqué la popup. Veuillez autoriser les popups pour ce site.",
-          variant: "destructive"
+          title: "Redirection alternative",
+          description: "Utilisation de la méthode de redirection alternative...",
+          duration: 3000,
         });
+        
+        setTimeout(() => {
+          window.location.href = stripeCheckoutUrl;
+        }, 500);
+        return;
       }
-      return;
     }
     
     console.log("Démarrage du processus de paiement Stripe pour le plan:", selectedPlan);
     setIsStripeProcessing(true);
     setDidInitiateRedirect(false);
     redirectAttemptCount.current = 0;
+
+    // Montrer un feedback immédiat à l'utilisateur
+    toast({
+      title: "Préparation du paiement",
+      description: "Veuillez patienter pendant que nous préparons votre paiement...",
+      duration: 5000,
+    });
 
     // Mettre un timeout de sécurité pour réinitialiser si aucune réponse
     processingTimeout.current = setTimeout(() => {
@@ -150,7 +161,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
           variant: "destructive"
         });
       }
-    }, 15000); // 15 secondes max pour obtenir une URL
+    }, 20000); // 20 secondes max pour obtenir une URL (augmenté pour les réseaux lents)
 
     try {
       // Obtenir la session utilisateur
@@ -187,6 +198,9 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       if (!result || !result.url) {
         throw new Error("Impossible de créer la session de paiement");
       }
+      
+      // Stocker l'URL pour la redirection alternative si nécessaire
+      localStorage.setItem('stripeCheckoutUrl', result.url);
       
       // L'URL est prête, elle sera ouverte automatiquement par l'effet
 

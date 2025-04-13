@@ -3,40 +3,76 @@ import { toast } from "@/components/ui/use-toast";
 
 /**
  * Ouvre une fenêtre Stripe de manière fiable
+ * avec gestion améliorée des blocages de popup et compatibilité mobile
  */
 export const openStripeWindow = (url: string): boolean => {
   try {
     console.log("Tentative d'ouverture de la fenêtre Stripe:", url);
     
-    // Tentative d'ouverture dans un nouvel onglet
+    if (!url) {
+      console.error("URL Stripe invalide ou manquante");
+      return false;
+    }
+    
+    // Détection de l'environnement mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // Détection de Safari mobile
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    
+    // Sur mobile, particulièrement iOS Safari, préférer la redirection directe
+    if (isMobile) {
+      console.log("Appareil mobile détecté, redirection directe");
+      // Timeout pour permettre au toast de s'afficher avant la redirection
+      setTimeout(() => {
+        window.location.href = url;
+      }, 100);
+      return true;
+    }
+    
+    // Sur desktop, essayer d'ouvrir dans un nouvel onglet
     const stripeWindow = window.open(url, '_blank', 'noopener,noreferrer');
     
     // Vérifier si la fenêtre a été ouverte avec succès
-    if (stripeWindow) {
+    if (stripeWindow && !stripeWindow.closed) {
       stripeWindow.focus();
       console.log("Fenêtre Stripe ouverte avec succès");
       return true;
     }
     
-    // Si l'ouverture a échoué mais que nous sommes sur mobile, rediriger directement
-    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-      console.log("Redirection mobile vers Stripe");
-      window.location.href = url;
-      return true;
-    }
+    // Si l'ouverture a échoué (probablement bloquée par un popup blocker)
+    console.warn("Échec de l'ouverture de la fenêtre - popups probablement bloqués");
     
-    // Échec de l'ouverture
-    console.error("Impossible d'ouvrir la fenêtre Stripe");
-    return false;
+    // Montrer un toast pour informer l'utilisateur et essayer la redirection directe
+    toast({
+      title: "Ouverture de la page de paiement",
+      description: "Redirection vers la page de paiement Stripe...",
+      duration: 3000,
+    });
+    
+    // Redirection directe après un court délai
+    setTimeout(() => {
+      window.location.href = url;
+    }, 300);
+    
+    return true;
   } catch (error) {
     console.error("Erreur lors de l'ouverture de la fenêtre Stripe:", error);
     
     // Tentative de redirection directe en dernier recours
     try {
-      window.location.href = url;
+      toast({
+        title: "Problème de redirection",
+        description: "Tentative de redirection alternative...",
+        duration: 3000,
+      });
+      
+      setTimeout(() => {
+        window.location.href = url;
+      }, 300);
+      
       return true;
     } catch (e) {
-      console.error("Échec de la redirection directe:", e);
+      console.error("Échec de toutes les tentatives de redirection:", e);
       return false;
     }
   }

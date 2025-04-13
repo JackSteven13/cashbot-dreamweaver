@@ -60,10 +60,17 @@ const StripeCheckoutForm = ({
     onCheckout();
   };
   
-  // Fonction pour ouvrir la fenêtre de paiement Stripe
+  // Fonction pour ouvrir la fenêtre de paiement Stripe avec gestion améliorée
   const openStripePayment = () => {
     if (!stripeUrl) return;
     
+    // Mémoriser l'URL dans le localStorage en cas de problème
+    localStorage.setItem('stripeCheckoutUrl', stripeUrl);
+    localStorage.setItem('stripeRedirectPending', 'true');
+    
+    console.log("Tentative d'ouverture de la page de paiement:", stripeUrl);
+    
+    // Tenter d'ouvrir la fenêtre Stripe avec la fonction améliorée
     const opened = openStripeWindow(stripeUrl);
     setStripeWindowOpened(opened);
     
@@ -76,12 +83,17 @@ const StripeCheckoutForm = ({
     } else {
       // Si la fenêtre n'a pas pu être ouverte (probablement bloquée)
       toast({
-        title: "Popup bloqué",
-        description: "Votre navigateur semble bloquer les popups. Veuillez autoriser les popups pour ce site.",
-        variant: "destructive",
+        title: "Problème de redirection",
+        description: "La redirection va s'effectuer automatiquement dans quelques secondes...",
+        variant: "default",
         duration: 8000
       });
       setShowMobileHelper(true);
+      
+      // Tentative de redirection directe après quelques secondes
+      setTimeout(() => {
+        window.location.href = stripeUrl;
+      }, 2000);
     }
   };
   
@@ -89,9 +101,13 @@ const StripeCheckoutForm = ({
   useEffect(() => {
     if (stripeUrl && !redirectAttempted && termsAccepted) {
       setRedirectAttempted(true);
-      openStripePayment();
       
-      // Sur mobile, afficher l'aide après un court délai
+      // Petit délai pour permettre à l'interface de se mettre à jour
+      setTimeout(() => {
+        openStripePayment();
+      }, 300);
+      
+      // Sur mobile, afficher l'aide après un court délai si nécessaire
       if (isMobile) {
         setTimeout(() => {
           setShowMobileHelper(true);
@@ -99,6 +115,23 @@ const StripeCheckoutForm = ({
       }
     }
   }, [stripeUrl, redirectAttempted, termsAccepted, isMobile]);
+  
+  // Vérifier s'il y a une URL en attente dans localStorage
+  useEffect(() => {
+    const pendingUrl = localStorage.getItem('stripeCheckoutUrl');
+    const isPending = localStorage.getItem('stripeRedirectPending') === 'true';
+    
+    if (pendingUrl && isPending && !stripeUrl) {
+      console.log("URL de redirection en attente détectée:", pendingUrl);
+      // Effacer le flag de redirection en attente
+      localStorage.setItem('stripeRedirectPending', 'false');
+      
+      // Après un petit délai, tenter d'ouvrir l'URL
+      setTimeout(() => {
+        openStripeWindow(pendingUrl);
+      }, 1000);
+    }
+  }, []);
   
   return (
     <div className="space-y-4 md:space-y-5">
@@ -137,11 +170,7 @@ const StripeCheckoutForm = ({
               className="text-blue-600 hover:underline focus:outline-none focus:underline dark:text-blue-400" 
               target="_blank"
               onClick={(e) => {
-                // Empêcher les clics multiples rapides
-                e.currentTarget.style.pointerEvents = 'none';
-                setTimeout(() => {
-                  if (e.currentTarget) e.currentTarget.style.pointerEvents = 'auto';
-                }, 1000);
+                e.stopPropagation(); // Empêcher les clics croisés
               }}
             >
               Conditions Générales d'Utilisation
