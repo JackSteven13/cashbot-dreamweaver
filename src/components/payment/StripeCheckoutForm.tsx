@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CreditCard } from 'lucide-react';
 import Button from '@/components/Button';
 import { PlanType } from '@/hooks/payment/types';
@@ -23,8 +23,15 @@ const StripeCheckoutForm = ({
 }: StripeCheckoutFormProps) => {
   const [termsAccepted, setTermsAccepted] = useState(true);
   
-  // Créer le lien vers les CGV avec le plan sélectionné
+  // Create link to terms with selected plan
   const termsLink = selectedPlan ? `/terms?plan=${selectedPlan}` : '/terms';
+
+  // If we already have a Stripe URL and we're processing, redirect automatically
+  useEffect(() => {
+    if (stripeUrl && isStripeProcessing) {
+      window.location.href = stripeUrl;
+    }
+  }, [stripeUrl, isStripeProcessing]);
 
   const handleCheckout = () => {
     if (!termsAccepted) {
@@ -36,13 +43,7 @@ const StripeCheckoutForm = ({
       return;
     }
 
-    // Si nous avons une URL Stripe, rediriger directement
-    if (stripeUrl) {
-      window.location.href = stripeUrl;
-      return;
-    }
-
-    // Sinon, déclencher la création de la session
+    // Trigger checkout process
     onCheckout();
   };
 
@@ -82,7 +83,7 @@ const StripeCheckoutForm = ({
         isLoading={isStripeProcessing}
         disabled={!termsAccepted || isStripeProcessing}
       >
-        {isStripeProcessing ? 'Préparation du paiement...' : 'Procéder au paiement'}
+        {isStripeProcessing ? 'Redirection vers Stripe...' : 'Procéder au paiement'}
       </Button>
     </div>
   );

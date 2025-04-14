@@ -14,7 +14,7 @@ export const usePaymentPage = () => {
   const [searchParams] = useSearchParams();
   const { user, isLoading: isAuthChecking } = useAuth();
   
-  // Plan sélectionné à partir de URL ou session
+  // Plan selected from URL or session
   const planFromUrl = searchParams.get('plan');
   const [selectedPlan, setSelectedPlan] = useSessionStorage<PlanType>('selectedPlan', getPlanById(planFromUrl));
   
@@ -22,14 +22,16 @@ export const usePaymentPage = () => {
   const [useStripePayment, setUseStripePayment] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Utilisation du hook Stripe checkout avec le plan sélectionné
+  // Use Stripe checkout hook with selected plan
   const { 
     isStripeProcessing, 
     handleStripeCheckout, 
-    stripeCheckoutUrl 
+    stripeCheckoutUrl,
+    actualSubscription,
+    isChecking
   } = useStripeCheckout(selectedPlan);
   
-  // Vérifier le plan sélectionné à partir de l'URL lors du chargement initial
+  // Check selected plan from URL on initial load
   useEffect(() => {
     const planParam = searchParams.get('plan');
     if (planParam) {
@@ -41,35 +43,39 @@ export const usePaymentPage = () => {
     }
   }, [searchParams, setSelectedPlan]);
   
-  // Récupérer l'abonnement actuel de l'utilisateur
+  // Get user's current subscription
   useEffect(() => {
-    const fetchSubscription = async () => {
-      if (user?.id) {
-        try {
-          const { data, error } = await supabase
-            .from('user_balances')
-            .select('subscription')
-            .eq('id', user.id)
-            .single();
-            
-          if (!error && data) {
-            setCurrentSubscription(data.subscription);
+    if (actualSubscription) {
+      setCurrentSubscription(actualSubscription);
+    } else {
+      const fetchSubscription = async () => {
+        if (user?.id) {
+          try {
+            const { data, error } = await supabase
+              .from('user_balances')
+              .select('subscription')
+              .eq('id', user.id)
+              .single();
+              
+            if (!error && data) {
+              setCurrentSubscription(data.subscription);
+            }
+          } catch (error) {
+            console.error('Failed to fetch subscription:', error);
           }
-        } catch (error) {
-          console.error('Failed to fetch subscription:', error);
         }
-      }
-    };
-    
-    fetchSubscription();
-  }, [user]);
+      };
+      
+      fetchSubscription();
+    }
+  }, [user, actualSubscription]);
   
-  // Toggle entre Stripe et paiement manuel
+  // Toggle between Stripe and manual payment
   const togglePaymentMethod = useCallback(() => {
     setUseStripePayment(prev => !prev);
   }, []);
   
-  // Gérer le checkout Stripe - réutilisation du hook
+  // Handle Stripe checkout - reuse hook
   const initiateStripeCheckout = useCallback(() => {
     if (!selectedPlan) {
       toast({
@@ -84,11 +90,11 @@ export const usePaymentPage = () => {
     handleStripeCheckout();
   }, [selectedPlan, handleStripeCheckout]);
   
-  // Gestion du formulaire de carte
+  // Handle card form submission
   const handleCardFormSubmit = useCallback((cardData: PaymentFormData) => {
     setIsProcessing(true);
-    // Dans un cas réel, nous traiterions le paiement ici
-    // Pour l'instant, nous simulons simplement
+    // In a real case, we would process the payment here
+    // For now, just simulate
     setTimeout(() => {
       setIsProcessing(false);
       toast({

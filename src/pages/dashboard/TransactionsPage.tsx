@@ -5,13 +5,13 @@ import { useUserData } from '@/hooks/userData/useUserData';
 import { TransactionsPanel } from '@/components/dashboard/transactions';
 import { toast } from '@/components/ui/use-toast';
 
-// Memoizer le composant pour éviter les re-rendus inutiles
+// Memoized component to avoid unnecessary re-renders
 const TransactionsPage = memo(() => {
   const { userData, isLoading, refreshUserData } = useUserData();
   const [refreshKey, setRefreshKey] = useState(() => Date.now());
   const [retryCount, setRetryCount] = useState(0);
   
-  // Ajouter un effet pour rafraîchir automatiquement les données si nécessaire
+  // Add effect to automatically refresh data if needed
   useEffect(() => {
     let isMounted = true;
     
@@ -36,7 +36,7 @@ const TransactionsPage = memo(() => {
     };
   }, [userData, isLoading, retryCount, refreshUserData]);
   
-  // Gestionnaire de rafraîchissement manuel mémorisé pour éviter les recréations
+  // Memoized refresh handler to avoid recreations
   const handleManualRefresh = useCallback(async () => {
     try {
       toast({
@@ -61,7 +61,7 @@ const TransactionsPage = memo(() => {
     }
   }, [refreshUserData]);
   
-  // Garantir qu'un tableau vide est fourni si userData?.transactions n'est pas défini
+  // Ensure an empty array is provided if userData?.transactions is undefined
   const transactions = userData?.transactions || [];
   
   return (
@@ -88,6 +88,7 @@ const TransactionsPage = memo(() => {
             <TransactionsPanel 
               key={refreshKey}
               transactions={transactions}
+              isLoading={false}
               isNewUser={false}
             />
           )}

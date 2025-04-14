@@ -4,15 +4,44 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { PlanType } from './types';
-import { useSubscriptionCheck } from './useSubscriptionCheck';
 
 export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
   const [isStripeProcessing, setIsStripeProcessing] = useState(false);
   const [stripeCheckoutUrl, setStripeCheckoutUrl] = useState<string | null>(null);
+  // Add actualSubscription and isChecking state
+  const [actualSubscription, setActualSubscription] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
   
-  // Get subscription data
-  const { actualSubscription, isChecking } = useSubscriptionCheck();
+  // Function to check current subscription
+  const checkCurrentSubscription = async () => {
+    setIsChecking(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user?.id) {
+        const { data, error } = await supabase
+          .from('user_balances')
+          .select('subscription')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (!error && data) {
+          console.log('Subscription verified from Supabase:', data.subscription);
+          setActualSubscription(data.subscription);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking subscription:", error);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+  
+  // Check subscription on hook initialization
+  useState(() => {
+    checkCurrentSubscription();
+  });
 
   const handleStripeCheckout = async () => {
     if (!selectedPlan) {
@@ -39,7 +68,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         return;
       }
 
-      // Créer et gérer la session de paiement Stripe
+      // Create and manage Stripe checkout session
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           plan: selectedPlan,
@@ -57,6 +86,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       }
 
       setStripeCheckoutUrl(data.url);
+      
+      // Direct redirection to Stripe (simplified approach)
       window.location.href = data.url;
 
     } catch (error: any) {

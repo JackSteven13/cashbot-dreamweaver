@@ -23,7 +23,7 @@ const Payment = () => {
     initiateStripeCheckout
   } = usePaymentPage();
 
-  // Vérifier si un plan est sélectionné et valide
+  // Check if a plan is selected and valid
   useEffect(() => {
     if (!isAuthChecking) {
       if (!selectedPlan) {
@@ -36,7 +36,7 @@ const Payment = () => {
         return;
       }
       
-      // Vérifier si le plan sélectionné existe dans la liste des plans
+      // Check if selected plan exists
       if (selectedPlan && !PLANS[selectedPlan]) {
         toast({
           title: "Forfait invalide",
@@ -47,14 +47,14 @@ const Payment = () => {
         return;
       }
       
-      // Afficher le prix du plan sélectionné
+      // Display selected plan price
       if (selectedPlan && PLANS[selectedPlan]) {
         console.log(`Plan sélectionné: ${selectedPlan}, Prix: ${PLANS[selectedPlan].price}€`);
       }
     }
   }, [selectedPlan, isAuthChecking, navigate]);
   
-  // Vérifier si l'utilisateur est déjà abonné au plan sélectionné
+  // Check if user is already subscribed to the selected plan
   useEffect(() => {
     if (!isAuthChecking && selectedPlan && currentSubscription === selectedPlan) {
       toast({
@@ -63,7 +63,7 @@ const Payment = () => {
         variant: "default"
       });
       
-      // Rediriger vers le dashboard après un court délai
+      // Redirect to dashboard after a short delay
       const timeout = setTimeout(() => {
         navigate('/dashboard');
       }, 3000);
@@ -72,11 +72,11 @@ const Payment = () => {
     }
   }, [selectedPlan, currentSubscription, isAuthChecking, navigate]);
   
-  // Déclencher automatiquement le paiement Stripe après le chargement du plan
+  // Automatically trigger Stripe payment after loading plan
   useEffect(() => {
     if (selectedPlan && !isAuthChecking && useStripePayment && !stripeCheckoutUrl && !isStripeProcessing) {
       console.log("Déclenchement automatique du paiement Stripe");
-      // Léger délai pour s'assurer que tous les composants sont montés
+      // Short delay to ensure all components are mounted
       const timeout = setTimeout(() => {
         initiateStripeCheckout();
       }, 500);
