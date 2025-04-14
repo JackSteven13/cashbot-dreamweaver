@@ -1,6 +1,6 @@
 
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserData } from '@/hooks/userData/useUserData';
 import { useBotActivation } from '@/hooks/bot/useBotActivation';
@@ -9,118 +9,134 @@ import DashboardMetrics from './DashboardMetrics';
 import BotControlPanel from './bot/BotControlPanel';
 import SystemTerminal from './terminal/SystemTerminal';
 import DashboardSkeleton from './DashboardSkeleton';
+import UserDataStateTracker from './UserDataStateTracker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import DashboardInitializationEffect from './DashboardInitializationEffect';
 
 const DashboardContainer = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+  const initialRenderComplete = useRef(false);
+  const [username, setUsername] = useState<string | null>(null);
+  
   const { 
     userData, 
     isNewUser, 
     dailySessionCount, 
     showLimitAlert,
-    isLoading: dataLoading,
-    updateBalance,
-    refreshUserData
+    isLoading,
+    fetchUserData,
+    setShowLimitAlert
   } = useUserData();
   
-  const { isBotActive, setIsBotActive } = useBotActivation();
-  const [isStartingSession, setIsStartingSession] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-
-  // Redirect if not authenticated
+  const { isBotActive, activateBot, deactivateBot } = useBotActivation({
+    userData,
+    isNewUser,
+    onActivate: () => console.log("Bot activé")
+  });
+  
+  const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
+  
+  // Effet pour initialiser une seule fois
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/login');
+    if (!initialRenderComplete.current) {
+      console.log("Initialisation du dashboard...");
+      initialRenderComplete.current = true;
     }
-  }, [user, authLoading, navigate]);
+  }, []);
 
-  // Handle start session
-  const handleStartSession = () => {
-    setIsStartingSession(true);
-    
-    // Simulate session start
-    setTimeout(() => {
-      setIsStartingSession(false);
-      
-      // Refresh user data after session starts
-      refreshUserData();
-    }, 2000);
+  // Effet pour charger les données utilisateur
+  useEffect(() => {
+    if (user && !userData && !isLoading) {
+      console.log("Chargement des données utilisateur");
+      fetchUserData();
+    }
+  }, [user, userData, isLoading, fetchUserData]);
+
+  // Gestionnaire pour le nom d'utilisateur chargé
+  const handleUsernameLoaded = (name: string) => {
+    console.log("Nom d'utilisateur chargé:", name);
+    setUsername(name);
+  };
+  
+  // Gestionnaire pour les données utilisateur rafraîchies
+  const handleDataRefreshed = (data: any) => {
+    console.log("Données utilisateur rafraîchies:", data);
+    // Recharger les données complètes
+    if (!isLoading) {
+      fetchUserData();
+    }
   };
 
-  // Handle withdrawal
-  const handleWithdrawal = () => {
-    // Implement withdrawal logic
-    console.log('Processing withdrawal...');
-  };
-
-  // Show loading state
-  if (authLoading || dataLoading || !userData) {
-    return <DashboardSkeleton />;
+  if (authLoading || (!userData && isLoading)) {
+    return <DashboardSkeleton username={username} />;
   }
 
-  // Calculate daily limit progress (for freemium accounts)
-  const dailyLimit = userData?.subscription === 'freemium' ? 0.5 : 
-                     userData?.subscription === 'starter' ? 2 : 
-                     userData?.subscription === 'premium' ? 5 : 10;
-  
-  const dailyGains = userData?.transactions?.filter(tx => 
-    tx.date && tx.date.startsWith(new Date().toISOString().split('T')[0])
-  ).reduce((sum, tx) => sum + (tx.gain || 0), 0) || 0;
-  
-  const dailyLimitProgress = dailyLimit > 0 ? Math.min(100, (dailyGains / dailyLimit) * 100) : 0;
-  const limitReached = dailyGains >= dailyLimit;
-
   return (
-    <div className="py-6 px-4 md:px-6 space-y-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <DashboardHeader 
-        username={userData?.username || 'Utilisateur'} 
-        subscription={userData?.subscription}
+        username={username || userData?.username || 'Utilisateur'} 
+        isNewUser={isNewUser}
       />
       
-      <BotControlPanel
-        isBotActive={isBotActive}
-        showLimitReached={limitReached}
-        subscription={userData?.subscription}
-        userId={user?.id}
+      <main className="container mx-auto px-4 py-6">
+        <Tabs 
+          defaultValue="dashboard" 
+          value={selectedNavItem} 
+          onValueChange={setSelectedNavItem}
+          className="w-full"
+        >
+          <TabsList className="mb-6 bg-white dark:bg-gray-800 p-1 rounded-md border border-gray-200 dark:border-gray-700">
+            <TabsTrigger value="dashboard">Tableau de bord</TabsTrigger>
+            <TabsTrigger value="bot">Bot</TabsTrigger>
+            <TabsTrigger value="terminal">Terminal</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="dashboard" className="space-y-6">
+            <DashboardMetrics
+              balance={userData?.balance || 0}
+              username={userData?.username || username || 'Utilisateur'}
+              subscription={userData?.subscription || 'freemium'}
+              isNewUser={isNewUser}
+              dailySessionCount={dailySessionCount}
+              showLimitAlert={showLimitAlert}
+              setShowLimitAlert={setShowLimitAlert}
+              referralCount={userData?.referrals?.length || 0}
+              referrals={userData?.referrals || []}
+            />
+          </TabsContent>
+          
+          <TabsContent value="bot">
+            <BotControlPanel 
+              isActive={isBotActive}
+              onActivate={activateBot}
+              onDeactivate={deactivateBot}
+              username={userData?.username || username || 'Utilisateur'}
+              subscription={userData?.subscription || 'freemium'}
+            />
+          </TabsContent>
+          
+          <TabsContent value="terminal">
+            <SystemTerminal />
+          </TabsContent>
+        </Tabs>
+      </main>
+      
+      {/* Composants invisibles pour gérer l'état */}
+      <UserDataStateTracker 
+        onUsernameLoaded={handleUsernameLoaded}
+        onDataRefreshed={handleDataRefreshed}
       />
       
-      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 h-11">
-          <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-          <TabsTrigger value="terminal">Terminal système</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="overview" className="space-y-4">
-          <DashboardMetrics
-            balance={userData?.balance || 0}
-            referralLink={userData?.referralLink || ''}
-            isStartingSession={isStartingSession}
-            handleStartSession={handleStartSession}
-            handleWithdrawal={handleWithdrawal}
-            transactions={userData?.transactions || []}
-            isNewUser={isNewUser}
-            subscription={userData?.subscription || 'freemium'}
-            dailySessionCount={dailySessionCount || 0}
-            canStartSession={!isStartingSession && !limitReached}
-            referrals={userData?.referrals || []}
-            isBotActive={isBotActive}
-          />
-        </TabsContent>
-        
-        <TabsContent value="terminal">
-          <SystemTerminal
-            isNewUser={isNewUser}
-            dailyLimit={dailyLimit}
-            subscription={userData?.subscription}
-            remainingSessions={0}
-            referralCount={userData?.referrals?.length || 0}
-            displayBalance={userData?.balance || 0}
-            referralBonus={0}
-            isBotActive={isBotActive}
-          />
-        </TabsContent>
-      </Tabs>
+      <DashboardInitializationEffect
+        initialRenderComplete={initialRenderComplete}
+        isAuthChecking={authLoading}
+        isLoading={isLoading}
+        userData={userData}
+        pathname={location.pathname}
+        setSelectedNavItem={setSelectedNavItem}
+      />
     </div>
   );
 };

@@ -1,36 +1,29 @@
 
-import React from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import PlanSummary from '@/components/payment/PlanSummary';
-import StripeCheckoutForm from '@/components/payment/StripeCheckoutForm';
-import ManualPaymentForm from '@/components/payment/ManualPaymentForm';
-import { PaymentFormData, PlanType } from '@/hooks/payment/types';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { formatPrice } from '@/utils/balance/limitCalculations';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { InfoIcon } from 'lucide-react';
-import { PLANS } from '@/utils/plans';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PlanType } from '@/hooks/payment/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import CardCheckoutForm from './CardCheckoutForm';
+import StripeCheckoutForm from './StripeCheckoutForm';
+import PlanSummary from './PlanSummary';
+import MobilePaymentHelper from './MobilePaymentHelper';
+import { forceOpenStripeUrl } from '@/hooks/payment/stripeWindowManager';
 
 interface PaymentCardProps {
   selectedPlan: PlanType | null;
-  currentSubscription?: string | null;
+  currentSubscription: string | null;
   useStripeCheckout: boolean;
   isStripeProcessing: boolean;
   isProcessing: boolean;
   onToggleMethod: () => void;
-  onCardFormSubmit: (cardData: PaymentFormData) => void;
+  onCardFormSubmit: (formData: any) => void;
   onStripeCheckout: () => void;
-  stripeCheckoutUrl?: string | null;
+  stripeCheckoutUrl: string | null;
 }
-
-// Function to calculate prorated price based on days remaining
-const calculateProratedPrice = (basePrice: number, daysRemaining: number, totalDays: number): number => {
-  return basePrice * (daysRemaining / totalDays);
-};
 
 const PaymentCard = ({
   selectedPlan,
-  currentSubscription = 'freemium',
+  currentSubscription,
   useStripeCheckout,
   isStripeProcessing,
   isProcessing,
@@ -39,74 +32,98 @@ const PaymentCard = ({
   onStripeCheckout,
   stripeCheckoutUrl
 }: PaymentCardProps) => {
-  const isMobile = useIsMobile();
+  const [activeTab, setActiveTab] = useState<string>("stripe");
+  const [showMobileHelper, setShowMobileHelper] = useState(false);
+  const [urlAttempted, setUrlAttempted] = useState(false);
+
+  // Vérifier si l'utilisateur a déjà le plan sélectionné
+  const isCurrentPlan = currentSubscription === selectedPlan;
   
-  // Obtenir le prix réel du plan sélectionné
-  const planPrice = selectedPlan && PLANS[selectedPlan] ? PLANS[selectedPlan].price : 0;
+  // Définir méthode de paiement par défaut (stripe)
+  useEffect(() => {
+    setActiveTab(useStripeCheckout ? "stripe" : "card");
+  }, [useStripeCheckout]);
+
+  // Gérer les changements d'onglet
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if ((tab === "stripe" && !useStripeCheckout) || (tab === "card" && useStripeCheckout)) {
+      onToggleMethod();
+    }
+  };
   
-  // Calculer le prix proraté en cas de mise à niveau
-  const isUpgrade = selectedPlan && 
-                    currentSubscription && 
-                    currentSubscription !== 'freemium';
-  
-  // Pour une démonstration, supposons que la moitié du temps reste sur l'abonnement actuel
-  // Dans une implémentation réelle, vous calculeriez cela à partir des dates d'abonnement
-  const daysRemaining = 182; // Environ 6 mois
-  const totalDays = 365;
-  
-  let proratedPrice = 0;
-  let savingsAmount = 0;
-  
-  if (isUpgrade && selectedPlan) {
-    const currentPlanPrice = currentSubscription && PLANS[currentSubscription] 
-      ? PLANS[currentSubscription].price 
-      : 0;
-    
-    const newPlanPrice = PLANS[selectedPlan].price;
-    proratedPrice = newPlanPrice - calculateProratedPrice(currentPlanPrice, daysRemaining, totalDays);
-    savingsAmount = newPlanPrice - proratedPrice;
-  }
+  // Tenter automatiquement d'ouvrir l'URL Stripe si disponible
+  useEffect(() => {
+    if (stripeCheckoutUrl && !urlAttempted && activeTab === "stripe") {
+      console.log("URL Stripe disponible, tentative d'ouverture automatique");
+      setUrlAttempted(true);
+      
+      // Tenter d'ouvrir la fenêtre Stripe avec un léger délai pour permettre au rendu de se terminer
+      setTimeout(() => {
+        try {
+          forceOpenStripeUrl(stripeCheckoutUrl);
+        } catch (e) {
+          console.error("Erreur lors de l'ouverture forcée:", e);
+        }
+        
+        // Afficher l'aide mobile après un délai si sur mobile
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          setTimeout(() => setShowMobileHelper(true), 3000);
+        }
+      }, 500);
+    }
+  }, [stripeCheckoutUrl, urlAttempted, activeTab]);
 
   return (
-    <Card className="cyber-card shadow-2xl max-w-[95vw] md:max-w-full mx-auto border border-white/10">
-      <CardHeader className="py-4 px-5 md:p-6 bg-gradient-to-r from-blue-900/90 to-indigo-900/90 border-b border-white/10">
-        <CardTitle className="text-base md:text-xl text-white font-semibold">
-          Finaliser votre abonnement {selectedPlan && (selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1))}
-        </CardTitle>
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle className="text-xl text-center">Finaliser votre abonnement</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 md:space-y-5 p-5 md:p-6">
+      <CardContent className="space-y-4">
+        {/* Afficher le résumé du plan sélectionné */}
         <PlanSummary selectedPlan={selectedPlan} />
-        
-        {isUpgrade && selectedPlan && (
-          <Alert variant="default" className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-            <InfoIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <AlertDescription className="text-sm">
-              <span className="font-medium">Mise à niveau avec crédit proraté :</span> Comme vous passez de l'offre{' '}
-              <span className="font-semibold capitalize">{currentSubscription}</span> à l'offre{' '}
-              <span className="font-semibold capitalize">{selectedPlan}</span>, nous appliquons un crédit pour le temps restant sur votre abonnement actuel.
-              <div className="mt-2 text-xs space-y-1">
-                <div>Prix normal: {formatPrice(planPrice)}</div>
-                <div>Crédit appliqué: -{formatPrice(savingsAmount)} ({Math.round((daysRemaining / totalDays) * 100)}% du temps restant)</div>
-                <div className="font-semibold pt-1">Vous ne payez que: {formatPrice(proratedPrice)}</div>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {useStripeCheckout ? (
-          <StripeCheckoutForm 
-            selectedPlan={selectedPlan}
-            isStripeProcessing={isStripeProcessing}
-            onCheckout={onStripeCheckout}
-            stripeUrl={stripeCheckoutUrl}
-            isUpgrade={isUpgrade}
-            proratedPrice={proratedPrice}
-          />
+
+        {isCurrentPlan ? (
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-md">
+            <p className="text-amber-700 dark:text-amber-400 text-sm">
+              Vous êtes déjà abonné à ce forfait. Veuillez en sélectionner un autre ou retourner au tableau de bord.
+            </p>
+          </div>
         ) : (
-          <ManualPaymentForm 
-            isProcessing={isProcessing}
-            onSubmit={onCardFormSubmit}
-          />
+          <>
+            {/* Onglets pour les méthodes de paiement */}
+            <Tabs defaultValue={activeTab} value={activeTab} onValueChange={handleTabChange} className="w-full">
+              <TabsList className="grid grid-cols-2">
+                <TabsTrigger value="stripe">Payer avec Stripe</TabsTrigger>
+                <TabsTrigger value="card">Carte bancaire</TabsTrigger>
+              </TabsList>
+              <TabsContent value="stripe" className="space-y-4">
+                <StripeCheckoutForm 
+                  selectedPlan={selectedPlan}
+                  isStripeProcessing={isStripeProcessing}
+                  onCheckout={onStripeCheckout}
+                  stripeUrl={stripeCheckoutUrl}
+                />
+                
+                <MobilePaymentHelper 
+                  isVisible={showMobileHelper} 
+                  onHelp={() => {
+                    if (stripeCheckoutUrl) {
+                      forceOpenStripeUrl(stripeCheckoutUrl);
+                    }
+                  }}
+                  stripeUrl={stripeCheckoutUrl}
+                />
+              </TabsContent>
+              <TabsContent value="card" className="space-y-4">
+                <CardCheckoutForm 
+                  onSubmit={onCardFormSubmit} 
+                  isProcessing={isProcessing} 
+                  selectedPlan={selectedPlan}
+                />
+              </TabsContent>
+            </Tabs>
+          </>
         )}
       </CardContent>
     </Card>

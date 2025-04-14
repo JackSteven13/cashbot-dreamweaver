@@ -5,13 +5,13 @@ import Button from '@/components/Button';
 import { PlanType } from '@/hooks/payment/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
 import { useIsMobile } from '@/hooks/use-mobile';
-import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
-import MobilePaymentHelper from './MobilePaymentHelper';
+import { forceOpenStripeUrl } from '@/hooks/payment/stripeWindowManager';
 import { formatPrice } from '@/utils/balance/limitCalculations';
 import { PLANS } from '@/utils/plans';
+import MobilePaymentHelper from './MobilePaymentHelper';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;
@@ -35,7 +35,6 @@ const StripeCheckoutForm = ({
   const [showMobileHelper, setShowMobileHelper] = useState(false);
   const [stripeWindowOpened, setStripeWindowOpened] = useState(false);
   const isMobile = useIsMobile();
-  const location = useLocation();
   
   // Créer le lien vers les CGV avec le plan sélectionné
   const termsLink = selectedPlan ? `/terms?plan=${selectedPlan}` : '/terms';
@@ -68,36 +67,23 @@ const StripeCheckoutForm = ({
   const openStripePayment = () => {
     if (!stripeUrl) return;
     
-    // Mémoriser l'URL dans le localStorage en cas de problème
-    localStorage.setItem('stripeCheckoutUrl', stripeUrl);
-    localStorage.setItem('stripeRedirectPending', 'true');
-    
     console.log("Tentative d'ouverture de la page de paiement:", stripeUrl);
     
-    // Tenter d'ouvrir la fenêtre Stripe avec la fonction améliorée
-    const opened = openStripeWindow(stripeUrl);
-    setStripeWindowOpened(opened);
+    toast({
+      title: "Redirection en cours",
+      description: "Vous êtes redirigé vers la page de paiement Stripe...",
+      duration: 3000
+    });
     
-    if (opened) {
-      toast({
-        title: "Redirection en cours",
-        description: "Vous êtes redirigé vers la page de paiement Stripe...",
-        duration: 3000
-      });
-    } else {
-      // Si la fenêtre n'a pas pu être ouverte (probablement bloquée)
-      toast({
-        title: "Problème de redirection",
-        description: "La redirection va s'effectuer automatiquement dans quelques secondes...",
-        variant: "default",
-        duration: 8000
-      });
-      setShowMobileHelper(true);
-      
-      // Tentative de redirection directe après quelques secondes
+    // Utiliser la méthode améliorée
+    forceOpenStripeUrl(stripeUrl);
+    setStripeWindowOpened(true);
+    
+    // Afficher l'aide sur mobile après un délai
+    if (isMobile) {
       setTimeout(() => {
-        window.location.href = stripeUrl;
-      }, 2000);
+        setShowMobileHelper(true);
+      }, 3000);
     }
   };
   
@@ -110,15 +96,8 @@ const StripeCheckoutForm = ({
       setTimeout(() => {
         openStripePayment();
       }, 300);
-      
-      // Sur mobile, afficher l'aide après un court délai si nécessaire
-      if (isMobile) {
-        setTimeout(() => {
-          setShowMobileHelper(true);
-        }, 3000);
-      }
     }
-  }, [stripeUrl, redirectAttempted, termsAccepted, isMobile]);
+  }, [stripeUrl, redirectAttempted, termsAccepted]);
   
   // Vérifier s'il y a une URL en attente dans localStorage
   useEffect(() => {
@@ -132,10 +111,10 @@ const StripeCheckoutForm = ({
       
       // Après un petit délai, tenter d'ouvrir l'URL
       setTimeout(() => {
-        openStripeWindow(pendingUrl);
+        forceOpenStripeUrl(pendingUrl);
       }, 1000);
     }
-  }, []);
+  }, [stripeUrl]);
   
   return (
     <div className="space-y-4 md:space-y-5">
@@ -217,6 +196,7 @@ const StripeCheckoutForm = ({
       <MobilePaymentHelper 
         isVisible={showMobileHelper && !!stripeUrl} 
         onHelp={() => openStripePayment()}
+        stripeUrl={stripeUrl || null}
       />
     </div>
   );
