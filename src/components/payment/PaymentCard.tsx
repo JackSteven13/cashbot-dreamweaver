@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlanType } from '@/hooks/payment/types';
@@ -6,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CardCheckoutForm from './CardCheckoutForm';
 import StripeCheckoutForm from './StripeCheckoutForm';
 import PlanSummary from './PlanSummary';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/toast';
 
 interface PaymentCardProps {
   selectedPlan: PlanType | null;
@@ -40,6 +41,19 @@ const PaymentCard = ({
     }
   };
 
+  const handleStripePayment = async () => {
+    if (!selectedPlan) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un plan pour continuer",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    onStripeCheckout();
+  };
+
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
@@ -55,27 +69,20 @@ const PaymentCard = ({
             </p>
           </div>
         ) : (
-          <Tabs defaultValue={activeTab} value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid grid-cols-2">
-              <TabsTrigger value="stripe">Payer avec Stripe</TabsTrigger>
-              <TabsTrigger value="card">Carte bancaire</TabsTrigger>
-            </TabsList>
-            <TabsContent value="stripe" className="space-y-4">
-              <StripeCheckoutForm 
-                selectedPlan={selectedPlan}
-                isStripeProcessing={isStripeProcessing}
-                onCheckout={onStripeCheckout}
-                stripeUrl={stripeCheckoutUrl}
-              />
-            </TabsContent>
-            <TabsContent value="card" className="space-y-4">
-              <CardCheckoutForm 
-                onSubmit={onCardFormSubmit} 
-                isProcessing={isProcessing} 
-                selectedPlan={selectedPlan}
-              />
-            </TabsContent>
-          </Tabs>
+          <Button 
+            onClick={handleStripePayment}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-lg font-medium shadow-md"
+            disabled={isStripeProcessing}
+          >
+            {isStripeProcessing ? (
+              <div className="flex items-center gap-2">
+                <span className="animate-spin">⏳</span>
+                Préparation du paiement...
+              </div>
+            ) : (
+              "Payer maintenant"
+            )}
+          </Button>
         )}
       </CardContent>
     </Card>

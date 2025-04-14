@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -115,7 +114,6 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         return;
       }
 
-      // Créer la session de paiement avec restriction sur les cartes de test
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           plan: selectedPlan,
@@ -129,21 +127,15 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         throw new Error(error.message);
       }
 
-      if (!data?.url || !data?.sessionId) {
+      if (!data?.url) {
         throw new Error("Impossible de créer la session de paiement");
       }
 
-      // Stocker l'URL et l'ID de session pour suivi
+      // Stocker l'URL pour redirection
       setStripeCheckoutUrl(data.url);
-      setCheckoutSessionId(data.sessionId);
       
-      toast({
-        title: "Session de paiement créée",
-        description: "Cliquez sur le bouton pour finaliser votre paiement",
-        duration: 5000,
-      });
-      
-      setIsStripeProcessing(false);
+      // Rediriger vers Stripe immédiatement
+      window.location.href = data.url;
 
     } catch (error: any) {
       console.error("Erreur de paiement:", error);

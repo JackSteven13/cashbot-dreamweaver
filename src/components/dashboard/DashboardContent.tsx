@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import DashboardMetrics from './DashboardMetrics';
 import { Progress } from '@/components/ui/progress';
@@ -84,8 +83,7 @@ const DashboardContent: React.FC<DashboardContentProps> = React.memo(({
         </div>
         <Progress 
           value={limitProgress} 
-          className="h-2.5 bg-blue-100 dark:bg-blue-900/30" 
-          indicatorClassName="bg-gradient-to-r from-blue-500 to-indigo-600"
+          className="h-2.5 bg-blue-100 dark:bg-blue-900/30"
         />
       </div>
       
