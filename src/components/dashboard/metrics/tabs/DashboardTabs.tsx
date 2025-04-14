@@ -66,9 +66,6 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
           referralBonus={referralBonus}
           isNewUser={isNewUser}
           balance={balance}
-          handleStartSession={handleStartSession}
-          handleWithdrawal={handleWithdrawal}
-          canStartSession={canStartSession}
         />
       </TabsContent>
       

@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { TrendingUp, Calendar, Clock, ArrowUpRight, ChevronDown } from 'lucide-react';
 import { formatRevenue } from '@/utils/formatters';
 import EliteBadge from '@/components/subscriptions/EliteBadge';
@@ -14,9 +13,6 @@ interface OverviewTabProps {
   referralBonus: number;
   isNewUser: boolean;
   balance: number;
-  handleStartSession?: () => void;
-  handleWithdrawal?: () => void;
-  canStartSession?: boolean;
 }
 
 const OverviewTab: React.FC<OverviewTabProps> = ({
@@ -26,10 +22,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   referralCount,
   referralBonus,
   isNewUser,
-  balance,
-  handleStartSession,
-  handleWithdrawal,
-  canStartSession = true
+  balance
 }) => {
   // Convert any "alpha" subscription to "starter"
   const displaySubscription = subscription === "alpha" ? "starter" : subscription;
@@ -141,26 +134,35 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
           <CardHeader className="pb-2">
             <CardTitle className="text-xl font-semibold flex items-center">
               <Calendar className="h-5 w-5 mr-2 text-blue-500" />
-              Actions
+              Statistiques
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col space-y-3">
-              <Button 
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                onClick={handleStartSession}
-                disabled={!canStartSession || isNewUser}
-              >
-                Lancer une session
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={handleWithdrawal}
-                disabled={balance < 100 || isNewUser}
-              >
-                Effectuer un retrait
-              </Button>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-600 dark:text-slate-300">
+                  Niveau
+                </span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">
+                  {subscription.charAt(0).toUpperCase() + subscription.slice(1)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-600 dark:text-slate-300">
+                  Sessions totales
+                </span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">
+                  {dailySessionCount}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-600 dark:text-slate-300">
+                  Parrainages
+                </span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">
+                  {referralCount}
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>

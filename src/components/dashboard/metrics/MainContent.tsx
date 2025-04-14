@@ -9,12 +9,9 @@ interface MainContentProps {
   isNewUser: boolean;
   referrals?: any[];
   isTopReferrer?: boolean;
-  canStartSession?: boolean;
   dailySessionCount?: number;
   referralCount?: number;
   referralBonus?: number;
-  handleStartSession?: () => void;
-  handleWithdrawal?: () => void;
   transactions?: any[];
 }
 
@@ -24,12 +21,9 @@ const MainContent: React.FC<MainContentProps> = ({
   isNewUser,
   referrals = [],
   isTopReferrer = false,
-  canStartSession = true,
   dailySessionCount = 0,
   referralCount = 0,
   referralBonus = 0,
-  handleStartSession,
-  handleWithdrawal,
   transactions = []
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -51,9 +45,6 @@ const MainContent: React.FC<MainContentProps> = ({
           isNewUser={isNewUser}
           balance={balance}
           transactions={transactions}
-          canStartSession={canStartSession}
-          handleStartSession={handleStartSession}
-          handleWithdrawal={handleWithdrawal}
         />
       </CardContent>
     </Card>

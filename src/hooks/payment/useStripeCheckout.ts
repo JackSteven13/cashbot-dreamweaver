@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -96,9 +96,9 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   };
 
   // Check subscription when the hook is initialized
-  useState(() => {
+  useEffect(() => {
     checkSubscription();
-  });
+  }, []);
 
   return {
     isStripeProcessing,
