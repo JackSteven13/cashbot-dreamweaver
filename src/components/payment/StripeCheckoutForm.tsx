@@ -1,48 +1,31 @@
 
-import React, { useEffect, useState } from 'react';
-import { CreditCard, ExternalLink, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { CreditCard } from 'lucide-react';
 import Button from '@/components/Button';
 import { PlanType } from '@/hooks/payment/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
-import { useIsMobile } from '@/hooks/use-mobile';
-import { forceOpenStripeUrl } from '@/hooks/payment/stripeWindowManager';
-import { formatPrice } from '@/utils/balance/limitCalculations';
-import { PLANS } from '@/utils/plans';
-import MobilePaymentHelper from './MobilePaymentHelper';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;
   isStripeProcessing: boolean;
   onCheckout: () => void;
   stripeUrl?: string | null;
-  isUpgrade?: boolean;
-  proratedPrice?: number;
 }
 
 const StripeCheckoutForm = ({ 
   selectedPlan, 
   isStripeProcessing, 
   onCheckout,
-  stripeUrl,
-  isUpgrade = false,
-  proratedPrice = 0
+  stripeUrl
 }: StripeCheckoutFormProps) => {
-  const [termsAccepted, setTermsAccepted] = useState(true); // Pré-cochée par défaut
-  const [redirectAttempted, setRedirectAttempted] = useState(false);
-  const [showMobileHelper, setShowMobileHelper] = useState(false);
-  const [stripeWindowOpened, setStripeWindowOpened] = useState(false);
-  const isMobile = useIsMobile();
+  const [termsAccepted, setTermsAccepted] = useState(true);
   
   // Créer le lien vers les CGV avec le plan sélectionné
   const termsLink = selectedPlan ? `/terms?plan=${selectedPlan}` : '/terms';
-  
-  // Récupérer le prix du plan sélectionné
-  const planPrice = selectedPlan && PLANS[selectedPlan] ? PLANS[selectedPlan].price : 0;
-  
-  // Traiter le clic sur le bouton de checkout
+
   const handleCheckout = () => {
     if (!termsAccepted) {
       toast({
@@ -52,98 +35,25 @@ const StripeCheckoutForm = ({
       });
       return;
     }
-    
-    // Si nous avons déjà une URL Stripe et que l'utilisateur clique à nouveau
-    if (stripeUrl && redirectAttempted) {
-      openStripePayment();
+
+    // Si nous avons une URL Stripe, rediriger directement
+    if (stripeUrl) {
+      window.location.href = stripeUrl;
       return;
     }
-    
-    setRedirectAttempted(false);
+
+    // Sinon, déclencher la création de la session
     onCheckout();
   };
-  
-  // Fonction pour ouvrir la fenêtre de paiement Stripe avec gestion améliorée
-  const openStripePayment = () => {
-    if (!stripeUrl) return;
-    
-    console.log("Tentative d'ouverture de la page de paiement:", stripeUrl);
-    
-    toast({
-      title: "Redirection en cours",
-      description: "Vous êtes redirigé vers la page de paiement Stripe...",
-      duration: 3000
-    });
-    
-    // Utiliser la méthode améliorée
-    forceOpenStripeUrl(stripeUrl);
-    setStripeWindowOpened(true);
-    
-    // Afficher l'aide sur mobile après un délai
-    if (isMobile) {
-      setTimeout(() => {
-        setShowMobileHelper(true);
-      }, 3000);
-    }
-  };
-  
-  // Ouvrir automatiquement la fenêtre Stripe une fois l'URL disponible
-  useEffect(() => {
-    if (stripeUrl && !redirectAttempted && termsAccepted) {
-      setRedirectAttempted(true);
-      
-      // Petit délai pour permettre à l'interface de se mettre à jour
-      setTimeout(() => {
-        openStripePayment();
-      }, 300);
-    }
-  }, [stripeUrl, redirectAttempted, termsAccepted]);
-  
-  // Vérifier s'il y a une URL en attente dans localStorage
-  useEffect(() => {
-    const pendingUrl = localStorage.getItem('stripeCheckoutUrl');
-    const isPending = localStorage.getItem('stripeRedirectPending') === 'true';
-    
-    if (pendingUrl && isPending && !stripeUrl) {
-      console.log("URL de redirection en attente détectée:", pendingUrl);
-      // Effacer le flag de redirection en attente
-      localStorage.setItem('stripeRedirectPending', 'false');
-      
-      // Après un petit délai, tenter d'ouvrir l'URL
-      setTimeout(() => {
-        forceOpenStripeUrl(pendingUrl);
-      }, 1000);
-    }
-  }, [stripeUrl]);
-  
+
   return (
-    <div className="space-y-4 md:space-y-5">
-      <div className="flex items-center gap-2 text-[#1e3a5f] dark:text-white mb-2 md:mb-3">
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-[#1e3a5f] dark:text-white mb-2">
         <CreditCard className="h-5 w-5" />
-        <h3 className="font-medium text-base md:text-lg">
-          Paiement sécurisé par Stripe{isUpgrade && " - Mise à niveau"}
-        </h3>
+        <h3 className="font-medium">Paiement sécurisé par Stripe</h3>
       </div>
       
-      <div className="text-sm md:text-base text-gray-600 dark:text-gray-300 mb-3 md:mb-5">
-        {isUpgrade ? (
-          <span>
-            Vous effectuez une mise à niveau vers un abonnement supérieur. Le montant facturé ({formatPrice(proratedPrice)}) 
-            tient compte du temps restant sur votre abonnement actuel.
-          </span>
-        ) : (
-          <span>
-            Vous serez redirigé vers la plateforme sécurisée de Stripe pour finaliser votre paiement.
-            {selectedPlan && planPrice > 0 && (
-              <span className="font-semibold block mt-2">
-                Montant: {formatPrice(planPrice)}/an
-              </span>
-            )}
-          </span>
-        )}
-      </div>
-      
-      <div className="flex items-start space-x-2 py-2 md:py-3">
+      <div className="flex items-start space-x-2 py-2">
         <Checkbox 
           id="terms" 
           checked={termsAccepted}
@@ -151,15 +61,12 @@ const StripeCheckoutForm = ({
           className="mt-0.5"
         />
         <div className="grid gap-1 leading-none">
-          <Label htmlFor="terms" className="text-sm md:text-base text-gray-700 dark:text-gray-200">
+          <Label htmlFor="terms" className="text-sm text-gray-700 dark:text-gray-200">
             J'ai lu et j'accepte les{' '}
             <Link 
               to={termsLink} 
               className="text-blue-600 hover:underline focus:outline-none focus:underline dark:text-blue-400" 
               target="_blank"
-              onClick={(e) => {
-                e.stopPropagation(); // Empêcher les clics croisés
-              }}
             >
               Conditions Générales d'Utilisation
             </Link>{' '}
@@ -170,34 +77,13 @@ const StripeCheckoutForm = ({
       
       <Button 
         fullWidth 
-        className="bg-green-600 hover:bg-green-700 text-white text-base md:text-lg py-3 md:py-4 font-bold shadow-md flex justify-center items-center gap-2 mt-4"
+        className="bg-green-600 hover:bg-green-700 text-white text-base py-3 font-bold shadow-md"
         onClick={handleCheckout}
-        isLoading={isStripeProcessing && !stripeUrl}
-        disabled={!termsAccepted || (isStripeProcessing && !stripeUrl)}
+        isLoading={isStripeProcessing}
+        disabled={!termsAccepted || isStripeProcessing}
       >
-        {isStripeProcessing && !stripeUrl ? 'Préparation du paiement...' : (
-          stripeUrl ? 'Continuer vers le paiement' : 
-          (isUpgrade ? `Procéder à la mise à niveau (${formatPrice(proratedPrice)})` : 
-          `Procéder au paiement${selectedPlan && planPrice > 0 ? ` (${formatPrice(planPrice)})` : ''}`)
-        )}
+        {isStripeProcessing ? 'Préparation du paiement...' : 'Procéder au paiement'}
       </Button>
-      
-      {stripeUrl && redirectAttempted && (
-        <Button 
-          fullWidth 
-          className="bg-blue-600 hover:bg-blue-700 text-white text-base py-3 md:py-4 flex justify-center items-center gap-2 shadow-md mt-3"
-          onClick={() => openStripePayment()}
-        >
-          <ExternalLink size={20} />
-          Ouvrir à nouveau la page de paiement
-        </Button>
-      )}
-      
-      <MobilePaymentHelper 
-        isVisible={showMobileHelper && !!stripeUrl} 
-        onHelp={() => openStripePayment()}
-        stripeUrl={stripeUrl || null}
-      />
     </div>
   );
 };
