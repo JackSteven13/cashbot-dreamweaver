@@ -1,12 +1,13 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlanType } from '@/hooks/payment/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import CardCheckoutForm from './CardCheckoutForm';
-import StripeCheckoutForm from './StripeCheckoutForm';
-import PlanSummary from './PlanSummary';
-import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import PlanSummary from './PlanSummary';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Link } from 'react-router-dom';
 
 interface PaymentCardProps {
   selectedPlan: PlanType | null;
@@ -31,21 +32,23 @@ const PaymentCard = ({
   onStripeCheckout,
   stripeCheckoutUrl
 }: PaymentCardProps) => {
-  const [activeTab, setActiveTab] = useState<string>("stripe");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const isCurrentPlan = currentSubscription === selectedPlan;
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    if ((tab === "stripe" && !useStripeCheckout) || (tab === "card" && useStripeCheckout)) {
-      onToggleMethod();
-    }
-  };
 
   const handleStripePayment = async () => {
     if (!selectedPlan) {
       toast({
         title: "Erreur",
         description: "Veuillez sélectionner un plan pour continuer",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!termsAccepted) {
+      toast({
+        title: "Conditions non acceptées",
+        description: "Vous devez accepter les conditions générales pour continuer",
         variant: "destructive"
       });
       return;
@@ -69,20 +72,44 @@ const PaymentCard = ({
             </p>
           </div>
         ) : (
-          <Button 
-            onClick={handleStripePayment}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-lg font-medium shadow-md"
-            disabled={isStripeProcessing}
-          >
-            {isStripeProcessing ? (
-              <div className="flex items-center gap-2">
-                <span className="animate-spin">⏳</span>
-                Préparation du paiement...
+          <>
+            <div className="flex items-start space-x-2 py-2">
+              <Checkbox
+                id="terms"
+                checked={termsAccepted}
+                onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                className="mt-1"
+              />
+              <div className="grid gap-1.5 leading-none">
+                <Label htmlFor="terms" className="text-sm text-gray-700 dark:text-gray-200">
+                  J'ai lu et j'accepte les{' '}
+                  <Link
+                    to={`/terms${selectedPlan ? `?plan=${selectedPlan}` : ''}`}
+                    className="text-blue-600 hover:underline focus:outline-none focus:underline dark:text-blue-400"
+                    target="_blank"
+                  >
+                    Conditions Générales d'Utilisation
+                  </Link>{' '}
+                  de la plateforme
+                </Label>
               </div>
-            ) : (
-              "Payer maintenant"
-            )}
-          </Button>
+            </div>
+
+            <Button
+              onClick={handleStripePayment}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-lg font-medium shadow-md"
+              disabled={isStripeProcessing || !termsAccepted}
+            >
+              {isStripeProcessing ? (
+                <div className="flex items-center gap-2">
+                  <span className="animate-spin">⏳</span>
+                  Préparation du paiement...
+                </div>
+              ) : (
+                "Payer maintenant"
+              )}
+            </Button>
+          </>
         )}
       </CardContent>
     </Card>
