@@ -12,11 +12,24 @@ export interface CreateCheckoutParams {
   blockTestCards?: boolean;
 }
 
-const PRICES = {
+// Correction des identifiants de prix pour utiliser des prix dynamiques plutôt que des IDs codés en dur
+const PLANS = {
   freemium: null,
-  starter: "price_starter_monthly", // Your actual price ID for starter
-  gold: "price_gold_monthly", // Your actual price ID for gold
-  elite: "price_elite_monthly" // Your actual price ID for elite
+  starter: {
+    name: "Starter",
+    price: 99,
+    interval: "year"
+  },
+  gold: {
+    name: "Gold",
+    price: 349,
+    interval: "year"
+  },
+  elite: {
+    name: "Elite",
+    price: 549,
+    interval: "year"
+  }
 };
 
 export async function createCheckoutSession(params: CreateCheckoutParams) {
@@ -31,9 +44,9 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
     throw new Error('Cannot create checkout session for freemium plan');
   }
   
-  // Get price ID for the plan
-  const priceId = PRICES[plan as keyof typeof PRICES];
-  if (!priceId) {
+  // Vérifier que le plan existe
+  const planData = PLANS[plan as keyof typeof PLANS];
+  if (!planData) {
     throw new Error(`Invalid plan: ${plan}`);
   }
   
@@ -59,13 +72,23 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
     console.log(`Created new customer: ${customerId}`);
   }
   
-  // Create checkout session
+  // Créer une session de checkout avec un prix dynamique plutôt qu'un ID de prix Stripe
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     payment_method_types: ['card'],
     line_items: [
       {
-        price: priceId,
+        price_data: {
+          currency: 'eur',
+          product_data: {
+            name: `${planData.name} - Abonnement annuel`,
+            description: `Abonnement ${planData.name} StreamGenius`
+          },
+          unit_amount: planData.price * 100, // Conversion en centimes
+          recurring: {
+            interval: planData.interval
+          }
+        },
         quantity: 1
       }
     ],

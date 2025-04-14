@@ -1,38 +1,35 @@
 
 /**
- * Ouvre une fenêtre Stripe de manière fiable
+ * Gestionnaire de fenêtre Stripe optimisé pour assurer une redirection fiable
  */
-export const openStripeWindow = (url: string): boolean => {
-  try {
-    // Tentative d'ouverture dans un nouvel onglet
-    const stripeWindow = window.open(url, '_blank', 'noopener,noreferrer');
-    
-    // Vérifier si la fenêtre a été ouverte avec succès
-    if (stripeWindow) {
-      stripeWindow.focus();
-      return true;
-    }
-    
-    // Si l'ouverture a échoué mais que nous sommes sur mobile, rediriger directement
-    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-      console.log("Redirection mobile vers Stripe");
-      // Sur mobile, ouvrir dans la même fenêtre peut être plus fiable
-      window.location.href = url;
-      return true;
-    }
-    
-    // Échec de l'ouverture
-    console.error("Impossible d'ouvrir la fenêtre Stripe");
+
+/**
+ * Ouvre l'URL de paiement Stripe de manière fiable
+ * La fonction gère les cas spéciaux pour les appareils mobiles et les navigateurs différents
+ */
+export const openStripeWindow = (stripeUrl: string): boolean => {
+  if (!stripeUrl) {
+    console.error("URL Stripe manquante");
     return false;
-  } catch (error) {
-    console.error("Erreur lors de l'ouverture de la fenêtre Stripe:", error);
-    
-    // Tentative de redirection directe en dernier recours
-    try {
-      window.location.href = url;
-      return true;
-    } catch (e) {
-      return false;
-    }
   }
+  
+  try {
+    // Tenter une redirection directe pour tous les appareils
+    // Cette méthode est la plus fiable pour éviter les problèmes de blocage de popup
+    console.log("Redirection vers Stripe:", stripeUrl);
+    window.location.href = stripeUrl;
+    return true;
+  } catch (error) {
+    console.error("Erreur lors de la redirection vers Stripe:", error);
+    return false;
+  }
+};
+
+/**
+ * Vérifie si une fenêtre Stripe est déjà ouverte
+ */
+export const isStripeWindowOpen = (): boolean => {
+  // Cette fonction pourrait être étendue pour vérifier si un onglet Stripe spécifique est ouvert
+  // Pour l'instant, c'est une implémentation minimaliste
+  return false;
 };

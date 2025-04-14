@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +14,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const [isChecking, setIsChecking] = useState(false);
   const [actualSubscription, setActualSubscription] = useState<string | null>(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
   // Check current subscription from Supabase
   const checkSubscription = async () => {
@@ -100,6 +103,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     }
 
     setIsStripeProcessing(true);
+    setRetryCount(0);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -114,28 +118,43 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: {
-          plan: selectedPlan,
-          successUrl: `${window.location.origin}/payment-success`,
-          cancelUrl: `${window.location.origin}/offres`,
-          blockTestCards: true
+      // Essayer de créer une session de paiement avec des tentatives
+      const attemptCreateCheckout = async (): Promise<any> => {
+        try {
+          const { data, error } = await supabase.functions.invoke('create-checkout', {
+            body: {
+              plan: selectedPlan,
+              successUrl: `${window.location.origin}/payment-success`,
+              cancelUrl: `${window.location.origin}/offres`,
+              blockTestCards: true
+            }
+          });
+          
+          if (error) throw new Error(error.message);
+          return { data };
+        } catch (err) {
+          console.error("Erreur lors de la création de la session:", err);
+          if (retryCount < MAX_RETRIES) {
+            setRetryCount(prev => prev + 1);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre 1 seconde
+            return attemptCreateCheckout();
+          }
+          throw err;
         }
-      });
-      
-      if (error) {
-        throw new Error(error.message);
-      }
+      };
+
+      const { data } = await attemptCreateCheckout();
 
       if (!data?.url) {
         throw new Error("Impossible de créer la session de paiement");
       }
 
+      console.log("URL de paiement obtenue:", data.url);
+      
       // Stocker l'URL pour redirection
       setStripeCheckoutUrl(data.url);
       
-      // Rediriger vers Stripe immédiatement
-      window.location.href = data.url;
+      // Pas besoin de rediriger ici, la redirection se fait dans le useEffect du PaymentCard
 
     } catch (error: any) {
       console.error("Erreur de paiement:", error);
@@ -149,61 +168,24 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     }
   };
 
-  // Open Stripe checkout window manually
+  // Open Stripe checkout window manually if needed
   const openStripeCheckoutWindow = useCallback(() => {
     if (stripeCheckoutUrl) {
-      const opened = openStripeWindow(stripeCheckoutUrl);
-      if (!opened) {
-        toast({
-          title: "Erreur",
-          description: "Impossible d'ouvrir la page de paiement. Veuillez autoriser les popups ou utiliser le lien direct.",
-          variant: "destructive"
-        });
-      } else {
-        // Vérifier l'état du paiement après 20 secondes
-        setTimeout(() => {
-          if (checkoutSessionId) {
-            checkPaymentStatus(checkoutSessionId);
-          }
-        }, 20000);
+      try {
+        window.location.href = stripeCheckoutUrl;
+        return true;
+      } catch (error) {
+        console.error("Erreur lors de la redirection:", error);
+        return false;
       }
     }
-  }, [stripeCheckoutUrl, checkoutSessionId, checkPaymentStatus]);
+    return false;
+  }, [stripeCheckoutUrl]);
 
   // Check subscription when the hook is initialized
   useEffect(() => {
     checkSubscription();
   }, []);
-
-  // Ajouter un effet pour vérifier périodiquement l'état du paiement si un ID de session est disponible
-  useEffect(() => {
-    if (!checkoutSessionId) return;
-    
-    let intervalId: NodeJS.Timeout;
-    
-    const startPolling = () => {
-      // Vérifier l'état toutes les 10 secondes pendant 5 minutes max
-      let attempts = 0;
-      const maxAttempts = 30; // 30 * 10 secondes = 5 minutes
-      
-      intervalId = setInterval(async () => {
-        attempts++;
-        console.log(`Vérification du paiement (${attempts}/${maxAttempts})...`);
-        
-        const success = await checkPaymentStatus(checkoutSessionId);
-        
-        if (success || attempts >= maxAttempts) {
-          clearInterval(intervalId);
-        }
-      }, 10000);
-    };
-    
-    startPolling();
-    
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [checkoutSessionId, checkPaymentStatus]);
 
   return {
     isStripeProcessing,

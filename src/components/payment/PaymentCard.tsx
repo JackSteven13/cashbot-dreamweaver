@@ -38,7 +38,17 @@ const PaymentCard = ({
   // Redirection automatique vers Stripe quand l'URL est disponible
   useEffect(() => {
     if (stripeCheckoutUrl && !isStripeProcessing) {
-      window.location.href = stripeCheckoutUrl;
+      try {
+        console.log("Redirection vers Stripe:", stripeCheckoutUrl);
+        window.location.href = stripeCheckoutUrl;
+      } catch (error) {
+        console.error("Erreur de redirection:", error);
+        toast({
+          title: "Erreur de redirection",
+          description: "Impossible de vous rediriger vers la page de paiement. Veuillez réessayer.",
+          variant: "destructive"
+        });
+      }
     }
   }, [stripeCheckoutUrl, isStripeProcessing]);
 

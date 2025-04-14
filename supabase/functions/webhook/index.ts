@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import Stripe from 'https://esm.sh/stripe@12.11.0'
 
@@ -43,6 +42,14 @@ const normalizeSubscriptionType = (planType: string): string => {
   }
   return planType;
 }
+
+// Correction: Plans should be mapped by interval & amount rather than ID
+const PLAN_MAPPING = {
+  // Prix annuels en EUR (en centimes)
+  '9900': 'starter',  // 99 € par an
+  '34900': 'gold',    // 349 € par an
+  '54900': 'elite'    // 549 € par an
+};
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -103,13 +110,19 @@ Deno.serve(async (req) => {
         if (!planType) {
           const sessionWithLineItems = await stripe.checkout.sessions.retrieve(
             session.id,
-            { expand: ['line_items'] }
+            { expand: ['line_items', 'line_items.data.price'] }
           )
           
-          const priceId = sessionWithLineItems.line_items?.data[0]?.price?.id
-          if (priceId && PLANS_BY_PRICE[priceId]) {
-            planType = PLANS_BY_PRICE[priceId]
-          } else {
+          // Récupérer le montant pour déterminer le plan
+          const amount = sessionWithLineItems.line_items?.data[0]?.price?.unit_amount;
+          const currency = sessionWithLineItems.line_items?.data[0]?.price?.currency;
+          
+          if (amount && currency === 'eur') {
+            planType = PLAN_MAPPING[amount.toString()];
+            console.log(`Determined plan from amount: ${amount} cents = ${planType}`);
+          }
+          
+          if (!planType) {
             console.error('Could not determine plan type from session:', session.id)
             break
           }
