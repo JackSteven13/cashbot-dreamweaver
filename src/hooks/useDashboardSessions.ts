@@ -76,7 +76,10 @@ export const useDashboardSessions = ({
     profile: { id: null },
     balance: 0,
     transactions: [],
-    subscription: 'freemium'
+    subscription: 'freemium',
+    username: '',
+    referrals: [],
+    referralLink: ''
   };
 
   // Use individual hooks for each functionality
@@ -86,13 +89,13 @@ export const useDashboardSessions = ({
     generateAutomaticRevenue,
     isBotActive 
   } = useAutoSessions(
-    safeUserData, // Pass the safe object instead of potentially null userData
+    safeUserData,
     updateBalance,
     setShowLimitAlert
   );
 
   const { isStartingSession, handleStartSession, localBalance } = useManualSessions({
-    userData: safeUserData, // Pass the safe object here too
+    userData: safeUserData,
     dailySessionCount,
     incrementSessionCount,
     updateBalance,
@@ -100,13 +103,13 @@ export const useDashboardSessions = ({
   });
 
   const { handleWithdrawal, isProcessingWithdrawal } = useWithdrawal(
-    safeUserData, // And here
+    safeUserData,
     resetBalance
   );
 
   // Set up midnight reset
   useMidnightReset(
-    safeUserData, // And here
+    safeUserData,
     incrementSessionCount,
     updateBalance,
     setShowLimitAlert

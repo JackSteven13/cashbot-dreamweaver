@@ -24,7 +24,10 @@ export const useManualSessions = ({
     balance: 0,
     profile: { id: null },
     subscription: 'freemium',
-    transactions: []
+    transactions: [],
+    username: '',
+    referrals: [],
+    referralLink: ''
   };
   
   const [localBalance, setLocalBalance] = useState(safeUserData.balance || 0);

@@ -7,12 +7,12 @@ import { getEffectiveSubscription, SUBSCRIPTION_LIMITS } from '@/utils/subscript
  * Functions to validate session requirements and limits
  */
 export const checkDailyLimit = (
-  userData: UserData,
+  userData: UserData | Partial<UserData>,
   todaysGains: number,
   setShowLimitAlert: (show: boolean) => void
 ): boolean => {
   // Check if daily limit is already reached based on subscription
-  const effectiveSub = getEffectiveSubscription(userData.subscription);
+  const effectiveSub = getEffectiveSubscription(userData.subscription || 'freemium');
   const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
   if (todaysGains >= dailyLimit) {
