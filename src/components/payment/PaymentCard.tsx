@@ -6,7 +6,7 @@ import CardCheckoutForm from './CardCheckoutForm';
 import StripeCheckoutForm from './StripeCheckoutForm';
 import PlanSummary from './PlanSummary';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/toast';
+import { toast } from '@/components/ui/use-toast';
 
 interface PaymentCardProps {
   selectedPlan: PlanType | null;
