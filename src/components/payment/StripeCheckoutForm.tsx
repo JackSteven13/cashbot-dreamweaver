@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
-import { CreditCard, Lock } from 'lucide-react';
+import { CreditCard, Lock, ExternalLink } from 'lucide-react';
 import Button from '@/components/Button';
 import { PlanType } from '@/hooks/payment/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
+import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;
@@ -42,6 +43,25 @@ const StripeCheckoutForm = ({
     onCheckout();
   };
 
+  const handleOpenStripeWindow = () => {
+    if (stripeUrl) {
+      const opened = openStripeWindow(stripeUrl);
+      if (!opened) {
+        toast({
+          title: "Problème d'ouverture",
+          description: "Impossible d'ouvrir la page de paiement. Veuillez utiliser le lien direct ci-dessous.",
+          variant: "destructive"
+        });
+      }
+    } else {
+      toast({
+        title: "Erreur",
+        description: "Veuillez d'abord créer une session de paiement",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
@@ -51,6 +71,7 @@ const StripeCheckoutForm = ({
         </div>
         <p className="mt-2 text-sm text-green-600 dark:text-green-500">
           Vos informations bancaires sont protégées avec le plus haut niveau de sécurité.
+          <strong className="block mt-1">Attention : Seules les cartes bancaires réelles sont acceptées.</strong>
         </p>
       </div>
       
@@ -81,26 +102,30 @@ const StripeCheckoutForm = ({
         </div>
       </div>
       
-      <Button 
-        fullWidth 
-        className="bg-green-600 hover:bg-green-700 text-white text-base py-3 font-bold shadow-md"
-        onClick={handleCheckout}
-        isLoading={isStripeProcessing}
-        disabled={!termsAccepted || isStripeProcessing}
-      >
-        {isStripeProcessing ? 'Préparation du paiement...' : 'Payer maintenant'}
-      </Button>
-
-      {stripeUrl && !isStripeProcessing && (
-        <div className="mt-4 text-center">
-          <a 
-            href={stripeUrl} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+      {!stripeUrl ? (
+        <Button 
+          fullWidth 
+          className="bg-green-600 hover:bg-green-700 text-white text-base py-3 font-bold shadow-md"
+          onClick={handleCheckout}
+          isLoading={isStripeProcessing}
+          disabled={!termsAccepted || isStripeProcessing}
+        >
+          {isStripeProcessing ? 'Préparation du paiement...' : 'Préparer le paiement'}
+        </Button>
+      ) : (
+        <div className="space-y-3">
+          <Button 
+            fullWidth 
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 text-base py-3 font-bold shadow-md"
+            onClick={handleOpenStripeWindow}
+            disabled={isStripeProcessing}
           >
-            Ouvrir la page de paiement
-          </a>
+            <ExternalLink className="w-4 h-4" /> Payer maintenant
+          </Button>
+          
+          <p className="text-sm text-center text-gray-500">
+            Vous serez redirigé vers une page de paiement sécurisée pour finaliser votre abonnement.
+          </p>
         </div>
       )}
 

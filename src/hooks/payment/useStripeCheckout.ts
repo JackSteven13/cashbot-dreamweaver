@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { PlanType } from './types';
+import { openStripeWindow } from './stripeWindowManager';
 
 export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
@@ -27,10 +28,13 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
           
         if (!error && data) {
           setActualSubscription(data.subscription);
+          return data.subscription;
         }
       }
+      return null;
     } catch (error) {
       console.error("Error checking subscription:", error);
+      return null;
     } finally {
       setIsChecking(false);
     }
@@ -61,12 +65,13 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         return;
       }
 
-      // Créer la session de paiement
+      // Créer la session de paiement avec restriction sur les cartes de test
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           plan: selectedPlan,
           successUrl: `${window.location.origin}/payment-success`,
-          cancelUrl: `${window.location.origin}/offres`
+          cancelUrl: `${window.location.origin}/offres`,
+          blockTestCards: true // Nouvelle option pour bloquer les cartes de test
         }
       });
       
@@ -87,7 +92,6 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         duration: 5000,
       });
       
-      // On ne redirige plus automatiquement
       setIsStripeProcessing(false);
 
     } catch (error: any) {
@@ -102,6 +106,20 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     }
   };
 
+  // Open Stripe checkout window manually
+  const openStripeCheckoutWindow = () => {
+    if (stripeCheckoutUrl) {
+      const opened = openStripeWindow(stripeCheckoutUrl);
+      if (!opened) {
+        toast({
+          title: "Erreur",
+          description: "Impossible d'ouvrir la page de paiement. Veuillez autoriser les popups ou utiliser le lien direct.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
   // Check subscription when the hook is initialized
   useEffect(() => {
     checkSubscription();
@@ -112,6 +130,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     handleStripeCheckout,
     stripeCheckoutUrl,
     isChecking,
-    actualSubscription
+    actualSubscription,
+    openStripeCheckoutWindow,
+    checkSubscription
   };
 };

@@ -8,10 +8,11 @@ import DashboardInitializationEffect from '@/components/dashboard/DashboardIniti
 import TransactionsPage from '@/pages/dashboard/TransactionsPage';
 import ReferralsPage from '@/pages/dashboard/ReferralsPage';
 import { useDashboardInitialization } from '@/hooks/dashboard/initialization/useDashboardInitialization';
-import { useDashboard } from '@/hooks/useDashboard'; // Importation du hook useDashboard
+import { useDashboard } from '@/hooks/useDashboard';
 import { useReferralNotifications } from '@/hooks/useReferralNotifications';
 import { useTransactionReconciliation } from '@/hooks/useTransactionReconciliation';
 import { memo, useEffect, useRef, useMemo, useState } from 'react';
+import SubscriptionSynchronizer from '@/components/dashboard/SubscriptionSynchronizer';
 
 // Composant principal avec stabilité améliorée
 const Dashboard = memo(() => {
@@ -30,7 +31,7 @@ const Dashboard = memo(() => {
     authError
   } = useDashboardInitialization();
   
-  // Utilisation du hook useDashboard au lieu de useDashboardState
+  // Utilisation du hook useDashboard
   const {
     selectedNavItem,
     setSelectedNavItem,
@@ -56,12 +57,18 @@ const Dashboard = memo(() => {
   const isReferralsPage = location.pathname === '/dashboard/referrals';
   const isTransactionsPage = location.pathname === '/dashboard/transactions';
   
-  // Hook de réconciliation de transactions - Passe une référence stable
+  // Hook de réconciliation de transactions
   const stableUserData = useMemo(() => userData, [userData?.balance, userData?.transactions?.length]);
   useTransactionReconciliation(stableUserData, isLoading);
   
   // Utiliser notre hook de notifications
   useReferralNotifications();
+  
+  // Gestionnaire de mise à jour d'abonnement
+  const handleSubscriptionUpdate = (newSubscription: string) => {
+    console.log("Abonnement mis à jour:", newSubscription);
+    forceRefresh();
+  };
   
   // Forcer un rafraîchissement initial des données
   useEffect(() => {
@@ -77,21 +84,19 @@ const Dashboard = memo(() => {
   // Effet pour prévenir les rechargements complets inutiles
   useEffect(() => {
     if (prevPathRef.current !== location.pathname) {
-      // Si c'est juste un changement de route interne, ne pas réinitialiser l'état
       prevPathRef.current = location.pathname;
     }
   }, [location.pathname]);
   
   // Effet pour forcer l'affichage après un délai maximum
   useEffect(() => {
-    // Définir un délai maximum d'attente (plus court)
     maxWaitTimeRef.current = setTimeout(() => {
       if (transitionStage === 'loading' || transitionStage === 'init') {
         console.log("FORÇAGE de l'affichage du tableau de bord après délai maximum");
         setTransitionStage('ready');
         forcedTransitionRef.current = true;
       }
-    }, 2000); // Délai maximum réduit à 2 secondes pour plus de réactivité
+    }, 2000);
     
     return () => {
       if (maxWaitTimeRef.current) {
@@ -100,35 +105,30 @@ const Dashboard = memo(() => {
     };
   }, [transitionStage]);
   
-  // Effet pour gérer les transitions de chargement - simplifié et plus réactif
+  // Effet pour gérer les transitions de chargement
   useEffect(() => {
     const checkConditions = () => {
-      // Si l'authentification a échoué, afficher l'écran d'erreur
       if (authError) {
         console.log("Erreur détectée, affichage de l'écran d'erreur");
         setTransitionStage('error');
         return true;
       }
       
-      // Si l'initialisation est terminée et nous avons les données utilisateur (même partielles)
       if (!isAuthChecking && userData) {
         console.log("Conditions suffisantes remplies pour afficher le dashboard");
         setTransitionStage('ready');
         return true;
       }
       
-      // Si nous n'avons pas de données utilisateur mais l'authentification est terminée
       if (!isAuthChecking && !userData && !isLoading) {
         console.log("Authentification terminée mais pas de données, affichage de l'écran d'erreur");
         setTransitionStage('error');
         return true;
       }
       
-      // Sinon, rester en mode chargement
       return false;
     };
     
-    // Vérifier immédiatement
     if (checkConditions()) {
       return;
     }
@@ -148,8 +148,11 @@ const Dashboard = memo(() => {
         setSelectedNavItem={setSelectedNavItem}
       />
       
+      {/* Composant de synchronisation d'abonnement */}
+      <SubscriptionSynchronizer onSync={handleSubscriptionUpdate} />
+      
       {/* Rendu avec transitions douces entre les états */}
-      <div className="relative min-h-screen">
+      <div className="relative min-h-screen bg-gray-50 dark:bg-gray-900">
         {/* Écran de chargement visible uniquement si nous sommes en état de chargement */}
         {(transitionStage === 'loading' || transitionStage === 'init') && (
           <div className="absolute inset-0 z-50">
@@ -164,7 +167,7 @@ const Dashboard = memo(() => {
           </div>
         )}
         
-        {/* Contenu principal avec animation d'entrée - IMPORTANT: ne plus vérifier toutes les conditions */}
+        {/* Contenu principal avec animation d'entrée */}
         {(transitionStage === 'ready') && (
           <div 
             className="transition-opacity duration-300 opacity-100"

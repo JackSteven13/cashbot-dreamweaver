@@ -1,150 +1,80 @@
 
-import { toast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Formate un message d'erreur pour l'affichage
- */
-export const formatErrorMessage = (error: any): string => {
-  if (!error) return "Une erreur inconnue est survenue";
-
-  // Si c'est une erreur de type Error
-  if (error instanceof Error) {
-    const message = error.message;
-    
-    // Gestion des messages d'erreur spécifiques
-    if (message.includes('SAME_PLAN')) {
-      return "Vous êtes déjà abonné à ce forfait.";
-    }
-    if (message.includes('not authenticated')) {
-      return "Vous devez être connecté pour effectuer cette action.";
-    }
-    if (message.includes('timeout')) {
-      return "La connexion au serveur de paiement a expiré. Veuillez réessayer.";
-    }
-    
-    return message;
-  }
-  
-  // Si c'est une erreur de type string
-  if (typeof error === 'string') {
-    return error;
-  }
-  
-  // Si c'est une erreur avec un message
-  if (error.message) {
-    return error.message;
-  }
-  
-  // Fallback
-  return "Une erreur inattendue est survenue. Veuillez réessayer.";
-};
-
-/**
- * Met à jour localement les informations d'abonnement
- */
-export const updateLocalSubscription = (subscription: string) => {
-  localStorage.setItem('subscription', subscription);
-  localStorage.setItem('subscriptionUpdateTime', Date.now().toString());
-  
-  // Dispatch un événement pour informer l'application du changement d'abonnement
-  window.dispatchEvent(new CustomEvent('subscription:updated', {
-    detail: { subscription }
-  }));
-  
-  console.log(`Abonnement local mis à jour: ${subscription}`);
-  return true;
-};
-
-/**
- * Vérifie si l'utilisateur est connecté
- */
-export const checkUserAuthenticated = async (): Promise<boolean> => {
-  try {
-    const { data, error } = await supabase.auth.getSession();
-    
-    if (error) {
-      throw error;
-    }
-    
-    return !!data.session;
-  } catch (error) {
-    console.error("Erreur lors de la vérification de l'authentification:", error);
-    return false;
-  }
-};
-
-/**
- * Récupère l'ID utilisateur actuel
- */
-export const getCurrentUserId = async (): Promise<string | null> => {
-  try {
-    const { data, error } = await supabase.auth.getSession();
-    
-    if (error || !data.session) {
-      return null;
-    }
-    
-    return data.session.user.id;
-  } catch (error) {
-    console.error("Erreur lors de la récupération de l'ID utilisateur:", error);
-    return null;
-  }
-};
-
-/**
- * Gère les erreurs de paiement et les affiche à l'utilisateur
- */
-export const handlePaymentError = (error: any): void => {
-  const errorMessage = formatErrorMessage(error);
-  
-  toast({
-    title: "Erreur de paiement",
-    description: errorMessage,
-    variant: "destructive",
-    duration: 7000,
-  });
-  
-  console.error("Erreur de paiement détaillée:", error);
-};
-
-/**
- * Vérifie l'abonnement actuel de l'utilisateur
- * @returns Le type d'abonnement ou null si aucun
+ * Check for the current subscription in Supabase
  */
 export const checkCurrentSubscription = async (): Promise<string | null> => {
   try {
-    console.log("Vérification de l'abonnement actuel");
+    const { data: { session } } = await supabase.auth.getSession();
     
-    // Vérifier si l'utilisateur est connecté
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (!session?.user?.id) return null;
     
-    if (sessionError || !session) {
-      console.log("Pas de session utilisateur active");
-      return null;
+    // First try the RPC function (more reliable)
+    try {
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('get_current_subscription', { user_id: session.user.id });
+      
+      if (!rpcError && rpcData) {
+        console.log("Subscription from RPC:", rpcData);
+        return rpcData;
+      }
+    } catch (rpcErr) {
+      console.error("RPC error:", rpcErr);
+      // Continue to direct query if RPC fails
     }
     
-    // Récupérer l'abonnement depuis la base de données
-    const { data: userData, error: userError } = await supabase
+    // Direct query as fallback
+    const { data, error } = await supabase
       .from('user_balances')
       .select('subscription')
       .eq('id', session.user.id)
       .single();
-    
-    if (userError) {
-      console.error("Erreur lors de la récupération de l'abonnement:", userError);
-      return null;
+      
+    if (!error && data) {
+      console.log("Subscription from direct query:", data.subscription);
+      return data.subscription;
     }
     
-    if (!userData || !userData.subscription) {
-      console.log("Aucun abonnement trouvé");
-      return null;
-    }
-    
-    console.log("Abonnement trouvé:", userData.subscription);
-    return userData.subscription;
-  } catch (error) {
-    console.error("Erreur lors de la vérification de l'abonnement:", error);
     return null;
+  } catch (error) {
+    console.error("Error checking subscription:", error);
+    return null;
+  }
+};
+
+/**
+ * Force synchronization of subscription data
+ */
+export const forceSyncSubscription = async (): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return false;
+    
+    // Request a full refresh
+    localStorage.setItem('forceRefreshBalance', 'true');
+    
+    const { data, error } = await supabase
+      .from('user_balances')
+      .select('subscription, balance')
+      .eq('id', session.user.id)
+      .single();
+      
+    if (!error && data) {
+      localStorage.setItem('subscription', data.subscription);
+      localStorage.setItem('currentBalance', data.balance?.toString() || '0');
+      window.dispatchEvent(new CustomEvent('user:refreshed', {
+        detail: { 
+          subscription: data.subscription,
+          balance: data.balance 
+        }
+      }));
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error("Error syncing subscription:", error);
+    return false;
   }
 };
