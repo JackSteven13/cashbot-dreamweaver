@@ -7,6 +7,8 @@ import DashboardSkeleton from './DashboardSkeleton';
 import UserDataStateTracker from './UserDataStateTracker';
 import useUserDataSync from '@/hooks/useUserDataSync';
 import { useActivitySimulation } from '@/hooks/sessions/useActivitySimulation';
+import useDashboardSessions from '@/hooks/useDashboardSessions';
+import { toast } from '@/components/ui/use-toast';
 
 const DashboardContainer = () => {
   const { user } = useAuth();
@@ -14,9 +16,53 @@ const DashboardContainer = () => {
   const [userData, setUserData] = useState<any>(null);
   const [isNewUser, setIsNewUser] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [dailySessionCount, setDailySessionCount] = useState(0);
+  const [showLimitAlert, setShowLimitAlert] = useState(false);
   const initialLoadAttempted = useRef(false);
   const { syncUserData } = useUserDataSync();
   const { activityLevel, activeAgents } = useActivitySimulation();
+  
+  // Incrémenter le compteur de session
+  const incrementSessionCount = async () => {
+    setDailySessionCount(prevCount => prevCount + 1);
+    // La mise à jour de la base de données est gérée ailleurs
+    return Promise.resolve();
+  };
+  
+  // Mettre à jour le solde
+  const updateBalance = async (gain: number, report: string, forceUpdate = false) => {
+    setUserData(prev => ({
+      ...prev,
+      balance: (prev?.balance || 0) + gain
+    }));
+    // La mise à jour de la base de données est gérée ailleurs
+    return Promise.resolve();
+  };
+  
+  // Réinitialiser le solde (pour les retraits)
+  const resetBalance = async () => {
+    setUserData(prev => ({ ...prev, balance: 0 }));
+    // La mise à jour de la base de données est gérée ailleurs
+    return Promise.resolve();
+  };
+  
+  // Initialiser les sessions du dashboard
+  const {
+    isStartingSession,
+    handleStartSession,
+    handleWithdrawal,
+    isProcessingWithdrawal,
+    lastSessionTimestamp,
+    localBalance,
+    isBotActive
+  } = useDashboardSessions({
+    userData,
+    dailySessionCount,
+    incrementSessionCount,
+    updateBalance,
+    setShowLimitAlert,
+    resetBalance
+  });
   
   // Handle initial data load
   useEffect(() => {
@@ -28,6 +74,7 @@ const DashboardContainer = () => {
       const cachedName = localStorage.getItem('lastKnownUsername');
       const cachedSubscription = localStorage.getItem('subscription');
       const cachedBalance = localStorage.getItem('currentBalance');
+      const cachedDailySessionCount = localStorage.getItem('dailySessionCount');
       
       if (cachedName) {
         setUsername(cachedName);
@@ -41,9 +88,20 @@ const DashboardContainer = () => {
         }));
       }
       
+      if (cachedDailySessionCount) {
+        setDailySessionCount(parseInt(cachedDailySessionCount));
+      }
+      
       // Trigger full data sync
       syncUserData(true).finally(() => {
         setIsLoading(false);
+        
+        // Afficher un toast pour confirmer le chargement des données
+        toast({
+          title: "Données synchronisées",
+          description: "Vos données ont été chargées avec succès.",
+          duration: 3000,
+        });
       });
     }
   }, [user, syncUserData]);
@@ -66,6 +124,10 @@ const DashboardContainer = () => {
       ...(data.referralLink !== undefined ? { referralLink: data.referralLink } : {})
     }));
     
+    if (data.daily_session_count !== undefined) {
+      setDailySessionCount(parseInt(String(data.daily_session_count)));
+    }
+    
     setIsLoading(false);
   };
 
@@ -86,17 +148,19 @@ const DashboardContainer = () => {
       
       <main className="container mx-auto px-4 py-6">
         <DashboardMetrics
-          balance={userData?.balance || 0}
+          balance={userData?.balance || localBalance || 0}
           referralLink={userData?.referralLink || ''}
-          isStartingSession={false}
-          handleStartSession={() => {}}
+          isStartingSession={isStartingSession}
+          handleStartSession={handleStartSession}
+          handleWithdrawal={handleWithdrawal}
           transactions={userData?.transactions || []}
-          subscription={userData?.subscription || 'freemium'}
           isNewUser={isNewUser}
-          dailySessionCount={userData?.dailySessionCount || 0}
+          subscription={userData?.subscription || 'freemium'}
+          dailySessionCount={dailySessionCount}
           canStartSession={true}
           referrals={userData?.referrals || []}
-          isBotActive={activityLevel > 0}
+          lastSessionTimestamp={lastSessionTimestamp}
+          isBotActive={isBotActive}
         />
       </main>
       

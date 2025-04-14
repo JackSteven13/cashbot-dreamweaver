@@ -105,14 +105,69 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
       handleTerminalUpdate();
     };
     
+    // Ajouter des messages liés à l'activité des robots
+    const handleMicroGain = (event: CustomEvent) => {
+      const { amount, agent } = event.detail;
+      
+      if (amount && agent) {
+        setOutputs(prev => [
+          ...prev,
+          { text: `Agent IA #${agent}: Micro-gain de ${amount}€ généré`, type: "success" }
+        ]);
+        
+        handleTerminalUpdate();
+      }
+    };
+    
+    // Ajouter des messages lors des analyses actives
+    const handleActivityEvent = (event: CustomEvent) => {
+      const { level, agents } = event.detail;
+      
+      if (Math.random() > 0.7) { // Ne pas afficher tous les événements pour éviter de surcharger
+        const messages = [
+          "Analyse de contenu vidéo en cours...",
+          "Identification des annonces publicitaires...",
+          "Algorithme de traitement activé...",
+          "Optimisation des publicités ciblées...",
+          "Vérification de la compatibilité des annonces..."
+        ];
+        
+        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+        
+        setOutputs(prev => [
+          ...prev,
+          { text: `${randomMessage} [${agents || 3} agents actifs]`, type: "info" }
+        ]);
+        
+        handleTerminalUpdate();
+      }
+    };
+    
+    // Limiter le nombre de messages dans le terminal
+    const limitTerminalMessages = () => {
+      setOutputs(prev => {
+        if (prev.length > 30) {
+          return prev.slice(prev.length - 30);
+        }
+        return prev;
+      });
+    };
+    
+    const messageLimit = setInterval(limitTerminalMessages, 10000);
+    
     window.addEventListener('bot:status-change', handleBotStatusChange as EventListener);
     window.addEventListener('user:data-loaded', handleUserDataLoaded as EventListener);
     window.addEventListener('dailyGains:reset', handleDailyReset);
+    window.addEventListener('micro-gain', handleMicroGain as EventListener);
+    window.addEventListener('activity', handleActivityEvent as EventListener);
     
     return () => {
       window.removeEventListener('bot:status-change', handleBotStatusChange as EventListener);
       window.removeEventListener('user:data-loaded', handleUserDataLoaded as EventListener);
       window.removeEventListener('dailyGains:reset', handleDailyReset);
+      window.removeEventListener('micro-gain', handleMicroGain as EventListener);
+      window.removeEventListener('activity', handleActivityEvent as EventListener);
+      clearInterval(messageLimit);
     };
   }, []);
   

@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import useUserDataSync from './useUserDataSync';
 import { toast } from "@/components/ui/use-toast";
+import balanceManager from "@/utils/balance/balanceManager";
 
 export const useInitUserData = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -39,7 +40,27 @@ export const useInitUserData = () => {
             // Wait a bit and retry once
             setTimeout(async () => {
               await syncUserData(true);
+              
+              // Après la synchronisation, activer aussi les agents IA
+              window.dispatchEvent(new CustomEvent('bot:status-change', {
+                detail: { active: true, userId: session.user.id }
+              }));
+              
+              // Initialiser le gestionnaire de solde
+              if (cachedBalance) {
+                balanceManager.updateBalance(parseFloat(cachedBalance));
+              }
             }, 1000);
+          } else {
+            // Activer les agents IA après une synchronisation réussie
+            window.dispatchEvent(new CustomEvent('bot:status-change', {
+              detail: { active: true, userId: session.user.id }
+            }));
+            
+            // Initialiser le gestionnaire de solde
+            if (cachedBalance) {
+              balanceManager.updateBalance(parseFloat(cachedBalance));
+            }
           }
         } else {
           console.log("No active session found during initialization");

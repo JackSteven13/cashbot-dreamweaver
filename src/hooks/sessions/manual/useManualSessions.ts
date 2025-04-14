@@ -124,7 +124,7 @@ export const useManualSessions = ({
         // Dispatch balance update event for UI animations
         dispatchBalanceUpdate(finalGain, userData.profile?.id);
         
-        // NEW APPROACH: Force complete balance update for visual consistency
+        // Force complete balance update for visual consistency
         dispatchForceBalanceUpdate(newBalance, finalGain, userData.profile?.id);
         
         // Add small delay to allow animations to complete

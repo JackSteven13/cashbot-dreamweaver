@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useAutoRevenueGenerator } from './useAutoRevenueGenerator';
 import { useAutoSessionScheduler } from './useAutoSessionScheduler';
@@ -75,6 +76,11 @@ export const useAutoSessions = (
         botActiveRef.current = false;
         setShowLimitAlert(true);
         localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'false');
+        
+        // Déclencher un événement pour informer les autres composants
+        window.dispatchEvent(new CustomEvent('bot:status-change', {
+          detail: { active: false, userId: safeUserData?.profile?.id, reason: 'limit_reached' }
+        }));
       }
     }
   };
@@ -154,6 +160,26 @@ export const useAutoSessions = (
     };
   }, [userData?.profile?.id]);
 
+  // Fonction pour déclencher une première session automatique au chargement initial
+  useEffect(() => {
+    if (userData?.profile?.id && botActiveRef.current && !isInitialSessionExecuted.current) {
+      isInitialSessionExecuted.current = true;
+      
+      // Déclencher une première session automatique avec un petit délai
+      setTimeout(() => {
+        generateAutomaticRevenue(true);
+      }, 1000);
+      
+      // Programmer la prochaine session avec un intervalle aléatoire
+      const nextInterval = Math.random() * 15000 + 15000; // 15-30 secondes
+      setTimeout(() => {
+        if (botActiveRef.current) {
+          generateAutomaticRevenue();
+        }
+      }, nextInterval);
+    }
+  }, [userData?.profile?.id]);
+
   // Function to generate automatic revenue with improved animation
   async function generateAutomaticRevenue(isFirst = false): Promise<void> {
     if (!botActiveRef.current) {
@@ -164,7 +190,7 @@ export const useAutoSessions = (
     // Create an animation sequence that doesn't display the loading screen
     const terminalAnimation = createBackgroundTerminalSequence([
       "Initialisation de l'analyse du contenu vidéo..."
-    ], true); // Définir explicitement comme animation d'arrière-plan
+    ], true);
     
     try {
       // Calculate potential gain
@@ -192,6 +218,11 @@ export const useAutoSessions = (
           duration: 5000,
           variant: "destructive"
         });
+        
+        // Déclencher l'événement de limite atteinte
+        window.dispatchEvent(new CustomEvent('bot:limit-reached', {
+          detail: { subscription: userData.subscription, userId: userData.profile?.id }
+        }));
         
         return;
       }
@@ -246,6 +277,11 @@ export const useAutoSessions = (
           // Also sync with database immediately after transaction
           await balanceManager.syncWithDatabase();
           
+          // Déclencher également un événement visuel pour montrer les gains en temps réel
+          window.dispatchEvent(new CustomEvent('balance:update', {
+            detail: { amount: finalGain, animate: true, userId: userData.profile.id }
+          }));
+          
           // Mettre à jour la progression de la limite quotidienne
           const updatedGains = balanceManager.getDailyGains();
           const percentProgress = Math.min(100, (updatedGains / dailyLimit) * 100);
@@ -265,6 +301,15 @@ export const useAutoSessions = (
       // Complete the animation with the obtained gain
       terminalAnimation.complete(finalGain);
       
+      // Programme la prochaine génération automatique avec un intervalle aléatoire
+      // Utiliser un intervalle plus court pour plus de dynamisme
+      const nextInterval = Math.random() * 20000 + 10000; // 10-30 secondes
+      setTimeout(() => {
+        if (botActiveRef.current) {
+          generateAutomaticRevenue();
+        }
+      }, nextInterval);
+      
       // If limit reached, deactivate the bot
       if (balanceManager.getDailyGains() >= dailyLimit) {
         setIsBotActive(false);
@@ -273,6 +318,11 @@ export const useAutoSessions = (
         
         // Enregistrer l'état du bot
         localStorage.setItem(`botActive_${userData?.profile?.id}`, 'false');
+        
+        // Déclencher l'événement de limite atteinte
+        window.dispatchEvent(new CustomEvent('bot:limit-reached', {
+          detail: { subscription: userData.subscription, userId: userData.profile?.id }
+        }));
         
         toast({
           title: `Limite journalière atteinte`,
@@ -300,6 +350,6 @@ export const useAutoSessions = (
     activityLevel: "medium", // Placeholder for compatibility
     generateAutomaticRevenue,
     isBotActive,
-    dailyLimitProgress // Exposer la progression pour l'affichage
+    dailyLimitProgress
   };
 };

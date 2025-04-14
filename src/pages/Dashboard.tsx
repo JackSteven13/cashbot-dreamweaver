@@ -13,12 +13,18 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { isInitializing, username, refreshData } = useInitUserData();
   const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [dashboardReady, setDashboardReady] = useState(false);
   
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       console.log("Not authenticated, redirecting to login");
       navigate('/login');
+    } else if (!authLoading && user) {
+      // Lorsque l'authentification est confirmée, marquer le tableau de bord comme prêt
+      setTimeout(() => {
+        setDashboardReady(true);
+      }, 300);
     }
   }, [user, authLoading, navigate]);
   
@@ -28,7 +34,7 @@ const Dashboard = () => {
       setIsFirstLoad(false);
       toast({
         title: `Bienvenue, ${username}!`,
-        description: "Votre tableau de bord est prêt.",
+        description: "Votre tableau de bord est prêt. Les agents IA sont en cours d'analyse.",
         duration: 3000,
       });
     }
@@ -43,7 +49,7 @@ const Dashboard = () => {
   }
 
   return (
-    <>
+    <div className={`transition-opacity duration-500 ${dashboardReady ? 'opacity-100' : 'opacity-0'}`}>
       <DashboardContainer />
       
       {/* Invisible component to ensure subscription is always in sync */}
@@ -51,7 +57,7 @@ const Dashboard = () => {
         console.log("Subscription synchronized:", subscription);
         refreshData();
       }} />
-    </>
+    </div>
   );
 };
 
