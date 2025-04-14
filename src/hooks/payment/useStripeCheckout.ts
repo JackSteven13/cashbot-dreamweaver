@@ -9,6 +9,32 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
   const [isStripeProcessing, setIsStripeProcessing] = useState(false);
   const [stripeCheckoutUrl, setStripeCheckoutUrl] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
+  const [actualSubscription, setActualSubscription] = useState<string | null>(null);
+
+  // Check current subscription from Supabase
+  const checkSubscription = async () => {
+    setIsChecking(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user?.id) {
+        const { data, error } = await supabase
+          .from('user_balances')
+          .select('subscription')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (!error && data) {
+          setActualSubscription(data.subscription);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking subscription:", error);
+    } finally {
+      setIsChecking(false);
+    }
+  };
 
   const handleStripeCheckout = async () => {
     if (!selectedPlan) {
@@ -69,9 +95,16 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     }
   };
 
+  // Check subscription when the hook is initialized
+  useState(() => {
+    checkSubscription();
+  });
+
   return {
     isStripeProcessing,
     handleStripeCheckout,
-    stripeCheckoutUrl
+    stripeCheckoutUrl,
+    isChecking,
+    actualSubscription
   };
 };
