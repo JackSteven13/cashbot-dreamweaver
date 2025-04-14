@@ -18,19 +18,28 @@ export const useManualSessions = ({
   setShowLimitAlert
 }: UseManualSessionsProps): UseManualSessionsReturn => {
   const [isStartingSession, setIsStartingSession] = useState(false);
-  const [localBalance, setLocalBalance] = useState(userData.balance);
+  
+  // Ensure userData is always an object to avoid null property access
+  const safeUserData = userData || {
+    balance: 0,
+    profile: { id: null },
+    subscription: 'freemium',
+    transactions: []
+  };
+  
+  const [localBalance, setLocalBalance] = useState(safeUserData.balance || 0);
   
   // Maintain local reference to current balance to avoid race conditions
-  const currentBalanceRef = useRef<number>(userData.balance);
+  const currentBalanceRef = useRef<number>(safeUserData.balance || 0);
   
   // Update reference when userData changes
   useEffect(() => {
-    if (currentBalanceRef.current !== userData.balance) {
-      console.log("Updating balance reference from", currentBalanceRef.current, "to", userData.balance);
-      currentBalanceRef.current = userData.balance;
-      setLocalBalance(userData.balance);
+    if (safeUserData.balance !== undefined && currentBalanceRef.current !== safeUserData.balance) {
+      console.log("Updating balance reference from", currentBalanceRef.current, "to", safeUserData.balance);
+      currentBalanceRef.current = safeUserData.balance || 0;
+      setLocalBalance(safeUserData.balance || 0);
     }
-  }, [userData.balance]);
+  }, [safeUserData.balance]);
   
   // Hooks for session management
   const { 
@@ -47,7 +56,7 @@ export const useManualSessions = ({
 
   const handleStartSession = async () => {
     // Vérifier si le bot est actif
-    const isBotActive = localStorage.getItem(`botActive_${userData.profile?.id}`) === 'true';
+    const isBotActive = localStorage.getItem(`botActive_${safeUserData.profile?.id}`) === 'true';
     
     // Si le bot est en pause et qu'on essaie de démarrer une session manuelle, afficher un avertissement
     if (!isBotActive) {
@@ -71,10 +80,10 @@ export const useManualSessions = ({
     }
     
     // Get today's gains
-    const todaysGains = getTodaysGains(userData);
+    const todaysGains = getTodaysGains(safeUserData);
     
     // Check if daily limit is already reached
-    if (!checkDailyLimit(userData, todaysGains, setShowLimitAlert)) {
+    if (!checkDailyLimit(safeUserData, todaysGains, setShowLimitAlert)) {
       return;
     }
     
@@ -82,7 +91,7 @@ export const useManualSessions = ({
     const startingBalance = currentBalanceRef.current;
     
     // Check session limit based on subscription
-    if (!checkSessionLimit(userData, dailySessionCount, todaysGains, setShowLimitAlert)) {
+    if (!checkSessionLimit(safeUserData, dailySessionCount, todaysGains, setShowLimitAlert)) {
       return;
     }
     
@@ -98,7 +107,7 @@ export const useManualSessions = ({
       setIsStartingSession(true);
       
       // Increment daily session count for freemium accounts
-      if (userData.subscription === 'freemium') {
+      if (safeUserData.subscription === 'freemium') {
         await incrementSessionCount();
       }
       
@@ -107,7 +116,7 @@ export const useManualSessions = ({
       
       // Calculate gain for the session - don't reset the balance
       const { success, finalGain, newBalance } = await calculateSessionGain(
-        userData,
+        safeUserData,
         startingBalance,
         setShowLimitAlert
       );
@@ -122,10 +131,10 @@ export const useManualSessions = ({
         currentBalanceRef.current = newBalance;
         
         // Dispatch balance update event for UI animations
-        dispatchBalanceUpdate(finalGain, userData.profile?.id);
+        dispatchBalanceUpdate(finalGain, safeUserData.profile?.id);
         
         // Force complete balance update for visual consistency
-        dispatchForceBalanceUpdate(newBalance, finalGain, userData.profile?.id);
+        dispatchForceBalanceUpdate(newBalance, finalGain, safeUserData.profile?.id);
         
         // Add small delay to allow animations to complete
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -133,7 +142,7 @@ export const useManualSessions = ({
         // Update user balance in database with UI force update flag
         await updateBalance(
           finalGain,
-          `Session manuelle : Notre technologie a optimisé le processus et généré ${finalGain.toFixed(2)}€ de revenus pour votre compte ${userData.subscription}.`,
+          `Session manuelle : Notre technologie a optimisé le processus et généré ${finalGain.toFixed(2)}€ de revenus pour votre compte ${safeUserData.subscription}.`,
           true // UI force update flag
         );
         
@@ -141,7 +150,7 @@ export const useManualSessions = ({
         updateBoostCount();
         
         // Check if limit is now reached
-        const effectiveSub = getEffectiveSubscription(userData.subscription);
+        const effectiveSub = getEffectiveSubscription(safeUserData.subscription);
         const effectiveLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS];
         updateLimitAlertStatus(todaysGains, finalGain, effectiveSub, effectiveLimit, setShowLimitAlert);
       }

@@ -71,6 +71,14 @@ export const useDashboardSessions = ({
     };
   }, [userData?.transactions]);  // Simplified dependency
 
+  // Create a safe userData object with default values to prevent null access
+  const safeUserData = userData || { 
+    profile: { id: null },
+    balance: 0,
+    transactions: [],
+    subscription: 'freemium'
+  };
+
   // Use individual hooks for each functionality
   const { 
     lastAutoSessionTime, 
@@ -78,13 +86,13 @@ export const useDashboardSessions = ({
     generateAutomaticRevenue,
     isBotActive 
   } = useAutoSessions(
-    userData,
+    safeUserData, // Pass the safe object instead of potentially null userData
     updateBalance,
     setShowLimitAlert
   );
 
   const { isStartingSession, handleStartSession, localBalance } = useManualSessions({
-    userData,
+    userData: safeUserData, // Pass the safe object here too
     dailySessionCount,
     incrementSessionCount,
     updateBalance,
@@ -92,13 +100,13 @@ export const useDashboardSessions = ({
   });
 
   const { handleWithdrawal, isProcessingWithdrawal } = useWithdrawal(
-    userData,
+    safeUserData, // And here
     resetBalance
   );
 
   // Set up midnight reset
   useMidnightReset(
-    userData,
+    safeUserData, // And here
     incrementSessionCount,
     updateBalance,
     setShowLimitAlert
@@ -110,8 +118,8 @@ export const useDashboardSessions = ({
     handleWithdrawal,
     isProcessingWithdrawal,
     lastSessionTimestamp,
-    localBalance,  // Expose local balance to avoid synchronization issues
-    isBotActive    // Expose bot status
+    localBalance,
+    isBotActive
   };
 };
 

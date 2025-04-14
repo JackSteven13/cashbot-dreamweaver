@@ -13,7 +13,14 @@ import { toast } from '@/components/ui/use-toast';
 const DashboardContainer = () => {
   const { user } = useAuth();
   const [username, setUsername] = useState<string | null>(null);
-  const [userData, setUserData] = useState<any>(null);
+  const [userData, setUserData] = useState<any>({
+    profile: { id: null },
+    balance: 0,
+    transactions: [],
+    subscription: 'freemium',
+    referralLink: '',
+    referrals: []
+  });
   const [isNewUser, setIsNewUser] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [dailySessionCount, setDailySessionCount] = useState(0);

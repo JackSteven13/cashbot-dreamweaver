@@ -101,7 +101,7 @@ export const useAutoSessions = (
   // Synchronisez le solde avec la base de données périodiquement
   useEffect(() => {
     const syncTimerId = setInterval(() => {
-      if (userData?.profile?.id) {
+      if (safeUserData?.profile?.id) {
         balanceManager.syncWithDatabase().catch(err => 
           console.error("Error during periodic balance sync:", err)
         );
@@ -109,7 +109,7 @@ export const useAutoSessions = (
     }, 30000); // Toutes les 30 secondes
     
     return () => clearInterval(syncTimerId);
-  }, [userData?.profile?.id]);
+  }, [safeUserData?.profile?.id]);
   
   // Listen for bot status changes
   useEffect(() => {
@@ -118,7 +118,7 @@ export const useAutoSessions = (
       const userId = event.detail?.userId;
       
       // Only handle events for this user
-      if (userId && userData?.profile?.id && userId !== userData.profile.id) {
+      if (userId && safeUserData?.profile?.id && userId !== safeUserData.profile.id) {
         return;
       }
       
@@ -130,7 +130,7 @@ export const useAutoSessions = (
         
         // Enregistrer l'état du bot dans le localStorage
         try {
-          localStorage.setItem(`botActive_${userData?.profile?.id}`, newStatus.toString());
+          localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, newStatus.toString());
         } catch (e) {
           console.error("Failed to store bot status in localStorage:", e);
         }
@@ -139,7 +139,7 @@ export const useAutoSessions = (
     
     // Restaurer l'état du bot à partir du localStorage
     try {
-      const storedBotStatus = localStorage.getItem(`botActive_${userData?.profile?.id}`);
+      const storedBotStatus = localStorage.getItem(`botActive_${safeUserData?.profile?.id}`);
       if (storedBotStatus !== null) {
         const isActive = storedBotStatus === 'true';
         setIsBotActive(isActive);
@@ -160,11 +160,11 @@ export const useAutoSessions = (
       window.removeEventListener('dailyGains:updated' as any, updateDailyGains);
       window.removeEventListener('dailyGains:reset' as any, updateDailyGains);
     };
-  }, [userData?.profile?.id]);
+  }, [safeUserData?.profile?.id]);
 
   // Fonction pour déclencher une première session automatique au chargement initial
   useEffect(() => {
-    if (userData?.profile?.id && botActiveRef.current && !isInitialSessionExecuted.current) {
+    if (safeUserData?.profile?.id && botActiveRef.current && !isInitialSessionExecuted.current) {
       isInitialSessionExecuted.current = true;
       
       // Déclencher une première session automatique avec un petit délai
@@ -180,7 +180,7 @@ export const useAutoSessions = (
         }
       }, nextInterval);
     }
-  }, [userData?.profile?.id]);
+  }, [safeUserData?.profile?.id]);
 
   // Function to generate automatic revenue with improved animation
   async function generateAutomaticRevenue(isFirst = false): Promise<void> {
@@ -211,7 +211,7 @@ export const useAutoSessions = (
         terminalAnimation.complete(0);
         
         // Enregistrer l'état du bot
-        localStorage.setItem(`botActive_${userData?.profile?.id}`, 'false');
+        localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'false');
         
         // Notification de limite atteinte
         toast({
@@ -223,7 +223,7 @@ export const useAutoSessions = (
         
         // Déclencher l'événement de limite atteinte
         window.dispatchEvent(new CustomEvent('bot:limit-reached', {
-          detail: { subscription: userData.subscription, userId: userData.profile?.id }
+          detail: { subscription: safeUserData.subscription, userId: safeUserData.profile?.id }
         }));
         
         return;
@@ -250,16 +250,16 @@ export const useAutoSessions = (
       terminalAnimation.addLine(`Analyse complétée. Optimisation des résultats: ${finalGain.toFixed(2)}€`);
       
       // Create a descriptive message for the transaction
-      const transactionReport = `Notre système d'analyse de contenu vidéo a généré ${finalGain.toFixed(2)}€ de revenus. Performance basée sur le niveau d'abonnement ${userData.subscription}.`;
+      const transactionReport = `Notre système d'analyse de contenu vidéo a généré ${finalGain.toFixed(2)}€ de revenus. Performance basée sur le niveau d'abonnement ${safeUserData.subscription}.`;
       
       // Use balance manager to sync consistently
-      if (userData?.profile?.id) {
+      if (safeUserData?.profile?.id) {
         // Add the transaction first
-        const transactionResult = await balanceManager.addTransaction(userData.profile.id, finalGain, transactionReport);
+        const transactionResult = await balanceManager.addTransaction(safeUserData.profile.id, finalGain, transactionReport);
         
         if (transactionResult) {
           // Recalculer le nouveau solde
-          const newBalance = (userData.balance || 0) + finalGain;
+          const newBalance = (safeUserData.balance || 0) + finalGain;
           
           // Force update balance manager
           balanceManager.forceUpdate(newBalance);
@@ -273,7 +273,7 @@ export const useAutoSessions = (
           
           // Trigger refresh event for transactions list
           window.dispatchEvent(new CustomEvent('transactions:refresh', {
-            detail: { userId: userData.profile.id }
+            detail: { userId: safeUserData.profile.id }
           }));
           
           // Also sync with database immediately after transaction
@@ -281,7 +281,7 @@ export const useAutoSessions = (
           
           // Déclencher également un événement visuel pour montrer les gains en temps réel
           window.dispatchEvent(new CustomEvent('balance:update', {
-            detail: { amount: finalGain, animate: true, userId: userData.profile.id }
+            detail: { amount: finalGain, animate: true, userId: safeUserData.profile.id }
           }));
           
           // Mettre à jour la progression de la limite quotidienne
@@ -319,11 +319,11 @@ export const useAutoSessions = (
         setShowLimitAlert(true);
         
         // Enregistrer l'état du bot
-        localStorage.setItem(`botActive_${userData?.profile?.id}`, 'false');
+        localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'false');
         
         // Déclencher l'événement de limite atteinte
         window.dispatchEvent(new CustomEvent('bot:limit-reached', {
-          detail: { subscription: userData.subscription, userId: userData.profile?.id }
+          detail: { subscription: safeUserData.subscription, userId: safeUserData.profile.id }
         }));
         
         toast({
@@ -334,11 +334,11 @@ export const useAutoSessions = (
       }
       
       // Sync with database after any changes
-      if (userData?.profile?.id) {
+      if (safeUserData?.profile?.id) {
         await supabase
           .from('user_balances')
           .update({ daily_session_count: Math.ceil(balanceManager.getDailyGains() / 0.1) })
-          .eq('id', userData.profile.id);
+          .eq('id', safeUserData.profile.id);
       }
     } catch (error) {
       console.error("Error in generateAutomaticRevenue:", error);
@@ -356,4 +356,3 @@ export const useAutoSessions = (
     isInitialSessionExecuted
   };
 };
-

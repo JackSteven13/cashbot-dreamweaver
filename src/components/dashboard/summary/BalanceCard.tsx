@@ -24,7 +24,7 @@ interface BalanceCardProps {
 }
 
 const BalanceCard: React.FC<BalanceCardProps> = ({
-  balance,
+  balance = 0, // Provide default value to avoid null issues
   isStartingSession,
   handleStartSession,
   handleWithdrawal,
@@ -160,14 +160,17 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
   
   // Synchroniser avec la prop balance lorsqu'elle change significativement
   useEffect(() => {
-    if (Math.abs(balance - animatedBalance) > 0.01) {
+    // Ensure balance is a number to avoid issues with undefined/null
+    const safeBalance = typeof balance === 'number' ? balance : 0;
+    
+    if (Math.abs(safeBalance - animatedBalance) > 0.01) {
       // Si le solde a changé significativement, mettre à jour avec animation
       setPreviousBalance(animatedBalance);
       setBalanceAnimating(true);
       
       animateBalanceUpdate(
         animatedBalance,
-        balance,
+        safeBalance,
         1000,
         (value) => {
           setAnimatedBalance(value);
@@ -194,7 +197,7 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
 
       <CardContent className="pb-4">
         <BalanceDisplay 
-          displayBalance={isNewUser ? 0 : balance}
+          displayBalance={isNewUser ? 0 : (balance || 0)}
           balanceAnimating={balanceAnimating}
           animatedBalance={animatedBalance}
           previousBalance={previousBalance}
@@ -205,12 +208,12 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
         />
         
         <GainProgress 
-          currentGain={isNewUser ? 0 : balance}
+          currentGain={isNewUser ? 0 : (balance || 0)}
           subscription={subscription}
-          currentValue={isNewUser ? 0 : balance} 
+          currentValue={isNewUser ? 0 : (balance || 0)} 
           maxValue={dailyLimit} 
           showTooltip={true} 
-          tooltipText={`Progression: ${isNewUser ? 0 : balance}€ / ${dailyLimit}€`}
+          tooltipText={`Progression: ${isNewUser ? 0 : (balance || 0)}€ / ${dailyLimit}€`}
           className="mb-4"
         />
         
@@ -219,7 +222,7 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
           onStartSession={handleStartSession}
           onWithdrawal={handleWithdrawal}
           canStartSession={canStartSession && !limitReached && !isNewUser}
-          canWithdraw={!isNewUser && balance >= 20}
+          canWithdraw={!isNewUser && (balance || 0) >= 20}
           subscription={subscription}
           isBotActive={isBotActive}
           useAnimation={true}
