@@ -8,92 +8,100 @@ interface UserDataStateTrackerProps {
   onSyncError?: (error: string) => void;
 }
 
-// Composant invisible pour suivre les événements liés aux données utilisateur
+// Component to track user data state events
 const UserDataStateTracker = ({ 
   onUsernameLoaded,
   onDataRefreshed,
   onSyncError
 }: UserDataStateTrackerProps) => {
-  const toastShownRef = useRef<boolean>(false);
-  const usernameLoadedRef = useRef<boolean>(false);
+  const usernameSentRef = useRef(false);
+  const errorNotifiedRef = useRef(false);
   
-  // Écouteur pour le chargement du nom d'utilisateur
+  // Listen for username loaded events
   useEffect(() => {
     const handleUsernameLoaded = (event: any) => {
       const username = event.detail?.username;
-      if (username && !usernameLoadedRef.current) {
-        console.log("Événement username:loaded reçu:", username);
-        usernameLoadedRef.current = true;
-        
-        if (onUsernameLoaded) {
-          onUsernameLoaded(username);
-        }
+      if (username && !usernameSentRef.current && onUsernameLoaded) {
+        console.log("Username loaded event received:", username);
+        usernameSentRef.current = true;
+        onUsernameLoaded(username);
       }
     };
     
-    // Écouteur pour les données utilisateur rafraîchies
+    // Listen for data refreshed events
     const handleDataRefreshed = (event: any) => {
-      console.log("Événement user:refreshed reçu:", event.detail);
+      console.log("Data refreshed event received:", event.detail);
       
       if (onDataRefreshed) {
         onDataRefreshed(event.detail);
       }
+      
+      // Also check for username in refreshed data
+      const username = event.detail?.username;
+      if (username && !usernameSentRef.current && onUsernameLoaded) {
+        usernameSentRef.current = true;
+        onUsernameLoaded(username);
+      }
     };
     
-    // Écouteur pour les erreurs de synchronisation
+    // Listen for sync error events
     const handleSyncError = (event: any) => {
-      console.error("Événement user:sync-error reçu:", event.detail?.error);
+      const errorMessage = event.detail?.error;
+      console.error("Sync error event received:", errorMessage);
       
-      // Montrer un toast d'erreur seulement une fois
-      if (!toastShownRef.current) {
-        toastShownRef.current = true;
-        
+      // Show toast only once
+      if (!errorNotifiedRef.current) {
+        errorNotifiedRef.current = true;
         toast({
           title: "Problème de synchronisation",
-          description: "Certaines données utilisateur n'ont pas pu être chargées. Veuillez rafraîchir la page ou réessayer plus tard.",
+          description: "Certaines données utilisateur n'ont pas pu être chargées. Veuillez rafraîchir la page.",
           variant: "destructive",
           duration: 5000
         });
       }
       
       if (onSyncError) {
-        onSyncError(event.detail?.error);
+        onSyncError(errorMessage);
       }
     };
     
-    // Écouteur pour l'initialisation rapide
+    // Listen for initialization events
     const handleFastInit = (event: any) => {
-      console.log("Événement user:fast-init reçu:", event.detail);
+      console.log("Fast initialization event received:", event.detail);
       
+      // Check for username in fast init data
       const username = event.detail?.username;
-      if (username && !usernameLoadedRef.current) {
-        usernameLoadedRef.current = true;
-        
-        if (onUsernameLoaded) {
-          onUsernameLoaded(username);
-        }
+      if (username && !usernameSentRef.current && onUsernameLoaded) {
+        usernameSentRef.current = true;
+        onUsernameLoaded(username);
+      }
+      
+      if (onDataRefreshed) {
+        onDataRefreshed(event.detail);
       }
     };
     
-    // Enregistrer les écouteurs d'événements
+    // Check for cached username in localStorage
+    const checkCachedUsername = () => {
+      const cachedUsername = localStorage.getItem('lastKnownUsername');
+      if (cachedUsername && !usernameSentRef.current && onUsernameLoaded) {
+        console.log("Using cached username from localStorage:", cachedUsername);
+        usernameSentRef.current = true;
+        onUsernameLoaded(cachedUsername);
+      }
+    };
+    
+    // Register event listeners
     window.addEventListener('username:loaded', handleUsernameLoaded);
     window.addEventListener('user:refreshed', handleDataRefreshed);
     window.addEventListener('user:sync-error', handleSyncError);
     window.addEventListener('user:fast-init', handleFastInit);
     
-    // Vérifier s'il y a déjà un nom d'utilisateur dans le localStorage
-    const cachedUsername = localStorage.getItem('lastKnownUsername');
-    if (cachedUsername && !usernameLoadedRef.current) {
-      console.log("Nom d'utilisateur trouvé dans localStorage:", cachedUsername);
-      usernameLoadedRef.current = true;
-      
-      if (onUsernameLoaded) {
-        onUsernameLoaded(cachedUsername);
-      }
-    }
+    // Check for cached username
+    checkCachedUsername();
     
+    // Cleanup event listeners
     return () => {
-      // Nettoyer les écouteurs d'événements
       window.removeEventListener('username:loaded', handleUsernameLoaded);
       window.removeEventListener('user:refreshed', handleDataRefreshed);
       window.removeEventListener('user:sync-error', handleSyncError);
@@ -101,7 +109,7 @@ const UserDataStateTracker = ({
     };
   }, [onUsernameLoaded, onDataRefreshed, onSyncError]);
   
-  // Ce composant ne rend rien, il est juste utilisé pour gérer les événements
+  // Invisible component
   return null;
 };
 
