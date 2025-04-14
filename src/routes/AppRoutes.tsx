@@ -20,7 +20,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/dashboard" element={
+      <Route path="/dashboard/*" element={
         <AnalysisController>
           <Dashboard />
         </AnalysisController>
@@ -31,6 +31,11 @@ const AppRoutes: React.FC = () => {
       <Route path="/payment-success" element={<PaymentSuccess />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/contact" element={<Contact />} />
+      <Route path="/settings" element={
+        <AnalysisController>
+          <Dashboard />
+        </AnalysisController>
+      } />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

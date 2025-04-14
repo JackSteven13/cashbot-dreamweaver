@@ -44,9 +44,14 @@ const SummaryPanel: React.FC<SummaryPanelProps> = memo(({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Colonne principale avec solde et boutons d'action */}
       <div className="lg:col-span-2 space-y-6">
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md overflow-hidden">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700">
           <div className="px-6 pt-6 pb-0">
-            <h3 className="text-xl font-semibold mb-4 dark:text-white">Votre solde</h3>
+            <h3 className="text-xl font-bold mb-4 text-blue-800 dark:text-blue-300 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm0-7a1 1 0 1 0-1-1 1 1 0 0 0 1 1zm0-4a1 1 0 0 0-1 1v3a1 1 0 0 0 2 0V10a1 1 0 0 0-1-1z"/>
+              </svg>
+              Votre solde
+            </h3>
           </div>
           
           <BalanceDisplay 
@@ -92,11 +97,13 @@ const SummaryPanel: React.FC<SummaryPanelProps> = memo(({
       
       {/* Colonne secondaire avec parrainage et statistiques */}
       <div className="space-y-6">
-        <ReferralSuggestion 
-          referralLink={referralLink}
-          referralCount={referralCount}
-          withdrawalThreshold={withdrawalThreshold}
-        />
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700 p-5">
+          <ReferralSuggestion 
+            referralLink={referralLink}
+            referralCount={referralCount}
+            withdrawalThreshold={withdrawalThreshold}
+          />
+        </div>
       </div>
     </div>
   );

@@ -104,7 +104,7 @@ const StripeCheckoutForm = ({
       {!stripeUrl ? (
         <Button 
           fullWidth 
-          className="bg-green-600 hover:bg-green-700 text-white text-base py-3 font-bold shadow-md"
+          className="bg-blue-600 hover:bg-blue-700 text-white text-base py-3 font-bold shadow-md"
           onClick={handleCheckout}
           isLoading={isStripeProcessing}
           disabled={!termsAccepted || isStripeProcessing}
@@ -115,7 +115,7 @@ const StripeCheckoutForm = ({
         <div className="space-y-3">
           <Button 
             fullWidth 
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 text-base py-3 font-bold shadow-md"
+            className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 text-base py-3 font-bold shadow-md"
             onClick={handleOpenStripeWindow}
             disabled={isStripeProcessing}
           >
@@ -125,6 +125,15 @@ const StripeCheckoutForm = ({
           <p className="text-sm text-center text-gray-500">
             Vous serez redirigé vers une page de paiement sécurisée pour finaliser votre abonnement.
           </p>
+          
+          <Button 
+            fullWidth
+            variant="outline"
+            className="mt-2 text-sm flex items-center justify-center gap-2"
+            onClick={handleOpenStripeWindow}
+          >
+            <ExternalLink className="w-3 h-3" /> Ouvrir dans une nouvelle fenêtre
+          </Button>
         </div>
       )}
 

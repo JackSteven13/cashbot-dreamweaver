@@ -20,7 +20,6 @@ interface DashboardContentProps {
   isBotActive?: boolean;
 }
 
-// Utilisons React.memo pour éviter les re-rendus inutiles
 const DashboardContent: React.FC<DashboardContentProps> = React.memo(({
   userData,
   isStartingSession,
@@ -73,17 +72,21 @@ const DashboardContent: React.FC<DashboardContentProps> = React.memo(({
   
   return (
     <div className="px-4 md:px-6 py-6 md:py-8 max-w-6xl mx-auto animate-fadein">
-      {/* Afficher la limite quotidienne */}
-      <div className="mb-6">
+      {/* Afficher la limite quotidienne avec design amélioré */}
+      <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl shadow-sm">
         <div className="flex justify-between mb-2">
-          <span className="text-sm font-medium">
+          <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
             Limite quotidienne ({subscription})
           </span>
-          <span className="text-sm font-medium">
+          <span className="text-sm font-bold text-blue-800 dark:text-blue-300">
             {balanceManager.getDailyGains().toFixed(2)}€ / {dailyLimit}€
           </span>
         </div>
-        <Progress value={limitProgress} className="h-2" />
+        <Progress 
+          value={limitProgress} 
+          className="h-2.5 bg-blue-100 dark:bg-blue-900/30" 
+          indicatorClassName="bg-gradient-to-r from-blue-500 to-indigo-600"
+        />
       </div>
       
       {/* Métriques du tableau de bord */}

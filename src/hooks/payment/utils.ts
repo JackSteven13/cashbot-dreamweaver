@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 /**
  * Check for the current subscription in Supabase
@@ -48,6 +49,8 @@ export const checkCurrentSubscription = async (): Promise<string | null> => {
  */
 export const updateLocalSubscription = async (subscription: string): Promise<boolean> => {
   try {
+    console.log(`Updating local subscription to: ${subscription}`);
+    
     // Set subscription in localStorage
     localStorage.setItem('subscription', subscription);
     
@@ -55,6 +58,13 @@ export const updateLocalSubscription = async (subscription: string): Promise<boo
     window.dispatchEvent(new CustomEvent('subscription:updated', { 
       detail: { subscription } 
     }));
+    
+    // Show confirmation toast
+    toast({
+      title: "Abonnement mis à jour",
+      description: `Votre abonnement ${subscription} a été activé avec succès.`,
+      variant: "default",
+    });
     
     return true;
   } catch (error) {
@@ -68,6 +78,7 @@ export const updateLocalSubscription = async (subscription: string): Promise<boo
  */
 export const forceSyncSubscription = async (): Promise<boolean> => {
   try {
+    console.log("Forçage de la synchronisation d'abonnement...");
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id) return false;
     
@@ -81,20 +92,36 @@ export const forceSyncSubscription = async (): Promise<boolean> => {
       .single();
       
     if (!error && data) {
+      console.log("Données synchronisées depuis Supabase:", data);
+      
       localStorage.setItem('subscription', data.subscription);
       localStorage.setItem('currentBalance', data.balance?.toString() || '0');
+      
       window.dispatchEvent(new CustomEvent('user:refreshed', {
         detail: { 
           subscription: data.subscription,
           balance: data.balance 
         }
       }));
+      
+      // Afficher une confirmation à l'utilisateur
+      toast({
+        title: "Synchronisation réussie",
+        description: `Vos données ont été synchronisées. Abonnement actuel: ${data.subscription}`,
+        variant: "default",
+      });
+      
       return true;
     }
     
     return false;
   } catch (error) {
     console.error("Error syncing subscription:", error);
+    toast({
+      title: "Erreur de synchronisation",
+      description: "Nous avons rencontré un problème lors de la synchronisation de vos données.",
+      variant: "destructive",
+    });
     return false;
   }
 };
