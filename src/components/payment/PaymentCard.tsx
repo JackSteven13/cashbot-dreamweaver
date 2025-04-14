@@ -8,6 +8,8 @@ import PlanSummary from './PlanSummary';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
+import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
+import MobilePaymentHelper from './MobilePaymentHelper';
 
 interface PaymentCardProps {
   selectedPlan: PlanType | null;
@@ -34,18 +36,25 @@ const PaymentCard = ({
 }: PaymentCardProps) => {
   const [termsAccepted, setTermsAccepted] = useState(true); // CGV présélectionnées
   const isCurrentPlan = currentSubscription === selectedPlan;
-  
-  // Redirection automatique vers Stripe quand l'URL est disponible
+  const [showMobileHelper, setShowMobileHelper] = useState(false);
+
+  // Tentative d'ouverture de Stripe après l'obtention de l'URL
   useEffect(() => {
     if (stripeCheckoutUrl && !isStripeProcessing) {
       try {
-        console.log("Redirection vers Stripe:", stripeCheckoutUrl);
-        window.location.href = stripeCheckoutUrl;
+        console.log("Tentative d'ouverture de Stripe:", stripeCheckoutUrl);
+        const opened = openStripeWindow(stripeCheckoutUrl);
+        
+        // Si l'ouverture échoue, montrer une aide
+        if (!opened) {
+          setShowMobileHelper(true);
+        }
       } catch (error) {
-        console.error("Erreur de redirection:", error);
+        console.error("Erreur lors de l'ouverture de Stripe:", error);
+        setShowMobileHelper(true);
         toast({
-          title: "Erreur de redirection",
-          description: "Impossible de vous rediriger vers la page de paiement. Veuillez réessayer.",
+          title: "Problème d'ouverture",
+          description: "Impossible d'ouvrir la page de paiement automatiquement.",
           variant: "destructive"
         });
       }
@@ -71,7 +80,18 @@ const PaymentCard = ({
       return;
     }
 
+    // Déclencher le processus de paiement
     onStripeCheckout();
+  };
+
+  const handleManualRedirect = () => {
+    if (stripeCheckoutUrl) {
+      try {
+        window.location.href = stripeCheckoutUrl;
+      } catch (e) {
+        console.error("Erreur lors de la redirection manuelle:", e);
+      }
+    }
   };
 
   return (
@@ -126,6 +146,13 @@ const PaymentCard = ({
                 "Payer maintenant"
               )}
             </Button>
+            
+            {/* Aide à la redirection si besoin */}
+            <MobilePaymentHelper 
+              isVisible={showMobileHelper} 
+              onHelp={handleManualRedirect}
+              stripeUrl={stripeCheckoutUrl}
+            />
           </>
         )}
       </CardContent>

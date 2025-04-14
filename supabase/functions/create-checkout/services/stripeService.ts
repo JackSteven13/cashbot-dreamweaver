@@ -37,7 +37,7 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
     throw new Error('Stripe is not configured properly');
   }
   
-  const { userId, userEmail, plan, successUrl, cancelUrl, referrerId, currentSubscription, blockTestCards } = params;
+  const { userId, userEmail, plan, successUrl, cancelUrl, referrerId, currentSubscription } = params;
   
   // Skip Stripe for free plan
   if (plan === 'freemium') {
@@ -108,16 +108,8 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
       userId,
       plan,
       referrerId: referrerId || ''
-    },
-    // Toujours bloquer les cartes de test en production
-    payment_method_options: {
-      card: {
-        statement_descriptor_suffix: 'StreamGenius',
-        setup_future_usage: 'off_session',
-        // This blocks test cards in production
-        setup_mandate: 'card_testing_not_allowed'
-      }
     }
+    // Suppression des options qui causent l'erreur
   });
   
   console.log(`Created checkout session: ${session.id}`);

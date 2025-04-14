@@ -15,7 +15,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const [actualSubscription, setActualSubscription] = useState<string | null>(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 5;
 
   // Check current subscription from Supabase
   const checkSubscription = async () => {
@@ -119,42 +119,49 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       }
 
       // Essayer de créer une session de paiement avec des tentatives
-      const attemptCreateCheckout = async (): Promise<any> => {
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
+          console.log(`Tentative ${attempt + 1} de création de session de paiement pour ${selectedPlan}`);
+          
           const { data, error } = await supabase.functions.invoke('create-checkout', {
             body: {
               plan: selectedPlan,
               successUrl: `${window.location.origin}/payment-success`,
               cancelUrl: `${window.location.origin}/offres`,
-              blockTestCards: true
             }
           });
           
-          if (error) throw new Error(error.message);
-          return { data };
-        } catch (err) {
-          console.error("Erreur lors de la création de la session:", err);
-          if (retryCount < MAX_RETRIES) {
-            setRetryCount(prev => prev + 1);
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre 1 seconde
-            return attemptCreateCheckout();
+          if (error) {
+            throw new Error(`Erreur d'invocation: ${error.message}`);
           }
-          throw err;
+          
+          if (!data?.url) {
+            throw new Error("Aucune URL de paiement générée");
+          }
+          
+          console.log("URL de paiement obtenue:", data.url);
+          
+          // Stocker l'URL pour redirection
+          setStripeCheckoutUrl(data.url);
+          
+          // Essayer d'ouvrir la page Stripe immédiatement
+          openStripeWindow(data.url);
+          
+          return;
+        } catch (err) {
+          console.error(`Erreur lors de la tentative ${attempt + 1}:`, err);
+          
+          // Si ce n'est pas la dernière tentative, attendre avant de réessayer
+          if (attempt < MAX_RETRIES - 1) {
+            setRetryCount(attempt + 1);
+            // Attendre un peu plus longtemps à chaque tentative (backoff exponentiel)
+            const delay = Math.pow(2, attempt) * 1000;
+            await new Promise(resolve => setTimeout(resolve, delay));
+          } else {
+            throw err; // Relancer l'erreur si nous avons épuisé nos tentatives
+          }
         }
-      };
-
-      const { data } = await attemptCreateCheckout();
-
-      if (!data?.url) {
-        throw new Error("Impossible de créer la session de paiement");
       }
-
-      console.log("URL de paiement obtenue:", data.url);
-      
-      // Stocker l'URL pour redirection
-      setStripeCheckoutUrl(data.url);
-      
-      // Pas besoin de rediriger ici, la redirection se fait dans le useEffect du PaymentCard
 
     } catch (error: any) {
       console.error("Erreur de paiement:", error);
@@ -165,19 +172,15 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         description: "Une erreur est survenue lors de la préparation du paiement. Veuillez réessayer.",
         variant: "destructive"
       });
+    } finally {
+      setIsStripeProcessing(false);
     }
   };
 
-  // Open Stripe checkout window manually if needed
+  // Function to manually open the stripe checkout window
   const openStripeCheckoutWindow = useCallback(() => {
     if (stripeCheckoutUrl) {
-      try {
-        window.location.href = stripeCheckoutUrl;
-        return true;
-      } catch (error) {
-        console.error("Erreur lors de la redirection:", error);
-        return false;
-      }
+      return openStripeWindow(stripeCheckoutUrl);
     }
     return false;
   }, [stripeCheckoutUrl]);
