@@ -4,11 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { PlanType } from './types';
+import { useSubscriptionCheck } from './useSubscriptionCheck';
 
 export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const navigate = useNavigate();
   const [isStripeProcessing, setIsStripeProcessing] = useState(false);
   const [stripeCheckoutUrl, setStripeCheckoutUrl] = useState<string | null>(null);
+  
+  // Get subscription data
+  const { actualSubscription, isChecking } = useSubscriptionCheck();
 
   const handleStripeCheckout = async () => {
     if (!selectedPlan) {
@@ -70,6 +74,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   return {
     isStripeProcessing,
     handleStripeCheckout,
-    stripeCheckoutUrl
+    stripeCheckoutUrl,
+    actualSubscription,
+    isChecking
   };
 };

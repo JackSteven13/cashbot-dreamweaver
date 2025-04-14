@@ -1,12 +1,10 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { PlanType } from '@/hooks/payment/types';
-import { PLANS } from '@/utils/plans';
+import { CreditCard } from 'lucide-react';
 
 interface CardCheckoutFormProps {
   onSubmit: (formData: any) => void;
@@ -14,125 +12,81 @@ interface CardCheckoutFormProps {
   selectedPlan: PlanType | null;
 }
 
-const CardCheckoutForm: React.FC<CardCheckoutFormProps> = ({ 
-  onSubmit, 
-  isProcessing,
-  selectedPlan
-}) => {
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [cvv, setCvv] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
+const CardCheckoutForm = ({ onSubmit, isProcessing, selectedPlan }: CardCheckoutFormProps) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Format des données à envoyer
-    const formData = {
-      cardNumber: cardNumber.replace(/\s/g, ''),
-      cardName,
-      expiryDate,
-      cvv,
-      plan: selectedPlan
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      cardNumber: formData.get('cardNumber'),
+      cardName: formData.get('cardName'),
+      expiryDate: formData.get('expiryDate'),
+      cvv: formData.get('cvv')
     };
     
-    onSubmit(formData);
+    onSubmit(data);
   };
-
-  // Formatter le numéro de carte en groupes de 4 chiffres
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || '';
-    const parts = [];
-    
-    for (let i = 0; i < match.length; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return value;
-    }
-  };
-
+  
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <div className="bg-muted/50 p-4 rounded-md mb-4">
-          <p className="text-sm font-medium">
-            Forfait sélectionné: <span className="font-bold">{selectedPlan ? PLANS[selectedPlan]?.name : 'Aucun'}</span>
-          </p>
-          <p className="text-sm">
-            Prix: <span className="font-bold">{selectedPlan ? `${PLANS[selectedPlan]?.price}€` : '0€'}</span>
-          </p>
-        </div>
-        
+      <div className="flex items-center gap-2 text-[#1e3a5f] dark:text-white mb-2">
+        <CreditCard className="h-5 w-5" />
+        <h3 className="font-medium">Paiement par carte bancaire</h3>
+      </div>
+      
+      <div className="space-y-3">
         <div className="space-y-2">
-          <Label htmlFor="card-name">Nom sur la carte</Label>
-          <Input
-            id="card-name"
-            placeholder="John Doe"
-            value={cardName}
-            onChange={(e) => setCardName(e.target.value)}
+          <Label htmlFor="cardName">Nom sur la carte</Label>
+          <Input 
+            id="cardName" 
+            name="cardName" 
+            placeholder="John Doe" 
             required
+            disabled={isProcessing}
           />
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="card-number">Numéro de carte</Label>
-          <Input
-            id="card-number"
-            placeholder="1234 5678 9012 3456"
-            value={cardNumber}
-            onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-            maxLength={19}
+          <Label htmlFor="cardNumber">Numéro de carte</Label>
+          <Input 
+            id="cardNumber" 
+            name="cardNumber" 
+            placeholder="1234 5678 9012 3456" 
             required
+            disabled={isProcessing}
           />
         </div>
         
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="card-expiry">Date d'expiration (MM/YY)</Label>
-            <Input
-              id="card-expiry"
-              placeholder="MM/YY"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              maxLength={5}
+            <Label htmlFor="expiryDate">Date d'expiration</Label>
+            <Input 
+              id="expiryDate" 
+              name="expiryDate" 
+              placeholder="MM/YY" 
               required
+              disabled={isProcessing}
             />
           </div>
-          
           <div className="space-y-2">
-            <Label htmlFor="card-cvv">CVV</Label>
-            <Input
-              id="card-cvv"
-              type="password"
-              placeholder="123"
-              value={cvv}
-              onChange={(e) => setCvv(e.target.value)}
-              maxLength={3}
+            <Label htmlFor="cvv">CVV</Label>
+            <Input 
+              id="cvv" 
+              name="cvv" 
+              placeholder="123" 
               required
+              disabled={isProcessing}
             />
           </div>
         </div>
       </div>
       
       <Button 
-        type="submit" 
-        className="w-full" 
-        disabled={isProcessing}
+        type="submit"
+        className="w-full bg-green-600 hover:bg-green-700 text-white text-base py-3 font-bold shadow-md"
+        disabled={isProcessing || !selectedPlan}
       >
-        {isProcessing ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Traitement en cours...
-          </>
-        ) : (
-          <>Valider le paiement</>
-        )}
+        {isProcessing ? 'Traitement en cours...' : 'Procéder au paiement'}
       </Button>
     </form>
   );

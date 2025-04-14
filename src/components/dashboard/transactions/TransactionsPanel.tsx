@@ -1,73 +1,71 @@
 
-import React, { memo } from 'react';
-import { Transaction } from '@/types/userData';
-import { useTransactions } from './hooks/useTransactions';
-import { 
-  TransactionListItem, 
-  TransactionEmptyState, 
-  TransactionListActions, 
-  TransactionFooter 
-} from './index';
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
+import TransactionEmptyState from './TransactionEmptyState';
+import TransactionListItem from './TransactionListItem';
 
 interface TransactionsPanelProps {
-  transactions: Transaction[];
-  subscription?: string;
+  transactions: any[];
+  isLoading?: boolean;
   isNewUser?: boolean;
+  title?: string;
 }
 
-const TransactionsPanel = memo(({ 
+const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
   transactions = [],
-  subscription = 'freemium',
-  isNewUser = false
-}: TransactionsPanelProps) => {
-  const {
-    showAllTransactions,
-    setShowAllTransactions,
-    validTransactions,
-    displayedTransactions,
-    refreshKey,
-    handleManualRefresh,
-    hiddenTransactionsCount
-  } = useTransactions(transactions);
-  
-  // Log pour debug
-  console.log(`TransactionsPanel render - ${transactions.length} transactions`);
+  isLoading = false,
+  isNewUser = false,
+  title = "Transactions récentes"
+}) => {
+  const navigate = useNavigate();
+
+  const handleViewAllClick = () => {
+    navigate('/dashboard/transactions');
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="h-16 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-md"></div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      {validTransactions.length > 0 ? (
-        <>
-          <TransactionListActions 
-            showAllTransactions={showAllTransactions}
-            setShowAllTransactions={setShowAllTransactions}
-            validTransactionsCount={validTransactions.length}
-            onManualRefresh={handleManualRefresh}
-          />
-          
-          <div className="space-y-4 mt-4">
-            {displayedTransactions.map((transaction, index) => (
-              <TransactionListItem 
-                key={`${transaction.id || ''}-${index}-${refreshKey}`}
-                transaction={transaction}
-                refreshKey={refreshKey}
-                index={index}
-                subscription={subscription}
-              />
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>{title}</CardTitle>
+        {transactions.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={handleViewAllClick} className="gap-1">
+            Tout voir <ArrowRight className="h-4 w-4" />
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent>
+        {transactions.length > 0 ? (
+          <div className="space-y-2">
+            {transactions.slice(0, 5).map((transaction, index) => (
+              <TransactionListItem key={index} transaction={transaction} />
             ))}
-            
-            <TransactionFooter 
-              showAllTransactions={showAllTransactions}
-              hiddenTransactionsCount={hiddenTransactionsCount}
-            />
           </div>
-        </>
-      ) : (
-        <TransactionEmptyState isNewUser={isNewUser} />
-      )}
-    </div>
+        ) : (
+          <TransactionEmptyState isNewUser={isNewUser} />
+        )}
+      </CardContent>
+    </Card>
   );
-});
-
-TransactionsPanel.displayName = 'TransactionsPanel';
+};
 
 export default TransactionsPanel;

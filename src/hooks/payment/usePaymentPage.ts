@@ -26,8 +26,6 @@ export const usePaymentPage = () => {
   const { 
     isStripeProcessing, 
     handleStripeCheckout, 
-    actualSubscription,
-    isChecking,
     stripeCheckoutUrl 
   } = useStripeCheckout(selectedPlan);
   

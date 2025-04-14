@@ -4,22 +4,29 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { User, LogOut, Settings, HelpCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardHeaderProps {
   username: string;
+  subscription?: string;
   isNewUser?: boolean;
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ 
   username,
+  subscription = 'freemium',
   isNewUser = false
 }) => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { user } = useAuth();
   
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      await supabase.auth.signOut();
+      navigate('/');
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
   
   return (

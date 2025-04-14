@@ -11,13 +11,17 @@ interface BotControlPanelProps {
   onActivate: () => void;
   onDeactivate: () => void;
   subscription?: string;
+  showLimitReached?: boolean;
+  userId?: string;
 }
 
 const BotControlPanel: React.FC<BotControlPanelProps> = ({ 
   isActive, 
   onActivate, 
   onDeactivate,
-  subscription = 'freemium'
+  subscription = 'freemium',
+  showLimitReached = false,
+  userId
 }) => {
   const [showSettings, setShowSettings] = useState(false);
   
@@ -53,7 +57,7 @@ const BotControlPanel: React.FC<BotControlPanelProps> = ({
                 <Button 
                   className="w-full sm:w-auto" 
                   onClick={onActivate}
-                  disabled={isActive}
+                  disabled={isActive || showLimitReached}
                 >
                   <Play className="mr-2 h-4 w-4" /> Activer le Bot
                 </Button>
@@ -79,6 +83,12 @@ const BotControlPanel: React.FC<BotControlPanelProps> = ({
                   isActive={isActive}
                   subscription={subscription}
                 />
+              )}
+              
+              {showLimitReached && (
+                <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-md mt-2">
+                  Limite quotidienne atteinte. Le bot ne peut pas être activé aujourd'hui.
+                </div>
               )}
               
               <div className="text-sm text-muted-foreground mt-4">
