@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlanType } from '@/hooks/payment/types';
 import { toast } from '@/components/ui/use-toast';
@@ -32,8 +32,15 @@ const PaymentCard = ({
   onStripeCheckout,
   stripeCheckoutUrl
 }: PaymentCardProps) => {
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(true); // CGV présélectionnées
   const isCurrentPlan = currentSubscription === selectedPlan;
+  
+  // Redirection automatique vers Stripe quand l'URL est disponible
+  useEffect(() => {
+    if (stripeCheckoutUrl && !isStripeProcessing) {
+      window.location.href = stripeCheckoutUrl;
+    }
+  }, [stripeCheckoutUrl, isStripeProcessing]);
 
   const handleStripePayment = async () => {
     if (!selectedPlan) {
