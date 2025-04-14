@@ -29,6 +29,9 @@ export const useAutoSessions = (
   
   // Pour suivre la limite quotidienne
   const [dailyLimitProgress, setDailyLimitProgress] = useState(0);
+
+  // State to track initial session execution
+  const isInitialSessionExecuted = useRef(false);
   
   // Update lastKnownBalanceRef when userData.balance changes
   useEffect(() => {
@@ -92,7 +95,6 @@ export const useAutoSessions = (
   const { 
     lastAutoSessionTime,
     getLastAutoSessionTime,
-    isInitialSessionExecuted,
     getCurrentPersistentBalance
   } = useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, safeUserData, isBotActive);
   
@@ -350,6 +352,8 @@ export const useAutoSessions = (
     activityLevel: "medium", // Placeholder for compatibility
     generateAutomaticRevenue,
     isBotActive,
-    dailyLimitProgress
+    dailyLimitProgress,
+    isInitialSessionExecuted
   };
 };
+
