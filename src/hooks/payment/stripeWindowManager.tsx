@@ -13,29 +13,41 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     return false;
   }
   
-  // Indiquer au navigateur que l'action provient d'un clic utilisateur
-  console.log("Ouverture de l'URL Stripe:", stripeUrl);
-  
   try {
-    // Détection d'appareil mobile
-    const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|Windows Phone/i.test(navigator.userAgent);
+    // Détection d'appareil mobile (plus précise)
+    const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(navigator.userAgent);
+    
+    console.log(`Tentative d'ouverture de Stripe (${isMobile ? 'mobile' : 'desktop'}):`, stripeUrl);
     
     if (isMobile) {
-      // Sur appareils mobiles, la redirection directe fonctionne mieux
-      console.log("Appareil mobile détecté, redirection directe");
+      // Sur mobile, utiliser la redirection directe sans délai
+      console.log("Appareil mobile détecté, redirection directe immédiate");
       window.location.href = stripeUrl;
       return true;
     }
     
-    // Pour les autres appareils, essayer d'abord d'ouvrir une nouvelle fenêtre
+    // Sur desktop, essayer d'abord d'ouvrir dans un nouvel onglet
     const newWindow = window.open(stripeUrl, '_blank');
     
-    // Si l'ouverture a échoué (bloquée par popup blocker ou autre problème)
+    // Si l'ouverture échoue (bloqué par popup blocker ou autre)
     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      console.log("Ouverture de nouvelle fenêtre échouée, redirection directe");
+      console.log("Ouverture de nouvelle fenêtre échouée, tentative de redirection directe");
       
-      // Redirection directe en dernier recours
-      window.location.href = stripeUrl;
+      // Création d'un élément a avec target _blank pour simuler un clic utilisateur
+      const link = document.createElement('a');
+      link.href = stripeUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.click();
+      
+      // Si ça échoue aussi, redirection directe
+      setTimeout(() => {
+        if (!newWindow || newWindow.closed) {
+          console.log("Seconde tentative échouée, redirection directe");
+          window.location.href = stripeUrl;
+        }
+      }, 1000);
+      
       return true;
     } else {
       // Focus sur la nouvelle fenêtre
@@ -46,8 +58,8 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
   } catch (error) {
     console.error("Erreur lors de l'ouverture de la fenêtre:", error);
     
-    // Méthode de dernier recours avec délai pour éviter les problèmes
-    console.log("Méthode de secours: redirection directe");
+    // Dernière tentative avec redirection directe
+    console.log("Méthode de secours: redirection directe après erreur");
     window.location.href = stripeUrl;
     return true;
   }

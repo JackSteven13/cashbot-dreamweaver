@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { AlertTriangle, ExternalLink } from 'lucide-react';
-import Button from '@/components/Button';
+import { AlertTriangle, ExternalLink, Link2, Copy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 
 interface MobilePaymentHelperProps {
@@ -15,7 +15,7 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
   onHelp,
   stripeUrl 
 }) => {
-  if (!isVisible) return null;
+  if (!isVisible || !stripeUrl) return null;
 
   const handleOpenDirectly = () => {
     // Notifier l'utilisateur
@@ -27,17 +27,20 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
     
     // Déclencher la fonction de callback
     onHelp();
+  };
+  
+  const copyToClipboard = () => {
+    if (!stripeUrl) return;
     
-    // Si l'URL est disponible, tenter une redirection directe après un court délai
-    if (stripeUrl) {
-      setTimeout(() => {
-        try {
-          console.log("Redirection directe via le helper:", stripeUrl);
-          window.location.href = stripeUrl;
-        } catch (e) {
-          console.error("Erreur lors de la redirection directe:", e);
-        }
-      }, 500);
+    try {
+      navigator.clipboard.writeText(stripeUrl);
+      toast({
+        title: "Lien copié",
+        description: "L'URL de paiement a été copiée dans votre presse-papier",
+        duration: 3000,
+      });
+    } catch (e) {
+      console.error("Erreur lors de la copie:", e);
     }
   };
 
@@ -48,9 +51,9 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
         <h3 className="font-medium">Problème d'ouverture du paiement</h3>
       </div>
       <p className="mt-2 text-sm text-yellow-700 dark:text-yellow-400">
-        Si la page de paiement ne s'ouvre pas automatiquement, veuillez cliquer sur le bouton ci-dessous.
+        Si la page de paiement ne s'ouvre pas automatiquement, essayez l'une des options ci-dessous.
       </p>
-      <div className="mt-3 flex space-x-2">
+      <div className="mt-3 flex flex-col gap-2">
         <Button 
           onClick={handleOpenDirectly}
           className="bg-yellow-600 hover:bg-yellow-700 text-white flex items-center gap-2"
@@ -58,6 +61,28 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
           <ExternalLink className="h-4 w-4" />
           Ouvrir la page de paiement
         </Button>
+        
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={copyToClipboard}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1"
+          >
+            <Copy className="h-3 w-3" />
+            Copier l'URL
+          </Button>
+          
+          <a 
+            href={stripeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+          >
+            <Link2 className="h-3 w-3" />
+            Ouvrir dans un nouvel onglet
+          </a>
+        </div>
       </div>
     </div>
   );

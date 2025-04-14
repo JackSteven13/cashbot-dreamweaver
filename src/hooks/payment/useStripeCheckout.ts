@@ -16,6 +16,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const MAX_RETRIES = 5;
+  const RETRY_DELAY = 1000;
 
   // Check current subscription from Supabase
   const checkSubscription = async () => {
@@ -92,6 +93,47 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     }
   }, [navigate, selectedPlan]);
 
+  const createCheckoutSession = async (): Promise<{ url: string, sessionId: string } | null> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Vous devez être connecté pour effectuer cette action");
+      }
+
+      console.log(`Création d'une session de paiement pour ${selectedPlan}`);
+      
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          plan: selectedPlan,
+          successUrl: `${window.location.origin}/payment-success`,
+          cancelUrl: `${window.location.origin}/offres`,
+        }
+      });
+      
+      if (error) {
+        throw new Error(`Erreur d'invocation: ${error.message}`);
+      }
+      
+      if (!data?.url) {
+        throw new Error("Aucune URL de paiement générée");
+      }
+      
+      console.log("URL de paiement obtenue:", data.url);
+      
+      // Extraire l'ID de session de l'URL
+      const sessionId = data.url.split('/').pop()?.split('#')[0] || null;
+      
+      return {
+        url: data.url,
+        sessionId: sessionId || ''
+      };
+    } catch (err) {
+      console.error("Erreur lors de la création de session:", err);
+      throw err;
+    }
+  };
+
   const handleStripeCheckout = async () => {
     if (!selectedPlan) {
       toast({
@@ -104,6 +146,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
 
     setIsStripeProcessing(true);
     setRetryCount(0);
+    setStripeCheckoutUrl(null);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -119,53 +162,42 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       }
 
       // Essayer de créer une session de paiement avec des tentatives
+      let lastError = null;
+      
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
           console.log(`Tentative ${attempt + 1} de création de session de paiement pour ${selectedPlan}`);
           
-          const { data, error } = await supabase.functions.invoke('create-checkout', {
-            body: {
-              plan: selectedPlan,
-              successUrl: `${window.location.origin}/payment-success`,
-              cancelUrl: `${window.location.origin}/offres`,
-            }
-          });
+          const result = await createCheckoutSession();
           
-          if (error) {
-            throw new Error(`Erreur d'invocation: ${error.message}`);
+          if (result && result.url) {
+            // Stocker l'URL et l'ID de session pour utilisation ultérieure
+            setStripeCheckoutUrl(result.url);
+            setCheckoutSessionId(result.sessionId);
+            
+            // La redirection vers Stripe est gérée par le composant PaymentCard
+            // via l'effet qui surveille stripeCheckoutUrl
+            return;
           }
-          
-          if (!data?.url) {
-            throw new Error("Aucune URL de paiement générée");
-          }
-          
-          console.log("URL de paiement obtenue:", data.url);
-          
-          // Stocker l'URL pour redirection
-          setStripeCheckoutUrl(data.url);
-          
-          // Essayer d'ouvrir la page Stripe immédiatement
-          openStripeWindow(data.url);
-          
-          return;
         } catch (err) {
           console.error(`Erreur lors de la tentative ${attempt + 1}:`, err);
+          lastError = err;
           
           // Si ce n'est pas la dernière tentative, attendre avant de réessayer
           if (attempt < MAX_RETRIES - 1) {
             setRetryCount(attempt + 1);
-            // Attendre un peu plus longtemps à chaque tentative (backoff exponentiel)
-            const delay = Math.pow(2, attempt) * 1000;
+            // Utiliser un délai exponentiel
+            const delay = RETRY_DELAY * Math.pow(2, attempt);
             await new Promise(resolve => setTimeout(resolve, delay));
-          } else {
-            throw err; // Relancer l'erreur si nous avons épuisé nos tentatives
           }
         }
       }
+      
+      // Si nous avons épuisé toutes nos tentatives
+      throw lastError || new Error("Impossible de créer une session de paiement après plusieurs tentatives");
 
     } catch (error: any) {
       console.error("Erreur de paiement:", error);
-      setIsStripeProcessing(false);
       
       toast({
         title: "Erreur de paiement",
@@ -184,6 +216,24 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     }
     return false;
   }, [stripeCheckoutUrl]);
+  
+  // Store Stripe URL in session storage for possible recovery
+  useEffect(() => {
+    if (stripeCheckoutUrl) {
+      sessionStorage.setItem('stripeCheckoutUrl', stripeCheckoutUrl);
+      sessionStorage.setItem('stripeSessionTimestamp', Date.now().toString());
+    }
+  }, [stripeCheckoutUrl]);
+  
+  // Try to recover stored URL on component mount
+  useEffect(() => {
+    const storedUrl = sessionStorage.getItem('stripeCheckoutUrl');
+    const timestamp = parseInt(sessionStorage.getItem('stripeSessionTimestamp') || '0');
+    // Only use stored URL if it's less than 15 minutes old
+    if (storedUrl && Date.now() - timestamp < 15 * 60 * 1000) {
+      setStripeCheckoutUrl(storedUrl);
+    }
+  }, []);
 
   // Check subscription when the hook is initialized
   useEffect(() => {
@@ -196,6 +246,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     stripeCheckoutUrl,
     isChecking,
     actualSubscription,
-    openStripeCheckoutWindow
+    openStripeCheckoutWindow,
+    retryCount
   };
 };

@@ -12,7 +12,7 @@ export interface CreateCheckoutParams {
   blockTestCards?: boolean;
 }
 
-// Correction des identifiants de prix pour utiliser des prix dynamiques plutôt que des IDs codés en dur
+// Configuration des prix par plan - version simplifiée sans ID codés en dur
 const PLANS = {
   freemium: null,
   starter: {
@@ -72,8 +72,8 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
     console.log(`Created new customer: ${customerId}`);
   }
   
-  // Créer une session de checkout avec un prix dynamique plutôt qu'un ID de prix Stripe
-  const session = await stripe.checkout.sessions.create({
+  // Créer une session de checkout avec des paramètres simplifiés
+  const sessionParams = {
     customer: customerId,
     payment_method_types: ['card'],
     line_items: [
@@ -97,19 +97,26 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
     cancel_url: cancelUrl,
     allow_promotion_codes: true,
     client_reference_id: userId,
-    subscription_data: {
-      metadata: {
-        userId,
-        referrerId: referrerId || '',
-        previousPlan: currentSubscription || 'none'
-      }
-    },
     metadata: {
       userId,
       plan,
       referrerId: referrerId || ''
     }
-    // Suppression des options qui causent l'erreur
+  };
+  
+  // Ajouter les métadonnées d'abonnement de manière sécurisée
+  const subscriptionData: Record<string, any> = {
+    metadata: {
+      userId,
+      referrerId: referrerId || '',
+      previousPlan: currentSubscription || 'none'
+    }
+  };
+  
+  // Session de checkout complète
+  const session = await stripe.checkout.sessions.create({
+    ...sessionParams,
+    subscription_data: subscriptionData
   });
   
   console.log(`Created checkout session: ${session.id}`);
