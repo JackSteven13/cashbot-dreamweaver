@@ -3,7 +3,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserData } from '@/hooks/userData/useUserData';
-import { useBotActivation } from '@/hooks/bot/useBotActivation';
 import DashboardHeader from './DashboardHeader';
 import DashboardMetrics from './DashboardMetrics';
 import BotControlPanel from './bot/BotControlPanel';
@@ -26,15 +25,23 @@ const DashboardContainer = () => {
     dailySessionCount, 
     showLimitAlert,
     isLoading,
-    fetchUserData,
+    refreshUserData, // Utilisez refreshUserData au lieu de fetchUserData
     setShowLimitAlert
   } = useUserData();
   
-  const { isBotActive, activateBot, deactivateBot } = useBotActivation({
-    userData,
-    isNewUser,
-    onActivate: () => console.log("Bot activé")
-  });
+  // État local pour le contrôle du bot
+  const [isBotActive, setIsBotActive] = useState(false);
+  
+  // Fonctions pour activer/désactiver le bot
+  const activateBot = () => {
+    console.log("Bot activé");
+    setIsBotActive(true);
+  };
+  
+  const deactivateBot = () => {
+    console.log("Bot désactivé");
+    setIsBotActive(false);
+  };
   
   const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
   
@@ -50,9 +57,9 @@ const DashboardContainer = () => {
   useEffect(() => {
     if (user && !userData && !isLoading) {
       console.log("Chargement des données utilisateur");
-      fetchUserData();
+      refreshUserData(); // Utilisez refreshUserData au lieu de fetchUserData
     }
-  }, [user, userData, isLoading, fetchUserData]);
+  }, [user, userData, isLoading, refreshUserData]);
 
   // Gestionnaire pour le nom d'utilisateur chargé
   const handleUsernameLoaded = (name: string) => {
@@ -65,19 +72,19 @@ const DashboardContainer = () => {
     console.log("Données utilisateur rafraîchies:", data);
     // Recharger les données complètes
     if (!isLoading) {
-      fetchUserData();
+      refreshUserData(); // Utilisez refreshUserData au lieu de fetchUserData
     }
   };
 
   if (authLoading || (!userData && isLoading)) {
-    return <DashboardSkeleton username={username} />;
+    return <DashboardSkeleton username={username || 'Utilisateur'} />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <DashboardHeader 
         username={username || userData?.username || 'Utilisateur'} 
-        isNewUser={isNewUser}
+        isNewUser={isNewUser || false}
       />
       
       <main className="container mx-auto px-4 py-6">
@@ -96,14 +103,16 @@ const DashboardContainer = () => {
           <TabsContent value="dashboard" className="space-y-6">
             <DashboardMetrics
               balance={userData?.balance || 0}
-              username={userData?.username || username || 'Utilisateur'}
+              referralLink={userData?.referralLink || ''}
+              isStartingSession={false}
+              handleStartSession={() => {}}
+              transactions={userData?.transactions || []}
               subscription={userData?.subscription || 'freemium'}
               isNewUser={isNewUser}
               dailySessionCount={dailySessionCount}
-              showLimitAlert={showLimitAlert}
-              setShowLimitAlert={setShowLimitAlert}
-              referralCount={userData?.referrals?.length || 0}
+              canStartSession={true}
               referrals={userData?.referrals || []}
+              isBotActive={isBotActive}
             />
           </TabsContent>
           
@@ -112,7 +121,6 @@ const DashboardContainer = () => {
               isActive={isBotActive}
               onActivate={activateBot}
               onDeactivate={deactivateBot}
-              username={userData?.username || username || 'Utilisateur'}
               subscription={userData?.subscription || 'freemium'}
             />
           </TabsContent>

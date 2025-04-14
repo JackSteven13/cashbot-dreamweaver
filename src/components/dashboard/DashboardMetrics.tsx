@@ -43,7 +43,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
   const activeReferralCount = isNewUser ? 0 : (referrals?.filter(ref => ref.active !== false)?.length || 0);
   
   return (
-    <div className="dashboard-metrics">
+    <div className="dashboard-metrics space-y-6">
       <SummaryPanel
         balance={displayBalance}
         referralLink={referralLink}
@@ -62,8 +62,9 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
       />
       
       <TransactionsPanel
-        transactions={isNewUser ? [] : transactions}
-        subscription={subscription}
+        transactions={transactions}
+        isLoading={transactions.length === 0}
+        isNewUser={isNewUser}
       />
     </div>
   );

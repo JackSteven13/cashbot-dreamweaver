@@ -1,103 +1,96 @@
 
-import React, { useState, useEffect } from 'react';
-import { useToast } from '@/components/ui/use-toast';
-import { Switch } from '@/components/ui/switch';
-import { Bot, Info } from 'lucide-react';
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, Play, Pause, Settings } from 'lucide-react';
+import BotStatusIndicator from './BotStatusIndicator';
+import BotSettingsPanel from './BotSettingsPanel';
 
 interface BotControlPanelProps {
-  isBotActive: boolean;
-  showLimitReached: boolean;
+  isActive: boolean;
+  onActivate: () => void;
+  onDeactivate: () => void;
   subscription?: string;
-  userId?: string;
 }
 
-const BotControlPanel: React.FC<BotControlPanelProps> = ({
-  isBotActive,
-  showLimitReached,
-  subscription = 'freemium',
-  userId
+const BotControlPanel: React.FC<BotControlPanelProps> = ({ 
+  isActive, 
+  onActivate, 
+  onDeactivate,
+  subscription = 'freemium'
 }) => {
-  const { toast } = useToast();
-  const [switchValue, setSwitchValue] = useState(isBotActive);
+  const [showSettings, setShowSettings] = useState(false);
   
-  // Synchroniser l'état interne avec les props
-  useEffect(() => {
-    setSwitchValue(isBotActive);
-  }, [isBotActive]);
-  
-  // Fonction pour gérer le changement d'état du bot
-  const handleToggleBot = (checked: boolean) => {
-    // Si la limite est atteinte, ne pas permettre l'activation
-    if (showLimitReached && checked) {
-      toast({
-        title: "Limite quotidienne atteinte",
-        description: "Vous avez atteint votre limite quotidienne. Le bot sera disponible à nouveau demain.",
-        variant: "destructive",
-        duration: 5000
-      });
-      return;
-    }
-    
-    // Mettre à jour l'état local
-    setSwitchValue(checked);
-    
-    // Déclencher l'événement global pour informer les autres composants
-    window.dispatchEvent(new CustomEvent('bot:status-change', {
-      detail: {
-        active: checked,
-        userId: userId
-      }
-    }));
-    
-    // Afficher un toast de confirmation
-    toast({
-      title: checked ? "Assistant d'analyse activé" : "Assistant d'analyse désactivé",
-      description: checked 
-        ? "L'assistant va maintenant générer des revenus automatiquement."
-        : "La génération automatique de revenus est en pause.",
-      duration: 3000
-    });
-    
-    // Persister l'état du bot dans localStorage
-    localStorage.setItem(`botActive_${userId}`, checked.toString());
-  };
+  // Vérifier si l'utilisateur a accès au bot en fonction de son abonnement
+  const hasAccess = subscription !== 'freemium';
   
   return (
-    <div className="w-full mb-6 bg-[#121723] rounded-lg border border-slate-800 p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Bot className="h-5 w-5 text-green-500" />
-          <h3 className="text-lg font-medium">Assistant d'analyse</h3>
-        </div>
-        <Switch 
-          checked={switchValue} 
-          onCheckedChange={handleToggleBot}
-          disabled={showLimitReached}
-        />
-      </div>
-      
-      <p className="text-sm text-muted-foreground mt-1">Génération automatique de revenus</p>
-      
-      <p className="text-sm text-muted-foreground my-2">
-        {showLimitReached ? (
-          <span className="text-amber-400">Limite quotidienne atteinte. Disponible à nouveau demain.</span>
-        ) : (
-          switchValue ? (
-            "L'assistant génère automatiquement des revenus en analysant le contenu vidéo."
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Contrôle du Bot</span>
+            <BotStatusIndicator active={isActive} />
+          </CardTitle>
+          <CardDescription>
+            Activez ou désactivez le bot pour générer automatiquement des revenus.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!hasAccess ? (
+            <div className="bg-amber-50 dark:bg-amber-900/30 p-4 rounded-md flex items-start gap-3 mb-4">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-amber-800 dark:text-amber-300">Accès limité</h4>
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  Cette fonctionnalité nécessite un abonnement premium. Veuillez mettre à niveau votre forfait pour activer le bot.
+                </p>
+              </div>
+            </div>
           ) : (
-            "Activez-le pour générer des revenus automatiquement."
-          )
-        )}
-      </p>
-      
-      <div className="flex items-center mt-2 text-xs text-muted-foreground">
-        <Info className="h-3 w-3 mr-1" />
-        <span>
-          {subscription === 'freemium' 
-            ? "Abonnement freemium: limité à 0.50€/jour" 
-            : `Abonnement ${subscription} actif`}
-        </span>
-      </div>
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3 items-center">
+                <Button 
+                  className="w-full sm:w-auto" 
+                  onClick={onActivate}
+                  disabled={isActive}
+                >
+                  <Play className="mr-2 h-4 w-4" /> Activer le Bot
+                </Button>
+                <Button 
+                  className="w-full sm:w-auto" 
+                  variant="outline" 
+                  onClick={onDeactivate}
+                  disabled={!isActive}
+                >
+                  <Pause className="mr-2 h-4 w-4" /> Désactiver le Bot
+                </Button>
+                <Button
+                  className="w-full sm:w-auto"
+                  variant="ghost"
+                  onClick={() => setShowSettings(!showSettings)}
+                >
+                  <Settings className="mr-2 h-4 w-4" /> Paramètres
+                </Button>
+              </div>
+              
+              {showSettings && (
+                <BotSettingsPanel 
+                  isActive={isActive}
+                  subscription={subscription}
+                />
+              )}
+              
+              <div className="text-sm text-muted-foreground mt-4">
+                <p>
+                  Le bot générera automatiquement des revenus en fonction de votre niveau d'abonnement.
+                  Vous pouvez le désactiver à tout moment.
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
