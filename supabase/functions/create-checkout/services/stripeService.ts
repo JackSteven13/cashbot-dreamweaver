@@ -86,15 +86,15 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
       plan,
       referrerId: referrerId || ''
     },
-    // Option to block test cards in production
-    payment_method_options: blockTestCards ? {
+    // Toujours bloquer les cartes de test en production
+    payment_method_options: {
       card: {
         statement_descriptor_suffix: 'StreamGenius',
         setup_future_usage: 'off_session',
         // This blocks test cards in production
         setup_mandate: 'card_testing_not_allowed'
       }
-    } : undefined
+    }
   });
   
   console.log(`Created checkout session: ${session.id}`);

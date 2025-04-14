@@ -71,7 +71,6 @@ const StripeCheckoutForm = ({
         </div>
         <p className="mt-2 text-sm text-green-600 dark:text-green-500">
           Vos informations bancaires sont protégées avec le plus haut niveau de sécurité.
-          <strong className="block mt-1">Attention : Seules les cartes bancaires réelles sont acceptées.</strong>
         </p>
       </div>
       

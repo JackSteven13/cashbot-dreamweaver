@@ -130,6 +130,7 @@ Deno.serve(async (req) => {
     console.log(`Creating Stripe checkout session for plan: ${plan}`);
     
     try {
+      // Toujours bloquer les cartes de test en production
       const session = await createCheckoutSession({
         userId: user.id,
         userEmail: user.email || '',
@@ -137,7 +138,8 @@ Deno.serve(async (req) => {
         successUrl: successUrl || '',
         cancelUrl: cancelUrl || '',
         referrerId,
-        currentSubscription
+        currentSubscription,
+        blockTestCards: true  // Forcer le blocage des cartes de test
       });
       
       // If referral code is provided, track it even before payment completion

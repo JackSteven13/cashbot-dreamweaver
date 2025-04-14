@@ -44,6 +44,26 @@ export const checkCurrentSubscription = async (): Promise<string | null> => {
 };
 
 /**
+ * Update subscription in localStorage and dispatch event
+ */
+export const updateLocalSubscription = async (subscription: string): Promise<boolean> => {
+  try {
+    // Set subscription in localStorage
+    localStorage.setItem('subscription', subscription);
+    
+    // Dispatch event to notify other components
+    window.dispatchEvent(new CustomEvent('subscription:updated', { 
+      detail: { subscription } 
+    }));
+    
+    return true;
+  } catch (error) {
+    console.error("Error updating local subscription:", error);
+    return false;
+  }
+};
+
+/**
  * Force synchronization of subscription data
  */
 export const forceSyncSubscription = async (): Promise<boolean> => {
