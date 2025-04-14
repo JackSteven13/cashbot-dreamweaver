@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import DashboardMetrics from './DashboardMetrics';
-import BotControlPanel from './bot/BotControlPanel';
 import { Progress } from '@/components/ui/progress';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -71,17 +70,6 @@ const DashboardContent: React.FC<DashboardContentProps> = React.memo(({
       window.removeEventListener('dailyGains:reset', updateProgress);
     };
   }, [dailyLimit]);
-
-  // Fonctions pour gérer le bot
-  const handleActivateBot = () => {
-    console.log("Bot activé");
-    // Ici, vous pourriez avoir d'autres actions à effectuer
-  };
-
-  const handleDeactivateBot = () => {
-    console.log("Bot désactivé");
-    // Ici, vous pourriez avoir d'autres actions à effectuer
-  };
   
   return (
     <div className="px-4 md:px-6 py-6 md:py-8 max-w-6xl mx-auto animate-fadein">
@@ -97,16 +85,6 @@ const DashboardContent: React.FC<DashboardContentProps> = React.memo(({
         </div>
         <Progress value={limitProgress} className="h-2" />
       </div>
-      
-      {/* Contrôle du bot d'analyse */}
-      <BotControlPanel 
-        isActive={isBotActive}
-        showLimitReached={showLimitAlert}
-        subscription={subscription}
-        userId={userData?.profile?.id}
-        onActivate={handleActivateBot}
-        onDeactivate={handleDeactivateBot}
-      />
       
       {/* Métriques du tableau de bord */}
       <DashboardMetrics

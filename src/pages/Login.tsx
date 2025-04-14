@@ -1,13 +1,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -17,7 +16,6 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);
-  const [showResetAlert, setShowResetAlert] = useState(false);
   const loginAttempted = useRef(false);
   
   const from = (location.state as any)?.from?.pathname || '/dashboard';
@@ -39,20 +37,17 @@ const Login = () => {
       localStorage.removeItem(flag);
     });
     
-    // Si un utilisateur arrive sur le login, c'est qu'il n'est probablement plus authentifié
-    // Donc on peut vérifier et nettoyer les jetons potentiellement invalides
+    // Silencieusement nettoyer les jetons potentiellement invalides sans afficher d'alerte
     const authToken = localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
     if (authToken) {
       try {
-        // Analyser le jeton pour voir s'il est expiré
         const tokenData = JSON.parse(authToken);
         const expiresAt = tokenData?.expires_at;
         
         if (expiresAt && Date.now() / 1000 >= expiresAt) {
-          console.log("Detected expired token, cleaning up");
+          console.log("Detected expired token, cleaning up silently");
           localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
           localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
-          setShowResetAlert(true);
         }
       } catch (e) {
         console.error("Error parsing auth token:", e);
@@ -189,26 +184,6 @@ const Login = () => {
       setIsLoading(false);
     }
   };
-  
-  // Fonction pour nettoyer complètement le localStorage avant de réessayer
-  const handleClearAndRetry = () => {
-    // Nettoyer tous les jetons et flags
-    localStorage.clear();
-    
-    // Réinitialiser pour permettre de réessayer
-    loginAttempted.current = false;
-    setShowResetAlert(false);
-    
-    toast({
-      title: "Cache nettoyé",
-      description: "Vous pouvez maintenant vous reconnecter",
-    });
-    
-    // Rafraîchir la page après un petit délai
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
-  };
 
   // Si on vérifie encore la session, afficher un loader
   if (isCheckingSession) {
@@ -237,24 +212,6 @@ const Login = () => {
               Accédez à votre tableau de bord Stream genius
             </p>
           </div>
-          
-          {showResetAlert && (
-            <Alert variant="warning" className="mb-6 bg-amber-900/20 border-amber-700/50 text-amber-200">
-              <AlertCircle className="h-4 w-4 text-amber-400" />
-              <AlertDescription className="flex flex-col gap-2">
-                <p>Une session précédente a été détectée mais semble avoir expiré.</p>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="bg-amber-800/50 hover:bg-amber-800/70 text-amber-100 mt-1"
-                  onClick={handleClearAndRetry}
-                >
-                  <RefreshCw className="mr-2 h-3 w-3" />
-                  Nettoyer le cache et réessayer
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
           
           <div className="glass-panel p-6 rounded-xl">
             {lastLoggedInEmail && (
