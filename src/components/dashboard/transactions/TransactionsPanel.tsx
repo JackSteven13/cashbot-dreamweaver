@@ -21,6 +21,7 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
   title = "Transactions récentes"
 }) => {
   const navigate = useNavigate();
+  const refreshKey = Date.now(); // Add a refreshKey for TransactionListItem
 
   const handleViewAllClick = () => {
     navigate('/dashboard/transactions');
@@ -57,7 +58,12 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
         {transactions.length > 0 ? (
           <div className="space-y-2">
             {transactions.slice(0, 5).map((transaction, index) => (
-              <TransactionListItem key={index} transaction={transaction} />
+              <TransactionListItem 
+                key={index}
+                transaction={transaction}
+                refreshKey={refreshKey}
+                index={index}
+              />
             ))}
           </div>
         ) : (

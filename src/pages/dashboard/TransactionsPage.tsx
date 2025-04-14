@@ -63,7 +63,6 @@ const TransactionsPage = memo(() => {
   
   // Garantir qu'un tableau vide est fourni si userData?.transactions n'est pas défini
   const transactions = userData?.transactions || [];
-  const subscription = userData?.subscription || 'freemium';
   
   return (
     <div className="w-full p-4">
@@ -89,7 +88,6 @@ const TransactionsPage = memo(() => {
             <TransactionsPanel 
               key={refreshKey}
               transactions={transactions}
-              subscription={subscription}
               isNewUser={false}
             />
           )}
