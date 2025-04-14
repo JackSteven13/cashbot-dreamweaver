@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { CreditCard, Lock } from 'lucide-react';
 import Button from '@/components/Button';
 import { PlanType } from '@/hooks/payment/types';
@@ -23,13 +23,7 @@ const StripeCheckoutForm = ({
 }: StripeCheckoutFormProps) => {
   const [termsAccepted, setTermsAccepted] = useState(true);
   
-  // Redirection automatique vers Stripe
-  useEffect(() => {
-    if (stripeUrl && isStripeProcessing) {
-      window.location.href = stripeUrl;
-    }
-  }, [stripeUrl, isStripeProcessing]);
-
+  // Fonction de paiement - l'utilisateur doit cliquer manuellement
   const handleCheckout = () => {
     if (!termsAccepted) {
       toast({
@@ -41,8 +35,8 @@ const StripeCheckoutForm = ({
     }
 
     toast({
-      title: "Redirection vers le paiement",
-      description: "Vous allez être redirigé vers notre système de paiement sécurisé...",
+      title: "Préparation du paiement",
+      description: "Préparation de votre session de paiement sécurisée...",
     });
 
     onCheckout();
@@ -94,8 +88,21 @@ const StripeCheckoutForm = ({
         isLoading={isStripeProcessing}
         disabled={!termsAccepted || isStripeProcessing}
       >
-        {isStripeProcessing ? 'Redirection vers le paiement...' : 'Payer maintenant'}
+        {isStripeProcessing ? 'Préparation du paiement...' : 'Payer maintenant'}
       </Button>
+
+      {stripeUrl && !isStripeProcessing && (
+        <div className="mt-4 text-center">
+          <a 
+            href={stripeUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Ouvrir la page de paiement
+          </a>
+        </div>
+      )}
 
       <div className="mt-4 text-center text-sm text-gray-500">
         <p>Paiement sécurisé par Stripe</p>

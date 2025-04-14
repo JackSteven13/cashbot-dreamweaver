@@ -71,19 +71,6 @@ const Payment = () => {
       return () => clearTimeout(timeout);
     }
   }, [selectedPlan, currentSubscription, isAuthChecking, navigate]);
-  
-  // Automatically trigger Stripe payment after loading plan
-  useEffect(() => {
-    if (selectedPlan && !isAuthChecking && useStripePayment && !stripeCheckoutUrl && !isStripeProcessing) {
-      console.log("Déclenchement automatique du paiement Stripe");
-      // Short delay to ensure all components are mounted
-      const timeout = setTimeout(() => {
-        initiateStripeCheckout();
-      }, 500);
-      
-      return () => clearTimeout(timeout);
-    }
-  }, [selectedPlan, isAuthChecking, useStripePayment, stripeCheckoutUrl, isStripeProcessing, initiateStripeCheckout]);
 
   if (isAuthChecking) {
     return <PaymentLoading />;

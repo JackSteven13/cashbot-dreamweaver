@@ -78,10 +78,17 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
         throw new Error("Impossible de créer la session de paiement");
       }
 
-      // Stocker l'URL de paiement et rediriger
+      // Stocker l'URL de paiement mais ne pas rediriger automatiquement
       setStripeCheckoutUrl(data.url);
-      console.log("Redirection vers Stripe:", data.url);
-      window.location.href = data.url;
+      
+      toast({
+        title: "Session de paiement créée",
+        description: "Cliquez sur le bouton pour finaliser votre paiement",
+        duration: 5000,
+      });
+      
+      // On ne redirige plus automatiquement
+      setIsStripeProcessing(false);
 
     } catch (error: any) {
       console.error("Erreur de paiement:", error);
