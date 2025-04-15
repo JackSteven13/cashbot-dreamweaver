@@ -162,6 +162,11 @@ const DashboardContainer = () => {
     return <DashboardSkeleton username={displayName} />;
   }
 
+  // S'assurer que terminalLines est du bon type si c'est un tableau de chaînes
+  const formattedLines = terminalLines && Array.isArray(terminalLines) 
+    ? terminalLines.map(line => (typeof line === 'string' ? { text: line, type: 'info' } : line))
+    : terminalLines;
+
   return (
     <>
       <DashboardLayout 
@@ -184,9 +189,9 @@ const DashboardContainer = () => {
       </DashboardLayout>
       
       {/* Terminal overlay with animations */}
-      {showAnalysis && (
+      {showAnalysis && formattedLines && (
         <TerminalOverlay 
-          lines={terminalLines} 
+          lines={formattedLines} 
           isComplete={analysisComplete}
           isLimitReached={limitReached}
           isDismissable={analysisComplete}

@@ -53,9 +53,14 @@ const AnalysisController: React.FC = () => {
     return null;
   }
   
+  // S'assurer que terminalLines est du bon type si c'est un tableau de chaînes
+  const formattedLines = Array.isArray(terminalLines) 
+    ? terminalLines.map(line => (typeof line === 'string' ? { text: line, type: 'info' } : line))
+    : terminalLines;
+  
   return (
     <TerminalOverlay 
-      lines={terminalLines} 
+      lines={formattedLines}
       isComplete={analysisComplete}
       isLimitReached={limitReached}
       isDismissable={analysisComplete}

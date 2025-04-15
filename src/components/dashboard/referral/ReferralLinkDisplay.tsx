@@ -24,7 +24,7 @@ const ReferralLinkDisplay: React.FC<ReferralLinkDisplayProps> = ({
     toast({
       title: "Lien copié !",
       description: "Votre lien de parrainage a été copié dans le presse-papier",
-      variant: "success",
+      variant: "default",
     });
     
     // Réinitialiser l'état de copie après 2 secondes

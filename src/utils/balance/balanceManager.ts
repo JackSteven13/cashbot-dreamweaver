@@ -8,17 +8,21 @@
 let currentBalance: number | null = null;
 let highestBalance: number | null = null;
 let lastUpdateTimestamp: number = 0;
+let dailyGains: number = 0;
 
 // Initialisation à partir du stockage local si disponible
-const initialize = () => {
+const initialize = (initialBalance?: number) => {
   try {
-    const storedBalance = localStorage.getItem('currentBalance');
-    const storedHighestBalance = localStorage.getItem('highestBalance');
-    
-    if (storedBalance) {
-      currentBalance = parseFloat(storedBalance);
+    if (initialBalance !== undefined && !isNaN(initialBalance)) {
+      currentBalance = initialBalance;
+    } else {
+      const storedBalance = localStorage.getItem('currentBalance');
+      if (storedBalance) {
+        currentBalance = parseFloat(storedBalance);
+      }
     }
     
+    const storedHighestBalance = localStorage.getItem('highestBalance');
     if (storedHighestBalance) {
       highestBalance = parseFloat(storedHighestBalance);
     } else if (currentBalance !== null) {
@@ -30,7 +34,12 @@ const initialize = () => {
       lastUpdateTimestamp = new Date(storedTimestamp).getTime();
     }
     
-    console.log(`[balanceManager] Initialized - Current: ${currentBalance}, Highest: ${highestBalance}`);
+    const storedDailyGains = localStorage.getItem('dailyGains');
+    if (storedDailyGains) {
+      dailyGains = parseFloat(storedDailyGains);
+    }
+    
+    console.log(`[balanceManager] Initialized - Current: ${currentBalance}, Highest: ${highestBalance}, Daily Gains: ${dailyGains}`);
   } catch (error) {
     console.error('Error initializing balance manager:', error);
   }
@@ -105,8 +114,13 @@ export const resetDailyCounters = (): void => {
   try {
     localStorage.setItem('dailySessionCount', '0');
     localStorage.setItem('lastDailyReset', new Date().toISOString());
+    localStorage.setItem('dailyGains', '0');
+    dailyGains = 0;
     
     console.log('[balanceManager] Daily counters reset');
+    
+    // Trigger l'événement de réinitialisation pour les autres composants
+    window.dispatchEvent(new CustomEvent('dailyGains:reset'));
   } catch (error) {
     console.error('Error resetting daily counters:', error);
   }
@@ -162,11 +176,132 @@ export const forceBalanceSync = (serverBalance: number): void => {
   }
 };
 
+/**
+ * Ajoute un gain quotidien au total
+ */
+export const addDailyGain = (gain: number): number => {
+  try {
+    dailyGains += gain;
+    localStorage.setItem('dailyGains', String(dailyGains));
+    
+    // Déclencher un événement pour que les autres composants sachent que les gains quotidiens ont changé
+    window.dispatchEvent(new CustomEvent('dailyGains:updated', {
+      detail: { gains: dailyGains }
+    }));
+    
+    return dailyGains;
+  } catch (error) {
+    console.error('Error adding daily gain:', error);
+    return dailyGains;
+  }
+};
+
+/**
+ * Récupère le total des gains quotidiens
+ */
+export const getDailyGains = (): number => {
+  try {
+    const storedDailyGains = localStorage.getItem('dailyGains');
+    if (storedDailyGains) {
+      dailyGains = parseFloat(storedDailyGains);
+    }
+    return dailyGains;
+  } catch (error) {
+    console.error('Error getting daily gains:', error);
+    return 0;
+  }
+};
+
+/**
+ * Force une mise à jour du solde sans affecter l'historique
+ */
+export const forceUpdate = (newBalance: number): void => {
+  currentBalance = newBalance;
+  localStorage.setItem('currentBalance', String(newBalance));
+  localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
+  console.log(`[balanceManager] Balance force updated to ${newBalance}`);
+};
+
+/**
+ * Ajoute une transaction pour l'utilisateur
+ */
+export const addTransaction = async (userId: string, gain: number, report: string) => {
+  try {
+    console.log(`[balanceManager] Adding transaction for user ${userId}: ${gain}€ - ${report}`);
+    
+    // Dans une véritable implémentation, cette fonction enverrait la transaction
+    // à un serveur backend. Pour cette démo, nous simulons juste un délai.
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // À ce stade, nous supposons que la transaction a été ajoutée avec succès
+    addDailyGain(gain);
+    
+    return {
+      success: true,
+      transaction: {
+        date: new Date().toISOString(),
+        gain,
+        report
+      }
+    };
+  } catch (error) {
+    console.error('Error adding transaction:', error);
+    return {
+      success: false,
+      transaction: null
+    };
+  }
+};
+
+/**
+ * Synchronise le solde avec la base de données
+ */
+export const syncWithDatabase = async (): Promise<boolean> => {
+  try {
+    // Dans une véritable implémentation, cette fonction synchroniserait
+    // le solde avec une base de données. Pour cette démo, nous simulons juste un succès.
+    console.log('[balanceManager] Syncing with database...');
+    await new Promise(resolve => setTimeout(resolve, 100));
+    return true;
+  } catch (error) {
+    console.error('Error syncing with database:', error);
+    return false;
+  }
+};
+
+/**
+ * Nettoie les données utilisateur lors d'un changement d'utilisateur
+ */
+export const cleanupUserBalanceData = (): void => {
+  currentBalance = null;
+  highestBalance = null;
+  dailyGains = 0;
+  lastUpdateTimestamp = 0;
+  
+  try {
+    localStorage.removeItem('currentBalance');
+    localStorage.removeItem('highestBalance');
+    localStorage.removeItem('dailyGains');
+    localStorage.removeItem('lastBalanceUpdateTime');
+    localStorage.removeItem('dailySessionCount');
+    localStorage.removeItem('lastDailyReset');
+  } catch (error) {
+    console.error('Error cleaning up user balance data:', error);
+  }
+};
+
 export default {
   updateBalance,
   resetBalance,
   resetDailyCounters,
   getCurrentBalance,
   getHighestBalance,
-  forceBalanceSync
+  forceBalanceSync,
+  addDailyGain,
+  getDailyGains,
+  initialize,
+  forceUpdate,
+  syncWithDatabase,
+  addTransaction,
+  cleanupUserBalanceData
 };
