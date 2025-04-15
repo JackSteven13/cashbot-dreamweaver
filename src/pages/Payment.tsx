@@ -7,7 +7,6 @@ import PaymentCard from '@/components/payment/PaymentCard';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { PLANS } from '@/utils/plans';
-import { recoverStripeSession } from '@/hooks/payment/stripeWindowManager';
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -15,16 +14,12 @@ const Payment = () => {
     selectedPlan,
     currentSubscription,
     isAuthChecking,
-    useStripePayment,
-    isProcessing,
     isStripeProcessing,
     stripeCheckoutUrl,
-    togglePaymentMethod,
-    handleCardFormSubmit,
     initiateStripeCheckout
   } = usePaymentPage();
 
-  // Check if a plan is selected and valid
+  // Vérifier si un plan est sélectionné et valide
   useEffect(() => {
     if (!isAuthChecking) {
       if (!selectedPlan) {
@@ -37,7 +32,7 @@ const Payment = () => {
         return;
       }
       
-      // Check if selected plan exists
+      // Vérifier si le plan existe
       if (selectedPlan && !PLANS[selectedPlan]) {
         toast({
           title: "Forfait invalide",
@@ -45,26 +40,18 @@ const Payment = () => {
           variant: "destructive"
         });
         navigate('/offres');
-        return;
-      }
-      
-      // Display selected plan price
-      if (selectedPlan && PLANS[selectedPlan]) {
-        console.log(`Plan sélectionné: ${selectedPlan}, Prix: ${PLANS[selectedPlan].price}€`);
       }
     }
   }, [selectedPlan, isAuthChecking, navigate]);
   
-  // Check if user is already subscribed to the selected plan
+  // Vérifier si l'utilisateur est déjà abonné au plan sélectionné
   useEffect(() => {
     if (!isAuthChecking && selectedPlan && currentSubscription === selectedPlan) {
       toast({
         title: "Vous êtes déjà abonné",
         description: `Vous êtes déjà abonné au forfait ${selectedPlan}. Vous allez être redirigé vers votre tableau de bord.`,
-        variant: "default"
       });
       
-      // Redirect to dashboard after a short delay
       const timeout = setTimeout(() => {
         navigate('/dashboard');
       }, 3000);
@@ -72,27 +59,6 @@ const Payment = () => {
       return () => clearTimeout(timeout);
     }
   }, [selectedPlan, currentSubscription, isAuthChecking, navigate]);
-  
-  // Essayer de récupérer une session de paiement interrompue
-  useEffect(() => {
-    // Vérifier s'il y a une session de paiement interrompue
-    if (!isAuthChecking && !stripeCheckoutUrl) {
-      // Attendre un court instant pour s'assurer que l'interface est chargée
-      const timeout = setTimeout(() => {
-        const recovered = recoverStripeSession();
-        if (recovered) {
-          console.log("Session de paiement récupérée");
-          toast({
-            title: "Reprise du paiement",
-            description: "Nous reprenons votre session de paiement précédente.",
-            duration: 3000
-          });
-        }
-      }, 2000);
-      
-      return () => clearTimeout(timeout);
-    }
-  }, [isAuthChecking, stripeCheckoutUrl]);
 
   if (isAuthChecking) {
     return <PaymentLoading />;
@@ -103,11 +69,7 @@ const Payment = () => {
       <PaymentCard 
         selectedPlan={selectedPlan}
         currentSubscription={currentSubscription}
-        useStripeCheckout={useStripePayment}
         isStripeProcessing={isStripeProcessing}
-        isProcessing={isProcessing}
-        onToggleMethod={togglePaymentMethod}
-        onCardFormSubmit={handleCardFormSubmit}
         onStripeCheckout={initiateStripeCheckout}
         stripeCheckoutUrl={stripeCheckoutUrl}
       />

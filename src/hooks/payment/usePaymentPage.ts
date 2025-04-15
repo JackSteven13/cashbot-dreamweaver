@@ -1,10 +1,9 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import useSessionStorage from '@/hooks/useSessionStorage';
-import { PaymentFormData, PlanType } from './types';
-import { supabase } from '@/integrations/supabase/client';
+import { PlanType } from './types';
 import { toast } from '@/components/ui/use-toast';
 import { useStripeCheckout } from './useStripeCheckout';
 import { getPlanById } from '@/utils/plans';
@@ -14,24 +13,21 @@ export const usePaymentPage = () => {
   const [searchParams] = useSearchParams();
   const { user, isLoading: isAuthChecking } = useAuth();
   
-  // Plan selected from URL or session
+  // Plan sélectionné depuis l'URL ou la session
   const planFromUrl = searchParams.get('plan');
   const [selectedPlan, setSelectedPlan] = useSessionStorage<PlanType>('selectedPlan', getPlanById(planFromUrl));
-  
   const [currentSubscription, setCurrentSubscription] = useState<string | null>(null);
-  const [useStripePayment, setUseStripePayment] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
   
-  // Use Stripe checkout hook with selected plan
+  // Utiliser le hook Stripe checkout
   const { 
     isStripeProcessing, 
-    handleStripeCheckout, 
+    handleStripeCheckout,
     stripeCheckoutUrl,
     actualSubscription,
     isChecking
   } = useStripeCheckout(selectedPlan);
   
-  // Check selected plan from URL on initial load
+  // Vérifier le plan sélectionné depuis l'URL au chargement initial
   useEffect(() => {
     const planParam = searchParams.get('plan');
     if (planParam) {
@@ -43,40 +39,15 @@ export const usePaymentPage = () => {
     }
   }, [searchParams, setSelectedPlan]);
   
-  // Get user's current subscription
+  // Récupérer l'abonnement actuel de l'utilisateur
   useEffect(() => {
     if (actualSubscription) {
       setCurrentSubscription(actualSubscription);
-    } else {
-      const fetchSubscription = async () => {
-        if (user?.id) {
-          try {
-            const { data, error } = await supabase
-              .from('user_balances')
-              .select('subscription')
-              .eq('id', user.id)
-              .single();
-              
-            if (!error && data) {
-              setCurrentSubscription(data.subscription);
-            }
-          } catch (error) {
-            console.error('Failed to fetch subscription:', error);
-          }
-        }
-      };
-      
-      fetchSubscription();
     }
-  }, [user, actualSubscription]);
+  }, [actualSubscription]);
   
-  // Toggle between Stripe and manual payment
-  const togglePaymentMethod = useCallback(() => {
-    setUseStripePayment(prev => !prev);
-  }, []);
-  
-  // Handle Stripe checkout - reuse hook
-  const initiateStripeCheckout = useCallback(() => {
+  // Gérer le checkout Stripe
+  const initiateStripeCheckout = () => {
     if (!selectedPlan) {
       toast({
         title: "Erreur",
@@ -86,36 +57,16 @@ export const usePaymentPage = () => {
       return;
     }
     
-    console.log("Initialisation du paiement Stripe pour le plan:", selectedPlan);
+    // Déclencher le processus de paiement
     handleStripeCheckout();
-  }, [selectedPlan, handleStripeCheckout]);
-  
-  // Handle card form submission
-  const handleCardFormSubmit = useCallback((cardData: PaymentFormData) => {
-    setIsProcessing(true);
-    // In a real case, we would process the payment here
-    // For now, just simulate
-    setTimeout(() => {
-      setIsProcessing(false);
-      toast({
-        title: "Paiement accepté",
-        description: "Votre abonnement a été activé avec succès.",
-        variant: "default"
-      });
-      navigate('/dashboard');
-    }, 2000);
-  }, [navigate]);
+  };
   
   return {
     selectedPlan,
     currentSubscription,
     isAuthChecking,
-    useStripePayment,
-    isProcessing,
     isStripeProcessing,
     stripeCheckoutUrl,
-    togglePaymentMethod,
-    handleCardFormSubmit,
     initiateStripeCheckout
   };
 };
