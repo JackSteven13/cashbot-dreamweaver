@@ -1,10 +1,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { fetchUserTransactions } from '@/utils/user/transactionUtils';
+import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 import { UserData, Transaction } from '@/types/userData';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
+import { generateReferralLink } from '@/utils/referral/referralLinks';
 
 /**
  * Hook pour récupérer et gérer les données utilisateur
@@ -19,7 +20,7 @@ export const useUserData = () => {
   const refreshUserData = useCallback(async () => {
     if (!user?.id) {
       console.error('No user found, cannot refresh data');
-      return;
+      return null;
     }
 
     setIsLoading(true);
@@ -54,6 +55,20 @@ export const useUserData = () => {
       console.log('Fetching transactions for user:', user.id);
       const transactions = await fetchUserTransactions(user.id);
       console.log('Fetched transactions:', transactions);
+
+      // Récupérer les parrainages de l'utilisateur
+      const { data: referralsData, error: referralsError } = await supabase
+        .from('referrals')
+        .select('*')
+        .eq('referrer_id', user.id);
+
+      if (referralsError) {
+        console.error('Error fetching referrals:', referralsError);
+      }
+      
+      // Générer le lien de parrainage avec l'ID utilisateur
+      const userReferralLink = generateReferralLink(user.id);
+      console.log('Generated referral link:', userReferralLink);
       
       // Construire l'objet de données utilisateur
       const newUserData: UserData = {
@@ -62,8 +77,8 @@ export const useUserData = () => {
         subscription: balanceData?.subscription || 'freemium',
         transactions: transactions || [],
         profile: profileData || { id: user.id },
-        referrals: [], // Ces données seraient récupérées dans un cas d'utilisation complet
-        referralLink: `https://app.example.com/invite/${user.id}`
+        referrals: referralsData || [],
+        referralLink: userReferralLink
       };
       
       setUserData(newUserData);
@@ -74,6 +89,7 @@ export const useUserData = () => {
         localStorage.setItem('lastKnownUsername', newUserData.username);
         localStorage.setItem('lastKnownBalance', newUserData.balance.toString());
         localStorage.setItem('subscription', newUserData.subscription);
+        localStorage.setItem('referralLink', newUserData.referralLink);
       } catch (e) {
         console.error('Error caching user data', e);
       }
@@ -118,14 +134,11 @@ export const useUserData = () => {
         }, ...(prev.transactions || [])]
       } : null);
       
-      // Mettre à jour le solde dans la base de données
-      const { error } = await supabase
-        .from('user_balances')
-        .update({
-          balance: supabase.rpc('increment_balance', { amount: gain }),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
+      // Mettre à jour le solde dans la base de données en utilisant l'opération standard
+      const { error } = await supabase.rpc('increase_balance', {
+        user_id: user.id,
+        amount: gain
+      });
         
       if (error) {
         console.error('Error updating balance:', error);

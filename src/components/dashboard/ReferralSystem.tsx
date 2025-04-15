@@ -1,30 +1,36 @@
 
 import React, { useState } from 'react';
-import { 
-  Share2, 
-  Copy, 
-  CheckCheck, 
-  Link as LinkIcon,
-  Twitter,
-  Facebook,
-  Mail,
-  Smartphone
-} from 'lucide-react';
+import { Copy, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { getCommissionRate } from '@/utils/referral/commissionUtils';
+import { COMMISSION_RATES } from '@/components/dashboard/summary/constants';
 
 interface ReferralSystemProps {
   referralLink: string;
+  subscription?: string;
   className?: string;
 }
 
-const ReferralSystem: React.FC<ReferralSystemProps> = ({ referralLink, className = '' }) => {
+const ReferralSystem: React.FC<ReferralSystemProps> = ({ 
+  referralLink, 
+  subscription = 'freemium',
+  className = '' 
+}) => {
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
   
   const handleCopyReferralLink = () => {
+    if (!referralLink) {
+      toast({
+        title: "Erreur",
+        description: "Lien de parrainage non disponible. Veuillez réessayer plus tard.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
     toast({
@@ -37,45 +43,10 @@ const ReferralSystem: React.FC<ReferralSystemProps> = ({ referralLink, className
       setCopied(false);
     }, 2000);
   };
-  
-  const shareOptions = [
-    {
-      name: 'Twitter',
-      icon: <Twitter className="h-5 w-5" />,
-      action: () => {
-        const text = "Rejoignez-moi sur Stream Genius et gagnez de l'argent en analysant les publicités!";
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(referralLink)}`, '_blank');
-      }
-    },
-    {
-      name: 'Facebook',
-      icon: <Facebook className="h-5 w-5" />,
-      action: () => {
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`, '_blank');
-      }
-    },
-    {
-      name: 'Email',
-      icon: <Mail className="h-5 w-5" />,
-      action: () => {
-        const subject = "Rejoignez-moi sur Stream Genius";
-        const body = `Bonjour,\n\nJe voulais vous inviter à rejoindre Stream Genius. C'est un excellent moyen de générer des revenus passifs!\n\nVoici mon lien d'invitation: ${referralLink}\n\nÀ bientôt!`;
-        window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-      }
-    },
-    {
-      name: 'SMS',
-      icon: <Smartphone className="h-5 w-5" />,
-      action: () => {
-        const text = `Rejoins-moi sur Stream Genius pour gagner de l'argent: ${referralLink}`;
-        if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-          window.open(`sms:&body=${encodeURIComponent(text)}`);
-        } else {
-          window.open(`sms:?body=${encodeURIComponent(text)}`);
-        }
-      }
-    }
-  ];
+
+  // Obtenir le taux de commission en fonction de l'abonnement
+  const commissionRate = COMMISSION_RATES[subscription as keyof typeof COMMISSION_RATES] || 0.2;
+  const commissionPercent = Math.round(commissionRate * 100);
   
   return (
     <div className={className}>
@@ -86,25 +57,24 @@ const ReferralSystem: React.FC<ReferralSystemProps> = ({ referralLink, className
             className="flex items-center gap-2" 
             size="sm"
           >
-            <Share2 className="h-4 w-4" />
-            <span>Partager mon lien</span>
+            <span>Voir mon lien de parrainage</span>
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-md">
           <DialogTitle>
-            Partagez votre lien de parrainage
+            Votre lien de parrainage
           </DialogTitle>
           
           <div className="space-y-4 py-2">
             <div className="text-sm text-muted-foreground">
-              Partagez votre lien avec vos amis et gagnez 20-35% de commissions sur leurs abonnements!
+              Partagez votre lien avec vos amis et gagnez {commissionPercent}% de commissions sur leurs abonnements !
             </div>
             
             <div className="flex space-x-2">
-              <Input 
+              <input 
                 readOnly 
-                value={referralLink} 
-                className="font-mono text-sm"
+                value={referralLink || "Chargement du lien..."} 
+                className="font-mono text-sm flex-1 p-2 border rounded-md"
               />
               <Button onClick={handleCopyReferralLink} variant={copied ? "default" : "outline"} className="shrink-0">
                 {copied ? <CheckCheck className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -119,40 +89,6 @@ const ReferralSystem: React.FC<ReferralSystemProps> = ({ referralLink, className
                 <li>Vous gagnez automatiquement une commission sur leurs abonnements</li>
               </ol>
             </div>
-            
-            <div>
-              <h4 className="text-sm font-medium mb-2">Partager via :</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {shareOptions.map((option) => (
-                  <Button 
-                    key={option.name}
-                    variant="outline" 
-                    onClick={() => {
-                      option.action();
-                      toast({
-                        title: `Partage via ${option.name}`,
-                        description: "Merci de partager votre lien de parrainage!"
-                      });
-                    }}
-                    className="flex flex-col gap-2 h-auto py-3"
-                  >
-                    {option.icon}
-                    <span className="text-xs">{option.name}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-            
-            <Button 
-              className="w-full"
-              onClick={() => {
-                handleCopyReferralLink();
-                setOpen(false);
-              }}
-            >
-              <LinkIcon className="mr-2 h-4 w-4" />
-              Copier et fermer
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
