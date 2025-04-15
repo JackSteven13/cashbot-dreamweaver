@@ -5,7 +5,6 @@ import { toast } from "@/components/ui/use-toast";
 import { useAuthCheck } from './useAuthCheck';
 import { useAuthStateListener } from './useAuthStateListener';
 import { useUserDataSync } from './useUserDataSync';
-import { applyUserSwitchGuard } from '@/utils/userSwitchGuard';
 
 export const useDashboardInitialization = () => {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
@@ -19,8 +18,6 @@ export const useDashboardInitialization = () => {
   const initializing = useRef(false);
   const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fastInitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const maxAttemptsRef = useRef(0);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const navigate = useNavigate();
   
@@ -61,82 +58,53 @@ export const useDashboardInitialization = () => {
     }
   }, []);
   
-  // Fonction d'initialisation principale plus robuste
+  // Fonction d'initialisation principale optimisée pour des chargements plus rapides
   const initializeDashboard = useCallback(async () => {
-    // Vérifier si l'initialisation est déjà en cours ou déjà tentée
+    // Vérifier si l'initialisation est déjà en cours
     if (initializing.current || !mountedRef.current) return;
     
     initializing.current = true;
     initializationAttempted.current = true;
-    maxAttemptsRef.current++;
-    
-    // Vérifier s'il y a eu un changement d'utilisateur
-    applyUserSwitchGuard();
     
     try {
-      // Laisser tout le processus se dérouler dans un seul flux
-      console.log(`Initialisation du dashboard démarrée (tentative ${maxAttemptsRef.current})`);
+      console.log(`Initialisation du dashboard démarrée`);
       
-      // Exécuter toutes les vérifications en parallèle lorsque possible
+      // Utiliser un modèle de chargement par étapes pour afficher plus rapidement
+      // Etape 1: Vérifier d'abord l'authentification (bloquant)
       if (!mountedRef.current) return;
-      
       const isAuthenticated = await checkAuth();
       
       if (!mountedRef.current) return;
       
       if (isAuthenticated) {
-        // Configurer l'écouteur d'état d'authentification
+        // Etape 2: Configurer l'écouteur d'état d'authentification (non bloquant)
         const authCleanup = setupAuthListener();
         if (authCleanup) addCleanupFunction(authCleanup);
         
-        // Synchroniser les données utilisateur avec plusieurs tentatives si nécessaire
-        let syncSuccess = await syncUserData();
+        // Etape 3: Afficher les données en cache immédiatement
+        setIsReady(true);
         
-        // Si la synchronisation échoue, essayer à nouveau jusqu'à 2 fois
-        if (!syncSuccess && mountedRef.current) {
-          console.log("Première synchronisation échouée, nouvelle tentative dans 800ms...");
-          await new Promise(resolve => setTimeout(resolve, 800));
-          syncSuccess = await syncUserData();
-          
-          if (!syncSuccess && mountedRef.current) {
-            console.log("Deuxième synchronisation échouée, dernière tentative dans 1200ms...");
-            await new Promise(resolve => setTimeout(resolve, 1200));
-            syncSuccess = await syncUserData();
+        // Etape 4: Synchroniser les données complètes en arrière-plan
+        syncUserData().then(success => {
+          if (mountedRef.current && success) {
+            // Notification discrète de la synchronisation réussie
+            toast({
+              title: "Données synchronisées",
+              description: "Vos données ont été mises à jour en arrière-plan",
+              duration: 2000,
+            });
           }
-        }
-        
-        if (!mountedRef.current) return;
+        });
         
         // Déclencher un événement pour notifier les composants que l'initialisation est terminée
         window.dispatchEvent(new CustomEvent('dashboard:initialized', {
           detail: { success: true }
         }));
-        
-        // Tout est prêt, marquer l'initialisation comme terminée
-        console.log("Initialisation complétée, prêt à afficher");
-        setIsReady(true);
       }
     } catch (error) {
       console.error("Erreur lors de l'initialisation du dashboard:", error);
       
       if (mountedRef.current) {
-        // Si nombre de tentatives < 3, réessayer
-        if (maxAttemptsRef.current < 3) {
-          console.log(`Nouvelle tentative d'initialisation (${maxAttemptsRef.current}/3)...`);
-          
-          // Nettoyer tout timeout existant
-          if (retryTimeoutRef.current) {
-            clearTimeout(retryTimeoutRef.current);
-          }
-          
-          retryTimeoutRef.current = setTimeout(() => {
-            initializing.current = false;
-            initializeDashboard();
-          }, 1000 * maxAttemptsRef.current); // Délai croissant entre les tentatives
-          
-          return;
-        }
-        
         setAuthError("Une erreur est survenue lors de l'initialisation.");
         
         toast({
@@ -156,24 +124,23 @@ export const useDashboardInitialization = () => {
     }
   }, [checkAuth, setupAuthListener, syncUserData, addCleanupFunction]);
   
-  // Effet de montage avec un démarrage plus rapide et plus fiable
+  // Effet de montage avec initialisation optimisée
   useEffect(() => {
     mountedRef.current = true;
-    maxAttemptsRef.current = 0;
     
-    // Initialiser rapidement avec les données en cache
+    // Initialiser rapidement avec les données en cache (50ms)
     fastInitTimeoutRef.current = setTimeout(() => {
       if (mountedRef.current) {
         initializeFastLoad();
       }
-    }, 100);
+    }, 50);
     
-    // Démarrer l'initialisation complète peu après
+    // Démarrer l'initialisation complète peu après (300ms)
     initTimeoutRef.current = setTimeout(() => {
       if (mountedRef.current && !initializing.current) {
         initializeDashboard();
       }
-    }, 300); // Délai légèrement plus long pour laisser le fast init agir
+    }, 300);
     
     return () => {
       console.log("Démontage du hook useDashboardInitialization");
@@ -186,10 +153,6 @@ export const useDashboardInitialization = () => {
       
       if (initTimeoutRef.current) {
         clearTimeout(initTimeoutRef.current);
-      }
-      
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
       }
       
       // Exécuter toutes les fonctions de nettoyage enregistrées
@@ -205,7 +168,7 @@ export const useDashboardInitialization = () => {
     };
   }, [initializeDashboard, initializeFastLoad]);
   
-  // Exposer les états pour permettre au Dashboard de rendre en conséquence
+  // Exposer les états pour le rendu optimisé du Dashboard
   return useMemo(() => ({
     isAuthChecking,
     isReady,

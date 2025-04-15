@@ -1,7 +1,10 @@
 
-import { createMoneyParticles } from './moneyParticles';
+import { createMoneyParticles, flashBalanceUpdate, simulateActivity } from './moneyParticles';
 import { toast } from '@/components/ui/use-toast';
 
+/**
+ * Centralized event dispatcher for dashboard animations with improved feedback
+ */
 export const triggerDashboardEvent = (
   eventName: string, 
   data: Record<string, any> = {},
@@ -36,17 +39,37 @@ export const triggerDashboardEvent = (
     elements.forEach(el => {
       if (el instanceof HTMLElement) {
         el.classList.add('glow-effect');
-        createMoneyParticles(el, 5);
+        createMoneyParticles(el, Math.min(data.gain * 50, 10));
+        flashBalanceUpdate(el);
         
         setTimeout(() => {
           el.classList.remove('glow-effect');
         }, 3000);
       }
     });
+    
+    // Show a toast notification for the gain
+    toast({
+      title: "Revenus générés",
+      description: `Vous avez gagné ${data.gain.toFixed(2)}€ avec cette analyse`,
+      className: "toast-notification",
+    });
+    
+    // Simulate some activity
+    simulateActivity();
+  } else if (eventName === 'analysis-start') {
+    // Show a toast notification for the analysis start
+    toast({
+      title: "Analyse en cours",
+      description: "Les agents IA analysent les publicités...",
+      className: "toast-notification",
+    });
   }
 };
 
-// Animation utility for balance updates
+/**
+ * Animation utility for balance updates with improved easing
+ */
 export const animateBalanceUpdate = (
   startValue: number,
   endValue: number,
@@ -60,8 +83,11 @@ export const animateBalanceUpdate = (
     const elapsed = now - startTime;
     
     if (elapsed < duration) {
+      // Using easeOutQuart for smoother animation
       const progress = elapsed / duration;
-      const currentValue = startValue + (endValue - startValue) * progress;
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      const currentValue = startValue + (endValue - startValue) * easeOutQuart;
+      
       updateCallback(currentValue);
       requestAnimationFrame(animate);
     } else {
@@ -72,5 +98,5 @@ export const animateBalanceUpdate = (
   requestAnimationFrame(animate);
 };
 
-// Re-export the createMoneyParticles function for direct use
-export { createMoneyParticles };
+// Re-export the moneyParticles functions for direct use
+export { createMoneyParticles, flashBalanceUpdate, simulateActivity };

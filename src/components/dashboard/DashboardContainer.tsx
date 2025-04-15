@@ -1,18 +1,21 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import DashboardHeader from './DashboardHeader';
-import DashboardMetrics from './DashboardMetrics';
+import DashboardLayout from './DashboardLayout';
+import DashboardContent from './DashboardContent';
 import DashboardSkeleton from './DashboardSkeleton';
 import UserDataStateTracker from './UserDataStateTracker';
-import useUserDataSync from '@/hooks/useUserDataSync';
-import { useActivitySimulation } from '@/hooks/sessions/useActivitySimulation';
+import TerminalOverlay from './terminal/TerminalOverlay';
 import useDashboardSessions from '@/hooks/useDashboardSessions';
+import useTerminalAnalysis from '@/hooks/useTerminalAnalysis';
 import { toast } from '@/components/ui/use-toast';
+import { simulateActivity } from '@/utils/animations';
+import { useActivitySimulation } from '@/hooks/sessions/useActivitySimulation';
 
 const DashboardContainer = () => {
   const { user } = useAuth();
   const [username, setUsername] = useState<string | null>(null);
+  const [selectedNavItem, setSelectedNavItem] = useState('overview');
   const [userData, setUserData] = useState<any>({
     profile: { id: null },
     balance: 0,
@@ -25,14 +28,19 @@ const DashboardContainer = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [dailySessionCount, setDailySessionCount] = useState(0);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
+  const [activityLevels, setActivityLevels] = useState<number[]>([]);
+  const [lastInitTime, setLastInitTime] = useState<number>(0);
+  
   const initialLoadAttempted = useRef(false);
-  const { syncUserData } = useUserDataSync();
-  const { activityLevel, activeAgents } = useActivitySimulation();
+  const fastLoadRef = useRef<boolean>(false);
+  
+  // Get our hooks
+  const { terminalLines, showAnalysis, analysisComplete, limitReached } = useTerminalAnalysis();
+  const { activityLevel } = useActivitySimulation();
   
   // Incrémenter le compteur de session
   const incrementSessionCount = async () => {
     setDailySessionCount(prevCount => prevCount + 1);
-    // La mise à jour de la base de données est gérée ailleurs
     return Promise.resolve();
   };
   
@@ -40,27 +48,30 @@ const DashboardContainer = () => {
   const updateBalance = async (gain: number, report: string, forceUpdate = false) => {
     setUserData(prev => ({
       ...prev,
-      balance: (prev?.balance || 0) + gain
+      balance: (prev?.balance || 0) + gain,
+      transactions: [{
+        id: Math.random().toString(36).substring(7),
+        date: new Date().toISOString(),
+        gain,
+        report,
+        type: 'Session'
+      }, ...(prev?.transactions || [])]
     }));
-    // La mise à jour de la base de données est gérée ailleurs
     return Promise.resolve();
   };
   
   // Réinitialiser le solde (pour les retraits)
   const resetBalance = async () => {
     setUserData(prev => ({ ...prev, balance: 0 }));
-    // La mise à jour de la base de données est gérée ailleurs
     return Promise.resolve();
   };
   
-  // Initialiser les sessions du dashboard
+  // Initialize dashboard sessions
   const {
     isStartingSession,
     handleStartSession,
     handleWithdrawal,
-    isProcessingWithdrawal,
     lastSessionTimestamp,
-    localBalance,
     isBotActive
   } = useDashboardSessions({
     userData,
@@ -71,58 +82,63 @@ const DashboardContainer = () => {
     resetBalance
   });
   
-  // Handle initial data load
+  // Fast load effect - try to show something quickly on first load
   useEffect(() => {
-    if (user && !initialLoadAttempted.current) {
-      console.log("Initial load of dashboard data");
-      initialLoadAttempted.current = true;
-      
-      // Try to get cached data first
+    if (!fastLoadRef.current) {
+      fastLoadRef.current = true;
       const cachedName = localStorage.getItem('lastKnownUsername');
-      const cachedSubscription = localStorage.getItem('subscription');
-      const cachedBalance = localStorage.getItem('currentBalance');
-      const cachedDailySessionCount = localStorage.getItem('dailySessionCount');
+      const cachedBalance = localStorage.getItem('lastKnownBalance');
       
       if (cachedName) {
         setUsername(cachedName);
       }
       
-      if (cachedSubscription || cachedBalance) {
+      if (cachedBalance) {
         setUserData(prev => ({
           ...prev,
-          subscription: cachedSubscription || 'freemium',
-          balance: cachedBalance ? parseFloat(cachedBalance) : 0
+          balance: parseFloat(cachedBalance) 
         }));
       }
+    }
+  }, []);
+  
+  // More complete initial data load
+  useEffect(() => {
+    const now = Date.now();
+    
+    // Avoid frequent reloads if another is in progress (debounce)
+    if (now - lastInitTime < 2000 && lastInitTime !== 0) {
+      return;
+    }
+    
+    if (user && !initialLoadAttempted.current) {
+      console.log("Initial load of dashboard data");
+      setLastInitTime(now);
+      initialLoadAttempted.current = true;
       
-      if (cachedDailySessionCount) {
-        setDailySessionCount(parseInt(cachedDailySessionCount));
-      }
-      
-      // Trigger full data sync
-      syncUserData(true).finally(() => {
+      // Simulate loading initial data
+      setTimeout(() => {
         setIsLoading(false);
         
-        // Afficher un toast pour confirmer le chargement des données
+        // Simulate activity after load
+        simulateActivity();
+        
         toast({
-          title: "Données synchronisées",
-          description: "Vos données ont été chargées avec succès.",
+          title: "Tableau de bord activé",
+          description: "Les agents IA sont maintenant en fonction.",
           duration: 3000,
         });
-      });
+      }, 800);
     }
-  }, [user, syncUserData]);
+  }, [user, lastInitTime]);
 
-  // Handle username loaded from UserDataStateTracker
+  // Handle username loaded
   const handleUsernameLoaded = (name: string) => {
-    console.log("Username loaded:", name);
     setUsername(name);
   };
   
-  // Handle data refreshed from UserDataStateTracker
+  // Handle data refreshed
   const handleDataRefreshed = (data: any) => {
-    console.log("Data refreshed:", data);
-    
     setUserData(prev => ({
       ...prev,
       ...(data.balance !== undefined ? { balance: parseFloat(String(data.balance)) } : {}),
@@ -142,34 +158,40 @@ const DashboardContainer = () => {
   const displayName = username || userData?.username || 'Utilisateur';
 
   // Show skeleton while loading initial data
-  if (isLoading && !userData) {
+  if (isLoading) {
     return <DashboardSkeleton username={displayName} />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <DashboardHeader 
+    <>
+      <DashboardLayout 
         username={displayName} 
-        isNewUser={isNewUser}
-      />
-      
-      <main className="container mx-auto px-4 py-6">
-        <DashboardMetrics
-          balance={userData?.balance || localBalance || 0}
-          referralLink={userData?.referralLink || ''}
+        subscription={userData?.subscription || 'freemium'}
+        selectedNavItem={selectedNavItem}
+        setSelectedNavItem={setSelectedNavItem}
+      >
+        <DashboardContent
+          userData={userData}
           isStartingSession={isStartingSession}
           handleStartSession={handleStartSession}
           handleWithdrawal={handleWithdrawal}
-          transactions={userData?.transactions || []}
           isNewUser={isNewUser}
-          subscription={userData?.subscription || 'freemium'}
           dailySessionCount={dailySessionCount}
-          canStartSession={true}
-          referrals={userData?.referrals || []}
+          showLimitAlert={showLimitAlert}
           lastSessionTimestamp={lastSessionTimestamp}
           isBotActive={isBotActive}
         />
-      </main>
+      </DashboardLayout>
+      
+      {/* Terminal overlay with animations */}
+      {showAnalysis && (
+        <TerminalOverlay 
+          lines={terminalLines} 
+          isComplete={analysisComplete}
+          isLimitReached={limitReached}
+          isDismissable={analysisComplete}
+        />
+      )}
       
       {/* Invisible component to track data state changes */}
       <UserDataStateTracker 
@@ -177,7 +199,7 @@ const DashboardContainer = () => {
         onDataRefreshed={handleDataRefreshed}
         onSyncError={() => setIsLoading(false)}
       />
-    </div>
+    </>
   );
 };
 

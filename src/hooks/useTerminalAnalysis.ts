@@ -9,7 +9,6 @@ export const useTerminalAnalysis = () => {
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
   const [countdownTime, setCountdownTime] = useState<string>('');
-  const [isBackgroundMode, setIsBackgroundMode] = useState(true); // Always use background mode
 
   // Format countdown time as HH:MM:SS
   const formatCountdown = (milliseconds: number): string => {
@@ -24,7 +23,7 @@ export const useTerminalAnalysis = () => {
   };
 
   useEffect(() => {
-    // Listen for terminal updates - these are in-dashboard updates that don't trigger loading screens
+    // Listen for terminal updates
     const handleTerminalUpdate = (event: Event) => {
       const customEvent = event as CustomEvent;
       const line = customEvent.detail?.line;
@@ -32,21 +31,34 @@ export const useTerminalAnalysis = () => {
       if (line) {
         setTerminalLines(prev => [...prev, line]);
         setShowAnalysis(true);
-        setIsBackgroundMode(true); // Always use background mode
       }
     };
 
-    // Listen for analysis start events
-    const handleAnalysisStart = (event: Event) => {
-      // Always force background mode to prevent full page reloads
+    // Listen for analysis start events with engaging output
+    const handleAnalysisStart = () => {
       setShowAnalysis(true);
-      setIsBackgroundMode(true);
       setAnalysisComplete(false);
-      setTerminalLines([
-        'Initialisation de l\'analyse réseau...',
-      ]);
       
-      console.log("Using background mode for all analyses to prevent reload");
+      const initialLines = [
+        'Initialisation de l\'analyse réseau...',
+        'Connexion aux sources de données en cours...',
+        'Analyseur d\'intelligence artificielle activé',
+        'Scan des opportunités de revenus en cours...'
+      ];
+      
+      // Add lines with delays for more realistic output
+      setTerminalLines([initialLines[0]]);
+      
+      let lineIndex = 1;
+      const addLine = () => {
+        if (lineIndex < initialLines.length) {
+          setTerminalLines(prev => [...prev, initialLines[lineIndex]]);
+          lineIndex++;
+          setTimeout(addLine, 400 + Math.random() * 300);
+        }
+      };
+      
+      setTimeout(addLine, 300);
     };
 
     // Listen for analysis complete events
@@ -54,19 +66,36 @@ export const useTerminalAnalysis = () => {
       const customEvent = event as CustomEvent;
       const gain = customEvent.detail?.gain || 0;
       
-      // Update terminal with success message
-      setTerminalLines(prev => [
-        ...prev, 
-        `Analyse terminée avec succès! Revenus générés: ${gain.toFixed(2)}€`
-      ]);
-      setAnalysisComplete(true);
-      setIsBackgroundMode(true); // Always use background mode
+      // Add completion lines gradually
+      const completionLines = [
+        'Analyse complète des données terminée',
+        'Machine learning appliqué aux patterns publicitaires',
+        `✓ Revenus générés: ${gain.toFixed(2)}€`,
+        'Session complétée avec succès'
+      ];
+      
+      // First add processing lines
+      setTerminalLines(prev => [...prev, completionLines[0]]);
+      
+      // Then add the remaining lines with delays
+      setTimeout(() => {
+        setTerminalLines(prev => [...prev, completionLines[1]]);
+        
+        setTimeout(() => {
+          setTerminalLines(prev => [...prev, completionLines[2]]);
+          
+          setTimeout(() => {
+            setTerminalLines(prev => [...prev, completionLines[3]]);
+            setAnalysisComplete(true);
+          }, 500);
+        }, 400);
+      }, 300);
       
       // Hide terminal after delay for better UX
-      const hideDelay = 3000;
-      
+      const hideDelay = 4000;
       setTimeout(() => {
         setShowAnalysis(false);
+        
         // Reset terminal lines after animation ends
         setTimeout(() => {
           setTerminalLines([]);
@@ -83,13 +112,15 @@ export const useTerminalAnalysis = () => {
       
       setLimitReached(true);
       setShowAnalysis(true);
-      setIsBackgroundMode(true); // Always use background mode
+      
       setTerminalLines([
         `Limite journalière de ${dailyLimit}€ atteinte.`,
-        'Le bot est temporairement hors-service.'
+        'Algorithmes de génération de revenus en pause.',
+        'Réinitialisation automatique prévue à minuit.',
+        'Passez à une offre supérieure pour augmenter votre limite quotidienne.'
       ]);
       
-      // Calculate time until midnight in Paris time zone
+      // Calculate time until midnight 
       const timeUntilMidnight = calculateTimeUntilMidnight();
       setCountdownTime(formatCountdown(timeUntilMidnight));
       
@@ -122,26 +153,36 @@ export const useTerminalAnalysis = () => {
       return () => clearInterval(timer);
     };
 
+    // Listen for terminal dismiss
+    const handleTerminalDismiss = () => {
+      setShowAnalysis(false);
+      setTimeout(() => {
+        setTerminalLines([]);
+        setAnalysisComplete(false);
+      }, 300);
+    };
+
     window.addEventListener('dashboard:terminal-update', handleTerminalUpdate);
     window.addEventListener('dashboard:analysis-start', handleAnalysisStart);
     window.addEventListener('dashboard:analysis-complete', handleAnalysisComplete);
     window.addEventListener('dashboard:limit-reached', handleLimitReached);
+    window.addEventListener('terminal:dismiss', handleTerminalDismiss);
 
     return () => {
       window.removeEventListener('dashboard:terminal-update', handleTerminalUpdate);
       window.removeEventListener('dashboard:analysis-start', handleAnalysisStart);
       window.removeEventListener('dashboard:analysis-complete', handleAnalysisComplete);
       window.removeEventListener('dashboard:limit-reached', handleLimitReached);
+      window.removeEventListener('terminal:dismiss', handleTerminalDismiss);
     };
-  }, [showAnalysis]);
+  }, []);
 
   return { 
     showAnalysis, 
     terminalLines, 
     analysisComplete, 
     limitReached, 
-    countdownTime,
-    isBackgroundMode
+    countdownTime
   };
 };
 

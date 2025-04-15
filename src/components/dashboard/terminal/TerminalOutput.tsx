@@ -16,6 +16,17 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({ outputs, scrollToBottom
     }
   }, [outputs, scrollToBottom]);
   
+  // Get appropriate icon based on message type
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'system': return '🖥️';
+      case 'warning': return '⚠️';
+      case 'success': return '✓';
+      case 'error': return '❌';
+      default: return '📊';
+    }
+  };
+  
   return (
     <div ref={outputRef} className="font-mono text-xs space-y-1 overflow-auto max-h-full">
       {outputs.map((output, index) => (
@@ -28,19 +39,16 @@ const TerminalOutput: React.FC<TerminalOutputProps> = ({ outputs, scrollToBottom
                 ? 'text-amber-400' 
                 : output.type === 'success' 
                   ? 'text-green-400' 
-                  : 'text-blue-400'
-          } animate-fade-in`}
+                  : output.type === 'error'
+                    ? 'text-red-400'
+                    : 'text-blue-400'
+          } opacity-0 animate-fade-in`}
+          style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'forwards' }}
         >
-          <span className="mr-2">{
-            output.type === 'system' 
-              ? '[SYS]' 
-              : output.type === 'warning' 
-                ? '[AVERTISSEMENT]' 
-                : output.type === 'success' 
-                  ? '[OK]' 
-                  : '[INFO]'
-          }</span>
-          <span>{output.text}</span>
+          <span className="mr-2 select-none">{getIcon(output.type)}</span>
+          <span className="terminal-typing" style={{ animationDelay: `${index * 100 + 50}ms` }}>
+            {output.text}
+          </span>
         </div>
       ))}
     </div>

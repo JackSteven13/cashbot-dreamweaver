@@ -1,5 +1,5 @@
 
-/* Animations pour le dashboard */
+/* Enhanced animations for the dashboard */
 
 /* Animation de pulsation pour le solde lorsqu'il est mis à jour */
 @keyframes pulse-balance {
@@ -17,7 +17,7 @@
   }
 }
 
-/* Animation pour les particules d'argent */
+/* Animation pour les particules d'argent améliorées */
 @keyframes money-particle {
   0% {
     opacity: 1;
@@ -31,7 +31,7 @@
 
 /* Animation de clignotement pour indiquer une activité */
 @keyframes blink-activity {
-  0%, 100% { opacity: 0.2; }
+  0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
 }
 
@@ -48,7 +48,7 @@
   }
 }
 
-/* Animation du compteur de solde */
+/* Animation du compteur de solde améliorée */
 @keyframes count-up {
   0% {
     transform: translateY(20px);
@@ -78,6 +78,7 @@
   pointer-events: none;
   animation: money-particle 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) forwards;
   z-index: 9999;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.2));
 }
 
 .blink-activity {
@@ -93,9 +94,9 @@
 }
 
 /* Animation de transition pour les changements de solde */
-.balance-display .text-5xl {
+.balance-display {
   position: relative;
-  transition: color 0.3s ease;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
 }
 
 /* Animation de saut pour le nouveau solde */
@@ -117,17 +118,88 @@
   right: 0;
   color: rgb(134, 239, 172);
   font-size: 1rem;
+  font-weight: bold;
   opacity: 0;
   transform: translateY(0);
   animation: count-up 2s forwards;
 }
 
-/* Animation des symboles de monnaie */
-.currency-symbol {
-  display: inline-block;
-  transition: transform 0.3s ease;
+/* Effet de lueur verte pour le solde lors des gains */
+.balance-display.glow-effect {
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.8), 0 0 20px rgba(74, 222, 128, 0.4);
+  position: relative;
 }
 
-.pulse-animation .currency-symbol {
-  animation: bounce-in 0.6s ease 0.1s forwards;
+/* Effet visuel pour les boutons de session */
+.session-button-active {
+  position: relative;
+  overflow: hidden;
+}
+
+.session-button-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+  transform: translateX(-100%);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Amélioration de l'effet de pulsation des boutons boost */
+.boost-button-pulse {
+  animation: boost-pulse 3s infinite;
+}
+
+@keyframes boost-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 15px rgba(59, 130, 246, 0);
+  }
+}
+
+/* Animation pour le terminal qui simule l'activité */
+.terminal-typing {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid;
+  width: 0;
+  animation: typing 1.5s steps(40, end) forwards, blink-caret 0.75s step-end infinite;
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: rgba(59, 130, 246, 0.7) }
+}
+
+/* Animation pour les notifications toast */
+.toast-notification {
+  animation: toast-slide-in 0.5s ease forwards;
+  transform-origin: top right;
+}
+
+@keyframes toast-slide-in {
+  0% {
+    transform: translateY(-20px) scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
