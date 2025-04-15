@@ -7,19 +7,19 @@ import { canStartManualSession } from '@/utils/subscription/sessionManagement';
 
 export const useLimitChecking = () => {
   const checkSessionLimit = (
-    userData: UserData, 
+    userData: UserData | Partial<UserData>, 
     dailySessionCount: number,
     currentBalance: number,
     setShowLimitAlert: (show: boolean) => void
   ): boolean => {
     // Vérifier l'abonnement effectif (y compris l'essai Pro)
-    const effectiveSub = getEffectiveSubscription(userData.subscription);
+    const effectiveSub = getEffectiveSubscription(userData.subscription || 'freemium');
     
     // Récupérer la date d'aujourd'hui au format YYYY-MM-DD
     const today = new Date().toISOString().split('T')[0];
     
     // Calculer les gains d'aujourd'hui pour la vérification des limites (utiliser les transactions)
-    const todaysTransactions = userData.transactions.filter(tx => 
+    const todaysTransactions = (userData.transactions || []).filter(tx => 
       tx.date?.startsWith(today) && tx.gain > 0
     );
     
@@ -42,11 +42,11 @@ export const useLimitChecking = () => {
     
     // Check if session can be started using the effective subscription
     const canStartSessionEffective = effectiveSub !== 'freemium' ? true : 
-                                   canStartManualSession(userData.subscription, dailySessionCount, todaysGains);
+                                   canStartManualSession(userData.subscription || 'freemium', dailySessionCount, todaysGains);
     
     if (!canStartSessionEffective) {
       // If freemium account and session limit reached
-      if (userData.subscription === 'freemium' && effectiveSub === 'freemium' && dailySessionCount >= 1) {
+      if ((userData.subscription || 'freemium') === 'freemium' && effectiveSub === 'freemium' && dailySessionCount >= 1) {
         toast({
           title: "Limite de sessions atteinte",
           description: "Votre abonnement Freemium est limité à 1 session manuelle par jour. Passez à un forfait supérieur pour plus de sessions.",
@@ -91,9 +91,9 @@ export const useLimitChecking = () => {
   };
 
   // Nouvelle fonction pour obtenir les gains quotidiens actuels
-  const getTodaysGains = (userData: UserData): number => {
+  const getTodaysGains = (userData: UserData | Partial<UserData>): number => {
     const today = new Date().toISOString().split('T')[0];
-    const todaysTransactions = userData.transactions.filter(tx => 
+    const todaysTransactions = (userData.transactions || []).filter(tx => 
       tx.date?.startsWith(today) && tx.gain > 0
     );
     

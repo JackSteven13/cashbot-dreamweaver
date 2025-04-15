@@ -153,7 +153,7 @@ export const useManualSessions = ({
         updateBoostCount();
         
         // Check if limit is now reached
-        const effectiveSub = getEffectiveSubscription(safeUserData.subscription);
+        const effectiveSub = getEffectiveSubscription(safeUserData.subscription || 'freemium');
         const effectiveLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS];
         updateLimitAlertStatus(todaysGains, finalGain, effectiveSub, effectiveLimit, setShowLimitAlert);
       }

@@ -13,7 +13,7 @@ export const useSessionGain = () => {
   const isMobile = useIsMobile();
   
   const calculateSessionGain = async (
-    userData: UserData,
+    userData: UserData | Partial<UserData>,
     currentBalance: number,
     setShowLimitAlert: (show: boolean) => void
   ): Promise<{ success: boolean; finalGain: number; newBalance: number }> => {
@@ -21,7 +21,7 @@ export const useSessionGain = () => {
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Obtenir l'abonnement effectif
-    const effectiveSub = userData.subscription;
+    const effectiveSub = userData.subscription || 'freemium';
     
     // Calculer la limite quotidienne basée sur l'abonnement
     const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
@@ -30,7 +30,7 @@ export const useSessionGain = () => {
     const today = new Date().toISOString().split('T')[0];
     
     // Calculer les gains d'aujourd'hui pour la vérification des limites (utiliser les transactions)
-    const todaysTransactions = userData.transactions.filter(tx => 
+    const todaysTransactions = (userData.transactions || []).filter(tx => 
       tx.date.startsWith(today) && tx.gain > 0
     );
     
@@ -56,7 +56,7 @@ export const useSessionGain = () => {
     const randomGain = calculateManualSessionGain(
       effectiveSub, 
       todaysGains, // Passer les gains du jour, pas le solde total
-      userData.referrals.length
+      (userData.referrals || []).length
     );
     
     // Vérification finale pour s'assurer que nous ne dépassons pas la limite
