@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import useUserDataSync from './useUserDataSync';
 import { toast } from "@/components/ui/use-toast";
 import balanceManager from "@/utils/balance/balanceManager";
+import { UserData } from '@/types/userData';
 
 export const useInitUserData = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [username, setUsername] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<string | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const initializedRef = useRef(false);
   const { syncUserData } = useUserDataSync();
   
@@ -78,10 +80,11 @@ export const useInitUserData = () => {
     
     // Listen for data update events
     const handleUserDataRefreshed = (event: any) => {
-      const { username, subscription, balance } = event.detail;
+      const { username, subscription, balance, userData } = event.detail;
       if (username) setUsername(username);
       if (subscription) setSubscription(subscription);
       if (balance !== undefined) setBalance(parseFloat(String(balance)));
+      if (userData) setUserData(userData);
     };
     
     window.addEventListener('user:refreshed', handleUserDataRefreshed);
@@ -93,12 +96,24 @@ export const useInitUserData = () => {
     };
   }, [syncUserData]);
   
+  // Simplify the refreshData function to return a Promise<boolean>
+  const refreshData = async () => {
+    try {
+      const success = await syncUserData(true);
+      return success;
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      return false;
+    }
+  };
+  
   return {
     isInitializing,
     username,
     subscription,
     balance,
-    refreshData: () => syncUserData(true)
+    userData,
+    refreshData
   };
 };
 

@@ -1,130 +1,136 @@
 
-import { useEffect, useState, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { UserData } from '@/types/userData';
-import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
-import balanceManager from '@/utils/balance/balanceManager';
-import { useAutomaticRevenueTransactions } from './useAutomaticRevenueTransactions';
+import useAutomaticRevenueTransactions from './useAutomaticRevenueTransactions';
 
-interface UseAutomaticRevenueProps {
+interface AutomaticRevenueProps {
   userData: UserData | null;
   updateBalance: (gain: number, report: string) => Promise<void>;
 }
 
-export const useAutomaticRevenue = ({ userData, updateBalance }: UseAutomaticRevenueProps) => {
+export const useAutomaticRevenue = ({ userData, updateBalance }: AutomaticRevenueProps) => {
+  const [lastRevenueTime, setLastRevenueTime] = useState<Date | null>(null);
   const [automaticRevenue, setAutomaticRevenue] = useState<number>(0);
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [lastProcessed, setLastProcessed] = useState<Date | null>(null);
-  const processingTimeoutRef = useRef<number | null>(null);
-  const processingIntervalRef = useRef<number | null>(null);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const generationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { recordAutomaticTransaction } = useAutomaticRevenueTransactions();
-
-  // Calculate potential automatic revenue based on subscription
+  
+  // Clean up timeout on unmount
   useEffect(() => {
-    if (!userData) return;
-    
-    const baseRevenue = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0;
-    const referralBonus = (userData.referrals?.filter(r => r.status === 'active').length || 0) * 0.1;
-    
-    const calculatedRevenue = baseRevenue * 0.01 + referralBonus;
-    setAutomaticRevenue(parseFloat(calculatedRevenue.toFixed(2)));
-  }, [userData]);
-
-  // Configure the revenue generation - this runs every 2-3 minutes
-  useEffect(() => {
-    const scheduleNextRevenue = () => {
-      if (processingTimeoutRef.current) {
-        clearTimeout(processingTimeoutRef.current);
-      }
-      
-      // Random interval between 120-180 seconds (2-3 minutes)
-      const nextInterval = Math.floor(Math.random() * 60000) + 120000;
-      
-      processingTimeoutRef.current = window.setTimeout(() => {
-        // Process automatic revenue if user has an active subscription
-        if (userData && ['starter', 'gold', 'elite', 'freemium'].includes(userData.subscription)) {
-          processAutomaticRevenue();
-        }
-        // Schedule the next revenue generation
-        scheduleNextRevenue();
-      }, nextInterval);
-    };
-    
-    // Start immediately with a short delay to ensure UI is ready
-    processingTimeoutRef.current = window.setTimeout(() => {
-      if (userData) {
-        processAutomaticRevenue();
-      }
-      // Start the recurring schedule
-      scheduleNextRevenue();
-    }, 10000);
-    
-    // Start a more frequent interval check to ensure the bot stays active
-    processingIntervalRef.current = window.setInterval(() => {
-      const timeSinceLastProcess = lastProcessed ? (new Date().getTime() - lastProcessed.getTime()) : 300000;
-      
-      // If no processing happened in the last 5 minutes, force a process
-      if (timeSinceLastProcess > 300000 && userData) {
-        console.log("Force processing automatic revenue due to inactivity");
-        processAutomaticRevenue();
-      }
-    }, 60000);
-    
-    // Clean up on unmount
     return () => {
-      if (processingTimeoutRef.current) {
-        clearTimeout(processingTimeoutRef.current);
-      }
-      if (processingIntervalRef.current) {
-        clearInterval(processingIntervalRef.current);
+      if (generationTimeoutRef.current) {
+        clearTimeout(generationTimeoutRef.current);
       }
     };
-  }, [userData]);
-
-  // Process automatic revenue addition
-  const processAutomaticRevenue = async () => {
-    if (!userData || isProcessing) return;
+  }, []);
+  
+  // Function to generate automatic revenue
+  const processAutomaticRevenue = useCallback(async () => {
+    if (isGenerating || !userData) return;
+    
+    setIsGenerating(true);
     
     try {
-      setIsProcessing(true);
+      const now = new Date();
+      const subscription = userData.subscription || 'freemium';
       
-      const revenueAmount = automaticRevenue;
-      if (revenueAmount > 0) {
-        console.log(`Processing automatic revenue: ${revenueAmount}€`);
-        
-        // Update balance
-        await updateBalance(revenueAmount, "Revenu automatique");
-        
-        // Record the transaction explicitly
-        recordAutomaticTransaction(revenueAmount);
-        
-        // Add to daily gains
-        balanceManager.addDailyGain(revenueAmount);
-        
-        // Update last processed time
-        setLastProcessed(new Date());
-        
-        // Dispatch event for animations and UI updates
-        window.dispatchEvent(new CustomEvent('automatic:revenue', { 
-          detail: { 
-            amount: revenueAmount, 
-            timestamp: Date.now(),
-            animate: true
-          }
-        }));
+      // Calculate a random gain amount based on subscription level
+      let baseAmount = 0;
+      
+      switch (subscription) {
+        case 'premium':
+          baseAmount = 0.2;
+          break;
+        case 'professional':
+          baseAmount = 0.4;
+          break;
+        case 'freemium':
+        default:
+          baseAmount = 0.1;
+          break;
       }
+      
+      // Add some randomness to the gain amount (±20%)
+      const randomFactor = 0.8 + (Math.random() * 0.4); // 0.8 to 1.2
+      const gain = parseFloat((baseAmount * randomFactor).toFixed(2));
+      
+      console.log(`Generating automatic revenue: ${gain}€`);
+      
+      // Update UI with the generated revenue
+      setAutomaticRevenue(prev => parseFloat((prev + gain).toFixed(2)));
+      setLastRevenueTime(now);
+      
+      // Trigger the balance update animation
+      window.dispatchEvent(new CustomEvent('automatic:revenue', { 
+        detail: { amount: gain, automatic: true, timestamp: now.getTime() }
+      }));
+      
+      // Record the transaction
+      await recordAutomaticTransaction(gain);
+      
+      // Update the balance
+      await updateBalance(gain, "Revenu automatique");
+      
     } catch (error) {
-      console.error("Error processing automatic revenue:", error);
+      console.error("Error generating automatic revenue:", error);
     } finally {
-      setIsProcessing(false);
+      setIsGenerating(false);
+      
+      // Schedule the next revenue generation (2-3 minutes)
+      const nextInterval = 120000 + Math.random() * 60000; // 2-3 minutes
+      
+      if (generationTimeoutRef.current) {
+        clearTimeout(generationTimeoutRef.current);
+      }
+      
+      generationTimeoutRef.current = setTimeout(() => {
+        processAutomaticRevenue();
+      }, nextInterval);
     }
-  };
+  }, [isGenerating, userData, updateBalance, recordAutomaticTransaction]);
   
-  return {
-    automaticRevenue,
-    isProcessing,
-    lastProcessed,
-    processAutomaticRevenue // Expose this method to allow forcing a revenue generation
-  };
+  // Set up the initial timer for revenue generation
+  useEffect(() => {
+    if (userData && !isGenerating) {
+      console.log("Setting up automatic revenue generation");
+      
+      // Initial random delay (10-30 seconds) to start the process
+      const initialDelay = 10000 + Math.random() * 20000;
+      
+      if (generationTimeoutRef.current) {
+        clearTimeout(generationTimeoutRef.current);
+      }
+      
+      generationTimeoutRef.current = setTimeout(() => {
+        processAutomaticRevenue();
+      }, initialDelay);
+    }
+    
+    return () => {
+      if (generationTimeoutRef.current) {
+        clearTimeout(generationTimeoutRef.current);
+      }
+    };
+  }, [userData, isGenerating, processAutomaticRevenue]);
+  
+  // Listen for dashboard heartbeat to ensure revenue generation stays active
+  useEffect(() => {
+    const handleHeartbeat = () => {
+      // If it's been more than 5 minutes since the last revenue generation, force a new one
+      if (lastRevenueTime && (new Date().getTime() - lastRevenueTime.getTime() > 300000)) {
+        console.log("Heartbeat detected long pause in revenue generation, restarting...");
+        processAutomaticRevenue();
+      }
+    };
+    
+    window.addEventListener('dashboard:heartbeat', handleHeartbeat);
+    
+    return () => {
+      window.removeEventListener('dashboard:heartbeat', handleHeartbeat);
+    };
+  }, [lastRevenueTime, processAutomaticRevenue]);
+  
+  return { automaticRevenue, lastRevenueTime, processAutomaticRevenue };
 };
 
 export default useAutomaticRevenue;
