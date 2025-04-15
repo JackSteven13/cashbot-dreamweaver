@@ -33,17 +33,14 @@ const DashboardContainer = () => {
   const initialLoadAttempted = useRef(false);
   const fastLoadRef = useRef<boolean>(false);
   
-  // Get our hooks
   const { terminalLines, showAnalysis, analysisComplete, limitReached } = useTerminalAnalysis();
   const { activityLevel } = useActivitySimulation();
   
-  // Incrémenter le compteur de session
   const incrementSessionCount = async () => {
     setDailySessionCount(prevCount => prevCount + 1);
     return Promise.resolve();
   };
   
-  // Mettre à jour le solde
   const updateBalance = async (gain: number, report: string, forceUpdate = false) => {
     setUserData(prev => ({
       ...prev,
@@ -59,13 +56,11 @@ const DashboardContainer = () => {
     return Promise.resolve();
   };
   
-  // Réinitialiser le solde (pour les retraits)
   const resetBalance = async () => {
     setUserData(prev => ({ ...prev, balance: 0 }));
     return Promise.resolve();
   };
   
-  // Initialize dashboard sessions
   const {
     isStartingSession,
     handleStartSession,
@@ -81,7 +76,6 @@ const DashboardContainer = () => {
     resetBalance
   });
   
-  // Fast load effect - try to show something quickly on first load
   useEffect(() => {
     if (!fastLoadRef.current) {
       fastLoadRef.current = true;
@@ -101,11 +95,9 @@ const DashboardContainer = () => {
     }
   }, []);
   
-  // More complete initial data load
   useEffect(() => {
     const now = Date.now();
     
-    // Avoid frequent reloads if another is in progress (debounce)
     if (now - lastInitTime < 2000 && lastInitTime !== 0) {
       return;
     }
@@ -115,11 +107,9 @@ const DashboardContainer = () => {
       setLastInitTime(now);
       initialLoadAttempted.current = true;
       
-      // Simulate loading initial data
       setTimeout(() => {
         setIsLoading(false);
         
-        // Simulate activity after load
         simulateActivity();
         
         toast({
@@ -130,13 +120,11 @@ const DashboardContainer = () => {
       }, 800);
     }
   }, [user, lastInitTime]);
-
-  // Handle username loaded
+  
   const handleUsernameLoaded = (name: string) => {
     setUsername(name);
   };
   
-  // Handle data refreshed
   const handleDataRefreshed = (data: any) => {
     setUserData(prev => ({
       ...prev,
@@ -153,15 +141,12 @@ const DashboardContainer = () => {
     setIsLoading(false);
   };
 
-  // If no username is set, use a default
   const displayName = username || userData?.username || 'Utilisateur';
 
-  // Show skeleton while loading initial data
   if (isLoading) {
     return <DashboardSkeleton username={displayName} />;
   }
 
-  // S'assurer que terminalLines est du bon type si c'est un tableau de chaînes
   const formattedLines = terminalLines && Array.isArray(terminalLines) 
     ? terminalLines.map(line => (typeof line === 'string' ? { text: line, type: 'info' } : line))
     : [];
@@ -187,7 +172,6 @@ const DashboardContainer = () => {
         />
       </DashboardLayout>
       
-      {/* Terminal overlay with animations */}
       {showAnalysis && formattedLines && (
         <TerminalOverlay 
           lines={formattedLines} 
@@ -197,7 +181,6 @@ const DashboardContainer = () => {
         />
       )}
       
-      {/* Invisible component to track data state changes */}
       <UserDataStateTracker 
         onUsernameLoaded={handleUsernameLoaded}
         onDataRefreshed={handleDataRefreshed}

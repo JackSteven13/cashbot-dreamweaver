@@ -13,61 +13,56 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     return false;
   }
   
-  // Détection d'appareil mobile plus précise
-  const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(navigator.userAgent);
-  
-  console.log(`Tentative d'ouverture de Stripe (${isMobile ? 'mobile' : 'desktop'}):`, stripeUrl);
-  
   try {
+    // Détection d'appareil mobile (plus précise)
+    const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(navigator.userAgent);
+    
+    console.log(`Tentative d'ouverture de Stripe (${isMobile ? 'mobile' : 'desktop'}):`, stripeUrl);
+    
     if (isMobile) {
-      // Sur mobile, toujours utiliser la redirection directe
-      console.log("Appareil mobile détecté, redirection directe");
+      // Sur mobile, utiliser la redirection directe sans délai
+      console.log("Appareil mobile détecté, redirection directe immédiate");
+      // Forcer l'ouverture dans la même fenêtre pour les appareils mobiles
       window.location.href = stripeUrl;
       return true;
     }
     
-    // Pour desktop et tablette, d'abord essayer un nouvel onglet
+    // Sur desktop, essayer d'abord d'ouvrir dans un nouvel onglet
     const newWindow = window.open(stripeUrl, '_blank', 'noopener,noreferrer');
     
-    // Vérifier si l'ouverture a réussi
+    // Si l'ouverture échoue (bloqué par popup blocker ou autre)
     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      console.log("Ouverture nouvel onglet échouée, tente redirection avec lien");
+      console.log("Ouverture de nouvelle fenêtre échouée, tentative de redirection directe");
       
-      // Tenter avec un lien et un événement de clic simulé
+      // Création d'un élément a avec target _blank pour simuler un clic utilisateur
       const link = document.createElement('a');
       link.href = stripeUrl;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
       
-      // Vérifier après un court délai si la fenêtre a été bloquée
+      // Si ça échoue aussi, redirection directe
       setTimeout(() => {
         if (!newWindow || newWindow.closed) {
-          console.log("Redirection lien échouée aussi, tentative redirection directe");
+          console.log("Seconde tentative échouée, redirection directe");
           window.location.href = stripeUrl;
         }
       }, 1000);
       
       return true;
     } else {
-      console.log("Nouvel onglet ouvert avec succès");
+      // Focus sur la nouvelle fenêtre
       newWindow.focus();
+      console.log("Nouvelle fenêtre ouverte avec succès");
       return true;
     }
   } catch (error) {
-    console.error("Erreur lors de l'ouverture de Stripe:", error);
+    console.error("Erreur lors de l'ouverture de la fenêtre:", error);
     
-    // En cas d'erreur, tenter la redirection directe
-    try {
-      console.log("Erreur détectée, tentative de redirection directe");
-      window.location.href = stripeUrl;
-      return true;
-    } catch (e) {
-      console.error("Échec de toutes les méthodes de redirection:", e);
-      return false;
-    }
+    // Dernière tentative avec redirection directe
+    console.log("Méthode de secours: redirection directe après erreur");
+    window.location.href = stripeUrl;
+    return true;
   }
 };
 
@@ -76,6 +71,5 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
  */
 export const isStripeWindowOpen = (): boolean => {
   // Cette fonction pourrait être étendue pour vérifier si un onglet Stripe spécifique est ouvert
-  // Pour l'instant, c'est une implémentation minimaliste
   return false;
 };
