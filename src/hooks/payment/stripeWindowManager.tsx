@@ -22,12 +22,13 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     if (isMobile) {
       // Sur mobile, utiliser la redirection directe sans délai
       console.log("Appareil mobile détecté, redirection directe immédiate");
+      // Forcer l'ouverture dans la même fenêtre pour les appareils mobiles
       window.location.href = stripeUrl;
       return true;
     }
     
     // Sur desktop, essayer d'abord d'ouvrir dans un nouvel onglet
-    const newWindow = window.open(stripeUrl, '_blank');
+    const newWindow = window.open(stripeUrl, '_blank', 'noopener,noreferrer');
     
     // Si l'ouverture échoue (bloqué par popup blocker ou autre)
     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
@@ -70,6 +71,5 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
  */
 export const isStripeWindowOpen = (): boolean => {
   // Cette fonction pourrait être étendue pour vérifier si un onglet Stripe spécifique est ouvert
-  // Pour l'instant, c'est une implémentation minimaliste
   return false;
 };
