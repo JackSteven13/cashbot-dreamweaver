@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { TrendingUp, Calendar, Clock, ArrowUpRight, ChevronDown } from 'lucide-react';
 import { formatRevenue } from '@/utils/formatters';
 import EliteBadge from '@/components/subscriptions/EliteBadge';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
 interface OverviewTabProps {
   subscription: string;
@@ -26,6 +27,34 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 }) => {
   // Convert any "alpha" subscription to "starter"
   const displaySubscription = subscription === "alpha" ? "starter" : subscription;
+
+  // Calculer les revenus en fonction des limites d'abonnement
+  const calculateRevenueForDisplay = () => {
+    // Obtenir la limite quotidienne basée sur l'abonnement
+    const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    
+    // Pour un nouvel utilisateur ou si le solde est inférieur à la limite, on retourne 0
+    if (isNewUser || balance <= 0) return { today: 0, week: 0, month: 0 };
+    
+    // Pour les comptes freemium, respecter strictement la limite de 0.50€ par jour
+    if (subscription === 'freemium') {
+      const today = Math.min(balance, dailyLimit);
+      const week = Math.min(dailyLimit * 5, balance * 1.2); // Max 5 jours à 0.50€
+      const month = Math.min(dailyLimit * 20, balance * 2); // Max 20 jours à 0.50€
+      
+      return { today, week, month };
+    }
+    
+    // Pour les autres abonnements, garder le comportement actuel mais avec des limites plus réalistes
+    return {
+      today: Math.min(balance, dailyLimit),
+      week: Math.min(balance * 1.5, dailyLimit * 5),
+      month: Math.min(balance * 3, dailyLimit * 20)
+    };
+  };
+  
+  // Obtenir les revenus calculés
+  const revenues = calculateRevenueForDisplay();
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -111,19 +140,19 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600 dark:text-slate-300">Aujourd'hui</span>
                 <span className="font-medium text-slate-700 dark:text-slate-300">
-                  +{formatRevenue(isNewUser ? 0 : balance)}
+                  +{formatRevenue(revenues.today)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600 dark:text-slate-300">Cette semaine</span>
                 <span className="font-medium text-slate-700 dark:text-slate-300">
-                  +{formatRevenue(isNewUser ? 0 : balance * 1.5)}
+                  +{formatRevenue(revenues.week)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600 dark:text-slate-300">Ce mois</span>
                 <span className="font-medium text-slate-700 dark:text-slate-300">
-                  +{formatRevenue(isNewUser ? 0 : balance * 3)}
+                  +{formatRevenue(revenues.month)}
                 </span>
               </div>
             </div>

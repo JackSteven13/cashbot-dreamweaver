@@ -2,6 +2,7 @@
 import React from 'react';
 import SummaryPanel from './summary/SummaryPanel';
 import TransactionsPanel from './transactions/TransactionsPanel';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
 interface DashboardMetricsProps {
   balance: number;
@@ -35,7 +36,13 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
   isBotActive = true
 }) => {
   // S'assurer que les nouveaux utilisateurs commencent toujours avec un solde à 0
-  const displayBalance = isNewUser ? 0 : balance;
+  let displayBalance = isNewUser ? 0 : balance;
+  
+  // Pour les comptes freemium, limiter l'affichage du solde à la limite quotidienne
+  if (subscription === 'freemium' && !isNewUser) {
+    const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    displayBalance = Math.min(balance, dailyLimit * 20); // Limiter à 20 jours de revenus maximum
+  }
   
   // Calculer les gains issus des parrainages
   const referralBonus = isNewUser ? 0 : (referrals?.reduce((total, ref) => total + (ref.commission_earned || 0), 0) || 0);
