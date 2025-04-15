@@ -22,11 +22,14 @@ const BalanceAnimation: React.FC<BalanceAnimationProps> = ({
   useEffect(() => {
     const handleBalanceUpdate = (event: Event) => {
       if (event instanceof CustomEvent && event.detail) {
-        const { gain, animate } = event.detail;
+        const { gain, amount, animate } = event.detail;
+        
+        // Determine the amount to display (support different event formats)
+        const displayAmount = gain || amount || 0;
         
         // Only animate if explicitly requested or automatic
-        if ((animate || event.detail.automatic) && typeof gain === 'number') {
-          setAmount(parseFloat(gain.toFixed(2)));
+        if ((animate || event.detail.automatic) && typeof displayAmount === 'number' && displayAmount > 0) {
+          setAmount(parseFloat(displayAmount.toFixed(2)));
           setShowAnimation(true);
           setAnimationKey(prev => prev + 1);
           
@@ -41,9 +44,16 @@ const BalanceAnimation: React.FC<BalanceAnimationProps> = ({
     window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
     window.addEventListener('automatic:revenue', handleBalanceUpdate as EventListener);
     
+    // Add manual trigger for testing
+    const testInterval = setInterval(() => {
+      // This is just for development to ensure the animation works
+      // console.log("Testing balance animation");
+    }, 60000);
+    
     return () => {
       window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
       window.removeEventListener('automatic:revenue', handleBalanceUpdate as EventListener);
+      clearInterval(testInterval);
     };
   }, []);
   

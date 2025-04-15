@@ -13,10 +13,41 @@ export const useAutomaticRevenueTransactions = () => {
   const [lastTransactionTime, setLastTransactionTime] = useState<Date | null>(null);
   const intervalRef = useRef<number | null>(null);
   const isProcessing = useRef(false);
+  const processingQueue = useRef<Array<number>>([]);
+  
+  // Process the queue periodically to handle any pending transactions
+  useEffect(() => {
+    intervalRef.current = window.setInterval(() => {
+      if (processingQueue.current.length > 0 && !isProcessing.current) {
+        const amount = processingQueue.current.shift();
+        if (amount && amount > 0) {
+          recordAutomaticTransaction(amount);
+        }
+      }
+    }, 5000);
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
   
   // Create a transaction for automatic revenue
   const recordAutomaticTransaction = useCallback(async (amount: number) => {
-    if (!user || isProcessing.current || amount <= 0) return;
+    if (!user) {
+      // Queue the transaction for when the user is available
+      processingQueue.current.push(amount);
+      return;
+    }
+    
+    if (isProcessing.current) {
+      // Queue the transaction for later processing
+      processingQueue.current.push(amount);
+      return;
+    }
+    
+    if (amount <= 0) return;
     
     try {
       isProcessing.current = true;
@@ -29,10 +60,13 @@ export const useAutomaticRevenueTransactions = () => {
           gain: amount,
           report: 'Revenu automatique',
           date: new Date().toISOString().split('T')[0]
-        });
+        })
+        .select();
       
       if (error) {
         console.error("Error recording automatic transaction:", error);
+        // Re-queue the transaction on error
+        processingQueue.current.push(amount);
         return;
       }
       
@@ -49,9 +83,11 @@ export const useAutomaticRevenueTransactions = () => {
         detail: { gain: amount, automatic: true }
       }));
       
-      console.log(`Automatic revenue transaction recorded: ${amount}€`);
+      console.log(`Automatic revenue transaction recorded: ${amount}€`, data);
     } catch (error) {
       console.error("Failed to record automatic transaction:", error);
+      // Re-queue the transaction on error
+      processingQueue.current.push(amount);
     } finally {
       isProcessing.current = false;
     }
@@ -77,7 +113,8 @@ export const useAutomaticRevenueTransactions = () => {
   
   return {
     recordAutomaticTransaction,
-    lastTransactionTime
+    lastTransactionTime,
+    queueLength: processingQueue.current.length
   };
 };
 

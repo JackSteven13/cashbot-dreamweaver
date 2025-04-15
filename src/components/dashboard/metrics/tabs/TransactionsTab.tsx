@@ -25,6 +25,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
 }) => {
   const navigate = useNavigate();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [localRefreshKey, setLocalRefreshKey] = useState(0);
   
   // Use the transactions hook for more reliable transaction management
   const { 
@@ -39,6 +40,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
     setIsRefreshing(true);
     try {
       await handleManualRefresh();
+      setLocalRefreshKey(prev => prev + 1);
       toast({
         title: "Transactions actualisées",
         description: "Les dernières transactions ont été chargées",
@@ -56,12 +58,25 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
       refreshTransactions();
     };
     
+    // Listen for multiple event types to ensure sync
     window.addEventListener('transactions:refresh', handleTransactionRefresh);
+    window.addEventListener('balance:update', handleTransactionRefresh);
+    window.addEventListener('automatic:revenue', handleTransactionRefresh);
+    
+    // Add automatic refresh every 3 minutes
+    const autoRefreshInterval = setInterval(() => {
+      if (!isRefreshing) {
+        setLocalRefreshKey(prev => prev + 1);
+      }
+    }, 180000); 
     
     return () => {
       window.removeEventListener('transactions:refresh', handleTransactionRefresh);
+      window.removeEventListener('balance:update', handleTransactionRefresh);
+      window.removeEventListener('automatic:revenue', handleTransactionRefresh);
+      clearInterval(autoRefreshInterval);
     };
-  }, []);
+  }, [isRefreshing]);
   
   const handleViewAll = () => {
     navigate('/dashboard/transactions');
@@ -89,7 +104,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
         <div className="grid gap-4">
           {displayedTransactions.slice(0, 5).map((transaction, index) => (
             <SessionCard 
-              key={`tx-${index}-${transaction.date}`}
+              key={`tx-${index}-${transaction.date}-${localRefreshKey}`}
               gain={transaction.gain || transaction.amount || 0}
               report={transaction.report || transaction.type || ''}
               date={transaction.date}

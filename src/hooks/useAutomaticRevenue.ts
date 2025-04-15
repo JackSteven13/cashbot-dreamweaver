@@ -15,6 +15,7 @@ export const useAutomaticRevenue = ({ userData, updateBalance }: UseAutomaticRev
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [lastProcessed, setLastProcessed] = useState<Date | null>(null);
   const processingTimeoutRef = useRef<number | null>(null);
+  const processingIntervalRef = useRef<number | null>(null);
   const { recordAutomaticTransaction } = useAutomaticRevenueTransactions();
 
   // Calculate potential automatic revenue based on subscription
@@ -40,7 +41,7 @@ export const useAutomaticRevenue = ({ userData, updateBalance }: UseAutomaticRev
       
       processingTimeoutRef.current = window.setTimeout(() => {
         // Process automatic revenue if user has an active subscription
-        if (userData && ['starter', 'gold', 'elite'].includes(userData.subscription)) {
+        if (userData && ['starter', 'gold', 'elite', 'freemium'].includes(userData.subscription)) {
           processAutomaticRevenue();
         }
         // Schedule the next revenue generation
@@ -48,13 +49,33 @@ export const useAutomaticRevenue = ({ userData, updateBalance }: UseAutomaticRev
       }, nextInterval);
     };
     
-    // Start the process
-    scheduleNextRevenue();
+    // Start immediately with a short delay to ensure UI is ready
+    processingTimeoutRef.current = window.setTimeout(() => {
+      if (userData) {
+        processAutomaticRevenue();
+      }
+      // Start the recurring schedule
+      scheduleNextRevenue();
+    }, 10000);
+    
+    // Start a more frequent interval check to ensure the bot stays active
+    processingIntervalRef.current = window.setInterval(() => {
+      const timeSinceLastProcess = lastProcessed ? (new Date().getTime() - lastProcessed.getTime()) : 300000;
+      
+      // If no processing happened in the last 5 minutes, force a process
+      if (timeSinceLastProcess > 300000 && userData) {
+        console.log("Force processing automatic revenue due to inactivity");
+        processAutomaticRevenue();
+      }
+    }, 60000);
     
     // Clean up on unmount
     return () => {
       if (processingTimeoutRef.current) {
         clearTimeout(processingTimeoutRef.current);
+      }
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
       }
     };
   }, [userData]);
@@ -101,7 +122,8 @@ export const useAutomaticRevenue = ({ userData, updateBalance }: UseAutomaticRev
   return {
     automaticRevenue,
     isProcessing,
-    lastProcessed
+    lastProcessed,
+    processAutomaticRevenue // Expose this method to allow forcing a revenue generation
   };
 };
 

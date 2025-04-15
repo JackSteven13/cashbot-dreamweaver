@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -7,14 +8,27 @@ import useInitUserData from '@/hooks/useInitUserData';
 import SubscriptionSynchronizer from '@/components/subscriptions/SubscriptionSynchronizer';
 import { toast } from '@/components/ui/use-toast';
 import BalanceAnimation from '@/components/dashboard/BalanceAnimation';
+import useAutomaticRevenue from '@/hooks/useAutomaticRevenue';
 
 const Dashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { isInitializing, username, refreshData } = useInitUserData();
+  const { isInitializing, username, refreshData, userData } = useInitUserData();
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [dashboardReady, setDashboardReady] = useState(false);
   const [isPreloaded, setIsPreloaded] = useState(false);
+  
+  // Add automatic revenue handler
+  const updateBalance = async (gain: number, report: string) => {
+    console.log(`Updating balance with gain: ${gain}, report: ${report}`);
+    // This will be handled by the hook and useInitUserData will refresh the data
+    await refreshData();
+  };
+
+  const { automaticRevenue, processAutomaticRevenue } = useAutomaticRevenue({
+    userData,
+    updateBalance
+  });
   
   useEffect(() => {
     if (!isPreloaded) {
@@ -49,8 +63,33 @@ const Dashboard = () => {
       window.dispatchEvent(new CustomEvent('dashboard:ready', { 
         detail: { username, timestamp: Date.now() } 
       }));
+
+      // Force an immediate revenue generation on first load
+      if (userData) {
+        console.log("Initiating first automatic revenue on dashboard ready");
+        setTimeout(() => {
+          processAutomaticRevenue();
+        }, 5000);
+      }
     }
-  }, [isInitializing, username, isFirstLoad]);
+  }, [isInitializing, username, isFirstLoad, userData, processAutomaticRevenue]);
+
+  // Add heartbeat to ensure revenue generation stays active
+  useEffect(() => {
+    const heartbeatInterval = setInterval(() => {
+      // Check active status and force revenue generation if needed
+      if (userData) {
+        console.log("Dashboard heartbeat - ensuring revenue generation is active");
+        
+        // Dispatch an event that other components can listen for
+        window.dispatchEvent(new CustomEvent('dashboard:heartbeat', { 
+          detail: { timestamp: Date.now() } 
+        }));
+      }
+    }, 300000); // Every 5 minutes
+    
+    return () => clearInterval(heartbeatInterval);
+  }, [userData]);
 
   if (authLoading || !user) {
     return <DashboardSkeleton username="Chargement..." />;
