@@ -1,12 +1,9 @@
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Transaction } from '@/types/userData';
 
-/**
- * Hook pour gérer l'état des transactions
- */
 export const useTransactionsState = () => {
-  // États stables avec initialisation optimisée
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showAllTransactions, setShowAllTransactions] = useState(() => {
     try {
       const storedValue = localStorage.getItem('showAllTransactions');
@@ -15,9 +12,22 @@ export const useTransactionsState = () => {
       return false;
     }
   });
+  const [refreshKey, setRefreshKey] = useState<number>(0);
   
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  // Listen for transaction update events to support real-time updates
+  useEffect(() => {
+    const handleTransactionRefresh = (event: any) => {
+      setRefreshKey(prev => prev + 1);
+    };
+    
+    window.addEventListener('transactions:refresh', handleTransactionRefresh as any);
+    window.addEventListener('balance:update', handleTransactionRefresh as any);
+    
+    return () => {
+      window.removeEventListener('transactions:refresh', handleTransactionRefresh as any);
+      window.removeEventListener('balance:update', handleTransactionRefresh as any);
+    };
+  }, []);
   
   return {
     transactions,

@@ -25,7 +25,7 @@ const PaymentLoading = () => {
               style={{width: '60%'}}
             >
               {/* Animation de progression */}
-              <div className="absolute inset-0 bg-white/20 animate-move-lr"></div>
+              <div className="absolute inset-0 bg-white/20" style={{animation: 'move-lr 2s infinite'}}></div>
             </div>
           </div>
           
@@ -35,23 +35,21 @@ const PaymentLoading = () => {
         </div>
       </div>
       
-      {/* Styles globaux pour les animations */}
-      <style jsx global>{`
-        @keyframes move-lr {
-          0% { transform: translateX(-100%); }
-          50%, 100% { transform: translateX(100%); }
-        }
-        
-        .animate-move-lr {
-          animation: move-lr 2s infinite;
-        }
-        
-        .glass-panel {
-          background: rgba(24, 24, 47, 0.8);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-      `}</style>
+      {/* Styles globaux */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes move-lr {
+            0% { transform: translateX(-100%); }
+            50%, 100% { transform: translateX(100%); }
+          }
+          
+          .glass-panel {
+            background: rgba(24, 24, 47, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+          }
+        `
+      }} />
     </div>
   );
 };

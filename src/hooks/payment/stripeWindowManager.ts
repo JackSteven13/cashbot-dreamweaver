@@ -28,7 +28,7 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     }
     
     // Sur desktop, ouvrir dans un nouvel onglet avec focus immédiat
-    const newWindow = window.open(stripeUrl, '_blank', 'noopener,noreferrer');
+    const newWindow = window.open(stripeUrl, '_blank');
     
     if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
       // Focus sur la nouvelle fenêtre pour attirer l'attention de l'utilisateur

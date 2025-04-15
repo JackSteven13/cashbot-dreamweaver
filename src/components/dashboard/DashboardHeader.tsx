@@ -3,79 +3,100 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { User, LogOut, Settings, HelpCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { User, LogOut, Settings } from 'lucide-react';
+import { useProfileData } from '@/hooks/auth/useProfileData';
+import { Badge } from '@/components/ui/badge';
+import { useEffect } from 'react';
 
 interface DashboardHeaderProps {
   username: string;
-  subscription?: string;
-  isNewUser?: boolean;
+  subscription: string;
 }
 
-const DashboardHeader: React.FC<DashboardHeaderProps> = ({ 
-  username,
-  subscription = 'freemium',
-  isNewUser = false
-}) => {
+const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { signOut } = useAuth();
   
   const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      navigate('/');
-    } catch (error) {
-      console.error("Error signing out:", error);
+    await signOut();
+    navigate('/login');
+  };
+  
+  // Format subscription name for display
+  const formatSubscription = (sub: string) => {
+    switch (sub) {
+      case 'premium':
+        return 'Premium';
+      case 'pro':
+        return 'Pro';
+      case 'business':
+        return 'Business';
+      default:
+        return 'Freemium';
     }
   };
   
+  // Set badge color based on subscription level
+  const getBadgeVariant = (sub: string) => {
+    switch (sub) {
+      case 'premium':
+        return 'purple';
+      case 'pro':
+        return 'blue';
+      case 'business':
+        return 'gold';
+      default:
+        return 'secondary';
+    }
+  };
+
   return (
-    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          {isNewUser && (
-            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full dark:bg-blue-900 dark:text-blue-300">
-              Nouveau
-            </span>
-          )}
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-3 md:px-6">
+      <div className="flex items-center gap-2">
+        <div className="flex flex-col">
+          <h2 className="text-lg font-semibold leading-none tracking-tight">
+            Bienvenue, <span className="text-primary">{username}</span>
+          </h2>
+          <p className="text-sm text-muted-foreground">Stream Genius Dashboard</p>
         </div>
+      </div>
+      
+      <div className="flex items-center space-x-2">
+        {subscription && (
+          <Badge 
+            variant={getBadgeVariant(subscription) as any} 
+            className="hidden sm:inline-flex"
+          >
+            {formatSubscription(subscription)}
+          </Badge>
+        )}
         
-        <div className="flex items-center space-x-2">
-          <div className="hidden md:flex items-center mr-4">
-            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-              <User className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-            </div>
-            <span className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">{username}</span>
-          </div>
-          
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => navigate('/settings')}
-            title="Paramètres"
-          >
-            <Settings className="h-5 w-5" />
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => navigate('/aide')}
-            title="Aide"
-          >
-            <HelpCircle className="h-5 w-5" />
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={handleSignOut}
-            title="Déconnexion"
-          >
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </div>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={() => navigate('/settings')}
+          title="Paramètres du compte"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={() => navigate('/profile')}
+          title="Profil utilisateur"
+        >
+          <User className="h-4 w-4" />
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={handleSignOut}
+          title="Déconnexion"
+        >
+          <LogOut className="h-4 w-4" />
+        </Button>
       </div>
     </header>
   );

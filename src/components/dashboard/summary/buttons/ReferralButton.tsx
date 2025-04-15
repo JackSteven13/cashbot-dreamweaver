@@ -23,6 +23,11 @@ const ReferralButton: React.FC<ReferralButtonProps> = ({
 
   // Vérifier si le lien de parrainage est disponible
   const hasValidReferralLink = referralLink && referralLink !== '';
+  
+  // Display placeholder if referral link is not valid
+  const displayLink = hasValidReferralLink 
+    ? referralLink 
+    : `${window.location.origin}/register?ref=generate`;
 
   return (
     <>
@@ -50,7 +55,7 @@ const ReferralButton: React.FC<ReferralButtonProps> = ({
       <ReferralLinkModal 
         open={isModalOpen} 
         setOpen={setIsModalOpen}
-        referralLink={referralLink || `${window.location.origin}/register?ref=generate`}
+        referralLink={displayLink}
         subscription={subscription}
       />
     </>
