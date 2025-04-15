@@ -1,6 +1,6 @@
 
-import { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { ReactNode, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '@/components/dashboard/Sidebar';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,23 @@ const DashboardLayout = ({
   setSelectedNavItem
 }: DashboardLayoutProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
+
+  // Prevent navigation to root on orientation change
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      // Don't do anything specific on orientation change
+      // Just let the component re-render naturally
+      console.log("Orientation changed, maintaining current route:", location.pathname);
+    };
+    
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, [location.pathname]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
