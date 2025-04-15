@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { useAutoSessions } from './sessions/useAutoSessions';
@@ -94,12 +93,15 @@ export const useDashboardSessions = ({
     setShowLimitAlert
   );
 
-  const { isStartingSession, handleStartSession, localBalance } = useManualSessions({
-    userData: safeUserData,
+  const { 
+    isSessionRunning, 
+    startSession,
+    canStartSession 
+  } = useManualSessions({
+    userData,
     dailySessionCount,
     incrementSessionCount,
-    updateBalance,
-    setShowLimitAlert
+    updateBalance
   });
 
   const { handleWithdrawal, isProcessingWithdrawal } = useWithdrawal(
@@ -116,12 +118,12 @@ export const useDashboardSessions = ({
   );
 
   return {
-    isStartingSession,
-    handleStartSession,
+    isStartingSession: isSessionRunning,
+    handleStartSession: startSession,
     handleWithdrawal,
     isProcessingWithdrawal,
     lastSessionTimestamp,
-    localBalance,
+    localBalance: userData?.balance || 0,
     isBotActive
   };
 };

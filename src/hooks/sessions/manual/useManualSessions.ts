@@ -1,12 +1,10 @@
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useSessionValidation } from './useSessionValidation';
-import { useLimitChecking } from './useLimitChecking';
-import { useSessionGain } from './useSessionGain';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import balanceManager from '@/utils/balance/balanceManager';
 import { UserData } from '@/types/userData';
+import { useToast } from '@/components/ui/use-toast';
+import balanceManager from '@/utils/balance/balanceManager';
+import { triggerDashboardEvent } from '@/utils/animations';
 
 interface UseManualSessionsProps {
   userData: UserData | null;
@@ -22,90 +20,60 @@ export const useManualSessions = ({
   updateBalance
 }: UseManualSessionsProps) => {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [isSessionRunning, setIsSessionRunning] = useState(false);
 
-  // Créer un objet userData sécurisé avec toutes les propriétés requises
-  const safeUserData: UserData = {
-    username: userData?.username || 'User',
-    balance: userData?.balance || 0,
-    subscription: userData?.subscription || 'freemium',
-    transactions: userData?.transactions || [],
-    profile: userData?.profile || { id: user?.id || 'unknown' },
-    referrals: userData?.referrals || [],
-    referralLink: userData?.referralLink || `${window.location.origin}/register?ref=${user?.id || 'unknown'}`
+  // Session validation
+  const { canStartSession, sessionErrors, isLimitReached } = useSessionValidation(
+    userData || {},
+    dailySessionCount
+  );
+
+  // Calculate session gain based on subscription
+  const calculateSessionGain = async (): Promise<number> => {
+    const subscription = userData?.subscription || 'freemium';
+    const baseGain = Math.random() * 0.09 + 0.01; // Between 0.01 and 0.1
+    return parseFloat(baseGain.toFixed(2));
   };
 
-  // Validation de session
-  const { canStartSession, sessionErrors } = useSessionValidation(safeUserData, dailySessionCount);
-
-  // Vérification des limites
-  const { isLimitReached, currentLimit } = useLimitChecking(safeUserData);
-
-  // Calcul de gain pour la session
-  const { calculateSessionGain, getRandomSessionDuration } = useSessionGain(safeUserData);
-
-  const startSession = useCallback(async () => {
-    // Vérifications préalables
-    if (isSessionRunning) {
-      console.log('Session déjà en cours');
-      return;
-    }
-
-    if (!canStartSession) {
-      toast({
-        title: "Impossible de démarrer une session",
-        description: sessionErrors.join('. '),
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (isLimitReached) {
-      toast({
-        title: "Limite quotidienne atteinte",
-        description: `Vous avez atteint votre limite quotidienne de ${currentLimit}€`,
-        variant: "destructive"
-      });
-      return;
-    }
+  const startSession = async () => {
+    if (isSessionRunning) return;
 
     try {
       setIsSessionRunning(true);
-      
-      // Simuler le processus d'analyse
-      const sessionDuration = getRandomSessionDuration();
-      const startTime = Date.now();
-      const endTime = startTime + sessionDuration;
 
-      // Afficher un toast pour indiquer le début de la session
-      toast({
-        title: "Session démarrée",
-        description: "L'analyse est en cours...",
+      // Simulate analysis process with animations
+      triggerDashboardEvent('analysis-start', {
+        subscription: userData?.subscription,
+        animate: true
       });
 
-      // Attendre la fin de la session
-      await new Promise(resolve => setTimeout(resolve, sessionDuration));
+      // Random duration between 2-5 seconds
+      const duration = 2000 + Math.random() * 3000;
+      await new Promise(resolve => setTimeout(resolve, duration));
 
-      // Calculer le gain
-      const sessionGain = calculateSessionGain();
+      const sessionGain = await calculateSessionGain();
       
-      // Mise à jour du solde quotidien
+      // Add to daily gains
       balanceManager.addDailyGain(sessionGain);
       
-      // Mettre à jour le compteur de sessions
+      // Update session count
       await incrementSessionCount();
       
-      // Mettre à jour le solde utilisateur
+      // Update balance
       await updateBalance(sessionGain, `Session d'analyse publicitaire`);
       
-      // Afficher un toast avec le résultat
+      // Trigger successful completion animation
+      triggerDashboardEvent('analysis-complete', {
+        gain: sessionGain,
+        animate: true
+      });
+
       toast({
         title: "Session terminée",
         description: `Vous avez gagné ${sessionGain.toFixed(2)}€`,
       });
-      
-      return sessionGain;
+
+      return { success: true, finalGain: sessionGain };
     } catch (error) {
       console.error("Erreur lors de la session:", error);
       toast({
@@ -116,18 +84,7 @@ export const useManualSessions = ({
     } finally {
       setIsSessionRunning(false);
     }
-  }, [
-    canStartSession, 
-    calculateSessionGain, 
-    currentLimit, 
-    getRandomSessionDuration, 
-    incrementSessionCount, 
-    isLimitReached, 
-    isSessionRunning, 
-    sessionErrors, 
-    toast, 
-    updateBalance
-  ]);
+  };
 
   return {
     isSessionRunning,
