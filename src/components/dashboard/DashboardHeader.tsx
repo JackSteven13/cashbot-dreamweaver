@@ -3,7 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { User, LogOut, Settings } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { forceSignOut } from '@/utils/auth';
 
@@ -69,24 +69,6 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
             {formatSubscription(subscription)}
           </Badge>
         )}
-        
-        <Button 
-          variant="outline" 
-          size="icon" 
-          onClick={() => navigate('/settings')}
-          title="Paramètres du compte"
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          size="icon" 
-          onClick={() => navigate('/profile')}
-          title="Profil utilisateur"
-        >
-          <User className="h-4 w-4" />
-        </Button>
         
         <Button 
           variant="outline" 
