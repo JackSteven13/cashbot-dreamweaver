@@ -7,6 +7,7 @@ import { PlanType } from './types';
 import { toast } from '@/components/ui/use-toast';
 import { useStripeCheckout } from './useStripeCheckout';
 import { getPlanById } from '@/utils/plans';
+import { recoverStripeSession } from './stripeWindowManager';
 
 export const usePaymentPage = () => {
   const navigate = useNavigate();
@@ -26,6 +27,15 @@ export const usePaymentPage = () => {
     actualSubscription,
     isChecking
   } = useStripeCheckout(selectedPlan);
+  
+  // Vérifier s'il y a une session de paiement interrompue
+  useEffect(() => {
+    // Seulement si on n'est pas en train de charger une nouvelle session
+    if (!isStripeProcessing && !stripeCheckoutUrl) {
+      // Tenter de récupérer une session interrompue
+      recoverStripeSession();
+    }
+  }, []);
   
   // Vérifier le plan sélectionné depuis l'URL au chargement initial
   useEffect(() => {
@@ -56,6 +66,9 @@ export const usePaymentPage = () => {
       });
       return;
     }
+    
+    // Sauvegarder l'état du paiement
+    localStorage.setItem('pendingPayment', 'true');
     
     // Déclencher le processus de paiement
     handleStripeCheckout();

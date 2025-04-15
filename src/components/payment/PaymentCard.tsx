@@ -8,7 +8,7 @@ import PlanSummary from './PlanSummary';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
-import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
+import { openStripeWindow, recoverStripeSession } from '@/hooks/payment/stripeWindowManager';
 import MobilePaymentHelper from './MobilePaymentHelper';
 import { ExternalLink, AlertTriangle } from 'lucide-react';
 
@@ -30,6 +30,14 @@ const PaymentCard = ({
   const [termsAccepted, setTermsAccepted] = useState(true); // CGV présélectionnées
   const isCurrentPlan = currentSubscription === selectedPlan;
   const [showMobileHelper, setShowMobileHelper] = useState(false);
+
+  // Récupérer automatiquement une session de paiement interrompue
+  useEffect(() => {
+    if (localStorage.getItem('pendingPayment') === 'true' && !showMobileHelper && !stripeCheckoutUrl) {
+      // Afficher l'assistant mobile si une session était en cours
+      setShowMobileHelper(true);
+    }
+  }, [showMobileHelper, stripeCheckoutUrl]);
 
   // Ouvrir la page de paiement Stripe de manière optimisée
   const handlePayment = async () => {
@@ -58,9 +66,6 @@ const PaymentCard = ({
       duration: 3000
     });
 
-    // Sauvegarder l'état du paiement
-    localStorage.setItem('pendingPayment', 'true');
-    
     // Déclencher la création de la session Stripe
     onStripeCheckout();
   };
@@ -139,11 +144,14 @@ const PaymentCard = ({
           </>
         )}
 
-        {showMobileHelper && stripeCheckoutUrl && (
+        {showMobileHelper && (
           <MobilePaymentHelper 
-            isVisible={true}
-            onHelp={() => window.location.href = stripeCheckoutUrl}
-            stripeUrl={stripeCheckoutUrl}
+            isVisible={showMobileHelper}
+            onHelp={() => {
+              const lastUrl = localStorage.getItem('lastStripeUrl');
+              if (lastUrl) window.location.href = lastUrl;
+            }}
+            stripeUrl={stripeCheckoutUrl || localStorage.getItem('lastStripeUrl')}
           />
         )}
       </CardContent>

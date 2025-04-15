@@ -59,6 +59,17 @@ const Payment = () => {
       return () => clearTimeout(timeout);
     }
   }, [selectedPlan, currentSubscription, isAuthChecking, navigate]);
+  
+  // Vérifier si un paiement a été interrompu
+  useEffect(() => {
+    const isPending = localStorage.getItem('pendingPayment') === 'true';
+    if (isPending && !isStripeProcessing) {
+      toast({
+        title: "Paiement en attente",
+        description: "Nous avons détecté un paiement inachevé. Vous pouvez reprendre le processus ou choisir une autre offre.",
+      });
+    }
+  }, [isStripeProcessing]);
 
   if (isAuthChecking) {
     return <PaymentLoading />;

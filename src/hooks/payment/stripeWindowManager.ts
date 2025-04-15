@@ -24,23 +24,30 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     if (isMobile) {
       console.log("Appareil mobile détecté, redirection directe");
       
-      // Mécanisme principal: redirection directe
+      // Mécanisme principal: redirection directe sans délai
       window.location.href = stripeUrl;
       
       // Sauvegarder l'URL pour récupération en cas d'erreur
       localStorage.setItem('lastStripeUrl', stripeUrl);
       localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
+      localStorage.setItem('pendingPayment', 'true');
       
       // Attente minimale avant de retourner true pour donner du temps à la redirection
       return true;
     }
     
     // PRIORITÉ N°2: Sur desktop, tenter d'abord une nouvelle fenêtre
-    const newWindow = window.open(stripeUrl, '_blank');
+    const newWindow = window.open(stripeUrl, '_blank', 'noopener,noreferrer');
     
     if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
       // Fenêtre ouverte avec succès
       newWindow.focus();
+      
+      // Sauvegarder quand même l'URL pour récupération ultérieure si nécessaire
+      localStorage.setItem('lastStripeUrl', stripeUrl);
+      localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
+      localStorage.setItem('pendingPayment', 'true');
+      
       console.log("Nouvelle fenêtre Stripe ouverte avec succès");
       return true;
     }
@@ -61,6 +68,7 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     // Sauvegarder l'URL pour récupération ultérieure
     localStorage.setItem('lastStripeUrl', stripeUrl);
     localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
+    localStorage.setItem('pendingPayment', 'true');
     
     // PRIORITÉ N°4: Redirection directe en dernier recours (après un court délai)
     setTimeout(() => {
@@ -74,6 +82,7 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     // En cas d'erreur, redirection directe immédiate
     try {
       localStorage.setItem('lastStripeUrl', stripeUrl);
+      localStorage.setItem('pendingPayment', 'true');
       window.location.href = stripeUrl;
       return true;
     } catch (e) {
