@@ -8,7 +8,7 @@ import PlanSummary from './PlanSummary';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
-import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
+import { openStripeWindow, recoverStripeSession } from '@/hooks/payment/stripeWindowManager';
 import MobilePaymentHelper from './MobilePaymentHelper';
 import { ExternalLink, AlertTriangle, CreditCard } from 'lucide-react';
 
@@ -38,8 +38,31 @@ const PaymentCard = ({
   const [termsAccepted, setTermsAccepted] = useState(true); // CGV présélectionnées
   const isCurrentPlan = currentSubscription === selectedPlan;
   const [showMobileHelper, setShowMobileHelper] = useState(false);
-  const [redirectAttempts, setRedirectAttempts] = useState(0);
-  const maxRedirectAttempts = 1; // Réduit pour une expérience utilisateur plus rapide
+
+  // Tenter de récupérer une session interrompue au chargement
+  useEffect(() => {
+    // Si on est sur la page de paiement et qu'une session existe, essayer de la récupérer
+    const pendingSession = localStorage.getItem('pendingPayment') === 'true';
+    
+    if (pendingSession) {
+      toast({
+        title: "Paiement en attente",
+        description: "Reprise de votre dernière session de paiement..."
+      });
+      // Effacer immédiatement pour éviter des boucles
+      localStorage.removeItem('pendingPayment');
+      
+      // Laisser le temps à l'interface de charger avant de rediriger
+      setTimeout(() => {
+        if (stripeCheckoutUrl) {
+          openStripePayment();
+        } else {
+          // Si pas d'URL de checkout mais session en attente, initier un nouveau paiement
+          handleStripePayment();
+        }
+      }, 1000);
+    }
+  }, []);
 
   // Ouvrir la page de paiement Stripe de manière optimisée
   const openStripePayment = () => {
@@ -47,18 +70,22 @@ const PaymentCard = ({
     
     try {
       console.log(`Tentative d'ouverture de Stripe:`, stripeCheckoutUrl);
+      
+      // Marquer le paiement comme en cours pour récupération potentielle
+      localStorage.setItem('pendingPayment', 'true');
+      
       // Utiliser la fonction optimisée
       const opened = openStripeWindow(stripeCheckoutUrl);
       
-      // Afficher toujours l'aide pour maximiser les chances de réussite
+      // Afficher toujours l'aide mobile pour maximiser les chances de réussite
       setShowMobileHelper(true);
       
       // Si réussi, montrer une notification de succès
       if (opened) {
         toast({
-          title: "Redirection vers le paiement",
-          description: "La page de paiement s'ouvre dans un nouvel onglet.",
-          duration: 5000,
+          title: "Redirection en cours",
+          description: "La page de paiement sécurisée s'ouvre. Si rien ne se passe, utilisez les options ci-dessous.",
+          duration: 7000,
         });
       }
       
@@ -76,18 +103,6 @@ const PaymentCard = ({
       openStripePayment();
     }
   }, [stripeCheckoutUrl, isStripeProcessing]);
-
-  // Afficher immédiatement l'aide si l'ouverture automatique échoue
-  useEffect(() => {
-    if (stripeCheckoutUrl && redirectAttempts >= maxRedirectAttempts) {
-      setShowMobileHelper(true);
-      toast({
-        title: "Options de paiement",
-        description: "Utilisez les options ci-dessous pour accéder à la page de paiement sécurisée.",
-        duration: 5000
-      });
-    }
-  }, [redirectAttempts, stripeCheckoutUrl]);
 
   // Initier le processus de paiement après vérification des conditions
   const handleStripePayment = async () => {
@@ -108,16 +123,15 @@ const PaymentCard = ({
       });
       return;
     }
-
-    // Réinitialiser le compteur de tentatives
-    setRedirectAttempts(0);
-    setShowMobileHelper(false);
     
     toast({
       title: "Préparation du paiement",
       description: "Veuillez patienter pendant que nous préparons votre paiement sécurisé...",
-      duration: 3000
+      duration: 5000
     });
+    
+    // Marquer le paiement comme en cours
+    localStorage.setItem('pendingPayment', 'true');
     
     // Déclencher le processus de paiement
     onStripeCheckout();

@@ -92,12 +92,12 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
   };
 
   return (
-    <div className="mt-2 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md shadow-sm">
+    <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md shadow-sm">
       <div className="flex items-center space-x-2 text-blue-800 dark:text-blue-300 mb-3">
-        <h3 className="font-medium text-sm md:text-base">Accéder à votre paiement sécurisé</h3>
+        <h3 className="font-medium text-sm md:text-base">Problème d'affichage du paiement?</h3>
       </div>
-      <p className="mb-3 text-xs md:text-sm text-blue-700 dark:text-blue-400">
-        Si la page de paiement ne s'ouvre pas automatiquement, utilisez l'une des options ci-dessous:
+      <p className="mb-4 text-xs md:text-sm text-blue-700 dark:text-blue-400">
+        Si la page de paiement ne s'affiche pas correctement, utilisez l'une des options ci-dessous:
       </p>
       <div className="space-y-3">
         <Button 
@@ -106,7 +106,7 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
           size="sm"
         >
           <ExternalLink className="h-4 w-4" />
-          Payer maintenant
+          Payer maintenant (méthode directe)
         </Button>
         
         <div className="flex items-center justify-center gap-2">

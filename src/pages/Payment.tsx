@@ -7,6 +7,7 @@ import PaymentCard from '@/components/payment/PaymentCard';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { PLANS } from '@/utils/plans';
+import { recoverStripeSession } from '@/hooks/payment/stripeWindowManager';
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -71,6 +72,27 @@ const Payment = () => {
       return () => clearTimeout(timeout);
     }
   }, [selectedPlan, currentSubscription, isAuthChecking, navigate]);
+  
+  // Essayer de récupérer une session de paiement interrompue
+  useEffect(() => {
+    // Vérifier s'il y a une session de paiement interrompue
+    if (!isAuthChecking && !stripeCheckoutUrl) {
+      // Attendre un court instant pour s'assurer que l'interface est chargée
+      const timeout = setTimeout(() => {
+        const recovered = recoverStripeSession();
+        if (recovered) {
+          console.log("Session de paiement récupérée");
+          toast({
+            title: "Reprise du paiement",
+            description: "Nous reprenons votre session de paiement précédente.",
+            duration: 3000
+          });
+        }
+      }, 2000);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [isAuthChecking, stripeCheckoutUrl]);
 
   if (isAuthChecking) {
     return <PaymentLoading />;

@@ -45,7 +45,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     }
   };
 
-  // Fonction améliorée pour vérifier l'état de la session de paiement
+  // Fonction pour vérifier l'état de la session de paiement
   const checkPaymentStatus = useCallback(async (sessionId: string): Promise<boolean> => {
     if (!sessionId) return false;
     
@@ -93,6 +93,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     }
   }, [navigate, selectedPlan]);
 
+  // Création d'une session de paiement Stripe avec mécanismes de sécurité améliorés
   const createCheckoutSession = async (): Promise<{ url: string, sessionId: string } | null> => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -103,11 +104,22 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
 
       console.log(`Création d'une session de paiement pour ${selectedPlan}`);
       
+      // Paramètres supplémentaires pour une meilleure compatibilité mobile
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      // On the challenge page, make sure to always force the URL to be absolute and use the production URL
+      const origin = window.location.origin;
+      const successUrl = `${origin}/payment-success`;
+      const cancelUrl = `${origin}/offres`;
+      
+      console.log("URLs de redirection:", { successUrl, cancelUrl });
+      
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
           plan: selectedPlan,
-          successUrl: `${window.location.origin}/payment-success`,
-          cancelUrl: `${window.location.origin}/offres`,
+          successUrl,
+          cancelUrl,
+          mobile: isMobile // Indiquer si nous sommes sur mobile
         }
       });
       
@@ -175,8 +187,18 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
             setStripeCheckoutUrl(result.url);
             setCheckoutSessionId(result.sessionId);
             
-            // La redirection vers Stripe est gérée par le composant PaymentCard
-            // via l'effet qui surveille stripeCheckoutUrl
+            // Sauvegarder dans localStorage pour récupération éventuelle
+            localStorage.setItem('lastStripeUrl', result.url);
+            localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
+            localStorage.setItem('pendingPayment', 'true');
+            
+            // Notification de succès
+            toast({
+              title: "Redirection vers le paiement",
+              description: "Préparation de votre session de paiement sécurisée...",
+              duration: 3000,
+            });
+            
             return;
           }
         } catch (err) {
@@ -209,7 +231,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     }
   };
 
-  // Function to manually open the stripe checkout window
+  // Ouvrir la fenêtre Stripe manuellement
   const openStripeCheckoutWindow = useCallback(() => {
     if (stripeCheckoutUrl) {
       return openStripeWindow(stripeCheckoutUrl);
@@ -217,25 +239,33 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     return false;
   }, [stripeCheckoutUrl]);
   
-  // Store Stripe URL in session storage for possible recovery
+  // Récupérer l'URL Stripe depuis le stockage de session si disponible
+  useEffect(() => {
+    const storedUrl = sessionStorage.getItem('stripeCheckoutUrl');
+    const timestamp = parseInt(sessionStorage.getItem('stripeSessionTimestamp') || '0', 10);
+    // Utiliser l'URL stockée si elle a moins de 15 minutes
+    if (storedUrl && Date.now() - timestamp < 15 * 60 * 1000) {
+      setStripeCheckoutUrl(storedUrl);
+    }
+    
+    // Vérifier s'il y a un paiement en cours
+    if (localStorage.getItem('pendingPayment') === 'true') {
+      const lastUrl = localStorage.getItem('lastStripeUrl');
+      if (lastUrl) {
+        setStripeCheckoutUrl(lastUrl);
+      }
+    }
+  }, []);
+  
+  // Stocker l'URL Stripe dans le stockage de session pour récupération
   useEffect(() => {
     if (stripeCheckoutUrl) {
       sessionStorage.setItem('stripeCheckoutUrl', stripeCheckoutUrl);
       sessionStorage.setItem('stripeSessionTimestamp', Date.now().toString());
     }
   }, [stripeCheckoutUrl]);
-  
-  // Try to recover stored URL on component mount
-  useEffect(() => {
-    const storedUrl = sessionStorage.getItem('stripeCheckoutUrl');
-    const timestamp = parseInt(sessionStorage.getItem('stripeSessionTimestamp') || '0');
-    // Only use stored URL if it's less than 15 minutes old
-    if (storedUrl && Date.now() - timestamp < 15 * 60 * 1000) {
-      setStripeCheckoutUrl(storedUrl);
-    }
-  }, []);
 
-  // Check subscription when the hook is initialized
+  // Vérifier l'abonnement au chargement du hook
   useEffect(() => {
     checkSubscription();
   }, []);
