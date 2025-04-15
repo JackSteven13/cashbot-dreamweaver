@@ -19,11 +19,10 @@ const Navbar = () => {
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Liste des pages actives dans la navigation
+  // Updated navigation items to remove obsolete links
   const navItems = [
     { path: '/', label: 'Accueil' },
-    { path: '/offres', label: 'Offres' },
-    { path: '/about', label: 'À propos' }
+    { path: '/offres', label: 'Offres' }
   ];
 
   useEffect(() => {
