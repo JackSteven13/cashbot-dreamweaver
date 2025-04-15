@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose } from '@/components/ui/dialog';
 import { Copy, CheckCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,16 @@ const ReferralLinkModal: React.FC<ReferralLinkModalProps> = ({
   subscription = 'freemium'
 }) => {
   const [copied, setCopied] = useState(false);
+  const [displayedLink, setDisplayedLink] = useState("");
+
+  // S'assurer que le lien est visible
+  useEffect(() => {
+    // Toujours avoir un lien à afficher
+    setDisplayedLink(referralLink || `${window.location.origin}/register?ref=your-code`);
+  }, [referralLink]);
 
   const handleCopyLink = () => {
-    if (!referralLink) {
+    if (!displayedLink) {
       toast({
         title: "Erreur",
         description: "Lien de parrainage indisponible",
@@ -31,7 +38,7 @@ const ReferralLinkModal: React.FC<ReferralLinkModalProps> = ({
       return;
     }
     
-    navigator.clipboard.writeText(referralLink);
+    navigator.clipboard.writeText(displayedLink);
     setCopied(true);
     toast({
       title: "Lien copié !",
@@ -66,17 +73,18 @@ const ReferralLinkModal: React.FC<ReferralLinkModalProps> = ({
           </p>
 
           <div className="relative">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={referralLink || "Chargement du lien..."}
-                readOnly
-                className="w-full p-2 pr-10 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md"
-              />
+            <input
+              type="text"
+              value={displayedLink}
+              readOnly
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+              className="w-full p-2 pr-10 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md font-mono overflow-x-auto"
+            />
+            <div className="mt-2">
               <Button 
                 onClick={handleCopyLink} 
                 variant={copied ? "default" : "outline"}
-                className={copied ? "bg-green-600" : ""}
+                className={`w-full ${copied ? "bg-green-600" : ""}`}
               >
                 {copied ? <CheckCheck className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
                 {copied ? "Copié" : "Copier"}
