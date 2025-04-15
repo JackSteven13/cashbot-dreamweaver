@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useAutoRevenueGenerator } from './useAutoRevenueGenerator';
 import { useAutoSessionScheduler } from './useAutoSessionScheduler';
@@ -13,7 +14,7 @@ import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 export const useAutoSessions = (
   userData: any,
   updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>,
-  setShowLimitAlert: (show: boolean) => setShowLimitAlert: (show: boolean) => void
+  setShowLimitAlert: (show: boolean) => void
 ) => {
   // References to ensure data stability
   const todaysGainsRef = useRef(0);
