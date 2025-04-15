@@ -1,12 +1,12 @@
 
 /**
- * Gestionnaire de fenêtre Stripe optimisé pour assurer une redirection fiable
- * avec support amélioré pour les mobiles
+ * Gestionnaire de fenêtre Stripe optimisé pour les mobiles et navigateurs modernes
+ * avec priorité à la performance et à la fiabilité
  */
 
 /**
- * Ouvre l'URL de paiement Stripe de manière fiable et rapide
- * La fonction gère les cas spéciaux pour les appareils mobiles et les navigateurs différents
+ * Ouvre l'URL de paiement Stripe dans une nouvelle fenêtre/onglet
+ * avec gestion spécifique selon le type d'appareil et de navigateur
  */
 export const openStripeWindow = (stripeUrl: string): boolean => {
   if (!stripeUrl) {
@@ -15,49 +15,51 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
   }
   
   try {
-    // Détection d'appareil mobile (plus précise)
+    // Détection d'appareil mobile plus précise incluant tablettes
     const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(navigator.userAgent);
     
     console.log(`Tentative d'ouverture de Stripe (${isMobile ? 'mobile' : 'desktop'}):`, stripeUrl);
     
-    // Sur mobile, redirection directe immédiate pour plus de rapidité
+    // Sur mobile, utiliser une redirection directe immédiate pour performance maximale
     if (isMobile) {
-      console.log("Appareil mobile détecté, redirection directe immédiate");
+      console.log("Appareil mobile détecté, redirection directe prioritaire");
       window.location.href = stripeUrl;
       return true;
     }
     
-    // Sur desktop, utiliser une technique optimisée pour contourner les bloqueurs de popups
-    const newWindow = window.open(stripeUrl, '_blank');
-    if (newWindow) {
+    // Sur desktop, ouvrir dans un nouvel onglet avec focus immédiat
+    const newWindow = window.open(stripeUrl, '_blank', 'noopener,noreferrer');
+    
+    if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
+      // Focus sur la nouvelle fenêtre pour attirer l'attention de l'utilisateur
       newWindow.focus();
+      console.log("Nouvelle fenêtre Stripe ouverte avec succès");
       return true;
     }
     
-    // Si l'ouverture échoue, essayer une autre méthode
+    // Si blocage de popup, utiliser des méthodes alternatives
+    console.log("Ouverture de nouvelle fenêtre échouée, tentative alternative");
+    
+    // Méthode 1: Simuler un clic utilisateur
     const link = document.createElement('a');
     link.href = stripeUrl;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
+    link.style.display = 'none'; // Masquer l'élément
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    // Plan B: Si après 300ms la fenêtre n'est pas ouverte, tenter une redirection directe
+    // Méthode 2: Si toujours pas ouvert après 100ms, faire une redirection directe
     setTimeout(() => {
-      try {
-        window.location.href = stripeUrl;
-      } catch (e) {
-        console.error("Redirection échouée:", e);
-      }
-    }, 300);
+      window.location.href = stripeUrl;
+    }, 100);
     
     return true;
   } catch (error) {
-    console.error("Erreur lors de l'ouverture de la fenêtre:", error);
+    console.error("Erreur lors de l'ouverture de la fenêtre Stripe:", error);
     
-    // Dernière tentative avec redirection directe
-    console.log("Méthode de secours: redirection directe après erreur");
+    // Méthode de secours: redirection directe
     window.location.href = stripeUrl;
     return true;
   }
@@ -67,6 +69,5 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
  * Vérifie si une fenêtre Stripe est déjà ouverte
  */
 export const isStripeWindowOpen = (): boolean => {
-  // Cette fonction pourrait être étendue pour vérifier si un onglet Stripe spécifique est ouvert
-  return false;
+  return false; // Fonctionnalité réservée pour implémentation future
 };

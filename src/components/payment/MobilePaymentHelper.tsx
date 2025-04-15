@@ -20,14 +20,14 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
   const handleOpenDirectly = () => {
     if (!stripeUrl) return;
     
-    // Notifier l'utilisateur
+    // Notification visuelle à l'utilisateur
     toast({
       title: "Redirection en cours",
-      description: "Vous allez être redirigé vers la page de paiement...",
+      description: "Vous allez être redirigé vers la page de paiement sécurisée...",
       duration: 3000,
     });
     
-    // Ouvrir directement l'URL
+    // Ouvrir directement l'URL avec priorité maximale
     window.location.href = stripeUrl;
     
     // Déclencher la fonction de callback
@@ -38,50 +38,66 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
     if (!stripeUrl) return;
     
     try {
-      navigator.clipboard.writeText(stripeUrl);
-      toast({
-        title: "Lien copié",
-        description: "L'URL de paiement a été copiée dans votre presse-papier",
-        duration: 3000,
-      });
+      // Méthode moderne de copie
+      navigator.clipboard.writeText(stripeUrl)
+        .then(() => {
+          toast({
+            title: "Lien copié",
+            description: "L'URL de paiement a été copiée dans votre presse-papier",
+            duration: 3000,
+          });
+        })
+        .catch((err) => {
+          console.error("Erreur de copie moderne:", err);
+          useAlternativeCopyMethod();
+        });
     } catch (e) {
       console.error("Erreur lors de la copie:", e);
-      // Méthode alternative de copie
-      const textarea = document.createElement('textarea');
-      textarea.value = stripeUrl;
-      textarea.style.position = 'fixed';
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      
-      try {
-        document.execCommand('copy');
+      useAlternativeCopyMethod();
+    }
+  };
+  
+  const useAlternativeCopyMethod = () => {
+    // Méthode alternative de copie pour compatibilité maximale
+    const textarea = document.createElement('textarea');
+    textarea.value = stripeUrl || '';
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
         toast({
           title: "Lien copié",
           description: "L'URL de paiement a été copiée dans votre presse-papier",
           duration: 3000,
         });
-      } catch (err) {
-        console.error("La copie a échoué:", err);
-        toast({
-          title: "Échec de la copie",
-          description: "Impossible de copier l'URL. Veuillez réessayer.",
-          variant: "destructive",
-          duration: 3000,
-        });
+      } else {
+        throw new Error("Copie échouée");
       }
-      
-      document.body.removeChild(textarea);
+    } catch (err) {
+      console.error("La copie alternative a échoué:", err);
+      toast({
+        title: "Échec de la copie",
+        description: "Impossible de copier l'URL. Veuillez utiliser le bouton d'ouverture directe.",
+        variant: "destructive",
+        duration: 4000,
+      });
     }
+    
+    document.body.removeChild(textarea);
   };
 
   return (
-    <div className="mt-2 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md">
+    <div className="mt-2 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md shadow-sm">
       <div className="flex items-center space-x-2 text-blue-800 dark:text-blue-300 mb-3">
-        <h3 className="font-medium text-sm md:text-base">Accéder au paiement sécurisé</h3>
+        <h3 className="font-medium text-sm md:text-base">Accéder à votre paiement sécurisé</h3>
       </div>
       <p className="mb-3 text-xs md:text-sm text-blue-700 dark:text-blue-400">
-        Si la page de paiement ne s'ouvre pas automatiquement, cliquez sur le bouton ci-dessous:
+        Si la page de paiement ne s'ouvre pas automatiquement, utilisez l'une des options ci-dessous:
       </p>
       <div className="space-y-3">
         <Button 
@@ -111,7 +127,7 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
             className="flex-1 h-9 px-2 flex items-center justify-center gap-1 text-xs md:text-sm text-blue-600 hover:underline border border-blue-200 dark:border-blue-800 rounded-md bg-white dark:bg-blue-900/20"
           >
             <Link2 className="h-3 w-3 md:h-4 md:w-4" />
-            Ouvrir manuellement
+            Ouvrir dans un nouvel onglet
           </a>
         </div>
       </div>

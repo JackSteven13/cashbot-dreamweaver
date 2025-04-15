@@ -39,20 +39,27 @@ const PaymentCard = ({
   const isCurrentPlan = currentSubscription === selectedPlan;
   const [showMobileHelper, setShowMobileHelper] = useState(false);
   const [redirectAttempts, setRedirectAttempts] = useState(0);
-  const maxRedirectAttempts = 2; // Réduit pour une expérience utilisateur plus rapide
+  const maxRedirectAttempts = 1; // Réduit pour une expérience utilisateur plus rapide
 
-  // Fonction pour ouvrir la page de paiement Stripe de manière optimisée
+  // Ouvrir la page de paiement Stripe de manière optimisée
   const openStripePayment = () => {
     if (!stripeCheckoutUrl) return false;
     
     try {
-      console.log(`Tentative ${redirectAttempts + 1} d'ouverture de Stripe:`, stripeCheckoutUrl);
+      console.log(`Tentative d'ouverture de Stripe:`, stripeCheckoutUrl);
       // Utiliser la fonction optimisée
       const opened = openStripeWindow(stripeCheckoutUrl);
       
-      // Si l'ouverture échoue, montrer une aide
-      if (!opened) {
-        setShowMobileHelper(true);
+      // Afficher toujours l'aide pour maximiser les chances de réussite
+      setShowMobileHelper(true);
+      
+      // Si réussi, montrer une notification de succès
+      if (opened) {
+        toast({
+          title: "Redirection vers le paiement",
+          description: "La page de paiement s'ouvre dans un nouvel onglet.",
+          duration: 5000,
+        });
       }
       
       return opened;
@@ -66,7 +73,6 @@ const PaymentCard = ({
   // Ouvrir Stripe immédiatement dès que l'URL est disponible
   useEffect(() => {
     if (stripeCheckoutUrl && !isStripeProcessing) {
-      // Pas de délai pour améliorer la réactivité
       openStripePayment();
     }
   }, [stripeCheckoutUrl, isStripeProcessing]);
@@ -76,18 +82,19 @@ const PaymentCard = ({
     if (stripeCheckoutUrl && redirectAttempts >= maxRedirectAttempts) {
       setShowMobileHelper(true);
       toast({
-        title: "Ouverture de la page de paiement",
-        description: "Utilisez le bouton ci-dessous pour accéder à la page de paiement sécurisée.",
+        title: "Options de paiement",
+        description: "Utilisez les options ci-dessous pour accéder à la page de paiement sécurisée.",
         duration: 5000
       });
     }
   }, [redirectAttempts, stripeCheckoutUrl]);
 
+  // Initier le processus de paiement après vérification des conditions
   const handleStripePayment = async () => {
     if (!selectedPlan) {
       toast({
         title: "Erreur",
-        description: "Veuillez sélectionner un plan pour continuer",
+        description: "Veuillez sélectionner un forfait pour continuer",
         variant: "destructive"
       });
       return;
@@ -106,7 +113,6 @@ const PaymentCard = ({
     setRedirectAttempts(0);
     setShowMobileHelper(false);
     
-    // Afficher un toast pour indiquer le traitement
     toast({
       title: "Préparation du paiement",
       description: "Veuillez patienter pendant que nous préparons votre paiement sécurisé...",
@@ -117,6 +123,7 @@ const PaymentCard = ({
     onStripeCheckout();
   };
 
+  // Forcer la redirection directe vers Stripe
   const handleManualRedirect = () => {
     if (stripeCheckoutUrl) {
       try {
@@ -139,8 +146,8 @@ const PaymentCard = ({
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
+    <Card className="w-full max-w-md mx-auto shadow-md">
+      <CardHeader className="pb-4">
         <CardTitle className="text-xl text-center">Finaliser votre abonnement</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -205,7 +212,7 @@ const PaymentCard = ({
                   Ouvrir la page de paiement
                 </Button>
                 
-                {/* Afficher l'aide au paiement immédiatement pour les mobiles */}
+                {/* Afficher toujours l'aide au paiement pour une fiabilité maximale */}
                 <MobilePaymentHelper 
                   isVisible={true} 
                   onHelp={handleManualRedirect}
