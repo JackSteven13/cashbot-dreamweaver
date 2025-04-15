@@ -31,3 +31,33 @@ export const simulateActivity = (): void => {
     console.log("Animation ignorée:", e);
   }
 };
+
+/**
+ * Crée un effet de particules d'argent pour célébrer un gain
+ */
+export const createMoneyParticles = (amount: number): void => {
+  try {
+    console.log(`Animation de particules pour ${amount}€`);
+    // Cette fonction sera implémentée avec des animations plus élaborées dans le futur
+  } catch (e) {
+    console.error("Erreur lors de la création des particules:", e);
+  }
+};
+
+/**
+ * Anime la mise à jour du solde avec un effet visuel
+ */
+export const flashBalanceUpdate = (element: HTMLElement | null, amount: number): void => {
+  if (!element) return;
+  
+  try {
+    const className = amount >= 0 ? 'flash-green' : 'flash-red';
+    element.classList.add(className);
+    
+    setTimeout(() => {
+      element.classList.remove(className);
+    }, 1000);
+  } catch (e) {
+    console.error("Erreur lors de l'animation du solde:", e);
+  }
+};

@@ -1,10 +1,11 @@
 
 /**
  * Gestionnaire de fenêtre Stripe optimisé pour assurer une redirection fiable
+ * avec support amélioré pour les mobiles
  */
 
 /**
- * Ouvre l'URL de paiement Stripe de manière fiable
+ * Ouvre l'URL de paiement Stripe de manière fiable et rapide
  * La fonction gère les cas spéciaux pour les appareils mobiles et les navigateurs différents
  */
 export const openStripeWindow = (stripeUrl: string): boolean => {
@@ -19,43 +20,44 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     
     console.log(`Tentative d'ouverture de Stripe (${isMobile ? 'mobile' : 'desktop'}):`, stripeUrl);
     
+    // Sur mobile, redirection directe immédiate pour plus de rapidité
     if (isMobile) {
-      // Sur mobile, utiliser la redirection directe sans délai
       console.log("Appareil mobile détecté, redirection directe immédiate");
-      // Forcer l'ouverture dans la même fenêtre pour les appareils mobiles
       window.location.href = stripeUrl;
       return true;
     }
     
-    // Sur desktop, essayer d'abord d'ouvrir dans un nouvel onglet
-    const newWindow = window.open(stripeUrl, '_blank', 'noopener,noreferrer');
+    // Sur desktop, utiliser une technique optimisée pour contourner les bloqueurs de popups
+    // et assurer une ouverture rapide
+    const link = document.createElement('a');
+    link.href = stripeUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
     
-    // Si l'ouverture échoue (bloqué par popup blocker ou autre)
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      console.log("Ouverture de nouvelle fenêtre échouée, tentative de redirection directe");
-      
-      // Création d'un élément a avec target _blank pour simuler un clic utilisateur
-      const link = document.createElement('a');
-      link.href = stripeUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.click();
-      
-      // Si ça échoue aussi, redirection directe
-      setTimeout(() => {
-        if (!newWindow || newWindow.closed) {
-          console.log("Seconde tentative échouée, redirection directe");
+    // Simuler un clic utilisateur pour éviter les blocages
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Plan B: Si après 300ms la fenêtre n'est pas ouverte, tenter autre méthode
+    const backupTimer = setTimeout(() => {
+      try {
+        // Tentative d'ouverture classique
+        const newWindow = window.open(stripeUrl, '_blank');
+        if (newWindow) {
+          newWindow.focus();
+        } else {
+          // Si ça échoue aussi, redirection directe
+          console.log("Ouvertures échouées, redirection directe");
           window.location.href = stripeUrl;
         }
-      }, 1000);
-      
-      return true;
-    } else {
-      // Focus sur la nouvelle fenêtre
-      newWindow.focus();
-      console.log("Nouvelle fenêtre ouverte avec succès");
-      return true;
-    }
+      } catch (e) {
+        // En cas d'erreur, redirection directe
+        window.location.href = stripeUrl;
+      }
+    }, 300);
+    
+    return true;
   } catch (error) {
     console.error("Erreur lors de l'ouverture de la fenêtre:", error);
     

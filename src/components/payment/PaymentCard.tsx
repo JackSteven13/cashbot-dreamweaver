@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
 import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
 import MobilePaymentHelper from './MobilePaymentHelper';
-import { ExternalLink, AlertTriangle } from 'lucide-react';
+import { ExternalLink, AlertTriangle, CreditCard } from 'lucide-react';
 
 interface PaymentCardProps {
   selectedPlan: PlanType | null;
@@ -39,14 +39,15 @@ const PaymentCard = ({
   const isCurrentPlan = currentSubscription === selectedPlan;
   const [showMobileHelper, setShowMobileHelper] = useState(false);
   const [redirectAttempts, setRedirectAttempts] = useState(0);
-  const maxRedirectAttempts = 3;
+  const maxRedirectAttempts = 2; // Réduit pour une expérience utilisateur plus rapide
 
-  // Fonction pour ouvrir la page de paiement Stripe
+  // Fonction pour ouvrir la page de paiement Stripe de manière optimisée
   const openStripePayment = () => {
     if (!stripeCheckoutUrl) return false;
     
     try {
       console.log(`Tentative ${redirectAttempts + 1} d'ouverture de Stripe:`, stripeCheckoutUrl);
+      // Utiliser la fonction optimisée
       const opened = openStripeWindow(stripeCheckoutUrl);
       
       // Si l'ouverture échoue, montrer une aide
@@ -62,31 +63,22 @@ const PaymentCard = ({
     }
   };
 
-  // Tentative d'ouverture de Stripe après l'obtention de l'URL
+  // Ouvrir Stripe immédiatement dès que l'URL est disponible
   useEffect(() => {
-    if (stripeCheckoutUrl && !isStripeProcessing && redirectAttempts < maxRedirectAttempts) {
-      // Petit délai pour s'assurer que l'URL est bien établie
-      const timer = setTimeout(() => {
-        const opened = openStripePayment();
-        
-        if (!opened) {
-          // Incrémenter le compteur de tentatives
-          setRedirectAttempts(prev => prev + 1);
-        }
-      }, 500);
-      
-      return () => clearTimeout(timer);
+    if (stripeCheckoutUrl && !isStripeProcessing) {
+      // Pas de délai pour améliorer la réactivité
+      openStripePayment();
     }
-  }, [stripeCheckoutUrl, isStripeProcessing, redirectAttempts]);
+  }, [stripeCheckoutUrl, isStripeProcessing]);
 
-  // Lorsque le nombre de tentatives atteint le maximum, montrer l'aide
+  // Afficher immédiatement l'aide si l'ouverture automatique échoue
   useEffect(() => {
-    if (redirectAttempts >= maxRedirectAttempts && stripeCheckoutUrl) {
+    if (stripeCheckoutUrl && redirectAttempts >= maxRedirectAttempts) {
       setShowMobileHelper(true);
       toast({
-        title: "Problème d'ouverture",
-        description: "Impossible d'ouvrir automatiquement la page de paiement. Veuillez utiliser le bouton ci-dessous.",
-        variant: "destructive"
+        title: "Ouverture de la page de paiement",
+        description: "Utilisez le bouton ci-dessous pour accéder à la page de paiement sécurisée.",
+        duration: 5000
       });
     }
   }, [redirectAttempts, stripeCheckoutUrl]);
@@ -114,6 +106,13 @@ const PaymentCard = ({
     setRedirectAttempts(0);
     setShowMobileHelper(false);
     
+    // Afficher un toast pour indiquer le traitement
+    toast({
+      title: "Préparation du paiement",
+      description: "Veuillez patienter pendant que nous préparons votre paiement sécurisé...",
+      duration: 3000
+    });
+    
     // Déclencher le processus de paiement
     onStripeCheckout();
   };
@@ -122,7 +121,7 @@ const PaymentCard = ({
     if (stripeCheckoutUrl) {
       try {
         toast({
-          title: "Redirection manuelle",
+          title: "Redirection en cours",
           description: "Vous allez être redirigé vers la page de paiement Stripe."
         });
         
@@ -189,7 +188,10 @@ const PaymentCard = ({
                     Préparation du paiement...
                   </div>
                 ) : (
-                  "Payer maintenant"
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Payer maintenant
+                  </div>
                 )}
               </Button>
             ) : (
@@ -203,26 +205,14 @@ const PaymentCard = ({
                   Ouvrir la page de paiement
                 </Button>
                 
-                {redirectAttempts > 0 && (
-                  <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                    <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
-                      <AlertTriangle className="h-4 w-4" />
-                      <p className="text-sm font-medium">Problème d'ouverture détecté</p>
-                    </div>
-                    <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-500">
-                      Tentative {redirectAttempts}/{maxRedirectAttempts}. Essayez le bouton ci-dessous si la page ne s'ouvre pas.
-                    </p>
-                  </div>
-                )}
+                {/* Afficher l'aide au paiement immédiatement pour les mobiles */}
+                <MobilePaymentHelper 
+                  isVisible={true} 
+                  onHelp={handleManualRedirect}
+                  stripeUrl={stripeCheckoutUrl}
+                />
               </div>
             )}
-            
-            {/* Aide à la redirection si besoin */}
-            <MobilePaymentHelper 
-              isVisible={showMobileHelper} 
-              onHelp={handleManualRedirect}
-              stripeUrl={stripeCheckoutUrl}
-            />
           </>
         )}
       </CardContent>
