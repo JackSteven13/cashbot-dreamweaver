@@ -134,11 +134,15 @@ export const useUserData = () => {
         }, ...(prev.transactions || [])]
       } : null);
       
-      // Mettre à jour le solde dans la base de données en utilisant l'opération standard
-      const { error } = await supabase.rpc('increase_balance', {
-        user_id: user.id,
-        amount: gain
-      });
+      // Mettre à jour le solde dans la base de données en utilisant une mise à jour directe
+      // au lieu de l'appel RPC increase_balance qui n'est pas disponible
+      const { error } = await supabase
+        .from('user_balances')
+        .update({ 
+          balance: (userData.balance || 0) + gain,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
         
       if (error) {
         console.error('Error updating balance:', error);

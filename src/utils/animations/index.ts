@@ -71,3 +71,6 @@ export const animateBalanceUpdate = (
   
   requestAnimationFrame(animate);
 };
+
+// Re-export the createMoneyParticles function for direct use
+export { createMoneyParticles };
