@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import Button from './Button';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { navItems } from '@/config/navigation';
 import {
   Sheet,
   SheetContent,
@@ -18,12 +18,6 @@ const Navbar = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  // Updated navigation items to remove obsolete links
-  const navItems = [
-    { path: '/', label: 'Accueil' },
-    { path: '/offres', label: 'Offres' }
-  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -52,7 +46,6 @@ const Navbar = () => {
             Stream genius
           </Link>
 
-          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             <div className="flex space-x-6">
               {navItems.map(item => (
@@ -82,7 +75,6 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Mobile Menu using Sheet component from shadcn/ui */}
           <div className="md:hidden flex items-center gap-2">
             <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <SheetTrigger asChild>
