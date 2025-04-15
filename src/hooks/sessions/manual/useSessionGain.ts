@@ -29,12 +29,15 @@ export const useSessionGain = () => {
     // Obtenir la date d'aujourd'hui au format YYYY-MM-DD
     const today = new Date().toISOString().split('T')[0];
     
+    // S'assurer que userData.transactions existe
+    const transactions = Array.isArray(userData.transactions) ? userData.transactions : [];
+    
     // Calculer les gains d'aujourd'hui pour la vérification des limites (utiliser les transactions)
-    const todaysTransactions = (userData.transactions || []).filter(tx => 
-      tx.date.startsWith(today) && tx.gain > 0
+    const todaysTransactions = transactions.filter(tx => 
+      tx.date && tx.date.startsWith(today) && tx.gain && tx.gain > 0
     );
     
-    const todaysGains = todaysTransactions.reduce((sum, tx) => sum + tx.gain, 0);
+    const todaysGains = todaysTransactions.reduce((sum, tx) => sum + (tx.gain || 0), 0);
     
     // Calculer le montant restant pour aujourd'hui (non lié au solde total)
     const remainingAmount = dailyLimit - todaysGains;

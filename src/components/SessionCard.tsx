@@ -16,8 +16,25 @@ const SessionCard = ({ gain, report, date = new Date().toLocaleDateString() }: S
   const isWithdrawal = report?.toLowerCase()?.includes("retrait");
   const formattedGain = isNaN(gain) ? 0 : gain;
 
-  // Formater la date pour un affichage cohérent
-  const formattedDate = date ? new Date(date).toLocaleDateString() : new Date().toLocaleDateString();
+  // S'assurer que la date est valide
+  const getFormattedDate = () => {
+    try {
+      if (!date) return new Date().toLocaleDateString();
+      
+      // Si la date est juste une chaîne YYYY-MM-DD, la convertir en objet Date
+      if (date.length <= 10 && date.includes('-')) {
+        const [year, month, day] = date.split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString();
+      }
+      
+      return new Date(date).toLocaleDateString();
+    } catch (e) {
+      console.error("Erreur lors du formatage de la date:", date, e);
+      return new Date().toLocaleDateString();
+    }
+  };
+  
+  const formattedDate = getFormattedDate();
   
   return (
     <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:shadow-md">

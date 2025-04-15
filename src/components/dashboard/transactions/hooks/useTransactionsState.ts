@@ -6,7 +6,7 @@ import { Transaction } from '@/types/userData';
  * Hook pour gérer l'état des transactions
  */
 export const useTransactionsState = () => {
-  // États avec initialisation optimisée
+  // États stables avec initialisation optimisée
   const [showAllTransactions, setShowAllTransactions] = useState(() => {
     try {
       const storedValue = localStorage.getItem('showAllTransactions');
@@ -28,3 +28,5 @@ export const useTransactionsState = () => {
     setRefreshKey
   };
 };
+
+export default useTransactionsState;

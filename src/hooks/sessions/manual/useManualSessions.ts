@@ -20,12 +20,12 @@ export const useManualSessions = ({
   const [isStartingSession, setIsStartingSession] = useState(false);
   
   // Ensure userData is always an object to avoid null property access
-  const safeUserData = userData || {
+  const safeUserData: UserData = userData || {
     balance: 0,
     profile: { id: null },
     subscription: 'freemium',
     transactions: [],
-    username: '',
+    username: 'Utilisateur',
     referrals: [],
     referralLink: ''
   };
@@ -141,6 +141,19 @@ export const useManualSessions = ({
         
         // Add small delay to allow animations to complete
         await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Créer une nouvelle transaction pour le tableau des transactions
+        const newTransaction = {
+          date: new Date().toISOString().split('T')[0],
+          gain: finalGain,
+          report: `Session manuelle : Notre technologie a optimisé le processus et généré ${finalGain.toFixed(2)}€ de revenus pour votre compte ${safeUserData.subscription}.`,
+          type: 'Session manuelle'
+        };
+        
+        // Mettre à jour l'état local pour afficher immédiatement la transaction
+        if (Array.isArray(safeUserData.transactions)) {
+          safeUserData.transactions.unshift(newTransaction);
+        }
         
         // Update user balance in database with UI force update flag
         await updateBalance(
