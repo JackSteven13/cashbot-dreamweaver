@@ -28,32 +28,27 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     }
     
     // Sur desktop, utiliser une technique optimisée pour contourner les bloqueurs de popups
-    // et assurer une ouverture rapide
+    const newWindow = window.open(stripeUrl, '_blank');
+    if (newWindow) {
+      newWindow.focus();
+      return true;
+    }
+    
+    // Si l'ouverture échoue, essayer une autre méthode
     const link = document.createElement('a');
     link.href = stripeUrl;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
-    
-    // Simuler un clic utilisateur pour éviter les blocages
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    // Plan B: Si après 300ms la fenêtre n'est pas ouverte, tenter autre méthode
-    const backupTimer = setTimeout(() => {
+    // Plan B: Si après 300ms la fenêtre n'est pas ouverte, tenter une redirection directe
+    setTimeout(() => {
       try {
-        // Tentative d'ouverture classique
-        const newWindow = window.open(stripeUrl, '_blank');
-        if (newWindow) {
-          newWindow.focus();
-        } else {
-          // Si ça échoue aussi, redirection directe
-          console.log("Ouvertures échouées, redirection directe");
-          window.location.href = stripeUrl;
-        }
-      } catch (e) {
-        // En cas d'erreur, redirection directe
         window.location.href = stripeUrl;
+      } catch (e) {
+        console.error("Redirection échouée:", e);
       }
     }, 300);
     

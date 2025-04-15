@@ -39,8 +39,8 @@ export const triggerDashboardEvent = (
     elements.forEach(el => {
       if (el instanceof HTMLElement) {
         el.classList.add('glow-effect');
-        createMoneyParticles(el, Math.min(data.gain * 50, 10));
-        flashBalanceUpdate(el);
+        createMoneyParticles(Number(data.gain));
+        flashBalanceUpdate(el, Number(data.gain));
         
         setTimeout(() => {
           el.classList.remove('glow-effect');

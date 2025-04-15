@@ -18,12 +18,17 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
   if (!isVisible || !stripeUrl) return null;
 
   const handleOpenDirectly = () => {
+    if (!stripeUrl) return;
+    
     // Notifier l'utilisateur
     toast({
       title: "Redirection en cours",
       description: "Vous allez être redirigé vers la page de paiement...",
       duration: 3000,
     });
+    
+    // Ouvrir directement l'URL
+    window.location.href = stripeUrl;
     
     // Déclencher la fonction de callback
     onHelp();
@@ -41,45 +46,71 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
       });
     } catch (e) {
       console.error("Erreur lors de la copie:", e);
+      // Méthode alternative de copie
+      const textarea = document.createElement('textarea');
+      textarea.value = stripeUrl;
+      textarea.style.position = 'fixed';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      
+      try {
+        document.execCommand('copy');
+        toast({
+          title: "Lien copié",
+          description: "L'URL de paiement a été copiée dans votre presse-papier",
+          duration: 3000,
+        });
+      } catch (err) {
+        console.error("La copie a échoué:", err);
+        toast({
+          title: "Échec de la copie",
+          description: "Impossible de copier l'URL. Veuillez réessayer.",
+          variant: "destructive",
+          duration: 3000,
+        });
+      }
+      
+      document.body.removeChild(textarea);
     }
   };
 
   return (
-    <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md">
-      <div className="flex items-center space-x-2 text-blue-800 dark:text-blue-300">
-        <h3 className="font-medium text-sm">Pages de paiement sécurisées</h3>
+    <div className="mt-2 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md">
+      <div className="flex items-center space-x-2 text-blue-800 dark:text-blue-300 mb-3">
+        <h3 className="font-medium text-sm md:text-base">Accéder au paiement sécurisé</h3>
       </div>
-      <p className="mt-2 text-xs text-blue-700 dark:text-blue-400">
-        Si la page de paiement ne s'ouvre pas automatiquement, utilisez l'une des options ci-dessous:
+      <p className="mb-3 text-xs md:text-sm text-blue-700 dark:text-blue-400">
+        Si la page de paiement ne s'ouvre pas automatiquement, cliquez sur le bouton ci-dessous:
       </p>
-      <div className="mt-2 space-y-2">
+      <div className="space-y-3">
         <Button 
           onClick={handleOpenDirectly}
-          className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 py-2 h-auto text-sm"
+          className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 py-3 h-auto text-sm md:text-base"
           size="sm"
         >
           <ExternalLink className="h-4 w-4" />
-          Accéder au paiement sécurisé
+          Payer maintenant
         </Button>
         
-        <div className="flex items-center justify-center gap-2 text-xs">
+        <div className="flex items-center justify-center gap-2">
           <Button 
             onClick={copyToClipboard}
             variant="outline"
             size="sm"
-            className="h-8 text-xs flex items-center gap-1"
+            className="flex-1 h-9 text-xs md:text-sm flex items-center gap-1"
           >
-            <Copy className="h-3 w-3" />
-            Copier l'URL
+            <Copy className="h-3 w-3 md:h-4 md:w-4" />
+            Copier le lien
           </Button>
           
           <a 
             href={stripeUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="h-8 px-2 flex items-center justify-center gap-1 text-xs text-blue-600 hover:underline border border-blue-200 dark:border-blue-800 rounded-md bg-white dark:bg-blue-900/20"
+            className="flex-1 h-9 px-2 flex items-center justify-center gap-1 text-xs md:text-sm text-blue-600 hover:underline border border-blue-200 dark:border-blue-800 rounded-md bg-white dark:bg-blue-900/20"
           >
-            <Link2 className="h-3 w-3" />
+            <Link2 className="h-3 w-3 md:h-4 md:w-4" />
             Ouvrir manuellement
           </a>
         </div>

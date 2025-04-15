@@ -1,57 +1,29 @@
 
 import React from 'react';
+import { Loader2 } from 'lucide-react';
 
 const PaymentLoading = () => {
   return (
-    <div className="flex items-center justify-center h-screen bg-[#0f0f23]">
-      <div className="relative">
+    <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f23]">
+      <div className="relative glass-panel p-8 rounded-xl shadow-lg text-center">
         {/* Effet de lueur */}
-        <div className="absolute inset-0 rounded-full bg-blue-500/20 blur-xl"></div>
+        <div className="absolute inset-0 rounded-xl bg-blue-500/10 blur-xl"></div>
         
-        {/* Cercle animé */}
-        <div className="relative w-24 h-24">
-          <svg 
-            width="100%" 
-            height="100%" 
-            viewBox="0 0 100 100"
-          >
-            <defs>
-              <linearGradient id="paymentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#60a5fa" />
-                <stop offset="100%" stopColor="#3b82f6" />
-              </linearGradient>
-            </defs>
-            
-            {/* Cercle en arrière-plan */}
-            <circle
-              cx="50"
-              cy="50"
-              r="40"
-              fill="none"
-              stroke="#1e3a8a"
-              strokeWidth="3"
-              strokeOpacity="0.2"
-            />
-            
-            {/* Arc animé */}
-            <circle
-              cx="50"
-              cy="50"
-              r="40"
-              fill="none"
-              stroke="url(#paymentGradient)"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeDasharray="251.2"
-              strokeDashoffset="75"
-              transform="rotate(-90 50 50)"
-              className="origin-center animate-spin"
-              style={{ animationDuration: '1.5s', animationTimingFunction: 'linear' }}
-            />
-            
-            {/* Point central */}
-            <circle cx="50" cy="50" r="4" fill="#f0f9ff" />
-          </svg>
+        <div className="relative z-10">
+          <Loader2 className="h-14 w-14 animate-spin mx-auto text-primary" />
+          
+          <h2 className="mt-6 text-xl font-semibold">Préparation de votre paiement</h2>
+          
+          <p className="mt-3 text-muted-foreground max-w-sm">
+            Nous sécurisons votre transaction. Vous serez redirigé vers la page de paiement dans quelques instants...
+          </p>
+          
+          <div className="mt-6 h-2 w-48 mx-auto bg-gray-700 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-primary animate-pulse rounded-full" 
+              style={{width: '60%'}}
+            ></div>
+          </div>
         </div>
       </div>
     </div>

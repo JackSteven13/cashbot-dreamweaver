@@ -19,6 +19,13 @@ const Navbar = () => {
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // Liste des pages actives dans la navigation
+  const navItems = [
+    { path: '/', label: 'Accueil' },
+    { path: '/offres', label: 'Offres' },
+    { path: '/about', label: 'À propos' }
+  ];
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
@@ -49,30 +56,17 @@ const Navbar = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             <div className="flex space-x-6">
-              <Link 
-                to="/" 
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname === '/' ? 'text-primary' : 'text-gray-300'
-                }`}
-              >
-                Accueil
-              </Link>
-              <Link 
-                to="/offres" 
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname === '/offres' ? 'text-primary' : 'text-gray-300'
-                }`}
-              >
-                Offres
-              </Link>
-              <Link 
-                to="/about" 
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname === '/about' ? 'text-primary' : 'text-gray-300'
-                }`}
-              >
-                À propos
-              </Link>
+              {navItems.map(item => (
+                <Link 
+                  key={item.path}
+                  to={item.path}
+                  className={`text-sm font-medium transition-colors hover:text-primary ${
+                    location.pathname === item.path ? 'text-primary' : 'text-gray-300'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
             </div>
             
             <div className="flex items-center space-x-3">
@@ -109,33 +103,17 @@ const Navbar = () => {
                   <SheetTitle className="text-left text-xl font-bold mb-6 text-white">Menu</SheetTitle>
                 </SheetHeader>
                 <div className="flex flex-col space-y-4">
-                  <SheetClose asChild>
-                    <Link
-                      to="/"
-                      className="px-4 py-3 text-base font-medium text-gray-200 rounded-lg hover:bg-gray-800"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Accueil
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link
-                      to="/offres"
-                      className="px-4 py-3 text-base font-medium text-gray-200 rounded-lg hover:bg-gray-800"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Offres
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link
-                      to="/about"
-                      className="px-4 py-3 text-base font-medium text-gray-200 rounded-lg hover:bg-gray-800"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      À propos
-                    </Link>
-                  </SheetClose>
+                  {navItems.map(item => (
+                    <SheetClose key={item.path} asChild>
+                      <Link
+                        to={item.path}
+                        className="px-4 py-3 text-base font-medium text-gray-200 rounded-lg hover:bg-gray-800"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        {item.label}
+                      </Link>
+                    </SheetClose>
+                  ))}
                   <div className="pt-6 flex flex-col space-y-4 border-t border-gray-700 mt-2">
                     <SheetClose asChild>
                       <Link to="/login" onClick={() => setIsMenuOpen(false)}>

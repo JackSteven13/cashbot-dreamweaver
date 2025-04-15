@@ -59,7 +59,7 @@ const Login = () => {
   useEffect(() => {
     const sessionTimeout = setTimeout(() => {
       setIsCheckingSession(false);
-    }, 5000); // Ne jamais bloquer plus de 5 secondes
+    }, 3000); // Réduire le délai à 3 secondes max pour éviter un écran de chargement trop long
     
     const checkExistingSession = async () => {
       setIsCheckingSession(true);
@@ -185,15 +185,16 @@ const Login = () => {
     }
   };
 
-  // Si on vérifie encore la session, afficher un loader
+  // Si on vérifie encore la session, afficher un loader amélioré
   if (isCheckingSession) {
     return (
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen bg-[#0f0f23]">
         <Navbar />
         <main className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-            <p className="mt-2">Vérification de session...</p>
+          <div className="text-center glass-panel p-8 rounded-xl shadow-lg">
+            <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
+            <p className="mt-4 text-lg">Vérification de votre session...</p>
+            <p className="mt-2 text-sm text-muted-foreground">Veuillez patienter un instant</p>
           </div>
         </main>
       </div>
