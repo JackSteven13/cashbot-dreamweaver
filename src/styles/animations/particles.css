@@ -1,47 +1,71 @@
 
-/* Particle animation effects */
-@layer utilities {
-  .money-rain {
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .money-rain::before {
-    content: "💰";
-    position: absolute;
-    top: -20px;
-    left: 0;
-    font-size: 24px;
-    animation: moneyFall 1.5s linear infinite;
-  }
-}
-
-/* Money particle animations */
+/* Money particles animation styles */
 .money-particle {
-  position: absolute;
+  position: fixed;
   pointer-events: none;
-  animation: moneyParticle 1.5s ease-out forwards;
-  z-index: 1000;
+  z-index: 9999;
+  font-weight: bold;
+  animation: float-up 1.5s ease-out forwards;
+  filter: drop-shadow(0 0 2px rgba(0, 120, 62, 0.4));
 }
 
-@keyframes moneyParticle {
+@keyframes float-up {
   0% {
-    transform: translate(0, 0) rotate(0deg);
-    opacity: 1;
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
   }
   100% {
-    transform: translate(var(--tx), var(--ty)) rotate(var(--r));
+    transform: translateY(calc(-1 * var(--ty))) translateX(var(--tx)) rotate(var(--r));
     opacity: 0;
   }
 }
 
-@keyframes moneyFall {
-  0% { 
-    transform: translateY(0) rotate(0deg); 
-    opacity: 1;
-  }
-  100% { 
-    transform: translateY(500px) rotate(360deg); 
-    opacity: 0;
-  }
+/* Coin animation for gains */
+.coin-animation {
+  display: inline-block;
+  animation: coin-spin 1.5s ease-out;
+}
+
+@keyframes coin-spin {
+  0% { transform: rotateY(0deg); }
+  50% { transform: rotateY(180deg); }
+  100% { transform: rotateY(360deg); }
+}
+
+/* Pulse for dashboard elements */
+.pulse-subtle {
+  animation: pulse-subtle 3s infinite;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+/* Activity indicator animations */
+.activity-indicator {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background-color: #0ea5e9;
+  animation: blink 1.5s infinite;
+}
+
+.activity-indicator.active {
+  background-color: #10b981;
+}
+
+.activity-indicator.paused {
+  background-color: #f59e0b;
+  animation: blink 3s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }

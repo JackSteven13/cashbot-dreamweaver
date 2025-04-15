@@ -1,54 +1,46 @@
 
 import React, { useEffect, useRef } from 'react';
-import { cn } from '@/lib/utils';
 
 interface TerminalOutputProps {
-  outputs: Array<{text: string; type: string}>;
+  outputs: Array<{text: string, type: string}>;
   scrollToBottom?: boolean;
 }
 
 const TerminalOutput: React.FC<TerminalOutputProps> = ({ outputs, scrollToBottom = false }) => {
   const outputRef = useRef<HTMLDivElement>(null);
   
-  // Auto-scroll to bottom when new content is added
+  // Auto-scroll to bottom when new outputs appear
   useEffect(() => {
     if (scrollToBottom && outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [outputs, scrollToBottom]);
   
-  // Generate timestamp for each line
-  const getTimestamp = () => {
-    const now = new Date();
-    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-  };
-  
-  // Color coding based on message type
-  const getClassForType = (type: string) => {
-    switch (type) {
-      case 'error':
-        return 'text-red-500';
-      case 'warning':
-        return 'text-amber-500';
-      case 'success':
-        return 'text-green-500';
-      case 'system':
-        return 'text-purple-500';
-      case 'info':
-        return 'text-blue-500';
-      default:
-        return 'text-slate-300';
-    }
-  };
-  
   return (
-    <div ref={outputRef} className="h-full overflow-y-auto space-y-1 font-mono text-xs">
+    <div ref={outputRef} className="font-mono text-xs space-y-1 overflow-auto max-h-full">
       {outputs.map((output, index) => (
-        <div key={index} className="flex items-start opacity-90 hover:opacity-100 transition-opacity">
-          <span className="text-slate-500 mr-2">[{getTimestamp()}]</span>
-          <span className={cn("flex-1", getClassForType(output.type))}>
-            {output.text}
-          </span>
+        <div 
+          key={`term-output-${index}`}
+          className={`terminal-line ${
+            output.type === 'system' 
+              ? 'text-gray-400' 
+              : output.type === 'warning' 
+                ? 'text-amber-400' 
+                : output.type === 'success' 
+                  ? 'text-green-400' 
+                  : 'text-blue-400'
+          } animate-fade-in`}
+        >
+          <span className="mr-2">{
+            output.type === 'system' 
+              ? '[SYS]' 
+              : output.type === 'warning' 
+                ? '[AVERTISSEMENT]' 
+                : output.type === 'success' 
+                  ? '[OK]' 
+                  : '[INFO]'
+          }</span>
+          <span>{output.text}</span>
         </div>
       ))}
     </div>

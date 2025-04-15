@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import DashboardContainer from '../components/dashboard/DashboardContainer';
@@ -14,6 +14,20 @@ const Dashboard = () => {
   const { isInitializing, username, refreshData } = useInitUserData();
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [dashboardReady, setDashboardReady] = useState(false);
+  const [isPreloaded, setIsPreloaded] = useState(false);
+  
+  // Preload critical dashboard components
+  useEffect(() => {
+    if (!isPreloaded) {
+      // Simulate preloading by setting a flag - in a real app, we'd actually
+      // prefetch resources here
+      const timer = setTimeout(() => {
+        setIsPreloaded(true);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isPreloaded]);
   
   // Redirect if not authenticated
   useEffect(() => {
@@ -37,6 +51,11 @@ const Dashboard = () => {
         description: "Votre tableau de bord est prêt. Les agents IA sont en cours d'analyse.",
         duration: 3000,
       });
+      
+      // Trigger animation events
+      window.dispatchEvent(new CustomEvent('dashboard:ready', { 
+        detail: { username, timestamp: Date.now() } 
+      }));
     }
   }, [isInitializing, username, isFirstLoad]);
 
@@ -50,7 +69,9 @@ const Dashboard = () => {
 
   return (
     <div className={`transition-opacity duration-500 ${dashboardReady ? 'opacity-100' : 'opacity-0'}`}>
-      <DashboardContainer />
+      <Suspense fallback={<DashboardSkeleton username={username || "Préparation..."} />}>
+        <DashboardContainer />
+      </Suspense>
       
       {/* Invisible component to ensure subscription is always in sync */}
       <SubscriptionSynchronizer onSync={(subscription) => {
