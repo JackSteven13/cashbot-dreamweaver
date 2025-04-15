@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import SessionCard from '@/components/SessionCard';
 import { useNavigate } from 'react-router-dom';
 import { Transaction } from '@/types/userData';
+import { Loader2, RefreshCw } from 'lucide-react';
+import { useTransactions } from '@/components/dashboard/transactions/hooks';
+import { toast } from '@/components/ui/use-toast';
 
 interface TransactionsTabProps {
   transactions: Array<{
@@ -17,31 +20,48 @@ interface TransactionsTabProps {
 }
 
 const TransactionsTab: React.FC<TransactionsTabProps> = ({ 
-  transactions,
+  transactions: initialTransactions,
   isNewUser
 }) => {
   const navigate = useNavigate();
-  const [formattedTransactions, setFormattedTransactions] = useState<Transaction[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Effectuer un traitement supplémentaire des transactions pour s'assurer qu'elles sont correctement formatées
-  useEffect(() => {
-    if (Array.isArray(transactions)) {
-      // Formatter correctement les transactions
-      const processed = transactions.map(tx => ({
-        ...tx,
-        gain: tx.gain || tx.amount || 0,
-        report: tx.report || tx.type || ''
-      })).filter(tx => tx.date); // Filtrer les transactions sans date
-      
-      setFormattedTransactions(processed);
-      
-      // Journaliser pour le débogage
-      console.log(`Transactions traitées (${processed.length}):`, processed);
-    } else {
-      console.log("Transactions invalides reçues:", transactions);
-      setFormattedTransactions([]);
+  // Use the transactions hook for more reliable transaction management
+  const { 
+    displayedTransactions, 
+    handleManualRefresh 
+  } = useTransactions(initialTransactions);
+  
+  // Handle manual refresh with animation
+  const refreshTransactions = async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      await handleManualRefresh();
+      toast({
+        title: "Transactions actualisées",
+        description: "Les dernières transactions ont été chargées",
+      });
+    } catch (error) {
+      console.error("Error refreshing transactions:", error);
+    } finally {
+      setIsRefreshing(false);
     }
-  }, [transactions]);
+  };
+  
+  // Listen for transaction refresh events
+  useEffect(() => {
+    const handleTransactionRefresh = () => {
+      refreshTransactions();
+    };
+    
+    window.addEventListener('transactions:refresh', handleTransactionRefresh);
+    
+    return () => {
+      window.removeEventListener('transactions:refresh', handleTransactionRefresh);
+    };
+  }, []);
   
   const handleViewAll = () => {
     navigate('/dashboard/transactions');
@@ -49,9 +69,25 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {formattedTransactions.length > 0 ? (
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-medium">Historique</h3>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={refreshTransactions} 
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+      
+      {displayedTransactions.length > 0 ? (
         <div className="grid gap-4">
-          {formattedTransactions.slice(0, 5).map((transaction, index) => (
+          {displayedTransactions.slice(0, 5).map((transaction, index) => (
             <SessionCard 
               key={`tx-${index}-${transaction.date}`}
               gain={transaction.gain || transaction.amount || 0}
@@ -59,7 +95,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
               date={transaction.date}
             />
           ))}
-          {formattedTransactions.length > 5 && (
+          {displayedTransactions.length > 5 && (
             <Button variant="outline" className="w-full mt-2" onClick={handleViewAll}>
               Voir toutes les transactions
             </Button>
