@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from './DashboardLayout';
@@ -9,7 +8,7 @@ import TerminalOverlay from './terminal/TerminalOverlay';
 import useDashboardSessions from '@/hooks/useDashboardSessions';
 import useTerminalAnalysis from '@/hooks/useTerminalAnalysis';
 import { toast } from '@/components/ui/use-toast';
-import { simulateActivity } from '@/utils/animations';
+import { simulateActivity } from '@/utils/animations/moneyParticles';
 import { useActivitySimulation } from '@/hooks/sessions/useActivitySimulation';
 
 const DashboardContainer = () => {
@@ -165,7 +164,7 @@ const DashboardContainer = () => {
   // S'assurer que terminalLines est du bon type si c'est un tableau de chaînes
   const formattedLines = terminalLines && Array.isArray(terminalLines) 
     ? terminalLines.map(line => (typeof line === 'string' ? { text: line, type: 'info' } : line))
-    : terminalLines;
+    : [];
 
   return (
     <>

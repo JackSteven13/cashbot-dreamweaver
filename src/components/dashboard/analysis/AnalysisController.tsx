@@ -53,10 +53,10 @@ const AnalysisController: React.FC = () => {
     return null;
   }
   
-  // S'assurer que terminalLines est du bon type si c'est un tableau de chaînes
+  // Fix: Ensure terminalLines is properly formatted as an array of objects with text and type
   const formattedLines = Array.isArray(terminalLines) 
     ? terminalLines.map(line => (typeof line === 'string' ? { text: line, type: 'info' } : line))
-    : terminalLines;
+    : [];
   
   return (
     <TerminalOverlay 

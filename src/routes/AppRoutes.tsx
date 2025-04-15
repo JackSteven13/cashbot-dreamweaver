@@ -21,9 +21,10 @@ const AppRoutes: React.FC = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/dashboard/*" element={
-        <AnalysisController>
+        <>
+          <AnalysisController />
           <Dashboard />
-        </AnalysisController>
+        </>
       } />
       <Route path="/about" element={<About />} />
       <Route path="/offres" element={<Offres />} />
