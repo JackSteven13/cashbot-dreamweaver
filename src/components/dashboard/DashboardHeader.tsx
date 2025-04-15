@@ -4,9 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { User, LogOut, Settings } from 'lucide-react';
-import { useProfileData } from '@/hooks/auth/useProfileData';
 import { Badge } from '@/components/ui/badge';
-import { useEffect } from 'react';
+import { forceSignOut } from '@/utils/auth';
 
 interface DashboardHeaderProps {
   username: string;
@@ -15,10 +14,10 @@ interface DashboardHeaderProps {
 
 const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { user } = useAuth();
   
   const handleSignOut = async () => {
-    await signOut();
+    await forceSignOut();
     navigate('/login');
   };
   
