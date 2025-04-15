@@ -1,152 +1,107 @@
 
-import React, { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import TerminalOutput from './TerminalOutput';
+import { X, Minimize2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface TerminalOverlayProps {
-  lines: string[];
+  lines: Array<{text: string, type: string}>;
   isComplete?: boolean;
   isLimitReached?: boolean;
-  countdownTime?: string;
   isDismissable?: boolean;
+  countdownTime?: string;
+  isBackgroundMode?: boolean;
 }
 
-const TerminalOverlay: React.FC<TerminalOverlayProps> = ({
+const TerminalOverlay: React.FC<TerminalOverlayProps> = ({ 
   lines,
   isComplete = false,
   isLimitReached = false,
-  countdownTime = '00:00:00',
-  isDismissable = false
+  isDismissable = false,
+  countdownTime = "",
+  isBackgroundMode = false
 }) => {
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const [fadeOut, setFadeOut] = useState(false);
-  const [outputs, setOutputs] = useState<Array<{text: string; type: string}>>([]);
+  const [visible, setVisible] = useState(true);
+  const [minimized, setMinimized] = useState(false);
   
-  // Convert lines to terminal output format
-  useEffect(() => {
-    const formattedOutputs = lines.map((line, index) => {
-      // Determine the type of output based on content
-      let type = 'info';
-      
-      if (line.toLowerCase().includes('erreur') || line.toLowerCase().includes('échec')) {
-        type = 'warning';
-      } else if (
-        line.toLowerCase().includes('succès') || 
-        line.toLowerCase().includes('réussi') || 
-        line.toLowerCase().includes('terminé')
-      ) {
-        type = 'success';
-      } else if (index === 0) {
-        type = 'system'; // First line is usually system info
-      }
-      
-      return { text: line, type };
-    });
-    
-    // Add new outputs with a delay to create typing effect
-    const addOutputsWithDelay = async () => {
-      for (let i = 0; i < formattedOutputs.length; i++) {
-        if (i >= outputs.length) {
-          await new Promise(resolve => setTimeout(resolve, 250 + Math.random() * 300));
-          setOutputs(prev => [...prev, formattedOutputs[i]]);
-        }
-      }
-    };
-    
-    addOutputsWithDelay();
-  }, [lines]);
+  // Si en mode arrière-plan, ne pas afficher l'overlay
+  if (isBackgroundMode) return null;
   
-  // Handle dismissal
-  const handleDismiss = () => {
-    if (isDismissable) {
-      setFadeOut(true);
-      setTimeout(() => {
-        // Trigger the dismiss event
-        window.dispatchEvent(new CustomEvent('terminal:dismiss'));
-      }, 500);
-    }
-  };
-  
-  // Add activity animation effect
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (overlayRef.current && !isComplete && !fadeOut) {
-        overlayRef.current.classList.toggle('terminal-pulse');
-      }
-    }, 2000);
-    
-    return () => clearInterval(interval);
-  }, [isComplete, fadeOut]);
-  
-  // Auto-dismiss after completion
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    
-    if (isComplete && !isLimitReached) {
-      timer = setTimeout(() => {
-        handleDismiss();
-      }, 3000);
-    }
-    
-    return () => clearTimeout(timer);
-  }, [isComplete, isLimitReached]);
+  // Si fermé, ne rien afficher
+  if (!visible) return null;
   
   return (
-    <div
-      ref={overlayRef}
-      className={`fixed inset-0 flex items-center justify-center z-50 bg-black/70 backdrop-blur-sm transition-opacity duration-500 ${
-        fadeOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
-      }`}
-    >
-      <div className={`w-11/12 md:w-3/4 lg:w-2/3 max-w-2xl bg-gray-900 border border-blue-900/50 rounded-lg shadow-lg p-4 max-h-[80vh] overflow-auto transition-all duration-500 ${
-        fadeOut ? 'scale-95' : 'scale-100'
-      }`}>
-        <div className="flex items-center justify-between mb-4 border-b border-blue-900/30 pb-2">
-          <div className="flex items-center space-x-2 text-blue-400">
-            <div className={`h-3 w-3 rounded-full ${isComplete ? 'bg-green-500' : isLimitReached ? 'bg-red-500' : 'bg-blue-500 animate-pulse'}`}></div>
-            <h3 className="font-mono font-medium">
-              {isComplete ? 'Analyse terminée' : isLimitReached ? 'Limite atteinte' : 'Analyse en cours...'}
-            </h3>
+    <div className={`fixed inset-0 bg-black/80 z-50 flex items-center justify-center transition-opacity ${minimized ? 'bg-transparent' : ''}`}>
+      <div 
+        className={`
+          bg-gray-900 border border-gray-700 rounded-lg shadow-2xl
+          transition-all duration-300 ease-in-out
+          ${minimized 
+            ? 'w-64 h-12 fixed bottom-4 right-4 overflow-hidden flex items-center' 
+            : 'w-11/12 max-w-3xl h-3/4 overflow-hidden flex flex-col'}
+        `}
+      >
+        {/* Terminal header */}
+        <div className="bg-gray-800 p-3 flex justify-between items-center border-b border-gray-700">
+          <div className="flex items-center">
+            <div className="flex space-x-2 mr-4">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            </div>
+            <span className="text-gray-300 text-sm font-mono">
+              {isLimitReached 
+                ? "Limite d'analyse atteinte" 
+                : isComplete 
+                  ? "Analyse terminée"
+                  : "Analyse en cours..."}
+            </span>
           </div>
-          {isDismissable && (
-            <button 
-              onClick={handleDismiss}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <X size={18} />
-              <span className="sr-only">Fermer</span>
-            </button>
-          )}
-        </div>
-        
-        <div className="h-64 bg-gray-950 rounded border border-gray-800 p-3 font-mono text-sm overflow-auto">
-          <TerminalOutput outputs={outputs} scrollToBottom={true} />
           
-          {/* Simulated cursor blinking when not complete */}
-          {!isComplete && !isLimitReached && (
-            <div className="h-4 w-2 bg-blue-500 opacity-70 inline-block animate-blink mt-1"></div>
+          <div className="flex space-x-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-gray-400 hover:text-white"
+              onClick={() => setMinimized(!minimized)}
+            >
+              <Minimize2 size={16} />
+            </Button>
+            
+            {isDismissable && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-gray-400 hover:text-white"
+                onClick={() => setVisible(false)}
+              >
+                <X size={16} />
+              </Button>
+            )}
+          </div>
+        </div>
+        
+        {/* Terminal content */}
+        <div className={`flex-1 overflow-hidden p-4 ${minimized ? 'hidden' : ''}`}>
+          <TerminalOutput outputs={lines} scrollToBottom={true} />
+          
+          {countdownTime && (
+            <div className="mt-4 p-2 bg-gray-800 rounded border border-gray-700 text-center">
+              <span className="text-gray-300 text-sm">
+                Prochaine analyse disponible dans: <span className="text-blue-400 font-mono">{countdownTime}</span>
+              </span>
+            </div>
           )}
         </div>
         
-        {isLimitReached && (
-          <div className="mt-4 text-center">
-            <p className="text-amber-400 text-sm">Réinitialisation dans: <span className="text-white font-mono">{countdownTime}</span></p>
+        {minimized && (
+          <div className="flex-1 flex items-center px-3">
+            <span className="text-gray-300 text-xs truncate">
+              {isComplete ? "Analyse terminée" : "Analyse en cours..."}
+            </span>
+            <div className="ml-2 activity-indicator active"></div>
           </div>
         )}
-        
-        <div className="mt-4 text-right">
-          <button
-            onClick={handleDismiss}
-            disabled={!isDismissable}
-            className={`px-4 py-1.5 rounded text-sm font-medium ${
-              isDismissable 
-                ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-            } transition-colors`}
-          >
-            {isComplete ? 'Fermer' : 'Attendre...'}
-          </button>
-        </div>
       </div>
     </div>
   );

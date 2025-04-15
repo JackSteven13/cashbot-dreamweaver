@@ -1,69 +1,68 @@
 
-import React, { useEffect, useState } from 'react';
-import { useTerminalAnalysis } from '@/hooks/useTerminalAnalysis';
+import React, { useState, useEffect } from 'react';
+import TerminalOverlay from '../terminal/TerminalOverlay';
+import useTerminalAnalysis from '@/hooks/useTerminalAnalysis';
+import { toast } from '@/components/ui/use-toast';
+import { triggerDashboardEvent } from '@/utils/animations';
 
-interface AnalysisControllerProps {
-  children: React.ReactNode;
-}
-
-/**
- * Controller component to handle in-dashboard analysis without redirecting
- * or showing full-page loading screens
- */
-const AnalysisController: React.FC<AnalysisControllerProps> = ({ children }) => {
+const AnalysisController: React.FC = () => {
   const { 
-    showAnalysis,
-    terminalLines,
-    analysisComplete,
-    limitReached,
-    countdownTime,
-    isBackgroundMode
+    showAnalysis, 
+    terminalLines, 
+    analysisComplete, 
+    limitReached, 
+    countdownTime 
   } = useTerminalAnalysis();
   
-  // Only show in-dashboard terminal UI for analysis, no more full page loading
-  if (showAnalysis && !isBackgroundMode) {
-    return (
-      <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-black border border-slate-700 rounded-md p-6 w-full max-w-xl shadow-xl">
-          <div className="mb-2 flex justify-between items-center">
-            <h3 className="text-green-400 font-mono">Système d'analyse</h3>
-            <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse"></div>
-          </div>
-          
-          <div className="font-mono text-sm h-64 overflow-y-auto bg-black border border-slate-800 p-4 rounded">
-            {terminalLines.map((line, index) => (
-              <div key={index} className="mb-2">
-                <span className="text-green-400">{'> '}</span>
-                <span className="text-slate-300">{line}</span>
-              </div>
-            ))}
-            
-            {!analysisComplete && !limitReached && (
-              <div className="text-blue-400 animate-pulse">
-                <span>{'> '}</span>
-                <span className="inline-block">En cours d'analyse...</span>
-              </div>
-            )}
-            
-            {limitReached && (
-              <div className="mt-4 p-3 bg-yellow-900/30 border border-yellow-800 rounded text-yellow-200">
-                <p>Réinitialisation dans: {countdownTime}</p>
-              </div>
-            )}
-          </div>
-          
-          {analysisComplete && (
-            <div className="mt-4 text-center">
-              <p className="text-green-400">Analyse terminée avec succès!</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+  // État local pour le mode d'arrière-plan
+  const [isBackgroundMode, setIsBackgroundMode] = useState(false);
+  
+  // Effet pour montrer un toast quand l'analyse est terminée
+  useEffect(() => {
+    if (analysisComplete && !isBackgroundMode) {
+      toast({
+        title: limitReached 
+          ? "Limite atteinte" 
+          : "Analyse terminée",
+        description: limitReached
+          ? "Vous avez atteint votre limite quotidienne d'analyses."
+          : "L'analyse des publicités est terminée.",
+        duration: 5000,
+      });
+    }
+  }, [analysisComplete, limitReached, isBackgroundMode]);
+  
+  // Gérer le mode arrière-plan
+  useEffect(() => {
+    const handleBackgroundModeChange = (event: CustomEvent) => {
+      if (event.detail && typeof event.detail.background === 'boolean') {
+        setIsBackgroundMode(event.detail.background);
+      }
+    };
+    
+    // Abonnement aux événements
+    window.addEventListener('dashboard:analysis-start', handleBackgroundModeChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('dashboard:analysis-start', handleBackgroundModeChange as EventListener);
+    };
+  }, []);
+  
+  // Ne rien afficher si pas d'analyse en cours
+  if (!showAnalysis) {
+    return null;
   }
   
-  // Always render children - the background mode will handle updates without UI disruption
-  return <>{children}</>;
+  return (
+    <TerminalOverlay 
+      lines={terminalLines} 
+      isComplete={analysisComplete}
+      isLimitReached={limitReached}
+      isDismissable={analysisComplete}
+      countdownTime={countdownTime}
+      isBackgroundMode={isBackgroundMode}
+    />
+  );
 };
 
 export default AnalysisController;

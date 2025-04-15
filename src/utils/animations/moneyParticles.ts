@@ -1,115 +1,98 @@
 
+import { toast } from '@/components/ui/use-toast';
+
 /**
- * Creates money particle effects around an element
- * @param element The DOM element to create particles around
- * @param count Number of particles to create
+ * Crée des particules d'argent animées autour d'un élément cible
  */
-export const createMoneyParticles = (
-  element: HTMLElement | null,
-  count: number = 10
-) => {
-  if (!element) {
-    console.warn("Money particles: No element provided");
-    return;
-  }
+export const createMoneyParticles = (targetElement: HTMLElement, count: number = 5) => {
+  const rect = targetElement.getBoundingClientRect();
   
-  // Get element position and dimensions
-  const rect = element.getBoundingClientRect();
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-  
-  // Array of currency symbols to use randomly
-  const currencySymbols = ["€", "+", "💰", "✓"];
-  
-  // Create money particles
+  // Créer les particules
   for (let i = 0; i < count; i++) {
-    // Create a new particle element
     const particle = document.createElement('div');
     particle.className = 'money-particle';
+    particle.textContent = '€';
     
-    // Randomly select a symbol
-    const symbolIndex = Math.floor(Math.random() * currencySymbols.length);
-    particle.textContent = currencySymbols[symbolIndex];
+    // Position aléatoire autour de l'élément cible
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
     
-    // Calculate random positions and movements
-    const angle = Math.random() * Math.PI * 2;
-    const distance = 30 + Math.random() * 80;
-    const tx = Math.cos(angle) * distance;
-    const ty = Math.sin(angle) * distance * 1.5; // Make vertical movement more pronounced
-    const rotation = -45 + Math.random() * 90;
+    // Variables CSS pour l'animation
+    particle.style.setProperty('--tx', `${Math.random() * 80 - 40}px`);
+    particle.style.setProperty('--ty', `${Math.random() * 100 + 50}px`);
+    particle.style.setProperty('--r', `${Math.random() * 180 - 90}deg`);
     
-    // Set custom properties for the animation
-    particle.style.setProperty('--tx', `${tx}px`);
-    particle.style.setProperty('--ty', `${ty}px`);
-    particle.style.setProperty('--r', `${rotation}deg`);
+    // Positionner la particule
+    particle.style.left = `${x}px`;
+    particle.style.top = `${y}px`;
     
-    // Position the particle at the starting point
-    particle.style.left = `${centerX}px`;
-    particle.style.top = `${centerY}px`;
-    particle.style.fontSize = `${14 + Math.random() * 10}px`;
-    particle.style.opacity = '0.9';
-    
-    // Add to document
+    // Ajouter au body et supprimer après l'animation
     document.body.appendChild(particle);
-    
-    // Remove after animation completes
     setTimeout(() => {
-      if (document.body.contains(particle)) {
-        document.body.removeChild(particle);
-      }
+      particle.remove();
     }, 1500);
   }
+};
+
+/**
+ * Applique un effet visuel à une mise à jour de solde
+ */
+export const flashBalanceUpdate = (element: HTMLElement) => {
+  element.classList.add('flash-success');
   
-  // Also add a single balance increment indicator
-  const incrementIndicator = document.createElement('div');
-  incrementIndicator.className = 'balance-increment';
-  incrementIndicator.textContent = '+0.01€';
+  // Ajouter l'élément d'incrément
+  const increment = document.createElement('div');
+  increment.className = 'balance-increment';
+  increment.textContent = '+';
+  element.appendChild(increment);
   
-  // Position the increment indicator
-  incrementIndicator.style.left = `${rect.left + rect.width / 2}px`;
-  incrementIndicator.style.top = `${rect.top}px`;
+  // Animation de rotation de pièce sur l'élément
+  const amount = document.createElement('span');
+  amount.className = 'coin-animation';
+  amount.textContent = '€';
+  element.appendChild(amount);
   
-  // Add to document
-  document.body.appendChild(incrementIndicator);
-  
-  // Remove after animation completes
+  // Nettoyer après l'animation
   setTimeout(() => {
-    if (document.body.contains(incrementIndicator)) {
-      document.body.removeChild(incrementIndicator);
-    }
+    element.classList.remove('flash-success');
+    increment.remove();
+    amount.remove();
   }, 2000);
 };
 
 /**
- * Displays a flash animation on the balance element
- * @param element The element to flash
- */
-export const flashBalanceUpdate = (element: HTMLElement | null) => {
-  if (!element) return;
-  
-  element.classList.add('flash-success');
-  
-  setTimeout(() => {
-    element.classList.remove('flash-success');
-  }, 800);
-};
-
-/**
- * Creates a simulated activity effect for dashboard
+ * Simule une activité sur le dashboard avec des effets visuels
  */
 export const simulateActivity = () => {
-  // Find all activity indicators
-  const indicators = document.querySelectorAll('.activity-indicator');
+  // Trouver des éléments pour l'animation
+  const elements = document.querySelectorAll('.activity-indicator');
   
-  indicators.forEach((indicator, index) => {
-    // Random activity simulation
-    setTimeout(() => {
-      if (Math.random() > 0.5) {
-        indicator.classList.add('active');
-        setTimeout(() => {
-          indicator.classList.remove('active');
-        }, 500 + Math.random() * 1000);
-      }
-    }, index * 300);
+  // Animer les indicateurs d'activité
+  elements.forEach(el => {
+    if (el instanceof HTMLElement) {
+      el.classList.add('active');
+      
+      // Désactiver après un délai aléatoire
+      setTimeout(() => {
+        el.classList.remove('active');
+      }, 2000 + Math.random() * 3000);
+    }
   });
+  
+  // Afficher un toast subtil pour renforcer l'effet d'activité
+  const messages = [
+    "Agent IA actif",
+    "Analyse en cours",
+    "Données synchronisées",
+    "Session active"
+  ];
+  
+  // 30% de chance d'afficher un toast
+  if (Math.random() > 0.7) {
+    toast({
+      title: messages[Math.floor(Math.random() * messages.length)],
+      variant: "default",
+      duration: 2000,
+    });
+  }
 };
