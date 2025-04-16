@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Copy, CheckCheck, Award, Users, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,24 +15,20 @@ interface ReferralLinkProps {
   referrals?: any[];
 }
 
-const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [] }) => {
+const AffiliationLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [] }) => {
   const [copied, setCopied] = useState(false);
   const [displayedLink, setDisplayedLink] = useState("");
   const [isLinkReady, setIsLinkReady] = useState(false);
 
-  // S'assurer que le lien est correctement généré et formaté
   useEffect(() => {
-    // Vérifier si un lien est disponible
     if (!referralLink || referralLink === '') {
-      // Générer un lien de secours basé sur l'origine actuelle
       const fallbackLink = `${window.location.origin}/register?ref=generate`;
       setDisplayedLink(fallbackLink);
       setIsLinkReady(true);
-      console.log("Lien de parrainage non fourni, utilisation d'un lien temporaire", fallbackLink);
+      console.log("Lien d'affiliation non fourni, utilisation d'un lien temporaire", fallbackLink);
       return;
     }
 
-    // S'assurer que le lien est complet
     let processedLink = referralLink;
     if (!processedLink.startsWith('http')) {
       processedLink = `${window.location.origin}/register?ref=${processedLink.split('ref=').pop() || ''}`;
@@ -41,7 +36,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
     
     setDisplayedLink(processedLink);
     setIsLinkReady(true);
-    console.log("Lien de parrainage formaté:", processedLink);
+    console.log("Lien d'affiliation formaté:", processedLink);
   }, [referralLink]);
 
   const handleCopyReferralLink = () => {
@@ -60,7 +55,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
           setCopied(true);
           toast({
             title: "Lien copié !",
-            description: "Votre lien de parrainage a été copié dans le presse-papier",
+            description: "Votre lien d'affiliation a été copié dans le presse-papier",
             variant: "default"
           });
           
@@ -78,7 +73,6 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
   
   const fallbackCopy = () => {
     try {
-      // Méthode de copie alternative
       const textArea = document.createElement('textarea');
       textArea.value = displayedLink;
       textArea.style.position = 'fixed';
@@ -92,7 +86,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
         setCopied(true);
         toast({
           title: "Lien copié !",
-          description: "Votre lien de parrainage a été copié dans le presse-papier",
+          description: "Votre lien d'affiliation a été copié dans le presse-papier",
           variant: "default"
         });
         setTimeout(() => setCopied(false), 2000);
@@ -116,8 +110,8 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
     try {
       if (navigator.share) {
         await navigator.share({
-          title: 'Mon lien de parrainage Stream Genius',
-          text: 'Rejoins Stream Genius et gagne de l\'argent avec l\'analyse publicitaire! Utilise mon lien de parrainage:',
+          title: 'Mon lien d\'affiliation Stream Genius',
+          text: 'Rejoins Stream Genius et gagne de l\'argent avec l\'analyse publicitaire! Utilise mon lien d\'affiliation:',
           url: displayedLink
         });
         toast({
@@ -138,7 +132,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
       <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
         <div className="flex items-center gap-2">
           <Award className="text-amber-500 dark:text-amber-400 h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0" />
-          <h3 className="text-lg sm:text-xl font-semibold text-[#1e3a5f] dark:text-blue-100">Programme de parrainage</h3>
+          <h3 className="text-lg sm:text-xl font-semibold text-[#1e3a5f] dark:text-blue-100">Programme d'affiliation</h3>
         </div>
         
         <div className="bg-white dark:bg-slate-800/60 rounded-lg p-3 sm:p-4 shadow-sm border border-blue-100 dark:border-blue-800/50">
@@ -193,7 +187,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
             <div className="bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-3 rounded-md border border-blue-100 dark:border-blue-800/50 flex items-start gap-2">
               <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-300 font-medium">{referrals.length} filleul{referrals.length !== 1 ? 's' : ''}</p>
+                <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-300 font-medium">{referrals.length} membre{referrals.length !== 1 ? 's' : ''}</p>
                 <p className="text-xs text-blue-700 dark:text-blue-400">Invitez vos amis!</p>
               </div>
             </div>
@@ -202,7 +196,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
         
         {referrals.length > 0 ? (
           <div className="mt-2 sm:mt-4 bg-white dark:bg-slate-800/60 rounded-md border border-gray-200 dark:border-gray-700 p-2 sm:p-3">
-            <h4 className="text-xs sm:text-sm font-semibold text-[#334e68] dark:text-slate-200 mb-2">Vos filleuls :</h4>
+            <h4 className="text-xs sm:text-sm font-semibold text-[#334e68] dark:text-slate-200 mb-2">Vos membres affiliés :</h4>
             <div className="space-y-1 sm:space-y-2 max-h-28 sm:max-h-40 overflow-y-auto">
               {referrals.map((referral, index) => (
                 <div key={index} className="p-1 sm:p-2 border border-gray-100 dark:border-gray-800 rounded flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 text-xs sm:text-sm">
@@ -216,7 +210,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
           </div>
         ) : (
           <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-md p-2 sm:p-3 text-center">
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Vous n'avez pas encore de filleuls.</p>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Vous n'avez pas encore de membres affiliés.</p>
             <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 font-medium">Partagez votre lien pour commencer à gagner !</p>
           </div>
         )}
@@ -228,11 +222,11 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
             </AccordionTrigger>
             <AccordionContent className="bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-3 rounded-md border border-blue-100 dark:border-blue-800/50 text-xs text-blue-700 dark:text-blue-300">
               <ol className="list-decimal ml-4 space-y-1">
-                <li>Partagez votre lien de parrainage</li>
+                <li>Partagez votre lien d'affiliation</li>
                 <li>Vos amis créent un compte et s'abonnent</li>
                 <li>Vous recevez 20% de leur abonnement</li>
                 <li>Les commissions sont ajoutées à votre solde chaque mois</li>
-                <li>Augmentez vos revenus passifs avec chaque nouveau filleul</li>
+                <li>Augmentez vos revenus passifs avec chaque nouveau membre affilié</li>
               </ol>
             </AccordionContent>
           </AccordionItem>
@@ -242,4 +236,4 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals = [
   );
 };
 
-export default ReferralLink;
+export default AffiliationLink;
