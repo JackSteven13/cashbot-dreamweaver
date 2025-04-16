@@ -24,27 +24,21 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   isNewUser,
   balance
 }) => {
-  // Convert any "alpha" subscription to "starter"
   const displaySubscription = subscription === "alpha" ? "starter" : subscription;
 
-  // Calculer les revenus en fonction des limites d'abonnement
   const calculateRevenueForDisplay = () => {
-    // Obtenir la limite quotidienne basée sur l'abonnement
     const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
-    // Pour un nouvel utilisateur ou si le solde est inférieur à la limite, on retourne 0
     if (isNewUser || balance <= 0) return { today: 0, week: 0, month: 0 };
     
-    // Pour les comptes freemium, respecter strictement la limite de 0.50€ par jour
     if (subscription === 'freemium') {
       const today = Math.min(balance, dailyLimit);
-      const week = Math.min(dailyLimit * 5, balance * 1.2); // Max 5 jours à 0.50€
-      const month = Math.min(dailyLimit * 20, balance * 2); // Max 20 jours à 0.50€
+      const week = Math.min(dailyLimit * 5, balance * 1.2);
+      const month = Math.min(dailyLimit * 20, balance * 2);
       
       return { today, week, month };
     }
     
-    // Pour les autres abonnements, garder le comportement actuel mais avec des limites plus réalistes
     return {
       today: Math.min(balance, dailyLimit),
       week: Math.min(balance * 1.5, dailyLimit * 5),
@@ -52,7 +46,6 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
     };
   };
   
-  // Obtenir les revenus calculés
   const revenues = calculateRevenueForDisplay();
 
   return (

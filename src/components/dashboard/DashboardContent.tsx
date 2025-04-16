@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import SummaryPanel from './summary/SummaryPanel';
 import DashboardTabs from './metrics/tabs/DashboardTabs';
@@ -31,14 +30,13 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<string>('overview');
   
-  // Valeurs sécurisées pour éviter les erreurs si userData est null
   const balance = userData?.balance || 0;
   const subscription = userData?.subscription || 'freemium';
   const transactions = userData?.transactions || [];
   const referrals = userData?.referrals || [];
   const referralLink = userData?.referralLink || window.location.origin + '/register?ref=user';
   const referralCount = referrals.length;
-  const referralBonus = referralCount * 10; // Calcul simple des bonus
+  const referralBonus = referralCount * 10;
 
   return (
     <div className="space-y-8 pb-10">
@@ -83,8 +81,6 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
             referralLink={referralLink} 
             referralCount={referralCount}
           />
-          
-          {/* Autres composants de la colonne latérale si nécessaire */}
         </div>
       </div>
     </div>
