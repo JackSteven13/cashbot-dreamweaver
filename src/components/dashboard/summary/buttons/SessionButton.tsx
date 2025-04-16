@@ -44,21 +44,28 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     return "Démarrer une nouvelle session d'analyse";
   };
 
+  // Function to handle click with console log for debugging
+  const handleClick = () => {
+    console.log("Session button clicked, executing onClick handler");
+    onClick();
+  };
+
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="w-full">
             <Button
-              onClick={onClick}
+              onClick={handleClick}
               disabled={disabled || isLoading || hasReachedLimit || isInCooldown || !isBotActive}
               className="w-full h-11 bg-green-600 hover:bg-green-700 text-white"
               variant="default"
               size="lg"
+              data-testid="session-button"
             >
               {isLoading ? (
                 <div className="flex items-center">
-                  <span className="loading loading-spinner loading-xs mr-2"></span>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                   <span>Démarrage...</span>
                 </div>
               ) : (

@@ -66,7 +66,10 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   }, [isBotActive]);
 
   const handleStartAnalysis = async () => {
+    console.log("Début handleStartAnalysis");
+    
     if (!canStartSession || isStartingSession || isLocallyProcessing) {
+      console.log("Action bloquée:", {canStartSession, isStartingSession, isLocallyProcessing});
       return;
     }
     
@@ -81,23 +84,32 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       return;
     }
     
-    // Utiliser toujours les animations en arrière-plan pour une meilleure UX
-    // Créer une séquence d'animation qui ne bloque pas l'écran
-    const terminalAnimation = createBackgroundTerminalSequence([
-      "Initialisation de l'analyse vidéo..."
-    ]); // Fixed by removing extra argument
-    
-    setIsLocallyProcessing(true);
-    
-    setTimeout(() => {
-      terminalAnimation.addLine("Traitement des données en cours..."); // Fixed by removing extra argument
+    try {
+      console.log("Démarrage de l'animation et de l'analyse");
+      setIsLocallyProcessing(true);
       
-      // Lancement différé de la fonction principale pour permettre aux animations de s'afficher
+      // Créer une séquence d'animation qui s'affiche immédiatement
+      const terminalAnimation = createBackgroundTerminalSequence([
+        "Initialisation de l'analyse vidéo..."
+      ]);
+      
+      terminalAnimation.addLine("Traitement des données en cours...");
+      
+      // Attendre un court instant pour l'animation visuelle avant d'appeler la fonction principale
       setTimeout(() => {
+        console.log("Appel de onStartSession");
         onStartSession();
         setIsLocallyProcessing(false);
-      }, 600);
-    }, 300);
+      }, 200);
+    } catch (error) {
+      console.error("Erreur lors du démarrage de l'analyse:", error);
+      setIsLocallyProcessing(false);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors du démarrage de l'analyse",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleWithdrawal = () => {
@@ -160,6 +172,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         disabled={buttonState.disabled}
         onClick={handleStartAnalysis}
         className={`w-full flex items-center justify-center gap-2 py-6 ${buttonState.color} transition-all duration-300`}
+        data-testid="analysis-button"
       >
         <Zap className={`h-5 w-5 ${buttonState.animate ? 'animate-pulse' : ''}`} />
         <span className="font-medium">

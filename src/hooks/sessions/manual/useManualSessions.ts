@@ -36,12 +36,18 @@ export const useManualSessions = ({
   };
 
   const startSession = async () => {
-    if (isSessionRunning) return;
+    console.log("useManualSessions: startSession called");
+    
+    if (isSessionRunning) {
+      console.log("Session déjà en cours, ignoré");
+      return;
+    }
 
     try {
+      console.log("Démarrage de la session manuelle");
       setIsSessionRunning(true);
 
-      // Simulate analysis process with animations
+      // Trigger animation immediately
       triggerDashboardEvent('analysis-start', {
         subscription: userData?.subscription,
         animate: true
@@ -49,9 +55,11 @@ export const useManualSessions = ({
 
       // Random duration between 2-5 seconds
       const duration = 2000 + Math.random() * 3000;
+      console.log(`Animation en cours pour ${duration}ms`);
       await new Promise(resolve => setTimeout(resolve, duration));
 
       const sessionGain = await calculateManualSessionGain();
+      console.log(`Gain calculé: ${sessionGain}€`);
       
       // Add to daily gains
       balanceManager.addDailyGain(sessionGain);
@@ -82,6 +90,7 @@ export const useManualSessions = ({
         variant: "destructive"
       });
     } finally {
+      console.log("Fin de la session manuelle");
       setIsSessionRunning(false);
     }
   };
