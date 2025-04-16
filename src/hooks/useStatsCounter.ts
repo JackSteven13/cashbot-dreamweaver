@@ -66,10 +66,10 @@ export const useStatsCounter = ({
     animationFrameId = requestAnimationFrame(updateAnimation);
     
     // Intervalle pour les mises à jour périodiques des compteurs (valeurs cibles)
-    // Augmenter l'intervalle de 10 à 20 secondes pour ralentir la génération
+    // Augmenter l'intervalle à 30 secondes pour ralentir encore plus la génération
     const updateInterval = setInterval(() => {
       incrementCountersRandomly();
-    }, 20000); // Toutes les 20 secondes au lieu de 10
+    }, 30000); // Toutes les 30 secondes au lieu de 20
     
     // Planifier la réinitialisation à minuit
     const resetTimeout = scheduleCycleUpdate();

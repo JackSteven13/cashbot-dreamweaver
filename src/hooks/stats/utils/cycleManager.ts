@@ -32,8 +32,8 @@ export const scheduleMidnightReset = (
     }
     
     // Définir des valeurs initiales plus petites pour un démarrage plus lent
-    const initialAdsCount = Math.floor(dailyAdsTarget * (0.05 + Math.random() * 0.03)); // Réduit de 0.10-0.15 à 0.05-0.08
-    const initialRevenueCount = Math.floor(dailyRevenueTarget * (0.05 + Math.random() * 0.03)); // Réduit de 0.10-0.15 à 0.05-0.08
+    const initialAdsCount = Math.floor(dailyAdsTarget * (0.03 + Math.random() * 0.02)); // Réduit de 0.05-0.08 à 0.03-0.05
+    const initialRevenueCount = Math.floor(dailyRevenueTarget * (0.03 + Math.random() * 0.02)); // Réduit de 0.05-0.08 à 0.03-0.05
     
     // Stocker la date de réinitialisation
     localStorage.setItem(STORAGE_KEYS.RESET_DATE, today);

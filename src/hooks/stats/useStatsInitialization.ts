@@ -55,7 +55,7 @@ export const useStatsInitialization = ({
         const parsedAdsCount = parseInt(storedAdsCount, 10);
         const parsedRevenueCount = parseInt(storedRevenueCount, 10);
         
-        if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount)) {
+        if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && parsedAdsCount >= 0 && parsedRevenueCount >= 0) {
           console.log(`Loaded stored values: Ads=${parsedAdsCount}, Revenue=${parsedRevenueCount}`);
           return {
             hasStoredValues: true,
@@ -75,8 +75,12 @@ export const useStatsInitialization = ({
   // Fonction pour sauvegarder les valeurs dans localStorage
   const saveValues = useCallback((ads: number, revenue: number) => {
     try {
-      localStorage.setItem(STORAGE_KEYS.ADS_COUNT, ads.toString());
-      localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, revenue.toString());
+      // Garantir des valeurs positives avant de sauvegarder
+      const safeAdsCount = Math.max(0, ads);
+      const safeRevenueCount = Math.max(0, revenue);
+      
+      localStorage.setItem(STORAGE_KEYS.ADS_COUNT, safeAdsCount.toString());
+      localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, safeRevenueCount.toString());
       localStorage.setItem(STORAGE_KEYS.LAST_UPDATE, Date.now().toString());
       localStorage.setItem(STORAGE_KEYS.RESET_DATE, new Date().toDateString());
     } catch (e) {
@@ -106,32 +110,43 @@ export const useStatsInitialization = ({
     // nous commençons avec des valeurs substantielles pour donner 
     // l'impression que le système fonctionne déjà depuis un moment
     
-    // Base initiale (entre 40% et 50% de la cible quotidienne)
-    const basePercentage = 0.4 + (Math.random() * 0.1);
+    // Valeur initiale minimale garantie (entre 50 et 150 pour les annonces)
+    const minBaseAds = 50 + Math.floor(Math.random() * 100);
+    // Valeur initiale minimale garantie (entre 80 et 200 pour les revenus)
+    const minBaseRevenue = 80 + Math.floor(Math.random() * 120);
     
-    // Ajout d'une progression basée sur l'heure (jusqu'à 30% supplémentaires)
+    // Base initiale (entre 10% et 15% de la cible quotidienne)
+    // Pourcentage réduit pour une progression plus lente
+    const basePercentage = 0.10 + (Math.random() * 0.05);
+    
+    // Ajout d'une progression basée sur l'heure (jusqu'à 20% supplémentaires)
     let hourlyProgressPercent = 0;
     
     if (currentHour >= 8 && currentHour <= 23) {
       // Pendant la journée (8h-23h), progression plus rapide
-      hourlyProgressPercent = (currentHour - 8) / 15 * 0.3;
+      hourlyProgressPercent = (currentHour - 8) / 15 * 0.20;
     } else if (currentHour >= 0 && currentHour < 8) {
       // Pendant la nuit (0h-8h), progression plus lente
-      hourlyProgressPercent = ((currentHour + 24 - 8) % 24) / 24 * 0.15;
+      hourlyProgressPercent = ((currentHour + 24 - 8) % 24) / 24 * 0.10;
     }
     
-    // Pourcentage total (entre 40% et 80% selon l'heure)
+    // Pourcentage total (entre 10% et 35% selon l'heure)
     const totalPercentage = basePercentage + hourlyProgressPercent;
     
-    // Variation aléatoire pour des valeurs réalistes (±2%)
-    const finalPercentage = Math.min(0.85, totalPercentage + (Math.random() * 0.04 - 0.02));
+    // Variation aléatoire pour des valeurs réalistes (±1%)
+    const finalPercentage = Math.min(0.35, totalPercentage + (Math.random() * 0.02 - 0.01));
     
-    // Calculer les valeurs initiales
-    const initialAds = Math.floor(dailyAdsTarget * finalPercentage);
+    // Calculer les valeurs initiales basées sur le pourcentage, mais avec un minimum garanti
+    const calculatedAds = Math.floor(dailyAdsTarget * finalPercentage);
+    const calculatedRevenue = Math.floor(dailyRevenueTarget * finalPercentage);
+    
+    // Utiliser la plus grande des deux valeurs : calculée ou minimale garantie
+    const initialAds = Math.max(minBaseAds, calculatedAds);
     
     // Le revenu n'est pas exactement proportionnel aux annonces (légère variation)
     const revenueVariance = 0.97 + (Math.random() * 0.06); // 97% à 103%
-    const initialRevenue = Math.floor(dailyRevenueTarget * finalPercentage * revenueVariance);
+    const calculatedRevenueWithVariance = Math.floor(calculatedRevenue * revenueVariance);
+    const initialRevenue = Math.max(minBaseRevenue, calculatedRevenueWithVariance);
     
     // Définir les valeurs initiales (compteurs internes et affichés identiques au démarrage)
     setAdsCount(initialAds);

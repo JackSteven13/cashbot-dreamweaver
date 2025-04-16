@@ -45,7 +45,7 @@ export const useStatsCycleManagement = ({
     
     // Calculer la base d'incrément basée sur les taux horaires
     // Réduire fortement le taux pour ralentir significativement la progression
-    const baseHourlyRate = getTotalHourlyRate(activeLocations) * 0.65; // Réduit de 0.95 à 0.65
+    const baseHourlyRate = getTotalHourlyRate(activeLocations) * 0.40; // Réduit de 0.65 à 0.40
     let totalAdsIncrement = Math.floor((baseHourlyRate * timeDiff) / (3600 * 1000));
     let totalRevenue = 0;
     
@@ -55,22 +55,23 @@ export const useStatsCycleManagement = ({
       const locationAds = Math.floor(totalAdsIncrement * locationShare);
       
       // Vérifier l'activité de burst
-      // Réduire significativement la probabilité et l'intensité des bursts
+      // Réduire encore plus la probabilité et l'intensité des bursts
       const burst = calculateBurstActivity(location);
-      const finalAds = burst ? Math.floor(locationAds * (burst.multiplier * 0.6)) : locationAds; // Réduit l'effet du burst de 40%
+      const finalAds = burst ? Math.floor(locationAds * (burst.multiplier * 0.5)) : locationAds; // Réduit l'effet du burst de 60% à 50%
       
       totalRevenue += calculateRevenueForLocation(location, finalAds);
     });
     
     // Ajouter une limitation supplémentaire pour éviter une croissance trop rapide
-    const maxAdsPerUpdate = Math.min(2500, Math.ceil(dailyAdsTarget * 0.003)); // Max 0.3% de la cible quotidienne
-    const maxRevenuePerUpdate = Math.min(5000, Math.ceil(dailyRevenueTarget * 0.003)); // Max 0.3% de la cible quotidienne
+    const maxAdsPerUpdate = Math.min(1800, Math.ceil(dailyAdsTarget * 0.002)); // Max 0.2% de la cible quotidienne, réduit de 2500 à 1800
+    const maxRevenuePerUpdate = Math.min(3500, Math.ceil(dailyRevenueTarget * 0.002)); // Max 0.2% de la cible quotidienne, réduit de 5000 à 3500
     
     const finalAdsIncrement = Math.min(totalAdsIncrement, maxAdsPerUpdate);
     const finalRevenueIncrement = Math.min(totalRevenue, maxRevenuePerUpdate);
     
-    setAdsCount(prev => prev + finalAdsIncrement);
-    setRevenueCount(prev => prev + finalRevenueIncrement);
+    // S'assurer que les compteurs ne descendent jamais en dessous de zéro
+    setAdsCount(prev => Math.max(0, prev + finalAdsIncrement));
+    setRevenueCount(prev => Math.max(0, prev + finalRevenueIncrement));
     setLastUpdateTime(now);
   }, [lastUpdateTime, setAdsCount, setRevenueCount, dailyAdsTarget, dailyRevenueTarget]);
 
