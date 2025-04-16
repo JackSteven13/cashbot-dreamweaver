@@ -15,11 +15,26 @@ const PaymentLayout: React.FC<PaymentLayoutProps> = ({ children }) => {
       </div>
       <footer className="py-4 text-center text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
         <div className="container mx-auto">
-          <p>Paiement sécurisé via Stripe</p>
-          <div className="mt-2 flex justify-center space-x-4">
-            <img src="/visa.svg" alt="Visa" className="h-6" />
-            <img src="/mastercard.svg" alt="Mastercard" className="h-6" />
-            <img src="/amex.svg" alt="American Express" className="h-6" />
+          <p className="mb-3">Paiement sécurisé via Stripe</p>
+          <div className="flex justify-center space-x-6 items-center">
+            <img 
+              src="/visa.svg" 
+              alt="Visa" 
+              className="h-8 object-contain" 
+              style={{ filter: "grayscale(0.2)" }}
+            />
+            <img 
+              src="/mastercard.svg" 
+              alt="Mastercard" 
+              className="h-8 object-contain" 
+              style={{ filter: "grayscale(0.2)" }}
+            />
+            <img 
+              src="/amex.svg" 
+              alt="American Express" 
+              className="h-8 object-contain" 
+              style={{ filter: "grayscale(0.2)" }}
+            />
           </div>
         </div>
       </footer>

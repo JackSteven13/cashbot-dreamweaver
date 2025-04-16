@@ -11,13 +11,11 @@ import { hasPendingStripePayment } from '@/utils/stripe-helper';
 import PaymentSteps from '@/components/payment/PaymentSteps';
 import CheckoutTransition from '@/components/payment/CheckoutTransition';
 import { useAuth } from '@/hooks/useAuth';
-import StripeConfirmationModal from '@/components/payment/StripeConfirmationModal';
 
 const Payment = () => {
   const navigate = useNavigate();
   const { user, isLoading: isAuthLoading } = useAuth();
   const [showTransition, setShowTransition] = useState(false);
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   
   const {
     selectedPlan,
@@ -81,22 +79,15 @@ const Payment = () => {
     }
   }, [selectedPlan, currentSubscription, isAuthChecking, isAuthLoading, navigate]);
   
-  // Gérer le paiement - l'utilisateur doit cliquer sur un bouton pour initialiser le processus
+  // Gérer le paiement - directement sans modal de confirmation
   const handlePayment = () => {
-    // Au lieu d'activer la transition immédiatement, afficher d'abord la modal de confirmation
-    setShowConfirmationModal(true);
-  };
-  
-  // Cette fonction est appelée quand l'utilisateur confirme dans la modal
-  const handleConfirmPayment = () => {
-    setShowConfirmationModal(false);
-    setShowTransition(true); // Activer la transition
+    setShowTransition(true); // Afficher la transition
     initiateStripeCheckout(); // Déclencher le paiement
   };
   
-  // Lorsque la transition est terminée, rien à faire car CheckoutTransition se charge d'ouvrir Stripe
+  // Lorsque la transition est terminée
   const handleTransitionComplete = () => {
-    console.log("Transition terminée, la redirection vers Stripe devrait suivre automatiquement");
+    console.log("Transition terminée, la redirection vers Stripe devrait suivre");
   };
 
   if (isAuthChecking || isAuthLoading) {
@@ -117,13 +108,6 @@ const Payment = () => {
           isStripeProcessing={isStripeProcessing}
           onStripeCheckout={handlePayment} 
           stripeCheckoutUrl={stripeCheckoutUrl}
-        />
-        
-        {/* Modal de confirmation avant de procéder au paiement */}
-        <StripeConfirmationModal
-          isOpen={showConfirmationModal}
-          onClose={() => setShowConfirmationModal(false)}
-          onConfirm={handleConfirmPayment}
         />
         
         {/* Transition animée pour le paiement */}
