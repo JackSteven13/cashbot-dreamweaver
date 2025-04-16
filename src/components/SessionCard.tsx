@@ -9,32 +9,60 @@ interface SessionCardProps {
   date?: string;
 }
 
-const SessionCard = ({ gain, report, date = new Date().toLocaleDateString() }: SessionCardProps) => {
+const SessionCard = ({ gain, report, date = new Date().toISOString() }: SessionCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Cas spécial : n'autoriser les valeurs négatives que pour les transactions de retrait
   const isWithdrawal = report?.toLowerCase()?.includes("retrait");
   const formattedGain = isNaN(gain) ? 0 : gain;
 
-  // S'assurer que la date est valide
+  // S'assurer que la date est valide et correctement formatée
   const getFormattedDate = () => {
     try {
       if (!date) return new Date().toLocaleDateString();
       
-      // Si la date est juste une chaîne YYYY-MM-DD, la convertir en objet Date
-      if (date.length <= 10 && date.includes('-')) {
-        const [year, month, day] = date.split('-').map(Number);
-        return new Date(year, month - 1, day).toLocaleDateString();
+      // Gestion correcte des formats de dates ISO et YYYY-MM-DD
+      const parsedDate = new Date(date);
+      
+      // Vérifier si la date est valide
+      if (isNaN(parsedDate.getTime())) {
+        // Si c'est une simple chaîne YYYY-MM-DD, la convertir en objet Date
+        if (date.length <= 10 && date.includes('-')) {
+          const [year, month, day] = date.split('-').map(Number);
+          return new Date(year, month - 1, day).toLocaleDateString();
+        }
+        return new Date().toLocaleDateString();
       }
       
-      return new Date(date).toLocaleDateString();
+      // Utiliser la locale française pour le format jour/mois/année
+      return parsedDate.toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
     } catch (e) {
       console.error("Erreur lors du formatage de la date:", date, e);
-      return new Date().toLocaleDateString();
+      return new Date().toLocaleDateString('fr-FR');
     }
   };
   
   const formattedDate = getFormattedDate();
+  
+  // Vérifier si la transaction est du jour même
+  const isToday = () => {
+    try {
+      const txDate = new Date(date);
+      const today = new Date();
+      
+      return (
+        txDate.getDate() === today.getDate() &&
+        txDate.getMonth() === today.getMonth() &&
+        txDate.getFullYear() === today.getFullYear()
+      );
+    } catch (e) {
+      return false;
+    }
+  };
   
   return (
     <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:shadow-md">
@@ -44,7 +72,14 @@ const SessionCard = ({ gain, report, date = new Date().toLocaleDateString() }: S
       >
         <div className="flex justify-between items-center">
           <div>
-            <p className="text-sm text-muted-foreground">{formattedDate}</p>
+            <p className="text-sm text-muted-foreground flex items-center gap-1">
+              {formattedDate}
+              {isToday() && (
+                <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900 px-2 py-0.5 text-xs font-medium text-green-800 dark:text-green-300">
+                  Aujourd'hui
+                </span>
+              )}
+            </p>
             <div className="flex items-center gap-2 mt-1">
               <h3 className={cn(
                 "text-2xl font-semibold",

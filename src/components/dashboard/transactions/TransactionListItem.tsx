@@ -24,8 +24,26 @@ const TransactionListItem = memo(({
     transaction.date
   );
   
+  // Vérifier si la transaction est du jour même
+  const isToday = () => {
+    try {
+      if (!transaction.date) return false;
+      
+      const txDate = new Date(transaction.date);
+      const today = new Date();
+      
+      return (
+        txDate.getDate() === today.getDate() &&
+        txDate.getMonth() === today.getMonth() &&
+        txDate.getFullYear() === today.getFullYear()
+      );
+    } catch (e) {
+      return false;
+    }
+  };
+  
   return (
-    <div className="transaction-item" data-index={index}>
+    <div className={`transaction-item ${isToday() ? 'today-transaction' : ''}`} data-index={index}>
       <SessionCard 
         key={`${transaction.id || ''}-${refreshKey}`}
         date={transaction.date}

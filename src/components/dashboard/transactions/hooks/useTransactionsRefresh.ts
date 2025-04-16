@@ -1,12 +1,12 @@
 
 import { useRef, useCallback } from 'react';
 import { Transaction } from '@/types/userData';
-import { fetchUserTransactions } from '@/utils/user/transactionUtils';
+import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
 /**
- * Hook pour gérer le rafraîchissement des transactions
+ * Hook pour gérer le rafraîchissement des transactions avec une meilleure gestion des dates
  */
 export const useTransactionsRefresh = (
   transactions: Transaction[],
@@ -43,23 +43,37 @@ export const useTransactionsRefresh = (
         throttleTimerRef.current = null;
       }, 3000);
       
-      const refreshedTransactions = await fetchUserTransactions(session.user.id);
+      // Forcer le rafraîchissement depuis la base de données
+      const refreshedTransactions = await fetchUserTransactions(session.user.id, true);
+      
       if (refreshedTransactions && isMountedRef.current) {
+        // Mettre à jour l'état avec les transactions actualisées
         setTransactions(refreshedTransactions);
         setRefreshKey(prev => prev + 1);
-        
-        // Mettre à jour le cache
-        try {
-          localStorage.setItem(transactionsCacheKey.current, JSON.stringify(refreshedTransactions));
-        } catch (e) {
-          console.error("Failed to update transaction cache:", e);
-        }
+        lastFetchRef.current = Date.now();
         
         toast({
           title: "Liste mise à jour",
           description: "Les transactions ont été actualisées.",
           duration: 3000,
         });
+        
+        // Vérifier si des transactions d'aujourd'hui sont présentes
+        const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+        const hasTodayTransactions = refreshedTransactions.some(tx => {
+          try {
+            // Comparer les dates au format YYYY-MM-DD
+            return tx.date && new Date(tx.date).toISOString().split('T')[0] === today;
+          } catch (e) {
+            return false;
+          }
+        });
+        
+        if (!hasTodayTransactions && refreshedTransactions.length > 0) {
+          console.warn("Aucune transaction d'aujourd'hui n'a été trouvée");
+        } else {
+          console.log(`Transactions d'aujourd'hui trouvées: ${hasTodayTransactions}`);
+        }
       }
     } catch (error) {
       console.error("Error refreshing transactions:", error);
