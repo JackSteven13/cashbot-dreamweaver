@@ -18,7 +18,7 @@ interface ReferralLinkProps {
   referrals?: any[];
   subscription?: string;
   isTopReferrer?: boolean;
-  referralCount?: number; // Add this prop to match SummaryPanel usage
+  referralCount?: number;
 }
 
 const ReferralLink: React.FC<ReferralLinkProps> = ({ 
@@ -35,7 +35,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
     setCopied(true);
     toast({
       title: "Lien copié !",
-      description: "Votre lien de parrainage a été copié dans le presse-papier",
+      description: "Votre lien d'affiliation a été copié dans le presse-papier",
     });
     
     // Reset copied state after 2 seconds
@@ -54,19 +54,19 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
       <div className="flex items-center mb-3 justify-between">
         <div className="flex items-center">
           <Award className="text-amber-500 h-5 w-5 mr-2" />
-          <h3 className="text-lg font-semibold text-[#1e3a5f]">Programme de parrainage</h3>
+          <h3 className="text-lg font-semibold text-[#1e3a5f]">Programme d'affiliation</h3>
         </div>
         
         {isTopReferrer && (
           <div className="bg-amber-500/20 border border-amber-500/30 text-amber-700 text-xs font-medium py-1 px-2 rounded-full flex items-center">
             <Users className="h-3 w-3 mr-1" />
-            Top Parrain
+            Top Affilié
           </div>
         )}
       </div>
       
       <p className="text-sm text-[#486581] mb-3">
-        Partagez ce lien avec vos amis et gagnez <span className="font-bold text-green-600">{Math.round(directCommission * 100)}% de commission</span> sur leurs abonnements !
+        Invitez vos amis et gagnez <span className="font-bold text-green-600">{Math.round(directCommission * 100)}% de commission</span> sur leurs abonnements !
         {recurringCommission > 0 && (
           <span className="font-bold text-amber-600"> + {Math.round(recurringCommission * 100)}% récurrent</span>
         )}
@@ -116,7 +116,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
       
       {referrals.length > 0 ? (
         <div className="mt-4">
-          <h4 className="text-sm font-semibold text-[#334e68] mb-2">Vos filleuls actifs :</h4>
+          <h4 className="text-sm font-semibold text-[#334e68] mb-2">Vos affiliés actifs :</h4>
           <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
             <Table>
               <TableHeader>
@@ -148,21 +148,21 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
         </div>
       ) : (
         <div className="text-sm text-gray-500 text-center py-2">
-          Vous n'avez pas encore de filleuls. Partagez votre lien pour commencer à gagner !
+          Vous n'avez pas encore d'affiliés. Invitez des amis pour commencer à gagner !
         </div>
       )}
       
       <div className="mt-4 bg-blue-50 p-3 rounded-md border border-blue-100 text-xs text-blue-700">
         <p className="font-medium">Comment ça marche :</p>
         <ol className="list-decimal ml-4 mt-1 space-y-1">
-          <li>Partagez votre lien de parrainage avec vos amis</li>
+          <li>Invitez vos amis avec votre lien d'affiliation</li>
           <li>Ils créent un compte avec votre lien et souscrivent à un abonnement</li>
           <li>Vous recevez automatiquement {Math.round(directCommission * 100)}% de leurs abonnements</li>
           {recurringCommission > 0 && (
             <li>Vous continuez à recevoir {Math.round(recurringCommission * 100)}% de leurs abonnements chaque mois</li>
           )}
           {level2Commission > 0 && (
-            <li>Vous gagnez aussi {Math.round(level2Commission * 100)}% sur les abonnements des filleuls de vos filleuls</li>
+            <li>Vous gagnez aussi {Math.round(level2Commission * 100)}% sur les abonnements des affiliés de vos affiliés</li>
           )}
           <li>Les commissions sont ajoutées à votre solde disponible sous 30 jours</li>
         </ol>
@@ -172,3 +172,4 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
 };
 
 export default ReferralLink;
+
