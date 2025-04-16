@@ -21,7 +21,7 @@ const ReferralButton: React.FC<ReferralButtonProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Vérifier si le lien de parrainage est disponible
+  // Vérifier si le lien d'affiliation est disponible
   const hasValidReferralLink = referralLink && referralLink !== '';
   
   // Display placeholder if referral link is not valid
