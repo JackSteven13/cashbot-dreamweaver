@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlanType } from '@/hooks/payment/types';
 import { toast } from '@/components/ui/use-toast';
@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
 import { Shield, CreditCard } from 'lucide-react';
+import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
 
 interface PaymentCardProps {
   selectedPlan: PlanType | null;
@@ -30,6 +31,17 @@ const PaymentCard = ({
   const [termsAccepted, setTermsAccepted] = useState(true); // CGV présélectionnées
   const isCurrentPlan = currentSubscription === selectedPlan;
 
+  // Ouvrir automatiquement la fenêtre Stripe lorsque l'URL est disponible
+  useEffect(() => {
+    if (stripeCheckoutUrl) {
+      const timer = setTimeout(() => {
+        openStripeWindow(stripeCheckoutUrl);
+      }, 500); // Petit délai pour permettre à l'animation de transition de s'afficher
+      
+      return () => clearTimeout(timer);
+    }
+  }, [stripeCheckoutUrl]);
+
   // Fonction de paiement
   const handlePayment = async () => {
     if (!selectedPlan) {
@@ -49,13 +61,6 @@ const PaymentCard = ({
       });
       return;
     }
-
-    // Notifier l'utilisateur que la redirection est en cours
-    toast({
-      title: "Préparation du paiement",
-      description: "Préparation de votre session de paiement sécurisée...",
-      duration: 3000
-    });
 
     // Déclencher la création de la session Stripe
     onStripeCheckout();

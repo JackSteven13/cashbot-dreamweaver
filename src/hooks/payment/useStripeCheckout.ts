@@ -15,8 +15,8 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const [actualSubscription, setActualSubscription] = useState<string | null>(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 5;
-  const RETRY_DELAY = 1000;
+  const MAX_RETRIES = 3; // Réduit pour éviter les attentes trop longues
+  const RETRY_DELAY = 800;
 
   // Check current subscription from Supabase
   const checkSubscription = async () => {
@@ -44,54 +44,6 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       setIsChecking(false);
     }
   };
-
-  // Fonction pour vérifier l'état de la session de paiement
-  const checkPaymentStatus = useCallback(async (sessionId: string): Promise<boolean> => {
-    if (!sessionId) return false;
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('check-payment-status', {
-        body: { sessionId }
-      });
-      
-      if (error) {
-        console.error("Error checking payment status:", error);
-        return false;
-      }
-      
-      if (data?.status === 'complete') {
-        toast({
-          title: "Paiement confirmé",
-          description: "Votre abonnement a été activé avec succès. Synchronisation des données...",
-          duration: 5000,
-        });
-        
-        // Forcer la synchronisation des données
-        await forceSyncSubscription();
-        
-        // Dispatch event for subscription changes
-        window.dispatchEvent(new CustomEvent('payment:success', { 
-          detail: { plan: data.plan || selectedPlan }
-        }));
-        
-        // Rediriger vers la page de succès
-        navigate('/payment-success');
-        return true;
-      } else if (data?.status === 'open') {
-        toast({
-          title: "Paiement en attente",
-          description: "Votre paiement est en cours de traitement. Veuillez compléter la procédure.",
-          duration: 5000,
-        });
-        return false;
-      }
-      
-      return false;
-    } catch (e) {
-      console.error("Error verifying payment:", e);
-      return false;
-    }
-  }, [navigate, selectedPlan]);
 
   // Création d'une session de paiement Stripe avec mécanismes de sécurité améliorés
   const createCheckoutSession = async (): Promise<{ url: string, sessionId: string } | null> => {
@@ -178,7 +130,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
-          console.log(`Tentative ${attempt + 1} de création de session de paiement pour ${selectedPlan}`);
+          console.log(`Tentative ${attempt + 1} de création de session de paiement`);
           
           const result = await createCheckoutSession();
           
@@ -192,13 +144,6 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
             localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
             localStorage.setItem('pendingPayment', 'true');
             
-            // Notification de succès
-            toast({
-              title: "Redirection vers le paiement",
-              description: "Préparation de votre session de paiement sécurisée...",
-              duration: 3000,
-            });
-            
             return;
           }
         } catch (err) {
@@ -208,9 +153,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
           // Si ce n'est pas la dernière tentative, attendre avant de réessayer
           if (attempt < MAX_RETRIES - 1) {
             setRetryCount(attempt + 1);
-            // Utiliser un délai exponentiel
-            const delay = RETRY_DELAY * Math.pow(2, attempt);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
           }
         }
       }
@@ -230,41 +173,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
       setIsStripeProcessing(false);
     }
   };
-
-  // Ouvrir la fenêtre Stripe manuellement
-  const openStripeCheckoutWindow = useCallback(() => {
-    if (stripeCheckoutUrl) {
-      return openStripeWindow(stripeCheckoutUrl);
-    }
-    return false;
-  }, [stripeCheckoutUrl]);
   
-  // Récupérer l'URL Stripe depuis le stockage de session si disponible
-  useEffect(() => {
-    const storedUrl = sessionStorage.getItem('stripeCheckoutUrl');
-    const timestamp = parseInt(sessionStorage.getItem('stripeSessionTimestamp') || '0', 10);
-    // Utiliser l'URL stockée si elle a moins de 15 minutes
-    if (storedUrl && Date.now() - timestamp < 15 * 60 * 1000) {
-      setStripeCheckoutUrl(storedUrl);
-    }
-    
-    // Vérifier s'il y a un paiement en cours
-    if (localStorage.getItem('pendingPayment') === 'true') {
-      const lastUrl = localStorage.getItem('lastStripeUrl');
-      if (lastUrl) {
-        setStripeCheckoutUrl(lastUrl);
-      }
-    }
-  }, []);
-  
-  // Stocker l'URL Stripe dans le stockage de session pour récupération
-  useEffect(() => {
-    if (stripeCheckoutUrl) {
-      sessionStorage.setItem('stripeCheckoutUrl', stripeCheckoutUrl);
-      sessionStorage.setItem('stripeSessionTimestamp', Date.now().toString());
-    }
-  }, [stripeCheckoutUrl]);
-
   // Vérifier l'abonnement au chargement du hook
   useEffect(() => {
     checkSubscription();
@@ -276,7 +185,6 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
     stripeCheckoutUrl,
     isChecking,
     actualSubscription,
-    openStripeCheckoutWindow,
     retryCount
   };
 };

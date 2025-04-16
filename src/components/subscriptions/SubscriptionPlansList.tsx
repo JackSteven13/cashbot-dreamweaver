@@ -6,6 +6,7 @@ import { PlanType } from '@/hooks/payment/types';
 import FeaturedPlanCard from './FeaturedPlanCard';
 import StandardPlansList from './StandardPlansList';
 import { createSubscriptionPlans } from './subscriptionPlansData';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SubscriptionPlansListProps {
   currentSubscription: string;
@@ -15,6 +16,7 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
   currentSubscription 
 }) => {
   const navigate = useNavigate();
+  const { user, isLoading } = useAuth();
   // Initialize selectedPlan to 'elite' by default
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('elite');
   const [isNavigating, setIsNavigating] = useState(false);
@@ -27,6 +29,18 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
         title: "Vous êtes déjà abonné à ce forfait",
         description: "Vous bénéficiez déjà des avantages de ce forfait.",
       });
+      return;
+    }
+    
+    // Vérifier si l'utilisateur est connecté
+    if (!user) {
+      toast({
+        title: "Connexion requise",
+        description: "Veuillez vous connecter pour choisir un forfait.",
+        variant: "destructive"
+      });
+      // Rediriger vers la page de connexion avec un paramètre de retour
+      navigate(`/login?redirect=/offres&plan=${planId}`);
       return;
     }
     

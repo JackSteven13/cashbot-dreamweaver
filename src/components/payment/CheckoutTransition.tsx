@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, CreditCard, CheckCircle } from 'lucide-react';
+import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
 
 interface CheckoutTransitionProps {
   isStarted: boolean;
@@ -23,20 +24,31 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
     setStep(1);
     
     // Étape 2: Préparer le paiement
-    const timer1 = setTimeout(() => setStep(2), 700);
+    const timer1 = setTimeout(() => setStep(2), 500);
     
     // Étape 3: Prêt pour la redirection
     const timer2 = setTimeout(() => {
       setStep(3);
       // Notifier que la transition est terminée
       onComplete();
-    }, 1500);
+    }, 1000);
     
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
     };
   }, [isStarted, onComplete]);
+
+  // Ouvrir la page Stripe lorsqu'elle est prête
+  useEffect(() => {
+    if (step === 3 && stripeUrl) {
+      const timer = setTimeout(() => {
+        openStripeWindow(stripeUrl);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [step, stripeUrl]);
 
   if (!isStarted) return null;
 
@@ -77,26 +89,6 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
           {step === 2 && "Connexion au système de paiement sécurisé Stripe."}
           {step === 3 && "Vous allez être redirigé vers la page de paiement."}
         </p>
-        
-        {step === 3 && stripeUrl && (
-          <motion.div
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
-              Si vous n'êtes pas redirigé automatiquement,{' '}
-              <a 
-                href={stripeUrl} 
-                className="text-blue-600 dark:text-blue-400 hover:underline"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                cliquez ici
-              </a>
-            </p>
-          </motion.div>
-        )}
         
         <div className="mt-4">
           <motion.div 

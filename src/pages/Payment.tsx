@@ -9,10 +9,14 @@ import { toast } from '@/components/ui/use-toast';
 import { PLANS } from '@/utils/plans';
 import { hasPendingStripePayment } from '@/utils/stripe-helper';
 import PaymentSteps from '@/components/payment/PaymentSteps';
-import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
+import CheckoutTransition from '@/components/payment/CheckoutTransition';
+import { useAuth } from '@/hooks/useAuth';
 
 const Payment = () => {
   const navigate = useNavigate();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const [showTransition, setShowTransition] = useState(false);
+  
   const {
     selectedPlan,
     currentSubscription,
@@ -22,9 +26,21 @@ const Payment = () => {
     initiateStripeCheckout
   } = usePaymentPage();
 
+  // Vérifier si l'utilisateur est connecté
+  useEffect(() => {
+    if (!isAuthLoading && !user) {
+      toast({
+        title: "Connexion requise",
+        description: "Veuillez vous connecter pour accéder au paiement.",
+        variant: "destructive"
+      });
+      navigate('/login?redirect=/offres');
+    }
+  }, [user, isAuthLoading, navigate]);
+
   // Vérifier si un plan est sélectionné et valide
   useEffect(() => {
-    if (!isAuthChecking) {
+    if (!isAuthChecking && !isAuthLoading) {
       if (!selectedPlan) {
         toast({
           title: "Aucun forfait sélectionné",
@@ -45,11 +61,11 @@ const Payment = () => {
         navigate('/offres');
       }
     }
-  }, [selectedPlan, isAuthChecking, navigate]);
+  }, [selectedPlan, isAuthChecking, isAuthLoading, navigate]);
   
   // Vérifier si l'utilisateur est déjà abonné au plan sélectionné
   useEffect(() => {
-    if (!isAuthChecking && selectedPlan && currentSubscription === selectedPlan) {
+    if (!isAuthChecking && !isAuthLoading && selectedPlan && currentSubscription === selectedPlan) {
       toast({
         title: "Vous êtes déjà abonné",
         description: `Vous êtes déjà abonné au forfait ${selectedPlan}. Vous allez être redirigé vers votre tableau de bord.`,
@@ -61,28 +77,20 @@ const Payment = () => {
       
       return () => clearTimeout(timeout);
     }
-  }, [selectedPlan, currentSubscription, isAuthChecking, navigate]);
+  }, [selectedPlan, currentSubscription, isAuthChecking, isAuthLoading, navigate]);
   
-  // Vérifier si un paiement a été interrompu
-  useEffect(() => {
-    const isPending = hasPendingStripePayment();
-    if (isPending && !isStripeProcessing && !stripeCheckoutUrl) {
-      toast({
-        title: "Paiement en attente",
-        description: "Un paiement était en cours. Vous pouvez poursuivre ou recommencer.",
-        duration: 5000
-      });
-    }
-  }, [isStripeProcessing, stripeCheckoutUrl]);
+  // Gérer le paiement
+  const handlePayment = () => {
+    setShowTransition(true); // Activer la transition
+    initiateStripeCheckout(); // Déclencher le paiement
+  };
+  
+  // Lorsque la transition est terminée, ouvrir la fenêtre Stripe
+  const handleTransitionComplete = () => {
+    // La fenêtre Stripe s'ouvrira automatiquement
+  };
 
-  // Ouvrir la fenêtre Stripe directement lorsque l'URL est disponible
-  useEffect(() => {
-    if (stripeCheckoutUrl) {
-      openStripeWindow(stripeCheckoutUrl);
-    }
-  }, [stripeCheckoutUrl]);
-
-  if (isAuthChecking) {
+  if (isAuthChecking || isAuthLoading) {
     return <PaymentLoading />;
   }
 
@@ -98,11 +106,18 @@ const Payment = () => {
           selectedPlan={selectedPlan}
           currentSubscription={currentSubscription}
           isStripeProcessing={isStripeProcessing}
-          onStripeCheckout={initiateStripeCheckout}
+          onStripeCheckout={handlePayment}
           stripeCheckoutUrl={stripeCheckoutUrl}
-          showHelper={false}
-          showAnimation={false}
         />
+        
+        {/* Transition animée pour le paiement */}
+        {showTransition && (
+          <CheckoutTransition 
+            isStarted={showTransition}
+            stripeUrl={stripeCheckoutUrl}
+            onComplete={handleTransitionComplete}
+          />
+        )}
       </div>
     </PaymentLayout>
   );
