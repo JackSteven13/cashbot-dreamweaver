@@ -16,6 +16,7 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
   onComplete 
 }) => {
   const [step, setStep] = useState<number>(0);
+  const [readyForStripe, setReadyForStripe] = useState(false);
   
   useEffect(() => {
     if (!isStarted) return;
@@ -24,14 +25,19 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
     setStep(1);
     
     // Étape 2: Préparer le paiement
-    const timer1 = setTimeout(() => setStep(2), 500);
+    const timer1 = setTimeout(() => setStep(2), 800);
     
     // Étape 3: Prêt pour la redirection
     const timer2 = setTimeout(() => {
       setStep(3);
       // Notifier que la transition est terminée
       onComplete();
-    }, 1000);
+      
+      // Marquer comme prêt pour Stripe après un délai suffisant pour voir l'animation
+      setTimeout(() => {
+        setReadyForStripe(true);
+      }, 1000);
+    }, 1800);
     
     return () => {
       clearTimeout(timer1);
@@ -39,14 +45,17 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
     };
   }, [isStarted, onComplete]);
 
-  // Ouvrir la page Stripe lorsqu'elle est prête
-  // Modification pour ouvrir directement la page Stripe sans délai supplémentaire
+  // Ouvrir la page Stripe seulement quand on est prêt et après avoir vu l'animation complète
   useEffect(() => {
-    if (step === 3 && stripeUrl) {
-      // Ouvrir immédiatement sans délai supplémentaire
-      openStripeWindow(stripeUrl);
+    if (readyForStripe && stripeUrl) {
+      // Attendre un peu pour que l'utilisateur voie le message final avant la redirection
+      const timer = setTimeout(() => {
+        openStripeWindow(stripeUrl);
+      }, 800);
+      
+      return () => clearTimeout(timer);
     }
-  }, [step, stripeUrl]);
+  }, [readyForStripe, stripeUrl]);
 
   if (!isStarted) return null;
 
@@ -79,13 +88,13 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
         <h2 className="text-xl font-semibold mb-2">
           {step === 1 && "Préparation de votre paiement..."}
           {step === 2 && "Connexion à Stripe..."}
-          {step === 3 && "Redirection en cours..."}
+          {step === 3 && "Redirection vers le paiement"}
         </h2>
         
         <p className="text-gray-600 dark:text-gray-300 mb-4">
           {step === 1 && "Nous préparons votre session de paiement sécurisée."}
           {step === 2 && "Connexion au système de paiement sécurisé Stripe."}
-          {step === 3 && "Vous êtes redirigé vers la page de paiement Stripe."}
+          {step === 3 && "Vous allez être redirigé vers la page de paiement Stripe dans un instant."}
         </p>
         
         <div className="mt-4">

@@ -47,15 +47,14 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
     // First update the selected plan
     setSelectedPlan(planId);
     setIsNavigating(true);
-    console.log("Plan sélectionné:", planId);
     
-    // Show feedback to user
+    // Show confirmation toast instead of immediate redirection
     toast({
-      title: "Redirection vers le paiement",
-      description: "Veuillez patienter pendant que nous préparons votre paiement..."
+      title: "Forfait sélectionné",
+      description: "Vous allez être redirigé vers le récapitulatif de votre commande."
     });
     
-    // Navigate to payment page with a small delay to show the toast
+    // Add delay to give user time to read confirmation
     setTimeout(() => {
       try {
         console.log("Navigating to payment page with plan:", planId);
@@ -67,7 +66,7 @@ const SubscriptionPlansList: React.FC<SubscriptionPlansListProps> = ({
         window.location.href = `/payment?plan=${planId}`;
         setIsNavigating(false);
       }
-    }, 500);
+    }, 1500); // Increased delay to 1.5 seconds for better UX
   };
   
   // Get subscription plans data

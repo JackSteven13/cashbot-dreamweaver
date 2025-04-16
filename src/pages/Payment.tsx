@@ -79,7 +79,7 @@ const Payment = () => {
     }
   }, [selectedPlan, currentSubscription, isAuthChecking, isAuthLoading, navigate]);
   
-  // Gérer le paiement
+  // Gérer le paiement - l'utilisateur doit cliquer sur un bouton pour initialiser le processus
   const handlePayment = () => {
     setShowTransition(true); // Activer la transition
     initiateStripeCheckout(); // Déclencher le paiement
@@ -87,7 +87,7 @@ const Payment = () => {
   
   // Lorsque la transition est terminée, ouvrir la fenêtre Stripe
   const handleTransitionComplete = () => {
-    // La fenêtre Stripe s'ouvrira automatiquement
+    // La fenêtre Stripe s'ouvrira automatiquement via CheckoutTransition
   };
 
   if (isAuthChecking || isAuthLoading) {
