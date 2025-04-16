@@ -87,7 +87,7 @@ export const useStatsCounter = ({
     // System of animation with reasonable update intervals
     let animationFrameId: number;
     
-    // Animation function
+    // Animation function with reduced frequency
     const updateAnimation = () => {
       animateCounters();
       animationFrameId = requestAnimationFrame(updateAnimation);
@@ -97,10 +97,10 @@ export const useStatsCounter = ({
     animationFrameId = requestAnimationFrame(updateAnimation);
     
     // Interval for periodic counter updates (target values)
-    // Increase interval to 40 seconds to further slow down generation
+    // Increase interval dramatically to 2-4 minutes for much slower and more natural updates
     const updateInterval = setInterval(() => {
       incrementCountersRandomly();
-    }, 40000); // Every 40 seconds for slower updates
+    }, 120000 + Math.floor(Math.random() * 120000)); // Every 2-4 minutes for much slower updates
     
     // Schedule reset at midnight
     const resetTimeout = scheduleCycleUpdate();
