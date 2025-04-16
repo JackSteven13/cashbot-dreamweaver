@@ -32,13 +32,19 @@ const StandardPlanCard: React.FC<PlanProps> = ({
   selectedPlan,
   onSelectPlan
 }) => {
+  // Remove the redundant daily limit feature
+  const filteredFeatures = features.filter(feature => 
+    !feature.toLowerCase().includes('limite de gains') && 
+    !feature.toLowerCase().includes('limite quotidienne')
+  );
+
   return (
     <SubscriptionPlanCard
       key={id}
       title={title}
       price={price}
       description={description}
-      features={features}
+      features={filteredFeatures}
       limit={limit}
       current={current}
       mostPopular={mostPopular}

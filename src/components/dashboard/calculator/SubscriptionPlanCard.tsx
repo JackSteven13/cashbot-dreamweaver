@@ -53,7 +53,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
         <PlanCardHeader 
           title={title}
           price={price}
-          description={`${effectiveDescription} (Limite quotidienne : ${limit}€)`}
+          description={effectiveDescription}
           subscriptionLabel={subscriptionLabel}
           subscriptionPrice={subscriptionPrice}
         />

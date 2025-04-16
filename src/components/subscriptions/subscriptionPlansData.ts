@@ -11,7 +11,6 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
       price: 549,
       description: 'Pour les professionnels et entreprises',
       features: [
-        'Limite de gains de 50€ par jour',
         'Accès illimité à toutes les fonctionnalités',
         'Commission de parrainage de 50%',
         '30% de commission récurrente',
@@ -31,7 +30,6 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
       price: 349,
       description: 'Pour maximiser vos gains',
       features: [
-        'Limite de gains de 20€ par jour',
         'Sessions manuelles et automatiques illimitées',
         'Commission de parrainage de 40%',
         '20% de commission récurrente',
@@ -50,7 +48,6 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
       price: 99,
       description: 'Pour les utilisateurs sérieux',
       features: [
-        'Limite de gains de 5€ par jour',
         'Sessions manuelles illimitées',
         'Sessions automatiques illimitées',
         'Commission de parrainage de 30%',
@@ -70,7 +67,6 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
       price: 0,
       description: 'Pour débuter et explorer la plateforme',
       features: [
-        'Limite de gains de 0,5€ par jour',
         '1 session manuelle par jour',
         '1 session automatique par jour',
         'Commission de parrainage de 20%',
@@ -84,3 +80,5 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
     }
   ];
 };
+
+export default createSubscriptionPlans;
