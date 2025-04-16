@@ -43,9 +43,11 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
                      t.date ? new Date(t.date) : 
                      new Date();
       
+      const isoDate = txDate.toISOString();
+      
       return {
         id: t.id,
-        date: txDate.toISOString(), // Store as ISO format for consistency
+        date: isoDate, // Store as ISO format for consistency
         amount: t.gain,
         type: t.report,
         report: t.report,
@@ -61,17 +63,23 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
       console.warn("Cache write error:", e);
     }
     
-    // Log if there are any transactions from today
-    const today = new Date().toISOString().split('T')[0];
+    // Log today's transactions for debugging
+    const today = new Date();
     const todayTransactions = transactions.filter(tx => {
       try {
-        return new Date(tx.date).toISOString().split('T')[0] === today;
+        const txDate = new Date(tx.date);
+        return (
+          txDate.getFullYear() === today.getFullYear() &&
+          txDate.getMonth() === today.getMonth() &&
+          txDate.getDate() === today.getDate()
+        );
       } catch (e) {
+        console.error("Invalid transaction date:", tx.date, e);
         return false;
       }
     });
     
-    console.log(`Found ${todayTransactions.length} transactions for today (${today})`);
+    console.log(`Found ${todayTransactions.length}/${transactions.length} transactions for today (${today.toISOString().split('T')[0]})`);
     
     return transactions;
   } catch (error) {
@@ -91,6 +99,7 @@ export const addTransaction = async (
   try {
     // Use current date (today) for all new transactions
     const today = new Date();
+    const isoString = today.toISOString();
     
     const { error } = await supabase
       .from('transactions')
@@ -98,8 +107,8 @@ export const addTransaction = async (
         user_id: userId,
         gain: gain,
         report: report,
-        created_at: today.toISOString(),
-        date: today.toISOString().split('T')[0]
+        created_at: isoString,
+        date: isoString.split('T')[0]  // Store YYYY-MM-DD format for the date column
       });
       
     if (error) {
@@ -110,7 +119,10 @@ export const addTransaction = async (
     // Invalidate transaction cache
     localStorage.removeItem('cachedTransactions');
     
-    console.log(`Transaction added for ${userId}: ${gain}€ - ${report} with date ${today.toISOString()}`);
+    // Trigger refresh events
+    window.dispatchEvent(new CustomEvent('transactions:refresh'));
+    
+    console.log(`Transaction added for ${userId}: ${gain}€ - ${report} with date ${isoString}`);
     return true;
   } catch (error) {
     console.error("Error adding transaction:", error);

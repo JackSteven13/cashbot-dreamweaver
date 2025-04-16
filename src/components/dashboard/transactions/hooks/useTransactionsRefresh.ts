@@ -59,20 +59,27 @@ export const useTransactionsRefresh = (
         });
         
         // Vérifier si des transactions d'aujourd'hui sont présentes
-        const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
-        const hasTodayTransactions = refreshedTransactions.some(tx => {
+        const today = new Date();
+        const todayTransactions = refreshedTransactions.filter(tx => {
           try {
-            // Comparer les dates au format YYYY-MM-DD
-            return tx.date && new Date(tx.date).toISOString().split('T')[0] === today;
+            if (!tx.date) return false;
+            
+            const txDate = new Date(tx.date);
+            return (
+              txDate.getFullYear() === today.getFullYear() &&
+              txDate.getMonth() === today.getMonth() &&
+              txDate.getDate() === today.getDate()
+            );
           } catch (e) {
+            console.error("Erreur lors de la vérification de la date:", e, tx.date);
             return false;
           }
         });
         
-        if (!hasTodayTransactions && refreshedTransactions.length > 0) {
+        if (todayTransactions.length === 0 && refreshedTransactions.length > 0) {
           console.warn("Aucune transaction d'aujourd'hui n'a été trouvée");
         } else {
-          console.log(`Transactions d'aujourd'hui trouvées: ${hasTodayTransactions}`);
+          console.log(`${todayTransactions.length} transactions trouvées pour aujourd'hui`);
         }
       }
     } catch (error) {

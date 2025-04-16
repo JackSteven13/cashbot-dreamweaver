@@ -31,12 +31,22 @@ export const useTransactionDisplay = (
       validTx.length - 5 : 0;
     
     // Identifier les transactions d'aujourd'hui
-    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const today = new Date();
+    const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
     const todayTx = validTx.filter(tx => {
       try {
-        // Comparer les dates au format YYYY-MM-DD
-        return tx.date && new Date(tx.date).toISOString().split('T')[0] === today;
+        if (!tx.date) return false;
+        
+        // Convertir en date et comparer seulement l'année, le mois et le jour
+        const txDate = new Date(tx.date);
+        return (
+          txDate.getFullYear() === today.getFullYear() &&
+          txDate.getMonth() === today.getMonth() &&
+          txDate.getDate() === today.getDate()
+        );
       } catch (e) {
+        console.error("Erreur lors de la comparaison de date:", e, tx.date);
         return false;
       }
     });

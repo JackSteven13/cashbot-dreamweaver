@@ -7,9 +7,15 @@ interface SessionCardProps {
   gain: number;
   report: string;
   date?: string;
+  isToday?: boolean;
 }
 
-const SessionCard = ({ gain, report, date = new Date().toISOString() }: SessionCardProps) => {
+const SessionCard = ({ 
+  gain, 
+  report, 
+  date = new Date().toISOString(),
+  isToday = false
+}: SessionCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Cas spécial : n'autoriser les valeurs négatives que pour les transactions de retrait
@@ -19,7 +25,7 @@ const SessionCard = ({ gain, report, date = new Date().toISOString() }: SessionC
   // S'assurer que la date est valide et correctement formatée
   const getFormattedDate = () => {
     try {
-      if (!date) return new Date().toLocaleDateString();
+      if (!date) return new Date().toLocaleDateString('fr-FR');
       
       // Gestion correcte des formats de dates ISO et YYYY-MM-DD
       const parsedDate = new Date(date);
@@ -29,9 +35,9 @@ const SessionCard = ({ gain, report, date = new Date().toISOString() }: SessionC
         // Si c'est une simple chaîne YYYY-MM-DD, la convertir en objet Date
         if (date.length <= 10 && date.includes('-')) {
           const [year, month, day] = date.split('-').map(Number);
-          return new Date(year, month - 1, day).toLocaleDateString();
+          return new Date(year, month - 1, day).toLocaleDateString('fr-FR');
         }
-        return new Date().toLocaleDateString();
+        return new Date().toLocaleDateString('fr-FR');
       }
       
       // Utiliser la locale française pour le format jour/mois/année
@@ -48,22 +54,6 @@ const SessionCard = ({ gain, report, date = new Date().toISOString() }: SessionC
   
   const formattedDate = getFormattedDate();
   
-  // Vérifier si la transaction est du jour même
-  const isToday = () => {
-    try {
-      const txDate = new Date(date);
-      const today = new Date();
-      
-      return (
-        txDate.getDate() === today.getDate() &&
-        txDate.getMonth() === today.getMonth() &&
-        txDate.getFullYear() === today.getFullYear()
-      );
-    } catch (e) {
-      return false;
-    }
-  };
-  
   return (
     <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:shadow-md">
       <div 
@@ -74,7 +64,7 @@ const SessionCard = ({ gain, report, date = new Date().toISOString() }: SessionC
           <div>
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               {formattedDate}
-              {isToday() && (
+              {isToday && (
                 <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900 px-2 py-0.5 text-xs font-medium text-green-800 dark:text-green-300">
                   Aujourd'hui
                 </span>

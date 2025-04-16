@@ -38,12 +38,15 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
     
     // Formater les transactions pour les adapter au format requis par l'application
     const formattedTransactions = data.map((tx: any) => {
-      // Assurer que la date est correctement formatée
+      // Normaliser la date pour assurer une bonne comparaison ultérieure
       const txDate = tx.created_at ? new Date(tx.created_at) : new Date();
+      
+      // Format ISO pour garantir la cohérence des dates
+      const isoDate = txDate.toISOString();
       
       return {
         id: tx.id,
-        date: txDate.toISOString(),
+        date: isoDate,
         amount: tx.gain,
         type: tx.type,
         report: tx.description || tx.report, // Support both field names
@@ -58,6 +61,23 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
     } catch (e) {
       console.warn("Cache write error:", e);
     }
+    
+    // Déboguer les transactions d'aujourd'hui
+    const today = new Date();
+    const todayTransactions = formattedTransactions.filter(tx => {
+      try {
+        const txDate = new Date(tx.date);
+        return (
+          txDate.getFullYear() === today.getFullYear() &&
+          txDate.getMonth() === today.getMonth() &&
+          txDate.getDate() === today.getDate()
+        );
+      } catch (e) {
+        return false;
+      }
+    });
+    
+    console.log(`Transactions récupérées pour aujourd'hui: ${todayTransactions.length}/${formattedTransactions.length}`);
     
     return formattedTransactions;
   } catch (error) {
@@ -78,6 +98,7 @@ export const addTransaction = async (
   try {
     // Utiliser la date actuelle (aujourd'hui) pour toutes les nouvelles transactions
     const today = new Date();
+    const isoString = today.toISOString();
     
     const { data, error } = await supabase
       .from('transactions')
@@ -86,8 +107,8 @@ export const addTransaction = async (
         gain: gain,
         report: description,
         type,
-        created_at: today.toISOString(),
-        date: today.toISOString().split('T')[0]
+        created_at: isoString,
+        date: isoString.split('T')[0]  // Format YYYY-MM-DD pour la colonne date
       });
     
     if (error) {
@@ -97,6 +118,9 @@ export const addTransaction = async (
     
     // Invalider le cache des transactions
     localStorage.removeItem('cachedTransactions');
+    
+    // Déclencher un événement pour rafraîchir l'interface
+    window.dispatchEvent(new CustomEvent('transactions:refresh'));
     
     return data ? data[0] : null;
   } catch (error) {

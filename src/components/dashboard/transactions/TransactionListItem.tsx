@@ -29,26 +29,32 @@ const TransactionListItem = memo(({
     try {
       if (!transaction.date) return false;
       
+      // Format the dates as YYYY-MM-DD for proper comparison
       const txDate = new Date(transaction.date);
       const today = new Date();
       
+      // Compare only year, month, day
       return (
-        txDate.getDate() === today.getDate() &&
+        txDate.getFullYear() === today.getFullYear() &&
         txDate.getMonth() === today.getMonth() &&
-        txDate.getFullYear() === today.getFullYear()
+        txDate.getDate() === today.getDate()
       );
     } catch (e) {
+      console.error("Error checking if transaction is from today:", e, transaction.date);
       return false;
     }
   };
   
+  const isTodayTx = isToday();
+  
   return (
-    <div className={`transaction-item ${isToday() ? 'today-transaction' : ''}`} data-index={index}>
+    <div className={`transaction-item ${isTodayTx ? 'today-transaction' : ''}`} data-index={index}>
       <SessionCard 
         key={`${transaction.id || ''}-${refreshKey}`}
         date={transaction.date}
         gain={transaction.gain || transaction.amount || 0}
         report={transaction.report || transaction.type || ''}
+        isToday={isTodayTx}
       />
       
       {/* Show countdown if this is the most recent transaction for freemium users */}
