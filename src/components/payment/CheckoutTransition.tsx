@@ -33,10 +33,10 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
       // Notifier que la transition est terminée
       onComplete();
       
-      // Délai supplémentaire avant d'ouvrir Stripe pour une meilleure expérience utilisateur
+      // Délai supplémentaire avant d'ouvrir Stripe pour assurer que l'animation est vue
       const timer3 = setTimeout(() => {
         setReadyForStripe(true);
-      }, 600);
+      }, 800);
       
       return () => clearTimeout(timer3);
     }, 1800);
