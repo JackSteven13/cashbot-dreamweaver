@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
@@ -257,12 +256,6 @@ const Login = () => {
                   required
                   disabled={isLoading}
                 />
-              </div>
-              
-              <div className="flex justify-end">
-                <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                  Mot de passe oublié?
-                </Link>
               </div>
               
               <div className="pt-2">
