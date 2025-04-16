@@ -28,11 +28,11 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
     
     // Sur mobile, accélérer la transition pour éviter les délais
     const timing = isMobile ? {
-      step2: 400, // Plus rapide sur mobile
-      step3: 800  // Plus rapide sur mobile
+      step2: 300, // Plus rapide sur mobile
+      step3: 600  // Plus rapide sur mobile
     } : {
       step2: 800,
-      step3: 1800
+      step3: 1600
     };
     
     // Étape 2: Préparer le paiement
@@ -48,7 +48,7 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
       // Sur mobile, rendre ce délai beaucoup plus court
       const timer3 = setTimeout(() => {
         setReadyForStripe(true);
-      }, isMobile ? 100 : 800); // Beaucoup plus court sur mobile
+      }, isMobile ? 50 : 400); // Beaucoup plus court sur mobile
       
       return () => clearTimeout(timer3);
     }, timing.step3);
@@ -105,7 +105,7 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
           {step === 1 && "Nous préparons votre session de paiement sécurisée."}
           {step === 2 && "Connexion au système de paiement sécurisé Stripe."}
           {step === 3 && isMobile ? 
-            "Vous allez être redirigé maintenant." : 
+            "Vous allez être redirigé immédiatement." : 
             "Vous allez être redirigé vers la page de paiement Stripe dans un instant."
           }
         </p>
@@ -123,12 +123,6 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
             />
           </motion.div>
         </div>
-        
-        {isMobile && step === 3 && (
-          <p className="text-xs text-amber-600 mt-3">
-            Si la redirection ne fonctionne pas automatiquement, veuillez cliquer sur le bouton ci-dessous.
-          </p>
-        )}
       </div>
     </motion.div>
   );

@@ -8,7 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useStripeCheckout } from './useStripeCheckout';
 import { getPlanById } from '@/utils/plans';
 import { recoverStripeSession } from './stripeWindowManager';
-import { hasPendingStripePayment, openStripeCheckout } from '@/utils/stripe-helper';
+import { hasPendingStripePayment } from '@/utils/stripe-helper';
 import { isMobileDevice } from '@/utils/stripe-helper';
 
 export const usePaymentPage = () => {

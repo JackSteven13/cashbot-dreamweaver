@@ -16,7 +16,7 @@ const PaymentSuccess = () => {
   const [processingStatus, setProcessingStatus] = useState('checking');
   const { refreshUserData } = useUserDataRefresh();
   
-  // More robust function to check and update subscription
+  // Plus robuste fonction pour vérifier et mettre à jour l'abonnement
   const updateSubscription = useCallback(async () => {
     try {
       setProcessingStatus('checking');
@@ -32,7 +32,7 @@ const PaymentSuccess = () => {
         return;
       }
       
-      // First attempt - normal query
+      // Premier essai - requête normale
       setProcessingStatus('querying');
       const { data: userBalanceData, error } = await supabase
         .from('user_balances')
@@ -46,12 +46,17 @@ const PaymentSuccess = () => {
         localStorage.setItem('forceRefreshBalance', 'true');
         setProcessingStatus('success');
         
-        // Refresh user data in the global state
+        // Rafraîchir les données utilisateur dans l'état global
         await refreshUserData();
+        
+        // Marquer le paiement comme terminé
+        localStorage.removeItem('pendingPayment');
+        localStorage.removeItem('lastStripeUrl');
+        
         return;
       }
 
-      // Second attempt - RPC function
+      // Deuxième essai - fonction RPC
       setProcessingStatus('rpc_checking');
       const { data: rpcData, error: rpcError } = await supabase
         .rpc('get_current_subscription', { user_id: session.user.id });
@@ -62,16 +67,21 @@ const PaymentSuccess = () => {
         localStorage.setItem('forceRefreshBalance', 'true');
         setProcessingStatus('success');
         
-        // Refresh user data in the global state
+        // Rafraîchir les données utilisateur dans l'état global
         await refreshUserData();
+        
+        // Marquer le paiement comme terminé
+        localStorage.removeItem('pendingPayment');
+        localStorage.removeItem('lastStripeUrl');
+        
         return;
       }
       
-      // If both attempts failed
+      // Si les deux tentatives ont échoué
       setProcessingStatus('retrying');
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Retry with final attempt
+      // Dernière tentative
       const { data: finalData, error: finalError } = await supabase
         .from('user_balances')
         .select('subscription')
@@ -83,8 +93,12 @@ const PaymentSuccess = () => {
         localStorage.setItem('subscription', finalData.subscription);
         setProcessingStatus('success');
         
-        // Refresh user data in the global state
+        // Rafraîchir les données utilisateur dans l'état global
         await refreshUserData();
+        
+        // Marquer le paiement comme terminé
+        localStorage.removeItem('pendingPayment');
+        localStorage.removeItem('lastStripeUrl');
       } else {
         setProcessingStatus('incomplete');
       }
@@ -97,23 +111,23 @@ const PaymentSuccess = () => {
   }, [refreshUserData]);
 
   useEffect(() => {
-    // Show success toast
+    // Afficher un toast de succès
     toast({
       title: "Paiement réussi",
       description: "Votre abonnement est en cours d'activation...",
     });
 
-    // Start the update process
+    // Lancer le processus de mise à jour
     updateSubscription();
     
-    // Set a timer to navigate to dashboard if everything is successful
+    // Configurer un minuteur pour rediriger vers le tableau de bord si tout est réussi
     const successTimer = setTimeout(() => {
       if (processingStatus === 'success') {
         navigate('/dashboard', { replace: true });
       }
-    }, 3000);
+    }, 2500);
     
-    // Set a timeout to prevent hanging on the page forever
+    // Configurer un délai maximal pour éviter de rester bloqué sur cette page
     const maxWaitTimer = setTimeout(() => {
       if (isUpdating) {
         setIsUpdating(false);
@@ -206,14 +220,6 @@ const PaymentSuccess = () => {
               </Button>
             )}
           </div>
-          
-          {(processingStatus === 'error' || processingStatus === 'timeout' || processingStatus === 'incomplete') && (
-            <p className="text-sm text-amber-600 mt-4">
-              Pas d'inquiétude ! Même si la synchronisation n'est pas immédiate, 
-              votre abonnement sera activé automatiquement lors de votre prochaine 
-              connexion.
-            </p>
-          )}
         </CardContent>
       </Card>
     </div>

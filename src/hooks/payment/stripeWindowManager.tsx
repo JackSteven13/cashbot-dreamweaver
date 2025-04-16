@@ -25,7 +25,7 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
       return true;
     } else {
       // Sur desktop, ouvrir dans un nouvel onglet avec une meilleure gestion
-      const newWindow = window.open(stripeUrl, '_blank');
+      const newWindow = window.open(stripeUrl, '_blank', 'noopener,noreferrer');
       
       if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
         console.log("Ouverture de nouvel onglet bloquée, utilisation de la redirection directe");
@@ -56,7 +56,7 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
  */
 export const isStripeWindowOpen = (): boolean => {
   // Cette fonction pourrait être étendue pour vérifier si un onglet Stripe spécifique est ouvert
-  return false;
+  return localStorage.getItem('pendingPayment') === 'true';
 };
 
 /**
@@ -66,8 +66,10 @@ export const recoverStripeSession = (): boolean => {
   try {
     const stripeUrl = localStorage.getItem('lastStripeUrl');
     const isPending = localStorage.getItem('pendingPayment') === 'true';
+    const timestamp = parseInt(localStorage.getItem('stripeRedirectTimestamp') || '0');
     
-    if (isPending && stripeUrl) {
+    // Vérifier si le paiement est en cours et pas trop ancien (moins de 20 minutes)
+    if (isPending && stripeUrl && (Date.now() - timestamp < 20 * 60 * 1000)) {
       console.log("Tentative de récupération d'une session Stripe:", stripeUrl);
       return openStripeWindow(stripeUrl);
     }

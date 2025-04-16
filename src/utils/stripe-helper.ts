@@ -49,8 +49,8 @@ export const hasPendingStripePayment = (): boolean => {
   const url = localStorage.getItem('lastStripeUrl');
   const timestamp = parseInt(localStorage.getItem('stripeRedirectTimestamp') || '0');
   
-  // Vérifier si le paiement est en cours et que l'URL n'est pas trop ancienne (30 min max)
-  return isPending && !!url && (Date.now() - timestamp < 30 * 60 * 1000);
+  // Vérifier si le paiement est en cours et que l'URL n'est pas trop ancienne (20 min max)
+  return isPending && !!url && (Date.now() - timestamp < 20 * 60 * 1000);
 };
 
 /**
@@ -91,7 +91,7 @@ export const openStripeCheckout = (url: string): boolean => {
     }
     
     // Sur desktop, ouvrir dans une nouvelle fenêtre
-    const newWindow = window.open(cleanUrl, '_blank');
+    const newWindow = window.open(cleanUrl, '_blank', 'noopener,noreferrer');
     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
       // Si le blocage de popup est détecté, rediriger directement
       window.location.href = cleanUrl;
