@@ -2,13 +2,14 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Link } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface ReferralLinkDisplayProps {
   referralLink: string;
   referralCount: number;
 }
 
-export const ReferralLinkDisplay: React.FC<ReferralLinkDisplayProps> = ({ 
+const ReferralLinkDisplay: React.FC<ReferralLinkDisplayProps> = ({ 
   referralLink, 
   referralCount 
 }) => {
@@ -41,3 +42,5 @@ export const ReferralLinkDisplay: React.FC<ReferralLinkDisplayProps> = ({
     </Card>
   );
 };
+
+export default ReferralLinkDisplay;
