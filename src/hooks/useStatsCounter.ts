@@ -14,6 +14,12 @@ interface StatsCounterData {
   displayedRevenueCount: number;
 }
 
+// Storage keys for global counters
+const GLOBAL_STORAGE_KEYS = {
+  DISPLAYED_ADS_COUNT: 'global_displayed_ads_count',
+  DISPLAYED_REVENUE_COUNT: 'global_displayed_revenue_count'
+};
+
 export const useStatsCounter = ({
   dailyAdsTarget = 350000,
   dailyRevenueTarget = 1500000
@@ -49,34 +55,55 @@ export const useStatsCounter = ({
     dailyRevenueTarget
   });
   
+  // Immediately synchronize with global storage on load
+  useEffect(() => {
+    // Load from global storage first
+    const storedAds = localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT);
+    const storedRevenue = localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT);
+    
+    if (storedAds && storedRevenue) {
+      const parsedAds = parseInt(storedAds, 10);
+      const parsedRevenue = parseInt(storedRevenue, 10);
+      
+      if (!isNaN(parsedAds) && !isNaN(parsedRevenue) && parsedAds > 0 && parsedRevenue > 0) {
+        // Force values to be loaded from global storage
+        setAdsCount(parsedAds);
+        setRevenueCount(parsedRevenue);
+        setDisplayedAdsCount(parsedAds);
+        setDisplayedRevenueCount(parsedRevenue);
+        console.log(`Loaded from global storage: Ads=${parsedAds}, Revenue=${parsedRevenue}`);
+      } else {
+        // If global storage has invalid values, initialize normally
+        initializeCounters();
+      }
+    } else {
+      // If no global storage values, initialize normally
+      initializeCounters();
+    }
+  }, []);
+  
   useEffect(() => {
     // Initialiser les compteurs avec des valeurs réalistes
-    initializeCounters();
-    
-    // Système d'animation avec des mises à jour à intervalles raisonnables
+    // System of animation with reasonable update intervals
     let animationFrameId: number;
     
-    // Fonction d'animation
+    // Animation function
     const updateAnimation = () => {
       animateCounters();
       animationFrameId = requestAnimationFrame(updateAnimation);
     };
     
-    // Démarrer l'animation
+    // Start animation
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Intervalle pour les mises à jour périodiques des compteurs (valeurs cibles)
-    // Augmenter l'intervalle à 40 secondes pour ralentir encore plus la génération
+    // Interval for periodic counter updates (target values)
+    // Increase interval to 40 seconds to further slow down generation
     const updateInterval = setInterval(() => {
       incrementCountersRandomly();
-    }, 40000); // Toutes les 40 secondes pour des mises à jour plus lentes
+    }, 40000); // Every 40 seconds for slower updates
     
-    // Planifier la réinitialisation à minuit
+    // Schedule reset at midnight
     const resetTimeout = scheduleCycleUpdate();
-    
-    // Synchronisation initiale des compteurs affichés avec les valeurs cibles
-    setDisplayedAdsCount(adsCount);
-    setDisplayedRevenueCount(revenueCount);
     
     return () => {
       if (resetTimeout) clearTimeout(resetTimeout);
@@ -84,15 +111,18 @@ export const useStatsCounter = ({
       clearInterval(updateInterval);
     };
   }, [
-    initializeCounters,
     animateCounters,
     incrementCountersRandomly,
-    scheduleCycleUpdate,
-    adsCount,
-    revenueCount,
-    setDisplayedAdsCount,
-    setDisplayedRevenueCount
+    scheduleCycleUpdate
   ]);
+  
+  // Save to global storage whenever displayed values change
+  useEffect(() => {
+    if (displayedAdsCount > 0 && displayedRevenueCount > 0) {
+      localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT, Math.round(displayedAdsCount).toString());
+      localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT, Math.round(displayedRevenueCount).toString());
+    }
+  }, [displayedAdsCount, displayedRevenueCount]);
 
   return useMemo(() => ({
     displayedAdsCount,

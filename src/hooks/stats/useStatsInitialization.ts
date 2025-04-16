@@ -18,7 +18,7 @@ interface UseStatsInitializationResult {
   initializeCounters: () => void;
 }
 
-// Clés pour le stockage local
+// Keys for local storage
 const STORAGE_KEYS = {
   GLOBAL_ADS_COUNT: 'global_ads_count',
   GLOBAL_REVENUE_COUNT: 'global_revenue_count',
@@ -37,14 +37,14 @@ export const useStatsInitialization = ({
   const [displayedAdsCount, setDisplayedAdsCount] = useState<number>(0);
   const [displayedRevenueCount, setDisplayedRevenueCount] = useState<number>(0);
   
-  // Fonction pour récupérer les valeurs stockées dans localStorage
+  // Function to retrieve stored values from localStorage
   const loadStoredValues = useCallback(() => {
     try {
-      // Essayer d'abord de charger les valeurs globales (partagées entre tous les utilisateurs)
+      // First try to load global values (shared between all users)
       const globalAdsCount = localStorage.getItem(STORAGE_KEYS.GLOBAL_ADS_COUNT);
       const globalRevenueCount = localStorage.getItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT);
       
-      // Si nous avons des valeurs globales, les utiliser en priorité
+      // If we have global values, use them as priority
       if (globalAdsCount && globalRevenueCount) {
         const parsedAdsCount = parseInt(globalAdsCount, 10);
         const parsedRevenueCount = parseInt(globalRevenueCount, 10);
@@ -60,7 +60,7 @@ export const useStatsInitialization = ({
         }
       }
       
-      // Fallback aux valeurs utilisateur si pas de valeurs globales
+      // Fallback to user-specific values if no global values
       const storedAdsCount = localStorage.getItem(STORAGE_KEYS.ADS_COUNT);
       const storedRevenueCount = localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT);
       const storedLastUpdate = localStorage.getItem(STORAGE_KEYS.LAST_UPDATE);
@@ -68,10 +68,10 @@ export const useStatsInitialization = ({
       
       const today = new Date().toDateString();
       
-      // Vérifier si nous avons déjà fait une réinitialisation aujourd'hui
+      // Check if we've already done a reset today
       if (storedResetDate !== today) {
-        // Si la dernière réinitialisation n'était pas aujourd'hui, on peut procéder normalement
-        return { hasStoredValues: false };
+        // If the last reset wasn't today, we can proceed normally
+        // But don't reset, use stored values if available
       }
       
       if (storedAdsCount && storedRevenueCount) {
@@ -95,14 +95,14 @@ export const useStatsInitialization = ({
     }
   }, []);
   
-  // Fonction pour sauvegarder les valeurs dans localStorage
+  // Function to save values to localStorage
   const saveValues = useCallback((ads: number, revenue: number) => {
     try {
-      // Garantir des valeurs positives avant de sauvegarder
-      const safeAdsCount = Math.max(0, ads);
-      const safeRevenueCount = Math.max(0, revenue);
+      // Ensure positive values before saving
+      const safeAdsCount = Math.max(0, Math.round(ads));
+      const safeRevenueCount = Math.max(0, Math.round(revenue));
       
-      // Sauvegarder à la fois comme valeurs globales et utilisateur
+      // Save both as global and user-specific values
       localStorage.setItem(STORAGE_KEYS.GLOBAL_ADS_COUNT, safeAdsCount.toString());
       localStorage.setItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT, safeRevenueCount.toString());
       
@@ -110,18 +110,22 @@ export const useStatsInitialization = ({
       localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, safeRevenueCount.toString());
       localStorage.setItem(STORAGE_KEYS.LAST_UPDATE, Date.now().toString());
       localStorage.setItem(STORAGE_KEYS.RESET_DATE, new Date().toDateString());
+      
+      // Also save as displayed counts for immediate consistency
+      localStorage.setItem('displayed_ads_count', safeAdsCount.toString());
+      localStorage.setItem('displayed_revenue_count', safeRevenueCount.toString());
     } catch (e) {
       console.error("Error saving values to localStorage:", e);
     }
   }, []);
   
-  // Calculer la progression actuelle en fonction de l'heure du jour
+  // Calculate current progression based on time of day
   const calculateInitialValues = useCallback(() => {
-    // Vérifier d'abord si nous avons des valeurs stockées
+    // First check if we have stored values
     const storedValues = loadStoredValues();
     
     if (storedValues.hasStoredValues) {
-      // Utiliser les valeurs stockées
+      // Use stored values
       setAdsCount(storedValues.adsCount);
       setRevenueCount(storedValues.revenueCount);
       setDisplayedAdsCount(storedValues.adsCount);
@@ -129,69 +133,69 @@ export const useStatsInitialization = ({
       return;
     }
     
-    // Si pas de valeurs stockées, calculer de nouvelles valeurs
-    // Obtenir l'heure actuelle (0-23)
+    // If no stored values, calculate new values
+    // Get current hour (0-23)
     const currentHour = new Date().getHours();
     
-    // Au lieu d'avoir une valeur qui repart à 0 à minuit,
-    // nous commençons avec des valeurs substantielles pour donner 
-    // l'impression que le système fonctionne déjà depuis un moment
+    // Instead of a value that resets to 0 at midnight,
+    // we start with substantial values to give the impression
+    // that the system has been running for a while
     
-    // Valeur initiale minimale garantie (entre 150 et 300 pour les annonces)
+    // Guaranteed minimum initial value (between 150 and 300 for ads)
     const minBaseAds = 150 + Math.floor(Math.random() * 150);
-    // Valeur initiale minimale garantie (entre 200 et 400 pour les revenus)
+    // Guaranteed minimum initial value (between 200 and 400 for revenue)
     const minBaseRevenue = 200 + Math.floor(Math.random() * 200);
     
-    // Base initiale (entre 18% et 25% de la cible quotidienne)
+    // Initial base (between 18% and 25% of daily target)
     const basePercentage = 0.18 + (Math.random() * 0.07);
     
-    // Ajout d'une progression basée sur l'heure (jusqu'à 35% supplémentaires)
+    // Add progression based on hour (up to 35% additional)
     let hourlyProgressPercent = 0;
     
     if (currentHour >= 8 && currentHour <= 23) {
-      // Pendant la journée (8h-23h), progression plus rapide
+      // During the day (8h-23h), faster progression
       hourlyProgressPercent = (currentHour - 8) / 15 * 0.35;
     } else if (currentHour >= 0 && currentHour < 8) {
-      // Pendant la nuit (0h-8h), progression plus lente
+      // During the night (0h-8h), slower progression
       hourlyProgressPercent = ((currentHour + 24 - 8) % 24) / 24 * 0.15;
     }
     
-    // Pourcentage total (entre 18% et 60% selon l'heure)
+    // Total percentage (between 18% and 60% depending on time)
     const totalPercentage = basePercentage + hourlyProgressPercent;
     
-    // Variation aléatoire pour des valeurs réalistes (±2%)
+    // Random variation for realistic values (±2%)
     const finalPercentage = Math.min(0.60, totalPercentage + (Math.random() * 0.04 - 0.02));
     
-    // Calculer les valeurs initiales basées sur le pourcentage, mais avec un minimum garanti
+    // Calculate initial values based on percentage, but with a guaranteed minimum
     const calculatedAds = Math.floor(dailyAdsTarget * finalPercentage);
     const calculatedRevenue = Math.floor(dailyRevenueTarget * finalPercentage);
     
-    // Utiliser la plus grande des deux valeurs : calculée ou minimale garantie
+    // Use the larger of the two values: calculated or guaranteed minimum
     const initialAds = Math.max(minBaseAds, calculatedAds);
     
-    // Le revenu n'est pas exactement proportionnel aux annonces (légère variation)
-    const revenueVariance = 0.97 + (Math.random() * 0.06); // 97% à 103%
+    // Revenue is not exactly proportional to ads (slight variation)
+    const revenueVariance = 0.97 + (Math.random() * 0.06); // 97% to 103%
     const calculatedRevenueWithVariance = Math.floor(calculatedRevenue * revenueVariance);
     const initialRevenue = Math.max(minBaseRevenue, calculatedRevenueWithVariance);
     
-    // Définir les valeurs initiales (compteurs internes et affichés identiques au démarrage)
+    // Set initial values (internal and displayed counters identical at startup)
     setAdsCount(initialAds);
     setRevenueCount(initialRevenue);
     setDisplayedAdsCount(initialAds);
     setDisplayedRevenueCount(initialRevenue);
     
-    // Sauvegarder les valeurs initiales
+    // Save initial values
     saveValues(initialAds, initialRevenue);
     
     console.log(`Initialized counters: Ads=${initialAds}, Revenue=${initialRevenue}`);
   }, [dailyAdsTarget, dailyRevenueTarget, loadStoredValues, saveValues]);
   
-  // Fonction pour initialiser les compteurs
+  // Function to initialize counters
   const initializeCounters = useCallback(() => {
     calculateInitialValues();
   }, [calculateInitialValues]);
   
-  // Synchroniser avec les valeurs globales périodiquement
+  // Synchronize with global values periodically
   useEffect(() => {
     const syncWithGlobalValues = () => {
       const globalAdsCount = localStorage.getItem(STORAGE_KEYS.GLOBAL_ADS_COUNT);
@@ -202,19 +206,19 @@ export const useStatsInitialization = ({
         const parsedRevenue = parseInt(globalRevenueCount, 10);
         
         if (!isNaN(parsedAds) && !isNaN(parsedRevenue) && parsedAds > 0 && parsedRevenue > 0) {
-          // Ne mettre à jour que si les valeurs globales sont plus grandes
+          // Only update if global values are larger
           if (parsedAds > adsCount) setAdsCount(parsedAds);
           if (parsedRevenue > revenueCount) setRevenueCount(parsedRevenue);
         }
       }
     };
     
-    // Synchroniser toutes les 15 secondes
+    // Synchronize every 15 seconds
     const syncInterval = setInterval(syncWithGlobalValues, 15000);
     return () => clearInterval(syncInterval);
   }, [adsCount, revenueCount]);
   
-  // Effet pour mettre à jour le stockage local lorsque les compteurs changent
+  // Effect to update local storage when counters change
   useEffect(() => {
     if (adsCount > 0 && revenueCount > 0) {
       saveValues(adsCount, revenueCount);

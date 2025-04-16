@@ -21,17 +21,17 @@ const StatsCounter = ({
   const [displayedAds, setDisplayedAds] = useState("0");
   const [displayedRevenue, setDisplayedRevenue] = useState("0");
   
-  // Références pour stocker les valeurs précédentes et contrôler les mises à jour
+  // References to store previous values and control updates
   const lastAdsUpdate = useRef<number>(0);
   const lastRevenueUpdate = useRef<number>(0);
   const lastAdsValue = useRef<number>(0);
   const lastRevenueValue = useRef<number>(0);
   const isInitialLoad = useRef<boolean>(true);
   
-  // Effet d'initialisation - charger les valeurs dès le début sans attendre
+  // Initialization effect - load values right away without waiting
   useEffect(() => {
     if (isInitialLoad.current) {
-      // Utiliser les valeurs stockées dans localStorage au montage initial
+      // Load stored values on initial mount
       const storedAds = localStorage.getItem('global_ads_count') || 
                         localStorage.getItem('displayed_ads_count') || 
                         localStorage.getItem('stats_ads_count');
@@ -41,16 +41,19 @@ const StatsCounter = ({
                             localStorage.getItem('stats_revenue_count');
       
       if (storedAds) {
-        const formattedAds = parseInt(storedAds.replace(/\s/g, ''), 10).toLocaleString('fr-FR');
+        const numericValue = parseInt(storedAds.replace(/\s/g, ''), 10);
+        const formattedAds = (isNaN(numericValue) ? 0 : numericValue).toLocaleString('fr-FR');
         setDisplayedAds(formattedAds);
-        lastAdsValue.current = parseInt(storedAds, 10) || 0;
+        lastAdsValue.current = numericValue || 0;
       }
       
       if (storedRevenue) {
-        const numericValue = parseInt(storedRevenue, 10) || 0;
-        const formattedRevenue = formatRevenue(numericValue);
-        setDisplayedRevenue(formattedRevenue);
-        lastRevenueValue.current = numericValue;
+        const numericValue = parseInt(storedRevenue.replace(/\s/g, ''), 10);
+        if (!isNaN(numericValue) && numericValue > 0) {
+          const formattedRevenue = formatRevenue(numericValue);
+          setDisplayedRevenue(formattedRevenue);
+          lastRevenueValue.current = numericValue;
+        }
       }
       
       isInitialLoad.current = false;
@@ -58,36 +61,36 @@ const StatsCounter = ({
   }, []);
   
   useEffect(() => {
-    // Pour éviter les valeurs négatives à l'affichage
+    // Avoid negative values in display
     const safeDisplayedAdsCount = Math.max(0, displayedAdsCount);
     const safeDisplayedRevenueCount = Math.max(0, displayedRevenueCount);
     
-    // Éviter les mises à jour trop fréquentes (au maximum toutes les 2000ms)
+    // Avoid too frequent updates (maximum every 2000ms)
     const now = Date.now();
-    const updateDelayMs = 2000; // Augmenté à 2000ms pour un rythme plus lent
+    const updateDelayMs = 2000; // Increased to 2000ms for a slower pace
     
-    // Calculer l'écart pour déterminer si une mise à jour est nécessaire
+    // Calculate difference to determine if an update is needed
     const adsDiff = Math.abs(safeDisplayedAdsCount - lastAdsValue.current);
     const revenueDiff = Math.abs(safeDisplayedRevenueCount - lastRevenueValue.current);
     
-    // Définir des seuils minimum pour les mises à jour - valeurs plus élevées pour un changement plus lent
-    const minimumAdsChangeThreshold = 200; // Augmenté de 150 à 200
-    const minimumRevenueChangeThreshold = 400; // Augmenté de 300 à 400
+    // Define minimum thresholds for updates - higher values for slower change
+    const minimumAdsChangeThreshold = 200; // Increased from 150 to 200
+    const minimumRevenueChangeThreshold = 400; // Increased from 300 to 400
     
-    // Mise à jour des annonces si l'écart est significatif et si le délai minimum est passé
+    // Update ads if the difference is significant and if minimum delay has passed
     if ((adsDiff > minimumAdsChangeThreshold) && (now - lastAdsUpdate.current > updateDelayMs)) {
-      // Simulation de bursts d'activité par moments (comme si plusieurs bots finissaient leurs tâches en même temps)
-      // Réduire la probabilité de burst et leur intensité
-      const burstFactor = Math.random() > 0.98 ? 1.15 : 1.0; // Réduit de 1.2 à 1.15, et probabilité de 0.97 à 0.98
+      // Simulation of activity bursts at times (as if multiple bots finished their tasks at once)
+      // Reduce probability and intensity of bursts
+      const burstFactor = Math.random() > 0.98 ? 1.15 : 1.0; // Reduced from 1.2 to 1.15, and probability from 0.97 to 0.98
       
-      // Éviter les sauts: effectuer une transition douce vers la nouvelle valeur
+      // Avoid jumps: perform a smooth transition to the new value
       const currentNumeric = parseInt(displayedAds.replace(/\s/g, ''), 10) || 0;
       const targetValue = safeDisplayedAdsCount;
       
-      // Limiter le changement à un pourcentage maximum pour éviter les sauts trop grands
-      // Mais permettre occasionnellement des bursts plus importants
-      // Réduire le changement maximal
-      const maxChange = Math.max(30, Math.floor(currentNumeric * 0.002 * burstFactor)); // Réduit de 0.003 à 0.002, minimum de 50 à 30
+      // Limit change to a maximum percentage to avoid jumps that are too large
+      // But occasionally allow larger bursts
+      // Reduced maximum change
+      const maxChange = Math.max(30, Math.floor(currentNumeric * 0.002 * burstFactor)); // Reduced from 0.003 to 0.002, minimum from 50 to 30
       
       let newValue;
       if (Math.abs(targetValue - currentNumeric) <= maxChange) {
@@ -95,10 +98,10 @@ const StatsCounter = ({
       } else if (targetValue > currentNumeric) {
         newValue = currentNumeric + maxChange;
       } else {
-        newValue = Math.max(0, currentNumeric - maxChange); // Assurer qu'on ne descend pas sous 0
+        newValue = Math.max(0, currentNumeric - maxChange); // Ensure we don't go below 0
       }
       
-      // Ajouter une légère variation aléatoire (+/- 2 annonces au lieu de 3)
+      // Add slight random variation (+/- 2 ads instead of 3)
       newValue = Math.max(0, newValue + (Math.floor(Math.random() * 5) - 2));
       
       const formattedValue = Math.round(newValue).toLocaleString('fr-FR');
@@ -106,27 +109,29 @@ const StatsCounter = ({
       lastAdsUpdate.current = now;
       lastAdsValue.current = newValue;
       
-      // Stocker la valeur affichée dans localStorage
+      // Store displayed value in localStorage
       localStorage.setItem('displayed_ads_count', newValue.toString());
+      // Also update global value for cross-user consistency
+      localStorage.setItem('global_ads_count', newValue.toString());
     }
     
-    // Même logique pour le revenu, mais avec des variations plus spécifiques pour simuler
-    // différentes valeurs de publicités
+    // Same logic for revenue, but with more specific variations to simulate
+    // different ad values
     if ((revenueDiff > minimumRevenueChangeThreshold) && (now - lastRevenueUpdate.current > updateDelayMs)) {
-      // Simuler différentes catégories de valeur de publicités
-      // Parfois des publicités premium à haute valeur sont analysées (d'où les pics)
-      // Réduire la probabilité de publicités premium
-      const premiumAdBurst = Math.random() > 0.988; // Réduit de 0.985 à 0.988
-      const burstFactor = premiumAdBurst ? 1.3 : 1.0; // Réduit de 1.5 à 1.3
+      // Simulate different categories of ad values
+      // Sometimes premium high-value ads are analyzed (hence the spikes)
+      // Reduce probability of premium ads
+      const premiumAdBurst = Math.random() > 0.988; // Reduced from 0.985 to 0.988
+      const burstFactor = premiumAdBurst ? 1.3 : 1.0; // Reduced from 1.5 to 1.3
       
-      // Extraire la valeur numérique actuelle
+      // Extract current numeric value
       const currentRevenueString = displayedRevenue.replace(/[^\d.,]/g, '').replace(',', '.');
       const currentNumeric = parseFloat(currentRevenueString) || 0;
       const targetValue = safeDisplayedRevenueCount;
       
-      // Limiter le changement avec possibilité de bursts pour les publicités premium
-      // Réduire le changement maximal
-      const maxChange = Math.max(50, Math.floor(currentNumeric * 0.002 * burstFactor)); // Réduit de 0.003 à 0.002, minimum de 75 à 50
+      // Limit change with possibility of bursts for premium ads
+      // Reduced maximum change
+      const maxChange = Math.max(50, Math.floor(currentNumeric * 0.002 * burstFactor)); // Reduced from 0.003 to 0.002, minimum from 75 to 50
       
       let newValue;
       if (Math.abs(targetValue - currentNumeric) <= maxChange) {
@@ -134,26 +139,29 @@ const StatsCounter = ({
       } else if (targetValue > currentNumeric) {
         newValue = currentNumeric + maxChange;
       } else {
-        newValue = Math.max(0, currentNumeric - maxChange); // Assurer qu'on ne descend pas sous 0
+        newValue = Math.max(0, currentNumeric - maxChange); // Ensure we don't go below 0
       }
       
-      // Ajouter une variation non-linéaire pour simuler les différentes catégories de publicités
-      // Réduire les variations
+      // Add non-linear variation to simulate different ad categories
+      // Reduce variations
       if (premiumAdBurst) {
-        // Simuler l'analyse d'un lot de publicités premium
-        newValue += Math.random() * 15; // Réduit de 20 à 15
+        // Simulate analysis of a batch of premium ads
+        newValue += Math.random() * 15; // Reduced from 20 to 15
       } else if (Math.random() > 0.88) {
-        // Publicités de valeur moyenne (probabilité réduite de 0.85 à 0.88)
-        newValue += Math.random() * 4; // Réduit de 6 à 4
+        // Medium-value ads (reduced probability from 0.85 to 0.88)
+        newValue += Math.random() * 4; // Reduced from 6 to 4
       }
       
-      const formattedValue = formatRevenue(Math.max(0, newValue)); // Assurer qu'on ne descend pas sous 0
+      const formattedValue = formatRevenue(Math.max(0, newValue)); // Ensure we don't go below 0
       setDisplayedRevenue(formattedValue);
       lastRevenueUpdate.current = now;
       lastRevenueValue.current = Math.max(0, newValue);
       
-      // Stocker la valeur affichée dans localStorage
-      localStorage.setItem('displayed_revenue_count', Math.round(newValue).toString());
+      // Store displayed value in localStorage
+      const roundedValue = Math.round(newValue);
+      localStorage.setItem('displayed_revenue_count', roundedValue.toString());
+      // Also update global value for cross-user consistency
+      localStorage.setItem('global_revenue_count', roundedValue.toString());
     }
   }, [displayedAdsCount, displayedRevenueCount, displayedAds, displayedRevenue]);
 
