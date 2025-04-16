@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -18,10 +17,8 @@ const Dashboard = () => {
   const [dashboardReady, setDashboardReady] = useState(false);
   const [isPreloaded, setIsPreloaded] = useState(false);
   
-  // Add automatic revenue handler
   const updateBalance = async (gain: number, report: string) => {
     console.log(`Updating balance with gain: ${gain}, report: ${report}`);
-    // This will be handled by the hook and useInitUserData will refresh the data
     await refreshData();
   };
 
@@ -64,7 +61,6 @@ const Dashboard = () => {
         detail: { username, timestamp: Date.now() } 
       }));
 
-      // Force an immediate revenue generation on first load
       if (userData) {
         console.log("Initiating first automatic revenue on dashboard ready");
         setTimeout(() => {
@@ -74,19 +70,16 @@ const Dashboard = () => {
     }
   }, [isInitializing, username, isFirstLoad, userData, processAutomaticRevenue]);
 
-  // Add heartbeat to ensure revenue generation stays active
   useEffect(() => {
     const heartbeatInterval = setInterval(() => {
-      // Check active status and force revenue generation if needed
       if (userData) {
         console.log("Dashboard heartbeat - ensuring revenue generation is active");
         
-        // Dispatch an event that other components can listen for
         window.dispatchEvent(new CustomEvent('dashboard:heartbeat', { 
           detail: { timestamp: Date.now() } 
         }));
       }
-    }, 300000); // Every 5 minutes
+    }, 300000);
     
     return () => clearInterval(heartbeatInterval);
   }, [userData]);

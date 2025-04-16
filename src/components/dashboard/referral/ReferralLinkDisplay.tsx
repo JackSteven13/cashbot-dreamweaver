@@ -30,7 +30,7 @@ const ReferralLinkDisplay: React.FC<ReferralLinkDisplayProps> = ({
     
     toast({
       title: "Lien copié !",
-      description: "Votre lien de parrainage a été copié dans le presse-papier",
+      description: "Votre lien d'affiliation a été copié dans le presse-papier",
       variant: "default",
     });
     
@@ -43,8 +43,8 @@ const ReferralLinkDisplay: React.FC<ReferralLinkDisplayProps> = ({
     try {
       if (navigator.share) {
         await navigator.share({
-          title: 'Mon lien de parrainage',
-          text: 'Rejoignez-moi sur cette plateforme avec mon lien de parrainage !',
+          title: 'Mon lien d\'affiliation',
+          text: 'Rejoignez-moi sur cette plateforme avec mon lien d\'affiliation !',
           url: displayedLink
         });
       } else {
@@ -61,7 +61,7 @@ const ReferralLinkDisplay: React.FC<ReferralLinkDisplayProps> = ({
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center">
           <Share2 className="h-5 w-5 mr-2 text-purple-600 dark:text-purple-400" />
-          Votre lien de parrainage
+          Votre lien d'affiliation
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -116,3 +116,4 @@ const ReferralLinkDisplay: React.FC<ReferralLinkDisplayProps> = ({
 };
 
 export default ReferralLinkDisplay;
+

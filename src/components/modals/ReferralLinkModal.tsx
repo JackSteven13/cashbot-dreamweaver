@@ -32,7 +32,7 @@ const ReferralLinkModal: React.FC<ReferralLinkModalProps> = ({
     if (!displayedLink) {
       toast({
         title: "Erreur",
-        description: "Lien de parrainage indisponible",
+        description: "Lien d'affiliation indisponible",
         variant: "destructive"
       });
       return;
@@ -42,7 +42,7 @@ const ReferralLinkModal: React.FC<ReferralLinkModalProps> = ({
     setCopied(true);
     toast({
       title: "Lien copié !",
-      description: "Votre lien de parrainage a été copié dans le presse-papier",
+      description: "Votre lien d'affiliation a été copié dans le presse-papier",
       duration: 3000,
     });
     
@@ -60,7 +60,7 @@ const ReferralLinkModal: React.FC<ReferralLinkModalProps> = ({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
-            Partagez votre lien de parrainage
+            Partagez votre lien d'affiliation
           </DialogTitle>
           <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100">
             <X className="h-4 w-4" />
@@ -108,3 +108,4 @@ const ReferralLinkModal: React.FC<ReferralLinkModalProps> = ({
 };
 
 export default ReferralLinkModal;
+
