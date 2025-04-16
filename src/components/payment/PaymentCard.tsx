@@ -8,7 +8,7 @@ import PlanSummary from './PlanSummary';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
-import { Shield, CreditCard } from 'lucide-react';
+import { Shield, CreditCard, ExternalLink } from 'lucide-react';
 
 interface PaymentCardProps {
   selectedPlan: PlanType | null;
@@ -31,7 +31,7 @@ const PaymentCard = ({
   const isCurrentPlan = currentSubscription === selectedPlan;
 
   // Fonction de paiement
-  const handlePayment = async () => {
+  const handlePayment = () => {
     if (!selectedPlan) {
       toast({
         title: "Erreur",
@@ -50,7 +50,7 @@ const PaymentCard = ({
       return;
     }
 
-    // Déclencher la création de la session Stripe
+    // Déclencher la création de la session Stripe et l'ouverture du modal de confirmation
     onStripeCheckout();
   };
 
@@ -115,7 +115,7 @@ const PaymentCard = ({
               ) : (
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5" />
-                  Payer maintenant
+                  Procéder au paiement
                 </div>
               )}
             </Button>

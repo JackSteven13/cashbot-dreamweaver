@@ -48,21 +48,17 @@ const StripeCheckoutForm = ({
 
   const handleOpenStripeWindow = () => {
     if (stripeUrl) {
-      // Sur mobile, utiliser une redirection directe sans animation
-      if (isMobile) {
-        window.location.href = stripeUrl;
-        return true;
-      }
+      // Désormais, cette fonction est utilisée pour ouvrir Stripe, mais l'utilisateur doit cliquer sur le bouton
+      toast({
+        title: "Redirection vers le paiement",
+        description: "Vous allez être redirigé vers une page de paiement sécurisée.",
+        duration: 2000
+      });
       
-      // Sur desktop, tenter d'ouvrir dans un nouvel onglet
-      const opened = openStripeWindow(stripeUrl);
-      if (!opened) {
-        toast({
-          title: "Problème d'ouverture",
-          description: "Impossible d'ouvrir la page de paiement. Veuillez utiliser le lien direct ci-dessous.",
-          variant: "destructive"
-        });
-      }
+      // Ajout d'un petit délai pour permettre à la notification de s'afficher
+      setTimeout(() => {
+        openStripeWindow(stripeUrl);
+      }, 300);
     } else {
       toast({
         title: "Erreur",
@@ -132,26 +128,12 @@ const StripeCheckoutForm = ({
             <ExternalLink className="w-4 h-4" /> {isMobile ? 'Continuer vers le paiement' : 'Payer maintenant'}
           </Button>
           
-          {isMobile ? (
-            <p className="text-sm text-center text-gray-500">
-              Vous allez être redirigé vers une page de paiement sécurisée.
-            </p>
-          ) : (
-            <p className="text-sm text-center text-gray-500">
-              Vous serez redirigé vers une page de paiement sécurisée pour finaliser votre abonnement.
-            </p>
-          )}
-          
-          {!isMobile && (
-            <Button 
-              fullWidth
-              variant="outline"
-              className="mt-2 text-sm flex items-center justify-center gap-2"
-              onClick={handleOpenStripeWindow}
-            >
-              <ExternalLink className="w-3 h-3" /> Ouvrir dans une nouvelle fenêtre
-            </Button>
-          )}
+          <p className="text-sm text-center text-gray-500">
+            {isMobile 
+              ? "Vous allez être redirigé vers une page de paiement sécurisée."
+              : "Vous serez redirigé vers une page de paiement sécurisée pour finaliser votre abonnement."
+            }
+          </p>
         </div>
       )}
 
