@@ -52,14 +52,14 @@ export const useStatsCounter = ({
   useEffect(() => {
     initializeCounters();
     
-    // Completely redesigned animation system for much slower updates
+    // Système d'animation complètement redessiné pour des mises à jour très lentes
     let animationFrameId: number;
     let lastUpdateTime = 0;
     
-    // Animation function with much longer intervals (15-25 seconds)
+    // Fonction d'animation avec des intervalles extrêmement longs (45-90 secondes)
     const updateAnimation = (timestamp: number) => {
-      // Much longer interval between updates (15-25 seconds)
-      const updateInterval = Math.random() * 10000 + 15000;
+      // Intervalle très long entre les mises à jour d'affichage (45-90 secondes)
+      const updateInterval = Math.random() * 45000 + 45000;
       
       if (timestamp - lastUpdateTime > updateInterval || lastUpdateTime === 0) {
         animateCounters();
@@ -71,19 +71,19 @@ export const useStatsCounter = ({
     
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Variable interval for real counter updates with much longer intervals
+    // Intervalle variable pour les mises à jour réelles des compteurs avec des intervalles très longs
     const createUpdateInterval = () => {
-      const minInterval = 60000; // Minimum 1 minute
-      const maxInterval = 120000; // Maximum 2 minutes
+      const minInterval = 180000; // Minimum 3 minutes
+      const maxInterval = 300000; // Maximum 5 minutes
       const randomInterval = Math.floor(Math.random() * (maxInterval - minInterval) + minInterval);
       
       setTimeout(() => {
         incrementCountersRandomly();
-        createUpdateInterval(); // Schedule next update with a new random interval
+        createUpdateInterval(); // Planifier la prochaine mise à jour avec un nouvel intervalle aléatoire
       }, randomInterval);
     };
     
-    createUpdateInterval(); // Start the cycle of variable intervals
+    createUpdateInterval(); // Démarrer le cycle d'intervalles variables
     
     const resetTimeout = scheduleCycleUpdate();
     

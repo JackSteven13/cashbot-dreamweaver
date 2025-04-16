@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 interface UseStatsInitializationParams {
   dailyAdsTarget: number;
@@ -27,56 +27,59 @@ export const useStatsInitialization = ({
   const [displayedAdsCount, setDisplayedAdsCount] = useState<number>(0);
   const [displayedRevenueCount, setDisplayedRevenueCount] = useState<number>(0);
   
-  // Calculate current progress based on time of day
+  // Calculer la progression actuelle en fonction de l'heure du jour
   const calculateInitialValues = useCallback(() => {
-    // Get the current hour of the day (0-23)
+    // Obtenir l'heure actuelle (0-23)
     const currentHour = new Date().getHours();
     
-    // Calculate what percentage of the day has passed
-    // We'll be more active during working hours
+    // Calculer quel pourcentage de la journée s'est écoulé
+    // Utiliser une courbe plus naturelle avec moins d'activité la nuit
     let dayPercentage = 0;
     
     if (currentHour < 7) {
-      // Between midnight and 7am - slower progress (night time)
-      dayPercentage = (currentHour / 24) * 0.5;
+      // Entre minuit et 7h - progression très lente (nuit)
+      dayPercentage = (currentHour / 24) * 0.15; // Max 15% à 7h
     } else if (currentHour >= 7 && currentHour < 23) {
-      // Between 7am and 11pm - faster progress (day time)
-      const adjustedHour = currentHour - 7; // 0 to 16 hours
-      const workingDayPercent = adjustedHour / 16; // 0% to 100% of working day
+      // Entre 7h et 23h - progression plus rapide (jour)
+      const adjustedHour = currentHour - 7; // 0 à 16 heures
+      const workingDayPercent = adjustedHour / 16; // 0% à 100% de la journée de travail
       
-      // Base percentage (what was achieved overnight) plus working day progress
-      dayPercentage = 0.1 + (workingDayPercent * 0.8);
+      // Pourcentage de base (ce qui a été réalisé pendant la nuit) plus progression de la journée
+      dayPercentage = 0.15 + (workingDayPercent * 0.7); // De 15% à 85%
     } else {
-      // Between 11pm and midnight - almost complete
-      dayPercentage = 0.95;
+      // Entre 23h et minuit - presque complet
+      dayPercentage = 0.85;
     }
     
-    // Add some random variation (±10%)
-    const randomVariation = (Math.random() * 0.2) - 0.1;
-    dayPercentage = Math.max(0, Math.min(0.95, dayPercentage + randomVariation));
+    // Ajouter une légère variation aléatoire (±3%)
+    const randomVariation = (Math.random() * 0.06) - 0.03;
+    dayPercentage = Math.max(0, Math.min(0.85, dayPercentage + randomVariation));
     
-    // Calculate the estimated counts based on the percentage
-    const estimatedAds = Math.floor(dailyAdsTarget * dayPercentage);
-    const estimatedRevenue = Math.floor(dailyRevenueTarget * dayPercentage);
+    // Pour rendre les valeurs plus stables et moins erratiques,
+    // calculons des valeurs plus cohérentes au fil du temps
     
-    // Set the counts
+    // Appliquer une courbe progressive naturelle (non linéaire)
+    // Utiliser une fonction qui accélère doucement puis ralentit en fin de journée
+    const curvedPercentage = Math.sin(dayPercentage * Math.PI / 2);
+    
+    // Calculer les valeurs estimées sur la base du pourcentage
+    const estimatedAds = Math.floor(dailyAdsTarget * curvedPercentage * 0.95); // Légèrement en dessous de la cible
+    const estimatedRevenue = Math.floor(dailyRevenueTarget * curvedPercentage * 0.93);
+    
+    // Définir les compteurs
     setAdsCount(estimatedAds);
     setRevenueCount(estimatedRevenue);
     
-    // Initialize displayed values to match what we calculated
-    setDisplayedAdsCount(Math.floor(estimatedAds * 0.9)); // Start slightly behind
-    setDisplayedRevenueCount(Math.floor(estimatedRevenue * 0.85)); // Start slightly behind
+    // Initialiser les valeurs affichées pour qu'elles correspondent à ce que nous avons calculé
+    // Démarrer légèrement en dessous pour amorcer une animation douce
+    setDisplayedAdsCount(Math.floor(estimatedAds * 0.985));
+    setDisplayedRevenueCount(Math.floor(estimatedRevenue * 0.98));
   }, [dailyAdsTarget, dailyRevenueTarget]);
   
-  // Function to initialize the counters
+  // Fonction pour initialiser les compteurs
   const initializeCounters = useCallback(() => {
     calculateInitialValues();
   }, [calculateInitialValues]);
-  
-  // Initialize on mount
-  useEffect(() => {
-    initializeCounters();
-  }, [initializeCounters]);
   
   return {
     adsCount,
@@ -90,5 +93,3 @@ export const useStatsInitialization = ({
     initializeCounters
   };
 };
-
-export default useStatsInitialization;

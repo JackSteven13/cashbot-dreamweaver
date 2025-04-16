@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
 import { formatRevenue } from '@/utils/formatters';
@@ -24,21 +24,33 @@ const StatsCounter = ({
     timestamp: 0
   });
   
-  const [displayedAds, setDisplayedAds] = React.useState("0");
-  const [displayedRevenue, setDisplayedRevenue] = React.useState("0");
+  const [displayedAds, setDisplayedAds] = useState("0");
+  const [displayedRevenue, setDisplayedRevenue] = useState("0");
   
   useEffect(() => {
     const now = Date.now();
     const timeDiff = now - lastUpdateRef.current.timestamp;
+    
+    // Seuil minimal de différence pour mettre à jour l'affichage
+    // Différences importantes requises et intervalles très longs
+    const minAdsDiff = 50;  // Au moins 50 annonces de différence
+    const minRevenueDiff = 100;  // Au moins 100€ de différence
+    const minTimeDiff = 15000;  // Au moins 15 secondes
+    
     const adsDiff = Math.abs(displayedAdsCount - lastUpdateRef.current.adsCount);
     const revenueDiff = Math.abs(displayedRevenueCount - lastUpdateRef.current.revenueCount);
     
-    // Significantly increase time threshold between updates (8000ms)
-    // And increase difference threshold required to trigger an update
-    if (lastUpdateRef.current.timestamp === 0 || timeDiff > 8000 || adsDiff > 500 || revenueDiff > 1000) {
+    // Ne mettre à jour l'affichage que si:
+    // - C'est la première fois (timestamp = 0)
+    // - Ou si assez de temps s'est écoulé ET une différence significative existe
+    if (lastUpdateRef.current.timestamp === 0 || 
+        (timeDiff > minTimeDiff && (adsDiff > minAdsDiff || revenueDiff > minRevenueDiff))) {
+      
+      // Mise à jour progressive des valeurs affichées
       setDisplayedAds(displayedAdsCount.toLocaleString('fr-FR'));
       setDisplayedRevenue(formatRevenue(displayedRevenueCount));
       
+      // Mettre à jour les références pour la prochaine comparaison
       lastUpdateRef.current = {
         adsCount: displayedAdsCount,
         revenueCount: displayedRevenueCount,
@@ -52,12 +64,12 @@ const StatsCounter = ({
       <StatPanel 
         value={displayedAds}
         label="Publicités analysées"
-        className="animate-pulse-slow"
+        className="animate-none" // Supprimer l'animation pulse qui peut être distrayante
       />
       <StatPanel 
         value={displayedRevenue}
         label="Revenus générés"
-        className="animate-pulse-slow"
+        className="animate-none" // Supprimer l'animation pulse qui peut être distrayante
       />
     </div>
   );
