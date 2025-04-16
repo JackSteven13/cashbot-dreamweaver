@@ -14,6 +14,14 @@ export const SUBSCRIPTION_PRICES: Record<string, number> = {
   'elite': 549
 };
 
+// Descriptions qui mettent en avant l'unicité de chaque forfait
+export const SUBSCRIPTION_DESCRIPTIONS: Record<string, string> = {
+  'freemium': 'Découverte et premiers pas',
+  'starter': 'Idéal pour décoller votre projet',
+  'gold': 'Accélérez vos performances',
+  'elite': 'Solution professionnelle ultime'
+};
+
 // New annual billing period
 export const BILLING_PERIOD = 'an';
 

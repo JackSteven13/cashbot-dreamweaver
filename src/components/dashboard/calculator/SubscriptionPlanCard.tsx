@@ -1,8 +1,7 @@
-
 import React from 'react';
-import { PlanType } from '@/hooks/payment/types';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { SUBSCRIPTION_DESCRIPTIONS } from './constants';
 import {
   PlanCardBadges,
   PlanCardHeader,
@@ -13,13 +12,12 @@ import {
 interface SubscriptionPlanCardProps {
   title: string;
   price: number;
-  description: string;
+  description?: string;
   features: string[];
   limit: number;
   current?: boolean;
   mostPopular?: boolean;
   action?: React.ReactNode;
-  // Add new props needed for RevenueCalculator
   plan?: string;
   isSelected?: boolean;
   isHomePage?: boolean;
@@ -41,7 +39,6 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
   current = false,
   mostPopular = false,
   action,
-  // Default values for new props
   isSelected = false,
   isHomePage = false,
   isCurrent = false,
@@ -54,8 +51,8 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
 }) => {
   const isMobile = useIsMobile();
   
-  // Determine the card color based on the props
-  // Fix: Add explicit border-x classes for lateral borders
+  const effectiveDescription = description || SUBSCRIPTION_DESCRIPTIONS[title.toLowerCase()] || '';
+
   const cardBorderClass = isSelected 
     ? 'border-2 border-x-2 border-purple-500 ring-2 ring-purple-500/40 transform scale-[1.02] z-10'
     : mostPopular 
@@ -68,7 +65,6 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
       ? 'bg-purple-50/50 dark:bg-purple-900/20'
       : 'bg-white dark:bg-gray-800';
       
-  // Ajustements pour l'affichage mobile
   const paddingClass = isMobile ? "p-2 md:p-5" : "p-3 md:p-5";
   const maxHeightClass = isMobile ? "max-h-[300px] md:max-h-[500px]" : "max-height: 100%";
 
@@ -98,7 +94,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
         <PlanCardHeader 
           title={title}
           price={price}
-          description={description}
+          description={effectiveDescription}
           subscriptionLabel={subscriptionLabel}
           subscriptionPrice={subscriptionPrice}
         />
