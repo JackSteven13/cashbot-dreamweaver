@@ -14,18 +14,18 @@ export const useStatsAnimation = ({
   setDisplayedAdsCount,
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
-  // Animation redesigned with much slower increments for better readability
+  // Animation redesigned with extremely slow increments for better readability
   const animateCounters = useCallback(() => {
     // Update ads counter with significantly smaller increments
     setDisplayedAdsCount((prevCount) => {
       // If we've reached the target, don't change
       if (prevCount >= adsCount) return adsCount;
       
-      // Use MUCH smaller increments (0.005 instead of 0.01) for a much slower animation
-      const baseIncrement = Math.floor((adsCount - prevCount) * 0.005);
+      // Use extremely small increments (0.003 instead of 0.005) for an even slower animation
+      const baseIncrement = Math.floor((adsCount - prevCount) * 0.003);
       const variationFactor = 0.7 + Math.random() * 0.6;
-      // Limit the increment to a maximum of 10 (instead of 40)
-      const increment = Math.max(5, Math.min(10, Math.floor(baseIncrement * variationFactor)));
+      // Limit the increment to a maximum of 5 (instead of 10)
+      const increment = Math.max(2, Math.min(5, Math.floor(baseIncrement * variationFactor)));
       
       return Math.min(prevCount + increment, adsCount);
     });
@@ -35,11 +35,11 @@ export const useStatsAnimation = ({
       // If we've reached the target, don't change
       if (prevRevCount >= revenueCount) return revenueCount;
       
-      // Use MUCH smaller increments (0.005 instead of 0.01) for revenue too
-      const baseIncrement = Math.floor((revenueCount - prevRevCount) * 0.005);
+      // Use extremely small increments (0.003 instead of 0.005)
+      const baseIncrement = Math.floor((revenueCount - prevRevCount) * 0.003);
       const variationFactor = 0.5 + Math.random();
-      // Limit the increment to a maximum of 10 (instead of 35)
-      const increment = Math.max(5, Math.floor(baseIncrement * variationFactor));
+      // Limit the increment to a maximum of 5 (instead of 10)
+      const increment = Math.max(2, Math.floor(baseIncrement * variationFactor));
       
       return Math.min(prevRevCount + increment, revenueCount);
     });
