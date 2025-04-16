@@ -44,24 +44,24 @@ const StatsCounter = ({
   }, []);
   
   useEffect(() => {
-    // Éviter les mises à jour trop fréquentes (au maximum toutes les 700ms)
-    // Augmenter le délai pour un affichage plus progressif
+    // Éviter les mises à jour trop fréquentes (au maximum toutes les 1000ms - un changement important)
+    // Augmenter considérablement le délai pour un affichage beaucoup plus progressif
     const now = Date.now();
-    const updateDelayMs = 700;
+    const updateDelayMs = 1000; // Augmenté de 700ms à 1000ms
     
     // Calculer l'écart pour déterminer si une mise à jour est nécessaire
     const adsDiff = Math.abs(displayedAdsCount - lastAdsValue.current);
     const revenueDiff = Math.abs(displayedRevenueCount - lastRevenueValue.current);
     
     // Définir des seuils minimum pour les mises à jour - valeurs plus élevées pour un changement plus lent
-    const minimumAdsChangeThreshold = 50;
-    const minimumRevenueChangeThreshold = 120;
+    const minimumAdsChangeThreshold = 100; // Augmenté de 50 à 100
+    const minimumRevenueChangeThreshold = 200; // Augmenté de 120 à 200
     
     // Mise à jour des annonces si l'écart est significatif et si le délai minimum est passé
     if ((adsDiff > minimumAdsChangeThreshold) && (now - lastAdsUpdate.current > updateDelayMs)) {
       // Simulation de bursts d'activité par moments (comme si plusieurs bots finissaient leurs tâches en même temps)
-      // Réduire la probabilité de burst et leur intensité
-      const burstFactor = Math.random() > 0.92 ? 1.8 : 1.0; // Réduit de 2.5 à 1.8
+      // Réduire encore la probabilité de burst et leur intensité
+      const burstFactor = Math.random() > 0.95 ? 1.5 : 1.0; // Réduit de 1.8 à 1.5, mais probabilité augmentée de 0.92 à 0.95
       
       // Éviter les sauts: effectuer une transition douce vers la nouvelle valeur
       const currentNumeric = parseInt(displayedAds.replace(/\s/g, ''), 10) || 0;
@@ -69,8 +69,8 @@ const StatsCounter = ({
       
       // Limiter le changement à un pourcentage maximum pour éviter les sauts trop grands
       // Mais permettre occasionnellement des bursts plus importants
-      // Réduire le changement maximal
-      const maxChange = Math.max(100, Math.floor(currentNumeric * 0.006 * burstFactor)); // Réduit de 0.008 à 0.006
+      // Réduire davantage le changement maximal
+      const maxChange = Math.max(100, Math.floor(currentNumeric * 0.004 * burstFactor)); // Réduit de 0.006 à 0.004
       
       let newValue;
       if (Math.abs(targetValue - currentNumeric) <= maxChange) {
@@ -98,9 +98,9 @@ const StatsCounter = ({
     if ((revenueDiff > minimumRevenueChangeThreshold) && (now - lastRevenueUpdate.current > updateDelayMs)) {
       // Simuler différentes catégories de valeur de publicités
       // Parfois des publicités premium à haute valeur sont analysées (d'où les pics)
-      // Réduire la probabilité de publicités premium
-      const premiumAdBurst = Math.random() > 0.96; // Réduit de 0.92 à 0.96
-      const burstFactor = premiumAdBurst ? 2.0 : 1.0; // Réduit de 3.0 à 2.0
+      // Réduire davantage la probabilité de publicités premium
+      const premiumAdBurst = Math.random() > 0.97; // Réduit de 0.96 à 0.97
+      const burstFactor = premiumAdBurst ? 1.8 : 1.0; // Réduit de 2.0 à 1.8
       
       // Extraire la valeur numérique actuelle
       const currentRevenueString = displayedRevenue.replace(/[^\d.,]/g, '').replace(',', '.');
@@ -108,8 +108,8 @@ const StatsCounter = ({
       const targetValue = displayedRevenueCount;
       
       // Limiter le changement avec possibilité de bursts pour les publicités premium
-      // Réduire le changement maximal
-      const maxChange = Math.max(150, Math.floor(currentNumeric * 0.005 * burstFactor)); // Réduit de 0.006 à 0.005
+      // Réduire davantage le changement maximal
+      const maxChange = Math.max(150, Math.floor(currentNumeric * 0.004 * burstFactor)); // Réduit de 0.005 à 0.004
       
       let newValue;
       if (Math.abs(targetValue - currentNumeric) <= maxChange) {
@@ -121,13 +121,13 @@ const StatsCounter = ({
       }
       
       // Ajouter une variation non-linéaire pour simuler les différentes catégories de publicités
-      // Réduire les variations
+      // Réduire davantage les variations
       if (premiumAdBurst) {
         // Simuler l'analyse d'un lot de publicités premium
-        newValue += Math.random() * 30; // Réduit de 40 à 30
+        newValue += Math.random() * 25; // Réduit de 30 à 25
       } else if (Math.random() > 0.75) {
         // Publicités de valeur moyenne
-        newValue += Math.random() * 10; // Réduit de 15 à 10
+        newValue += Math.random() * 8; // Réduit de 10 à 8
       }
       
       const formattedValue = formatRevenue(newValue);

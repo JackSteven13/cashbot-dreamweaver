@@ -21,12 +21,27 @@ export const scheduleMidnightReset = (
   
   // Schedule reset with initial values
   return setTimeout(() => {
-    const initialAdsCount = Math.floor(dailyAdsTarget * (0.10 + Math.random() * 0.05));
-    const initialRevenueCount = Math.floor(dailyRevenueTarget * (0.10 + Math.random() * 0.05));
+    // Vérifier si une réinitialisation a déjà été effectuée aujourd'hui
+    const today = new Date().toDateString();
+    const lastResetDate = localStorage.getItem(STORAGE_KEYS.RESET_DATE);
+    
+    // Si déjà réinitialisé aujourd'hui, ne pas réinitialiser à nouveau
+    if (lastResetDate === today) {
+      console.log("Counters were already reset today, skipping");
+      return;
+    }
+    
+    // Définir des valeurs initiales plus petites pour un démarrage plus lent
+    const initialAdsCount = Math.floor(dailyAdsTarget * (0.05 + Math.random() * 0.03)); // Réduit de 0.10-0.15 à 0.05-0.08
+    const initialRevenueCount = Math.floor(dailyRevenueTarget * (0.05 + Math.random() * 0.03)); // Réduit de 0.10-0.15 à 0.05-0.08
     
     // Stocker la date de réinitialisation
-    localStorage.setItem(STORAGE_KEYS.RESET_DATE, new Date().toDateString());
+    localStorage.setItem(STORAGE_KEYS.RESET_DATE, today);
     
+    // Appeler la fonction de réinitialisation
     resetCallback();
+    
+    // Planifier la prochaine réinitialisation
+    scheduleMidnightReset(resetCallback, dailyAdsTarget, dailyRevenueTarget);
   }, timeUntilMidnight);
 };

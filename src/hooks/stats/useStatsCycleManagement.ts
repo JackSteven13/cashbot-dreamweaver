@@ -44,8 +44,8 @@ export const useStatsCycleManagement = ({
     localStorage.setItem(STORAGE_KEYS.LAST_UPDATE_TIME, now.toString());
     
     // Calculer la base d'incrément basée sur les taux horaires
-    // Réduire légèrement le taux pour ralentir la progression
-    const baseHourlyRate = getTotalHourlyRate(activeLocations) * 0.95;
+    // Réduire fortement le taux pour ralentir significativement la progression
+    const baseHourlyRate = getTotalHourlyRate(activeLocations) * 0.65; // Réduit de 0.95 à 0.65
     let totalAdsIncrement = Math.floor((baseHourlyRate * timeDiff) / (3600 * 1000));
     let totalRevenue = 0;
     
@@ -55,16 +55,24 @@ export const useStatsCycleManagement = ({
       const locationAds = Math.floor(totalAdsIncrement * locationShare);
       
       // Vérifier l'activité de burst
+      // Réduire significativement la probabilité et l'intensité des bursts
       const burst = calculateBurstActivity(location);
-      const finalAds = burst ? Math.floor(locationAds * burst.multiplier) : locationAds;
+      const finalAds = burst ? Math.floor(locationAds * (burst.multiplier * 0.6)) : locationAds; // Réduit l'effet du burst de 40%
       
       totalRevenue += calculateRevenueForLocation(location, finalAds);
     });
     
-    setAdsCount(prev => prev + totalAdsIncrement);
-    setRevenueCount(prev => prev + totalRevenue);
+    // Ajouter une limitation supplémentaire pour éviter une croissance trop rapide
+    const maxAdsPerUpdate = Math.min(2500, Math.ceil(dailyAdsTarget * 0.003)); // Max 0.3% de la cible quotidienne
+    const maxRevenuePerUpdate = Math.min(5000, Math.ceil(dailyRevenueTarget * 0.003)); // Max 0.3% de la cible quotidienne
+    
+    const finalAdsIncrement = Math.min(totalAdsIncrement, maxAdsPerUpdate);
+    const finalRevenueIncrement = Math.min(totalRevenue, maxRevenuePerUpdate);
+    
+    setAdsCount(prev => prev + finalAdsIncrement);
+    setRevenueCount(prev => prev + finalRevenueIncrement);
     setLastUpdateTime(now);
-  }, [lastUpdateTime, setAdsCount, setRevenueCount]);
+  }, [lastUpdateTime, setAdsCount, setRevenueCount, dailyAdsTarget, dailyRevenueTarget]);
 
   const scheduleCycleUpdate = useCallback(() => {
     return scheduleMidnightReset(
