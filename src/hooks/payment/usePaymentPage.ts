@@ -103,10 +103,19 @@ export const usePaymentPage = () => {
     
     // Sauvegarder l'état du paiement
     localStorage.setItem('pendingPayment', 'true');
+    localStorage.setItem('lastStripeUrl', ''); // Sera rempli quand l'URL sera disponible
+    localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
     
     // Déclencher le processus de paiement
     handleStripeCheckout();
   };
+  
+  // Mettre à jour l'URL Stripe dans le stockage local dès qu'elle est disponible
+  useEffect(() => {
+    if (stripeCheckoutUrl) {
+      localStorage.setItem('lastStripeUrl', stripeCheckoutUrl);
+    }
+  }, [stripeCheckoutUrl]);
   
   return {
     selectedPlan,
