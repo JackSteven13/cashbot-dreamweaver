@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Copy, CheckCheck, Award, Users, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
@@ -237,3 +238,4 @@ const AffiliationLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals 
 };
 
 export default AffiliationLink;
+
