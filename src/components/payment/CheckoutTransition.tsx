@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, CreditCard, CheckCircle } from 'lucide-react';
@@ -32,8 +33,12 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
       // Notifier que la transition est terminée
       onComplete();
       
-      // Marquer comme prêt pour Stripe immédiatement
-      setReadyForStripe(true);
+      // Délai supplémentaire avant d'ouvrir Stripe pour une meilleure expérience utilisateur
+      const timer3 = setTimeout(() => {
+        setReadyForStripe(true);
+      }, 600);
+      
+      return () => clearTimeout(timer3);
     }, 1800);
     
     return () => {
@@ -45,7 +50,7 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
   // Ouvrir la page Stripe dès que nous sommes prêts
   useEffect(() => {
     if (readyForStripe && stripeUrl) {
-      // Redirection directe vers Stripe via window.location.href
+      // Ouvrir dans un nouvel onglet ou rediriger selon le device
       openStripeWindow(stripeUrl);
     }
   }, [readyForStripe, stripeUrl]);

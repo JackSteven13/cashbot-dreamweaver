@@ -19,9 +19,28 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     
     console.log(`Tentative d'ouverture de Stripe (${isMobile ? 'mobile' : 'desktop'}):`, stripeUrl);
     
-    // Solution radicale: redirection directe pour tous les appareils
-    // Cela garantit que la page Stripe se charge complètement
-    window.location.href = stripeUrl;
+    if (isMobile) {
+      // Sur mobile, utiliser une redirection directe
+      window.location.href = stripeUrl;
+    } else {
+      // Sur desktop, ouvrir dans un nouvel onglet
+      const newWindow = window.open(stripeUrl, "_blank");
+      
+      // Si l'ouverture échoue (bloqueur de popup), utiliser la redirection directe
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        console.log("Popup bloqué, utilisation de la redirection directe");
+        window.location.href = stripeUrl;
+      } else {
+        // Focus sur la nouvelle fenêtre
+        newWindow.focus();
+      }
+    }
+    
+    // Stocker l'URL dans localStorage pour récupération éventuelle
+    localStorage.setItem('lastStripeUrl', stripeUrl);
+    localStorage.setItem('pendingPayment', 'true');
+    localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
+    
     return true;
   } catch (error) {
     console.error("Erreur lors de l'ouverture de la fenêtre:", error);
