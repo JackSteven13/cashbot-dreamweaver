@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -49,17 +48,7 @@ export const usePaymentPage = () => {
         
         try {
           // Tenter de récupérer la session
-          const recovered = recoverStripeSession();
-          
-          if (!recovered) {
-            // Si la récupération automatique échoue, afficher l'assistant
-            setShowMobileHelper(true);
-            toast({
-              title: "Reprise du paiement",
-              description: "Vous pouvez reprendre votre paiement avec les options ci-dessous",
-              duration: 5000,
-            });
-          }
+          recoverStripeSession();
         } finally {
           setIsRecovering(false);
         }
