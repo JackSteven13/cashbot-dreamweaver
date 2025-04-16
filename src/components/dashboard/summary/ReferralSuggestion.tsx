@@ -71,7 +71,7 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
       <CardContent className="pt-0">
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
           {referralCount > 0 ? (
-            <>Vous avez <span className="font-semibold">{referralCount} filleul{referralCount > 1 ? 's' : ''}</span>. Continuez à inviter des amis pour augmenter vos gains.</>
+            <>Vous avez <span className="font-semibold">{referralCount} affilié{referralCount > 1 ? 's' : ''}</span>. Continuez à inviter des amis pour augmenter vos gains.</>
           ) : (
             <>Invitez environ <span className="font-semibold">{estimatedReferralsNeeded} personne{estimatedReferralsNeeded > 1 ? 's' : ''}</span> pour atteindre le seuil de retrait de {formatPrice(withdrawalThreshold)}.</>
           )}
@@ -96,4 +96,3 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
     </Card>
   );
 };
-
