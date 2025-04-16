@@ -11,7 +11,7 @@ interface StatPanelProps {
 const StatPanel = ({ value, label, className }: StatPanelProps) => {
   return (
     <div className={cn("glass-panel p-3 sm:p-6 rounded-xl text-center", className)}>
-      <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white truncate transition-all duration-1000 ease-in-out">
+      <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white truncate transition-all duration-1500 ease-out">
         {value}
       </div>
       <p className="text-xs sm:text-sm text-muted-foreground mt-1">{label}</p>
