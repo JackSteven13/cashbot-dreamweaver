@@ -3,18 +3,24 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface StatPanelProps {
-  value: string | number;
+  value: string;
   label: string;
   className?: string;
 }
 
 const StatPanel = ({ value, label, className }: StatPanelProps) => {
   return (
-    <div className={cn("glass-panel p-3 sm:p-6 rounded-xl text-center", className)}>
-      <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white truncate transition-all duration-1500 ease-out">
+    <div className={cn(
+      "bg-card/50 backdrop-blur-sm p-4 rounded-xl border border-border/50",
+      "transition-all duration-300 ease-in-out hover:border-primary/20",
+      className
+    )}>
+      <div className="text-2xl font-bold text-foreground">
         {value}
       </div>
-      <p className="text-xs sm:text-sm text-muted-foreground mt-1">{label}</p>
+      <div className="text-sm text-muted-foreground mt-1">
+        {label}
+      </div>
     </div>
   );
 };
