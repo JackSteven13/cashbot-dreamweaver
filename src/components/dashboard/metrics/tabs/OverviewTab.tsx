@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { TrendingUp, Calendar, Clock, ArrowUpRight, ChevronDown } from 'lucide-react';
@@ -110,7 +109,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
           <Card className="shadow-md border-slate-200 dark:border-slate-700">
             <CardHeader className="pb-2">
               <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-200">
-                Parrainages
+                Affiliations
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -186,7 +185,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-slate-600 dark:text-slate-300">
-                  Parrainages
+                  Affiliations
                 </span>
                 <span className="font-medium text-slate-700 dark:text-slate-300">
                   {referralCount}
