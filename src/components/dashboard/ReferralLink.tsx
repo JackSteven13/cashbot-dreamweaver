@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Copy, CheckCheck, Award, Users, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

@@ -25,7 +25,7 @@ const ReferralSystem: React.FC<ReferralSystemProps> = ({
     if (!referralLink) {
       toast({
         title: "Erreur",
-        description: "Lien de parrainage non disponible. Veuillez réessayer plus tard.",
+        description: "Lien d'affiliation non disponible. Veuillez réessayer plus tard.",
         variant: "destructive"
       });
       return;
@@ -35,7 +35,7 @@ const ReferralSystem: React.FC<ReferralSystemProps> = ({
     setCopied(true);
     toast({
       title: "Lien copié !",
-      description: "Votre lien de parrainage a été copié dans le presse-papier",
+      description: "Votre lien d'affiliation a été copié dans le presse-papier",
     });
     
     // Reset copied state after 2 seconds
@@ -57,12 +57,12 @@ const ReferralSystem: React.FC<ReferralSystemProps> = ({
             className="flex items-center gap-2" 
             size="sm"
           >
-            <span>Voir mon lien de parrainage</span>
+            <span>Voir mon lien d'affiliation</span>
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-md">
           <DialogTitle>
-            Votre lien de parrainage
+            Votre lien d'affiliation
           </DialogTitle>
           
           <div className="space-y-4 py-2">

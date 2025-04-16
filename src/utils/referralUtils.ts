@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { COMMISSION_RATES } from "@/components/dashboard/summary/constants";
 
 /**
- * Génère un lien de parrainage pour un utilisateur
+ * Génère un lien d'affiliation pour un utilisateur
  */
 export const generateReferralLink = (userId: string): string => {
   // Format du lien : URL de base + userId codé
@@ -12,11 +12,11 @@ export const generateReferralLink = (userId: string): string => {
 };
 
 /**
- * Récupère les parrainages d'un utilisateur
+ * Récupère les affiliations d'un utilisateur
  */
 export const fetchUserReferrals = async (userId: string): Promise<any[]> => {
   try {
-    // Récupérer les parrainages où l'utilisateur est le parrain
+    // Récupérer les affiliations où l'utilisateur est le parrain
     const { data, error } = await supabase
       .from('referrals')
       .select('*')
@@ -35,19 +35,19 @@ export const fetchUserReferrals = async (userId: string): Promise<any[]> => {
 };
 
 /**
- * Calcule le bonus de parrainage pour un utilisateur
+ * Calcule le bonus d'affiliation pour un utilisateur
  */
 export const calculateReferralBonus = (referrals: Array<any>): number => {
   if (!referrals || referrals.length === 0) return 0;
   
-  // Filtrer les parrainages actifs et calculer la somme des commissions
+  // Filtrer les affiliations actives et calculer la somme des commissions
   return referrals
     .filter(ref => ref.status === 'active')
     .reduce((total, ref) => total + (Number(ref.commission_rate) || 0), 0);
 };
 
 /**
- * Applique un bonus de parrainage au solde d'un utilisateur
+ * Applique un bonus d'affiliation au solde d'un utilisateur
  */
 export const applyReferralBonus = async (
   referrerId: string,
@@ -76,7 +76,7 @@ export const applyReferralBonus = async (
     const basePlanValue = getPlanBaseValue(planType);
     const commissionAmount = basePlanValue * commissionRate;
     
-    // Créer l'enregistrement de parrainage
+    // Créer l'enregistrement d'affiliation
     const { error: referralError } = await supabase
       .from('referrals')
       .insert([
@@ -101,7 +101,7 @@ export const applyReferralBonus = async (
         {
           user_id: referrerId,
           gain: commissionAmount,
-          report: `Commission de parrainage pour un abonnement ${planType}`
+          report: `Commission d'affiliation pour un abonnement ${planType}`
         }
       ]);
       

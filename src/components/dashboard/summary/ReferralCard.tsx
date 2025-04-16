@@ -22,7 +22,7 @@ const ReferralCard: React.FC<ReferralCardProps> = ({
     setCopied(true);
     toast({
       title: "Lien copié !",
-      description: "Votre lien de parrainage a été copié dans le presse-papier",
+      description: "Votre lien d'affiliation a été copié dans le presse-papier",
     });
     
     // Reset copied state after 2 seconds
@@ -35,7 +35,7 @@ const ReferralCard: React.FC<ReferralCardProps> = ({
     <div className="mt-4 bg-slate-800/60 rounded-lg p-4 border border-slate-700/50 shadow-lg">
       <div className="flex items-center mb-3">
         <Award className="text-amber-500 h-5 w-5 mr-2" />
-        <h3 className="text-lg font-semibold text-slate-200">Programme de parrainage</h3>
+        <h3 className="text-lg font-semibold text-slate-200">Programme d'affiliation</h3>
       </div>
       
       <p className="text-sm text-slate-300 mb-3">

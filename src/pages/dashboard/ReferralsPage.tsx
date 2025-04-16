@@ -33,7 +33,7 @@ const ReferralsPage = () => {
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
     toast({
-      title: "Lien de parrainage copié !"
+      title: "Lien d'affiliation copié !"
     });
     setTimeout(() => setCopied(false), 2000);
   };
@@ -57,21 +57,21 @@ const ReferralsPage = () => {
 
   return (
     <div className="w-full">
-      <h1 className="text-2xl font-bold mb-6">Programme de parrainage</h1>
+      <h1 className="text-2xl font-bold mb-6">Programme d'affiliation</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center">
               <Users className="mr-2 h-5 w-5" />
-              Parrainages
+              Affiliations
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
               {isLoading ? "..." : userData?.referrals?.length || 0}
             </div>
-            <p className="text-sm text-muted-foreground">Utilisateurs parrainés</p>
+            <p className="text-sm text-muted-foreground">Utilisateurs affiliés</p>
           </CardContent>
         </Card>
         
@@ -99,14 +99,14 @@ const ReferralsPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{commissionPercentage}%</div>
-            <p className="text-sm text-muted-foreground">Commission par parrainage</p>
+            <p className="text-sm text-muted-foreground">Commission par affiliation</p>
           </CardContent>
         </Card>
       </div>
       
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Votre lien de parrainage</CardTitle>
+          <CardTitle>Votre lien d'affiliation</CardTitle>
           <CardDescription>
             Partagez ce lien avec vos amis et gagnez jusqu'à {commissionPercentage}% de commission sur leurs abonnements
           </CardDescription>
