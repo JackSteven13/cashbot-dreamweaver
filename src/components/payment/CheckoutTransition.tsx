@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, CreditCard, CheckCircle } from 'lucide-react';
@@ -45,7 +46,7 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
   // Ouvrir la page Stripe dès que nous sommes prêts
   useEffect(() => {
     if (readyForStripe && stripeUrl) {
-      // Redirection directe vers Stripe pour éviter les problèmes de blocage de popup
+      // Force une redirection complète plutôt qu'un nouvel onglet
       openStripeWindow(stripeUrl);
     }
   }, [readyForStripe, stripeUrl]);

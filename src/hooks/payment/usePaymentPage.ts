@@ -14,16 +14,13 @@ export const usePaymentPage = () => {
   const [searchParams] = useSearchParams();
   const { user, isLoading: isAuthChecking } = useAuth();
   
-  // État pour suivre les récupérations de session
   const [isRecovering, setIsRecovering] = useState(false);
   const [showMobileHelper, setShowMobileHelper] = useState(false);
   
-  // Plan sélectionné depuis l'URL ou la session
   const planFromUrl = searchParams.get('plan');
   const [selectedPlan, setSelectedPlan] = useSessionStorage<PlanType>('selectedPlan', getPlanById(planFromUrl));
   const [currentSubscription, setCurrentSubscription] = useState<string | null>(null);
   
-  // Utiliser le hook Stripe checkout avec gestion des sessions interrompues
   const { 
     isStripeProcessing, 
     handleStripeCheckout,
@@ -33,21 +30,17 @@ export const usePaymentPage = () => {
     retryCount
   } = useStripeCheckout(selectedPlan);
   
-  // Vérifier s'il y a une session de paiement interrompue
   useEffect(() => {
     const checkPendingPayment = async () => {
-      // Ne pas récupérer si déjà en cours de récupération ou si une nouvelle session est en train de se créer
       if (isRecovering || isStripeProcessing || stripeCheckoutUrl) {
         return;
       }
       
-      // Vérifier si un paiement est en cours selon localStorage
       if (hasPendingStripePayment()) {
         console.log("Paiement en cours détecté, tentative de récupération");
         setIsRecovering(true);
         
         try {
-          // Tenter de récupérer la session
           recoverStripeSession();
         } finally {
           setIsRecovering(false);
@@ -55,12 +48,10 @@ export const usePaymentPage = () => {
       }
     };
     
-    // Tenter de récupérer une session après un court délai
     const timer = setTimeout(checkPendingPayment, 500);
     return () => clearTimeout(timer);
   }, [isStripeProcessing, stripeCheckoutUrl, isRecovering]);
   
-  // Vérifier le plan sélectionné depuis l'URL au chargement initial
   useEffect(() => {
     const planParam = searchParams.get('plan');
     if (planParam) {
@@ -72,14 +63,12 @@ export const usePaymentPage = () => {
     }
   }, [searchParams, setSelectedPlan]);
   
-  // Récupérer l'abonnement actuel de l'utilisateur
   useEffect(() => {
     if (actualSubscription) {
       setCurrentSubscription(actualSubscription);
     }
   }, [actualSubscription]);
   
-  // Gérer le checkout Stripe
   const initiateStripeCheckout = () => {
     if (!selectedPlan) {
       toast({
@@ -90,16 +79,13 @@ export const usePaymentPage = () => {
       return;
     }
     
-    // Sauvegarder l'état du paiement
     localStorage.setItem('pendingPayment', 'true');
-    localStorage.setItem('lastStripeUrl', ''); // Sera rempli quand l'URL sera disponible
+    localStorage.setItem('lastStripeUrl', '');
     localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
     
-    // Déclencher le processus de paiement
     handleStripeCheckout();
   };
   
-  // Mettre à jour l'URL Stripe dans le stockage local dès qu'elle est disponible
   useEffect(() => {
     if (stripeCheckoutUrl) {
       localStorage.setItem('lastStripeUrl', stripeCheckoutUrl);

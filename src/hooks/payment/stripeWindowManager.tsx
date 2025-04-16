@@ -19,9 +19,9 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     
     console.log(`Tentative d'ouverture de Stripe (${isMobile ? 'mobile' : 'desktop'}):`, stripeUrl);
     
-    // Forcer l'ouverture dans une nouvelle fenêtre/onglet quelle que soit la plateforme
-    // Cette approche est plus fiable pour assurer que Stripe s'ouvre complètement
-    window.location.href = stripeUrl;
+    // Solution radicale: redirection directe pour tous les appareils
+    // Cela garantit que la page Stripe se charge complètement
+    window.open(stripeUrl, "_self");
     return true;
   } catch (error) {
     console.error("Erreur lors de l'ouverture de la fenêtre:", error);
