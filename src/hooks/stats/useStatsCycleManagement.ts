@@ -66,7 +66,18 @@ export const useStatsCycleManagement = ({
     return resetTimeout;
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount, dailyAdsTarget, dailyRevenueTarget]);
 
+  // Utiliser un temps d'attente minimum entre les mises à jour pour éviter les fluctuations
+  let lastUpdateTimestamp = 0;
+  const minimumUpdateInterval = 8000; // 8 secondes minimum entre les incrémentations
+  
   const incrementCountersRandomly = useCallback(() => {
+    // Vérifier le temps écoulé depuis la dernière mise à jour
+    const now = Date.now();
+    if (now - lastUpdateTimestamp < minimumUpdateInterval) {
+      return; // Ne pas mettre à jour si l'intervalle minimum n'est pas écoulé
+    }
+    lastUpdateTimestamp = now;
+    
     // Distribution réaliste des annonces entre les pays
     setAdsCount(prevAdsCount => {
       // Ne pas dépasser l'objectif quotidien
@@ -74,24 +85,24 @@ export const useStatsCycleManagement = ({
       
       // Calcul du taux d'incrémentation en fonction de l'heure
       const currentHour = new Date().getHours();
-      let hourlyRate = 0.01; // Taux de base (1%)
+      let hourlyRate = 0.008; // Taux de base (0.8%)
       
       // Appliquer des variations selon l'heure de la journée
       if (currentHour >= 8 && currentHour <= 11) {
         // Matin: progression rapide
-        hourlyRate = 0.015;
+        hourlyRate = 0.012;
       } else if (currentHour >= 12 && currentHour <= 14) {
         // Midi: progression normale
-        hourlyRate = 0.012;
+        hourlyRate = 0.01;
       } else if (currentHour >= 15 && currentHour <= 19) {
         // Après-midi: progression rapide
-        hourlyRate = 0.014;
+        hourlyRate = 0.011;
       } else if (currentHour >= 20 && currentHour <= 23) {
         // Soir: progression normale
-        hourlyRate = 0.011;
+        hourlyRate = 0.009;
       } else {
         // Nuit: progression plus lente
-        hourlyRate = 0.007;
+        hourlyRate = 0.006;
       }
       
       // Objectif restant
@@ -100,8 +111,8 @@ export const useStatsCycleManagement = ({
       // Calcul du nombre d'annonces à traiter pour cet intervalle
       const baseAdsIncrement = Math.floor(remainingTarget * hourlyRate);
       
-      // Variation aléatoire (±20%)
-      const variationFactor = 0.8 + (Math.random() * 0.4);
+      // Variation aléatoire plus faible (±10% au lieu de ±20%)
+      const variationFactor = 0.9 + (Math.random() * 0.2);
       const totalAdsIncrement = Math.floor(baseAdsIncrement * variationFactor);
       
       // Répartition entre les pays
@@ -116,8 +127,8 @@ export const useStatsCycleManagement = ({
         // Base initiale pour ce pays
         const countryAdBase = Math.floor(totalAdsIncrement * countryShare);
         
-        // Variation spécifique au pays (±10%)
-        const countryVariation = 0.9 + (Math.random() * 0.2);
+        // Variation spécifique au pays (±5% au lieu de ±10%)
+        const countryVariation = 0.95 + (Math.random() * 0.1);
         
         // Nombre d'annonces traitées par ce pays
         const countryAds = Math.floor(countryAdBase * countryVariation * location.efficiency);
@@ -170,11 +181,16 @@ export const useStatsCycleManagement = ({
         const currentRatio = totalRevenue / totalAdsByCountry;
         const adjustmentFactor = expectedRatio / currentRatio;
         
-        // Appliquer un ajustement aléatoire supplémentaire (±5%)
-        const finalRevenue = totalRevenue * adjustmentFactor * (0.95 + Math.random() * 0.1);
+        // Appliquer un ajustement aléatoire plus restreint (±3% au lieu de ±5%)
+        const finalRevenue = totalRevenue * adjustmentFactor * (0.97 + Math.random() * 0.06);
         
-        // Calculer le nouveau total
-        return Math.min(prevRevenueCount + finalRevenue, dailyRevenueTarget);
+        // Calculer le nouveau total avec un plafond pour éviter les sauts
+        const maxAllowedIncrease = Math.min(
+          finalRevenue, 
+          prevRevenueCount * 0.015 // Limite à 1.5% d'augmentation par rapport à la valeur précédente
+        );
+        
+        return Math.min(prevRevenueCount + maxAllowedIncrease, dailyRevenueTarget);
       });
       
       return newAdsCount;

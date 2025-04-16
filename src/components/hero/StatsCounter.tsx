@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
 import { formatRevenue } from '@/utils/formatters';
@@ -21,21 +21,70 @@ const StatsCounter = ({
   const [displayedAds, setDisplayedAds] = useState("0");
   const [displayedRevenue, setDisplayedRevenue] = useState("0");
   
-  // Utiliser un effet distinct avec une dépendance de temps minime pour réduire
-  // la fréquence des mises à jour et éviter des fluctuations excessives
+  // Références pour stocker les valeurs précédentes et contrôler les mises à jour
+  const lastAdsUpdate = useRef<number>(0);
+  const lastRevenueUpdate = useRef<number>(0);
+  const lastAdsValue = useRef<number>(0);
+  const lastRevenueValue = useRef<number>(0);
+  
   useEffect(() => {
-    // Nouveau seuil pour éviter les mises à jour excessives
-    const minimumChangeThreshold = 10; // Ne mettre à jour que si le changement est significatif
-    const currentAdsNumeric = parseInt(displayedAds.replace(/\s/g, ''), 10) || 0;
+    // Éviter les mises à jour trop fréquentes (au maximum toutes les 800ms)
+    const now = Date.now();
+    const updateDelayMs = 800;
     
-    if (Math.abs(displayedAdsCount - currentAdsNumeric) > minimumChangeThreshold) {
-      setDisplayedAds(Math.round(displayedAdsCount).toLocaleString('fr-FR'));
+    // Calculer l'écart pour déterminer si une mise à jour est nécessaire
+    const adsDiff = Math.abs(displayedAdsCount - lastAdsValue.current);
+    const revenueDiff = Math.abs(displayedRevenueCount - lastRevenueValue.current);
+    
+    // Définir des seuils minimum pour les mises à jour
+    const minimumAdsChangeThreshold = 50;
+    const minimumRevenueChangeThreshold = 100;
+    
+    // Mise à jour des annonces si l'écart est significatif et si le délai minimum est passé
+    if ((adsDiff > minimumAdsChangeThreshold) && (now - lastAdsUpdate.current > updateDelayMs)) {
+      // Éviter les sauts: effectuer une transition douce vers la nouvelle valeur
+      const currentNumeric = parseInt(displayedAds.replace(/\s/g, ''), 10) || 0;
+      const targetValue = displayedAdsCount;
+      
+      // Limiter le changement à un pourcentage maximum pour éviter les sauts trop grands
+      const maxChange = Math.max(100, Math.floor(currentNumeric * 0.005)); // 0.5% maximum ou 100 minimum
+      
+      let newValue;
+      if (Math.abs(targetValue - currentNumeric) <= maxChange) {
+        newValue = targetValue;
+      } else if (targetValue > currentNumeric) {
+        newValue = currentNumeric + maxChange;
+      } else {
+        newValue = currentNumeric - maxChange;
+      }
+      
+      setDisplayedAds(Math.round(newValue).toLocaleString('fr-FR'));
+      lastAdsUpdate.current = now;
+      lastAdsValue.current = newValue;
     }
     
-    // Formater le revenu uniquement lors de changements significatifs
-    const currentRevenueNumeric = parseFloat(displayedRevenue.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-    if (Math.abs(displayedRevenueCount - currentRevenueNumeric) > minimumChangeThreshold * 2) {
-      setDisplayedRevenue(formatRevenue(displayedRevenueCount));
+    // Même logique pour le revenu
+    if ((revenueDiff > minimumRevenueChangeThreshold) && (now - lastRevenueUpdate.current > updateDelayMs)) {
+      // Extraire la valeur numérique actuelle
+      const currentRevenueString = displayedRevenue.replace(/[^\d.,]/g, '').replace(',', '.');
+      const currentNumeric = parseFloat(currentRevenueString) || 0;
+      const targetValue = displayedRevenueCount;
+      
+      // Limiter le changement à un pourcentage maximum
+      const maxChange = Math.max(200, Math.floor(currentNumeric * 0.005)); // 0.5% maximum ou 200 minimum
+      
+      let newValue;
+      if (Math.abs(targetValue - currentNumeric) <= maxChange) {
+        newValue = targetValue;
+      } else if (targetValue > currentNumeric) {
+        newValue = currentNumeric + maxChange;
+      } else {
+        newValue = currentNumeric - maxChange;
+      }
+      
+      setDisplayedRevenue(formatRevenue(newValue));
+      lastRevenueUpdate.current = now;
+      lastRevenueValue.current = newValue;
     }
   }, [displayedAdsCount, displayedRevenueCount, displayedAds, displayedRevenue]);
 
