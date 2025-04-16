@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 interface UseStatsInitializationParams {
   dailyAdsTarget: number;
@@ -18,6 +18,14 @@ interface UseStatsInitializationResult {
   initializeCounters: () => void;
 }
 
+// Clés pour le stockage local
+const STORAGE_KEYS = {
+  ADS_COUNT: 'stats_ads_count',
+  REVENUE_COUNT: 'stats_revenue_count',
+  LAST_UPDATE: 'stats_last_update',
+  RESET_DATE: 'stats_reset_date'
+};
+
 export const useStatsInitialization = ({
   dailyAdsTarget,
   dailyRevenueTarget
@@ -27,8 +35,70 @@ export const useStatsInitialization = ({
   const [displayedAdsCount, setDisplayedAdsCount] = useState<number>(0);
   const [displayedRevenueCount, setDisplayedRevenueCount] = useState<number>(0);
   
+  // Fonction pour récupérer les valeurs stockées dans localStorage
+  const loadStoredValues = useCallback(() => {
+    try {
+      const storedAdsCount = localStorage.getItem(STORAGE_KEYS.ADS_COUNT);
+      const storedRevenueCount = localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT);
+      const storedLastUpdate = localStorage.getItem(STORAGE_KEYS.LAST_UPDATE);
+      const storedResetDate = localStorage.getItem(STORAGE_KEYS.RESET_DATE);
+      
+      const today = new Date().toDateString();
+      
+      // Vérifier si nous avons déjà fait une réinitialisation aujourd'hui
+      if (storedResetDate !== today) {
+        // Si la dernière réinitialisation n'était pas aujourd'hui, on peut procéder normalement
+        return { hasStoredValues: false };
+      }
+      
+      if (storedAdsCount && storedRevenueCount) {
+        const parsedAdsCount = parseInt(storedAdsCount, 10);
+        const parsedRevenueCount = parseInt(storedRevenueCount, 10);
+        
+        if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount)) {
+          console.log(`Loaded stored values: Ads=${parsedAdsCount}, Revenue=${parsedRevenueCount}`);
+          return {
+            hasStoredValues: true,
+            adsCount: parsedAdsCount,
+            revenueCount: parsedRevenueCount,
+            lastUpdate: storedLastUpdate ? parseInt(storedLastUpdate, 10) : Date.now()
+          };
+        }
+      }
+      return { hasStoredValues: false };
+    } catch (e) {
+      console.error("Error loading stored values:", e);
+      return { hasStoredValues: false };
+    }
+  }, []);
+  
+  // Fonction pour sauvegarder les valeurs dans localStorage
+  const saveValues = useCallback((ads: number, revenue: number) => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.ADS_COUNT, ads.toString());
+      localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, revenue.toString());
+      localStorage.setItem(STORAGE_KEYS.LAST_UPDATE, Date.now().toString());
+      localStorage.setItem(STORAGE_KEYS.RESET_DATE, new Date().toDateString());
+    } catch (e) {
+      console.error("Error saving values to localStorage:", e);
+    }
+  }, []);
+  
   // Calculer la progression actuelle en fonction de l'heure du jour
   const calculateInitialValues = useCallback(() => {
+    // Vérifier d'abord si nous avons des valeurs stockées
+    const storedValues = loadStoredValues();
+    
+    if (storedValues.hasStoredValues) {
+      // Utiliser les valeurs stockées
+      setAdsCount(storedValues.adsCount);
+      setRevenueCount(storedValues.revenueCount);
+      setDisplayedAdsCount(storedValues.adsCount);
+      setDisplayedRevenueCount(storedValues.revenueCount);
+      return;
+    }
+    
+    // Si pas de valeurs stockées, calculer de nouvelles valeurs
     // Obtenir l'heure actuelle (0-23)
     const currentHour = new Date().getHours();
     
@@ -69,13 +139,23 @@ export const useStatsInitialization = ({
     setDisplayedAdsCount(initialAds);
     setDisplayedRevenueCount(initialRevenue);
     
+    // Sauvegarder les valeurs initiales
+    saveValues(initialAds, initialRevenue);
+    
     console.log(`Initialized counters: Ads=${initialAds}, Revenue=${initialRevenue}`);
-  }, [dailyAdsTarget, dailyRevenueTarget]);
+  }, [dailyAdsTarget, dailyRevenueTarget, loadStoredValues, saveValues]);
   
   // Fonction pour initialiser les compteurs
   const initializeCounters = useCallback(() => {
     calculateInitialValues();
   }, [calculateInitialValues]);
+  
+  // Effet pour mettre à jour le stockage local lorsque les compteurs changent
+  useEffect(() => {
+    if (adsCount > 0 && revenueCount > 0) {
+      saveValues(adsCount, revenueCount);
+    }
+  }, [adsCount, revenueCount, saveValues]);
   
   return {
     adsCount,

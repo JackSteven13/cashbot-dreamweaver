@@ -15,6 +15,11 @@ interface UseStatsCycleManagementParams {
   dailyRevenueTarget: number;
 }
 
+// Clés pour le stockage local
+const STORAGE_KEYS = {
+  LAST_UPDATE_TIME: 'stats_last_update_time'
+};
+
 export const useStatsCycleManagement = ({
   setAdsCount,
   setRevenueCount,
@@ -23,23 +28,33 @@ export const useStatsCycleManagement = ({
   dailyAdsTarget,
   dailyRevenueTarget
 }: UseStatsCycleManagementParams) => {
-  const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
+  // Charger le dernier temps de mise à jour depuis localStorage ou utiliser le temps actuel
+  const initialLastUpdateTime = (() => {
+    const storedTime = localStorage.getItem(STORAGE_KEYS.LAST_UPDATE_TIME);
+    return storedTime ? parseInt(storedTime, 10) : Date.now();
+  })();
+  
+  const [lastUpdateTime, setLastUpdateTime] = useState(initialLastUpdateTime);
 
   const incrementCountersRandomly = useCallback(() => {
     const now = Date.now();
     const timeDiff = now - lastUpdateTime;
     
-    // Calculate base increment based on hourly rates
-    const baseHourlyRate = getTotalHourlyRate(activeLocations);
+    // Sauvegarder le dernier temps de mise à jour dans localStorage
+    localStorage.setItem(STORAGE_KEYS.LAST_UPDATE_TIME, now.toString());
+    
+    // Calculer la base d'incrément basée sur les taux horaires
+    // Réduire légèrement le taux pour ralentir la progression
+    const baseHourlyRate = getTotalHourlyRate(activeLocations) * 0.95;
     let totalAdsIncrement = Math.floor((baseHourlyRate * timeDiff) / (3600 * 1000));
     let totalRevenue = 0;
     
-    // Distribute ads across locations and calculate revenue
+    // Distribuer les annonces entre les emplacements et calculer les revenus
     activeLocations.forEach(location => {
       const locationShare = location.weight / activeLocations.reduce((sum, loc) => sum + loc.weight, 0);
       const locationAds = Math.floor(totalAdsIncrement * locationShare);
       
-      // Check for burst activity
+      // Vérifier l'activité de burst
       const burst = calculateBurstActivity(location);
       const finalAds = burst ? Math.floor(locationAds * burst.multiplier) : locationAds;
       
@@ -58,6 +73,12 @@ export const useStatsCycleManagement = ({
         setRevenueCount(0);
         setDisplayedAdsCount(0);
         setDisplayedRevenueCount(0);
+        
+        // Effacer les valeurs stockées dans localStorage lors de la réinitialisation
+        localStorage.removeItem('stats_ads_count');
+        localStorage.removeItem('stats_revenue_count');
+        localStorage.removeItem('displayed_ads_count');
+        localStorage.removeItem('displayed_revenue_count');
       },
       dailyAdsTarget,
       dailyRevenueTarget
@@ -69,4 +90,3 @@ export const useStatsCycleManagement = ({
     incrementCountersRandomly
   };
 };
-

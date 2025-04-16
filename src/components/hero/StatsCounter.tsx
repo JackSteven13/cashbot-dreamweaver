@@ -28,23 +28,40 @@ const StatsCounter = ({
   const lastRevenueValue = useRef<number>(0);
   
   useEffect(() => {
-    // Éviter les mises à jour trop fréquentes (au maximum toutes les 500ms)
-    // Réduction du délai pour plus de réactivité mais avec des seuils
+    // Utiliser les valeurs stockées dans localStorage au montage initial
+    const storedAds = localStorage.getItem('displayed_ads_count');
+    const storedRevenue = localStorage.getItem('displayed_revenue_count');
+    
+    if (storedAds) {
+      setDisplayedAds(storedAds);
+      lastAdsValue.current = parseInt(storedAds.replace(/\s/g, ''), 10) || 0;
+    }
+    
+    if (storedRevenue) {
+      setDisplayedRevenue(storedRevenue);
+      lastRevenueValue.current = parseInt(storedRevenue.replace(/[^\d.,]/g, '').replace(',', '.'), 10) || 0;
+    }
+  }, []);
+  
+  useEffect(() => {
+    // Éviter les mises à jour trop fréquentes (au maximum toutes les 700ms)
+    // Augmenter le délai pour un affichage plus progressif
     const now = Date.now();
-    const updateDelayMs = 500;
+    const updateDelayMs = 700;
     
     // Calculer l'écart pour déterminer si une mise à jour est nécessaire
     const adsDiff = Math.abs(displayedAdsCount - lastAdsValue.current);
     const revenueDiff = Math.abs(displayedRevenueCount - lastRevenueValue.current);
     
-    // Définir des seuils minimum pour les mises à jour - valeurs plus basses pour plus de réactivité
-    const minimumAdsChangeThreshold = 30;
-    const minimumRevenueChangeThreshold = 80;
+    // Définir des seuils minimum pour les mises à jour - valeurs plus élevées pour un changement plus lent
+    const minimumAdsChangeThreshold = 50;
+    const minimumRevenueChangeThreshold = 120;
     
     // Mise à jour des annonces si l'écart est significatif et si le délai minimum est passé
     if ((adsDiff > minimumAdsChangeThreshold) && (now - lastAdsUpdate.current > updateDelayMs)) {
       // Simulation de bursts d'activité par moments (comme si plusieurs bots finissaient leurs tâches en même temps)
-      const burstFactor = Math.random() > 0.85 ? 2.5 : 1.0;
+      // Réduire la probabilité de burst et leur intensité
+      const burstFactor = Math.random() > 0.92 ? 1.8 : 1.0; // Réduit de 2.5 à 1.8
       
       // Éviter les sauts: effectuer une transition douce vers la nouvelle valeur
       const currentNumeric = parseInt(displayedAds.replace(/\s/g, ''), 10) || 0;
@@ -52,7 +69,8 @@ const StatsCounter = ({
       
       // Limiter le changement à un pourcentage maximum pour éviter les sauts trop grands
       // Mais permettre occasionnellement des bursts plus importants
-      const maxChange = Math.max(120, Math.floor(currentNumeric * 0.008 * burstFactor));
+      // Réduire le changement maximal
+      const maxChange = Math.max(100, Math.floor(currentNumeric * 0.006 * burstFactor)); // Réduit de 0.008 à 0.006
       
       let newValue;
       if (Math.abs(targetValue - currentNumeric) <= maxChange) {
@@ -66,9 +84,13 @@ const StatsCounter = ({
       // Ajouter une légère variation aléatoire (+/- 5 annonces)
       newValue = newValue + (Math.floor(Math.random() * 11) - 5);
       
-      setDisplayedAds(Math.round(newValue).toLocaleString('fr-FR'));
+      const formattedValue = Math.round(newValue).toLocaleString('fr-FR');
+      setDisplayedAds(formattedValue);
       lastAdsUpdate.current = now;
       lastAdsValue.current = newValue;
+      
+      // Stocker la valeur affichée dans localStorage
+      localStorage.setItem('displayed_ads_count', formattedValue);
     }
     
     // Même logique pour le revenu, mais avec des variations plus spécifiques pour simuler
@@ -76,8 +98,9 @@ const StatsCounter = ({
     if ((revenueDiff > minimumRevenueChangeThreshold) && (now - lastRevenueUpdate.current > updateDelayMs)) {
       // Simuler différentes catégories de valeur de publicités
       // Parfois des publicités premium à haute valeur sont analysées (d'où les pics)
-      const premiumAdBurst = Math.random() > 0.92;
-      const burstFactor = premiumAdBurst ? 3.0 : 1.0;
+      // Réduire la probabilité de publicités premium
+      const premiumAdBurst = Math.random() > 0.96; // Réduit de 0.92 à 0.96
+      const burstFactor = premiumAdBurst ? 2.0 : 1.0; // Réduit de 3.0 à 2.0
       
       // Extraire la valeur numérique actuelle
       const currentRevenueString = displayedRevenue.replace(/[^\d.,]/g, '').replace(',', '.');
@@ -85,7 +108,8 @@ const StatsCounter = ({
       const targetValue = displayedRevenueCount;
       
       // Limiter le changement avec possibilité de bursts pour les publicités premium
-      const maxChange = Math.max(180, Math.floor(currentNumeric * 0.006 * burstFactor));
+      // Réduire le changement maximal
+      const maxChange = Math.max(150, Math.floor(currentNumeric * 0.005 * burstFactor)); // Réduit de 0.006 à 0.005
       
       let newValue;
       if (Math.abs(targetValue - currentNumeric) <= maxChange) {
@@ -97,17 +121,22 @@ const StatsCounter = ({
       }
       
       // Ajouter une variation non-linéaire pour simuler les différentes catégories de publicités
+      // Réduire les variations
       if (premiumAdBurst) {
         // Simuler l'analyse d'un lot de publicités premium
-        newValue += Math.random() * 40;
+        newValue += Math.random() * 30; // Réduit de 40 à 30
       } else if (Math.random() > 0.75) {
         // Publicités de valeur moyenne
-        newValue += Math.random() * 15;
+        newValue += Math.random() * 10; // Réduit de 15 à 10
       }
       
-      setDisplayedRevenue(formatRevenue(newValue));
+      const formattedValue = formatRevenue(newValue);
+      setDisplayedRevenue(formattedValue);
       lastRevenueUpdate.current = now;
       lastRevenueValue.current = newValue;
+      
+      // Stocker la valeur affichée dans localStorage
+      localStorage.setItem('displayed_revenue_count', formattedValue);
     }
   }, [displayedAdsCount, displayedRevenueCount, displayedAds, displayedRevenue]);
 
