@@ -8,21 +8,21 @@ interface UseStatsAnimationParams {
   setDisplayedRevenueCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
-// Calculer un incrément approprié pour une animation fluide
+// Calculer un incrément approprié pour une animation fluide et progressive
 const calculateCounterIncrement = (targetCount: number, currentCount: number): number => {
   // Différence entre la valeur cible et actuelle
   const difference = targetCount - currentCount;
   
   // Si la différence est très faible, ne pas bouger
-  if (Math.abs(difference) < 2) return 0;
+  if (Math.abs(difference) < 0.5) return 0;
   
-  // Pour des animations naturelles:
-  // - Grandes différences: incrément plus grand (0.5% de la différence)
+  // Pour des animations naturelles et plus graduelles:
+  // - Grandes différences: incrément plus petit (0.15% de la différence)
   // - Petites différences: incrément minimal
-  const baseIncrement = Math.max(1, Math.ceil(Math.abs(difference) * 0.005));
+  const baseIncrement = Math.max(1, Math.ceil(Math.abs(difference) * 0.0015));
   
   // Limiter à un maximum raisonnable pour éviter des sauts trop grands
-  const maxIncrement = Math.max(1, Math.floor(Math.abs(difference) / 10));
+  const maxIncrement = Math.max(1, Math.floor(Math.abs(difference) / 50));
   
   // Retourner l'incrément avec le signe approprié
   return difference > 0 ? 
@@ -36,7 +36,7 @@ export const useStatsAnimation = ({
   setDisplayedAdsCount,
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
-  // Track animation state locally
+  // Track animation state locally for comparison
   const [prevAdsCount, setPrevAdsCount] = useState(0);
   const [prevRevenueCount, setPrevRevenueCount] = useState(0);
   
@@ -89,7 +89,7 @@ export const useStatsAnimation = ({
       return finalValue;
     });
 
-    // Indiquer si l'animation est toujours active
+    // Indiquer si l'animation est toujours active en comparant avec les valeurs précédentes stockées
     return { 
       animationActive: adsCount !== 0 && revenueCount !== 0 && 
                       (adsCount !== prevAdsCount || revenueCount !== prevRevenueCount)

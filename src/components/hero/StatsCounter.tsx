@@ -21,12 +21,23 @@ const StatsCounter = ({
   const [displayedAds, setDisplayedAds] = useState("0");
   const [displayedRevenue, setDisplayedRevenue] = useState("0");
   
-  // Mettre à jour les valeurs affichées immédiatement
+  // Utiliser un effet distinct avec une dépendance de temps minime pour réduire
+  // la fréquence des mises à jour et éviter des fluctuations excessives
   useEffect(() => {
-    // Formater les valeurs pour l'affichage
-    setDisplayedAds(Math.round(displayedAdsCount).toLocaleString('fr-FR'));
-    setDisplayedRevenue(formatRevenue(displayedRevenueCount));
-  }, [displayedAdsCount, displayedRevenueCount]);
+    // Nouveau seuil pour éviter les mises à jour excessives
+    const minimumChangeThreshold = 10; // Ne mettre à jour que si le changement est significatif
+    const currentAdsNumeric = parseInt(displayedAds.replace(/\s/g, ''), 10) || 0;
+    
+    if (Math.abs(displayedAdsCount - currentAdsNumeric) > minimumChangeThreshold) {
+      setDisplayedAds(Math.round(displayedAdsCount).toLocaleString('fr-FR'));
+    }
+    
+    // Formater le revenu uniquement lors de changements significatifs
+    const currentRevenueNumeric = parseFloat(displayedRevenue.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    if (Math.abs(displayedRevenueCount - currentRevenueNumeric) > minimumChangeThreshold * 2) {
+      setDisplayedRevenue(formatRevenue(displayedRevenueCount));
+    }
+  }, [displayedAdsCount, displayedRevenueCount, displayedAds, displayedRevenue]);
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-8 w-full max-w-lg mb-6 md:mb-8 animate-slide-up">
