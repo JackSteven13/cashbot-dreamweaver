@@ -15,7 +15,7 @@ export const useStripeCheckout = (selectedPlan: PlanType | null) => {
   const [actualSubscription, setActualSubscription] = useState<string | null>(null);
   const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 3; // Réduit pour éviter les attentes trop longues
+  const MAX_RETRIES = 3;
   const RETRY_DELAY = 800;
 
   // Check current subscription from Supabase

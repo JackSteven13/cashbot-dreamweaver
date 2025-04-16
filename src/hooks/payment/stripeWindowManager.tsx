@@ -21,7 +21,7 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     
     // Solution radicale: redirection directe pour tous les appareils
     // Cela garantit que la page Stripe se charge complètement
-    window.open(stripeUrl, "_self");
+    window.location.href = stripeUrl;
     return true;
   } catch (error) {
     console.error("Erreur lors de l'ouverture de la fenêtre:", error);
