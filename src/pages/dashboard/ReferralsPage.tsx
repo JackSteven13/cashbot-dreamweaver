@@ -142,7 +142,7 @@ const ReferralsPage = () => {
       
       <Card>
         <CardHeader>
-          <CardTitle>Vos filleuls</CardTitle>
+          <CardTitle>Vos affiliés</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -163,7 +163,7 @@ const ReferralsPage = () => {
             </div>
           ) : (
             <div className="py-8 text-center text-muted-foreground">
-              Vous n'avez pas encore de filleuls.
+              Vous n'avez pas encore d'affiliés.
             </div>
           )}
         </CardContent>

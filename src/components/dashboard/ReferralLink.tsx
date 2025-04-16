@@ -182,7 +182,7 @@ const AffiliationLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals 
             <div className="bg-amber-50 dark:bg-amber-900/20 p-2 sm:p-3 rounded-md border border-amber-100 dark:border-amber-800/50 flex items-start gap-2">
               <div>
                 <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300 font-medium">Gagnez 20% de commission</p>
-                <p className="text-xs text-amber-700 dark:text-amber-400">Sans limite de filleuls!</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">Sans limite d'affiliés!</p>
               </div>
             </div>
             <div className="bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-3 rounded-md border border-blue-100 dark:border-blue-800/50 flex items-start gap-2">
@@ -227,7 +227,7 @@ const AffiliationLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals 
                 <li>Vos amis créent un compte et s'abonnent</li>
                 <li>Vous recevez 20% de leur abonnement</li>
                 <li>Les commissions sont ajoutées à votre solde chaque mois</li>
-                <li>Augmentez vos revenus passifs avec chaque nouveau membre affilié</li>
+                <li>Augmentez vos revenus passifs avec chaque nouvel affilié</li>
               </ol>
             </AccordionContent>
           </AccordionItem>

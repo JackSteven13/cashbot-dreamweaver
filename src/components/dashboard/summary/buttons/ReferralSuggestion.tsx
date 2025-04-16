@@ -17,10 +17,10 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
   referralCount = 0,
   withdrawalThreshold = 200
 }) => {
-  // Calculer le nombre approximatif de parrainages nécessaires pour atteindre le seuil
+  // Calculer le nombre approximatif d'affiliations nécessaires pour atteindre le seuil
   const estimatedReferralsNeeded = Math.max(0, Math.ceil((withdrawalThreshold - 0) / 50));
   
-  // S'assurer qu'un lien de parrainage est toujours disponible
+  // S'assurer qu'un lien d'affiliation est toujours disponible
   const displayLink = referralLink || `${window.location.origin}/register?ref=generate`;
   
   // Fonction pour copier le lien
@@ -29,7 +29,7 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
       navigator.clipboard.writeText(displayLink);
       toast({
         title: "Lien copié !",
-        description: "Votre lien de parrainage a été copié dans le presse-papier"
+        description: "Votre lien d'affiliation a été copié dans le presse-papier"
       });
     } catch (error) {
       console.error("Erreur lors de la copie:", error);
@@ -46,7 +46,7 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
         document.execCommand('copy');
         toast({
           title: "Lien copié !",
-          description: "Votre lien de parrainage a été copié dans le presse-papier"
+          description: "Votre lien d'affiliation a été copié dans le presse-papier"
         });
       } catch (err) {
         toast({
@@ -65,15 +65,15 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center">
           <Users className="h-5 w-5 mr-2 text-purple-500" />
-          Programme de parrainage
+          Programme d'affiliation
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
           {referralCount > 0 ? (
-            <>Vous avez <span className="font-semibold">{referralCount} filleul{referralCount > 1 ? 's' : ''}</span>. Continuez à inviter des amis pour augmenter vos gains.</>
+            <>Vous avez <span className="font-semibold">{referralCount} affilié{referralCount > 1 ? 's' : ''}</span>. Continuez à inviter des amis pour augmenter vos gains.</>
           ) : (
-            <>Parrainez environ <span className="font-semibold">{estimatedReferralsNeeded} personne{estimatedReferralsNeeded > 1 ? 's' : ''}</span> pour atteindre le seuil de retrait de {formatPrice(withdrawalThreshold)}.</>
+            <>Invitez environ <span className="font-semibold">{estimatedReferralsNeeded} personne{estimatedReferralsNeeded > 1 ? 's' : ''}</span> pour atteindre le seuil de retrait de {formatPrice(withdrawalThreshold)}.</>
           )}
         </p>
         <div className="text-sm font-medium">

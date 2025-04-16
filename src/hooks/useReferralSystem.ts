@@ -14,7 +14,7 @@ export const useReferralSystem = (userId?: string): UseReferralSystemReturn => {
   const [referrals, setReferrals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
-  // Générer le lien de parrainage
+  // Générer le lien d'affiliation
   useEffect(() => {
     if (userId) {
       const link = generateReferralLink(userId);
@@ -22,7 +22,7 @@ export const useReferralSystem = (userId?: string): UseReferralSystemReturn => {
     }
   }, [userId]);
   
-  // Charger les parrainages
+  // Charger les affiliations
   const fetchReferrals = useCallback(async () => {
     if (!userId) {
       setIsLoading(false);
@@ -34,7 +34,7 @@ export const useReferralSystem = (userId?: string): UseReferralSystemReturn => {
       const data = await fetchUserReferrals(userId);
       setReferrals(data || []);
     } catch (error) {
-      console.error("Erreur lors du chargement des parrainages:", error);
+      console.error("Erreur lors du chargement des affiliations:", error);
       setReferrals([]);
     } finally {
       setIsLoading(false);

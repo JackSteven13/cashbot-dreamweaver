@@ -109,7 +109,7 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
         {level2Commission > 0 && (
           <p className="text-xs text-amber-700 mt-1 flex items-center">
             <Users className="h-3.5 w-3.5 mr-1.5 text-amber-600" />
-            <span>Bonus niveau 2 : gagnez <span className="font-bold">{Math.round(level2Commission * 100)}%</span> sur les abonnements des filleuls de vos filleuls !</span>
+            <span>Bonus niveau 2 : gagnez <span className="font-bold">{Math.round(level2Commission * 100)}%</span> sur les abonnements des affiliés de vos affiliés !</span>
           </p>
         )}
       </div>
@@ -172,4 +172,3 @@ const ReferralLink: React.FC<ReferralLinkProps> = ({
 };
 
 export default ReferralLink;
-
