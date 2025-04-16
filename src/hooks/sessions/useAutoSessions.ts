@@ -1,8 +1,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { calculateSessionGain, generateSessionReport } from '@/utils/sessions';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import balanceManager from '@/utils/balance/balanceManager';
+import { calculateSessionGain, generateSessionReport } from '@/utils/sessions';
 
 interface UseAutoSessionsProps {
   userData: any;
@@ -44,11 +44,11 @@ export const useAutoSessions = ({
       const subscription = userData.subscription || 'freemium';
       const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
-      // Calculate session gain based on subscription and activity
-      const sessionGain = calculateSessionGain(subscription, activityLevel);
+      // Calculate session gain based on subscription
+      const sessionGain = calculateSessionGain(subscription);
       
       // Generate report with details
-      const sessionReport = generateSessionReport('Bot', subscription);
+      const sessionReport = generateSessionReport('Auto', subscription);
       
       // Update total daily gains
       todaysGainsRef.current += sessionGain;
@@ -86,7 +86,7 @@ export const useAutoSessions = ({
       console.error('Error generating automatic revenue:', error);
       return { success: false, error };
     }
-  }, [userData, updateBalance, setShowLimitAlert, activityLevel]);
+  }, [userData, updateBalance, setShowLimitAlert]);
   
   // Effect to handle bot activity level
   useEffect(() => {

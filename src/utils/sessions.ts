@@ -68,4 +68,3 @@ export const checkSessionLimit = (dailySessionCount: number, subscription = 'fre
   // Check if limit reached
   return dailySessionCount >= limit;
 };
-

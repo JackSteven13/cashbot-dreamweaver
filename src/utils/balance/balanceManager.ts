@@ -1,256 +1,179 @@
 
 /**
- * Central balance manager for consistent balance tracking across the application
+ * Balance Manager Module
+ * Provides consistent tracking and management of user balance across the application
  */
-const balanceManager = (() => {
-  // Private variables
-  let currentBalance = 0;
-  let highestBalance = 0;
-  let lastUpdateTime = 0;
-  let dailyGains = 0;
+
+// Balance state storage keys
+const CURRENT_BALANCE_KEY = 'currentBalance';
+const HIGHEST_BALANCE_KEY = 'highestBalance';
+const DAILY_GAINS_KEY = 'dailyGains';
+const LAST_UPDATE_KEY = 'lastBalanceUpdate';
+
+// Get current balance from local storage or return 0
+const getCurrentBalance = () => {
+  const storedBalance = localStorage.getItem(CURRENT_BALANCE_KEY);
+  return storedBalance ? parseFloat(storedBalance) : 0;
+};
+
+// Get highest recorded balance from local storage
+const getHighestBalance = () => {
+  const storedHighest = localStorage.getItem(HIGHEST_BALANCE_KEY);
+  return storedHighest ? parseFloat(storedHighest) : 0;
+};
+
+// Get daily gains from local storage
+const getDailyGains = () => {
+  const storedGains = localStorage.getItem(DAILY_GAINS_KEY);
+  return storedGains ? parseFloat(storedGains) : 0;
+};
+
+// Add to daily gains and update storage
+const addDailyGain = (gain: number) => {
+  const currentGains = getDailyGains();
+  const newGains = currentGains + gain;
   
-  // Initialize from localStorage if available
-  try {
-    const storedBalance = localStorage.getItem('currentBalance');
-    const storedHighestBalance = localStorage.getItem('highestBalance');
-    const storedDailyGains = localStorage.getItem('dailyGains');
-    
-    if (storedBalance) {
-      currentBalance = parseFloat(storedBalance);
-    }
-    
-    if (storedHighestBalance) {
-      highestBalance = parseFloat(storedHighestBalance);
-    }
-    
-    if (storedDailyGains) {
-      dailyGains = parseFloat(storedDailyGains);
-    }
-    
-    // Always use the highest value
-    currentBalance = Math.max(currentBalance, highestBalance);
-    highestBalance = currentBalance;
-  } catch (e) {
-    console.error('Failed to read balance from localStorage:', e);
+  localStorage.setItem(DAILY_GAINS_KEY, newGains.toString());
+  
+  // Dispatch event to notify the app of the update
+  window.dispatchEvent(new CustomEvent('dailyGains:updated', { 
+    detail: { gains: newGains }
+  }));
+  
+  return newGains;
+};
+
+// Reset daily counters (called at midnight)
+const resetDailyCounters = () => {
+  localStorage.setItem(DAILY_GAINS_KEY, '0');
+  
+  // Dispatch event to notify the app of the reset
+  window.dispatchEvent(new CustomEvent('dailyGains:reset'));
+  
+  console.log('Daily gains reset to 0');
+  
+  return 0;
+};
+
+// Update balance with a new gain
+const updateBalance = (gain: number) => {
+  // Get current values
+  const currentBalance = getCurrentBalance();
+  const highestBalance = getHighestBalance();
+  
+  // Calculate new balance
+  const newBalance = currentBalance + gain;
+  
+  // Update current balance
+  localStorage.setItem(CURRENT_BALANCE_KEY, newBalance.toString());
+  
+  // Track highest balance
+  if (newBalance > highestBalance) {
+    localStorage.setItem(HIGHEST_BALANCE_KEY, newBalance.toString());
   }
   
-  return {
-    /**
-     * Get the current balance
-     */
-    getCurrentBalance: () => currentBalance,
-    
-    /**
-     * Get the highest recorded balance
-     */
-    getHighestBalance: () => highestBalance,
-    
-    /**
-     * Update balance with a new gain amount
-     * @param gain - Amount to add (can be negative for deductions)
-     * @returns Updated balance
-     */
-    updateBalance: (gain) => {
-      // Ensure gain is properly formatted
-      const formattedGain = typeof gain === 'number' ? gain : parseFloat(String(gain)) || 0;
-      const previousBalance = currentBalance;
-      
-      // Apply the gain to the current balance
-      currentBalance = Math.max(0, currentBalance + formattedGain);
-      
-      // Update highest balance if needed
-      if (currentBalance > highestBalance) {
-        highestBalance = currentBalance;
-        localStorage.setItem('highestBalance', highestBalance.toString());
-      }
-      
-      // Update localStorage
-      localStorage.setItem('currentBalance', currentBalance.toString());
-      lastUpdateTime = Date.now();
-      
-      // If this is a positive gain, add it to daily gains
-      if (formattedGain > 0) {
-        dailyGains += formattedGain;
-        localStorage.setItem('dailyGains', dailyGains.toString());
-        
-        // Broadcast daily gains update event
-        window.dispatchEvent(new CustomEvent('dailyGains:updated', {
-          detail: {
-            gains: dailyGains,
-            timestamp: lastUpdateTime
-          }
-        }));
-      }
-      
-      // Broadcast update event for real-time sync
-      if (formattedGain !== 0) {
-        window.dispatchEvent(new CustomEvent('balance:updated', { 
-          detail: { 
-            previousBalance,
-            currentBalance,
-            gain: formattedGain,
-            timestamp: lastUpdateTime
-          }
-        }));
-      }
-      
-      return currentBalance;
-    },
-    
-    /**
-     * Add to daily gains counter without affecting balance
-     * @param gain - Amount to add to daily gains
-     * @returns Updated daily gains
-     */
-    addDailyGain: (gain) => {
-      const formattedGain = typeof gain === 'number' ? gain : parseFloat(String(gain)) || 0;
-      
-      if (formattedGain > 0) {
-        dailyGains += formattedGain;
-        localStorage.setItem('dailyGains', dailyGains.toString());
-        
-        // Broadcast daily gains update event
-        window.dispatchEvent(new CustomEvent('dailyGains:updated', {
-          detail: {
-            gains: dailyGains,
-            timestamp: Date.now()
-          }
-        }));
-      }
-      
-      return dailyGains;
-    },
-    
-    /**
-     * Get the current daily gains
-     */
-    getDailyGains: () => dailyGains,
-    
-    /**
-     * Reset daily counters
-     */
-    resetDailyCounters: () => {
-      dailyGains = 0;
-      localStorage.setItem('dailyGains', '0');
-      
-      // Broadcast reset event
-      window.dispatchEvent(new CustomEvent('dailyGains:reset', {
-        detail: {
-          timestamp: Date.now()
-        }
-      }));
-    },
-    
-    /**
-     * Force set the balance to a specific value
-     * @param newBalance - New balance value
-     */
-    forceBalanceSync: (newBalance) => {
-      if (typeof newBalance !== 'number' || isNaN(newBalance)) return currentBalance;
-      
-      const previousBalance = currentBalance;
-      currentBalance = Math.max(0, newBalance);
-      
-      // Update highest balance if needed
-      if (currentBalance > highestBalance) {
-        highestBalance = currentBalance;
-        localStorage.setItem('highestBalance', highestBalance.toString());
-      }
-      
-      localStorage.setItem('currentBalance', currentBalance.toString());
-      lastUpdateTime = Date.now();
-      
-      // Broadcast update event
-      window.dispatchEvent(new CustomEvent('balance:force-update', { 
-        detail: { 
-          previousBalance,
-          newBalance: currentBalance,
-          timestamp: lastUpdateTime
-        }
-      }));
-      
-      return currentBalance;
-    },
-    
-    /**
-     * Reset balance to zero (for withdrawals)
-     */
-    resetBalance: () => {
-      const previousBalance = currentBalance;
-      currentBalance = 0;
-      localStorage.setItem('currentBalance', '0');
-      lastUpdateTime = Date.now();
-      
-      // Broadcast reset event
-      window.dispatchEvent(new CustomEvent('balance:reset-complete', { 
-        detail: { 
-          previousBalance,
-          timestamp: lastUpdateTime
-        }
-      }));
-      
-      return 0;
-    },
-    
-    /**
-     * Initialize with a specific balance value
-     * @param initialBalance - Initial balance to set
-     */
-    initialize: (initialBalance) => {
-      if (typeof initialBalance !== 'number' || isNaN(initialBalance)) return currentBalance;
-      
-      // Only update if initialBalance is higher than current
-      if (initialBalance > currentBalance) {
-        currentBalance = initialBalance;
-        
-        // Update highest balance if needed
-        if (currentBalance > highestBalance) {
-          highestBalance = currentBalance;
-          localStorage.setItem('highestBalance', highestBalance.toString());
-        }
-        
-        localStorage.setItem('currentBalance', currentBalance.toString());
-      }
-      
-      return currentBalance;
-    },
-    
-    /**
-     * Get the last update timestamp
-     */
-    getLastUpdateTime: () => lastUpdateTime,
-    
-    /**
-     * Synchronize balance with database (placeholder for actual implementation)
-     */
-    syncWithDatabase: async () => {
-      // This is a placeholder that would be implemented to sync with the backend
-      // For now, just return a resolved promise
-      return Promise.resolve({ success: true, balance: currentBalance });
-    },
-    
-    /**
-     * Clean up user balance data when switching users
-     */
-    cleanupUserBalanceData: () => {
-      // Reset all balance-related data
-      currentBalance = 0;
-      highestBalance = 0;
-      dailyGains = 0;
-      lastUpdateTime = 0;
-      
-      // Clear localStorage
-      localStorage.removeItem('currentBalance');
-      localStorage.removeItem('highestBalance');
-      localStorage.removeItem('dailyGains');
-      localStorage.removeItem('lastBalanceUpdateTime');
-      
-      console.log('User balance data cleaned up');
-    }
-  };
-})();
+  // Track daily gains
+  addDailyGain(gain);
+  
+  // Update last update time
+  localStorage.setItem(LAST_UPDATE_KEY, Date.now().toString());
+  
+  return newBalance;
+};
 
-export default balanceManager;
+// Force balance to a specific value (used for sync with server)
+const forceBalanceSync = (newBalance: number) => {
+  const highestBalance = getHighestBalance();
+  
+  // Update current balance
+  localStorage.setItem(CURRENT_BALANCE_KEY, newBalance.toString());
+  
+  // Only update highest if the new value is higher
+  if (newBalance > highestBalance) {
+    localStorage.setItem(HIGHEST_BALANCE_KEY, newBalance.toString());
+  }
+  
+  // Update last update time
+  localStorage.setItem(LAST_UPDATE_KEY, Date.now().toString());
+  
+  return newBalance;
+};
 
-// Export the getHighestBalance function directly for imports that need it
-export const getHighestBalance = () => balanceManager.getHighestBalance();
+// Reset balance to zero
+const resetBalance = () => {
+  localStorage.setItem(CURRENT_BALANCE_KEY, '0');
+  
+  // Update last update time
+  localStorage.setItem(LAST_UPDATE_KEY, Date.now().toString());
+  
+  return 0;
+};
+
+// Initialize balance (used when first loading app)
+const initialize = (initialBalance: number) => {
+  // Only initialize if we don't have a balance already
+  // or if the new balance is higher than our current one
+  const currentBalance = getCurrentBalance();
+  const highestBalance = getHighestBalance();
+  
+  if (currentBalance === 0 || initialBalance > currentBalance) {
+    localStorage.setItem(CURRENT_BALANCE_KEY, initialBalance.toString());
+  }
+  
+  if (initialBalance > highestBalance) {
+    localStorage.setItem(HIGHEST_BALANCE_KEY, initialBalance.toString());
+  }
+  
+  // Set update time if we don't have one
+  if (!localStorage.getItem(LAST_UPDATE_KEY)) {
+    localStorage.setItem(LAST_UPDATE_KEY, Date.now().toString());
+  }
+  
+  return Math.max(currentBalance, initialBalance);
+};
+
+// Get last update timestamp
+const getLastUpdateTime = () => {
+  const lastUpdate = localStorage.getItem(LAST_UPDATE_KEY);
+  return lastUpdate ? parseInt(lastUpdate) : 0;
+};
+
+// Clean up user balance data when switching users
+const cleanupUserBalanceData = () => {
+  localStorage.removeItem(CURRENT_BALANCE_KEY);
+  localStorage.removeItem(HIGHEST_BALANCE_KEY);
+  localStorage.removeItem(DAILY_GAINS_KEY);
+  localStorage.removeItem(LAST_UPDATE_KEY);
+  
+  console.log('Balance data cleared for user switch');
+};
+
+// Export all functions
+export { 
+  getCurrentBalance,
+  getHighestBalance,
+  getDailyGains,
+  addDailyGain,
+  resetDailyCounters,
+  updateBalance,
+  forceBalanceSync,
+  resetBalance,
+  initialize,
+  getLastUpdateTime,
+  cleanupUserBalanceData
+};
+
+// Default export for convenience
+export default {
+  getCurrentBalance,
+  getHighestBalance,
+  getDailyGains,
+  addDailyGain,
+  resetDailyCounters,
+  updateBalance,
+  forceBalanceSync,
+  resetBalance,
+  initialize,
+  getLastUpdateTime,
+  cleanupUserBalanceData
+};

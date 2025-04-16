@@ -88,11 +88,11 @@ export const useDashboardSessions = ({
     activityLevel, 
     generateAutomaticRevenue,
     isBotActive 
-  } = useAutoSessions(
-    safeUserData,
+  } = useAutoSessions({
+    userData: safeUserData,
     updateBalance,
     setShowLimitAlert
-  );
+  });
 
   const { 
     isSessionRunning, 
