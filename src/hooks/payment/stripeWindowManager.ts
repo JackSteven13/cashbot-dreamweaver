@@ -22,15 +22,12 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
   }
   
   try {
-    // Toujours utiliser une redirection directe, méthode la plus fiable
-    console.log("Redirection directe vers Stripe:", stripeUrl);
-    
     // Stocker l'URL pour récupération éventuelle
     localStorage.setItem('lastStripeUrl', stripeUrl);
     localStorage.setItem('pendingPayment', 'true');
     localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
     
-    // Redirection directe - la méthode la plus fiable
+    // Redirection directe vers Stripe - méthode la plus fiable
     window.location.href = stripeUrl;
     return true;
   } catch (error) {

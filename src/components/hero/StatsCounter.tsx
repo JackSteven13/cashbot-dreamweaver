@@ -24,103 +24,135 @@ const StatsCounter = ({
   
   // Local state to prevent flickering or unexpected drops
   const [stableAdsCount, setStableAdsCount] = useState(() => {
-    // Initialiser avec des valeurs minimales sûres pour éviter le flicker à 0
+    // Initialiser avec des valeurs de session ou localStorage, avec priorité à sessionStorage
+    const storedSession = sessionStorage.getItem('displayed_ads_count');
     const stored = localStorage.getItem('displayed_ads_count');
-    return stored ? Math.max(MINIMUM_ADS_COUNT, parseInt(stored, 10)) : MINIMUM_ADS_COUNT;
+    return storedSession 
+      ? Math.max(MINIMUM_ADS_COUNT, parseInt(storedSession, 10))
+      : (stored ? Math.max(MINIMUM_ADS_COUNT, parseInt(stored, 10)) : MINIMUM_ADS_COUNT);
   });
   
   const [stableRevenueCount, setStableRevenueCount] = useState(() => {
-    // Initialiser avec des valeurs minimales sûres pour éviter le flicker à 0
+    // Initialiser avec des valeurs de session ou localStorage, avec priorité à sessionStorage
+    const storedSession = sessionStorage.getItem('displayed_revenue_count');
     const stored = localStorage.getItem('displayed_revenue_count');
-    return stored ? Math.max(MINIMUM_REVENUE_COUNT, parseInt(stored, 10)) : MINIMUM_REVENUE_COUNT;
+    return storedSession 
+      ? Math.max(MINIMUM_REVENUE_COUNT, parseInt(storedSession, 10))
+      : (stored ? Math.max(MINIMUM_REVENUE_COUNT, parseInt(stored, 10)) : MINIMUM_REVENUE_COUNT);
   });
   
-  const previousAdsCountRef = useRef(displayedAdsCount);
-  const previousRevenueCountRef = useRef(displayedRevenueCount);
+  const previousAdsCountRef = useRef(stableAdsCount);
+  const previousRevenueCountRef = useRef(stableRevenueCount);
   
-  // Protection pour éviter les valeurs à 0 au chargement initial
+  // Sauvegarder les valeurs initiales dans sessionStorage pour persistance stricte lors des rechargements
   useEffect(() => {
-    // Si on a des valeurs à 0 ou inférieures aux minimums, restaurer les dernières valeurs connues ou utiliser les minimums
+    const saveToSession = () => {
+      try {
+        // Sauvegarder les valeurs initiales stables dans sessionStorage
+        sessionStorage.setItem('displayed_ads_count', stableAdsCount.toString());
+        sessionStorage.setItem('displayed_revenue_count', stableRevenueCount.toString());
+        
+        // Aussi sauvegarder dans localStorage pour la persitence à long terme
+        localStorage.setItem('displayed_ads_count', stableAdsCount.toString());
+        localStorage.setItem('displayed_revenue_count', stableRevenueCount.toString());
+      } catch (e) {
+        console.error('Error saving initial counter values to sessionStorage:', e);
+      }
+    };
+    
+    saveToSession();
+    
+    // Aussi sauvegarder avant que la page ne soit déchargée
+    window.addEventListener('beforeunload', saveToSession);
+    return () => window.removeEventListener('beforeunload', saveToSession);
+  }, []);
+  
+  // Protection pour éviter les valeurs à 0 ou inférieures aux minimums au chargement initial
+  useEffect(() => {
+    // Si on a des valeurs à 0 ou inférieures aux minimums, restaurer les dernières valeurs connues
     if (displayedAdsCount < MINIMUM_ADS_COUNT || displayedRevenueCount < MINIMUM_REVENUE_COUNT) {
+      // Vérifier d'abord sessionStorage (plus fiable pour les rechargements)
+      const sessionAdsCount = sessionStorage.getItem('displayed_ads_count');
+      const sessionRevenueCount = sessionStorage.getItem('displayed_revenue_count');
+      
+      // Ensuite vérifier localStorage comme fallback
       const lastAdsCount = localStorage.getItem('displayed_ads_count');
       const lastRevenueCount = localStorage.getItem('displayed_revenue_count');
       
-      if (lastAdsCount) {
+      // Utiliser sessionStorage en priorité
+      if (sessionAdsCount) {
+        const parsedAdsCount = parseInt(sessionAdsCount, 10);
+        if (!isNaN(parsedAdsCount) && parsedAdsCount >= MINIMUM_ADS_COUNT) {
+          previousAdsCountRef.current = parsedAdsCount;
+        }
+      } else if (lastAdsCount) {
         const parsedAdsCount = parseInt(lastAdsCount, 10);
         if (!isNaN(parsedAdsCount) && parsedAdsCount >= MINIMUM_ADS_COUNT) {
           previousAdsCountRef.current = parsedAdsCount;
-        } else {
-          previousAdsCountRef.current = MINIMUM_ADS_COUNT;
         }
       } else {
         previousAdsCountRef.current = MINIMUM_ADS_COUNT;
       }
       
-      if (lastRevenueCount) {
+      // Même logique pour le revenu
+      if (sessionRevenueCount) {
+        const parsedRevenueCount = parseInt(sessionRevenueCount, 10);
+        if (!isNaN(parsedRevenueCount) && parsedRevenueCount >= MINIMUM_REVENUE_COUNT) {
+          previousRevenueCountRef.current = parsedRevenueCount;
+        }
+      } else if (lastRevenueCount) {
         const parsedRevenueCount = parseInt(lastRevenueCount, 10);
         if (!isNaN(parsedRevenueCount) && parsedRevenueCount >= MINIMUM_REVENUE_COUNT) {
           previousRevenueCountRef.current = parsedRevenueCount;
-        } else {
-          previousRevenueCountRef.current = MINIMUM_REVENUE_COUNT;
         }
       } else {
         previousRevenueCountRef.current = MINIMUM_REVENUE_COUNT;
       }
       
-      // Save the corrected values
+      // Mettre à jour l'état avec les valeurs restaurées
       setStableAdsCount(previousAdsCountRef.current);
       setStableRevenueCount(previousRevenueCountRef.current);
       
-      // Also update localStorage to prevent future issues
+      // Sauvegarder ces valeurs corrigées dans les deux stockages
+      sessionStorage.setItem('displayed_ads_count', previousAdsCountRef.current.toString());
+      sessionStorage.setItem('displayed_revenue_count', previousRevenueCountRef.current.toString());
       localStorage.setItem('displayed_ads_count', previousAdsCountRef.current.toString());
       localStorage.setItem('displayed_revenue_count', previousRevenueCountRef.current.toString());
     }
   }, [displayedAdsCount, displayedRevenueCount]);
   
-  // Update stable values when displayed values change
+  // Update stable values when displayed values change, but only increase them
   useEffect(() => {
-    // Always apply minimum thresholds to any incoming values
-    const safeAdsCount = Math.max(displayedAdsCount, MINIMUM_ADS_COUNT);
-    const safeRevenueCount = Math.max(displayedRevenueCount, MINIMUM_REVENUE_COUNT);
-    
-    // Only update if the new value is higher than the previous stable value
-    // This prevents any decreases in the displayed numbers
-    if (safeAdsCount > stableAdsCount) {
-      setStableAdsCount(safeAdsCount);
-      previousAdsCountRef.current = safeAdsCount;
+    // N'appliquer que des augmentations, jamais de diminutions
+    if (displayedAdsCount > stableAdsCount && displayedAdsCount >= MINIMUM_ADS_COUNT) {
+      setStableAdsCount(displayedAdsCount);
+      previousAdsCountRef.current = displayedAdsCount;
+      
+      // Synchroniser immédiatement avec sessionStorage et localStorage
+      sessionStorage.setItem('displayed_ads_count', displayedAdsCount.toString());
+      localStorage.setItem('displayed_ads_count', displayedAdsCount.toString());
     }
     
-    if (safeRevenueCount > stableRevenueCount) {
-      setStableRevenueCount(safeRevenueCount);
-      previousRevenueCountRef.current = safeRevenueCount;
+    if (displayedRevenueCount > stableRevenueCount && displayedRevenueCount >= MINIMUM_REVENUE_COUNT) {
+      setStableRevenueCount(displayedRevenueCount);
+      previousRevenueCountRef.current = displayedRevenueCount;
+      
+      // Synchroniser immédiatement avec sessionStorage et localStorage
+      sessionStorage.setItem('displayed_revenue_count', displayedRevenueCount.toString());
+      localStorage.setItem('displayed_revenue_count', displayedRevenueCount.toString());
     }
     
-    // Store the values to avoid drops during refreshes
-    localStorage.setItem('displayed_ads_count', Math.max(stableAdsCount, safeAdsCount).toString());
-    localStorage.setItem('displayed_revenue_count', Math.max(stableRevenueCount, safeRevenueCount).toString());
-    
-    // If we detect a decrease, use the previous stable value
-    if (safeAdsCount < previousAdsCountRef.current) {
+    // Si nous détectons une diminution, utiliser les valeurs précédentes stables
+    if (displayedAdsCount < previousAdsCountRef.current) {
       console.log('Preventing ads count decrease:', 
-                  safeAdsCount, '->', previousAdsCountRef.current);
+                  displayedAdsCount, '->', previousAdsCountRef.current);
     }
     
-    if (safeRevenueCount < previousRevenueCountRef.current) {
+    if (displayedRevenueCount < previousRevenueCountRef.current) {
       console.log('Preventing revenue count decrease:', 
-                  safeRevenueCount, '->', previousRevenueCountRef.current);
+                  displayedRevenueCount, '->', previousRevenueCountRef.current);
     }
   }, [displayedAdsCount, displayedRevenueCount, stableAdsCount, stableRevenueCount]);
-  
-  // Forcer une mise à jour des compteurs plus fréquemment pour une animation fluide
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      // Forcer une mise à jour par changement d'état local
-      const event = new CustomEvent('stats:update');
-      window.dispatchEvent(event);
-    }, 3000); // Toutes les 3 secondes pour une animation plus naturelle
-
-    return () => clearInterval(intervalId);
-  }, []);
 
   return (
     <div className="grid grid-cols-2 gap-2 w-full max-w-md mx-auto mb-4 md:mb-6">

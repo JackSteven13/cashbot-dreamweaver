@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { formatPrice } from '@/utils/balance/limitCalculations';
 import { CardContent } from '@/components/ui/card';
@@ -18,20 +17,56 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   isLoading = false, 
   subscription = "freemium" 
 }) => {
-  const [prevBalance, setPrevBalance] = useState<number>(balance);
+  // Use session storage as source of truth for page refreshes
+  const [displayBalance, setDisplayBalance] = useState<number>(() => {
+    // Try sessionStorage first (priority for page refreshes)
+    const sessionBalance = parseFloat(sessionStorage.getItem('currentBalance') || '0');
+    const storedBalance = parseFloat(localStorage.getItem('currentBalance') || '0');
+    
+    // Use the highest value available, or the passed balance
+    return Math.max(sessionBalance || 0, storedBalance || 0, balance || 0);
+  });
+  
+  const [prevBalance, setPrevBalance] = useState<number>(displayBalance);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const balanceRef = useRef<HTMLDivElement>(null);
   
   const { formattedValue } = useAnimatedCounter({
-    value: balance,
+    value: displayBalance,
     duration: 1200,
     decimals: 2,
     formatOptions: { style: 'currency', currency: 'EUR' }
   });
   
+  // Keep sessionStorage and localStorage in sync with balance changes
+  useEffect(() => {
+    // If input balance is higher than our stored values, update
+    if (balance > displayBalance) {
+      setDisplayBalance(balance);
+      
+      // Save to both storage types
+      sessionStorage.setItem('currentBalance', balance.toString());
+      localStorage.setItem('currentBalance', balance.toString());
+      localStorage.setItem('lastKnownBalance', balance.toString());
+    }
+  }, [balance, displayBalance]);
+  
+  // Save to session before unload for refresh protection
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Save current balance to session storage
+      sessionStorage.setItem('currentBalance', displayBalance.toString());
+      localStorage.setItem('currentBalance', displayBalance.toString());
+      localStorage.setItem('lastKnownBalance', displayBalance.toString());
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [displayBalance]);
+  
   useEffect(() => {
     // If balance increased, show animation
-    if (balance > prevBalance && prevBalance !== 0) {
+    if (displayBalance > prevBalance && prevBalance !== 0) {
       setIsAnimating(true);
       
       const timer = setTimeout(() => {
@@ -41,8 +76,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       return () => clearTimeout(timer);
     }
     
-    setPrevBalance(balance);
-  }, [balance, prevBalance]);
+    setPrevBalance(displayBalance);
+  }, [displayBalance, prevBalance]);
   
   // Determine premium styling based on subscription
   const isPremium = subscription !== 'freemium';
@@ -76,7 +111,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                 {isAnimating && (
                   <span className="absolute -top-4 right-0 text-sm text-green-500 flex items-center animate-fade-in">
                     <ChevronUp className="h-3 w-3 mr-0.5" />
-                    +{(balance - prevBalance).toFixed(2)}€
+                    +{(displayBalance - prevBalance).toFixed(2)}€
                   </span>
                 )}
               </>
