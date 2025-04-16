@@ -4,7 +4,7 @@
     opacity: 1;
   }
   50% {
-    opacity: 0.95;
+    opacity: 0.96;
   }
   100% {
     opacity: 1;
@@ -12,5 +12,5 @@
 }
 
 .animate-pulse-slow {
-  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

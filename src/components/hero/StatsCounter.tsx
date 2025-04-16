@@ -10,21 +10,21 @@ interface StatsCounterProps {
 }
 
 const StatsCounter = ({
-  dailyAdsTarget = 850000,
-  dailyRevenueTarget = 1750000
+  dailyAdsTarget = 28800, // ~1800 videos/hour × 16 hours = more realistic daily target
+  dailyRevenueTarget = 40000 // ~1.5€ average per video × 28,800 videos
 }: StatsCounterProps) => {
   const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
     dailyAdsTarget,
     dailyRevenueTarget
   });
 
-  // Forcer une mise à jour des compteurs toutes les secondes pour une animation plus fluide
+  // Forcer une mise à jour des compteurs plus fréquemment pour une animation fluide
   useEffect(() => {
     const intervalId = setInterval(() => {
       // Forcer une mise à jour par changement d'état local
       const event = new CustomEvent('stats:update');
       window.dispatchEvent(event);
-    }, 1500); // Réduit à 1.5 secondes pour une animation plus dynamique
+    }, 3000); // Toutes les 3 secondes pour une animation plus naturelle
 
     return () => clearInterval(intervalId);
   }, []);
