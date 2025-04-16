@@ -97,7 +97,7 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
   };
 
   return (
-    <Alert className="mt-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+    <Alert className="mt-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
       <AlertTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2 mb-2">
         <RefreshCw className="h-4 w-4" />
         Problème d'affichage du paiement?
@@ -111,21 +111,20 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
         <div className="space-y-3">
           <Button 
             onClick={handleOpenDirectly}
-            className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 py-2 h-auto"
-            size="sm"
+            className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 py-3 h-auto"
           >
             <ExternalLink className="h-4 w-4" />
             Ouvrir la page de paiement
           </Button>
           
-          <div className="flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center justify-between gap-2">
             <Button 
               onClick={copyToClipboard}
               variant="outline"
               size="sm"
-              className="text-xs flex items-center gap-1 h-8 flex-1"
+              className="flex items-center gap-1 h-9 flex-1"
             >
-              <Copy className="h-3 w-3" />
+              <Copy className="h-4 w-4" />
               Copier le lien
             </Button>
             
@@ -134,9 +133,9 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
                 href={effectiveUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 h-8 px-2 flex items-center justify-center gap-1 text-xs text-blue-600 hover:underline border border-blue-200 dark:border-blue-800 rounded-md bg-white dark:bg-blue-900/20"
+                className="flex-1 h-9 px-3 flex items-center justify-center gap-1 text-blue-600 hover:underline border border-blue-200 dark:border-blue-800 rounded-md bg-white dark:bg-blue-900/20"
               >
-                <ExternalLink className="h-3 w-3" />
+                <ExternalLink className="h-4 w-4" />
                 Nouvel onglet
               </a>
             )}

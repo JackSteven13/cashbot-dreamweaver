@@ -1,14 +1,11 @@
 
 /**
- * Gestionnaire amélioré de fenêtre Stripe spécifiquement optimisé pour les mobiles
+ * Gestionnaire de fenêtre Stripe optimisé pour les mobiles et navigateurs modernes
  */
 
-import { toast } from '@/components/ui/use-toast';
-import { fixStripeUrl, isMobileDevice } from '@/utils/stripe-helper';
-
 /**
- * Ouvre l'URL de paiement Stripe avec une gestion avancée pour les appareils mobiles
- * Utilise différentes stratégies pour maximiser la compatibilité
+ * Ouvre l'URL de paiement Stripe dans une nouvelle fenêtre/onglet
+ * avec gestion améliorée pour les appareils mobiles
  */
 export const openStripeWindow = (stripeUrl: string): boolean => {
   if (!stripeUrl) {
@@ -17,101 +14,89 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
   }
   
   try {
-    const isMobile = isMobileDevice();
+    // Détection d'appareil mobile (plus précise)
+    const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(navigator.userAgent);
     
     console.log(`Tentative d'ouverture de Stripe (${isMobile ? 'mobile' : 'desktop'}):`, stripeUrl);
     
-    // Garantir que l'URL est valide et complète
-    const finalUrl = fixStripeUrl(stripeUrl);
-    
-    // STRATÉGIE MOBILE: Redirection directe sans délai
     if (isMobile) {
-      console.log("Appareil mobile détecté, redirection directe immédiate");
+      // Sur mobile, utiliser un délai avant redirection pour permettre à l'animation de transition de s'exécuter
+      console.log("Appareil mobile détecté, préparation de la redirection...");
       
-      // Sauvegarder les données de session pour récupération
-      localStorage.setItem('lastStripeUrl', finalUrl);
-      localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
-      localStorage.setItem('pendingPayment', 'true');
+      // Forcer l'ouverture dans la même fenêtre après une courte animation
+      localStorage.setItem('stripeRedirecting', 'true');
       
-      // Redirection maximale priorité
-      setTimeout(() => { 
-        // Timeout minimal pour permettre à l'interface de se mettre à jour
-        window.location.replace(finalUrl);
-      }, 50);
+      setTimeout(() => {
+        window.location.href = stripeUrl;
+      }, 500);
       
       return true;
     }
     
-    // STRATÉGIE DESKTOP: Tenter une nouvelle fenêtre d'abord
-    const newWindow = window.open(finalUrl, '_blank', 'noopener,noreferrer');
+    // Sur desktop, essayer d'abord d'ouvrir dans un nouvel onglet avec délai
+    setTimeout(() => {
+      const newWindow = window.open(stripeUrl, '_blank', 'noopener,noreferrer');
+      
+      // Si l'ouverture échoue (bloqué par popup blocker ou autre)
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        console.log("Ouverture de nouvelle fenêtre échouée, tentative de redirection directe");
+        
+        // Création d'un élément a avec target _blank pour simuler un clic utilisateur
+        const link = document.createElement('a');
+        link.href = stripeUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.click();
+        
+        // Si ça échoue aussi, redirection directe après un court délai
+        setTimeout(() => {
+          if (!newWindow || newWindow.closed) {
+            console.log("Seconde tentative échouée, redirection directe");
+            window.location.href = stripeUrl;
+          }
+        }, 500);
+      } else {
+        // Focus sur la nouvelle fenêtre
+        newWindow.focus();
+        console.log("Nouvelle fenêtre ouverte avec succès");
+      }
+    }, 500); // Délai pour permettre à l'animation de se terminer
     
-    if (newWindow && !newWindow.closed) {
-      newWindow.focus();
-      console.log("Nouvelle fenêtre Stripe ouverte avec succès");
-      
-      // Sauvegarder pour récupération potentielle
-      localStorage.setItem('lastStripeUrl', finalUrl);
-      localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
-      localStorage.setItem('pendingPayment', 'true');
-      
-      return true;
-    } else {
-      console.log("Échec de l'ouverture de la fenêtre, tentative de redirection directe");
-      
-      // Sauvegarder pour récupération
-      localStorage.setItem('lastStripeUrl', finalUrl);
-      localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
-      localStorage.setItem('pendingPayment', 'true');
-      
-      // Redirection directe en dernier recours
-      window.location.href = finalUrl;
-      return true;
-    }
+    return true;
   } catch (error) {
-    console.error("Erreur lors de l'ouverture de Stripe:", error);
+    console.error("Erreur lors de l'ouverture de la fenêtre:", error);
     
-    // Dernière tentative de redirection directe
-    try {
+    // Dernière tentative avec redirection directe après délai
+    setTimeout(() => {
+      console.log("Méthode de secours: redirection directe après erreur");
       window.location.href = stripeUrl;
-      return true;
-    } catch (e) {
-      toast({
-        title: "Erreur de paiement",
-        description: "Impossible d'ouvrir la page de paiement. Veuillez réessayer.",
-        variant: "destructive"
-      });
-      return false;
-    }
+    }, 500);
+    
+    return true;
   }
 };
 
 /**
- * Fonction pour récupérer une session de paiement interrompue
- * Retourne true si une session récente existe et a été récupérée
+ * Vérifie si une fenêtre Stripe est déjà ouverte
+ */
+export const isStripeWindowOpen = (): boolean => {
+  // Cette fonction pourrait être étendue pour vérifier si un onglet Stripe spécifique est ouvert
+  return false;
+};
+
+/**
+ * Essaie de récupérer une session de paiement interrompue
  */
 export const recoverStripeSession = (): boolean => {
   const lastUrl = localStorage.getItem('lastStripeUrl');
   const timestamp = parseInt(localStorage.getItem('stripeRedirectTimestamp') || '0', 10);
-  const now = Date.now();
-  const MAX_AGE = 30 * 60 * 1000; // 30 minutes
   
-  // Vérifier si l'URL existe et n'est pas trop ancienne
-  if (lastUrl && (now - timestamp) < MAX_AGE) {
-    try {
-      console.log("Récupération d'une session de paiement interrompue");
-      
-      // Rediriger immédiatement vers l'URL sauvegardée
-      window.location.replace(lastUrl);
-      return true;
-    } catch (e) {
-      console.error("Échec de la récupération:", e);
-    }
-  } else if (lastUrl) {
-    // Session expirée, nettoyer
-    localStorage.removeItem('lastStripeUrl');
-    localStorage.removeItem('stripeRedirectTimestamp');
-    localStorage.removeItem('pendingPayment');
+  // Vérifier si l'URL n'est pas trop ancienne (30 minutes max)
+  if (lastUrl && Date.now() - timestamp < 30 * 60 * 1000) {
+    console.log("Tentative de récupération de session Stripe:", lastUrl);
+    return openStripeWindow(lastUrl);
   }
   
   return false;
 };
+

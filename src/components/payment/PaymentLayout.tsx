@@ -1,25 +1,28 @@
 
-import React, { ReactNode } from 'react';
-import PaymentHeader from '@/components/payment/PaymentHeader';
-import SecurityNote from '@/components/payment/SecurityNote';
+import React from 'react';
+import PaymentHeader from './PaymentHeader';
 
 interface PaymentLayoutProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
-const PaymentLayout = ({ children }: PaymentLayoutProps) => {
+const PaymentLayout: React.FC<PaymentLayoutProps> = ({ children }) => {
   return (
-    <div className="cyberpunk-bg min-h-screen bg-[#0f0f23] pb-12">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <PaymentHeader />
-      
-      {/* Increased top padding for better spacing below header */}
-      <main className="container mx-auto pt-16 pb-14 px-4 relative z-10">
-        <div className="max-w-2xl mx-auto">
-          {children}
-          
-          <SecurityNote />
+      <div className="flex-1 py-6 sm:py-10">
+        {children}
+      </div>
+      <footer className="py-4 text-center text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+        <div className="container mx-auto">
+          <p>Paiement sécurisé via Stripe</p>
+          <div className="mt-2 flex justify-center space-x-4">
+            <img src="/visa.svg" alt="Visa" className="h-6" />
+            <img src="/mastercard.svg" alt="Mastercard" className="h-6" />
+            <img src="/amex.svg" alt="American Express" className="h-6" />
+          </div>
         </div>
-      </main>
+      </footer>
     </div>
   );
 };
