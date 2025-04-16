@@ -50,89 +50,131 @@ export const useStatsCycleManagement = ({
     console.log(`Next counter reset in ${hoursUntilMidnight} hours and ${minutesUntilMidnight} minutes`);
     
     const resetTimeout = setTimeout(() => {
-      // Reset counters at midnight, Paris time
-      setAdsCount(0);
-      setRevenueCount(0);
-      setDisplayedAdsCount(0);
-      setDisplayedRevenueCount(0);
+      // Réinitialisation avec des valeurs de départ substantielles (10-15% des objectifs)
+      const initialAdsCount = Math.floor(dailyAdsTarget * (0.10 + Math.random() * 0.05));
+      const initialRevenueCount = Math.floor(dailyRevenueTarget * (0.10 + Math.random() * 0.05));
+      
+      setAdsCount(initialAdsCount);
+      setRevenueCount(initialRevenueCount);
+      setDisplayedAdsCount(initialAdsCount);
+      setDisplayedRevenueCount(initialRevenueCount);
       
       // Schedule next reset
       scheduleCycleUpdate();
     }, timeUntilMidnight);
     
     return resetTimeout;
-  }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
+  }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount, dailyAdsTarget, dailyRevenueTarget]);
 
   const incrementCountersRandomly = useCallback(() => {
+    // Distribution réaliste des annonces entre les pays
     setAdsCount(prevAdsCount => {
+      // Ne pas dépasser l'objectif quotidien
       if (prevAdsCount >= dailyAdsTarget) return dailyAdsTarget;
       
-      // Nombre total d'annonces à traiter pendant cet intervalle (basé sur une partie de la journée)
-      // Taux extrêmement faible pour progression très lente
-      const maxAdsPerInterval = Math.floor(dailyAdsTarget * 0.001); // 0.1% du total par intervalle
+      // Calcul du taux d'incrémentation en fonction de l'heure
+      const currentHour = new Date().getHours();
+      let hourlyRate = 0.01; // Taux de base (1%)
       
-      // Distribution des annonces entre les pays selon leurs poids
-      let totalAdsIncrement = 0;
+      // Appliquer des variations selon l'heure de la journée
+      if (currentHour >= 8 && currentHour <= 11) {
+        // Matin: progression rapide
+        hourlyRate = 0.015;
+      } else if (currentHour >= 12 && currentHour <= 14) {
+        // Midi: progression normale
+        hourlyRate = 0.012;
+      } else if (currentHour >= 15 && currentHour <= 19) {
+        // Après-midi: progression rapide
+        hourlyRate = 0.014;
+      } else if (currentHour >= 20 && currentHour <= 23) {
+        // Soir: progression normale
+        hourlyRate = 0.011;
+      } else {
+        // Nuit: progression plus lente
+        hourlyRate = 0.007;
+      }
       
-      // Pour chaque pays, calculer le nombre d'annonces traitées
+      // Objectif restant
+      const remainingTarget = dailyAdsTarget - prevAdsCount;
+      
+      // Calcul du nombre d'annonces à traiter pour cet intervalle
+      const baseAdsIncrement = Math.floor(remainingTarget * hourlyRate);
+      
+      // Variation aléatoire (±20%)
+      const variationFactor = 0.8 + (Math.random() * 0.4);
+      const totalAdsIncrement = Math.floor(baseAdsIncrement * variationFactor);
+      
+      // Répartition entre les pays
+      let adsByCountry = [];
+      let totalAdsByCountry = 0;
+      
+      // Pour chaque pays, calculer sa contribution
       activeLocations.forEach(location => {
-        // Proportion des annonces allouées à ce pays basée sur son poids
+        // Proportion des annonces allouées à ce pays
         const countryShare = location.weight / totalWeight;
-        const countryAdsBase = Math.floor(maxAdsPerInterval * countryShare);
         
-        // Variation aléatoire légère (±10%)
-        const variationFactor = 0.9 + Math.random() * 0.2;
-        const countryAds = Math.floor(countryAdsBase * variationFactor * location.efficiency);
+        // Base initiale pour ce pays
+        const countryAdBase = Math.floor(totalAdsIncrement * countryShare);
         
-        // Durée de traitement d'une annonce (25-90 secondes) selon le pays
-        // Ceci influence combien d'annonces peuvent être traitées
-        const processingTime = 25 + Math.floor(Math.random() * 65);
+        // Variation spécifique au pays (±10%)
+        const countryVariation = 0.9 + (Math.random() * 0.2);
         
-        // Ajuster le nombre d'annonces traitées en fonction du temps de traitement
-        const adjustedAds = Math.floor(countryAds * (60 / processingTime));
+        // Nombre d'annonces traitées par ce pays
+        const countryAds = Math.floor(countryAdBase * countryVariation * location.efficiency);
         
-        totalAdsIncrement += adjustedAds;
+        adsByCountry.push({
+          country: location.country,
+          ads: countryAds
+        });
+        
+        totalAdsByCountry += countryAds;
       });
       
-      // Ajouter une petite variation aléatoire au total (±5%)
-      const finalVariation = 0.95 + Math.random() * 0.1;
-      totalAdsIncrement = Math.floor(totalAdsIncrement * finalVariation);
+      // Calculer le nouvel état du compteur
+      const newAdsCount = Math.min(prevAdsCount + totalAdsByCountry, dailyAdsTarget);
       
-      // Limiter l'incrément pour éviter des sauts trop grands
-      const newAdsCount = Math.min(prevAdsCount + totalAdsIncrement, dailyAdsTarget);
-      
+      // Mise à jour simultanée des revenus
       setRevenueCount(prevRevenueCount => {
+        // Ne pas dépasser l'objectif quotidien
         if (prevRevenueCount >= dailyRevenueTarget) return dailyRevenueTarget;
         
-        let totalRevenueIncrement = 0;
+        let totalRevenue = 0;
         
-        // Calcul des revenus pour chaque publicité traitée avec des prix réalistes
-        for (let i = 0; i < totalAdsIncrement; i++) {
-          const adTypeRandom = Math.random();
-          
-          let adValue;
-          if (adTypeRandom > 0.97) {
-            // Premium (3%) : 2.20€ - 3.30€
-            adValue = 2.20 + (Math.random() * 1.10);
-          } else if (adTypeRandom > 0.85) {
-            // Medium-high (12%) : 1.10€ - 2.20€
-            adValue = 1.10 + (Math.random() * 1.10);
-          } else if (adTypeRandom > 0.60) {
-            // Medium (25%) : 0.70€ - 1.10€
-            adValue = 0.70 + (Math.random() * 0.40);
-          } else {
-            // Standard (60%) : 0.45€ - 0.70€
-            adValue = 0.45 + (Math.random() * 0.25);
+        // Calculer les revenus basés sur les annonces traitées par pays
+        adsByCountry.forEach(({ ads }) => {
+          for (let i = 0; i < ads; i++) {
+            // Déterminer la catégorie de l'annonce
+            const adTypeRandom = Math.random();
+            
+            let adValue;
+            if (adTypeRandom > 0.97) {
+              // Premium (3%) : 2.20€ - 3.30€
+              adValue = 2.20 + (Math.random() * 1.10);
+            } else if (adTypeRandom > 0.85) {
+              // Medium-high (12%) : 1.10€ - 2.20€
+              adValue = 1.10 + (Math.random() * 1.10);
+            } else if (adTypeRandom > 0.60) {
+              // Medium (25%) : 0.70€ - 1.10€
+              adValue = 0.70 + (Math.random() * 0.40);
+            } else {
+              // Standard (60%) : 0.45€ - 0.70€
+              adValue = 0.45 + (Math.random() * 0.25);
+            }
+            
+            totalRevenue += adValue;
           }
-          
-          totalRevenueIncrement += adValue;
-        }
+        });
         
-        // Ajustement pour correspondre aux objectifs journaliers
-        const adjustmentFactor = dailyRevenueTarget / dailyAdsTarget;
-        totalRevenueIncrement = totalRevenueIncrement * adjustmentFactor * 0.8;
+        // Ajustement pour correspondre au ratio global attendu
+        const expectedRatio = dailyRevenueTarget / dailyAdsTarget;
+        const currentRatio = totalRevenue / totalAdsByCountry;
+        const adjustmentFactor = expectedRatio / currentRatio;
         
-        return Math.min(prevRevenueCount + totalRevenueIncrement, dailyRevenueTarget);
+        // Appliquer un ajustement aléatoire supplémentaire (±5%)
+        const finalRevenue = totalRevenue * adjustmentFactor * (0.95 + Math.random() * 0.1);
+        
+        // Calculer le nouveau total
+        return Math.min(prevRevenueCount + finalRevenue, dailyRevenueTarget);
       });
       
       return newAdsCount;

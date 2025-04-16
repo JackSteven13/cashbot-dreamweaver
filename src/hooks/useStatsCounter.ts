@@ -50,46 +50,33 @@ export const useStatsCounter = ({
   });
   
   useEffect(() => {
+    // Initialiser les compteurs avec des valeurs réalistes
     initializeCounters();
     
-    // Système d'animation complètement redessiné pour des mises à jour très lentes
+    // Système d'animation avec des mises à jour à intervalles raisonnables
     let animationFrameId: number;
-    let lastUpdateTime = 0;
     
-    // Fonction d'animation avec des intervalles extrêmement longs (45-90 secondes)
-    const updateAnimation = (timestamp: number) => {
-      // Intervalle très long entre les mises à jour d'affichage (45-90 secondes)
-      const updateInterval = Math.random() * 45000 + 45000;
-      
-      if (timestamp - lastUpdateTime > updateInterval || lastUpdateTime === 0) {
-        animateCounters();
-        lastUpdateTime = timestamp;
-      }
-      
+    // Fonction d'animation
+    const updateAnimation = () => {
+      animateCounters();
       animationFrameId = requestAnimationFrame(updateAnimation);
     };
     
+    // Démarrer l'animation
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Intervalle variable pour les mises à jour réelles des compteurs avec des intervalles très longs
-    const createUpdateInterval = () => {
-      const minInterval = 180000; // Minimum 3 minutes
-      const maxInterval = 300000; // Maximum 5 minutes
-      const randomInterval = Math.floor(Math.random() * (maxInterval - minInterval) + minInterval);
-      
-      setTimeout(() => {
-        incrementCountersRandomly();
-        createUpdateInterval(); // Planifier la prochaine mise à jour avec un nouvel intervalle aléatoire
-      }, randomInterval);
-    };
+    // Intervalle pour les mises à jour périodiques des compteurs (valeurs cibles)
+    const updateInterval = setInterval(() => {
+      incrementCountersRandomly();
+    }, 10000); // Toutes les 10 secondes
     
-    createUpdateInterval(); // Démarrer le cycle d'intervalles variables
-    
+    // Planifier la réinitialisation à minuit
     const resetTimeout = scheduleCycleUpdate();
     
     return () => {
       if (resetTimeout) clearTimeout(resetTimeout);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      clearInterval(updateInterval);
     };
   }, [
     initializeCounters,

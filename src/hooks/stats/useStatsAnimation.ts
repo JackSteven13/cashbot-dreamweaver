@@ -8,19 +8,26 @@ interface UseStatsAnimationParams {
   setDisplayedRevenueCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
-// Réduire considérablement le taux d'incrémentation pour des mouvements beaucoup plus lents
+// Calculer un incrément approprié pour une animation fluide
 const calculateCounterIncrement = (targetCount: number, currentCount: number): number => {
-  // Utiliser un pourcentage extrêmement faible pour un changement très progressif
-  const diffPercent = Math.abs(targetCount - currentCount) / targetCount;
+  // Différence entre la valeur cible et actuelle
+  const difference = targetCount - currentCount;
   
-  // Si la différence est minuscule, ne pas bouger du tout
-  if (diffPercent < 0.0002) return 0;
+  // Si la différence est très faible, ne pas bouger
+  if (Math.abs(difference) < 2) return 0;
   
-  // Incrément de base très faible (0.005% de la différence)
-  const baseIncrement = Math.max(1, Math.floor((targetCount - currentCount) * 0.00005));
+  // Pour des animations naturelles:
+  // - Grandes différences: incrément plus grand (0.5% de la différence)
+  // - Petites différences: incrément minimal
+  const baseIncrement = Math.max(1, Math.ceil(Math.abs(difference) * 0.005));
   
-  // Limiter à un maximum très bas pour des mouvements imperceptibles
-  return Math.min(baseIncrement, 1);
+  // Limiter à un maximum raisonnable pour éviter des sauts trop grands
+  const maxIncrement = Math.max(1, Math.floor(Math.abs(difference) / 10));
+  
+  // Retourner l'incrément avec le signe approprié
+  return difference > 0 ? 
+    Math.min(baseIncrement, maxIncrement) : 
+    -Math.min(baseIncrement, maxIncrement);
 };
 
 export const useStatsAnimation = ({
@@ -30,25 +37,52 @@ export const useStatsAnimation = ({
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
   const animateCounters = useCallback(() => {
+    // Animer le compteur d'annonces
     setDisplayedAdsCount((prevCount) => {
-      if (prevCount >= adsCount) return adsCount;
+      // Si déjà à la valeur cible, ne pas changer
+      if (prevCount === adsCount) return prevCount;
+      
       const increment = calculateCounterIncrement(adsCount, prevCount);
+      
       // Si l'incrément est 0, ne pas changer la valeur
       if (increment === 0) return prevCount;
-      return Math.min(prevCount + increment, adsCount);
+      
+      // Calculer la nouvelle valeur
+      const newValue = prevCount + increment;
+      
+      // Garantir qu'on ne dépasse pas la cible (dans les deux directions)
+      if (increment > 0) {
+        return Math.min(newValue, adsCount);
+      } else {
+        return Math.max(newValue, adsCount);
+      }
     });
 
-    setDisplayedRevenueCount((prevRevCount) => {
-      if (prevRevCount >= revenueCount) return revenueCount;
-      const increment = calculateCounterIncrement(revenueCount, prevRevCount);
+    // Animer le compteur de revenus
+    setDisplayedRevenueCount((prevCount) => {
+      // Si déjà à la valeur cible, ne pas changer
+      if (prevCount === revenueCount) return prevCount;
+      
+      const increment = calculateCounterIncrement(revenueCount, prevCount);
+      
       // Si l'incrément est 0, ne pas changer la valeur
-      if (increment === 0) return prevRevCount;
-      return Math.min(prevRevCount + increment, revenueCount);
+      if (increment === 0) return prevCount;
+      
+      // Calculer la nouvelle valeur
+      const newValue = prevCount + increment;
+      
+      // Garantir qu'on ne dépasse pas la cible (dans les deux directions)
+      if (increment > 0) {
+        return Math.min(newValue, revenueCount);
+      } else {
+        return Math.max(newValue, revenueCount);
+      }
     });
 
     // Indiquer si l'animation est toujours active
     return { 
-      animationActive: adsCount > 0 && revenueCount > 0
+      animationActive: adsCount !== 0 && revenueCount !== 0 && 
+                      (adsCount !== displayedAdsCount || revenueCount !== displayedRevenueCount)
     };
   }, [adsCount, revenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
 

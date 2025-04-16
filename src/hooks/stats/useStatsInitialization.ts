@@ -32,48 +32,44 @@ export const useStatsInitialization = ({
     // Obtenir l'heure actuelle (0-23)
     const currentHour = new Date().getHours();
     
-    // Calculer quel pourcentage de la journée s'est écoulé
-    // Utiliser une courbe plus naturelle avec moins d'activité la nuit
-    let dayPercentage = 0;
+    // Au lieu d'avoir une valeur qui repart à 0 à minuit,
+    // nous commençons avec des valeurs substantielles pour donner 
+    // l'impression que le système fonctionne déjà depuis un moment
     
-    if (currentHour < 7) {
-      // Entre minuit et 7h - progression très lente (nuit)
-      dayPercentage = (currentHour / 24) * 0.15; // Max 15% à 7h
-    } else if (currentHour >= 7 && currentHour < 23) {
-      // Entre 7h et 23h - progression plus rapide (jour)
-      const adjustedHour = currentHour - 7; // 0 à 16 heures
-      const workingDayPercent = adjustedHour / 16; // 0% à 100% de la journée de travail
-      
-      // Pourcentage de base (ce qui a été réalisé pendant la nuit) plus progression de la journée
-      dayPercentage = 0.15 + (workingDayPercent * 0.7); // De 15% à 85%
-    } else {
-      // Entre 23h et minuit - presque complet
-      dayPercentage = 0.85;
+    // Base initiale (entre 40% et 50% de la cible quotidienne)
+    const basePercentage = 0.4 + (Math.random() * 0.1);
+    
+    // Ajout d'une progression basée sur l'heure (jusqu'à 30% supplémentaires)
+    let hourlyProgressPercent = 0;
+    
+    if (currentHour >= 8 && currentHour <= 23) {
+      // Pendant la journée (8h-23h), progression plus rapide
+      hourlyProgressPercent = (currentHour - 8) / 15 * 0.3;
+    } else if (currentHour >= 0 && currentHour < 8) {
+      // Pendant la nuit (0h-8h), progression plus lente
+      hourlyProgressPercent = ((currentHour + 24 - 8) % 24) / 24 * 0.15;
     }
     
-    // Ajouter une légère variation aléatoire (±3%)
-    const randomVariation = (Math.random() * 0.06) - 0.03;
-    dayPercentage = Math.max(0, Math.min(0.85, dayPercentage + randomVariation));
+    // Pourcentage total (entre 40% et 80% selon l'heure)
+    const totalPercentage = basePercentage + hourlyProgressPercent;
     
-    // Pour rendre les valeurs plus stables et moins erratiques,
-    // calculons des valeurs plus cohérentes au fil du temps
+    // Variation aléatoire pour des valeurs réalistes (±2%)
+    const finalPercentage = Math.min(0.85, totalPercentage + (Math.random() * 0.04 - 0.02));
     
-    // Appliquer une courbe progressive naturelle (non linéaire)
-    // Utiliser une fonction qui accélère doucement puis ralentit en fin de journée
-    const curvedPercentage = Math.sin(dayPercentage * Math.PI / 2);
+    // Calculer les valeurs initiales
+    const initialAds = Math.floor(dailyAdsTarget * finalPercentage);
     
-    // Calculer les valeurs estimées sur la base du pourcentage
-    const estimatedAds = Math.floor(dailyAdsTarget * curvedPercentage * 0.95); // Légèrement en dessous de la cible
-    const estimatedRevenue = Math.floor(dailyRevenueTarget * curvedPercentage * 0.93);
+    // Le revenu n'est pas exactement proportionnel aux annonces (légère variation)
+    const revenueVariance = 0.97 + (Math.random() * 0.06); // 97% à 103%
+    const initialRevenue = Math.floor(dailyRevenueTarget * finalPercentage * revenueVariance);
     
-    // Définir les compteurs
-    setAdsCount(estimatedAds);
-    setRevenueCount(estimatedRevenue);
+    // Définir les valeurs initiales (compteurs internes et affichés identiques au démarrage)
+    setAdsCount(initialAds);
+    setRevenueCount(initialRevenue);
+    setDisplayedAdsCount(initialAds);
+    setDisplayedRevenueCount(initialRevenue);
     
-    // Initialiser les valeurs affichées pour qu'elles correspondent à ce que nous avons calculé
-    // Démarrer légèrement en dessous pour amorcer une animation douce
-    setDisplayedAdsCount(Math.floor(estimatedAds * 0.985));
-    setDisplayedRevenueCount(Math.floor(estimatedRevenue * 0.98));
+    console.log(`Initialized counters: Ads=${initialAds}, Revenue=${initialRevenue}`);
   }, [dailyAdsTarget, dailyRevenueTarget]);
   
   // Fonction pour initialiser les compteurs
