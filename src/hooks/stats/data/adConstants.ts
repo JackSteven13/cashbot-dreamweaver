@@ -1,14 +1,15 @@
 
 export const adProcessingTime = {
-  standard: { min: 12000, max: 18000 }, // 12-18 secondes par pub standard
-  premium: { min: 20000, max: 30000 },  // 20-30 secondes pour pubs premium
-  high: { min: 15000, max: 25000 },     // 15-25 secondes pour pubs haute qualité
-  medium: { min: 13000, max: 20000 }    // 13-20 secondes pour pubs moyennes
+  standard: { min: 20000, max: 35000 },  // 20-35 secondes
+  premium: { min: 40000, max: 60000 },   // 40-60 secondes  
+  high: { min: 30000, max: 45000 },      // 30-45 secondes
+  medium: { min: 25000, max: 40000 }     // 25-40 secondes
 };
 
 export const adValueCategories = {
-  standard: { min: 0.001, max: 0.003 }, // 0.1-0.3 centimes
-  medium: { min: 0.002, max: 0.005 },   // 0.2-0.5 centimes
-  high: { min: 0.004, max: 0.008 },     // 0.4-0.8 centimes
-  premium: { min: 0.007, max: 0.015 }   // 0.7-1.5 centimes
+  standard: { min: 0.30, max: 0.80 },    // 0.30€-0.80€
+  medium: { min: 0.70, max: 1.50 },      // 0.70€-1.50€
+  high: { min: 1.20, max: 2.40 },        // 1.20€-2.40€
+  premium: { min: 2.00, max: 3.30 }      // 2.00€-3.30€
 };
+

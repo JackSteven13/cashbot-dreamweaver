@@ -14,10 +14,10 @@ export const scheduleMidnightReset = (
   
   const timeUntilMidnight = tomorrow.getTime() - now.getTime();
   
-  // Calculer le taux horaire total basé sur tous les bots actifs
+  // Calculer un taux horaire plus réaliste avec 20 bots
   const totalHourlyRate = getTotalHourlyRate(activeLocations);
   
-  // Calculer le nombre total d'annonces attendues pour la journée
+  // ~90 pubs/heure/bot × 20 bots × 24 heures
   const expectedDailyAds = totalHourlyRate * 24;
   
   console.log(`Total hourly rate: ${totalHourlyRate} ads/hour`);
@@ -25,3 +25,4 @@ export const scheduleMidnightReset = (
   
   return setTimeout(resetCallback, timeUntilMidnight);
 };
+
