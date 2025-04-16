@@ -65,32 +65,59 @@ const StatsCounter = ({
     const safeDisplayedAdsCount = Math.max(0, displayedAdsCount);
     const safeDisplayedRevenueCount = Math.max(0, displayedRevenueCount);
     
-    // Avoid too frequent updates (maximum every 2000ms)
+    // Chaotic update pattern - use variable time intervals
     const now = Date.now();
-    const updateDelayMs = 2000; // Increased to 2000ms for a slower pace
     
-    // Calculate difference to determine if an update is needed
+    // Dynamic update delay based on a combination of factors including a random component
+    // This makes the updates completely unpredictable
+    const baseUpdateDelay = 1000; // Base delay in milliseconds
+    const hourFactor = 1 + 0.5 * Math.sin(new Date().getHours() / (24 / (2 * Math.PI))); // Hour-based oscillation (0.5-1.5)
+    const randomFactor = 0.5 + Math.random(); // Random component (0.5-1.5)
+    const updateDelayMs = baseUpdateDelay * hourFactor * randomFactor; // Combined delay
+    
+    // Calculate highly variable differences to determine if an update is needed
     const adsDiff = Math.abs(safeDisplayedAdsCount - lastAdsValue.current);
     const revenueDiff = Math.abs(safeDisplayedRevenueCount - lastRevenueValue.current);
     
-    // Define minimum thresholds for updates - higher values for slower change
-    const minimumAdsChangeThreshold = 200; // Increased from 150 to 200
-    const minimumRevenueChangeThreshold = 400; // Increased from 300 to 400
+    // Completely dynamic thresholds based on current values and time
+    const variableAdThreshold = Math.max(
+      50, // Minimum threshold
+      Math.floor(lastAdsValue.current * (0.002 + Math.random() * 0.008)) // 0.2-1% of current value
+    );
     
-    // Update ads if the difference is significant and if minimum delay has passed
-    if ((adsDiff > minimumAdsChangeThreshold) && (now - lastAdsUpdate.current > updateDelayMs)) {
-      // Simulation of activity bursts at times (as if multiple bots finished their tasks at once)
-      // Reduce probability and intensity of bursts
-      const burstFactor = Math.random() > 0.98 ? 1.15 : 1.0; // Reduced from 1.2 to 1.15, and probability from 0.97 to 0.98
+    const variableRevenueThreshold = Math.max(
+      100, // Minimum threshold
+      Math.floor(lastRevenueValue.current * (0.003 + Math.random() * 0.012)) // 0.3-1.5% of current value
+    );
+    
+    // Update ads with complex, unpredictable behavior
+    if ((adsDiff > variableAdThreshold) && (now - lastAdsUpdate.current > updateDelayMs)) {
+      // Multiple tiers of burst factors for extreme variability
+      let burstFactor = 1.0;
+      const burstRoll = Math.random();
       
-      // Avoid jumps: perform a smooth transition to the new value
+      if (burstRoll < 0.005) { // 0.5% chance of major burst
+        burstFactor = 1.3 + Math.random() * 0.7; // 1.3-2.0x
+      } else if (burstRoll < 0.03) { // 2.5% chance of medium burst
+        burstFactor = 1.1 + Math.random() * 0.3; // 1.1-1.4x
+      } else if (burstRoll < 0.12) { // 9% chance of minor burst
+        burstFactor = 1.03 + Math.random() * 0.12; // 1.03-1.15x
+      } else if (burstRoll > 0.95) { // 5% chance of negative burst (slower growth)
+        burstFactor = 0.6 + Math.random() * 0.3; // 0.6-0.9x
+      }
+      
+      // Extract current numeric value
       const currentNumeric = parseInt(displayedAds.replace(/\s/g, ''), 10) || 0;
       const targetValue = safeDisplayedAdsCount;
       
-      // Limit change to a maximum percentage to avoid jumps that are too large
-      // But occasionally allow larger bursts
-      // Reduced maximum change
-      const maxChange = Math.max(30, Math.floor(currentNumeric * 0.002 * burstFactor)); // Reduced from 0.003 to 0.002, minimum from 50 to 30
+      // Dynamic max change based on multiple factors
+      const maxChangePercent = (
+        0.001 + // Base component
+        (Math.random() * 0.004) + // Random component
+        (Math.abs(Math.sin(now / 10000)) * 0.002) // Time-based oscillating component
+      ) * burstFactor;
+      
+      const maxChange = Math.max(10, Math.floor(currentNumeric * maxChangePercent));
       
       let newValue;
       if (Math.abs(targetValue - currentNumeric) <= maxChange) {
@@ -101,8 +128,14 @@ const StatsCounter = ({
         newValue = Math.max(0, currentNumeric - maxChange); // Ensure we don't go below 0
       }
       
-      // Add slight random variation (+/- 2 ads instead of 3)
-      newValue = Math.max(0, newValue + (Math.floor(Math.random() * 5) - 2));
+      // Add erratic micro-variations based on multiple probability tiers
+      const microRoll = Math.random();
+      if (microRoll < 0.3) { // 30% chance of larger variation
+        newValue = newValue + (Math.floor(Math.random() * 11) - 5); // -5 to +5
+      } else if (microRoll < 0.7) { // 40% chance of small variation  
+        newValue = newValue + (Math.floor(Math.random() * 5) - 2); // -2 to +2
+      } 
+      // 30% chance of no micro-variation
       
       const formattedValue = Math.round(newValue).toLocaleString('fr-FR');
       setDisplayedAds(formattedValue);
@@ -115,23 +148,36 @@ const StatsCounter = ({
       localStorage.setItem('global_ads_count', newValue.toString());
     }
     
-    // Same logic for revenue, but with more specific variations to simulate
-    // different ad values
-    if ((revenueDiff > minimumRevenueChangeThreshold) && (now - lastRevenueUpdate.current > updateDelayMs)) {
-      // Simulate different categories of ad values
-      // Sometimes premium high-value ads are analyzed (hence the spikes)
-      // Reduce probability of premium ads
-      const premiumAdBurst = Math.random() > 0.988; // Reduced from 0.985 to 0.988
-      const burstFactor = premiumAdBurst ? 1.3 : 1.0; // Reduced from 1.5 to 1.3
+    // Similar logic for revenue, with different patterns to create divergence
+    if ((revenueDiff > variableRevenueThreshold) && (now - lastRevenueUpdate.current > updateDelayMs * 0.8)) { // Slightly faster updates for revenue
+      // Complex tiered burst system for revenue with higher variance
+      let revenueMultiplier = 1.0;
+      const premiumRoll = Math.random();
+      
+      // Premium ad category system with multiple tiers
+      if (premiumRoll < 0.003) { // Ultra-premium (0.3%)
+        revenueMultiplier = 1.8 + Math.random() * 1.2; // 1.8-3.0x
+      } else if (premiumRoll < 0.02) { // Premium (1.7%)
+        revenueMultiplier = 1.4 + Math.random() * 0.6; // 1.4-2.0x
+      } else if (premiumRoll < 0.08) { // High-value (6%)
+        revenueMultiplier = 1.15 + Math.random() * 0.25; // 1.15-1.4x
+      } else if (premiumRoll < 0.20) { // Above-average (12%)
+        revenueMultiplier = 1.05 + Math.random() * 0.15; // 1.05-1.2x
+      } else if (premiumRoll > 0.97) { // Low-value (3%)
+        revenueMultiplier = 0.7 + Math.random() * 0.2; // 0.7-0.9x
+      }
       
       // Extract current numeric value
       const currentRevenueString = displayedRevenue.replace(/[^\d.,]/g, '').replace(',', '.');
       const currentNumeric = parseFloat(currentRevenueString) || 0;
       const targetValue = safeDisplayedRevenueCount;
       
-      // Limit change with possibility of bursts for premium ads
-      // Reduced maximum change
-      const maxChange = Math.max(50, Math.floor(currentNumeric * 0.002 * burstFactor)); // Reduced from 0.003 to 0.002, minimum from 75 to 50
+      // Dynamic change calculation with much higher variability for revenue
+      const baseChangePercent = 0.002 + (Math.random() * 0.008);
+      const maxChange = Math.max(
+        20, // Minimum change
+        Math.floor(currentNumeric * baseChangePercent * revenueMultiplier)
+      );
       
       let newValue;
       if (Math.abs(targetValue - currentNumeric) <= maxChange) {
@@ -142,14 +188,18 @@ const StatsCounter = ({
         newValue = Math.max(0, currentNumeric - maxChange); // Ensure we don't go below 0
       }
       
-      // Add non-linear variation to simulate different ad categories
-      // Reduce variations
-      if (premiumAdBurst) {
-        // Simulate analysis of a batch of premium ads
-        newValue += Math.random() * 15; // Reduced from 20 to 15
-      } else if (Math.random() > 0.88) {
-        // Medium-value ads (reduced probability from 0.85 to 0.88)
-        newValue += Math.random() * 4; // Reduced from 6 to 4
+      // Add complex non-linear variation to simulate different ad categories
+      // Extreme variation based on ad categories - much more pronounced
+      if (premiumRoll < 0.003) { // Ultra-premium
+        newValue += 15 + Math.random() * 35; // +15-50 
+      } else if (premiumRoll < 0.02) { // Premium
+        newValue += 8 + Math.random() * 22; // +8-30
+      } else if (premiumRoll < 0.08) { // High-value
+        newValue += 3 + Math.random() * 10; // +3-13
+      } else if (premiumRoll < 0.20) { // Above-average
+        newValue += 1 + Math.random() * 5; // +1-6
+      } else if (premiumRoll > 0.97) { // Occasional drop (low-value ads)
+        newValue -= Math.random() * 3; // -0 to -3
       }
       
       const formattedValue = formatRevenue(Math.max(0, newValue)); // Ensure we don't go below 0
