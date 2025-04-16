@@ -1,5 +1,5 @@
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 interface UseStatsAnimationParams {
   adsCount: number;
@@ -36,6 +36,10 @@ export const useStatsAnimation = ({
   setDisplayedAdsCount,
   setDisplayedRevenueCount
 }: UseStatsAnimationParams) => {
+  // Track animation state locally
+  const [prevAdsCount, setPrevAdsCount] = useState(0);
+  const [prevRevenueCount, setPrevRevenueCount] = useState(0);
+  
   const animateCounters = useCallback(() => {
     // Animer le compteur d'annonces
     setDisplayedAdsCount((prevCount) => {
@@ -51,11 +55,14 @@ export const useStatsAnimation = ({
       const newValue = prevCount + increment;
       
       // Garantir qu'on ne dépasse pas la cible (dans les deux directions)
-      if (increment > 0) {
-        return Math.min(newValue, adsCount);
-      } else {
-        return Math.max(newValue, adsCount);
-      }
+      const finalValue = increment > 0 
+        ? Math.min(newValue, adsCount)
+        : Math.max(newValue, adsCount);
+        
+      // Update previous value for next check
+      setPrevAdsCount(finalValue);
+      
+      return finalValue;
     });
 
     // Animer le compteur de revenus
@@ -72,19 +79,22 @@ export const useStatsAnimation = ({
       const newValue = prevCount + increment;
       
       // Garantir qu'on ne dépasse pas la cible (dans les deux directions)
-      if (increment > 0) {
-        return Math.min(newValue, revenueCount);
-      } else {
-        return Math.max(newValue, revenueCount);
-      }
+      const finalValue = increment > 0
+        ? Math.min(newValue, revenueCount)
+        : Math.max(newValue, revenueCount);
+        
+      // Update previous value for next check
+      setPrevRevenueCount(finalValue);
+      
+      return finalValue;
     });
 
     // Indiquer si l'animation est toujours active
     return { 
       animationActive: adsCount !== 0 && revenueCount !== 0 && 
-                      (adsCount !== displayedAdsCount || revenueCount !== displayedRevenueCount)
+                      (adsCount !== prevAdsCount || revenueCount !== prevRevenueCount)
     };
-  }, [adsCount, revenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
+  }, [adsCount, revenueCount, setDisplayedAdsCount, setDisplayedRevenueCount, prevAdsCount, prevRevenueCount]);
 
   return { animateCounters };
 };
