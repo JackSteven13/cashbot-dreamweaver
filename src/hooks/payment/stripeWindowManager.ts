@@ -3,6 +3,8 @@
  * Gestionnaire de fenêtre Stripe optimisé pour les mobiles et navigateurs modernes
  */
 
+import { isMobileDevice } from "@/utils/stripe-helper";
+
 /**
  * Ouvre l'URL de paiement Stripe dans une nouvelle fenêtre/onglet
  * avec gestion améliorée pour les appareils mobiles
@@ -14,13 +16,11 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
   }
   
   try {
-    // Détection d'appareil mobile (plus précise)
-    const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(navigator.userAgent);
+    const isMobile = isMobileDevice();
+    console.log(`Ouverture de Stripe (${isMobile ? 'mobile' : 'desktop'}): ${stripeUrl}`);
     
-    console.log(`Tentative d'ouverture de Stripe (${isMobile ? 'mobile' : 'desktop'}):`, stripeUrl);
-    
-    // Forcer l'ouverture dans une nouvelle fenêtre/onglet quelle que soit la plateforme
-    // Cette approche est plus fiable pour assurer que Stripe s'ouvre complètement
+    // Sur tous les appareils, utiliser une redirection directe
+    // C'est la méthode la plus fiable pour garantir l'ouverture
     window.location.href = stripeUrl;
     return true;
   } catch (error) {
@@ -37,20 +37,20 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
  */
 export const isStripeWindowOpen = (): boolean => {
   // Cette fonction pourrait être étendue pour vérifier si un onglet Stripe spécifique est ouvert
-  return false;
+  return localStorage.getItem('pendingPayment') === 'true';
 };
 
 /**
  * Récupère une session de paiement Stripe interrompue
- * Si une URL est stockée dans localStorage, tente de la récupérer
- * @returns {boolean} True si une session a été récupérée, sinon false
  */
 export const recoverStripeSession = (): boolean => {
   try {
     const stripeUrl = localStorage.getItem('lastStripeUrl');
     const isPending = localStorage.getItem('pendingPayment') === 'true';
+    const timestamp = parseInt(localStorage.getItem('stripeRedirectTimestamp') || '0');
     
-    if (isPending && stripeUrl) {
+    // Vérifier si le paiement est en cours et pas trop ancien (moins de 20 minutes)
+    if (isPending && stripeUrl && (Date.now() - timestamp < 20 * 60 * 1000)) {
       console.log("Tentative de récupération d'une session Stripe:", stripeUrl);
       return openStripeWindow(stripeUrl);
     }

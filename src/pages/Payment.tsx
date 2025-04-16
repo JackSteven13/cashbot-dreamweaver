@@ -85,9 +85,9 @@ const Payment = () => {
     initiateStripeCheckout(); // Déclencher le paiement
   };
   
-  // Lorsque la transition est terminée, ouvrir la fenêtre Stripe
+  // Lorsque la transition est terminée, rien à faire car CheckoutTransition se charge d'ouvrir Stripe
   const handleTransitionComplete = () => {
-    // La fenêtre Stripe s'ouvrira automatiquement via CheckoutTransition
+    console.log("Transition terminée, la redirection vers Stripe devrait suivre automatiquement");
   };
 
   if (isAuthChecking || isAuthLoading) {

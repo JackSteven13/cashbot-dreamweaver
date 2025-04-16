@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, CreditCard, CheckCircle } from 'lucide-react';
@@ -26,43 +25,40 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
     // Étape 1: Initialiser la transition
     setStep(1);
     
-    // Sur mobile, accélérer la transition pour éviter les délais
+    // Sur mobile, accélérer la transition
     const timing = isMobile ? {
-      step2: 300, // Plus rapide sur mobile
-      step3: 600  // Plus rapide sur mobile
+      step2: 200, // Très rapide sur mobile
+      step3: 400  // Très rapide sur mobile
     } : {
-      step2: 800,
-      step3: 1600
+      step2: 600,
+      step3: 1200
     };
     
     // Étape 2: Préparer le paiement
     const timer1 = setTimeout(() => setStep(2), timing.step2);
     
-    // Étape 3: Prêt pour la redirection
+    // Étape 3: Redirection
     const timer2 = setTimeout(() => {
       setStep(3);
       // Notifier que la transition est terminée
       onComplete();
       
-      // Délai supplémentaire avant d'ouvrir Stripe
-      // Sur mobile, rendre ce délai beaucoup plus court
-      const timer3 = setTimeout(() => {
+      // Ouvrir Stripe immédiatement
+      if (stripeUrl) {
         setReadyForStripe(true);
-      }, isMobile ? 50 : 400); // Beaucoup plus court sur mobile
-      
-      return () => clearTimeout(timer3);
+      }
     }, timing.step3);
     
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
     };
-  }, [isStarted, onComplete, isMobile]);
+  }, [isStarted, onComplete, isMobile, stripeUrl]);
 
   // Ouvrir la page Stripe dès que nous sommes prêts
   useEffect(() => {
     if (readyForStripe && stripeUrl) {
-      // Ouvrir dans un nouvel onglet ou rediriger selon le device
+      // Ouvrir directement, plus fiable
       openStripeWindow(stripeUrl);
     }
   }, [readyForStripe, stripeUrl]);
