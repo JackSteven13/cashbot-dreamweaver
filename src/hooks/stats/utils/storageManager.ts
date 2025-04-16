@@ -11,6 +11,10 @@ export const STORAGE_KEYS = {
   DISPLAYED_REVENUE: 'displayed_revenue_count'
 };
 
+// Minimum baseline values that should never be dropped below
+const MINIMUM_ADS_COUNT = 40000;
+const MINIMUM_REVENUE_COUNT = 50000;
+
 export const loadStoredValues = () => {
   try {
     // First try to load displayed values (what user actually sees)
@@ -21,7 +25,8 @@ export const loadStoredValues = () => {
       const parsedAdsCount = parseInt(displayedAds, 10);
       const parsedRevenueCount = parseInt(displayedRevenue, 10);
       
-      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && parsedAdsCount > 0 && parsedRevenueCount > 0) {
+      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && 
+          parsedAdsCount >= MINIMUM_ADS_COUNT && parsedRevenueCount >= MINIMUM_REVENUE_COUNT) {
         console.log(`Loaded displayed values: Ads=${parsedAdsCount}, Revenue=${parsedRevenueCount}`);
         return {
           hasStoredValues: true,
@@ -41,7 +46,8 @@ export const loadStoredValues = () => {
       const parsedAdsCount = parseInt(globalAdsCount, 10);
       const parsedRevenueCount = parseInt(globalRevenueCount, 10);
       
-      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && parsedAdsCount > 0 && parsedRevenueCount > 0) {
+      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && 
+          parsedAdsCount >= MINIMUM_ADS_COUNT && parsedRevenueCount >= MINIMUM_REVENUE_COUNT) {
         console.log(`Loaded global stored values: Ads=${parsedAdsCount}, Revenue=${parsedRevenueCount}`);
         return {
           hasStoredValues: true,
@@ -52,54 +58,33 @@ export const loadStoredValues = () => {
       }
     }
     
-    // Fallback to user-specific values if no global or displayed values
-    const storedAdsCount = localStorage.getItem(STORAGE_KEYS.ADS_COUNT);
-    const storedRevenueCount = localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT);
-    const storedLastUpdate = localStorage.getItem(STORAGE_KEYS.LAST_UPDATE);
+    // Fallback to baseline values but randomize slightly to look dynamic
+    console.log("Using baseline values with slight randomization");
+    const baselineAdsCount = MINIMUM_ADS_COUNT + Math.floor(Math.random() * 5000);
+    const baselineRevenueCount = MINIMUM_REVENUE_COUNT + Math.floor(Math.random() * 5000);
     
-    if (storedAdsCount && storedRevenueCount) {
-      const parsedAdsCount = parseInt(storedAdsCount, 10);
-      const parsedRevenueCount = parseInt(storedRevenueCount, 10);
-      
-      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && parsedAdsCount > 0 && parsedRevenueCount > 0) {
-        console.log(`Loaded stored values: Ads=${parsedAdsCount}, Revenue=${parsedRevenueCount}`);
-        return {
-          hasStoredValues: true,
-          adsCount: parsedAdsCount,
-          revenueCount: parsedRevenueCount,
-          lastUpdate: storedLastUpdate ? parseInt(storedLastUpdate, 10) : Date.now()
-        };
-      }
-    }
-    
-    // Si aucune valeur valide n'est trouvée, utiliser des valeurs par défaut élevées
-    // pour éviter les réinitialisations visuelles à 0
-    console.log("No valid stored values found, using default high values");
-    const defaultAdsCount = 40000 + Math.floor(Math.random() * 5000);
-    const defaultRevenueCount = 50000 + Math.floor(Math.random() * 5000);
-    
-    // Sauvegarder ces valeurs par défaut pour la cohérence
+    // Save these baseline values for consistency
     try {
-      localStorage.setItem(STORAGE_KEYS.DISPLAYED_ADS, defaultAdsCount.toString());
-      localStorage.setItem(STORAGE_KEYS.DISPLAYED_REVENUE, defaultRevenueCount.toString());
-      localStorage.setItem(STORAGE_KEYS.GLOBAL_ADS_COUNT, defaultAdsCount.toString());
-      localStorage.setItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT, defaultRevenueCount.toString());
+      localStorage.setItem(STORAGE_KEYS.DISPLAYED_ADS, baselineAdsCount.toString());
+      localStorage.setItem(STORAGE_KEYS.DISPLAYED_REVENUE, baselineRevenueCount.toString());
+      localStorage.setItem(STORAGE_KEYS.GLOBAL_ADS_COUNT, baselineAdsCount.toString());
+      localStorage.setItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT, baselineRevenueCount.toString());
     } catch (e) {
-      console.error("Error saving default values:", e);
+      console.error("Error saving baseline values:", e);
     }
     
     return {
       hasStoredValues: true,
-      adsCount: defaultAdsCount,
-      revenueCount: defaultRevenueCount,
+      adsCount: baselineAdsCount,
+      revenueCount: baselineRevenueCount,
       lastUpdate: Date.now()
     };
   } catch (e) {
     console.error("Error loading stored values:", e);
     
-    // En cas d'erreur, utiliser des valeurs par défaut élevées
-    const defaultAdsCount = 40000 + Math.floor(Math.random() * 5000);
-    const defaultRevenueCount = 50000 + Math.floor(Math.random() * 5000);
+    // En cas d'erreur, utiliser des valeurs par défaut
+    const defaultAdsCount = MINIMUM_ADS_COUNT + Math.floor(Math.random() * 5000);
+    const defaultRevenueCount = MINIMUM_REVENUE_COUNT + Math.floor(Math.random() * 5000);
     
     return {
       hasStoredValues: true,
@@ -113,8 +98,8 @@ export const loadStoredValues = () => {
 export const saveValues = (ads: number, revenue: number) => {
   try {
     // Protection pour éviter les valeurs négatives ou trop basses
-    const safeAdsCount = Math.max(40000, Math.round(ads));
-    const safeRevenueCount = Math.max(50000, Math.round(revenue));
+    const safeAdsCount = Math.max(MINIMUM_ADS_COUNT, Math.round(ads));
+    const safeRevenueCount = Math.max(MINIMUM_REVENUE_COUNT, Math.round(revenue));
     
     // Sauvegarder à la fois comme valeurs globales et spécifiques à l'utilisateur
     localStorage.setItem(STORAGE_KEYS.GLOBAL_ADS_COUNT, safeAdsCount.toString());

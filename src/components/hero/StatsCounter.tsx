@@ -9,6 +9,10 @@ interface StatsCounterProps {
   dailyRevenueTarget?: number;
 }
 
+// Minimum baseline values that should never be dropped below
+const MINIMUM_ADS_COUNT = 40000;
+const MINIMUM_REVENUE_COUNT = 50000;
+
 const StatsCounter = ({
   dailyAdsTarget = 28800, // ~1800 videos/hour × 16 hours = more realistic daily target
   dailyRevenueTarget = 40000 // ~1.5€ average per video × 28,800 videos
@@ -22,13 +26,13 @@ const StatsCounter = ({
   const [stableAdsCount, setStableAdsCount] = useState(() => {
     // Initialiser avec des valeurs minimales sûres pour éviter le flicker à 0
     const stored = localStorage.getItem('displayed_ads_count');
-    return stored ? Math.max(40000, parseInt(stored, 10)) : 40000;
+    return stored ? Math.max(MINIMUM_ADS_COUNT, parseInt(stored, 10)) : MINIMUM_ADS_COUNT;
   });
   
   const [stableRevenueCount, setStableRevenueCount] = useState(() => {
     // Initialiser avec des valeurs minimales sûres pour éviter le flicker à 0
     const stored = localStorage.getItem('displayed_revenue_count');
-    return stored ? Math.max(50000, parseInt(stored, 10)) : 50000;
+    return stored ? Math.max(MINIMUM_REVENUE_COUNT, parseInt(stored, 10)) : MINIMUM_REVENUE_COUNT;
   });
   
   const previousAdsCountRef = useRef(displayedAdsCount);
@@ -36,32 +40,48 @@ const StatsCounter = ({
   
   // Protection pour éviter les valeurs à 0 au chargement initial
   useEffect(() => {
-    // Si on a des valeurs à 0, restaurer les dernières valeurs connues
-    if (displayedAdsCount === 0 || displayedRevenueCount === 0) {
+    // Si on a des valeurs à 0 ou inférieures aux minimums, restaurer les dernières valeurs connues ou utiliser les minimums
+    if (displayedAdsCount < MINIMUM_ADS_COUNT || displayedRevenueCount < MINIMUM_REVENUE_COUNT) {
       const lastAdsCount = localStorage.getItem('displayed_ads_count');
       const lastRevenueCount = localStorage.getItem('displayed_revenue_count');
       
       if (lastAdsCount) {
         const parsedAdsCount = parseInt(lastAdsCount, 10);
-        if (!isNaN(parsedAdsCount) && parsedAdsCount > 0) {
+        if (!isNaN(parsedAdsCount) && parsedAdsCount >= MINIMUM_ADS_COUNT) {
           previousAdsCountRef.current = parsedAdsCount;
+        } else {
+          previousAdsCountRef.current = MINIMUM_ADS_COUNT;
         }
+      } else {
+        previousAdsCountRef.current = MINIMUM_ADS_COUNT;
       }
       
       if (lastRevenueCount) {
         const parsedRevenueCount = parseInt(lastRevenueCount, 10);
-        if (!isNaN(parsedRevenueCount) && parsedRevenueCount > 0) {
+        if (!isNaN(parsedRevenueCount) && parsedRevenueCount >= MINIMUM_REVENUE_COUNT) {
           previousRevenueCountRef.current = parsedRevenueCount;
+        } else {
+          previousRevenueCountRef.current = MINIMUM_REVENUE_COUNT;
         }
+      } else {
+        previousRevenueCountRef.current = MINIMUM_REVENUE_COUNT;
       }
+      
+      // Save the corrected values
+      setStableAdsCount(previousAdsCountRef.current);
+      setStableRevenueCount(previousRevenueCountRef.current);
+      
+      // Also update localStorage to prevent future issues
+      localStorage.setItem('displayed_ads_count', previousAdsCountRef.current.toString());
+      localStorage.setItem('displayed_revenue_count', previousRevenueCountRef.current.toString());
     }
-  }, []);
+  }, [displayedAdsCount, displayedRevenueCount]);
   
   // Update stable values when displayed values change
   useEffect(() => {
-    // Utiliser des valeurs minimales sûres pour éviter les baisses visuelles
-    const safeAdsCount = Math.max(displayedAdsCount, 40000);
-    const safeRevenueCount = Math.max(displayedRevenueCount, 50000);
+    // Always apply minimum thresholds to any incoming values
+    const safeAdsCount = Math.max(displayedAdsCount, MINIMUM_ADS_COUNT);
+    const safeRevenueCount = Math.max(displayedRevenueCount, MINIMUM_REVENUE_COUNT);
     
     // Only update if the new value is higher than the previous stable value
     // This prevents any decreases in the displayed numbers

@@ -14,6 +14,10 @@ interface StatsCounterData {
   displayedRevenueCount: number;
 }
 
+// Minimum baseline values that should never be dropped below
+const MINIMUM_ADS_COUNT = 40000;
+const MINIMUM_REVENUE_COUNT = 50000;
+
 // Storage keys for global counters
 const GLOBAL_STORAGE_KEYS = {
   DISPLAYED_ADS_COUNT: 'displayed_ads_count',
@@ -64,14 +68,39 @@ export const useStatsCounter = ({
   // Track initial load state
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   
-  // Initial load protection
+  // Initial load protection and enhancement
   useEffect(() => {
-    if (isFirstLoad && (displayedAdsCount === 0 || displayedRevenueCount === 0)) {
-      // Forced initialization on first load to prevent flickering with 0 values
-      initializeCounters();
+    if (isFirstLoad) {
+      // Force initialization to ensure values are always above minimums
+      const storedAdsCount = parseInt(localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT) || '0', 10);
+      const storedRevenueCount = parseInt(localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT) || '0', 10);
+      
+      // If stored values are below minimum, use minimums with a bit of randomization
+      if (isNaN(storedAdsCount) || storedAdsCount < MINIMUM_ADS_COUNT || 
+          isNaN(storedRevenueCount) || storedRevenueCount < MINIMUM_REVENUE_COUNT) {
+        
+        const initialAdsCount = MINIMUM_ADS_COUNT + Math.floor(Math.random() * 5000);
+        const initialRevenueCount = MINIMUM_REVENUE_COUNT + Math.floor(Math.random() * 5000);
+        
+        // Update both local state and localStorage
+        setAdsCount(initialAdsCount);
+        setRevenueCount(initialRevenueCount);
+        setDisplayedAdsCount(initialAdsCount);
+        setDisplayedRevenueCount(initialRevenueCount);
+        
+        localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT, initialAdsCount.toString());
+        localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT, initialRevenueCount.toString());
+      } else {
+        // Use existing values if they're already above minimum
+        setAdsCount(storedAdsCount);
+        setRevenueCount(storedRevenueCount);
+        setDisplayedAdsCount(storedAdsCount);
+        setDisplayedRevenueCount(storedRevenueCount);
+      }
+      
       setIsFirstLoad(false);
     }
-  }, [isFirstLoad, displayedAdsCount, displayedRevenueCount, initializeCounters]);
+  }, [isFirstLoad, setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
   useEffect(() => {
     // System of animation with reasonable update intervals
@@ -109,33 +138,40 @@ export const useStatsCounter = ({
   // Save to global storage whenever displayed values change
   // Add protection to prevent values from decreasing unexpectedly
   useEffect(() => {
-    if (displayedAdsCount > 0 && displayedRevenueCount > 0) {
-      // Get previous values to ensure we're not decreasing them
-      const prevAdsCount = parseInt(localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT) || '0', 10);
-      const prevRevenueCount = parseInt(localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT) || '0', 10);
-      
-      // Make sure we never go below our minimums
-      const newAdsCount = Math.max(40000, Math.round(displayedAdsCount)); 
-      const newRevenueCount = Math.max(50000, Math.round(displayedRevenueCount));
-      
-      // Only update if new values are higher (or we have no previous values)
-      // This prevents any decreases during page reloads
-      if (newAdsCount >= prevAdsCount || prevAdsCount === 0) {
-        localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT, newAdsCount.toString());
-      }
-      
-      if (newRevenueCount >= prevRevenueCount || prevRevenueCount === 0) {
-        localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT, newRevenueCount.toString());
-      }
-      
-      // Update the sync date
-      localStorage.setItem('stats_last_sync_date', currentDate);
+    // Ensure we never save values below our minimum thresholds
+    const safeAdsCount = Math.max(MINIMUM_ADS_COUNT, displayedAdsCount);
+    const safeRevenueCount = Math.max(MINIMUM_REVENUE_COUNT, displayedRevenueCount);
+    
+    // Get previous values to ensure we're not decreasing them
+    const prevAdsCount = parseInt(localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT) || '0', 10);
+    const prevRevenueCount = parseInt(localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT) || '0', 10);
+    
+    // Make sure we never go below our minimums
+    const newAdsCount = Math.max(MINIMUM_ADS_COUNT, Math.max(prevAdsCount, Math.round(safeAdsCount)));
+    const newRevenueCount = Math.max(MINIMUM_REVENUE_COUNT, Math.max(prevRevenueCount, Math.round(safeRevenueCount)));
+    
+    // Always update localStorage with the highest value
+    localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT, newAdsCount.toString());
+    localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT, newRevenueCount.toString());
+    
+    // Update the sync date
+    localStorage.setItem('stats_last_sync_date', currentDate);
+    
+    // If the stored value is higher than our current state, update the state too
+    if (newAdsCount > safeAdsCount) {
+      setDisplayedAdsCount(newAdsCount);
+      setAdsCount(newAdsCount);
     }
-  }, [displayedAdsCount, displayedRevenueCount, currentDate]);
+    
+    if (newRevenueCount > safeRevenueCount) {
+      setDisplayedRevenueCount(newRevenueCount);
+      setRevenueCount(newRevenueCount);
+    }
+  }, [displayedAdsCount, displayedRevenueCount, currentDate, setDisplayedAdsCount, setAdsCount, setDisplayedRevenueCount, setRevenueCount]);
 
   return useMemo(() => ({
-    // Si les valeurs sont trop basses, utiliser les minimums
-    displayedAdsCount: Math.max(40000, displayedAdsCount),
-    displayedRevenueCount: Math.max(50000, displayedRevenueCount)
+    // Ensure we never return values below minimums
+    displayedAdsCount: Math.max(MINIMUM_ADS_COUNT, displayedAdsCount),
+    displayedRevenueCount: Math.max(MINIMUM_REVENUE_COUNT, displayedRevenueCount)
   }), [displayedAdsCount, displayedRevenueCount]);
 };

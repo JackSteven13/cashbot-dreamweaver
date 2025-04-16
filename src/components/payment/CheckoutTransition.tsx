@@ -1,5 +1,5 @@
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Loader2, CreditCard, CheckCircle } from 'lucide-react';
 import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
