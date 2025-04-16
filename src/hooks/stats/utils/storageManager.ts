@@ -71,20 +71,52 @@ export const loadStoredValues = () => {
         };
       }
     }
-    return { hasStoredValues: false };
+    
+    // Si aucune valeur valide n'est trouvée, utiliser des valeurs par défaut élevées
+    // pour éviter les réinitialisations visuelles à 0
+    console.log("No valid stored values found, using default high values");
+    const defaultAdsCount = 40000 + Math.floor(Math.random() * 5000);
+    const defaultRevenueCount = 50000 + Math.floor(Math.random() * 5000);
+    
+    // Sauvegarder ces valeurs par défaut pour la cohérence
+    try {
+      localStorage.setItem(STORAGE_KEYS.DISPLAYED_ADS, defaultAdsCount.toString());
+      localStorage.setItem(STORAGE_KEYS.DISPLAYED_REVENUE, defaultRevenueCount.toString());
+      localStorage.setItem(STORAGE_KEYS.GLOBAL_ADS_COUNT, defaultAdsCount.toString());
+      localStorage.setItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT, defaultRevenueCount.toString());
+    } catch (e) {
+      console.error("Error saving default values:", e);
+    }
+    
+    return {
+      hasStoredValues: true,
+      adsCount: defaultAdsCount,
+      revenueCount: defaultRevenueCount,
+      lastUpdate: Date.now()
+    };
   } catch (e) {
     console.error("Error loading stored values:", e);
-    return { hasStoredValues: false };
+    
+    // En cas d'erreur, utiliser des valeurs par défaut élevées
+    const defaultAdsCount = 40000 + Math.floor(Math.random() * 5000);
+    const defaultRevenueCount = 50000 + Math.floor(Math.random() * 5000);
+    
+    return {
+      hasStoredValues: true,
+      adsCount: defaultAdsCount,
+      revenueCount: defaultRevenueCount,
+      lastUpdate: Date.now()
+    };
   }
 };
 
 export const saveValues = (ads: number, revenue: number) => {
   try {
-    // Ensure positive values before saving
-    const safeAdsCount = Math.max(0, Math.round(ads));
-    const safeRevenueCount = Math.max(0, Math.round(revenue));
+    // Protection pour éviter les valeurs négatives ou trop basses
+    const safeAdsCount = Math.max(40000, Math.round(ads));
+    const safeRevenueCount = Math.max(50000, Math.round(revenue));
     
-    // Save both as global and user-specific values
+    // Sauvegarder à la fois comme valeurs globales et spécifiques à l'utilisateur
     localStorage.setItem(STORAGE_KEYS.GLOBAL_ADS_COUNT, safeAdsCount.toString());
     localStorage.setItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT, safeRevenueCount.toString());
     
@@ -93,7 +125,7 @@ export const saveValues = (ads: number, revenue: number) => {
     localStorage.setItem(STORAGE_KEYS.LAST_UPDATE, Date.now().toString());
     localStorage.setItem(STORAGE_KEYS.RESET_DATE, new Date().toDateString());
     
-    // Also save as displayed counts for immediate consistency
+    // Aussi sauvegarder comme valeurs affichées pour une cohérence immédiate
     localStorage.setItem(STORAGE_KEYS.DISPLAYED_ADS, safeAdsCount.toString());
     localStorage.setItem(STORAGE_KEYS.DISPLAYED_REVENUE, safeRevenueCount.toString());
   } catch (e) {

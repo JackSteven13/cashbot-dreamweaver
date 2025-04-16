@@ -61,54 +61,17 @@ export const useStatsCounter = ({
     return new Date().toDateString();
   });
   
-  // Prevent accidental resets when component remounts
-  const [initialized, setInitialized] = useState(false);
+  // Track initial load state
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
   
-  // Immediately synchronize with global storage on load
+  // Initial load protection
   useEffect(() => {
-    if (initialized) return;
-    
-    // Check if we need to reset for a new day
-    const today = new Date().toDateString();
-    const lastSyncDate = localStorage.getItem('stats_last_sync_date') || '';
-    
-    if (lastSyncDate !== today) {
-      console.log(`New day detected (${today}), resetting counters from previous day (${lastSyncDate})`);
-      
-      // It's a new day, reset properly
-      localStorage.setItem('stats_last_sync_date', today);
-      setCurrentDate(today);
-      
-      // Initialize with fresh values
+    if (isFirstLoad && (displayedAdsCount === 0 || displayedRevenueCount === 0)) {
+      // Forced initialization on first load to prevent flickering with 0 values
       initializeCounters();
-    } else {
-      // Same day, load from global storage
-      const storedAds = localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT);
-      const storedRevenue = localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT);
-      
-      if (storedAds && storedRevenue) {
-        const parsedAds = parseInt(storedAds, 10);
-        const parsedRevenue = parseInt(storedRevenue, 10);
-        
-        if (!isNaN(parsedAds) && !isNaN(parsedRevenue) && parsedAds > 0 && parsedRevenue > 0) {
-          // Force values to be loaded from global storage
-          console.log(`Loaded from global storage: Ads=${parsedAds}, Revenue=${parsedRevenue}`);
-          setAdsCount(parsedAds);
-          setRevenueCount(parsedRevenue);
-          setDisplayedAdsCount(parsedAds);
-          setDisplayedRevenueCount(parsedRevenue);
-        } else {
-          console.log("Invalid stored values, initializing counters");
-          initializeCounters();
-        }
-      } else {
-        console.log("No stored values found, initializing counters");
-        initializeCounters();
-      }
+      setIsFirstLoad(false);
     }
-    
-    setInitialized(true);
-  }, []);
+  }, [isFirstLoad, displayedAdsCount, displayedRevenueCount, initializeCounters]);
   
   useEffect(() => {
     // System of animation with reasonable update intervals
@@ -151,16 +114,17 @@ export const useStatsCounter = ({
       const prevAdsCount = parseInt(localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT) || '0', 10);
       const prevRevenueCount = parseInt(localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT) || '0', 10);
       
-      // Only update if new values are higher or we don't have previous values
-      const newAdsCount = Math.round(displayedAdsCount);
-      const newRevenueCount = Math.round(displayedRevenueCount);
+      // Make sure we never go below our minimums
+      const newAdsCount = Math.max(40000, Math.round(displayedAdsCount)); 
+      const newRevenueCount = Math.max(50000, Math.round(displayedRevenueCount));
       
-      // Never allow values to decrease unless it's a new day
-      if (newAdsCount >= prevAdsCount || currentDate !== localStorage.getItem('stats_last_sync_date')) {
+      // Only update if new values are higher (or we have no previous values)
+      // This prevents any decreases during page reloads
+      if (newAdsCount >= prevAdsCount || prevAdsCount === 0) {
         localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT, newAdsCount.toString());
       }
       
-      if (newRevenueCount >= prevRevenueCount || currentDate !== localStorage.getItem('stats_last_sync_date')) {
+      if (newRevenueCount >= prevRevenueCount || prevRevenueCount === 0) {
         localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT, newRevenueCount.toString());
       }
       
@@ -170,7 +134,8 @@ export const useStatsCounter = ({
   }, [displayedAdsCount, displayedRevenueCount, currentDate]);
 
   return useMemo(() => ({
-    displayedAdsCount,
-    displayedRevenueCount
+    // Si les valeurs sont trop basses, utiliser les minimums
+    displayedAdsCount: Math.max(40000, displayedAdsCount),
+    displayedRevenueCount: Math.max(50000, displayedRevenueCount)
   }), [displayedAdsCount, displayedRevenueCount]);
 };
