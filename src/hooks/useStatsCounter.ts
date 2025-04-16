@@ -17,7 +17,8 @@ interface StatsCounterData {
 // Storage keys for global counters
 const GLOBAL_STORAGE_KEYS = {
   DISPLAYED_ADS_COUNT: 'displayed_ads_count',
-  DISPLAYED_REVENUE_COUNT: 'displayed_revenue_count'
+  DISPLAYED_REVENUE_COUNT: 'displayed_revenue_count',
+  STATS_LAST_SYNC: 'stats_last_sync'
 };
 
 export const useStatsCounter = ({
@@ -55,31 +56,58 @@ export const useStatsCounter = ({
     dailyRevenueTarget
   });
   
+  // Track if we're on the same day to avoid resetting values incorrectly
+  const [currentDate, setCurrentDate] = useState<string>(() => {
+    return new Date().toDateString();
+  });
+  
+  // Prevent accidental resets when component remounts
+  const [initialized, setInitialized] = useState(false);
+  
   // Immediately synchronize with global storage on load
   useEffect(() => {
-    // Load from global storage first
-    const storedAds = localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT);
-    const storedRevenue = localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT);
+    if (initialized) return;
     
-    if (storedAds && storedRevenue) {
-      const parsedAds = parseInt(storedAds, 10);
-      const parsedRevenue = parseInt(storedRevenue, 10);
+    // Check if we need to reset for a new day
+    const today = new Date().toDateString();
+    const lastSyncDate = localStorage.getItem('stats_last_sync_date') || '';
+    
+    if (lastSyncDate !== today) {
+      console.log(`New day detected (${today}), resetting counters from previous day (${lastSyncDate})`);
       
-      if (!isNaN(parsedAds) && !isNaN(parsedRevenue) && parsedAds > 0 && parsedRevenue > 0) {
-        // Force values to be loaded from global storage
-        setAdsCount(parsedAds);
-        setRevenueCount(parsedRevenue);
-        setDisplayedAdsCount(parsedAds);
-        setDisplayedRevenueCount(parsedRevenue);
-        console.log(`Loaded from global storage: Ads=${parsedAds}, Revenue=${parsedRevenue}`);
+      // It's a new day, reset properly
+      localStorage.setItem('stats_last_sync_date', today);
+      setCurrentDate(today);
+      
+      // Initialize with fresh values
+      initializeCounters();
+    } else {
+      // Same day, load from global storage
+      const storedAds = localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT);
+      const storedRevenue = localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT);
+      
+      if (storedAds && storedRevenue) {
+        const parsedAds = parseInt(storedAds, 10);
+        const parsedRevenue = parseInt(storedRevenue, 10);
+        
+        if (!isNaN(parsedAds) && !isNaN(parsedRevenue) && parsedAds > 0 && parsedRevenue > 0) {
+          // Force values to be loaded from global storage
+          console.log(`Loaded from global storage: Ads=${parsedAds}, Revenue=${parsedRevenue}`);
+          setAdsCount(parsedAds);
+          setRevenueCount(parsedRevenue);
+          setDisplayedAdsCount(parsedAds);
+          setDisplayedRevenueCount(parsedRevenue);
+        } else {
+          console.log("Invalid stored values, initializing counters");
+          initializeCounters();
+        }
       } else {
-        // If global storage has invalid values, initialize normally
+        console.log("No stored values found, initializing counters");
         initializeCounters();
       }
-    } else {
-      // If no global storage values, initialize normally
-      initializeCounters();
     }
+    
+    setInitialized(true);
   }, []);
   
   useEffect(() => {
@@ -116,12 +144,30 @@ export const useStatsCounter = ({
   ]);
   
   // Save to global storage whenever displayed values change
+  // Add protection to prevent values from decreasing unexpectedly
   useEffect(() => {
     if (displayedAdsCount > 0 && displayedRevenueCount > 0) {
-      localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT, Math.round(displayedAdsCount).toString());
-      localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT, Math.round(displayedRevenueCount).toString());
+      // Get previous values to ensure we're not decreasing them
+      const prevAdsCount = parseInt(localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT) || '0', 10);
+      const prevRevenueCount = parseInt(localStorage.getItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT) || '0', 10);
+      
+      // Only update if new values are higher or we don't have previous values
+      const newAdsCount = Math.round(displayedAdsCount);
+      const newRevenueCount = Math.round(displayedRevenueCount);
+      
+      // Never allow values to decrease unless it's a new day
+      if (newAdsCount >= prevAdsCount || currentDate !== localStorage.getItem('stats_last_sync_date')) {
+        localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_ADS_COUNT, newAdsCount.toString());
+      }
+      
+      if (newRevenueCount >= prevRevenueCount || currentDate !== localStorage.getItem('stats_last_sync_date')) {
+        localStorage.setItem(GLOBAL_STORAGE_KEYS.DISPLAYED_REVENUE_COUNT, newRevenueCount.toString());
+      }
+      
+      // Update the sync date
+      localStorage.setItem('stats_last_sync_date', currentDate);
     }
-  }, [displayedAdsCount, displayedRevenueCount]);
+  }, [displayedAdsCount, displayedRevenueCount, currentDate]);
 
   return useMemo(() => ({
     displayedAdsCount,

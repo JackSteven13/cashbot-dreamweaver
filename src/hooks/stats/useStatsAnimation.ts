@@ -16,6 +16,12 @@ const calculateCounterIncrement = (targetCount: number, currentCount: number): n
   // Si la différence est très faible, ne pas bouger
   if (Math.abs(difference) < 0.5) return 0;
   
+  // Protection contre les différences négatives importantes (qui indiqueraient une réinitialisation)
+  if (difference < -1000 && targetCount > 0) {
+    console.log("Detected major negative difference, ignoring reset", { targetCount, currentCount, difference });
+    return 0; // Ne pas autoriser de grandes baisses
+  }
+  
   // Un facteur beaucoup plus petit pour une progression plus réaliste
   // - Pour 20 bots traitant des vidéos de 20-60 secondes
   // - Cela fait ~20 vidéos par minute en moyenne
@@ -58,25 +64,66 @@ export const useStatsAnimation = ({
   const [prevAdsCount, setPrevAdsCount] = useState(0);
   const [prevRevenueCount, setPrevRevenueCount] = useState(0);
   
+  // Protection contre la redescente - Garde les valeurs maximales atteintes
+  const maxAdsCount = useRef(0);
+  const maxRevenueCount = useRef(0);
+  
   // Compteur pour ralentir les mises à jour d'animation
   const [updateSkipCounter, setUpdateSkipCounter] = useState(0);
   
   // Référence pour l'heure de la dernière mise à jour
   const lastUpdateTime = useRef<number>(Date.now());
   
+  // Initialiser les valeurs maximales au montage du composant
+  useEffect(() => {
+    // Récupérer les valeurs maximales du localStorage
+    const storedMaxAds = localStorage.getItem('max_ads_count');
+    const storedMaxRevenue = localStorage.getItem('max_revenue_count');
+    
+    // Ne réinitialiser les valeurs maximales que si c'est un nouveau jour
+    const today = new Date().toDateString();
+    const lastDate = localStorage.getItem('stats_last_sync_date');
+    
+    if (today !== lastDate) {
+      // Nouveau jour, réinitialiser
+      maxAdsCount.current = 0;
+      maxRevenueCount.current = 0;
+    } else if (storedMaxAds && storedMaxRevenue) {
+      // Même jour, charger les maxima
+      maxAdsCount.current = parseInt(storedMaxAds, 10);
+      maxRevenueCount.current = parseInt(storedMaxRevenue, 10);
+    }
+  }, []);
+  
   // Forcer des mises à jour périodiques mais moins fréquentes et plus petites
   useEffect(() => {
     const handleForcedUpdate = () => {
       // Ajouter de petites progressions régulières plus réalistes
       setDisplayedAdsCount(prev => {
-        if (Math.abs(prev - adsCount) < 1) return adsCount;
+        // Ne jamais descendre en dessous de la valeur maximale atteinte
+        if (prev > maxAdsCount.current) {
+          maxAdsCount.current = prev;
+          localStorage.setItem('max_ads_count', prev.toString());
+        }
+        
+        // Si déjà à la valeur cible ou supérieur, ne pas changer
+        if (Math.abs(prev - adsCount) < 1 || prev > adsCount) return prev;
+        
         // Réduit à des valeurs plus réalistes - 1 à 3 vidéos maximum
         const increment = 1 + Math.floor(Math.random() * 2);
         return Math.min(prev + increment, adsCount);
       });
       
       setDisplayedRevenueCount(prev => {
-        if (Math.abs(prev - revenueCount) < 1) return revenueCount;
+        // Ne jamais descendre en dessous de la valeur maximale atteinte
+        if (prev > maxRevenueCount.current) {
+          maxRevenueCount.current = prev;
+          localStorage.setItem('max_revenue_count', prev.toString());
+        }
+        
+        // Si déjà à la valeur cible ou supérieur, ne pas changer
+        if (Math.abs(prev - revenueCount) < 1 || prev > revenueCount) return prev;
+        
         // Réduit à des valeurs plus réalistes - petits gains par vidéo
         const increment = 0.30 + Math.floor(Math.random() * 300) / 100; // 0.30€ à 3.30€
         return Math.min(prev + increment, revenueCount);
@@ -115,11 +162,23 @@ export const useStatsAnimation = ({
       
       // Animer le compteur d'annonces très lentement
       setDisplayedAdsCount((prevCount) => {
+        // Mettre à jour la valeur maximale si nécessaire
+        if (prevCount > maxAdsCount.current) {
+          maxAdsCount.current = prevCount;
+          localStorage.setItem('max_ads_count', prevCount.toString());
+        }
+        
         // S'assurer que la valeur ne descend jamais sous zéro
         if (prevCount <= 0 && adsCount <= 0) return 0;
         
         // Si déjà à la valeur cible, ne pas changer
         if (Math.abs(prevCount - adsCount) < 1) return adsCount;
+        
+        // Protection contre la redescente - ne jamais descendre
+        if (adsCount < maxAdsCount.current) {
+          console.log("Target ads count is less than max, maintaining max", { adsCount, maxAdsCount: maxAdsCount.current });
+          return Math.max(prevCount, maxAdsCount.current);
+        }
         
         // Simuler une vitesse de traitement beaucoup plus lente
         // Maximum 1-2 vidéos à la fois normalement
@@ -134,10 +193,10 @@ export const useStatsAnimation = ({
         const newValue = prevCount + increment;
         
         // Garantir qu'on ne dépasse pas la cible (dans les deux directions)
-        // Et s'assurer qu'on ne descend pas sous zéro
+        // Et s'assurer qu'on ne descend pas sous zéro ou sous le maximum atteint
         const finalValue = increment > 0 
           ? Math.min(newValue, adsCount)
-          : Math.max(Math.max(newValue, adsCount), 0);
+          : Math.max(Math.max(newValue, adsCount), Math.max(0, maxAdsCount.current));
           
         // Stocker la valeur précédente pour la comparaison
         setPrevAdsCount(finalValue);
@@ -147,11 +206,22 @@ export const useStatsAnimation = ({
 
       // Animer le compteur de revenus avec la même logique mais avec des seuils différents
       setDisplayedRevenueCount((prevCount) => {
+        // Mettre à jour la valeur maximale si nécessaire
+        if (prevCount > maxRevenueCount.current) {
+          maxRevenueCount.current = prevCount;
+          localStorage.setItem('max_revenue_count', prevCount.toString());
+        }
+        
         // S'assurer que la valeur ne descend jamais sous zéro
         if (prevCount <= 0 && revenueCount <= 0) return 0;
         
         // Si déjà à la valeur cible, ne pas changer
         if (Math.abs(prevCount - revenueCount) < 1) return revenueCount;
+        
+        // Protection contre la redescente - ne jamais descendre
+        if (revenueCount < maxRevenueCount.current) {
+          return Math.max(prevCount, maxRevenueCount.current);
+        }
         
         // Calculer un gain basé sur le prix moyen d'une publicité (0.30€-3.30€)
         // Pour une animation réaliste des revenus
@@ -172,7 +242,7 @@ export const useStatsAnimation = ({
         // Et s'assurer qu'on ne descend pas sous zéro
         const finalValue = revenueCount > prevCount
           ? Math.min(newValue, revenueCount)
-          : Math.max(Math.max(newValue, revenueCount), 0);
+          : Math.max(Math.max(newValue, revenueCount), Math.max(0, maxRevenueCount.current));
           
         // Stocker la valeur précédente pour la comparaison
         setPrevRevenueCount(finalValue);
@@ -193,3 +263,4 @@ export const useStatsAnimation = ({
 
   return { animateCounters };
 };
+

@@ -17,7 +17,8 @@ interface UseStatsCycleManagementParams {
 
 // Clés pour le stockage local
 const STORAGE_KEYS = {
-  LAST_UPDATE_TIME: 'stats_last_update_time'
+  LAST_UPDATE_TIME: 'stats_last_update_time',
+  LAST_RESET_DATE: 'stats_last_reset_date'
 };
 
 export const useStatsCycleManagement = ({
@@ -35,6 +36,10 @@ export const useStatsCycleManagement = ({
   })();
   
   const [lastUpdateTime, setLastUpdateTime] = useState(initialLastUpdateTime);
+  const [lastResetDate, setLastResetDate] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.LAST_RESET_DATE) || new Date().toDateString();
+  });
+  
   // Track pause periods for more natural progression
   const [isPaused, setIsPaused] = useState(false);
   
@@ -123,24 +128,43 @@ export const useStatsCycleManagement = ({
   }, [lastUpdateTime, setAdsCount, setRevenueCount, isPaused, setDisplayedAdsCount, setDisplayedRevenueCount]);
 
   const scheduleCycleUpdate = useCallback(() => {
+    // Vérifier si la réinitialisation a déjà eu lieu aujourd'hui
+    const today = new Date().toDateString();
+    if (today === lastResetDate) {
+      console.log("Reset already happened today, skipping");
+      return null; // Ne pas planifier de réinitialisation si déjà fait aujourd'hui
+    }
+    
+    // Sauvegarder la date de la dernière réinitialisation
+    localStorage.setItem(STORAGE_KEYS.LAST_RESET_DATE, today);
+    setLastResetDate(today);
+    
     return scheduleMidnightReset(
       () => {
-        setAdsCount(0);
-        setRevenueCount(0);
-        setDisplayedAdsCount(0);
-        setDisplayedRevenueCount(0);
-        setIsPaused(false);
+        // Mettre à jour la date de réinitialisation avant de tout réinitialiser
+        const resetDate = new Date().toDateString();
+        localStorage.setItem(STORAGE_KEYS.LAST_RESET_DATE, resetDate);
+        setLastResetDate(resetDate);
         
-        // Effacer les valeurs stockées dans localStorage lors de la réinitialisation
-        localStorage.removeItem('stats_ads_count');
-        localStorage.removeItem('stats_revenue_count');
-        localStorage.removeItem('displayed_ads_count');
-        localStorage.removeItem('displayed_revenue_count');
+        // Réinitialiser les compteurs à zéro seulement si c'est un nouveau jour
+        if (resetDate !== lastResetDate) {
+          setAdsCount(0);
+          setRevenueCount(0);
+          setDisplayedAdsCount(0);
+          setDisplayedRevenueCount(0);
+          setIsPaused(false);
+          
+          // Effacer les valeurs stockées dans localStorage lors de la réinitialisation
+          localStorage.removeItem('stats_ads_count');
+          localStorage.removeItem('stats_revenue_count');
+          localStorage.removeItem('displayed_ads_count');
+          localStorage.removeItem('displayed_revenue_count');
+        }
       },
       dailyAdsTarget,
       dailyRevenueTarget
     );
-  }, [dailyAdsTarget, dailyRevenueTarget, setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
+  }, [dailyAdsTarget, dailyRevenueTarget, setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount, lastResetDate]);
 
   return {
     scheduleCycleUpdate,

@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
 import { formatRevenue } from '@/utils/formatters';
@@ -17,7 +17,22 @@ const StatsCounter = ({
     dailyAdsTarget,
     dailyRevenueTarget
   });
-
+  
+  // Local state to prevent flickering or unexpected drops
+  const [stableAdsCount, setStableAdsCount] = useState(displayedAdsCount);
+  const [stableRevenueCount, setStableRevenueCount] = useState(displayedRevenueCount);
+  
+  // Update stable values when displayed values increase
+  useEffect(() => {
+    if (displayedAdsCount > stableAdsCount) {
+      setStableAdsCount(displayedAdsCount);
+    }
+    
+    if (displayedRevenueCount > stableRevenueCount) {
+      setStableRevenueCount(displayedRevenueCount);
+    }
+  }, [displayedAdsCount, displayedRevenueCount, stableAdsCount, stableRevenueCount]);
+  
   // Forcer une mise à jour des compteurs plus fréquemment pour une animation fluide
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -32,12 +47,12 @@ const StatsCounter = ({
   return (
     <div className="grid grid-cols-2 gap-2 w-full max-w-md mx-auto mb-4 md:mb-6">
       <StatPanel 
-        value={displayedAdsCount.toLocaleString('fr-FR')}
+        value={stableAdsCount.toLocaleString('fr-FR')}
         label="Publicités analysées"
         className="text-sm animate-pulse-slow" 
       />
       <StatPanel 
-        value={formatRevenue(displayedRevenueCount)}
+        value={formatRevenue(stableRevenueCount)}
         label="Revenus générés"
         className="text-sm animate-pulse-slow" 
       />
