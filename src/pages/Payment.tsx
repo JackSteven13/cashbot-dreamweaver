@@ -8,8 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { PLANS } from '@/utils/plans';
 import { hasPendingStripePayment } from '@/utils/stripe-helper';
-import CheckoutTransition from '@/components/payment/CheckoutTransition';
 import PaymentSteps from '@/components/payment/PaymentSteps';
+import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -19,12 +19,8 @@ const Payment = () => {
     isAuthChecking,
     isStripeProcessing,
     stripeCheckoutUrl,
-    initiateStripeCheckout,
-    showMobileHelper
+    initiateStripeCheckout
   } = usePaymentPage();
-
-  const [showTransition, setShowTransition] = useState(false);
-  const [transitionComplete, setTransitionComplete] = useState(false);
 
   // Vérifier si un plan est sélectionné et valide
   useEffect(() => {
@@ -79,28 +75,12 @@ const Payment = () => {
     }
   }, [isStripeProcessing, stripeCheckoutUrl]);
 
-  // Gérer l'animation de transition avant l'ouverture de Stripe
+  // Ouvrir la fenêtre Stripe directement lorsque l'URL est disponible
   useEffect(() => {
-    if (stripeCheckoutUrl && !transitionComplete) {
-      setShowTransition(true);
-    }
-  }, [stripeCheckoutUrl, transitionComplete]);
-
-  // Ouvrir la fenêtre Stripe après la fin de l'animation
-  const handleTransitionComplete = () => {
-    setTransitionComplete(true);
-    
-    // Redirection vers Stripe avec un léger délai pour permettre à l'animation de se terminer
     if (stripeCheckoutUrl) {
-      const stripe = window.open(stripeCheckoutUrl, '_self');
-      if (!stripe) {
-        // Fallback
-        setTimeout(() => {
-          window.location.href = stripeCheckoutUrl;
-        }, 300);
-      }
+      openStripeWindow(stripeCheckoutUrl);
     }
-  };
+  }, [stripeCheckoutUrl]);
 
   if (isAuthChecking) {
     return <PaymentLoading />;
@@ -120,17 +100,10 @@ const Payment = () => {
           isStripeProcessing={isStripeProcessing}
           onStripeCheckout={initiateStripeCheckout}
           stripeCheckoutUrl={stripeCheckoutUrl}
-          showHelper={showMobileHelper}
-          showAnimation={true}
+          showHelper={false}
+          showAnimation={false}
         />
       </div>
-      
-      {/* Animation de transition */}
-      <CheckoutTransition 
-        isStarted={showTransition} 
-        stripeUrl={stripeCheckoutUrl} 
-        onComplete={handleTransitionComplete} 
-      />
     </PaymentLayout>
   );
 };
