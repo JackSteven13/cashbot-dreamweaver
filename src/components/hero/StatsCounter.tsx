@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
 import { formatRevenue } from '@/utils/formatters';
@@ -21,15 +21,32 @@ const StatsCounter = ({
   // Local state to prevent flickering or unexpected drops
   const [stableAdsCount, setStableAdsCount] = useState(displayedAdsCount);
   const [stableRevenueCount, setStableRevenueCount] = useState(displayedRevenueCount);
+  const previousAdsCountRef = useRef(displayedAdsCount);
+  const previousRevenueCountRef = useRef(displayedRevenueCount);
   
   // Update stable values when displayed values increase
   useEffect(() => {
+    // Only update if the new value is higher than the previous stable value
+    // This prevents any decreases in the displayed numbers
     if (displayedAdsCount > stableAdsCount) {
       setStableAdsCount(displayedAdsCount);
+      previousAdsCountRef.current = displayedAdsCount;
     }
     
     if (displayedRevenueCount > stableRevenueCount) {
       setStableRevenueCount(displayedRevenueCount);
+      previousRevenueCountRef.current = displayedRevenueCount;
+    }
+    
+    // If we detect a decrease, use the previous stable value
+    if (displayedAdsCount < previousAdsCountRef.current) {
+      console.log('Preventing ads count decrease:', 
+                  displayedAdsCount, '->', previousAdsCountRef.current);
+    }
+    
+    if (displayedRevenueCount < previousRevenueCountRef.current) {
+      console.log('Preventing revenue count decrease:', 
+                  displayedRevenueCount, '->', previousRevenueCountRef.current);
     }
   }, [displayedAdsCount, displayedRevenueCount, stableAdsCount, stableRevenueCount]);
   
