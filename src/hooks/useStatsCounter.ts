@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useStatsInitialization } from './stats/useStatsInitialization';
 import { useStatsAnimation } from './stats/useStatsAnimation';
-import { useStatsCycleManagement } from './stats/useStatsCycleManagement';
+import { useStatsCycleManagement } from '@/hooks/stats/useStatsCycleManagement';
 
 interface UseStatsCounterParams {
   dailyAdsTarget: number;

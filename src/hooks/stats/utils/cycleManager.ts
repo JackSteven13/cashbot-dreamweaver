@@ -5,7 +5,7 @@ export const scheduleMidnightReset = (
   resetCallback: () => void,
   dailyAdsTarget: number,
   dailyRevenueTarget: number
-): NodeJS.Timeout => {
+): number => {
   const timeUntilMidnight = calculateTimeUntilMidnight();
   
   // Convert to hours for logs
@@ -21,4 +21,3 @@ export const scheduleMidnightReset = (
     resetCallback();
   }, timeUntilMidnight);
 };
-
