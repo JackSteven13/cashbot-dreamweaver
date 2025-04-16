@@ -4,6 +4,7 @@
  */
 
 import { isMobileDevice } from "@/utils/stripe-helper";
+import { toast } from "@/components/ui/use-toast";
 
 /**
  * Ouvre l'URL de paiement Stripe dans une nouvelle fenêtre/onglet
@@ -12,23 +13,32 @@ import { isMobileDevice } from "@/utils/stripe-helper";
 export const openStripeWindow = (stripeUrl: string): boolean => {
   if (!stripeUrl) {
     console.error("URL Stripe manquante");
+    toast({
+      title: "Erreur",
+      description: "L'URL de paiement est manquante. Veuillez réessayer.",
+      variant: "destructive",
+    });
     return false;
   }
   
   try {
-    const isMobile = isMobileDevice();
-    console.log(`Ouverture de Stripe (${isMobile ? 'mobile' : 'desktop'}): ${stripeUrl}`);
+    // Toujours utiliser une redirection directe, méthode la plus fiable
+    console.log("Redirection directe vers Stripe:", stripeUrl);
     
-    // Sur tous les appareils, utiliser une redirection directe
-    // C'est la méthode la plus fiable pour garantir l'ouverture
+    // Stocker l'URL pour récupération éventuelle
+    localStorage.setItem('lastStripeUrl', stripeUrl);
+    localStorage.setItem('pendingPayment', 'true');
+    localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
+    
+    // Redirection directe - la méthode la plus fiable
     window.location.href = stripeUrl;
     return true;
   } catch (error) {
-    console.error("Erreur lors de l'ouverture de la fenêtre:", error);
+    console.error("Erreur lors de la redirection vers Stripe:", error);
     
     // Dernière tentative avec redirection directe
     window.location.href = stripeUrl;
-    return true;
+    return false;
   }
 };
 
@@ -36,7 +46,6 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
  * Vérifie si une fenêtre Stripe est déjà ouverte
  */
 export const isStripeWindowOpen = (): boolean => {
-  // Cette fonction pourrait être étendue pour vérifier si un onglet Stripe spécifique est ouvert
   return localStorage.getItem('pendingPayment') === 'true';
 };
 
