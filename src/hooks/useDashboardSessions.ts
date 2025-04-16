@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { useAutoSessions } from './sessions/useAutoSessions';
@@ -110,12 +111,7 @@ export const useDashboardSessions = ({
   );
 
   // Set up midnight reset
-  useMidnightReset(
-    safeUserData,
-    incrementSessionCount,
-    updateBalance,
-    setShowLimitAlert
-  );
+  useMidnightReset();
 
   return {
     isStartingSession: isSessionRunning,
