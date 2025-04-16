@@ -1,149 +1,16 @@
 
-/* Animation effects */
-@layer utilities {
-  .card-glow {
-    position: relative;
-    z-index: 0;
-    overflow: hidden;
-  }
-  
-  .card-glow::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    top: -10px;
-    left: -10px;
-    background: conic-gradient(
-      from 0deg at 50% 50%,
-      blue,
-      purple,
-      pink,
-      orange,
-      yellow,
-      green,
-      blue
-    );
-    width: calc(100% + 20px);
-    height: calc(100% + 20px);
-    animation: rotate 2.5s infinite linear;
-    opacity: 0.3;
-    filter: blur(5px);
-  }
-  
-  .card-glow::after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    inset: 2px;
-    background: white;
-    border-radius: inherit;
-  }
-  
-  /* Dark mode adjustments */
-  .dark .card-glow::after {
-    background: hsl(222.2 84% 4.9%);
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-out forwards;
-  }
-  
-  .animate-slide-up {
-    animation: slideUp 0.5s ease-out forwards;
-  }
-  
-  .animate-slide-down {
-    animation: slideDown 0.5s ease-out forwards;
-  }
-  
-  .animate-slide-left {
-    animation: slideLeft 0.5s ease-out forwards;
-  }
-  
-  .animate-slide-right {
-    animation: slideRight 0.5s ease-out forwards;
-  }
-  
-  .animate-bounce-in {
-    animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-  }
-}
-
-@keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideLeft {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideRight {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes bounceIn {
+@keyframes pulse-slow {
   0% {
-    opacity: 0;
-    transform: scale(0.3);
+    opacity: 1;
   }
   50% {
-    opacity: 1;
-    transform: scale(1.05);
-  }
-  70% {
-    transform: scale(0.9);
+    opacity: 0.95;
   }
   100% {
-    transform: scale(1);
+    opacity: 1;
   }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
