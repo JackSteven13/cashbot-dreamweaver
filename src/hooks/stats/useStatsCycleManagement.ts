@@ -39,21 +39,21 @@ export const useStatsCycleManagement = ({
   const [isPaused, setIsPaused] = useState(false);
 
   const incrementCountersRandomly = useCallback(() => {
-    // Natural pause periods - 15% chance of pausing updates for a cycle
-    if (Math.random() < 0.15 && !isPaused) {
+    // Périodes de pause naturelles - 5% de chance de mettre en pause les mises à jour
+    if (Math.random() < 0.05 && !isPaused) {
       setIsPaused(true);
       console.log("Natural pause in counter updates");
       
-      // Schedule end of pause period
+      // Planifier la fin de la période de pause
       setTimeout(() => {
         setIsPaused(false);
         console.log("Resuming counter updates after pause");
-      }, 30000 + Math.random() * 90000); // 30s - 2m pause
+      }, 60000 + Math.random() * 120000); // 1-3 minutes de pause
       
-      return; // Skip this update
+      return; // Sauter cette mise à jour
     }
     
-    // Skip update if in pause period
+    // Sauter la mise à jour si en période de pause
     if (isPaused) {
       return;
     }
@@ -64,42 +64,42 @@ export const useStatsCycleManagement = ({
     // Sauvegarder le dernier temps de mise à jour dans localStorage
     localStorage.setItem(STORAGE_KEYS.LAST_UPDATE_TIME, now.toString());
     
-    // Reduce hourly rate by 85% for much slower growth
-    const baseHourlyRate = getTotalHourlyRate(activeLocations) * 0.15; // Only 15% of original rate
+    // Réduire le taux horaire de 95% pour une croissance beaucoup plus lente
+    const baseHourlyRate = getTotalHourlyRate(activeLocations) * 0.05; // Seulement 5% du taux original
     
-    // Calculate time-based progress with natural slowdown
+    // Calculer la progression basée sur le temps avec un ralentissement naturel
     let totalAdsIncrement = Math.floor((baseHourlyRate * timeDiff) / (3600 * 1000));
     
-    // Add natural time-of-day variation
+    // Ajouter une variation naturelle selon l'heure de la journée
     const hourOfDay = new Date().getHours();
     let timeOfDayFactor = 1.0;
     
     if (hourOfDay < 6) {
-      // Overnight (midnight-6AM): very slow
-      timeOfDayFactor = 0.2 + Math.random() * 0.3; // 20-50% speed
+      // Nuit (minuit-6h): très lent
+      timeOfDayFactor = 0.1 + Math.random() * 0.1; // 10-20% de la vitesse
     } else if (hourOfDay < 9) {
-      // Early morning (6-9AM): picking up 
-      timeOfDayFactor = 0.6 + Math.random() * 0.3; // 60-90% speed
+      // Début de matinée (6h-9h): en progression 
+      timeOfDayFactor = 0.3 + Math.random() * 0.2; // 30-50% de la vitesse
     } else if (hourOfDay < 12) {
-      // Morning (9AM-noon): normal
-      timeOfDayFactor = 0.9 + Math.random() * 0.2; // 90-110% speed
+      // Matinée (9h-midi): normal
+      timeOfDayFactor = 0.5 + Math.random() * 0.3; // 50-80% de la vitesse
     } else if (hourOfDay < 15) {
-      // Early afternoon (noon-3PM): peak activity
-      timeOfDayFactor = 1.0 + Math.random() * 0.3; // 100-130% speed
+      // Début d'après-midi (midi-15h): activité de pointe
+      timeOfDayFactor = 0.8 + Math.random() * 0.3; // 80-110% de la vitesse
     } else if (hourOfDay < 20) {
-      // Late afternoon/evening (3-8PM): sustained activity
-      timeOfDayFactor = 0.9 + Math.random() * 0.2; // 90-110% speed  
+      // Fin d'après-midi/soirée (15h-20h): activité soutenue
+      timeOfDayFactor = 0.7 + Math.random() * 0.2; // 70-90% de la vitesse  
     } else {
-      // Night (8PM-midnight): slowing down
-      timeOfDayFactor = 0.6 + Math.random() * 0.3; // 60-90% speed
+      // Nuit (20h-minuit): ralentissement
+      timeOfDayFactor = 0.3 + Math.random() * 0.2; // 30-50% de la vitesse
     }
     
-    // Apply time of day factor
+    // Appliquer le facteur d'heure de la journée
     totalAdsIncrement = Math.floor(totalAdsIncrement * timeOfDayFactor);
     
-    // Occasional very slow periods (like system maintenance or low activity)
-    if (Math.random() < 0.08) { // 8% chance
-      totalAdsIncrement = Math.floor(totalAdsIncrement * (0.2 + Math.random() * 0.4)); // 20-60% speed
+    // Périodes occasionnelles très lentes (comme la maintenance du système ou une faible activité)
+    if (Math.random() < 0.03) { // 3% de chance
+      totalAdsIncrement = Math.floor(totalAdsIncrement * (0.1 + Math.random() * 0.3)); // 10-40% de la vitesse
     }
     
     let totalRevenue = 0;
@@ -109,35 +109,35 @@ export const useStatsCycleManagement = ({
       const locationShare = location.weight / activeLocations.reduce((sum, loc) => sum + loc.weight, 0);
       const locationAds = Math.floor(totalAdsIncrement * locationShare);
       
-      // Reduce burst probability and impact by 70%
+      // Réduire la probabilité et l'impact des pics de 90%
       const burst = calculateBurstActivity(location);
-      const finalAds = burst ? Math.floor(locationAds * (1 + (burst.multiplier - 1) * 0.3)) : locationAds;
+      const finalAds = burst ? Math.floor(locationAds * (1 + (burst.multiplier - 1) * 0.1)) : locationAds;
       
       totalRevenue += calculateRevenueForLocation(location, finalAds);
     });
     
-    // Severe limitation on growth per update 
-    // Max 0.07% of daily target (instead of 0.2% previously)
-    const maxAdsPerUpdate = Math.min(600, Math.ceil(dailyAdsTarget * 0.0007));
-    const maxRevenuePerUpdate = Math.min(1200, Math.ceil(dailyRevenueTarget * 0.0007));
+    // Limitation sévère de la croissance par mise à jour 
+    // Max 0.02% de l'objectif quotidien
+    const maxAdsPerUpdate = Math.min(100, Math.ceil(dailyAdsTarget * 0.0002));
+    const maxRevenuePerUpdate = Math.min(200, Math.ceil(dailyRevenueTarget * 0.0002));
     
     const finalAdsIncrement = Math.min(totalAdsIncrement, maxAdsPerUpdate);
     const finalRevenueIncrement = Math.min(totalRevenue, maxRevenuePerUpdate);
     
-    // Add natural variability - sometimes ads grow faster than revenue or vice versa
-    const adjustedRevenueIncrement = Math.floor(finalRevenueIncrement * (0.85 + Math.random() * 0.3));
+    // Ajouter une variabilité naturelle - parfois les publicités augmentent plus vite que les revenus ou vice versa
+    const adjustedRevenueIncrement = Math.floor(finalRevenueIncrement * (0.9 + Math.random() * 0.2));
     
     // S'assurer que les compteurs ne descendent jamais en dessous de zéro
     setAdsCount(prev => Math.max(0, prev + finalAdsIncrement));
     setRevenueCount(prev => Math.max(0, prev + adjustedRevenueIncrement));
     setLastUpdateTime(now);
     
-    // Small chance of minor visible update
-    if (Math.random() < 0.3) { // 30% chance of small visible update
-      const smallVisibleAdsUpdate = Math.floor(finalAdsIncrement * 0.1); // Only 10% of actual increment
-      const smallVisibleRevenueUpdate = Math.floor(adjustedRevenueIncrement * 0.1);
+    // Petite chance de mise à jour visible mineure
+    if (Math.random() < 0.2) { // 20% de chance de petite mise à jour visible
+      const smallVisibleAdsUpdate = Math.floor(finalAdsIncrement * 0.05); // Seulement 5% de l'incrément réel
+      const smallVisibleRevenueUpdate = Math.floor(adjustedRevenueIncrement * 0.05);
       
-      // Apply small direct updates to displayed values for more natural feeling of progress
+      // Appliquer de petites mises à jour directes aux valeurs affichées pour une sensation plus naturelle de progression
       setDisplayedAdsCount(prev => Math.max(0, prev + smallVisibleAdsUpdate));
       setDisplayedRevenueCount(prev => Math.max(0, prev + smallVisibleRevenueUpdate));
     }

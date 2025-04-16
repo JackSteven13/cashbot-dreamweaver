@@ -32,49 +32,49 @@ export const scheduleMidnightReset = (
       return;
     }
     
-    // Use much more natural, slower start patterns
+    // Use much more natural, more progressifs patterns
     const hourOfDay = new Date().getHours();
     
-    // Start with minimal values at night/early morning, gradually increasing as day goes on
+    // Progression beaucoup plus graduelle selon l'heure de la journée
     let startPercentage;
     
     if (hourOfDay < 5) {
-      // Very early morning (midnight-5AM): minimal start
-      startPercentage = 0.0005 + Math.random() * 0.0005; // 0.05-0.1%
+      // Très tôt le matin (minuit-5h): démarrage minimal
+      startPercentage = 0.0001 + Math.random() * 0.0002; // 0.01-0.03%
     } else if (hourOfDay < 8) {
-      // Early morning (5-8AM): slow start
-      startPercentage = 0.001 + Math.random() * 0.001; // 0.1-0.2%
+      // Début de matinée (5h-8h): démarrage lent
+      startPercentage = 0.0002 + Math.random() * 0.0003; // 0.02-0.05%
     } else if (hourOfDay < 12) {
-      // Morning (8AM-noon): gradual ramp-up
-      startPercentage = 0.002 + Math.random() * 0.002; // 0.2-0.4%
+      // Matin (8h-12h): augmentation progressive
+      startPercentage = 0.0005 + Math.random() * 0.0005; // 0.05-0.1%
     } else if (hourOfDay < 17) {
-      // Afternoon (noon-5PM): normal activity
-      startPercentage = 0.003 + Math.random() * 0.003; // 0.3-0.6%
+      // Après-midi (12h-17h): activité normale
+      startPercentage = 0.001 + Math.random() * 0.001; // 0.1-0.2%
     } else if (hourOfDay < 21) {
-      // Evening (5-9PM): peak time
-      startPercentage = 0.004 + Math.random() * 0.003; // 0.4-0.7%
+      // Soirée (17h-21h): pic d'activité
+      startPercentage = 0.0015 + Math.random() * 0.001; // 0.15-0.25%
     } else {
-      // Night (9PM-midnight): declining
-      startPercentage = 0.002 + Math.random() * 0.002; // 0.2-0.4%
+      // Nuit (21h-minuit): déclin
+      startPercentage = 0.0005 + Math.random() * 0.0005; // 0.05-0.1%
     }
     
-    // Day of week patterns - more organic
-    const dayOfWeek = new Date().getDay(); // 0-6 (Sunday-Saturday)
+    // Effets du jour de la semaine - plus progressifs
+    const dayOfWeek = new Date().getDay(); // 0-6 (Dimanche-Samedi)
     let dayFactor = 1;
     
     if (dayOfWeek === 0 || dayOfWeek === 6) { // Weekend
-      dayFactor = 0.7 + Math.random() * 0.2; // 70-90% (slower on weekends)
-    } else if (dayOfWeek === 1) { // Monday
-      dayFactor = 0.8 + Math.random() * 0.2; // 80-100% (slower start to week)
-    } else if (dayOfWeek === 3 || dayOfWeek === 4) { // Wednesday/Thursday peak
-      dayFactor = 1.0 + Math.random() * 0.2; // 100-120% (midweek peak)
+      dayFactor = 0.7 + Math.random() * 0.2; // 70-90% (plus lent le weekend)
+    } else if (dayOfWeek === 1) { // Lundi
+      dayFactor = 0.8 + Math.random() * 0.2; // 80-100% (démarrage plus lent en début de semaine)
+    } else if (dayOfWeek === 3 || dayOfWeek === 4) { // Mercredi/Jeudi pic
+      dayFactor = 1.0 + Math.random() * 0.1; // 100-110% (pic milieu de semaine)
     }
     
-    // Add very slight variations between ads and revenue for natural feel
-    const adsDeviation = 0.95 + Math.random() * 0.1; // 95-105%
-    const revenueDeviation = 0.93 + Math.random() * 0.14; // 93-107%
+    // Légères variations entre publicités et revenus pour un aspect naturel
+    const adsDeviation = 0.97 + Math.random() * 0.06; // 97-103%
+    const revenueDeviation = 0.96 + Math.random() * 0.08; // 96-104%
     
-    // Calculate initial values with much smaller, natural values
+    // Calculer les valeurs initiales avec des valeurs beaucoup plus petites et naturelles
     const initialAdsCount = Math.floor(dailyAdsTarget * startPercentage * dayFactor * adsDeviation);
     const initialRevenueCount = Math.floor(dailyRevenueTarget * startPercentage * dayFactor * revenueDeviation);
     
@@ -83,7 +83,7 @@ export const scheduleMidnightReset = (
     
     resetCallback();
     
-    // Populate with natural initial values
+    // Peupler avec des valeurs initiales naturelles
     localStorage.setItem('global_ads_count', initialAdsCount.toString());
     localStorage.setItem('global_revenue_count', initialRevenueCount.toString());
     localStorage.setItem('displayed_ads_count', initialAdsCount.toString());
@@ -91,7 +91,7 @@ export const scheduleMidnightReset = (
     localStorage.setItem('stats_ads_count', initialAdsCount.toString());
     localStorage.setItem('stats_revenue_count', initialRevenueCount.toString());
     
-    // Schedule next reset
+    // Planifier la prochaine réinitialisation
     scheduleMidnightReset(resetCallback, dailyAdsTarget, dailyRevenueTarget);
   }, timeUntilMidnight);
 };

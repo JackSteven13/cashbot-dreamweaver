@@ -23,7 +23,7 @@ const StatsCounter = ({
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   
   const lastUpdateTime = useRef<number>(Date.now());
-  const updateIntervalRef = useRef<number>(3000 + Math.random() * 2000);
+  const updateIntervalRef = useRef<number>(10000 + Math.random() * 5000); // 10-15 secondes entre mises à jour
   
   useEffect(() => {
     if (isFirstLoad) {
@@ -38,13 +38,13 @@ const StatsCounter = ({
         return;
       }
       
-      // Générer de petites augmentations naturelles
+      // Générer de petites augmentations naturelles et toujours positives
       const currentAds = parseInt(displayedAds.replace(/,/g, ''));
       const currentRevenue = parseFloat(displayedRevenue.replace(/,/g, ''));
       
-      // Augmentations variables mais toujours positives
-      const adsIncrease = Math.floor(25 + Math.random() * 75);
-      const revenueIncrease = Math.floor(50 + Math.random() * 150);
+      // Augmentations cohérentes et raisonnables (toujours positives)
+      const adsIncrease = Math.floor(15 + Math.random() * 35); // 15-50, plus modéré
+      const revenueIncrease = Math.floor(20 + Math.random() * 40); // 20-60, plus modéré
       
       const newAds = currentAds + adsIncrease;
       const newRevenue = currentRevenue + revenueIncrease;
@@ -54,7 +54,7 @@ const StatsCounter = ({
       
       // Mettre à jour le timing pour la prochaine mise à jour
       lastUpdateTime.current = now;
-      updateIntervalRef.current = 3000 + Math.random() * 2000; // 3-5 secondes
+      updateIntervalRef.current = 10000 + Math.random() * 5000; // 10-15 secondes
     };
     
     const intervalId = setInterval(updateValues, 1000);

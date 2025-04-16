@@ -97,10 +97,10 @@ export const useStatsCounter = ({
     animationFrameId = requestAnimationFrame(updateAnimation);
     
     // Interval for periodic counter updates (target values)
-    // Increase interval dramatically to 2-4 minutes for much slower and more natural updates
+    // Augmentation très progressive avec des mises à jour plus espacées
     const updateInterval = setInterval(() => {
       incrementCountersRandomly();
-    }, 120000 + Math.floor(Math.random() * 120000)); // Every 2-4 minutes for much slower updates
+    }, 300000 + Math.floor(Math.random() * 120000)); // Toutes les 5-7 minutes
     
     // Schedule reset at midnight
     const resetTimeout = scheduleCycleUpdate();
