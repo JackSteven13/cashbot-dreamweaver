@@ -9,9 +9,12 @@ interface UseStatsAnimationParams {
 }
 
 const calculateCounterIncrement = (targetCount: number, currentCount: number): number => {
-  const baseIncrement = Math.floor((targetCount - currentCount) * 0.003);
-  const variationFactor = 0.5 + Math.random() * 0.7;
-  return Math.max(2, Math.min(5, Math.floor(baseIncrement * variationFactor)));
+  // Réduire drastiquement le taux d'incrémentation (de 0.003 à 0.0005)
+  const baseIncrement = Math.floor((targetCount - currentCount) * 0.0005);
+  // Limiter la variation pour une progression plus stable
+  const variationFactor = 0.8 + Math.random() * 0.3;
+  // Limiter à un maximum de 2 pour des mouvements très graduels
+  return Math.max(1, Math.min(2, Math.floor(baseIncrement * variationFactor)));
 };
 
 export const useStatsAnimation = ({

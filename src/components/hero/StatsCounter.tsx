@@ -33,7 +33,9 @@ const StatsCounter = ({
     const adsDiff = Math.abs(displayedAdsCount - lastUpdateRef.current.adsCount);
     const revenueDiff = Math.abs(displayedRevenueCount - lastUpdateRef.current.revenueCount);
     
-    if (lastUpdateRef.current.timestamp === 0 || timeDiff > 1500 || adsDiff > 100 || revenueDiff > 200) {
+    // Augmenter significativement le seuil de temps entre les mises à jour (de 1500ms à 4000ms)
+    // Et augmenter le seuil de différence nécessaire pour déclencher une mise à jour
+    if (lastUpdateRef.current.timestamp === 0 || timeDiff > 4000 || adsDiff > 300 || revenueDiff > 500) {
       setDisplayedAds(displayedAdsCount.toLocaleString('fr-FR'));
       setDisplayedRevenue(formatRevenue(displayedRevenueCount));
       
