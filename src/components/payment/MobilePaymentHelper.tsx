@@ -1,8 +1,10 @@
 
 import React from 'react';
-import { ExternalLink, Link2, Copy } from 'lucide-react';
+import { ExternalLink, RefreshCw, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
+import { hasPendingStripePayment } from '@/utils/stripe-helper';
 
 interface MobilePaymentHelperProps {
   isVisible: boolean;
@@ -15,10 +17,19 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
   onHelp,
   stripeUrl 
 }) => {
-  if (!isVisible || !stripeUrl) return null;
+  const effectiveUrl = stripeUrl || localStorage.getItem('lastStripeUrl');
+  
+  if (!isVisible) return null;
 
   const handleOpenDirectly = () => {
-    if (!stripeUrl) return;
+    if (!effectiveUrl) {
+      toast({
+        title: "Erreur",
+        description: "Aucune URL de paiement disponible. Veuillez réessayer le processus.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     // Notification visuelle à l'utilisateur
     toast({
@@ -27,19 +38,19 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
       duration: 3000,
     });
     
-    // Ouvrir directement l'URL avec priorité maximale
-    window.location.href = stripeUrl;
+    // Ouvrir directement l'URL
+    window.location.href = effectiveUrl;
     
     // Déclencher la fonction de callback
     onHelp();
   };
   
   const copyToClipboard = () => {
-    if (!stripeUrl) return;
+    if (!effectiveUrl) return;
     
     try {
       // Méthode moderne de copie
-      navigator.clipboard.writeText(stripeUrl)
+      navigator.clipboard.writeText(effectiveUrl)
         .then(() => {
           toast({
             title: "Lien copié",
@@ -47,91 +58,92 @@ const MobilePaymentHelper: React.FC<MobilePaymentHelperProps> = ({
             duration: 3000,
           });
         })
-        .catch((err) => {
-          console.error("Erreur de copie moderne:", err);
+        .catch(err => {
+          console.error("Erreur lors de la copie:", err);
+          // Méthode alternative
           useAlternativeCopyMethod();
         });
     } catch (e) {
-      console.error("Erreur lors de la copie:", e);
       useAlternativeCopyMethod();
     }
   };
   
   const useAlternativeCopyMethod = () => {
-    // Méthode alternative de copie pour compatibilité maximale
-    const textarea = document.createElement('textarea');
-    textarea.value = stripeUrl || '';
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
+    // Méthode alternative pour les navigateurs plus anciens
+    const textArea = document.createElement('textarea');
+    textArea.value = effectiveUrl || '';
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
     
     try {
-      const successful = document.execCommand('copy');
-      if (successful) {
-        toast({
-          title: "Lien copié",
-          description: "L'URL de paiement a été copiée dans votre presse-papier",
-          duration: 3000,
-        });
-      } else {
-        throw new Error("Copie échouée");
-      }
+      document.execCommand('copy');
+      toast({
+        title: "Lien copié",
+        description: "L'URL de paiement a été copiée dans votre presse-papier",
+        duration: 3000,
+      });
     } catch (err) {
-      console.error("La copie alternative a échoué:", err);
       toast({
         title: "Échec de la copie",
         description: "Impossible de copier l'URL. Veuillez utiliser le bouton d'ouverture directe.",
-        variant: "destructive",
-        duration: 4000,
+        variant: "destructive"
       });
     }
     
-    document.body.removeChild(textarea);
+    document.body.removeChild(textArea);
   };
 
   return (
-    <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md shadow-sm">
-      <div className="flex items-center space-x-2 text-blue-800 dark:text-blue-300 mb-3">
-        <h3 className="font-medium text-sm md:text-base">Problème d'affichage du paiement?</h3>
-      </div>
-      <p className="mb-4 text-xs md:text-sm text-blue-700 dark:text-blue-400">
-        Si la page de paiement ne s'affiche pas correctement, utilisez l'une des options ci-dessous:
-      </p>
-      <div className="space-y-3">
-        <Button 
-          onClick={handleOpenDirectly}
-          className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 py-3 h-auto text-sm md:text-base"
-          size="sm"
-        >
-          <ExternalLink className="h-4 w-4" />
-          Payer maintenant (méthode directe)
-        </Button>
+    <Alert className="mt-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+      <AlertTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2 mb-2">
+        <RefreshCw className="h-4 w-4" />
+        Problème d'affichage du paiement?
+      </AlertTitle>
+      
+      <AlertDescription className="text-blue-600 dark:text-blue-400 text-sm">
+        <p className="mb-3">
+          La page de paiement ne s'affiche pas correctement? Utilisez l'une des options ci-dessous:
+        </p>
         
-        <div className="flex items-center justify-center gap-2">
+        <div className="space-y-3">
           <Button 
-            onClick={copyToClipboard}
-            variant="outline"
+            onClick={handleOpenDirectly}
+            className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 py-2 h-auto"
             size="sm"
-            className="flex-1 h-9 text-xs md:text-sm flex items-center gap-1"
           >
-            <Copy className="h-3 w-3 md:h-4 md:w-4" />
-            Copier le lien
+            <ExternalLink className="h-4 w-4" />
+            Ouvrir la page de paiement
           </Button>
           
-          <a 
-            href={stripeUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 h-9 px-2 flex items-center justify-center gap-1 text-xs md:text-sm text-blue-600 hover:underline border border-blue-200 dark:border-blue-800 rounded-md bg-white dark:bg-blue-900/20"
-          >
-            <Link2 className="h-3 w-3 md:h-4 md:w-4" />
-            Ouvrir dans un nouvel onglet
-          </a>
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <Button 
+              onClick={copyToClipboard}
+              variant="outline"
+              size="sm"
+              className="text-xs flex items-center gap-1 h-8 flex-1"
+            >
+              <Copy className="h-3 w-3" />
+              Copier le lien
+            </Button>
+            
+            {effectiveUrl && (
+              <a 
+                href={effectiveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 h-8 px-2 flex items-center justify-center gap-1 text-xs text-blue-600 hover:underline border border-blue-200 dark:border-blue-800 rounded-md bg-white dark:bg-blue-900/20"
+              >
+                <ExternalLink className="h-3 w-3" />
+                Nouvel onglet
+              </a>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      </AlertDescription>
+    </Alert>
   );
 };
 

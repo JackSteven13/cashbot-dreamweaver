@@ -7,6 +7,7 @@ import PaymentCard from '@/components/payment/PaymentCard';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { PLANS } from '@/utils/plans';
+import { hasPendingStripePayment } from '@/utils/stripe-helper';
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -16,7 +17,8 @@ const Payment = () => {
     isAuthChecking,
     isStripeProcessing,
     stripeCheckoutUrl,
-    initiateStripeCheckout
+    initiateStripeCheckout,
+    showMobileHelper
   } = usePaymentPage();
 
   // Vérifier si un plan est sélectionné et valide
@@ -62,14 +64,15 @@ const Payment = () => {
   
   // Vérifier si un paiement a été interrompu
   useEffect(() => {
-    const isPending = localStorage.getItem('pendingPayment') === 'true';
-    if (isPending && !isStripeProcessing) {
+    const isPending = hasPendingStripePayment();
+    if (isPending && !isStripeProcessing && !stripeCheckoutUrl) {
       toast({
         title: "Paiement en attente",
-        description: "Nous avons détecté un paiement inachevé. Vous pouvez reprendre le processus ou choisir une autre offre.",
+        description: "Un paiement était en cours. Vous pouvez poursuivre ou recommencer.",
+        duration: 5000
       });
     }
-  }, [isStripeProcessing]);
+  }, [isStripeProcessing, stripeCheckoutUrl]);
 
   if (isAuthChecking) {
     return <PaymentLoading />;
@@ -83,6 +86,7 @@ const Payment = () => {
         isStripeProcessing={isStripeProcessing}
         onStripeCheckout={initiateStripeCheckout}
         stripeCheckoutUrl={stripeCheckoutUrl}
+        showHelper={showMobileHelper}
       />
     </PaymentLayout>
   );

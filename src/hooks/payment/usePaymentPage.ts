@@ -8,34 +8,68 @@ import { toast } from '@/components/ui/use-toast';
 import { useStripeCheckout } from './useStripeCheckout';
 import { getPlanById } from '@/utils/plans';
 import { recoverStripeSession } from './stripeWindowManager';
+import { hasPendingStripePayment } from '@/utils/stripe-helper';
 
 export const usePaymentPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, isLoading: isAuthChecking } = useAuth();
   
+  // État pour suivre les récupérations de session
+  const [isRecovering, setIsRecovering] = useState(false);
+  const [showMobileHelper, setShowMobileHelper] = useState(false);
+  
   // Plan sélectionné depuis l'URL ou la session
   const planFromUrl = searchParams.get('plan');
   const [selectedPlan, setSelectedPlan] = useSessionStorage<PlanType>('selectedPlan', getPlanById(planFromUrl));
   const [currentSubscription, setCurrentSubscription] = useState<string | null>(null);
   
-  // Utiliser le hook Stripe checkout
+  // Utiliser le hook Stripe checkout avec gestion des sessions interrompues
   const { 
     isStripeProcessing, 
     handleStripeCheckout,
     stripeCheckoutUrl,
     actualSubscription,
-    isChecking
+    isChecking,
+    retryCount
   } = useStripeCheckout(selectedPlan);
   
   // Vérifier s'il y a une session de paiement interrompue
   useEffect(() => {
-    // Seulement si on n'est pas en train de charger une nouvelle session
-    if (!isStripeProcessing && !stripeCheckoutUrl) {
-      // Tenter de récupérer une session interrompue
-      recoverStripeSession();
-    }
-  }, []);
+    const checkPendingPayment = async () => {
+      // Ne pas récupérer si déjà en cours de récupération ou si une nouvelle session est en train de se créer
+      if (isRecovering || isStripeProcessing || stripeCheckoutUrl) {
+        return;
+      }
+      
+      // Vérifier si un paiement est en cours selon localStorage
+      if (hasPendingStripePayment()) {
+        console.log("Paiement en cours détecté, tentative de récupération");
+        setIsRecovering(true);
+        
+        try {
+          // Tenter de récupérer la session
+          const recovered = recoverStripeSession();
+          
+          if (!recovered) {
+            // Si la récupération automatique échoue, afficher l'assistant
+            setShowMobileHelper(true);
+            toast({
+              title: "Reprise du paiement",
+              description: "Vous pouvez reprendre votre paiement avec les options ci-dessous",
+              duration: 5000,
+            });
+          }
+        } finally {
+          setIsRecovering(false);
+        }
+      }
+    };
+    
+    // Tenter de récupérer une session après un court délai
+    const timer = setTimeout(checkPendingPayment, 500);
+    return () => clearTimeout(timer);
+  }, [isStripeProcessing, stripeCheckoutUrl, isRecovering]);
   
   // Vérifier le plan sélectionné depuis l'URL au chargement initial
   useEffect(() => {
@@ -80,7 +114,11 @@ export const usePaymentPage = () => {
     isAuthChecking,
     isStripeProcessing,
     stripeCheckoutUrl,
-    initiateStripeCheckout
+    initiateStripeCheckout,
+    isRecovering,
+    showMobileHelper,
+    setShowMobileHelper,
+    retryCount
   };
 };
 
