@@ -5,6 +5,7 @@ import { UserData } from '@/types/userData';
 import { useToast } from '@/components/ui/use-toast';
 import balanceManager from '@/utils/balance/balanceManager';
 import { triggerDashboardEvent } from '@/utils/animations';
+import { calculateSessionGain, generateSessionReport } from '@/utils/sessions';
 
 interface UseManualSessionsProps {
   userData: UserData | null;
@@ -29,10 +30,9 @@ export const useManualSessions = ({
   );
 
   // Calculate session gain based on subscription
-  const calculateSessionGain = async (): Promise<number> => {
+  const calculateManualSessionGain = async (): Promise<number> => {
     const subscription = userData?.subscription || 'freemium';
-    const baseGain = Math.random() * 0.09 + 0.01; // Between 0.01 and 0.1
-    return parseFloat(baseGain.toFixed(2));
+    return calculateSessionGain(subscription);
   };
 
   const startSession = async () => {
@@ -51,7 +51,7 @@ export const useManualSessions = ({
       const duration = 2000 + Math.random() * 3000;
       await new Promise(resolve => setTimeout(resolve, duration));
 
-      const sessionGain = await calculateSessionGain();
+      const sessionGain = await calculateManualSessionGain();
       
       // Add to daily gains
       balanceManager.addDailyGain(sessionGain);
@@ -60,7 +60,7 @@ export const useManualSessions = ({
       await incrementSessionCount();
       
       // Update balance
-      await updateBalance(sessionGain, `Session d'analyse publicitaire`);
+      await updateBalance(sessionGain, generateSessionReport('Manuel', userData?.subscription));
       
       // Trigger successful completion animation
       triggerDashboardEvent('analysis-complete', {

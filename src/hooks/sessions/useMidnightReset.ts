@@ -1,47 +1,71 @@
 
-import { useEffect } from 'react';
-import { toast } from '@/components/ui/use-toast';
+import { useEffect, useRef } from 'react';
 import balanceManager from '@/utils/balance/balanceManager';
 
 export const useMidnightReset = () => {
+  const resetDate = useRef<string | null>(null);
+  
   useEffect(() => {
-    // Function to check if we need to reset counters
-    const checkAndResetCounters = () => {
-      const now = new Date();
-      const lastResetDate = localStorage.getItem('lastResetDate');
-      const today = now.toISOString().split('T')[0];
+    // Function to check and perform daily resets
+    const checkAndPerformReset = () => {
+      const today = new Date().toISOString().split('T')[0];
       
-      // If we haven't reset today yet, reset counters
-      if (lastResetDate !== today) {
-        console.log("Resetting daily counters due to new day");
-        
-        // Reset daily counters
-        balanceManager.resetDailyCounters();
-        
-        // Store reset date
+      // Check if we've already reset today
+      if (resetDate.current === today) {
+        console.log('Reset already happened today, skipping');
+        return;
+      }
+      
+      // Perform the reset
+      console.log('Performing midnight reset of daily counters');
+      balanceManager.resetDailyCounters();
+      
+      // Update the reset date
+      resetDate.current = today;
+      
+      // Store in localStorage for persistence across refreshes
+      try {
         localStorage.setItem('lastResetDate', today);
-        
-        // Notify user
-        toast({
-          title: "Nouvelle journée",
-          description: "Vos compteurs quotidiens ont été réinitialisés.",
-          duration: 5000,
-        });
-        
-        // Broadcast reset event
-        window.dispatchEvent(new CustomEvent('dailyCounters:reset'));
+      } catch (e) {
+        console.error('Error storing reset date:', e);
+      }
+      
+      // Dispatch reset event
+      window.dispatchEvent(new CustomEvent('dailyReset', { 
+        detail: { date: today } 
+      }));
+    };
+    
+    // Load the last reset date from storage
+    try {
+      resetDate.current = localStorage.getItem('lastResetDate');
+    } catch (e) {
+      console.error('Error loading reset date from storage:', e);
+    }
+    
+    // Check for reset on initial load
+    checkAndPerformReset();
+    
+    // Set up periodic checks (every hour)
+    const checkInterval = setInterval(checkAndPerformReset, 3600000);
+    
+    // Listen for system time changes or waking from sleep
+    const visibilityChangeHandler = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndPerformReset();
       }
     };
     
-    // Check on initial load
-    checkAndResetCounters();
+    document.addEventListener('visibilitychange', visibilityChangeHandler);
     
-    // Set up interval to check periodically
-    const intervalId = setInterval(checkAndResetCounters, 60000); // Check every minute
-    
-    // Clean up on unmount
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(checkInterval);
+      document.removeEventListener('visibilitychange', visibilityChangeHandler);
+    };
   }, []);
+  
+  // This hook doesn't return anything, it just sets up the reset logic
+  return null;
 };
 
 export default useMidnightReset;

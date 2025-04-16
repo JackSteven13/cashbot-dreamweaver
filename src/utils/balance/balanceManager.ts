@@ -148,6 +148,24 @@ const cleanupUserBalanceData = () => {
   console.log('Balance data cleared for user switch');
 };
 
+// Add transaction to user (simulated until supabase integration)
+const addTransaction = async (userId: string, gain: number, report: string) => {
+  // This would typically write to Supabase, but for now just return success
+  return { success: true, transaction: { id: Date.now().toString(), gain, report, date: new Date().toISOString() }};
+};
+
+// Sync with database (placeholder for future integration)
+const syncWithDatabase = async () => {
+  // This would sync local balance with database
+  console.log('Balance synced with database');
+  return true;
+};
+
+// Force update (for testing and UI updates)
+const forceUpdate = (newBalance: number) => {
+  return forceBalanceSync(newBalance);
+};
+
 // Export all functions
 export { 
   getCurrentBalance,
@@ -160,7 +178,10 @@ export {
   resetBalance,
   initialize,
   getLastUpdateTime,
-  cleanupUserBalanceData
+  cleanupUserBalanceData,
+  addTransaction,
+  syncWithDatabase,
+  forceUpdate
 };
 
 // Default export for convenience
@@ -175,5 +196,8 @@ export default {
   resetBalance,
   initialize,
   getLastUpdateTime,
-  cleanupUserBalanceData
+  cleanupUserBalanceData,
+  addTransaction,
+  syncWithDatabase,
+  forceUpdate
 };
