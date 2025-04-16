@@ -66,3 +66,40 @@ export const getAbsoluteSuccessUrl = (): string => {
 export const getAbsoluteCancelUrl = (): string => {
   return `${window.location.origin}/offres`;
 };
+
+/**
+ * Ouvre Stripe en fonction du type d'appareil
+ * Sur mobile: redirection directe
+ * Sur desktop: nouvelle fenêtre
+ */
+export const openStripeCheckout = (url: string): boolean => {
+  if (!url) return false;
+
+  try {
+    // Nettoyer et valider l'URL
+    const cleanUrl = fixStripeUrl(cleanStripeUrl(url));
+    
+    // Stocker l'URL pour récupération ultérieure en cas d'échec
+    localStorage.setItem('lastStripeUrl', cleanUrl);
+    localStorage.setItem('pendingPayment', 'true');
+    localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
+    
+    // Sur mobile, rediriger directement
+    if (isMobileDevice()) {
+      window.location.href = cleanUrl;
+      return true;
+    }
+    
+    // Sur desktop, ouvrir dans une nouvelle fenêtre
+    const newWindow = window.open(cleanUrl, '_blank');
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      // Si le blocage de popup est détecté, rediriger directement
+      window.location.href = cleanUrl;
+    }
+    return true;
+  } catch (error) {
+    console.error("Erreur lors de l'ouverture de Stripe:", error);
+    window.location.href = url; // Tenter une redirection directe en dernier recours
+    return false;
+  }
+};

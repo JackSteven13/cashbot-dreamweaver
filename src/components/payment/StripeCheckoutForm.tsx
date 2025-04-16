@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
 import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
+import { isMobileDevice } from '@/utils/stripe-helper';
 
 interface StripeCheckoutFormProps {
   selectedPlan: PlanType | null;
@@ -23,6 +24,7 @@ const StripeCheckoutForm = ({
   stripeUrl
 }: StripeCheckoutFormProps) => {
   const [termsAccepted, setTermsAccepted] = useState(true);
+  const isMobile = isMobileDevice();
   
   // Fonction de paiement - l'utilisateur doit cliquer manuellement
   const handleCheckout = () => {
@@ -38,6 +40,7 @@ const StripeCheckoutForm = ({
     toast({
       title: "Préparation du paiement",
       description: "Préparation de votre session de paiement sécurisée...",
+      duration: 3000
     });
 
     onCheckout();
@@ -45,6 +48,13 @@ const StripeCheckoutForm = ({
 
   const handleOpenStripeWindow = () => {
     if (stripeUrl) {
+      // Sur mobile, utiliser une redirection directe sans animation
+      if (isMobile) {
+        window.location.href = stripeUrl;
+        return true;
+      }
+      
+      // Sur desktop, tenter d'ouvrir dans un nouvel onglet
       const opened = openStripeWindow(stripeUrl);
       if (!opened) {
         toast({
@@ -119,21 +129,29 @@ const StripeCheckoutForm = ({
             onClick={handleOpenStripeWindow}
             disabled={isStripeProcessing}
           >
-            <ExternalLink className="w-4 h-4" /> Payer maintenant
+            <ExternalLink className="w-4 h-4" /> {isMobile ? 'Continuer vers le paiement' : 'Payer maintenant'}
           </Button>
           
-          <p className="text-sm text-center text-gray-500">
-            Vous serez redirigé vers une page de paiement sécurisée pour finaliser votre abonnement.
-          </p>
+          {isMobile ? (
+            <p className="text-sm text-center text-gray-500">
+              Vous allez être redirigé vers une page de paiement sécurisée.
+            </p>
+          ) : (
+            <p className="text-sm text-center text-gray-500">
+              Vous serez redirigé vers une page de paiement sécurisée pour finaliser votre abonnement.
+            </p>
+          )}
           
-          <Button 
-            fullWidth
-            variant="outline"
-            className="mt-2 text-sm flex items-center justify-center gap-2"
-            onClick={handleOpenStripeWindow}
-          >
-            <ExternalLink className="w-3 h-3" /> Ouvrir dans une nouvelle fenêtre
-          </Button>
+          {!isMobile && (
+            <Button 
+              fullWidth
+              variant="outline"
+              className="mt-2 text-sm flex items-center justify-center gap-2"
+              onClick={handleOpenStripeWindow}
+            >
+              <ExternalLink className="w-3 h-3" /> Ouvrir dans une nouvelle fenêtre
+            </Button>
+          )}
         </div>
       )}
 
