@@ -18,13 +18,13 @@ const StatsCounter = ({
     dailyRevenueTarget
   });
 
-  // Force une mise à jour des compteurs toutes les 5 secondes
+  // Forcer une mise à jour des compteurs toutes les secondes pour une animation plus fluide
   useEffect(() => {
     const intervalId = setInterval(() => {
       // Forcer une mise à jour par changement d'état local
       const event = new CustomEvent('stats:update');
       window.dispatchEvent(event);
-    }, 5000);
+    }, 1500); // Réduit à 1.5 secondes pour une animation plus dynamique
 
     return () => clearInterval(intervalId);
   }, []);
@@ -39,7 +39,7 @@ const StatsCounter = ({
       <StatPanel 
         value={formatRevenue(displayedRevenueCount)}
         label="Revenus générés"
-        className="text-sm animate-pulse-slow"
+        className="text-sm animate-pulse-slow" 
       />
     </div>
   );

@@ -21,14 +21,16 @@ const calculateCounterIncrement = (targetCount: number, currentCount: number): n
   // - D'autres fois, le traitement est plus progressif
   
   // Probabilité d'un "boost" dans le traitement (comme si plusieurs bots finissaient en même temps)
-  const isBoostMode = Math.random() > 0.99;
+  // Augmenté à 5% pour plus d'activité visuelle
+  const isBoostMode = Math.random() > 0.95;
   
   // Incrément de base avec différents facteurs selon le mode
-  let baseIncrementFactor = isBoostMode ? 0.01 : 0.001;
+  // Augmenté pour une progression plus visible
+  let baseIncrementFactor = isBoostMode ? 0.03 : 0.005;
   
   // Pour les grands écarts, augmenter le facteur de base
   if (Math.abs(difference) > 10000) {
-    baseIncrementFactor *= 1.2;
+    baseIncrementFactor *= 1.5;
   }
   
   // Calculer l'incrément avec une légère variation aléatoire
@@ -37,8 +39,8 @@ const calculateCounterIncrement = (targetCount: number, currentCount: number): n
   
   // Limiter à un maximum raisonnable pour éviter des sauts visibles
   const maxIncrement = isBoostMode ? 
-    Math.max(1, Math.floor(Math.abs(difference) / 80)) : // Pour les bursts
-    Math.max(1, Math.floor(Math.abs(difference) / 300));  // Pour le mode normal
+    Math.max(1, Math.floor(Math.abs(difference) / 50)) : // Pour les bursts (réduit de 80 à 50)
+    Math.max(1, Math.floor(Math.abs(difference) / 200));  // Pour le mode normal (réduit de 300 à 200)
   
   // Retourner l'incrément avec le signe approprié
   return difference > 0 ? 
@@ -62,19 +64,21 @@ export const useStatsAnimation = ({
   // Référence pour l'heure de la dernière mise à jour
   const lastUpdateTime = useRef<number>(Date.now());
   
-  // Forcer des mises à jour périodiques
+  // Forcer des mises à jour périodiques plus fréquentes
   useEffect(() => {
     const handleForcedUpdate = () => {
-      // Ajouter de petites progressions régulières
+      // Ajouter de petites progressions régulières plus importantes
       setDisplayedAdsCount(prev => {
         if (Math.abs(prev - adsCount) < 1) return adsCount;
-        const increment = 10 + Math.floor(Math.random() * 30);
+        // Augmenté de "10 + Math.floor(Math.random() * 30)" à des valeurs plus élevées
+        const increment = 30 + Math.floor(Math.random() * 70);
         return Math.min(prev + increment, adsCount);
       });
       
       setDisplayedRevenueCount(prev => {
         if (Math.abs(prev - revenueCount) < 1) return revenueCount;
-        const increment = 15 + Math.floor(Math.random() * 35);
+        // Augmenté de "15 + Math.floor(Math.random() * 35)" à des valeurs plus élevées
+        const increment = 45 + Math.floor(Math.random() * 85);
         return Math.min(prev + increment, revenueCount);
       });
     };
@@ -88,8 +92,9 @@ export const useStatsAnimation = ({
     const now = Date.now();
     const elapsedTime = now - lastUpdateTime.current;
     
-    // Ralentir les animations en n'actualisant que toutes les 70-90ms
-    if (elapsedTime < 70 + Math.random() * 20) {
+    // Accélérer les animations en réduisant le temps entre les mises à jour
+    // Réduit de "70 + Math.random() * 20" à des valeurs plus basses
+    if (elapsedTime < 40 + Math.random() * 15) {
       return { animationActive: true }; // Continuer l'animation sans changer les valeurs
     }
     
@@ -98,15 +103,15 @@ export const useStatsAnimation = ({
     
     // Réduire la fréquence des mises à jour pour une animation plus fluide
     setUpdateSkipCounter(prev => {
-      // Déterminer si on saute cette frame (mais parfois permettre des updates consécutives)
-      const shouldSkipFrame = Math.random() > 0.1;
+      // Réduit la probabilité de sauter des frames pour des animations plus fréquentes
+      const shouldSkipFrame = Math.random() > 0.25;
       
-      if (prev < 4 && shouldSkipFrame) {
+      if (prev < 3 && shouldSkipFrame) { // Réduit de 4 à 3
         return prev + 1; // Sauter certaines frames
       }
       
-      // Simuler des "bursts" d'activité comme si plusieurs bots terminaient en même temps
-      const isBurstMode = Math.random() > 0.99;
+      // Augmenté la probabilité de "bursts" d'activité (de 0.99 à 0.95)
+      const isBurstMode = Math.random() > 0.95;
       
       // Animer le compteur d'annonces
       setDisplayedAdsCount((prevCount) => {
@@ -117,8 +122,9 @@ export const useStatsAnimation = ({
         if (Math.abs(prevCount - adsCount) < 1) return adsCount;
         
         // Simuler différentes vitesses de traitement selon le mode
+        // Augmenté le multiplicateur de 2.0 à 3.0 pour les bursts
         const increment = isBurstMode 
-          ? calculateCounterIncrement(adsCount, prevCount) * 2.0
+          ? calculateCounterIncrement(adsCount, prevCount) * 3.0
           : calculateCounterIncrement(adsCount, prevCount);
         
         // Si l'incrément est 0, ne pas changer la valeur
@@ -147,13 +153,14 @@ export const useStatsAnimation = ({
         // Si déjà à la valeur cible, ne pas changer
         if (Math.abs(prevCount - revenueCount) < 1) return revenueCount;
         
-        // Simuler des pics de revenus (comme si des publicités premium étaient traitées)
-        const isPremiumAdBatch = Math.random() > 0.96; // 4% de chance de traiter des pubs premium
+        // Augmenté la probabilité de "premium ads" (de 0.96 à 0.90)
+        const isPremiumAdBatch = Math.random() > 0.90;
         
+        // Augmenté les multiplicateurs pour une progression plus visible
         const increment = isPremiumAdBatch 
-          ? calculateCounterIncrement(revenueCount, prevCount) * 2.5
+          ? calculateCounterIncrement(revenueCount, prevCount) * 3.5 // Augmenté de 2.5 à 3.5
           : (isBurstMode 
-            ? calculateCounterIncrement(revenueCount, prevCount) * 1.5
+            ? calculateCounterIncrement(revenueCount, prevCount) * 2.5 // Augmenté de 1.5 à 2.5
             : calculateCounterIncrement(revenueCount, prevCount));
         
         // Si l'incrément est 0, ne pas changer la valeur
