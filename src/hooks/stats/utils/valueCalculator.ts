@@ -1,8 +1,8 @@
 
 export const calculateInitialValues = (dailyAdsTarget: number, dailyRevenueTarget: number) => {
-  // Valeurs de base plus cohérentes et raisonnables
-  const minBaseAds = 12000 + Math.floor(Math.random() * 3000); // 12,000-15,000
-  const minBaseRevenue = 15000 + Math.floor(Math.random() * 5000); // 15,000-20,000
+  // Valeurs de base plus élevées et cohérentes
+  const minBaseAds = 35000 + Math.floor(Math.random() * 10000); // 35,000-45,000
+  const minBaseRevenue = 42000 + Math.floor(Math.random() * 12000); // 42,000-54,000
   
   // Multiplicateurs réduits pour une croissance plus progressive
   const baseAdsMultiplier = 0.005 + (Math.random() * 0.002); // 0.5-0.7%

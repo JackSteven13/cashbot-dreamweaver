@@ -16,8 +16,8 @@ interface StatsCounterData {
 
 // Storage keys for global counters
 const GLOBAL_STORAGE_KEYS = {
-  DISPLAYED_ADS_COUNT: 'global_displayed_ads_count',
-  DISPLAYED_REVENUE_COUNT: 'global_displayed_revenue_count'
+  DISPLAYED_ADS_COUNT: 'displayed_ads_count',
+  DISPLAYED_REVENUE_COUNT: 'displayed_revenue_count'
 };
 
 export const useStatsCounter = ({
@@ -83,7 +83,6 @@ export const useStatsCounter = ({
   }, []);
   
   useEffect(() => {
-    // Initialiser les compteurs avec des valeurs réalistes
     // System of animation with reasonable update intervals
     let animationFrameId: number;
     

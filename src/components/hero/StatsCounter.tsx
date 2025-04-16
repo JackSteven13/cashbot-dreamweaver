@@ -27,6 +27,15 @@ const StatsCounter = ({
   
   useEffect(() => {
     if (isFirstLoad) {
+      // Vérifier d'abord s'il y a des valeurs stockées dans le localStorage
+      const storedAds = localStorage.getItem('displayed_ads_count');
+      const storedRevenue = localStorage.getItem('displayed_revenue_count');
+      
+      if (storedAds && storedRevenue) {
+        setDisplayedAds(parseInt(storedAds).toLocaleString('fr-FR'));
+        setDisplayedRevenue(parseInt(storedRevenue).toLocaleString('fr-FR'));
+      }
+      
       // Attendre un peu avant de commencer les mises à jour
       setTimeout(() => setIsFirstLoad(false), 2000);
       return;
@@ -39,18 +48,22 @@ const StatsCounter = ({
       }
       
       // Générer de petites augmentations naturelles et toujours positives
-      const currentAds = parseInt(displayedAds.replace(/,/g, ''));
-      const currentRevenue = parseFloat(displayedRevenue.replace(/,/g, ''));
+      const currentAds = parseInt(displayedAds.replace(/,/g, '').replace(/\s/g, ''));
+      const currentRevenue = parseFloat(displayedRevenue.replace(/,/g, '').replace(/\s/g, '').replace('€', ''));
       
-      // Augmentations cohérentes et raisonnables (toujours positives)
-      const adsIncrease = Math.floor(15 + Math.random() * 35); // 15-50, plus modéré
-      const revenueIncrease = Math.floor(20 + Math.random() * 40); // 20-60, plus modéré
+      // Augmentations cohérentes et toujours positives (plus substantielles)
+      const adsIncrease = Math.floor(25 + Math.random() * 45); // 25-70, plus significatif
+      const revenueIncrease = Math.floor(35 + Math.random() * 60); // 35-95, plus significatif
       
       const newAds = currentAds + adsIncrease;
       const newRevenue = currentRevenue + revenueIncrease;
       
       setDisplayedAds(newAds.toLocaleString('fr-FR'));
-      setDisplayedRevenue(newRevenue.toLocaleString('fr-FR'));
+      setDisplayedRevenue(newRevenue.toLocaleString('fr-FR') + ' €');
+      
+      // Stocker les valeurs dans localStorage pour persistance
+      localStorage.setItem('displayed_ads_count', newAds.toString());
+      localStorage.setItem('displayed_revenue_count', newRevenue.toString());
       
       // Mettre à jour le timing pour la prochaine mise à jour
       lastUpdateTime.current = now;

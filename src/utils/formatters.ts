@@ -5,6 +5,7 @@
  * @returns Formatted string with Euro currency symbol
  */
 export const formatRevenue = (value: number): string => {
+  // Utiliser l'API Intl pour formater correctement avec le séparateur de milliers et le symbole euro
   return new Intl.NumberFormat('fr-FR', { 
     style: 'currency',
     currency: 'EUR',

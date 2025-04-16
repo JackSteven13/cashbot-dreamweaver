@@ -6,21 +6,42 @@ export const STORAGE_KEYS = {
   ADS_COUNT: 'stats_ads_count',
   REVENUE_COUNT: 'stats_revenue_count',
   LAST_UPDATE: 'stats_last_update',
-  RESET_DATE: 'stats_reset_date'
+  RESET_DATE: 'stats_reset_date',
+  DISPLAYED_ADS: 'displayed_ads_count',
+  DISPLAYED_REVENUE: 'displayed_revenue_count'
 };
 
 export const loadStoredValues = () => {
   try {
-    // First try to load global values (shared between all users)
+    // First try to load displayed values (what user actually sees)
+    const displayedAds = localStorage.getItem(STORAGE_KEYS.DISPLAYED_ADS);
+    const displayedRevenue = localStorage.getItem(STORAGE_KEYS.DISPLAYED_REVENUE);
+    
+    if (displayedAds && displayedRevenue) {
+      const parsedAdsCount = parseInt(displayedAds, 10);
+      const parsedRevenueCount = parseInt(displayedRevenue, 10);
+      
+      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && parsedAdsCount > 0 && parsedRevenueCount > 0) {
+        console.log(`Loaded displayed values: Ads=${parsedAdsCount}, Revenue=${parsedRevenueCount}`);
+        return {
+          hasStoredValues: true,
+          adsCount: parsedAdsCount,
+          revenueCount: parsedRevenueCount,
+          lastUpdate: Date.now()
+        };
+      }
+    }
+    
+    // Next try global values (shared between all users)
     const globalAdsCount = localStorage.getItem(STORAGE_KEYS.GLOBAL_ADS_COUNT);
     const globalRevenueCount = localStorage.getItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT);
     
-    // If we have global values, use them as priority
+    // If we have global values, use them
     if (globalAdsCount && globalRevenueCount) {
       const parsedAdsCount = parseInt(globalAdsCount, 10);
       const parsedRevenueCount = parseInt(globalRevenueCount, 10);
       
-      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && parsedAdsCount >= 0 && parsedRevenueCount >= 0) {
+      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && parsedAdsCount > 0 && parsedRevenueCount > 0) {
         console.log(`Loaded global stored values: Ads=${parsedAdsCount}, Revenue=${parsedRevenueCount}`);
         return {
           hasStoredValues: true,
@@ -31,7 +52,7 @@ export const loadStoredValues = () => {
       }
     }
     
-    // Fallback to user-specific values if no global values
+    // Fallback to user-specific values if no global or displayed values
     const storedAdsCount = localStorage.getItem(STORAGE_KEYS.ADS_COUNT);
     const storedRevenueCount = localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT);
     const storedLastUpdate = localStorage.getItem(STORAGE_KEYS.LAST_UPDATE);
@@ -40,7 +61,7 @@ export const loadStoredValues = () => {
       const parsedAdsCount = parseInt(storedAdsCount, 10);
       const parsedRevenueCount = parseInt(storedRevenueCount, 10);
       
-      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && parsedAdsCount >= 0 && parsedRevenueCount >= 0) {
+      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && parsedAdsCount > 0 && parsedRevenueCount > 0) {
         console.log(`Loaded stored values: Ads=${parsedAdsCount}, Revenue=${parsedRevenueCount}`);
         return {
           hasStoredValues: true,
@@ -73,8 +94,8 @@ export const saveValues = (ads: number, revenue: number) => {
     localStorage.setItem(STORAGE_KEYS.RESET_DATE, new Date().toDateString());
     
     // Also save as displayed counts for immediate consistency
-    localStorage.setItem('displayed_ads_count', safeAdsCount.toString());
-    localStorage.setItem('displayed_revenue_count', safeRevenueCount.toString());
+    localStorage.setItem(STORAGE_KEYS.DISPLAYED_ADS, safeAdsCount.toString());
+    localStorage.setItem(STORAGE_KEYS.DISPLAYED_REVENUE, safeRevenueCount.toString());
   } catch (e) {
     console.error("Error saving values to localStorage:", e);
   }

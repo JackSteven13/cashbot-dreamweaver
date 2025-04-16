@@ -32,49 +32,49 @@ export const scheduleMidnightReset = (
       return;
     }
     
-    // Use much more natural, more progressifs patterns
+    // Progression beaucoup plus graduelle selon l'heure de la journée
     const hourOfDay = new Date().getHours();
     
-    // Progression beaucoup plus graduelle selon l'heure de la journée
+    // Progression beaucoup plus substantielle - jamais de valeurs faibles
     let startPercentage;
     
     if (hourOfDay < 5) {
-      // Très tôt le matin (minuit-5h): démarrage minimal
-      startPercentage = 0.0001 + Math.random() * 0.0002; // 0.01-0.03%
+      // Très tôt le matin (minuit-5h): démarrage déjà significatif
+      startPercentage = 0.05 + Math.random() * 0.02; // 5-7%
     } else if (hourOfDay < 8) {
-      // Début de matinée (5h-8h): démarrage lent
-      startPercentage = 0.0002 + Math.random() * 0.0003; // 0.02-0.05%
+      // Début de matinée (5h-8h): bon démarrage
+      startPercentage = 0.08 + Math.random() * 0.03; // 8-11%
     } else if (hourOfDay < 12) {
-      // Matin (8h-12h): augmentation progressive
-      startPercentage = 0.0005 + Math.random() * 0.0005; // 0.05-0.1%
+      // Matin (8h-12h): croissance établie
+      startPercentage = 0.12 + Math.random() * 0.04; // 12-16%
     } else if (hourOfDay < 17) {
-      // Après-midi (12h-17h): activité normale
-      startPercentage = 0.001 + Math.random() * 0.001; // 0.1-0.2%
+      // Après-midi (12h-17h): activité soutenue
+      startPercentage = 0.18 + Math.random() * 0.05; // 18-23%
     } else if (hourOfDay < 21) {
       // Soirée (17h-21h): pic d'activité
-      startPercentage = 0.0015 + Math.random() * 0.001; // 0.15-0.25%
+      startPercentage = 0.23 + Math.random() * 0.07; // 23-30%
     } else {
-      // Nuit (21h-minuit): déclin
-      startPercentage = 0.0005 + Math.random() * 0.0005; // 0.05-0.1%
+      // Nuit (21h-minuit): activité encore significative
+      startPercentage = 0.15 + Math.random() * 0.04; // 15-19%
     }
     
-    // Effets du jour de la semaine - plus progressifs
+    // Effets du jour de la semaine
     const dayOfWeek = new Date().getDay(); // 0-6 (Dimanche-Samedi)
     let dayFactor = 1;
     
     if (dayOfWeek === 0 || dayOfWeek === 6) { // Weekend
-      dayFactor = 0.7 + Math.random() * 0.2; // 70-90% (plus lent le weekend)
+      dayFactor = 0.85 + Math.random() * 0.1; // 85-95% (légèrement plus lent le weekend)
     } else if (dayOfWeek === 1) { // Lundi
-      dayFactor = 0.8 + Math.random() * 0.2; // 80-100% (démarrage plus lent en début de semaine)
+      dayFactor = 0.9 + Math.random() * 0.1; // 90-100% (démarrage plus lent en début de semaine)
     } else if (dayOfWeek === 3 || dayOfWeek === 4) { // Mercredi/Jeudi pic
-      dayFactor = 1.0 + Math.random() * 0.1; // 100-110% (pic milieu de semaine)
+      dayFactor = 1.05 + Math.random() * 0.1; // 105-115% (pic milieu de semaine)
     }
     
     // Légères variations entre publicités et revenus pour un aspect naturel
     const adsDeviation = 0.97 + Math.random() * 0.06; // 97-103%
     const revenueDeviation = 0.96 + Math.random() * 0.08; // 96-104%
     
-    // Calculer les valeurs initiales avec des valeurs beaucoup plus petites et naturelles
+    // Calculer les valeurs initiales avec des valeurs jamais trop petites
     const initialAdsCount = Math.floor(dailyAdsTarget * startPercentage * dayFactor * adsDeviation);
     const initialRevenueCount = Math.floor(dailyRevenueTarget * startPercentage * dayFactor * revenueDeviation);
     
@@ -83,7 +83,7 @@ export const scheduleMidnightReset = (
     
     resetCallback();
     
-    // Peupler avec des valeurs initiales naturelles
+    // Peupler avec des valeurs initiales substantielles
     localStorage.setItem('global_ads_count', initialAdsCount.toString());
     localStorage.setItem('global_revenue_count', initialRevenueCount.toString());
     localStorage.setItem('displayed_ads_count', initialAdsCount.toString());
