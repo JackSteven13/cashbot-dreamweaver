@@ -52,14 +52,14 @@ export const useStatsCounter = ({
   useEffect(() => {
     initializeCounters();
     
-    // Significantly redesigned animation system for much slower and more readable updates
+    // Completely redesigned animation system for much slower updates
     let animationFrameId: number;
     let lastUpdateTime = 0;
     
-    // Animation function with much longer intervals (8-12 seconds)
+    // Animation function with much longer intervals (15-25 seconds)
     const updateAnimation = (timestamp: number) => {
-      // Much longer interval between updates (8-12 seconds)
-      const updateInterval = Math.random() * 4000 + 8000;
+      // Much longer interval between updates (15-25 seconds)
+      const updateInterval = Math.random() * 10000 + 15000;
       
       if (timestamp - lastUpdateTime > updateInterval || lastUpdateTime === 0) {
         animateCounters();
@@ -73,8 +73,8 @@ export const useStatsCounter = ({
     
     // Variable interval for real counter updates with much longer intervals
     const createUpdateInterval = () => {
-      const minInterval = 20000; // Minimum 20 seconds (was 10000)
-      const maxInterval = 40000; // Maximum 40 seconds (was 20000)
+      const minInterval = 60000; // Minimum 1 minute
+      const maxInterval = 120000; // Maximum 2 minutes
       const randomInterval = Math.floor(Math.random() * (maxInterval - minInterval) + minInterval);
       
       setTimeout(() => {

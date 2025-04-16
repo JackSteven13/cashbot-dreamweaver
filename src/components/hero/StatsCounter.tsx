@@ -33,9 +33,9 @@ const StatsCounter = ({
     const adsDiff = Math.abs(displayedAdsCount - lastUpdateRef.current.adsCount);
     const revenueDiff = Math.abs(displayedRevenueCount - lastUpdateRef.current.revenueCount);
     
-    // Augmenter significativement le seuil de temps entre les mises à jour (de 1500ms à 4000ms)
-    // Et augmenter le seuil de différence nécessaire pour déclencher une mise à jour
-    if (lastUpdateRef.current.timestamp === 0 || timeDiff > 4000 || adsDiff > 300 || revenueDiff > 500) {
+    // Significantly increase time threshold between updates (8000ms)
+    // And increase difference threshold required to trigger an update
+    if (lastUpdateRef.current.timestamp === 0 || timeDiff > 8000 || adsDiff > 500 || revenueDiff > 1000) {
       setDisplayedAds(displayedAdsCount.toLocaleString('fr-FR'));
       setDisplayedRevenue(formatRevenue(displayedRevenueCount));
       
