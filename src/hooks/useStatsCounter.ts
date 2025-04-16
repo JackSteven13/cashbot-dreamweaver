@@ -66,13 +66,17 @@ export const useStatsCounter = ({
     animationFrameId = requestAnimationFrame(updateAnimation);
     
     // Intervalle pour les mises à jour périodiques des compteurs (valeurs cibles)
-    // Augmenter l'intervalle à 30 secondes pour ralentir encore plus la génération
+    // Augmenter l'intervalle à 40 secondes pour ralentir encore plus la génération
     const updateInterval = setInterval(() => {
       incrementCountersRandomly();
-    }, 30000); // Toutes les 30 secondes au lieu de 20
+    }, 40000); // Toutes les 40 secondes pour des mises à jour plus lentes
     
     // Planifier la réinitialisation à minuit
     const resetTimeout = scheduleCycleUpdate();
+    
+    // Synchronisation initiale des compteurs affichés avec les valeurs cibles
+    setDisplayedAdsCount(adsCount);
+    setDisplayedRevenueCount(revenueCount);
     
     return () => {
       if (resetTimeout) clearTimeout(resetTimeout);
@@ -83,7 +87,11 @@ export const useStatsCounter = ({
     initializeCounters,
     animateCounters,
     incrementCountersRandomly,
-    scheduleCycleUpdate
+    scheduleCycleUpdate,
+    adsCount,
+    revenueCount,
+    setDisplayedAdsCount,
+    setDisplayedRevenueCount
   ]);
 
   return useMemo(() => ({
