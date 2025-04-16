@@ -5,7 +5,7 @@ export const scheduleMidnightReset = (
   resetCallback: () => void,
   dailyAdsTarget: number,
   dailyRevenueTarget: number
-): number => {
+): NodeJS.Timeout => {
   const timeUntilMidnight = calculateTimeUntilMidnight();
   
   // Convert to hours for logs
@@ -15,11 +15,10 @@ export const scheduleMidnightReset = (
   console.log(`Next counter reset in ${hoursUntilMidnight} hours and ${minutesUntilMidnight} minutes`);
   
   // Schedule reset with initial values
-  const resetTimeout = setTimeout(() => {
+  return setTimeout(() => {
     const initialAdsCount = Math.floor(dailyAdsTarget * (0.10 + Math.random() * 0.05));
     const initialRevenueCount = Math.floor(dailyRevenueTarget * (0.10 + Math.random() * 0.05));
     resetCallback();
   }, timeUntilMidnight);
-  
-  return resetTimeout;
 };
+
