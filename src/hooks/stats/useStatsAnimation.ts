@@ -9,11 +9,11 @@ interface UseStatsAnimationParams {
 }
 
 const calculateCounterIncrement = (targetCount: number, currentCount: number): number => {
-  // Réduire drastiquement le taux d'incrémentation (de 0.003 à 0.0005)
-  const baseIncrement = Math.floor((targetCount - currentCount) * 0.0005);
-  // Limiter la variation pour une progression plus stable
-  const variationFactor = 0.8 + Math.random() * 0.3;
-  // Limiter à un maximum de 2 pour des mouvements très graduels
+  // Réduire encore le taux d'incrémentation pour une progression plus douce
+  const baseIncrement = Math.floor((targetCount - currentCount) * 0.0003);
+  // Variation minimale pour une progression très stable
+  const variationFactor = 0.9 + Math.random() * 0.2;
+  // Maximum très bas pour des mouvements graduels
   return Math.max(1, Math.min(2, Math.floor(baseIncrement * variationFactor)));
 };
 
