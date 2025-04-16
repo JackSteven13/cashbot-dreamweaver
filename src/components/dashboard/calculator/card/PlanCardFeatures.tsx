@@ -19,9 +19,6 @@ const PlanCardFeatures: React.FC<PlanCardFeaturesProps> = ({
 }) => {
   return (
     <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mb-3">
-      <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-1">
-        Limite quotidienne: <span className="font-semibold text-blue-600 dark:text-blue-400">{limit}€</span>
-      </p>
       <ul className="space-y-1 mt-1 overflow-y-auto max-h-[120px] md:max-h-[150px]">
         {features.slice(0, isHomePage ? 2 : isMobile ? 3 : features.length).map((feature, index) => (
           <li key={index} className="flex items-start">

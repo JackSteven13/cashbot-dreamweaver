@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -94,7 +95,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
         <PlanCardHeader 
           title={title}
           price={price}
-          description={effectiveDescription}
+          description={`${effectiveDescription} (Limite quotidienne : ${limit}€)`}
           subscriptionLabel={subscriptionLabel}
           subscriptionPrice={subscriptionPrice}
         />
