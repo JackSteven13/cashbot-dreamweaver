@@ -19,7 +19,7 @@ const MINIMUM_REVENUE_COUNT = 50000;
 // Fonction pour générer une valeur de base cohérente liée à la date
 export const generateDateBasedValues = () => {
   const today = new Date();
-  const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
+  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
   const monthFactor = (today.getMonth() + 1) * 1000; // Facteur lié au mois
   
   // Base constante qui augmente progressivement chaque jour de l'année
