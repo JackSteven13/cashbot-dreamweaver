@@ -13,22 +13,25 @@ export const STORAGE_KEYS = {
   LANDING_PAGE_STATS: 'landing_page_stats'
 };
 
+// Import the subscription limits
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
+
 // Minimum baseline values for landing page that should never be dropped below
 const MINIMUM_ADS_COUNT = 40000;
 const MINIMUM_REVENUE_COUNT = 50000;
 
-// Fonction pour générer une valeur de base cohérente liée à la date pour la landing page
+// Function to generate date-based values for the landing page
 export const generateDateBasedValues = () => {
   const today = new Date();
   const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-  const monthFactor = (today.getMonth() + 1) * 1000; // Facteur lié au mois
+  const monthFactor = (today.getMonth() + 1) * 1000; // Factor linked to month
   
-  // Base constante qui augmente progressivement chaque jour de l'année - Pour la landing page uniquement
+  // Base constant that gradually increases each day of the year - For the landing page only
   const baseAdsCount = MINIMUM_ADS_COUNT + (dayOfYear * 250) + monthFactor;
   const baseRevenueCount = MINIMUM_REVENUE_COUNT + (dayOfYear * 350) + monthFactor;
   
-  // Ajouter une composante horaire pour une progression au cours de la journée
-  const hourFactor = today.getHours() * 120; // Plus d'activité au fil de la journée
+  // Add an hourly component for progression during the day
+  const hourFactor = today.getHours() * 120; // More activity as the day progresses
   
   return {
     adsCount: Math.round(baseAdsCount + hourFactor),
@@ -36,13 +39,13 @@ export const generateDateBasedValues = () => {
   };
 };
 
-// Nouvelle fonction pour gérer les stats utilisateur avec respect des limites quotidiennes
+// New function to manage user stats with respect to daily limits
 export const loadUserStats = (subscription = 'freemium') => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
-    // Charger les stats de l'utilisateur pour aujourd'hui
+    // Load user stats for today
     const userStats = localStorage.getItem(`user_stats_${today}`);
     if (userStats) {
       const stats = JSON.parse(userStats);
@@ -53,7 +56,7 @@ export const loadUserStats = (subscription = 'freemium') => {
       };
     }
     
-    // Initialiser de nouvelles stats pour aujourd'hui
+    // Initialize new stats for today
     return {
       currentGains: 0,
       sessionCount: 0,
@@ -69,12 +72,12 @@ export const loadUserStats = (subscription = 'freemium') => {
   }
 };
 
-// Pour les stats de la landing page
+// For landing page stats
 export const loadStoredValues = () => {
   try {
     const today = new Date().toISOString().split('T')[0];
     
-    // Vérifier si nous avons des statistiques globales pour la landing page
+    // Check if we have global statistics for the landing page
     const landingPageStats = localStorage.getItem(STORAGE_KEYS.LANDING_PAGE_STATS);
     const storedDate = landingPageStats ? JSON.parse(landingPageStats).date : null;
     
@@ -88,10 +91,10 @@ export const loadStoredValues = () => {
       };
     }
     
-    // Générer de nouvelles valeurs pour la landing page
+    // Generate new values for landing page
     const dateBasedValues = generateDateBasedValues();
     
-    // Sauvegarder les nouvelles valeurs
+    // Save new values
     localStorage.setItem(STORAGE_KEYS.LANDING_PAGE_STATS, JSON.stringify({
       date: today,
       adsCount: dateBasedValues.adsCount,
@@ -117,7 +120,7 @@ export const loadStoredValues = () => {
   }
 };
 
-// Pour les stats de l'utilisateur
+// For user stats
 export const saveUserStats = (gains: number, sessions: number) => {
   try {
     const today = new Date().toISOString().split('T')[0];
@@ -128,5 +131,44 @@ export const saveUserStats = (gains: number, sessions: number) => {
     }));
   } catch (e) {
     console.error("Error saving user stats:", e);
+  }
+};
+
+// Add missing saveValues function
+export const saveValues = (adsCount: number, revenueCount: number) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    localStorage.setItem(STORAGE_KEYS.LANDING_PAGE_STATS, JSON.stringify({
+      date: today,
+      adsCount,
+      revenueCount,
+      generatedAt: Date.now()
+    }));
+  } catch (e) {
+    console.error("Error saving values:", e);
+  }
+};
+
+// Add missing incrementDateLinkedStats function
+export const incrementDateLinkedStats = () => {
+  try {
+    const stats = loadStoredValues();
+    
+    // Small random increments
+    const adsIncrement = Math.floor(Math.random() * 50) + 20;
+    const revenueIncrement = Math.floor(Math.random() * 70) + 25;
+    
+    const newAds = stats.adsCount + adsIncrement;
+    const newRevenue = stats.revenueCount + revenueIncrement;
+    
+    saveValues(newAds, newRevenue);
+    
+    return {
+      adsCount: newAds,
+      revenueCount: newRevenue
+    };
+  } catch (e) {
+    console.error("Error incrementing date-linked stats:", e);
+    return loadStoredValues();
   }
 };
