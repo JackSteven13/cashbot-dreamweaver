@@ -29,13 +29,10 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
     // Étape 1: Initialiser la transition
     setStep(1);
     
-    // Sur mobile, accélérer la transition
-    const timing = isMobile ? {
-      step2: 400, // Plus rapide sur mobile
-      step3: 800  // Plus rapide sur mobile
-    } : {
-      step2: 600,
-      step3: 1200
+    // Timing adapté pour laisser à l'utilisateur le temps de comprendre
+    const timing = {
+      step2: 1500,  // 1.5 secondes
+      step3: 3000   // 3 secondes total
     };
     
     // Étape 2: Préparer le paiement
@@ -49,11 +46,12 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
       // Notifier que la transition est terminée
       onComplete();
       
-      // Passage automatique à Stripe après la transition
+      // Attendre un peu avant de rediriger vers Stripe
       if (stripeUrl) {
         setTimeout(() => {
-          openStripeWindow(stripeUrl);
-        }, 500);
+          // Ne pas rediriger automatiquement, laisser l'utilisateur cliquer sur le bouton
+          setReadyForStripe(true);
+        }, 1000);
       } else {
         setReadyForStripe(true);
       }
@@ -65,7 +63,7 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
     };
   }, [isStarted, onComplete, isMobile, stripeUrl]);
 
-  // Fonction pour ouvrir manuellement Stripe au cas où la redirection automatique échouerait
+  // Fonction pour ouvrir manuellement Stripe
   const handleOpenStripe = () => {
     if (stripeUrl) {
       openStripeWindow(stripeUrl);
@@ -103,13 +101,13 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
         <h2 className="text-xl md:text-2xl font-semibold mb-3">
           {step === 1 && "Préparation de votre paiement..."}
           {step === 2 && "Connexion à Stripe..."}
-          {step === 3 && "Redirection en cours..."}
+          {step === 3 && "Tout est prêt !"}
         </h2>
         
         <p className="text-gray-600 dark:text-gray-300 mb-4 text-base">
           {step === 1 && "Nous préparons votre session de paiement sécurisée."}
           {step === 2 && "Connexion au système de paiement sécurisé Stripe."}
-          {step === 3 && "Vous allez être redirigé vers la page de paiement sécurisée."}
+          {step === 3 && "Vous pouvez maintenant continuer vers la page de paiement sécurisée."}
         </p>
         
         {/* Barre de progression animée */}
@@ -125,8 +123,8 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
           />
         </motion.div>
         
-        {/* Bouton de secours pour continuer vers Stripe - visible uniquement si l'auto-redirection échoue */}
-        {animationComplete && !stripeUrl && (
+        {/* Bouton de redirection vers Stripe - toujours visible à la fin de l'animation */}
+        {step === 3 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -135,13 +133,16 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
             <Button 
               onClick={handleOpenStripe} 
               className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium shadow-md w-full"
-              disabled={!readyForStripe}
             >
               <span className="flex items-center justify-center gap-2">
                 <ExternalLink className="h-4 w-4" />
                 Continuer vers la page de paiement
               </span>
             </Button>
+
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              Vous serez redirigé vers Stripe pour finaliser votre paiement en toute sécurité
+            </p>
           </motion.div>
         )}
       </div>

@@ -32,11 +32,24 @@ export const usePaymentPage = () => {
     retryCount
   } = useStripeCheckout(selectedPlan);
   
-  // Vérifier si un appareil mobile est détecté
+  // Vérifier si un problème a été détecté avec le paiement
   useEffect(() => {
-    if (isMobileDevice()) {
-      setShowMobileHelper(true);
-    }
+    const checkPaymentIssues = () => {
+      // Si l'utilisateur est sur mobile et qu'un paiement a échoué ou a été interrompu
+      if (isMobileDevice() && hasPendingStripePayment()) {
+        const lastAttemptTime = parseInt(localStorage.getItem('stripeRedirectTimestamp') || '0');
+        const timeSinceLastAttempt = Date.now() - lastAttemptTime;
+        
+        // Si la dernière tentative date d'il y a plus de 30 secondes mais moins de 20 minutes
+        if (timeSinceLastAttempt > 30000 && timeSinceLastAttempt < 20 * 60 * 1000) {
+          setShowMobileHelper(true);
+        }
+      }
+    };
+    
+    // Vérifier après un court délai pour laisser la page se charger
+    const timer = setTimeout(checkPaymentIssues, 2000);
+    return () => clearTimeout(timer);
   }, []);
   
   // Vérifier s'il y a un paiement en cours à reprendre
@@ -51,14 +64,22 @@ export const usePaymentPage = () => {
         setIsRecovering(true);
         
         try {
-          recoverStripeSession();
+          // Afficher un toast pour informer l'utilisateur
+          toast({
+            title: "Paiement en cours détecté",
+            description: "Votre paiement précédent n'a pas été finalisé. Souhaitez-vous reprendre?",
+            duration: 5000
+          });
+          
+          // Ne pas récupérer automatiquement, laisser l'utilisateur décider via l'aide mobile
+          setShowMobileHelper(true);
         } finally {
           setIsRecovering(false);
         }
       }
     };
     
-    const timer = setTimeout(checkPendingPayment, 500);
+    const timer = setTimeout(checkPendingPayment, 1000);
     return () => clearTimeout(timer);
   }, [isStripeProcessing, stripeCheckoutUrl, isRecovering]);
   

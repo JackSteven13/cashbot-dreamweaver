@@ -11,6 +11,7 @@ import { hasPendingStripePayment } from '@/utils/stripe-helper';
 import PaymentSteps from '@/components/payment/PaymentSteps';
 import CheckoutTransition from '@/components/payment/CheckoutTransition';
 import { useAuth } from '@/hooks/useAuth';
+import MobilePaymentHelper from '@/components/payment/MobilePaymentHelper';
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -23,7 +24,9 @@ const Payment = () => {
     isAuthChecking,
     isStripeProcessing,
     stripeCheckoutUrl,
-    initiateStripeCheckout
+    initiateStripeCheckout,
+    showMobileHelper,
+    setShowMobileHelper
   } = usePaymentPage();
 
   // Vérifier si l'utilisateur est connecté
@@ -87,7 +90,16 @@ const Payment = () => {
   
   // Lorsque la transition est terminée
   const handleTransitionComplete = () => {
-    console.log("Transition terminée, la redirection vers Stripe devrait suivre");
+    console.log("Transition terminée, attendant que l'utilisateur clique pour continuer vers Stripe");
+  };
+
+  // Gérer l'aide pour les problèmes de paiement
+  const handleHelp = () => {
+    setShowMobileHelper(false);
+    toast({
+      title: "Redirection en cours",
+      description: "Vous allez être redirigé vers la page de paiement..."
+    });
   };
 
   if (isAuthChecking || isAuthLoading) {
@@ -108,6 +120,13 @@ const Payment = () => {
           isStripeProcessing={isStripeProcessing}
           onStripeCheckout={handlePayment} 
           stripeCheckoutUrl={stripeCheckoutUrl}
+        />
+        
+        {/* Aide en cas de problème avec le paiement */}
+        <MobilePaymentHelper 
+          isVisible={showMobileHelper}
+          onHelp={handleHelp}
+          stripeUrl={stripeCheckoutUrl}
         />
         
         {/* Transition animée pour le paiement */}
