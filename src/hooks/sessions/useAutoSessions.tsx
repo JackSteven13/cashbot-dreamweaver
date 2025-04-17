@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useAutoRevenueGenerator } from './useAutoRevenueGenerator';
 import { useAutoSessionScheduler } from './useAutoSessionScheduler';
@@ -10,6 +9,7 @@ import { addTransaction } from '@/hooks/user/transactionUtils';
 import balanceManager from '@/utils/balance/balanceManager';
 import { supabase } from '@/integrations/supabase/client';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
+import { loadUserStats, saveUserStats } from '@/hooks/stats/utils/storageManager';
 
 export const useAutoSessions = (
   userData: any,
@@ -189,165 +189,81 @@ export const useAutoSessions = (
     };
   }, [safeUserData?.profile?.id]);
 
-  // Function to generate automatic revenue with improved animation
+  // Function to generate automatic revenue with improved limit checking
   async function generateAutomaticRevenue(isFirst = false): Promise<void> {
     if (!botActiveRef.current) {
       console.log("Bot is inactive, no automatic revenue will be generated");
       return;
     }
 
-    console.log("Generating automatic revenue...");
+    const subscription = safeUserData.subscription || 'freemium';
+    const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
-    // Create an animation sequence that doesn't display the loading screen
-    const terminalAnimation = createBackgroundTerminalSequence([
-      "Initialisation de l'analyse du contenu vidéo..."
-    ], true);
+    // Vérifier si on a atteint la limite quotidienne
+    const userStats = loadUserStats(subscription);
+    if (userStats.currentGains >= dailyLimit) {
+      setIsBotActive(false);
+      botActiveRef.current = false;
+      setShowLimitAlert(true);
+      
+      toast({
+        title: "Limite journalière atteinte",
+        description: `Vous avez atteint votre limite de ${dailyLimit.toFixed(2)}€ pour aujourd'hui.`,
+        variant: "destructive"
+      });
+      
+      return;
+    }
+
+    console.log("Generating automatic revenue within limits...");
     
     try {
-      // Calculate potential gain
-      const dailyLimit = getDailyLimit();
+      // Calculate remaining allowed gains
+      const remainingAllowed = dailyLimit - userStats.currentGains;
       
-      // Récupérer les gains journaliers depuis le gestionnaire de solde
-      const actualDailyGains = balanceManager.getDailyGains();
-      todaysGainsRef.current = actualDailyGains;
+      // Generate a smaller gain (0.01-0.05€) to stay within limits
+      const minGain = 0.01;
+      const maxGain = Math.min(0.05, remainingAllowed);
+      const gain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
       
-      // Check if we've reached the limit
-      const remainingAllowedGains = Math.max(0, dailyLimit - todaysGainsRef.current);
-      if (remainingAllowedGains <= 0.01) {
-        setIsBotActive(false);
-        botActiveRef.current = false;
-        setShowLimitAlert(true);
-        terminalAnimation.complete(0);
-        
-        // Enregistrer l'état du bot
-        localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'false');
-        
-        // Notification de limite atteinte
-        toast({
-          title: "Limite journalière atteinte",
-          description: `Vous avez atteint votre limite de ${dailyLimit.toFixed(2)}€ pour aujourd'hui.`,
-          duration: 5000,
-          variant: "destructive"
-        });
-        
-        // Déclencher l'événement de limite atteinte
-        window.dispatchEvent(new CustomEvent('bot:limit-reached', {
-          detail: { subscription: safeUserData.subscription, userId: safeUserData.profile?.id }
-        }));
-        
-        return;
-      }
+      // Proceed with the transaction
+      const terminalAnimation = createBackgroundTerminalSequence([
+        "Initialisation de l'analyse du contenu vidéo..."
+      ], true);
       
-      // Add animation lines progressively
       terminalAnimation.addLine("Traitement des données algorithmiques...");
       
       // Short delay to simulate processing
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Generate a random gain between 0.01 and 0.1, limited by the remaining allowed amount
-      // More consistent gain to ensure users see progress
-      const minGain = 0.03; // Minimum 0.03€ per auto session
-      const baseGain = Math.min(
-        Math.random() * 0.07 + minGain, // Between 0.03 and 0.10
-        remainingAllowedGains
-      );
-      
-      // Round to 2 decimals
-      const finalGain = parseFloat(baseGain.toFixed(2));
-      
-      // Simulate an additional short delay
-      await new Promise(resolve => setTimeout(resolve, 600));
-      
-      terminalAnimation.addLine(`Analyse complétée. Optimisation des résultats: ${finalGain.toFixed(2)}€`);
+      terminalAnimation.addLine(`Analyse complétée. Optimisation des résultats: ${gain.toFixed(2)}€`);
       
       // Create a descriptive message for the transaction
-      const transactionReport = `Notre système d'analyse de contenu vidéo a généré ${finalGain.toFixed(2)}€ de revenus. Performance basée sur le niveau d'abonnement ${safeUserData.subscription}.`;
+      const transactionReport = `Analyse automatique de contenu`;
       
-      // Use balance manager to sync consistently
-      if (safeUserData?.profile?.id) {
-        // Add the transaction first
-        const transactionResult = await balanceManager.addTransaction(safeUserData.profile.id, finalGain, transactionReport);
-        
-        if (transactionResult) {
-          // Recalculer le nouveau solde
-          const newBalance = (safeUserData.balance || 0) + finalGain;
-          
-          // Force update balance manager
-          balanceManager.forceUpdate(newBalance);
-          
-          // Then update the balance with force update for immediate UI update
-          await updateBalance(
-            finalGain,
-            transactionReport,
-            true
-          );
-          
-          // Trigger refresh event for transactions list
-          window.dispatchEvent(new CustomEvent('transactions:refresh', {
-            detail: { userId: safeUserData.profile.id }
-          }));
-          
-          // Also sync with database immediately after transaction
-          await balanceManager.syncWithDatabase();
-          
-          // Déclencher également un événement visuel pour montrer les gains en temps réel
-          window.dispatchEvent(new CustomEvent('balance:update', {
-            detail: { amount: finalGain, animate: true, userId: safeUserData.profile.id }
-          }));
-          
-          console.log(`Auto session generated ${finalGain.toFixed(2)}€, new balance: ${newBalance.toFixed(2)}€`);
-          
-          // Mettre à jour la progression de la limite quotidienne
-          const updatedGains = balanceManager.getDailyGains();
-          const percentProgress = Math.min(100, (updatedGains / dailyLimit) * 100);
-          setDailyLimitProgress(percentProgress);
-        }
-      }
+      // Mettre à jour le solde
+      await updateBalance(gain, transactionReport, true);
+      
+      // Update user stats
+      saveUserStats(
+        userStats.currentGains + gain,
+        userStats.sessionCount + 1
+      );
       
       // Display a notification to confirm automatic generation
       if (isFirst || Math.random() > 0.7) {
         toast({
-          title: `Gains automatiques +${finalGain.toFixed(2)}€`,
+          title: `Gains automatiques +${gain.toFixed(2)}€`,
           description: `L'analyse automatique de contenu vidéo a généré des revenus.`,
           duration: 3000,
         });
       }
       
       // Complete the animation with the obtained gain
-      terminalAnimation.complete(finalGain);
+      terminalAnimation.complete(gain);
       
-      // If limit reached, deactivate the bot
-      if (balanceManager.getDailyGains() >= dailyLimit) {
-        setIsBotActive(false);
-        botActiveRef.current = false;
-        setShowLimitAlert(true);
-        
-        // Enregistrer l'état du bot
-        localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'false');
-        
-        // Déclencher l'événement de limite atteinte
-        window.dispatchEvent(new CustomEvent('bot:limit-reached', {
-          detail: { subscription: safeUserData.subscription, userId: safeUserData.profile.id }
-        }));
-        
-        toast({
-          title: `Limite journalière atteinte`,
-          description: `Le robot d'analyse est désactivé jusqu'à demain.`,
-          duration: 5000,
-        });
-      }
-      
-      // Sync with database after any changes
-      if (safeUserData?.profile?.id) {
-        await supabase
-          .from('user_balances')
-          .update({ daily_session_count: Math.ceil(balanceManager.getDailyGains() / 0.1) })
-          .eq('id', safeUserData.profile.id);
-      }
     } catch (error) {
       console.error("Error in generateAutomaticRevenue:", error);
-      // Complete the animation even in case of error
-      terminalAnimation.complete(0);
     }
   }
 
