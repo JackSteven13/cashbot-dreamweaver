@@ -1,4 +1,3 @@
-
 /**
  * Balance Manager - Gère le solde et la synchronisation
  */
@@ -375,5 +374,7 @@ class BalanceManager {
 // Create and export singleton instance
 const balanceManager = new BalanceManager();
 
-export default balanceManager;
+// Explicitly export the getHighestBalance method
+export const getHighestBalance = () => balanceManager.getHighestBalance();
 
+export default balanceManager;
