@@ -13,6 +13,7 @@ interface BalanceState {
   source: 'local' | 'server' | 'init';
   serverValue?: number;
   tempValue?: number;
+  initTimestamp: number;
 }
 
 class BalanceManager {
@@ -21,6 +22,7 @@ class BalanceManager {
   private readonly LOCAL_TOLERANCE = 0.05; // €0.05 de tolérance pour les différences mineures
   private initialized = false;
   private watchers: Array<(newBalance: number, oldBalance: number) => void> = [];
+  private lastRandomGainTime = 0; // Timestamp de la dernière génération aléatoire
 
   constructor() {
     const defaultState: BalanceState = {
@@ -28,7 +30,8 @@ class BalanceManager {
       lastUpdated: 0,
       dailyGains: 0,
       lastSyncedWithServer: 0,
-      source: 'init'
+      source: 'init',
+      initTimestamp: Date.now()
     };
     
     // Essayer de charger l'état depuis localStorage
@@ -41,7 +44,11 @@ class BalanceManager {
         const isValid = Date.now() - parsedState.lastUpdated < 24 * 60 * 60 * 1000;
         
         if (isValid) {
-          this.state = parsedState;
+          // Charger les données, mais réinitialiser initTimestamp pour éviter des réinitialisations
+          this.state = {
+            ...parsedState,
+            initTimestamp: parsedState.initTimestamp || Date.now()
+          };
         } else {
           // Si les données sont trop anciennes, utiliser les valeurs par défaut
           this.state = defaultState;
@@ -52,6 +59,12 @@ class BalanceManager {
     } catch (e) {
       console.error("Erreur lors du chargement du solde persisté:", e);
       this.state = defaultState;
+    }
+    
+    // Charger la dernière fois qu'un gain aléatoire a été généré
+    const lastRandomTime = localStorage.getItem('lastRandomGainTime');
+    if (lastRandomTime) {
+      this.lastRandomGainTime = parseInt(lastRandomTime, 10) || 0;
     }
   }
 
@@ -88,10 +101,29 @@ class BalanceManager {
 
   // Mettre à jour le solde (appel quotidien)
   public updateBalance(gain: number): number {
+    // Vérifier si nous devons générer un gain aléatoire
+    // mais seulement si ce n'est pas une session manuelle
+    const now = Date.now();
+    const isAutomaticGain = gain <= 0.1;
+    const timeSinceLastRandom = now - this.lastRandomGainTime;
+    const randomGainThreshold = 5 * 60 * 1000; // 5 minutes
+    
+    // Pour les gains automatiques, limiter la fréquence pour éviter les fluctuations à l'actualisation
+    if (isAutomaticGain && timeSinceLastRandom < randomGainThreshold) {
+      console.log("Gain automatique ignoré car trop récent depuis la dernière fois");
+      return this.state.balance;
+    }
+    
+    // Pour les gains automatiques, mettre à jour le timestamp
+    if (isAutomaticGain) {
+      this.lastRandomGainTime = now;
+      localStorage.setItem('lastRandomGainTime', now.toString());
+    }
+    
     const oldBalance = this.state.balance;
     // Arrondir à 2 décimales pour éviter les erreurs de précision
     this.state.balance = parseFloat((this.state.balance + gain).toFixed(2));
-    this.state.lastUpdated = Date.now();
+    this.state.lastUpdated = now;
     this.state.dailyGains = parseFloat((this.state.dailyGains + gain).toFixed(2));
     this.state.source = 'local';
     
@@ -167,12 +199,24 @@ class BalanceManager {
 
   // Forcer une synchronisation avec une valeur spécifique (utilisé rarement)
   public forceBalanceSync(newBalance: number): void {
+    // Vérifier si nous avons chargé la page il y a peu de temps, pour éviter les actualisations
+    const now = Date.now(); 
+    const pageInitTime = parseInt(localStorage.getItem('dashboardLastInit') || '0', 10);
+    const timeSincePageLoad = now - pageInitTime;
+    
+    // Si la page a été chargée il y a moins de 5 secondes, ne pas faire de mise à jour aléatoire
+    // mais accepter quand même les mises à jour explicites de solde (>0.1€)
+    if (pageInitTime > 0 && timeSincePageLoad < 5000 && newBalance < this.state.balance + 0.1) {
+      console.log("Ignorer les mises à jour de solde juste après le chargement de la page");
+      return;
+    }
+    
     const oldBalance = this.state.balance;
     this.state.balance = newBalance;
-    this.state.lastUpdated = Date.now();
+    this.state.lastUpdated = now;
     this.state.source = 'server';
     this.state.serverValue = newBalance;
-    this.state.lastSyncedWithServer = Date.now();
+    this.state.lastSyncedWithServer = now;
     
     this._saveState();
     this._notifyWatchers(newBalance, oldBalance);
@@ -219,7 +263,8 @@ class BalanceManager {
       lastUpdated: 0,
       dailyGains: 0,
       lastSyncedWithServer: 0,
-      source: 'init'
+      source: 'init',
+      initTimestamp: Date.now()
     };
     this._saveState();
     
@@ -227,6 +272,7 @@ class BalanceManager {
     localStorage.removeItem('currentBalance');
     localStorage.removeItem('lastKnownBalance');
     sessionStorage.removeItem('currentBalance');
+    localStorage.removeItem('lastRandomGainTime');
     
     console.log("Données de solde utilisateur nettoyées");
   }

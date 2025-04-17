@@ -9,6 +9,7 @@ import SubscriptionSynchronizer from '@/components/subscriptions/SubscriptionSyn
 import { toast } from '@/components/ui/use-toast';
 import BalanceAnimation from '@/components/dashboard/BalanceAnimation';
 import useAutomaticRevenue from '@/hooks/useAutomaticRevenue';
+import balanceManager from '@/utils/balance/balanceManager';
 
 const Dashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -17,6 +18,7 @@ const Dashboard = () => {
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [dashboardReady, setDashboardReady] = useState(false);
   const [isPreloaded, setIsPreloaded] = useState(false);
+  const [lastProcessTime, setLastProcessTime] = useState<number>(0);
   
   const updateBalance = async (gain: number, report: string) => {
     console.log(`Updating balance with gain: ${gain}, report: ${report}`);
@@ -62,9 +64,25 @@ const Dashboard = () => {
         detail: { username, timestamp: Date.now() } 
       }));
 
+      // Stocker le timestamp de chargement initial
+      const initTimestamp = Date.now();
+      localStorage.setItem('dashboardLastInit', initTimestamp.toString());
+      
+      // Définir le dernier temps de traitement également pour éviter des doubles traitements
+      setLastProcessTime(initTimestamp);
+
       if (userData) {
         console.log("Initiating first automatic revenue on dashboard ready");
         setTimeout(() => {
+          // Vérifier si c'est un nouvel utilisateur
+          const isNewUser = !userData.balance || userData.balance <= 0;
+          
+          // Pour les utilisateurs existants, initialiser le solde uniquement au premier chargement
+          if (!isNewUser) {
+            // Initialiser le gestionnaire de solde sans fluctuations aléatoires
+            balanceManager.initialize(userData.balance);
+          }
+          
           processAutomaticRevenue();
         }, 5000);
       }
@@ -75,36 +93,33 @@ const Dashboard = () => {
   useEffect(() => {
     const heartbeatInterval = setInterval(() => {
       if (userData) {
-        console.log("Dashboard heartbeat - ensuring revenue generation is active");
+        const now = Date.now();
         
-        // Force a balance update to show progress
-        window.dispatchEvent(new CustomEvent('balance:force-update', { 
-          detail: { timestamp: Date.now() } 
-        }));
-        
-        // Trigger more frequent automatic revenue generation
-        if (Math.random() > 0.5) {
-          processAutomaticRevenue();
+        // Vérifier le temps écoulé depuis le dernier traitement pour éviter les mises à jour excessives
+        if (now - lastProcessTime > 60000) { // Au moins 1 minute entre les mises à jour
+          console.log("Dashboard heartbeat - ensuring revenue generation is active");
+          
+          // Mettre à jour le timestamp du dernier processus
+          setLastProcessTime(now);
+          
+          // Force a balance update to show progress, but without random increments
+          window.dispatchEvent(new CustomEvent('balance:force-update', { 
+            detail: { timestamp: now, animate: true } 
+          }));
+          
+          // Trigger more frequent automatic revenue generation
+          if (Math.random() > 0.3) {
+            processAutomaticRevenue();
+          }
         }
       }
     }, 120000); // Heartbeat every 2 minutes
     
     return () => clearInterval(heartbeatInterval);
-  }, [userData, processAutomaticRevenue]);
+  }, [userData, processAutomaticRevenue, lastProcessTime]);
   
-  // Add a more frequent check to ensure revnue growth is happening
-  useEffect(() => {
-    const microInterval = setInterval(() => {
-      if (userData) {
-        // Dispatch event to trigger balance display animation
-        window.dispatchEvent(new CustomEvent('balance:force-update', { 
-          detail: { timestamp: Date.now() } 
-        }));
-      }
-    }, 45000 + Math.random() * 15000); // Every 45-60 seconds
-    
-    return () => clearInterval(microInterval);
-  }, [userData]);
+  // Supprimer l'effet de mise à jour micro qui provoque des fluctuations aléatoires du solde
+  // Effect removed to prevent balance fluctuations on page refresh
 
   if (authLoading || !user) {
     return <DashboardSkeleton username="Chargement..." />;

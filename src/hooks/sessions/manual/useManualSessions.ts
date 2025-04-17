@@ -3,8 +3,8 @@ import { useState, useCallback, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
 import { calculateSessionGain } from '@/utils/sessions/sessionCalculator';
-import { useBotStatus } from '../useBotStatus';
-import { useSessionAnimations } from '../animations/useSessionAnimations';
+import { useBotStatus } from '@/hooks/useBotStatus';
+import { useSessionAnimations } from '@/hooks/sessions/animations/useSessionAnimations';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import balanceManager from '@/utils/balance/balanceManager';
 
