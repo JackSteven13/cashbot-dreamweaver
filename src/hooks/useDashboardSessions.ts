@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { useAutoSessions } from './sessions/useAutoSessions';
-import { useManualSessions } from './sessions/useManualSessions';
+import { useManualSessions } from './sessions/manual/useManualSessions';
 import { useWithdrawal } from './sessions/useWithdrawal';
 import { useMidnightReset } from './sessions/useMidnightReset';
 
@@ -112,10 +112,20 @@ export const useDashboardSessions = ({
 
   // Set up midnight reset
   useMidnightReset();
+  
+  // Wrapped function to log and call the startSession function
+  const handleStartSession = async () => {
+    console.log("useDashboardSessions: handleStartSession called");
+    try {
+      await startSession();
+    } catch (error) {
+      console.error("Error in handleStartSession:", error);
+    }
+  };
 
   return {
     isStartingSession: isSessionRunning,
-    handleStartSession: startSession,
+    handleStartSession, // Using the wrapped function
     handleWithdrawal,
     isProcessingWithdrawal,
     lastSessionTimestamp,

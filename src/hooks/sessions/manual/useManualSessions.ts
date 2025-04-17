@@ -43,6 +43,16 @@ export const useManualSessions = ({
       return;
     }
 
+    if (!userData) {
+      console.error("Données utilisateur non disponibles");
+      toast({
+        title: "Erreur",
+        description: "Impossible de démarrer la session, données utilisateur non disponibles",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       console.log("Démarrage de la session manuelle");
       setIsSessionRunning(true);
