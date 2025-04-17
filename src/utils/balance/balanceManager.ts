@@ -348,7 +348,7 @@ class BalanceManager {
       }
       
       if (data) {
-        const databaseBalance = parseFloat(data.balance);
+        const databaseBalance = parseFloat(data.balance.toString());
         
         // Use highest balance
         if (!isNaN(databaseBalance) && databaseBalance > this.lastKnownBalance) {
@@ -376,3 +376,4 @@ class BalanceManager {
 const balanceManager = new BalanceManager();
 
 export default balanceManager;
+
