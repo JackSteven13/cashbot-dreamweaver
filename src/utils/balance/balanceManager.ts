@@ -77,6 +77,9 @@ class BalanceManager {
       this.initialized = true;
       this._saveState();
       this._notifyWatchers(this.state.balance, 0);
+      
+      // Déclencher un événement global pour informer tous les composants
+      this._dispatchBalanceEvent(this.state.balance);
     } else {
       // Pour les initialisations suivantes, on compare avec la valeur actuelle
       this.syncWithServer(serverBalance);
@@ -95,6 +98,9 @@ class BalanceManager {
     this._saveState();
     this._notifyWatchers(this.state.balance, oldBalance);
     
+    // Déclencher un événement global pour informer tous les composants
+    this._dispatchBalanceEvent(this.state.balance, gain);
+    
     return this.state.balance;
   }
 
@@ -107,6 +113,11 @@ class BalanceManager {
     
     this._saveState();
     this._notifyWatchers(this.state.balance, oldBalance);
+    
+    // Déclencher un événement de réinitialisation
+    window.dispatchEvent(new CustomEvent('balance:reset-complete', {
+      detail: { newBalance: 0, previousBalance: oldBalance }
+    }));
   }
 
   // Synchroniser avec le serveur
@@ -137,6 +148,9 @@ class BalanceManager {
         this.state.balance = newBalance;
         this._saveState();
         this._notifyWatchers(newBalance, oldBalance);
+        
+        // Déclencher un événement global
+        this._dispatchBalanceEvent(newBalance, null);
       }
     } else if (serverBalance > this.state.balance) {
       // Si le serveur a une valeur plus élevée mais raisonnable, l'adopter
@@ -145,6 +159,9 @@ class BalanceManager {
       this.state.balance = serverBalance;
       this._saveState();
       this._notifyWatchers(serverBalance, oldBalance);
+      
+      // Déclencher un événement global
+      this._dispatchBalanceEvent(serverBalance, null);
     }
   }
 
@@ -159,6 +176,9 @@ class BalanceManager {
     
     this._saveState();
     this._notifyWatchers(newBalance, oldBalance);
+    
+    // Déclencher un événement global de synchronisation forcée
+    this._dispatchBalanceEvent(newBalance, null, true);
   }
 
   // Réinitialiser les gains quotidiens (appelé à minuit)
@@ -276,6 +296,26 @@ class BalanceManager {
         console.error("Erreur dans un observateur de solde:", e);
       }
     });
+  }
+  
+  // Méthode pour déclencher un événement global de mise à jour du solde
+  private _dispatchBalanceEvent(newBalance: number, gain: number | null = null, force: boolean = false): void {
+    // Créer les détails de l'événement
+    const eventDetails: any = {
+      timestamp: Date.now(),
+      currentBalance: newBalance
+    };
+    
+    // Si un gain est spécifié, l'ajouter aux détails
+    if (gain !== null) {
+      eventDetails.amount = gain;
+    }
+    
+    // Décider quel événement déclencher
+    const eventName = force ? 'balance:force-update' : 'balance:update';
+    
+    // Déclencher l'événement global
+    window.dispatchEvent(new CustomEvent(eventName, { detail: eventDetails }));
   }
 }
 

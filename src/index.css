@@ -1,186 +1,81 @@
-
+@import './styles/animations.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
 @layer base {
-  /* Configuration pour le mode sombre uniquement */
   :root {
-    --background: 222.2 47% 11%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
  
-    --card: 222.2 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.1 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+
+    --ring: 222.1 83.2% 53.3%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
  
-    --popover: 222.2 47% 11%;
+    --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
- 
-    --primary: 142 71% 45%;
+
+    --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 222.2 47.4% 11.2%;
- 
+
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
  
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
- 
+    --muted-foreground: 215 20.2% 65.9%;
+
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
- 
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
- 
+    
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+
+    --ring: 224.3 76.3% 48%;
+
+    --radius: 0.5rem;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
   }
-  
-  /* Forcer le thème sombre pour tout le site */
   body {
-    @apply bg-slate-900 text-slate-100;
+    @apply bg-background text-foreground;
   }
-  
-  /* Supprimer les classes spécifiques pour les modes clair/sombre */
-  body.dark-theme-body {
-    background-color: #121212;
-    color: #e0e0e0;
-  }
-}
-
-/* Toast notifications styles */
-.toast-notification {
-  width: 100% !important;
-  max-width: 340px !important;
-  padding: 0.75rem 1rem !important;
-  font-size: 0.9rem !important;
-  background-color: rgba(30, 41, 59, 0.97) !important;
-  color: #fff !important;
-  border: 1px solid rgba(100, 116, 139, 0.2) !important;
-}
-
-/* Style pour les notifications mobiles */
-.mobile-toast {
-  position: fixed;
-  z-index: 9999;
-  top: 2.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90vw;
-  max-width: 320px;
-  min-width: 250px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  background-color: rgba(30, 41, 59, 0.97) !important;
-  color: #fff !important;
-}
-
-.toast-viewport {
-  top: 1rem !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  width: auto !important;
-}
-
-/* Animation pour faire clignoter "Génération active" */
-.blink-activity {
-  animation: blink 2s infinite;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-/* Effet de lueur subtil pour les mises à jour de solde */
-.glow-effect {
-  animation: glow 2s ease-out;
-}
-
-@keyframes glow {
-  0% { box-shadow: 0 0 0 rgba(59, 130, 246, 0); }
-  25% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
-  50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
-  75% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
-  100% { box-shadow: 0 0 0 rgba(59, 130, 246, 0); }
-}
-
-/* Style pour les notifications sur mobile */
-@media (max-width: 640px) {
-  .toast-notification {
-    position: fixed !important;
-    top: 2.5rem !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: 90vw !important;
-    max-width: 320px !important;
-    min-width: 250px !important;
-    padding: 0.75rem !important;
-    font-size: 0.9rem !important;
-    z-index: 9999 !important;
-  }
-  
-  .toast-notification .toast-title {
-    font-size: 0.95rem !important;
-    line-height: 1.3 !important;
-    color: #fff !important;
-  }
-  
-  .toast-notification .toast-description {
-    font-size: 0.85rem !important;
-    line-height: 1.3 !important;
-    color: rgba(255, 255, 255, 0.8) !important;
-  }
-  
-  /* La partie viewport pour le positionnement mobile */
-  .toast-viewport {
-    width: 100% !important;
-    padding: 0.5rem !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-  }
-}
-
-/* Styles pour l'animation du terminal */
-.processing-dots::after {
-  content: "";
-  animation: processingDots 1.5s infinite;
-}
-
-@keyframes processingDots {
-  0% { content: ""; }
-  25% { content: "."; }
-  50% { content: ".."; }
-  75% { content: "..."; }
-  100% { content: ""; }
-}
-
-/* Styles pour le bouton boost plus sobre */
-.boost-button-pulse {
-  position: relative;
-}
-
-.boost-button-pulse::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: inherit;
-  box-shadow: 0 0 0 rgba(139, 92, 246, 0.4);
-  animation: subtle-pulse 2s infinite;
-}
-
-@keyframes subtle-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
 }

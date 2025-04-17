@@ -1,17 +1,18 @@
 
-import { useState } from 'react';
-import { useSessionValidation } from './useSessionValidation';
+import { useState, useCallback, useRef } from 'react';
 import { UserData } from '@/types/userData';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/use-toast';
+import { calculateSessionGain } from '@/utils/sessions/sessionCalculator';
+import { useBotStatus } from '../useBotStatus';
+import { useSessionAnimations } from '../animations/useSessionAnimations';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import balanceManager from '@/utils/balance/balanceManager';
-import { triggerDashboardEvent } from '@/utils/animations';
-import { calculateSessionGain, generateSessionReport } from '@/utils/sessions';
 
-interface UseManualSessionsProps {
+interface ManualSessionHookProps {
   userData: UserData | null;
   dailySessionCount: number;
   incrementSessionCount: () => Promise<void>;
-  updateBalance: (gain: number, report: string) => Promise<void>;
+  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>;
 }
 
 export const useManualSessions = ({
@@ -19,97 +20,149 @@ export const useManualSessions = ({
   dailySessionCount,
   incrementSessionCount,
   updateBalance
-}: UseManualSessionsProps) => {
-  const { toast } = useToast();
+}: ManualSessionHookProps) => {
   const [isSessionRunning, setIsSessionRunning] = useState(false);
+  const { isBotActive, activityLevel } = useBotStatus();
+  const { startAnimation, stopAnimation } = useSessionAnimations();
+  
+  const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSessionRef = useRef<number>(0);
 
-  // Session validation
-  const { canStartSession, sessionErrors, isLimitReached } = useSessionValidation(
-    userData || {},
-    dailySessionCount
-  );
+  // Vérifier si l'utilisateur peut démarrer une session manuelle
+  const canStartSession = useCallback(() => {
+    // Ne pas autoriser pendant qu'une session est en cours
+    if (isSessionRunning) {
+      return false;
+    }
+    
+    // Vérifier le délai entre les sessions
+    const now = Date.now();
+    const timeSinceLastSession = now - lastSessionRef.current;
+    const minDelay = 30000; // 30 secondes entre les sessions
+    
+    if (timeSinceLastSession < minDelay) {
+      return false;
+    }
+    
+    // Vérifier les limites quotidiennes
+    if (userData) {
+      const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      const todaysGains = balanceManager.getDailyGains();
+      
+      // Si l'utilisateur a atteint ou dépassé la limite quotidienne
+      if (todaysGains >= dailyLimit) {
+        return false;
+      }
+    }
+    
+    return true;
+  }, [isSessionRunning, userData]);
 
-  // Calculate session gain based on subscription
-  const calculateManualSessionGain = async (): Promise<number> => {
-    const subscription = userData?.subscription || 'freemium';
-    return calculateSessionGain(subscription);
-  };
-
-  const startSession = async () => {
+  // Fonction pour démarrer une session manuelle
+  const startSession = useCallback(async () => {
     console.log("useManualSessions: startSession called");
     
-    if (isSessionRunning) {
-      console.log("Session déjà en cours, ignoré");
-      return;
-    }
-
-    if (!userData) {
-      console.error("Données utilisateur non disponibles");
+    if (!canStartSession()) {
       toast({
-        title: "Erreur",
-        description: "Impossible de démarrer la session, données utilisateur non disponibles",
-        variant: "destructive"
+        title: "Session non disponible",
+        description: "Veuillez attendre avant de démarrer une nouvelle session.",
+        duration: 3000
       });
       return;
     }
-
+    
     try {
-      console.log("Démarrage de la session manuelle");
       setIsSessionRunning(true);
-
-      // Trigger animation immediately
-      triggerDashboardEvent('analysis-start', {
-        subscription: userData?.subscription,
-        animate: true
+      lastSessionRef.current = Date.now();
+      console.log("Démarrage de la session manuelle");
+      
+      // Déclencher l'animation d'analyse
+      startAnimation();
+      
+      // Simuler une durée d'analyse (entre 1.5 et 3 secondes)
+      const simulationTime = Math.random() * 1500 + 1500;
+      
+      // Calculer le gain basé sur l'abonnement, avec un facteur aléatoire
+      let gain = 0;
+      if (userData) {
+        // Utiliser la fonction de calcul du gain
+        gain = calculateSessionGain(
+          userData.subscription, 
+          dailySessionCount,
+          activityLevel
+        );
+      }
+      
+      // Arrondir le gain à 2 décimales
+      gain = parseFloat(gain.toFixed(2));
+      
+      console.log(`Gain calculé: ${gain}€`);
+      
+      // Attendre la fin de la simulation
+      await new Promise(resolve => {
+        sessionTimeoutRef.current = setTimeout(resolve, simulationTime);
       });
-
-      // Random duration between 2-5 seconds
-      const duration = 2000 + Math.random() * 3000;
-      console.log(`Animation en cours pour ${duration}ms`);
-      await new Promise(resolve => setTimeout(resolve, duration));
-
-      const sessionGain = await calculateManualSessionGain();
-      console.log(`Gain calculé: ${sessionGain}€`);
       
-      // Add to daily gains
-      balanceManager.addDailyGain(sessionGain);
+      // Mettre à jour le solde via balanceManager
+      balanceManager.addDailyGain(gain);
+      balanceManager.updateBalance(gain);
       
-      // Update session count
+      // Créer le rapport de la session
+      const sessionReport = `Session manuelle #${dailySessionCount + 1}: ${gain.toFixed(2)}€ générés.`;
+      
+      // Mettre à jour le solde via la fonction fournie
+      await updateBalance(gain, sessionReport);
+      
+      // Incrémenter le compteur de sessions
       await incrementSessionCount();
       
-      // Update balance
-      await updateBalance(sessionGain, generateSessionReport('Manuel', userData?.subscription));
-      
-      // Trigger successful completion animation
-      triggerDashboardEvent('analysis-complete', {
-        gain: sessionGain,
-        animate: true
-      });
-
+      // Afficher un toast de confirmation
       toast({
         title: "Session terminée",
-        description: `Vous avez gagné ${sessionGain.toFixed(2)}€`,
+        description: `Vous avez gagné ${gain.toFixed(2)}€`,
+        duration: 3000
       });
-
-      return { success: true, finalGain: sessionGain };
+      
+      // Terminer l'animation
+      stopAnimation();
+      console.log("Fin de la session manuelle");
+      
+      // Déclencher des événements de dashboard pour les animations
+      window.dispatchEvent(new CustomEvent('dashboard:activity', { detail: { level: 'high' } }));
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('dashboard:micro-gain', { 
+            detail: { amount: gain / 3, timestamp: Date.now() } 
+          }));
+        }, 1000 + i * 1000);
+      }
+      
     } catch (error) {
-      console.error("Erreur lors de la session:", error);
+      console.error("Erreur lors de la session manuelle:", error);
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors de la session",
+        description: "Une erreur est survenue pendant l'analyse.",
         variant: "destructive"
       });
     } finally {
-      console.log("Fin de la session manuelle");
       setIsSessionRunning(false);
     }
-  };
+  }, [
+    canStartSession,
+    userData,
+    dailySessionCount,
+    activityLevel,
+    startAnimation,
+    stopAnimation,
+    updateBalance,
+    incrementSessionCount
+  ]);
 
   return {
     isSessionRunning,
     startSession,
-    canStartSession,
-    sessionErrors,
-    isLimitReached
+    canStartSession: canStartSession()
   };
 };
+
+export default useManualSessions;

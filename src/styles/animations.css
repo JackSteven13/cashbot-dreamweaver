@@ -1,16 +1,47 @@
 
-@keyframes pulse-slow {
+@keyframes float {
   0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  20% {
     opacity: 1;
   }
-  50% {
-    opacity: 0.95;
+  80% {
+    opacity: 1;
   }
   100% {
-    opacity: 1;
+    opacity: 0;
+    transform: translateY(-20px);
   }
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow 3s ease-in-out infinite;
+.floating-number {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  font-size: 0.875rem;
+  color: #10b981;
+  animation: float 2s ease-out forwards;
+}
+
+.animate-float {
+  animation: float 2s ease-out forwards;
+}
+
+.glow-effect {
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+.pulse-animation {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }

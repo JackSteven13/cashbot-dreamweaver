@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Coins } from 'lucide-react';
 import CountUp from 'react-countup';
 import { cn } from '@/lib/utils';
+import balanceManager from '@/utils/balance/balanceManager';
 
 interface BalanceDisplayProps {
   balance: number;
@@ -11,24 +12,58 @@ interface BalanceDisplayProps {
 }
 
 const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = false }) => {
-  const [displayedBalance, setDisplayedBalance] = useState(balance);
+  const [displayedBalance, setDisplayedBalance] = useState(() => {
+    // Initialiser avec la valeur du balance manager pour plus de cohérence
+    return balanceManager.getCurrentBalance() || balance;
+  });
   const [isAnimating, setIsAnimating] = useState(false);
   const [previousBalance, setPreviousBalance] = useState<number | null>(null);
   const [gain, setGain] = useState<number | null>(null);
   const balanceRef = useRef<HTMLDivElement>(null);
   
-  // Update balance with animation when it changes
+  // S'abonner au balanceManager directement
   useEffect(() => {
-    if (balance !== displayedBalance) {
-      if (displayedBalance !== 0) {
+    const unsubscribe = balanceManager.addWatcher((newBalance, oldBalance) => {
+      if (newBalance !== oldBalance) {
         // Store previous balance for gain calculation
-        setPreviousBalance(displayedBalance);
+        setPreviousBalance(oldBalance);
         
         // Calculate the gain
-        const gainAmount = balance - displayedBalance;
+        const gainAmount = newBalance - oldBalance;
         if (gainAmount > 0) {
           setGain(gainAmount);
         }
+        
+        // Start animation
+        setIsAnimating(true);
+        
+        // Set new balance
+        setDisplayedBalance(newBalance);
+        
+        // End animation after duration
+        const animationTimer = setTimeout(() => {
+          setIsAnimating(false);
+          setGain(null);
+        }, 2500);
+        
+        return () => clearTimeout(animationTimer);
+      }
+    });
+    
+    return unsubscribe;
+  }, []);
+  
+  // Update balance with animation when it changes externally
+  useEffect(() => {
+    // Si le solde externe est significativement différent, le prendre en compte
+    if (Math.abs(balance - displayedBalance) > 0.01) {
+      // Store previous balance for gain calculation
+      setPreviousBalance(displayedBalance);
+      
+      // Calculate the gain
+      const gainAmount = balance - displayedBalance;
+      if (gainAmount > 0) {
+        setGain(gainAmount);
       }
       
       // Start animation
@@ -36,6 +71,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
       
       // Set new balance
       setDisplayedBalance(balance);
+      
+      // Synchroniser avec le balanceManager
+      if (Math.abs(balance - balanceManager.getCurrentBalance()) > 0.01) {
+        balanceManager.forceBalanceSync(balance);
+      }
       
       // End animation after duration
       const animationTimer = setTimeout(() => {
@@ -53,7 +93,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
       const amount = event.detail?.amount;
       const newBalance = event.detail?.currentBalance;
       
-      if (amount > 0) {
+      if (amount !== undefined && amount > 0) {
         setGain(amount);
         setIsAnimating(true);
         
@@ -67,15 +107,25 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
           setIsAnimating(false);
           setGain(null);
         }, 2500);
+      } else if (newBalance !== undefined && Math.abs(newBalance - displayedBalance) > 0.01) {
+        // Si seulement le solde est fourni, mais différent
+        setPreviousBalance(displayedBalance);
+        setDisplayedBalance(newBalance);
+        setIsAnimating(true);
+        
+        setTimeout(() => {
+          setIsAnimating(false);
+        }, 2500);
       }
     };
     
-    window.addEventListener('balance:update' as any, handleBalanceUpdate);
-    window.addEventListener('balance:force-update' as any, handleBalanceUpdate);
+    // Écouter les deux types d'événements
+    window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
+    window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
     
     return () => {
-      window.removeEventListener('balance:update' as any, handleBalanceUpdate);
-      window.removeEventListener('balance:force-update' as any, handleBalanceUpdate);
+      window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
+      window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
     };
   }, [displayedBalance]);
   
@@ -106,7 +156,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
             ) : (
               <>
                 <CountUp
-                  start={previousBalance || 0}
+                  start={previousBalance || displayedBalance - (gain || 0)}
                   end={displayedBalance}
                   duration={1.5}
                   decimals={2}
