@@ -1,11 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Loader2, CreditCard, CheckCircle } from 'lucide-react';
 import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
 import { isMobileDevice } from '@/utils/stripe-helper';
-import { Button } from '@/components/ui/button';
 
 interface CheckoutTransitionProps {
   isStarted: boolean;
@@ -19,7 +17,6 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
   onComplete 
 }) => {
   const [step, setStep] = useState<number>(0);
-  const [readyForStripe, setReadyForStripe] = useState(false);
   const [animationComplete, setAnimationComplete] = useState(false);
   const isMobile = isMobileDevice();
   
@@ -46,14 +43,11 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
       // Notifier que la transition est terminée
       onComplete();
       
-      // Attendre un peu avant de rediriger vers Stripe
+      // Ouvrir automatiquement Stripe
       if (stripeUrl) {
         setTimeout(() => {
-          // Ne pas rediriger automatiquement, laisser l'utilisateur cliquer sur le bouton
-          setReadyForStripe(true);
+          openStripeWindow(stripeUrl);
         }, 1000);
-      } else {
-        setReadyForStripe(true);
       }
     }, timing.step3);
     
@@ -62,13 +56,6 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
       clearTimeout(timer2);
     };
   }, [isStarted, onComplete, isMobile, stripeUrl]);
-
-  // Fonction pour ouvrir manuellement Stripe
-  const handleOpenStripe = () => {
-    if (stripeUrl) {
-      openStripeWindow(stripeUrl);
-    }
-  };
 
   if (!isStarted) return null;
 
@@ -107,7 +94,7 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
         <p className="text-gray-600 dark:text-gray-300 mb-4 text-base">
           {step === 1 && "Nous préparons votre session de paiement sécurisée."}
           {step === 2 && "Connexion au système de paiement sécurisé Stripe."}
-          {step === 3 && "Vous pouvez maintenant continuer vers la page de paiement sécurisée."}
+          {step === 3 && "La page de paiement Stripe va s'ouvrir automatiquement."}
         </p>
         
         {/* Barre de progression animée */}
@@ -122,29 +109,6 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
             transition={{ duration: 0.5 }}
           />
         </motion.div>
-        
-        {/* Bouton de redirection vers Stripe - toujours visible à la fin de l'animation */}
-        {step === 3 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Button 
-              onClick={handleOpenStripe} 
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium shadow-md w-full"
-            >
-              <span className="flex items-center justify-center gap-2">
-                <ExternalLink className="h-4 w-4" />
-                Continuer vers la page de paiement
-              </span>
-            </Button>
-
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              Vous serez redirigé vers Stripe pour finaliser votre paiement en toute sécurité
-            </p>
-          </motion.div>
-        )}
       </div>
     </motion.div>
   );
