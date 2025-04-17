@@ -269,6 +269,7 @@ export const incrementDateLinkedStats = (): { adsCount: number, revenueCount: nu
 export const resetDailyStats = (): void => {
   try {
     const baseSeed = parseInt(localStorage.getItem(STORAGE_KEYS.BASE_DATE_SEED) || '42', 10);
+    
     const baseAdsCount = generateDateBasedValue(baseSeed);
     
     // Générer un facteur de revenus (entre 1.2 et 1.5 euros par publicité)
