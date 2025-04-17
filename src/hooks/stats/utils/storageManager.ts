@@ -8,118 +8,86 @@ export const STORAGE_KEYS = {
   LAST_UPDATE: 'stats_last_update',
   RESET_DATE: 'stats_reset_date',
   DISPLAYED_ADS: 'displayed_ads_count',
-  DISPLAYED_REVENUE: 'displayed_revenue_count'
+  DISPLAYED_REVENUE: 'displayed_revenue_count',
+  DATE_LINKED_STATS: 'date_linked_stats'
 };
 
 // Minimum baseline values that should never be dropped below
 const MINIMUM_ADS_COUNT = 40000;
 const MINIMUM_REVENUE_COUNT = 50000;
 
+// Fonction pour générer une valeur de base cohérente liée à la date
+export const generateDateBasedValues = () => {
+  const today = new Date();
+  const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
+  const monthFactor = (today.getMonth() + 1) * 1000; // Facteur lié au mois
+  
+  // Base constante qui augmente progressivement chaque jour de l'année
+  const baseAdsCount = MINIMUM_ADS_COUNT + (dayOfYear * 250) + monthFactor;
+  const baseRevenueCount = MINIMUM_REVENUE_COUNT + (dayOfYear * 350) + monthFactor;
+  
+  // Ajouter une composante horaire pour une progression au cours de la journée
+  const hourFactor = today.getHours() * 120; // Plus d'activité au fil de la journée
+  
+  return {
+    adsCount: Math.round(baseAdsCount + hourFactor),
+    revenueCount: Math.round(baseRevenueCount + hourFactor * 1.2)
+  };
+};
+
 export const loadStoredValues = () => {
   try {
-    // First try to load displayed values (what user actually sees)
-    const displayedAds = localStorage.getItem(STORAGE_KEYS.DISPLAYED_ADS);
-    const displayedRevenue = localStorage.getItem(STORAGE_KEYS.DISPLAYED_REVENUE);
+    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
     
-    if (displayedAds && displayedRevenue) {
-      const parsedAdsCount = parseInt(displayedAds, 10);
-      const parsedRevenueCount = parseInt(displayedRevenue, 10);
+    // Vérifier si nous avons des statistiques liées à la date d'aujourd'hui
+    const dateLinkedStats = localStorage.getItem(STORAGE_KEYS.DATE_LINKED_STATS);
+    const storedDate = dateLinkedStats ? JSON.parse(dateLinkedStats).date : null;
+    
+    // Si nous avons des stats pour aujourd'hui, les utiliser
+    if (storedDate === today) {
+      const storedStats = JSON.parse(dateLinkedStats);
+      console.log(`Chargement des statistiques liées à aujourd'hui (${today})`, storedStats);
       
-      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && 
-          parsedAdsCount >= MINIMUM_ADS_COUNT && parsedRevenueCount >= MINIMUM_REVENUE_COUNT) {
-        console.log(`Loaded displayed values: Ads=${parsedAdsCount}, Revenue=${parsedRevenueCount}`);
-        return {
-          hasStoredValues: true,
-          adsCount: parsedAdsCount,
-          revenueCount: parsedRevenueCount,
-          lastUpdate: Date.now()
-        };
-      }
+      return {
+        hasStoredValues: true,
+        adsCount: Math.max(MINIMUM_ADS_COUNT, storedStats.adsCount),
+        revenueCount: Math.max(MINIMUM_REVENUE_COUNT, storedStats.revenueCount),
+        lastUpdate: Date.now()
+      };
     }
     
-    // Next try global values (shared between all users)
-    const globalAdsCount = localStorage.getItem(STORAGE_KEYS.GLOBAL_ADS_COUNT);
-    const globalRevenueCount = localStorage.getItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT);
+    // Si nous n'avons pas de stats pour aujourd'hui, générer des valeurs basées sur la date
+    const dateBasedValues = generateDateBasedValues();
+    console.log(`Génération de nouvelles statistiques basées sur la date (${today})`, dateBasedValues);
     
-    // If we have global values, use them
-    if (globalAdsCount && globalRevenueCount) {
-      const parsedAdsCount = parseInt(globalAdsCount, 10);
-      const parsedRevenueCount = parseInt(globalRevenueCount, 10);
-      
-      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && 
-          parsedAdsCount >= MINIMUM_ADS_COUNT && parsedRevenueCount >= MINIMUM_REVENUE_COUNT) {
-        console.log(`Loaded global stored values: Ads=${parsedAdsCount}, Revenue=${parsedRevenueCount}`);
-        return {
-          hasStoredValues: true,
-          adsCount: parsedAdsCount,
-          revenueCount: parsedRevenueCount,
-          lastUpdate: Date.now()
-        };
-      }
-    }
+    // Sauvegarder immédiatement ces valeurs pour assurer la cohérence
+    saveValues(dateBasedValues.adsCount, dateBasedValues.revenueCount);
     
-    // Fallback to session storage for more consistency
-    const sessionAdsCount = sessionStorage.getItem(STORAGE_KEYS.DISPLAYED_ADS);
-    const sessionRevenueCount = sessionStorage.getItem(STORAGE_KEYS.DISPLAYED_REVENUE);
-    
-    if (sessionAdsCount && sessionRevenueCount) {
-      const parsedAdsCount = parseInt(sessionAdsCount, 10);
-      const parsedRevenueCount = parseInt(sessionRevenueCount, 10);
-      
-      if (!isNaN(parsedAdsCount) && !isNaN(parsedRevenueCount) && 
-          parsedAdsCount >= MINIMUM_ADS_COUNT && parsedRevenueCount >= MINIMUM_REVENUE_COUNT) {
-        console.log(`Loaded session values: Ads=${parsedAdsCount}, Revenue=${parsedRevenueCount}`);
-        return {
-          hasStoredValues: true,
-          adsCount: parsedAdsCount,
-          revenueCount: parsedRevenueCount,
-          lastUpdate: Date.now()
-        };
-      }
-    }
-    
-    // Fallback to baseline values with persistent randomization
-    // Using a hash of the device fingerprint to ensure consistent "random" values
-    const deviceHash = window.navigator.userAgent.split('').reduce((a, b) => {
-      return ((a << 5) - a) + b.charCodeAt(0) | 0;
-    }, 0);
-    const consistentRandom = Math.abs(deviceHash) % 10000; // 0-9999 range
-    
-    console.log("Using baseline values with consistent randomization");
-    const baselineAdsCount = MINIMUM_ADS_COUNT + consistentRandom;
-    const baselineRevenueCount = MINIMUM_REVENUE_COUNT + consistentRandom;
-    
-    // Save these baseline values for consistency across refreshes
-    try {
-      localStorage.setItem(STORAGE_KEYS.DISPLAYED_ADS, baselineAdsCount.toString());
-      localStorage.setItem(STORAGE_KEYS.DISPLAYED_REVENUE, baselineRevenueCount.toString());
-      localStorage.setItem(STORAGE_KEYS.GLOBAL_ADS_COUNT, baselineAdsCount.toString());
-      localStorage.setItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT, baselineRevenueCount.toString());
-      
-      // Also save to sessionStorage for added reliability
-      sessionStorage.setItem(STORAGE_KEYS.DISPLAYED_ADS, baselineAdsCount.toString());
-      sessionStorage.setItem(STORAGE_KEYS.DISPLAYED_REVENUE, baselineRevenueCount.toString());
-    } catch (e) {
-      console.error("Error saving baseline values:", e);
-    }
+    // Stocker spécifiquement les valeurs liées à la date
+    localStorage.setItem(STORAGE_KEYS.DATE_LINKED_STATS, JSON.stringify({
+      date: today,
+      adsCount: dateBasedValues.adsCount,
+      revenueCount: dateBasedValues.revenueCount,
+      generatedAt: Date.now()
+    }));
     
     return {
       hasStoredValues: true,
-      adsCount: baselineAdsCount,
-      revenueCount: baselineRevenueCount,
+      adsCount: dateBasedValues.adsCount,
+      revenueCount: dateBasedValues.revenueCount,
       lastUpdate: Date.now()
     };
+    
   } catch (e) {
     console.error("Error loading stored values:", e);
     
     // En cas d'erreur, utiliser des valeurs par défaut
-    const defaultAdsCount = MINIMUM_ADS_COUNT + 5000;
-    const defaultRevenueCount = MINIMUM_REVENUE_COUNT + 5000;
+    const dateBasedValues = generateDateBasedValues();
     
     return {
       hasStoredValues: true,
-      adsCount: defaultAdsCount,
-      revenueCount: defaultRevenueCount,
+      adsCount: dateBasedValues.adsCount,
+      revenueCount: dateBasedValues.revenueCount,
       lastUpdate: Date.now()
     };
   }
@@ -146,9 +114,61 @@ export const saveValues = (ads: number, revenue: number) => {
     sessionStorage.setItem(STORAGE_KEYS.DISPLAYED_ADS, safeAdsCount.toString());
     sessionStorage.setItem(STORAGE_KEYS.DISPLAYED_REVENUE, safeRevenueCount.toString());
     
+    // Mettre à jour les statistiques liées à la date
+    const today = new Date().toISOString().split('T')[0];
+    localStorage.setItem(STORAGE_KEYS.DATE_LINKED_STATS, JSON.stringify({
+      date: today,
+      adsCount: safeAdsCount,
+      revenueCount: safeRevenueCount,
+      updatedAt: Date.now()
+    }));
+    
     localStorage.setItem(STORAGE_KEYS.LAST_UPDATE, Date.now().toString());
     localStorage.setItem(STORAGE_KEYS.RESET_DATE, new Date().toDateString());
   } catch (e) {
     console.error("Error saving values to localStorage:", e);
+  }
+};
+
+// Nouvelle fonction pour synchroniser les valeurs en augmentant progressivement
+export const incrementDateLinkedStats = () => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const dateLinkedStats = localStorage.getItem(STORAGE_KEYS.DATE_LINKED_STATS);
+    
+    if (dateLinkedStats) {
+      const stats = JSON.parse(dateLinkedStats);
+      
+      // Si les stats sont pour aujourd'hui, les augmenter légèrement
+      if (stats.date === today) {
+        // Augmentation progressive basée sur l'heure
+        const currentHour = new Date().getHours();
+        const hourFactor = Math.max(1, currentHour * 0.8); // Plus d'activité plus tard dans la journée
+        
+        // Augmentation progressive (plus intense aux heures de pointe)
+        const adsIncrement = Math.round(Math.random() * 50 * hourFactor) + 10;
+        const revenueIncrement = Math.round(Math.random() * 70 * hourFactor) + 15;
+        
+        const newAdsCount = stats.adsCount + adsIncrement;
+        const newRevenueCount = stats.revenueCount + revenueIncrement;
+        
+        // Sauvegarder les valeurs mises à jour
+        saveValues(newAdsCount, newRevenueCount);
+        
+        return {
+          adsCount: newAdsCount,
+          revenueCount: newRevenueCount
+        };
+      }
+    }
+    
+    // Si pas de stats pour aujourd'hui, initialiser avec des valeurs basées sur la date
+    const dateBasedValues = generateDateBasedValues();
+    saveValues(dateBasedValues.adsCount, dateBasedValues.revenueCount);
+    
+    return dateBasedValues;
+  } catch (e) {
+    console.error("Error incrementing date-linked stats:", e);
+    return generateDateBasedValues();
   }
 };
