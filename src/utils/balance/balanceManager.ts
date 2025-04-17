@@ -177,6 +177,40 @@ class BalanceManager {
     return this.state.dailyGains;
   }
 
+  // Ajouter un gain quotidien au total (pour compatibilité avec persistentGainsTracker)
+  public addDailyGain(gain: number): number {
+    const oldDailyGains = this.state.dailyGains;
+    this.state.dailyGains = parseFloat((this.state.dailyGains + gain).toFixed(2));
+    this._saveState();
+    return this.state.dailyGains;
+  }
+
+  // Réinitialiser les compteurs quotidiens (pour compatibilité avec useMidnightReset)
+  public resetDailyCounters(): void {
+    this.state.dailyGains = 0;
+    this._saveState();
+    console.log("Compteurs quotidiens réinitialisés");
+  }
+
+  // Nettoyer les données de solde lors d'un changement d'utilisateur
+  public cleanupUserBalanceData(): void {
+    this.state = {
+      balance: 0,
+      lastUpdated: 0,
+      dailyGains: 0,
+      lastSyncedWithServer: 0,
+      source: 'init'
+    };
+    this._saveState();
+    
+    // Supprimer également d'autres données liées au solde
+    localStorage.removeItem('currentBalance');
+    localStorage.removeItem('lastKnownBalance');
+    sessionStorage.removeItem('currentBalance');
+    
+    console.log("Données de solde utilisateur nettoyées");
+  }
+
   // Obtenir le solde le plus élevé (pour la synchronisation)
   public getHighestBalance(): number {
     // Comparer avec localStorage et sessionStorage pour une protection supplémentaire
