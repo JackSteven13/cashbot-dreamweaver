@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
 import { formatRevenue } from '@/utils/formatters';
-import { loadStoredValues } from '@/hooks/stats/utils/storageManager';
+import { loadStoredValues, incrementDateLinkedStats } from '@/hooks/stats/utils/storageManager';
 
 interface StatsCounterProps {
   dailyAdsTarget?: number;
@@ -67,7 +67,33 @@ const StatsCounter = ({
       }
     }, 30000); // Vérifier toutes les 30 secondes
     
-    return () => clearInterval(syncInterval);
+    // Auto-increment effect to ensure values are never stagnant
+    const autoIncrementInterval = setInterval(() => {
+      // Forcer l'incrément des statistiques pour éviter la stagnation
+      const incrementedStats = incrementDateLinkedStats();
+      
+      // Mettre à jour l'interface avec une fraction des nouveaux incréments
+      // pour une progression visuelle plus fluide
+      setStableValues(prev => {
+        const adsIncrement = incrementedStats.adsCount - prev.adsCount;
+        const revenueIncrement = incrementedStats.revenueCount - prev.revenueCount;
+        
+        // Si les incréments sont positifs, ajouter une fraction
+        return {
+          adsCount: adsIncrement > 0 
+            ? prev.adsCount + Math.max(1, Math.floor(adsIncrement * 0.2)) 
+            : prev.adsCount,
+          revenueCount: revenueIncrement > 0 
+            ? prev.revenueCount + Math.max(0.1, revenueIncrement * 0.2)
+            : prev.revenueCount
+        };
+      });
+    }, 45000 + Math.random() * 30000); // Entre 45 et 75 secondes
+    
+    return () => {
+      clearInterval(syncInterval);
+      clearInterval(autoIncrementInterval);
+    };
   }, [stableValues]);
 
   return (

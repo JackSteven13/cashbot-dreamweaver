@@ -1,174 +1,242 @@
 
-// Storage keys as constants
-export const STORAGE_KEYS = {
-  GLOBAL_ADS_COUNT: 'global_ads_count',
-  GLOBAL_REVENUE_COUNT: 'global_revenue_count',
+// Clés utilisées pour le stockage local des statistiques
+const STORAGE_KEYS = {
   ADS_COUNT: 'stats_ads_count',
   REVENUE_COUNT: 'stats_revenue_count',
   LAST_UPDATE: 'stats_last_update',
-  RESET_DATE: 'stats_reset_date',
-  DISPLAYED_ADS: 'displayed_ads_count',
-  DISPLAYED_REVENUE: 'displayed_revenue_count',
-  DATE_LINKED_STATS: 'date_linked_stats',
-  LANDING_PAGE_STATS: 'landing_page_stats'
+  BASE_DATE_SEED: 'stats_base_date_seed',
+  DAILY_INCREMENT_ADS: 'stats_daily_increment_ads',
+  DAILY_INCREMENT_REVENUE: 'stats_daily_increment_revenue'
 };
 
-// Import the subscription limits
-import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
+// Constantes pour les valeurs minimales garanties
+const MIN_ADS_COUNT = 40000;
+const MIN_REVENUE_COUNT = 50000;
 
-// Minimum baseline values for landing page that should never be dropped below
-const MINIMUM_ADS_COUNT = 40000;
-const MINIMUM_REVENUE_COUNT = 50000;
+// Facteur de progression quotidien (combien augmenter par jour)
+const DAILY_PROGRESSION_FACTOR = 1.05; // +5% par jour
 
-// Function to generate date-based values for the landing page
-export const generateDateBasedValues = () => {
-  const today = new Date();
-  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-  const monthFactor = (today.getMonth() + 1) * 1000; // Factor linked to month
+interface StoredValues {
+  hasStoredValues: boolean;
+  adsCount: number;
+  revenueCount: number;
+  lastUpdate: number;
+}
+
+/**
+ * Génère une valeur basée sur la date actuelle
+ * Utilise un algorithme déterministe pour que la même date produise toujours la même valeur
+ */
+const generateDateBasedValue = (baseSeed: number = 42, minValue: number = MIN_ADS_COUNT): number => {
+  // Récupérer la date actuelle au format YYYYMMDD
+  const now = new Date();
+  const dateString = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
   
-  // Base constant that gradually increases each day of the year - For the landing page only
-  const baseAdsCount = MINIMUM_ADS_COUNT + (dayOfYear * 250) + monthFactor;
-  const baseRevenueCount = MINIMUM_REVENUE_COUNT + (dayOfYear * 350) + monthFactor;
+  // Créer une graine basée sur la date
+  const dateSeed = parseInt(dateString, 10);
   
-  // Add an hourly component for progression during the day
-  const hourFactor = today.getHours() * 120; // More activity as the day progresses
+  // Combiner avec la graine de base pour créer une valeur déterministe
+  const deterministicValue = (dateSeed * baseSeed) % 1000000;
   
-  return {
-    adsCount: Math.round(baseAdsCount + hourFactor),
-    revenueCount: Math.round(baseRevenueCount + hourFactor * 1.2)
-  };
+  // S'assurer que la valeur est dans une plage raisonnable
+  return Math.max(minValue, deterministicValue);
 };
 
-// New function to manage user stats with respect to daily limits
-export const loadUserStats = (subscription = 'freemium') => {
+/**
+ * Charge les valeurs stockées ou en génère de nouvelles basées sur la date
+ */
+export const loadStoredValues = (): StoredValues => {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    // Récupérer les valeurs stockées
+    const storedAdsCount = localStorage.getItem(STORAGE_KEYS.ADS_COUNT);
+    const storedRevenueCount = localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT);
+    const storedLastUpdate = localStorage.getItem(STORAGE_KEYS.LAST_UPDATE);
     
-    // Load user stats for today
-    const userStats = localStorage.getItem(`user_stats_${today}`);
-    if (userStats) {
-      const stats = JSON.parse(userStats);
-      return {
-        currentGains: Math.min(stats.gains || 0, dailyLimit),
-        sessionCount: stats.sessions || 0,
-        lastUpdate: stats.lastUpdate || Date.now()
-      };
-    }
-    
-    // Initialize new stats for today
-    return {
-      currentGains: 0,
-      sessionCount: 0,
-      lastUpdate: Date.now()
-    };
-  } catch (e) {
-    console.error("Error loading user stats:", e);
-    return {
-      currentGains: 0,
-      sessionCount: 0,
-      lastUpdate: Date.now()
-    };
-  }
-};
-
-// For landing page stats
-export const loadStoredValues = () => {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Check if we have global statistics for the landing page
-    const landingPageStats = localStorage.getItem(STORAGE_KEYS.LANDING_PAGE_STATS);
-    const storedDate = landingPageStats ? JSON.parse(landingPageStats).date : null;
-    
-    if (storedDate === today) {
-      const storedStats = JSON.parse(landingPageStats);
+    // Si toutes les valeurs sont disponibles, les utiliser
+    if (storedAdsCount && storedRevenueCount && storedLastUpdate) {
+      const adsCount = Math.max(MIN_ADS_COUNT, parseInt(storedAdsCount, 10));
+      const revenueCount = Math.max(MIN_REVENUE_COUNT, parseFloat(storedRevenueCount));
+      const lastUpdate = parseInt(storedLastUpdate, 10);
+      
+      console.log("Using stored values:", { hasStoredValues: true, adsCount, revenueCount, lastUpdate });
+      
       return {
         hasStoredValues: true,
-        adsCount: Math.max(MINIMUM_ADS_COUNT, storedStats.adsCount),
-        revenueCount: Math.max(MINIMUM_REVENUE_COUNT, storedStats.revenueCount),
-        lastUpdate: Date.now()
+        adsCount,
+        revenueCount,
+        lastUpdate
       };
     }
     
-    // Generate new values for landing page
-    const dateBasedValues = generateDateBasedValues();
+    // Si les valeurs ne sont pas disponibles, générer de nouvelles valeurs basées sur la date
+    const baseSeed = parseInt(localStorage.getItem(STORAGE_KEYS.BASE_DATE_SEED) || '42', 10);
+    const baseAdsCount = generateDateBasedValue(baseSeed, MIN_ADS_COUNT);
     
-    // Save new values
-    localStorage.setItem(STORAGE_KEYS.LANDING_PAGE_STATS, JSON.stringify({
-      date: today,
-      adsCount: dateBasedValues.adsCount,
-      revenueCount: dateBasedValues.revenueCount,
-      generatedAt: Date.now()
-    }));
+    // Générer un facteur de revenus (entre 1.2 et 1.5 euros par publicité)
+    const revenuePerAd = 1.2 + (Math.random() * 0.3);
+    const baseRevenueCount = baseAdsCount * revenuePerAd;
+    
+    // Stocker la graine si elle n'existe pas encore
+    if (!localStorage.getItem(STORAGE_KEYS.BASE_DATE_SEED)) {
+      localStorage.setItem(STORAGE_KEYS.BASE_DATE_SEED, baseSeed.toString());
+    }
+    
+    // Stocker les incréments journaliers si non définis
+    if (!localStorage.getItem(STORAGE_KEYS.DAILY_INCREMENT_ADS)) {
+      const dailyIncrement = Math.floor(baseAdsCount * 0.015); // 1.5% par jour
+      localStorage.setItem(STORAGE_KEYS.DAILY_INCREMENT_ADS, dailyIncrement.toString());
+    }
+    
+    if (!localStorage.getItem(STORAGE_KEYS.DAILY_INCREMENT_REVENUE)) {
+      const dailyIncrement = baseRevenueCount * 0.018; // 1.8% par jour
+      localStorage.setItem(STORAGE_KEYS.DAILY_INCREMENT_REVENUE, dailyIncrement.toString());
+    }
+    
+    // Sauvegarder les nouvelles valeurs
+    saveValues(baseAdsCount, baseRevenueCount);
     
     return {
       hasStoredValues: true,
-      adsCount: dateBasedValues.adsCount,
-      revenueCount: dateBasedValues.revenueCount,
+      adsCount: baseAdsCount,
+      revenueCount: baseRevenueCount,
       lastUpdate: Date.now()
     };
-  } catch (e) {
-    console.error("Error loading stored values:", e);
-    const dateBasedValues = generateDateBasedValues();
+  } catch (error) {
+    console.error('Error loading stored values:', error);
+    
+    // En cas d'erreur, retourner des valeurs par défaut
     return {
-      hasStoredValues: true,
-      adsCount: dateBasedValues.adsCount,
-      revenueCount: dateBasedValues.revenueCount,
+      hasStoredValues: false,
+      adsCount: MIN_ADS_COUNT,
+      revenueCount: MIN_REVENUE_COUNT,
       lastUpdate: Date.now()
     };
   }
 };
 
-// For user stats
-export const saveUserStats = (gains: number, sessions: number) => {
+/**
+ * Sauvegarde les valeurs dans le stockage local
+ */
+export const saveValues = (adsCount: number, revenueCount: number, partial: boolean = false): void => {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    localStorage.setItem(`user_stats_${today}`, JSON.stringify({
-      gains,
-      sessions,
-      lastUpdate: Date.now()
-    }));
-  } catch (e) {
-    console.error("Error saving user stats:", e);
+    const now = Date.now();
+    
+    // Si mise à jour partielle, ne mettre à jour que les valeurs non-nulles
+    if (partial) {
+      if (adsCount > 0) {
+        localStorage.setItem(STORAGE_KEYS.ADS_COUNT, adsCount.toString());
+      }
+      if (revenueCount > 0) {
+        localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, revenueCount.toString());
+      }
+    } else {
+      // Sinon, mettre à jour toutes les valeurs
+      localStorage.setItem(STORAGE_KEYS.ADS_COUNT, adsCount.toString());
+      localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, revenueCount.toString());
+    }
+    
+    // Toujours mettre à jour le timestamp
+    localStorage.setItem(STORAGE_KEYS.LAST_UPDATE, now.toString());
+  } catch (error) {
+    console.error('Error saving values:', error);
   }
 };
 
-// Add missing saveValues function
-export const saveValues = (adsCount: number, revenueCount: number) => {
+/**
+ * Incrémente les statistiques en fonction du temps depuis la dernière mise à jour
+ * et des facteurs d'incrémentation journaliers
+ */
+export const incrementDateLinkedStats = (): { adsCount: number, revenueCount: number } => {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    localStorage.setItem(STORAGE_KEYS.LANDING_PAGE_STATS, JSON.stringify({
-      date: today,
-      adsCount,
-      revenueCount,
-      generatedAt: Date.now()
-    }));
-  } catch (e) {
-    console.error("Error saving values:", e);
-  }
-};
-
-// Add missing incrementDateLinkedStats function
-export const incrementDateLinkedStats = () => {
-  try {
-    const stats = loadStoredValues();
+    // Récupérer les valeurs actuelles
+    const currentValues = loadStoredValues();
+    const now = Date.now();
+    const timeDiff = now - currentValues.lastUpdate;
     
-    // Small random increments
-    const adsIncrement = Math.floor(Math.random() * 50) + 20;
-    const revenueIncrement = Math.floor(Math.random() * 70) + 25;
+    // Convertir la différence en minutes
+    const minutesDiff = timeDiff / (1000 * 60);
     
-    const newAds = stats.adsCount + adsIncrement;
-    const newRevenue = stats.revenueCount + revenueIncrement;
+    // Si moins d'une minute s'est écoulée, retourner les valeurs actuelles
+    if (minutesDiff < 1) {
+      return {
+        adsCount: currentValues.adsCount,
+        revenueCount: currentValues.revenueCount
+      };
+    }
     
-    saveValues(newAds, newRevenue);
+    // Récupérer les incréments journaliers
+    const dailyAdsIncrement = parseInt(localStorage.getItem(STORAGE_KEYS.DAILY_INCREMENT_ADS) || '1000', 10);
+    const dailyRevenueIncrement = parseFloat(localStorage.getItem(STORAGE_KEYS.DAILY_INCREMENT_REVENUE) || '1500', 10);
+    
+    // Calculer les incréments par minute
+    const adsIncrementPerMinute = dailyAdsIncrement / (24 * 60);
+    const revenueIncrementPerMinute = dailyRevenueIncrement / (24 * 60);
+    
+    // Ajouter une légère variation aléatoire (-10% à +10%)
+    const randomFactor = 0.9 + (Math.random() * 0.2);
+    
+    // Calculer les nouveaux incréments
+    const adsIncrement = Math.floor(adsIncrementPerMinute * minutesDiff * randomFactor);
+    const revenueIncrement = revenueIncrementPerMinute * minutesDiff * randomFactor;
+    
+    // Calculer les nouvelles valeurs
+    const newAdsCount = currentValues.adsCount + adsIncrement;
+    const newRevenueCount = currentValues.revenueCount + revenueIncrement;
+    
+    // Sauvegarder les nouvelles valeurs
+    saveValues(newAdsCount, newRevenueCount);
+    
+    // Mettre à jour les incréments journaliers (augmenter légèrement avec le temps)
+    const updatedAdsIncrement = Math.floor(dailyAdsIncrement * DAILY_PROGRESSION_FACTOR);
+    const updatedRevenueIncrement = dailyRevenueIncrement * DAILY_PROGRESSION_FACTOR;
+    
+    // Sauvegarder les nouveaux incréments journaliers tous les 3 jours environ
+    if (Math.random() < 0.01) { // 1% de chance à chaque appel
+      localStorage.setItem(STORAGE_KEYS.DAILY_INCREMENT_ADS, updatedAdsIncrement.toString());
+      localStorage.setItem(STORAGE_KEYS.DAILY_INCREMENT_REVENUE, updatedRevenueIncrement.toString());
+    }
     
     return {
-      adsCount: newAds,
-      revenueCount: newRevenue
+      adsCount: newAdsCount,
+      revenueCount: newRevenueCount
     };
-  } catch (e) {
-    console.error("Error incrementing date-linked stats:", e);
-    return loadStoredValues();
+  } catch (error) {
+    console.error('Error incrementing date-linked stats:', error);
+    
+    // En cas d'erreur, retourner les valeurs minimales
+    return {
+      adsCount: MIN_ADS_COUNT,
+      revenueCount: MIN_REVENUE_COUNT
+    };
+  }
+};
+
+/**
+ * Réinitialise les statistiques du jour
+ */
+export const resetDailyStats = (): void => {
+  try {
+    // Générer de nouvelles valeurs de base pour la nouvelle journée
+    const baseSeed = parseInt(localStorage.getItem(STORAGE_KEYS.BASE_DATE_SEED) || '42', 10);
+    const baseAdsCount = generateDateBasedValue(baseSeed, MIN_ADS_COUNT);
+    
+    // Générer un facteur de revenus (entre 1.2 et 1.5 euros par publicité)
+    const revenuePerAd = 1.2 + (Math.random() * 0.3);
+    const baseRevenueCount = baseAdsCount * revenuePerAd;
+    
+    // Sauvegarder les nouvelles valeurs
+    saveValues(baseAdsCount, baseRevenueCount);
+    
+    // Calculer de nouveaux incréments journaliers (augmenter légèrement)
+    const currentAdsIncrement = parseInt(localStorage.getItem(STORAGE_KEYS.DAILY_INCREMENT_ADS) || '1000', 10);
+    const currentRevenueIncrement = parseFloat(localStorage.getItem(STORAGE_KEYS.DAILY_INCREMENT_REVENUE) || '1500', 10);
+    
+    const newAdsIncrement = Math.floor(currentAdsIncrement * DAILY_PROGRESSION_FACTOR);
+    const newRevenueIncrement = currentRevenueIncrement * DAILY_PROGRESSION_FACTOR;
+    
+    localStorage.setItem(STORAGE_KEYS.DAILY_INCREMENT_ADS, newAdsIncrement.toString());
+    localStorage.setItem(STORAGE_KEYS.DAILY_INCREMENT_REVENUE, newRevenueIncrement.toString());
+  } catch (error) {
+    console.error('Error resetting daily stats:', error);
   }
 };
