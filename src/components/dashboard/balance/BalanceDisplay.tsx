@@ -17,21 +17,22 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   isLoading = false, 
   subscription = "freemium" 
 }) => {
+  // Utiliser la limite quotidienne comme valeur maximale pour freemium
+  const FREEMIUM_MAX_BALANCE = 5.0; // Valeur maximale totale raisonnable pour freemium (10 jours à 0,50€)
+  
   // Use session storage as source of truth for page refreshes
   const [displayBalance, setDisplayBalance] = useState<number>(() => {
     // Pour garantir la stabilité du solde entre les rechargements, prioriser le solde stocké
     const storedBalance = parseFloat(localStorage.getItem('lastKnownBalance') || '0');
     
-    // Si le solde stocké est significativement différent (éviter les micro-fluctuations)
-    if (Math.abs(storedBalance - balance) > 1) {
-      // Pour les comptes freemium, limitons les fluctuations à la hausse uniquement
-      if (subscription === 'freemium') {
-        return Math.max(storedBalance, balance);
-      }
+    // Pour les comptes freemium, appliquer une limite stricte
+    if (subscription === 'freemium') {
+      // Ne jamais dépasser la limite maximale pour freemium
+      return Math.min(FREEMIUM_MAX_BALANCE, storedBalance || balance || 0);
     }
     
-    // Utiliser le solde fourni par défaut
-    return balance || 0;
+    // Pour les autres abonnements, utiliser la valeur stockée ou fournie
+    return storedBalance || balance || 0;
   });
   
   const [prevBalance, setPrevBalance] = useState<number>(displayBalance);
@@ -48,19 +49,25 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   
   // Keep sessionStorage and localStorage in sync with balance changes
   useEffect(() => {
-    // Si le solde fourni est significativement plus élevé, mettre à jour
-    if (balance > displayBalance + 0.1) {
-      setDisplayBalance(balance);
+    // Pour les comptes freemium, appliquer une limite stricte
+    let newBalance = balance;
+    if (subscription === 'freemium') {
+      newBalance = Math.min(FREEMIUM_MAX_BALANCE, balance);
+    }
+    
+    // Si le solde fourni est significativement différent, mettre à jour
+    if (Math.abs(newBalance - displayBalance) > 0.01) {
+      setDisplayBalance(newBalance);
       
       // Save to both storage types
-      sessionStorage.setItem('currentBalance', balance.toString());
-      localStorage.setItem('currentBalance', balance.toString());
-      localStorage.setItem('lastKnownBalance', balance.toString());
+      sessionStorage.setItem('currentBalance', newBalance.toString());
+      localStorage.setItem('currentBalance', newBalance.toString());
+      localStorage.setItem('lastKnownBalance', newBalance.toString());
       
       // Record update time
       lastUpdateTime.current = Date.now();
     }
-  }, [balance, displayBalance]);
+  }, [balance, displayBalance, subscription]);
   
   // Listen for force update events
   useEffect(() => {
@@ -70,19 +77,56 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       if (timeSinceLastUpdate > 60000) { // 1 minute
         // Force a small increment to show activity
         const smallIncrement = Math.random() * 0.05 + 0.01; // 0.01-0.06€
-        const newBalance = displayBalance + smallIncrement;
         
-        setDisplayBalance(newBalance);
-        setPrevBalance(displayBalance);
-        setIsAnimating(true);
-        
-        // Save to both storage types
-        sessionStorage.setItem('currentBalance', newBalance.toString());
-        localStorage.setItem('currentBalance', newBalance.toString());
-        localStorage.setItem('lastKnownBalance', newBalance.toString());
-        
-        // Record update time
-        lastUpdateTime.current = Date.now();
+        // Pour les comptes freemium, vérifier si nous allons dépasser la limite quotidienne
+        if (subscription === 'freemium') {
+          // Vérifier les gains quotidiens
+          const dailyGainsStr = localStorage.getItem('stats_daily_gains');
+          const dailyGains = dailyGainsStr ? parseFloat(dailyGainsStr) : 0;
+          const dailyLimit = 0.5; // Limite freemium
+          
+          // Si la limite est atteinte, ne pas incrémenter
+          if (dailyGains >= dailyLimit) {
+            return;
+          }
+          
+          // Limiter l'incrément à la différence restante
+          const remainingLimit = dailyLimit - dailyGains;
+          const safeIncrement = Math.min(smallIncrement, remainingLimit);
+          
+          // Ajouter au gain quotidien
+          localStorage.setItem('stats_daily_gains', (dailyGains + safeIncrement).toString());
+          
+          // Incrémenter le solde sans dépasser la limite maximale
+          const newBalance = Math.min(FREEMIUM_MAX_BALANCE, displayBalance + safeIncrement);
+          
+          setDisplayBalance(newBalance);
+          setPrevBalance(displayBalance);
+          setIsAnimating(true);
+          
+          // Save to both storage types
+          sessionStorage.setItem('currentBalance', newBalance.toString());
+          localStorage.setItem('currentBalance', newBalance.toString());
+          localStorage.setItem('lastKnownBalance', newBalance.toString());
+          
+          // Record update time
+          lastUpdateTime.current = Date.now();
+        } else {
+          // Pour les autres abonnements, incrémenter normalement
+          const newBalance = displayBalance + smallIncrement;
+          
+          setDisplayBalance(newBalance);
+          setPrevBalance(displayBalance);
+          setIsAnimating(true);
+          
+          // Save to both storage types
+          sessionStorage.setItem('currentBalance', newBalance.toString());
+          localStorage.setItem('currentBalance', newBalance.toString());
+          localStorage.setItem('lastKnownBalance', newBalance.toString());
+          
+          // Record update time
+          lastUpdateTime.current = Date.now();
+        }
         
         // Reset animation after delay
         setTimeout(() => setIsAnimating(false), 2000);
@@ -91,7 +135,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     
     window.addEventListener('balance:force-update', handleForceUpdate as EventListener);
     return () => window.removeEventListener('balance:force-update', handleForceUpdate as EventListener);
-  }, [displayBalance]);
+  }, [displayBalance, subscription]);
   
   // Save to session before unload for refresh protection
   useEffect(() => {
@@ -161,7 +205,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           </div>
           <div className={`text-xs flex items-center mt-1 ${isAnimating ? 'text-green-500 dark:text-green-400' : 'text-blue-500 dark:text-blue-400'}`}>
             <TrendingUp className="h-3 w-3 mr-1" />
-            <span>{isAnimating ? 'Revenu généré' : 'Robot actif'}</span>
+            <span>{subscription === 'freemium' ? 'Limite: 0,50€/jour' : 'Robot actif'}</span>
           </div>
         </div>
       </div>

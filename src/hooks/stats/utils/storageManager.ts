@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 // Clés utilisées pour le stockage local des statistiques
@@ -10,7 +11,8 @@ const STORAGE_KEYS = {
   DAILY_INCREMENT_REVENUE: 'stats_daily_increment_revenue',
   MAX_ADS_COUNT: 'stats_max_ads_count',
   MAX_REVENUE_COUNT: 'stats_max_revenue_count',
-  LAST_SYNC_DATE: 'stats_last_sync_date'
+  LAST_SYNC_DATE: 'stats_last_sync_date',
+  DAILY_GAINS: 'stats_daily_gains' // Nouvelle clé pour suivre les gains journaliers
 };
 
 // Constantes pour les valeurs minimales garanties
@@ -20,11 +22,19 @@ const MIN_REVENUE_COUNT = 50000;
 // Facteur de progression quotidien (combien augmenter par jour)
 const DAILY_PROGRESSION_FACTOR = 1.05; // +5% par jour
 
+// Limite de gains maximum pour les comptes freemium par jour
+const FREEMIUM_DAILY_LIMIT = 0.5; // 0,50€ maximum par jour
+
 interface StoredValues {
   hasStoredValues: boolean;
   adsCount: number;
   revenueCount: number;
   lastUpdate: number;
+}
+
+interface UserStats {
+  currentGains: number;
+  sessionCount: number;
 }
 
 /**
@@ -44,6 +54,61 @@ const generateDateBasedValue = (baseSeed: number = 42): number => {
   
   // S'assurer que la valeur est dans une plage raisonnable
   return Math.max(MIN_ADS_COUNT, deterministicValue);
+};
+
+/**
+ * Récupère les gains journaliers actuels
+ */
+export const getDailyGains = (subscription: string = 'freemium'): number => {
+  try {
+    const storedGains = localStorage.getItem(STORAGE_KEYS.DAILY_GAINS);
+    const dailyGains = storedGains ? parseFloat(storedGains) : 0;
+    
+    // Vérifier si c'est un nouveau jour
+    const today = new Date().toDateString();
+    const lastSyncDate = localStorage.getItem(STORAGE_KEYS.LAST_SYNC_DATE);
+    
+    if (lastSyncDate !== today) {
+      // C'est un nouveau jour, réinitialiser les gains
+      localStorage.setItem(STORAGE_KEYS.DAILY_GAINS, '0');
+      localStorage.setItem(STORAGE_KEYS.LAST_SYNC_DATE, today);
+      return 0;
+    }
+    
+    return dailyGains;
+  } catch (error) {
+    console.error("Error getting daily gains:", error);
+    return 0;
+  }
+};
+
+/**
+ * Ajoute un gain au total journalier et retourne vrai si la limite n'est pas atteinte
+ */
+export const addDailyGain = (gain: number, subscription: string = 'freemium'): boolean => {
+  try {
+    const currentGains = getDailyGains(subscription);
+    const newGains = currentGains + gain;
+    
+    // Pour les comptes freemium, vérifier la limite stricte de 0,50€ par jour
+    if (subscription === 'freemium' && newGains > FREEMIUM_DAILY_LIMIT) {
+      console.log(`Limite freemium atteinte: ${currentGains}€/${FREEMIUM_DAILY_LIMIT}€`);
+      // On n'ajoute pas le gain si ça dépasse la limite pour freemium
+      return false;
+    }
+    
+    localStorage.setItem(STORAGE_KEYS.DAILY_GAINS, newGains.toString());
+    
+    // Propager l'événement de mise à jour des gains
+    window.dispatchEvent(new CustomEvent('dailyGains:updated', { 
+      detail: { gains: newGains }
+    }));
+    
+    return true;
+  } catch (error) {
+    console.error("Error adding daily gain:", error);
+    return false;
+  }
 };
 
 /**
@@ -295,7 +360,37 @@ export const resetDailyStats = (): void => {
     
     localStorage.setItem(STORAGE_KEYS.DAILY_INCREMENT_ADS, newAdsIncrement.toString());
     localStorage.setItem(STORAGE_KEYS.DAILY_INCREMENT_REVENUE, newRevenueIncrement.toString());
+    
+    // Réinitialiser les gains journaliers
+    localStorage.setItem(STORAGE_KEYS.DAILY_GAINS, '0');
+    localStorage.setItem(STORAGE_KEYS.LAST_SYNC_DATE, new Date().toDateString());
+    
+    // Propager l'événement de réinitialisation
+    window.dispatchEvent(new CustomEvent('dailyGains:reset'));
   } catch (error) {
     console.error('Error resetting daily stats:', error);
   }
+};
+
+/**
+ * Charge les statistiques utilisateur ou crée des valeurs par défaut
+ */
+export const loadUserStats = (subscription: string = 'freemium'): UserStats => {
+  const currentGains = getDailyGains(subscription);
+  const sessionCount = parseInt(localStorage.getItem(`${subscription}_session_count`) || '0', 10);
+  
+  return { currentGains, sessionCount };
+};
+
+/**
+ * Sauvegarde les statistiques utilisateur
+ */
+export const saveUserStats = (currentGains: number, sessionCount: number, subscription: string = 'freemium'): void => {
+  localStorage.setItem(STORAGE_KEYS.DAILY_GAINS, currentGains.toString());
+  localStorage.setItem(`${subscription}_session_count`, sessionCount.toString());
+  
+  // Propager l'événement de mise à jour
+  window.dispatchEvent(new CustomEvent('dailyGains:updated', { 
+    detail: { gains: currentGains, sessionCount }
+  }));
 };

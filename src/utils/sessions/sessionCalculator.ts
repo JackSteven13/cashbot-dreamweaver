@@ -13,9 +13,9 @@ export const calculateSessionGain = (
   sessionCount: number = 0,
   activityLevel: number = 50
 ): number => {
-  // Base gain values per subscription type
+  // Base gain values per subscription type (reduced for freemium)
   const baseGainMap: Record<string, number> = {
-    'freemium': 0.05,
+    'freemium': 0.05, // Gain réduit pour freemium
     'starter': 0.15,
     'gold': 0.35,
     'elite': 0.75
@@ -33,7 +33,30 @@ export const calculateSessionGain = (
   // Randomization factor to add variability (0.85-1.15)
   const randomFactor = 0.85 + Math.random() * 0.3;
   
-  // Calculate final gain (base * factors), with minimum value
+  // Pour les comptes freemium, limiter strictement à 0,50€ par jour
+  if (subscription === 'freemium') {
+    // Vérifier les gains quotidiens actuels
+    const dailyGainsString = localStorage.getItem('stats_daily_gains');
+    const dailyGains = dailyGainsString ? parseFloat(dailyGainsString) : 0;
+    const dailyLimit = SUBSCRIPTION_LIMITS[subscription] || 0.5;
+    
+    // S'il a déjà atteint la limite, renvoyer 0
+    if (dailyGains >= dailyLimit) {
+      return 0;
+    }
+    
+    // Limiter le gain pour ne pas dépasser la limite quotidienne
+    const remainingAllowed = dailyLimit - dailyGains;
+    const calculatedGain = Math.min(
+      remainingAllowed,
+      baseGain * sessionFactor * activityFactor * randomFactor
+    );
+    
+    // Format to 2 decimal places
+    return parseFloat(calculatedGain.toFixed(2));
+  }
+  
+  // Pour les autres abonnements, calcul normal
   const calculatedGain = Math.max(
     0.01,
     baseGain * sessionFactor * activityFactor * randomFactor
