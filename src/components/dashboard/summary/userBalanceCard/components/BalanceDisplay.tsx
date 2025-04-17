@@ -46,17 +46,35 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     }
   }, [balanceAnimating]);
   
+  // Écouter les événements de mise à jour du solde pour les animations
+  useEffect(() => {
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      if (balanceRef.current && event.detail?.animate !== false) {
+        // Créer un effet visuel pour la mise à jour du solde
+        createMoneyParticles(balanceRef.current, 3);
+        setShowRain(true);
+        
+        // Réinitialiser l'état après l'animation
+        const timer = setTimeout(() => setShowRain(false), 2000);
+        return () => clearTimeout(timer);
+      }
+    };
+    
+    window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
+    return () => window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
+  }, []);
+  
   return (
     <div className="mb-4 relative">
       <div 
         ref={balanceRef}
         className={`balance-display text-4xl font-bold mb-1 flex items-center justify-center transition-all duration-300 ${
-          balanceAnimating ? 'text-green-400 glow-effect scale-110' : 'text-white'
+          balanceAnimating || showRain ? 'text-green-400 glow-effect scale-110' : 'text-white'
         }`}
       >
         <CircleDollarSign 
           size={24} 
-          className={`mr-2 ${balanceAnimating ? 'text-green-400 animate-bounce' : 'text-yellow-400'}`} 
+          className={`mr-2 ${balanceAnimating || showRain ? 'text-green-400 animate-bounce' : 'text-yellow-400'}`} 
         />
         <span>{formattedValue}€</span>
       </div>

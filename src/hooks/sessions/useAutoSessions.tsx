@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useAutoRevenueGenerator } from './useAutoRevenueGenerator';
 import { useAutoSessionScheduler } from './useAutoSessionScheduler';
@@ -249,6 +250,15 @@ export const useAutoSessions = (
         userStats.currentGains + gain,
         userStats.sessionCount + 1
       );
+      
+      // Trigger animated balance update with a custom event
+      window.dispatchEvent(new CustomEvent('balance:update', {
+        detail: {
+          amount: gain,
+          animate: true,
+          automatic: true
+        }
+      }));
       
       // Display a notification to confirm automatic generation
       if (isFirst || Math.random() > 0.7) {

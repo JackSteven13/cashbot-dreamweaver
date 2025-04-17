@@ -1,42 +1,36 @@
 
-// Subscription plans and their limits
+/**
+ * Subscription package daily limits and settings
+ */
+
+// Maximum revenue per day based on subscription package
 export const SUBSCRIPTION_LIMITS = {
-  'freemium': 0.5,
-  'starter': 5,
-  'gold': 20,
-  'elite': 50
+  freemium: 0.5, // €0.50 per day (freemium users)
+  starter: 2.0, // €2.00 per day (starter package)
+  gold: 5.0,   // €5.00 per day (gold package)
+  elite: 15.0  // €15.00 per day (elite package)
 };
 
-// Base percentages for manual boost sessions
+// Base manual session gains as percentages of daily limits
 export const MANUAL_SESSION_GAIN_PERCENTAGES = {
-  'freemium': { min: 0.10, max: 0.20 },  // 10-20% of daily limit
-  'starter': { min: 0.05, max: 0.15 },   // 5-15% of daily limit
-  'gold': { min: 0.03, max: 0.10 },      // 3-10% of daily limit
-  'elite': { min: 0.02, max: 0.08 }      // 2-8% of daily limit
+  freemium: { min: 0.05, max: 0.15 }, // 5-15% of daily limit per session
+  starter: { min: 0.05, max: 0.20 },  // 5-20% of daily limit per session 
+  gold: { min: 0.10, max: 0.25 },     // 10-25% of daily limit per session
+  elite: { min: 0.15, max: 0.30 }     // 15-30% of daily limit per session
 };
 
-// Withdrawal thresholds by subscription level
+// Minimum withdrawal amounts based on subscription
 export const WITHDRAWAL_THRESHOLDS = {
-  'freemium': 200, // Théorique seulement - les comptes freemium ne peuvent pas retirer
-  'starter': 100,
-  'gold': 100,
-  'elite': 100
+  freemium: 20, // €20 minimum withdrawal (freemium)
+  starter: 15,  // €15 minimum withdrawal (starter)
+  gold: 10,     // €10 minimum withdrawal (gold)
+  elite: 5      // €5 minimum withdrawal (elite)
 };
 
-// Withdrawal fee structure
+// Withdrawal fees based on subscription (percentage)
 export const WITHDRAWAL_FEES = {
-  // Pour les comptes de moins de 6 mois
-  earlyAccount: {
-    'freemium': 1.0,    // 100% (impossible en pratique)
-    'starter': 0.5,     // 50%
-    'gold': 0.4,        // 40%
-    'elite': 0.3        // 30%
-  },
-  // Pour les comptes de plus de 6 mois
-  matureAccount: {
-    'freemium': 1.0,    // 100% (impossible en pratique)
-    'starter': 0.3,     // 30%
-    'gold': 0.2,        // 20%
-    'elite': 0.15       // 15%
-  }
+  freemium: 5, // 5% withdrawal fee
+  starter: 3,  // 3% withdrawal fee
+  gold: 1.5,   // 1.5% withdrawal fee
+  elite: 0     // No withdrawal fee
 };

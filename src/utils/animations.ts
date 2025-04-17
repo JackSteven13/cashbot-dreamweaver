@@ -1,3 +1,4 @@
+
 /**
  * Centralized event dispatcher for dashboard animations
  */
@@ -40,30 +41,58 @@ export const triggerDashboardEvent = (
  * @param endValue Final value
  * @param duration Animation duration in ms
  * @param updateCallback Callback to update UI
+ * @param easingFunction Optional easing function
+ * @param completeCallback Optional callback on animation completion
  */
 export const animateBalanceUpdate = (
   startValue: number,
   endValue: number,
   duration = 1000,
-  updateCallback: (value: number) => void
+  updateCallback: (value: number) => void,
+  easingFunction?: (t: number) => number,
+  completeCallback?: () => void
 ) => {
   const startTime = Date.now();
+  
+  // Default linear easing if none provided
+  const easing = easingFunction || ((t) => t);
   
   const animate = () => {
     const now = Date.now();
     const elapsed = now - startTime;
     
     if (elapsed < duration) {
-      const progress = elapsed / duration;
+      const progress = easing(Math.min(elapsed / duration, 1));
       const currentValue = startValue + (endValue - startValue) * progress;
       updateCallback(currentValue);
       requestAnimationFrame(animate);
     } else {
       updateCallback(endValue);
+      
+      // Trigger balance animation complete event
+      window.dispatchEvent(new CustomEvent('balance:animation-complete', {
+        detail: { finalValue: endValue }
+      }));
+      
+      // Call complete callback if provided
+      if (completeCallback) {
+        completeCallback();
+      }
     }
   };
   
   requestAnimationFrame(animate);
+  
+  // Also trigger a balance:update event for other components to respond
+  window.dispatchEvent(new CustomEvent('balance:update', {
+    detail: {
+      startValue,
+      endValue,
+      amount: endValue - startValue,
+      animate: true,
+      duration
+    }
+  }));
 };
 
 /**
@@ -102,11 +131,21 @@ export const createMoneyParticles = (
     particle.style.setProperty('--r', `${rotation}deg`);
     
     // Position the particle at the starting point
+    particle.style.position = 'absolute';
     particle.style.left = `${centerX}px`;
     particle.style.top = `${centerY}px`;
     particle.style.fontSize = `${12 + Math.random() * 8}px`;
     particle.style.opacity = '0.7';
     particle.style.color = '#00783E'; // Professional green color
+    particle.style.zIndex = '9999';
+    particle.style.pointerEvents = 'none';
+    particle.style.transition = 'all 1.5s ease-out';
+    
+    // Animate the particle
+    setTimeout(() => {
+      particle.style.transform = `translate(${tx}px, ${ty}px) rotate(${rotation}deg)`;
+      particle.style.opacity = '0';
+    }, 10);
     
     // Add to document
     document.body.appendChild(particle);
@@ -119,3 +158,65 @@ export const createMoneyParticles = (
     }, 1500);
   }
 };
+
+/**
+ * Simulates activity with random small balance updates
+ */
+export const simulateActivity = (options: { intensity?: 'low' | 'medium' | 'high' } = {}) => {
+  const { intensity = 'medium' } = options;
+  
+  // Determine frequency based on intensity
+  const intervalMap = {
+    low: 90000, // Every 90 seconds
+    medium: 45000, // Every 45 seconds
+    high: 20000 // Every 20 seconds
+  };
+  
+  const interval = intervalMap[intensity];
+  
+  // Generate a micro-gain
+  const generateMicroGain = () => {
+    // Smaller gains for more natural looking progression
+    // Range: 0.01-0.03 (low), 0.01-0.05 (medium), 0.02-0.08 (high)
+    const gainRanges = {
+      low: { min: 0.01, max: 0.03 },
+      medium: { min: 0.01, max: 0.05 },
+      high: { min: 0.02, max: 0.08 }
+    };
+    
+    const range = gainRanges[intensity];
+    const microGain = parseFloat((Math.random() * (range.max - range.min) + range.min).toFixed(2));
+    
+    // Dispatch event
+    triggerDashboardEvent('micro-gain', {
+      amount: microGain,
+      automatic: true
+    });
+    
+    // Also trigger a balance update event
+    window.dispatchEvent(new CustomEvent('balance:update', {
+      detail: {
+        amount: microGain,
+        animate: true,
+        automatic: true
+      }
+    }));
+  };
+  
+  // Initial activity
+  generateMicroGain();
+  
+  // Set up interval for regular activity
+  const activityInterval = setInterval(() => {
+    triggerDashboardEvent('activity');
+    
+    // 40% chance of generating a micro gain
+    if (Math.random() > 0.6) {
+      generateMicroGain();
+    }
+  }, interval);
+  
+  // Return cleanup function
+  return () => clearInterval(activityInterval);
+};
+
