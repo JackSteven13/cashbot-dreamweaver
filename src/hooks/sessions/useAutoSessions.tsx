@@ -91,12 +91,34 @@ export const useAutoSessions = (
   // Custom hooks for automatic generation logic
   const { getDailyLimit } = useDailyLimits(safeUserData.subscription);
   
-  // Automatic session scheduler
-  const { 
-    lastAutoSessionTime,
-    getLastAutoSessionTime,
-    getCurrentPersistentBalance
-  } = useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, safeUserData, isBotActive);
+  // Automatic session scheduler - activate immediately on component mount
+  useEffect(() => {
+    if (safeUserData?.profile?.id && !isInitialSessionExecuted.current) {
+      isInitialSessionExecuted.current = true;
+      
+      // Déclencher une première session automatique immédiatement
+      setTimeout(() => {
+        generateAutomaticRevenue(true);
+      }, 2000);
+    }
+  }, [safeUserData?.profile?.id]);
+
+  // Set up periodic auto session generation
+  useEffect(() => {
+    // Skip if user data is not available
+    if (!safeUserData?.profile?.id) return;
+
+    // Setup interval for regular automatic sessions
+    const autoSessionInterval = setInterval(() => {
+      if (botActiveRef.current) {
+        generateAutomaticRevenue();
+      }
+    }, 45000 + Math.random() * 30000); // Run every 45-75 seconds
+    
+    return () => {
+      clearInterval(autoSessionInterval);
+    };
+  }, [safeUserData?.profile?.id]);
   
   // Synchronisez le solde avec la base de données périodiquement
   useEffect(() => {
@@ -137,13 +159,18 @@ export const useAutoSessions = (
       }
     };
     
-    // Restaurer l'état du bot à partir du localStorage
+    // Restaurer l'état du bot à partir du localStorage, mais activer par défaut
     try {
       const storedBotStatus = localStorage.getItem(`botActive_${safeUserData?.profile?.id}`);
       if (storedBotStatus !== null) {
         const isActive = storedBotStatus === 'true';
         setIsBotActive(isActive);
         botActiveRef.current = isActive;
+      } else {
+        // Par défaut, le bot est actif s'il n'y a pas de valeur stockée
+        setIsBotActive(true);
+        botActiveRef.current = true;
+        localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'true');
       }
     } catch (e) {
       console.error("Failed to restore bot status from localStorage:", e);
@@ -162,32 +189,14 @@ export const useAutoSessions = (
     };
   }, [safeUserData?.profile?.id]);
 
-  // Fonction pour déclencher une première session automatique au chargement initial
-  useEffect(() => {
-    if (safeUserData?.profile?.id && botActiveRef.current && !isInitialSessionExecuted.current) {
-      isInitialSessionExecuted.current = true;
-      
-      // Déclencher une première session automatique avec un petit délai
-      setTimeout(() => {
-        generateAutomaticRevenue(true);
-      }, 1000);
-      
-      // Programmer la prochaine session avec un intervalle aléatoire
-      const nextInterval = Math.random() * 15000 + 15000; // 15-30 secondes
-      setTimeout(() => {
-        if (botActiveRef.current) {
-          generateAutomaticRevenue();
-        }
-      }, nextInterval);
-    }
-  }, [safeUserData?.profile?.id]);
-
   // Function to generate automatic revenue with improved animation
   async function generateAutomaticRevenue(isFirst = false): Promise<void> {
     if (!botActiveRef.current) {
       console.log("Bot is inactive, no automatic revenue will be generated");
       return;
     }
+
+    console.log("Generating automatic revenue...");
     
     // Create an animation sequence that doesn't display the loading screen
     const terminalAnimation = createBackgroundTerminalSequence([
@@ -236,8 +245,10 @@ export const useAutoSessions = (
       await new Promise(resolve => setTimeout(resolve, 800));
       
       // Generate a random gain between 0.01 and 0.1, limited by the remaining allowed amount
+      // More consistent gain to ensure users see progress
+      const minGain = 0.03; // Minimum 0.03€ per auto session
       const baseGain = Math.min(
-        Math.random() * 0.09 + 0.01,
+        Math.random() * 0.07 + minGain, // Between 0.03 and 0.10
         remainingAllowedGains
       );
       
@@ -284,6 +295,8 @@ export const useAutoSessions = (
             detail: { amount: finalGain, animate: true, userId: safeUserData.profile.id }
           }));
           
+          console.log(`Auto session generated ${finalGain.toFixed(2)}€, new balance: ${newBalance.toFixed(2)}€`);
+          
           // Mettre à jour la progression de la limite quotidienne
           const updatedGains = balanceManager.getDailyGains();
           const percentProgress = Math.min(100, (updatedGains / dailyLimit) * 100);
@@ -302,15 +315,6 @@ export const useAutoSessions = (
       
       // Complete the animation with the obtained gain
       terminalAnimation.complete(finalGain);
-      
-      // Programme la prochaine génération automatique avec un intervalle aléatoire
-      // Utiliser un intervalle plus court pour plus de dynamisme
-      const nextInterval = Math.random() * 20000 + 10000; // 10-30 secondes
-      setTimeout(() => {
-        if (botActiveRef.current) {
-          generateAutomaticRevenue();
-        }
-      }, nextInterval);
       
       // If limit reached, deactivate the bot
       if (balanceManager.getDailyGains() >= dailyLimit) {
@@ -348,7 +352,7 @@ export const useAutoSessions = (
   }
 
   return {
-    lastAutoSessionTime: getLastAutoSessionTime(),
+    lastAutoSessionTime: Date.now(), // Always return current time to avoid stale data
     activityLevel: "medium", // Placeholder for compatibility
     generateAutomaticRevenue,
     isBotActive,

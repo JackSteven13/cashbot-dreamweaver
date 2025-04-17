@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { formatPrice } from '@/utils/balance/limitCalculations';
 import { CardContent } from '@/components/ui/card';
@@ -30,6 +31,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const [prevBalance, setPrevBalance] = useState<number>(displayBalance);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const balanceRef = useRef<HTMLDivElement>(null);
+  const lastUpdateTime = useRef<number>(Date.now());
   
   const { formattedValue } = useAnimatedCounter({
     value: displayBalance,
@@ -48,8 +50,42 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       sessionStorage.setItem('currentBalance', balance.toString());
       localStorage.setItem('currentBalance', balance.toString());
       localStorage.setItem('lastKnownBalance', balance.toString());
+      
+      // Record update time
+      lastUpdateTime.current = Date.now();
     }
   }, [balance, displayBalance]);
+  
+  // Listen for force update events
+  useEffect(() => {
+    const handleForceUpdate = (event: CustomEvent) => {
+      // Check if we should force update (no recent updates)
+      const timeSinceLastUpdate = Date.now() - lastUpdateTime.current;
+      if (timeSinceLastUpdate > 60000) { // 1 minute
+        // Force a small increment to show activity
+        const smallIncrement = Math.random() * 0.05 + 0.01; // 0.01-0.06€
+        const newBalance = displayBalance + smallIncrement;
+        
+        setDisplayBalance(newBalance);
+        setPrevBalance(displayBalance);
+        setIsAnimating(true);
+        
+        // Save to both storage types
+        sessionStorage.setItem('currentBalance', newBalance.toString());
+        localStorage.setItem('currentBalance', newBalance.toString());
+        localStorage.setItem('lastKnownBalance', newBalance.toString());
+        
+        // Record update time
+        lastUpdateTime.current = Date.now();
+        
+        // Reset animation after delay
+        setTimeout(() => setIsAnimating(false), 2000);
+      }
+    };
+    
+    window.addEventListener('balance:force-update', handleForceUpdate as EventListener);
+    return () => window.removeEventListener('balance:force-update', handleForceUpdate as EventListener);
+  }, [displayBalance]);
   
   // Save to session before unload for refresh protection
   useEffect(() => {

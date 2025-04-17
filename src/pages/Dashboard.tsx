@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -70,18 +71,39 @@ const Dashboard = () => {
     }
   }, [isInitializing, username, isFirstLoad, userData, processAutomaticRevenue]);
 
+  // Heartbeat effect to ensure periodic updates
   useEffect(() => {
     const heartbeatInterval = setInterval(() => {
       if (userData) {
         console.log("Dashboard heartbeat - ensuring revenue generation is active");
         
-        window.dispatchEvent(new CustomEvent('dashboard:heartbeat', { 
+        // Force a balance update to show progress
+        window.dispatchEvent(new CustomEvent('balance:force-update', { 
+          detail: { timestamp: Date.now() } 
+        }));
+        
+        // Trigger more frequent automatic revenue generation
+        if (Math.random() > 0.5) {
+          processAutomaticRevenue();
+        }
+      }
+    }, 120000); // Heartbeat every 2 minutes
+    
+    return () => clearInterval(heartbeatInterval);
+  }, [userData, processAutomaticRevenue]);
+  
+  // Add a more frequent check to ensure revnue growth is happening
+  useEffect(() => {
+    const microInterval = setInterval(() => {
+      if (userData) {
+        // Dispatch event to trigger balance display animation
+        window.dispatchEvent(new CustomEvent('balance:force-update', { 
           detail: { timestamp: Date.now() } 
         }));
       }
-    }, 300000);
+    }, 45000 + Math.random() * 15000); // Every 45-60 seconds
     
-    return () => clearInterval(heartbeatInterval);
+    return () => clearInterval(microInterval);
   }, [userData]);
 
   if (authLoading || !user) {

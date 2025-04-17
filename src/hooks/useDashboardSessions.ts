@@ -27,6 +27,7 @@ export const useDashboardSessions = ({
   const [lastSessionTimestamp, setLastSessionTimestamp] = useState<string | undefined>(undefined);
   const hasProcessedTransactions = useRef(false);
   const previousTransactionsLength = useRef<number | null>(null);
+  const forceUpdateRef = useRef<NodeJS.Timeout | null>(null);
   
   // Extract timestamp of last session from transactions without creating loops
   useEffect(() => {
@@ -70,6 +71,26 @@ export const useDashboardSessions = ({
       }
     };
   }, [userData?.transactions]);  // Simplified dependency
+
+  // Force refresh periodically to ensure data is up-to-date
+  useEffect(() => {
+    // Setup a timer to force refresh every 60 seconds
+    if (!forceUpdateRef.current && userData?.profile?.id) {
+      forceUpdateRef.current = setInterval(() => {
+        // Trigger an event to force refresh balance display
+        window.dispatchEvent(new CustomEvent('balance:force-update', { 
+          detail: { timestamp: Date.now() }
+        }));
+      }, 60000);
+    }
+    
+    return () => {
+      if (forceUpdateRef.current) {
+        clearInterval(forceUpdateRef.current);
+        forceUpdateRef.current = null;
+      }
+    };
+  }, [userData?.profile?.id]);
 
   // Create a safe userData object with default values to prevent null access
   const safeUserData = userData || { 

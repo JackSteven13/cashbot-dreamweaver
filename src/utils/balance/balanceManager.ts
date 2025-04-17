@@ -1,203 +1,257 @@
 
 /**
- * Balance Manager Module
- * Provides consistent tracking and management of user balance across the application
+ * Balance Manager - Gère le solde et la synchronisation
  */
 
-// Balance state storage keys
-const CURRENT_BALANCE_KEY = 'currentBalance';
-const HIGHEST_BALANCE_KEY = 'highestBalance';
-const DAILY_GAINS_KEY = 'dailyGains';
-const LAST_UPDATE_KEY = 'lastBalanceUpdate';
+import { supabase } from '@/integrations/supabase/client';
 
-// Get current balance from local storage or return 0
-const getCurrentBalance = () => {
-  const storedBalance = localStorage.getItem(CURRENT_BALANCE_KEY);
-  return storedBalance ? parseFloat(storedBalance) : 0;
-};
+class BalanceManager {
+  private dailyGains: number;
+  private lastKnownBalance: number;
+  private midnightResetTimer: NodeJS.Timeout | null;
+  private syncLock: boolean;
+  private dailyGainsKey: string;
+  private lastResetDateKey: string;
 
-// Get highest recorded balance from local storage
-const getHighestBalance = () => {
-  const storedHighest = localStorage.getItem(HIGHEST_BALANCE_KEY);
-  return storedHighest ? parseFloat(storedHighest) : 0;
-};
-
-// Get daily gains from local storage
-const getDailyGains = () => {
-  const storedGains = localStorage.getItem(DAILY_GAINS_KEY);
-  return storedGains ? parseFloat(storedGains) : 0;
-};
-
-// Add to daily gains and update storage
-const addDailyGain = (gain: number) => {
-  const currentGains = getDailyGains();
-  const newGains = currentGains + gain;
-  
-  localStorage.setItem(DAILY_GAINS_KEY, newGains.toString());
-  
-  // Dispatch event to notify the app of the update
-  window.dispatchEvent(new CustomEvent('dailyGains:updated', { 
-    detail: { gains: newGains }
-  }));
-  
-  return newGains;
-};
-
-// Reset daily counters (called at midnight)
-const resetDailyCounters = () => {
-  localStorage.setItem(DAILY_GAINS_KEY, '0');
-  
-  // Dispatch event to notify the app of the reset
-  window.dispatchEvent(new CustomEvent('dailyGains:reset'));
-  
-  console.log('Daily gains reset to 0');
-  
-  return 0;
-};
-
-// Update balance with a new gain
-const updateBalance = (gain: number) => {
-  // Get current values
-  const currentBalance = getCurrentBalance();
-  const highestBalance = getHighestBalance();
-  
-  // Calculate new balance
-  const newBalance = currentBalance + gain;
-  
-  // Update current balance
-  localStorage.setItem(CURRENT_BALANCE_KEY, newBalance.toString());
-  
-  // Track highest balance
-  if (newBalance > highestBalance) {
-    localStorage.setItem(HIGHEST_BALANCE_KEY, newBalance.toString());
+  constructor() {
+    this.dailyGains = 0;
+    this.lastKnownBalance = 0;
+    this.midnightResetTimer = null;
+    this.syncLock = false;
+    this.dailyGainsKey = 'dailyGains';
+    this.lastResetDateKey = 'lastBalanceResetDate';
+    
+    // Initialize from localStorage
+    this.initializeFromStorage();
+    
+    // Auto-reset at midnight
+    this.setupMidnightReset();
   }
-  
-  // Track daily gains
-  addDailyGain(gain);
-  
-  // Update last update time
-  localStorage.setItem(LAST_UPDATE_KEY, Date.now().toString());
-  
-  return newBalance;
-};
 
-// Force balance to a specific value (used for sync with server)
-const forceBalanceSync = (newBalance: number) => {
-  const highestBalance = getHighestBalance();
-  
-  // Update current balance
-  localStorage.setItem(CURRENT_BALANCE_KEY, newBalance.toString());
-  
-  // Only update highest if the new value is higher
-  if (newBalance > highestBalance) {
-    localStorage.setItem(HIGHEST_BALANCE_KEY, newBalance.toString());
+  // Initialize values from localStorage
+  private initializeFromStorage() {
+    try {
+      // Load daily gains
+      const storedGains = localStorage.getItem(this.dailyGainsKey);
+      if (storedGains) {
+        this.dailyGains = parseFloat(storedGains);
+      }
+      
+      // Check if we need to reset based on date
+      const lastResetDate = localStorage.getItem(this.lastResetDateKey);
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      if (!lastResetDate || lastResetDate !== today) {
+        // It's a new day, reset daily gains
+        this.resetDailyGains();
+        localStorage.setItem(this.lastResetDateKey, today);
+      }
+      
+      // Get last known balance
+      const storedBalance = localStorage.getItem('lastKnownBalance');
+      if (storedBalance) {
+        this.lastKnownBalance = parseFloat(storedBalance);
+      }
+    } catch (e) {
+      console.error("Error initializing balance manager from storage:", e);
+    }
   }
-  
-  // Update last update time
-  localStorage.setItem(LAST_UPDATE_KEY, Date.now().toString());
-  
-  return newBalance;
-};
 
-// Reset balance to zero
-const resetBalance = () => {
-  localStorage.setItem(CURRENT_BALANCE_KEY, '0');
-  
-  // Update last update time
-  localStorage.setItem(LAST_UPDATE_KEY, Date.now().toString());
-  
-  return 0;
-};
-
-// Initialize balance (used when first loading app)
-const initialize = (initialBalance: number) => {
-  // Only initialize if we don't have a balance already
-  // or if the new balance is higher than our current one
-  const currentBalance = getCurrentBalance();
-  const highestBalance = getHighestBalance();
-  
-  if (currentBalance === 0 || initialBalance > currentBalance) {
-    localStorage.setItem(CURRENT_BALANCE_KEY, initialBalance.toString());
+  // Set up midnight reset
+  private setupMidnightReset() {
+    // Clear any existing timer
+    if (this.midnightResetTimer) {
+      clearTimeout(this.midnightResetTimer);
+    }
+    
+    // Calculate time until next midnight
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 1, 0, 0); // 00:01:00
+    
+    const timeUntilMidnight = tomorrow.getTime() - now.getTime();
+    
+    // Set timer to reset at midnight
+    this.midnightResetTimer = setTimeout(() => {
+      this.resetDailyGains();
+      
+      // Save reset date
+      const newDay = new Date().toISOString().split('T')[0];
+      localStorage.setItem(this.lastResetDateKey, newDay);
+      
+      // Set up next midnight reset
+      this.setupMidnightReset();
+      
+      // Trigger event to notify components
+      window.dispatchEvent(new CustomEvent('dailyGains:reset', {
+        detail: { timestamp: Date.now() }
+      }));
+      
+    }, timeUntilMidnight);
   }
-  
-  if (initialBalance > highestBalance) {
-    localStorage.setItem(HIGHEST_BALANCE_KEY, initialBalance.toString());
+
+  // GETTERS
+
+  // Get current daily gains
+  getDailyGains(): number {
+    return this.dailyGains;
   }
-  
-  // Set update time if we don't have one
-  if (!localStorage.getItem(LAST_UPDATE_KEY)) {
-    localStorage.setItem(LAST_UPDATE_KEY, Date.now().toString());
+
+  // Get last known balance
+  getLastKnownBalance(): number {
+    return this.lastKnownBalance;
   }
-  
-  return Math.max(currentBalance, initialBalance);
-};
 
-// Get last update timestamp
-const getLastUpdateTime = () => {
-  const lastUpdate = localStorage.getItem(LAST_UPDATE_KEY);
-  return lastUpdate ? parseInt(lastUpdate) : 0;
-};
+  // ACTIONS
 
-// Clean up user balance data when switching users
-const cleanupUserBalanceData = () => {
-  localStorage.removeItem(CURRENT_BALANCE_KEY);
-  localStorage.removeItem(HIGHEST_BALANCE_KEY);
-  localStorage.removeItem(DAILY_GAINS_KEY);
-  localStorage.removeItem(LAST_UPDATE_KEY);
-  
-  console.log('Balance data cleared for user switch');
-};
+  // Add to daily gains and persist to localStorage
+  addDailyGain(amount: number): void {
+    if (isNaN(amount) || amount <= 0) return;
+    
+    this.dailyGains += amount;
+    
+    try {
+      // Save to localStorage
+      localStorage.setItem(this.dailyGainsKey, this.dailyGains.toString());
+      
+      // Trigger event to notify components
+      window.dispatchEvent(new CustomEvent('dailyGains:updated', {
+        detail: { gains: this.dailyGains, added: amount }
+      }));
+    } catch (e) {
+      console.error("Error saving daily gains to localStorage:", e);
+    }
+  }
 
-// Add transaction to user (simulated until supabase integration)
-const addTransaction = async (userId: string, gain: number, report: string) => {
-  // This would typically write to Supabase, but for now just return success
-  return { success: true, transaction: { id: Date.now().toString(), gain, report, date: new Date().toISOString() }};
-};
+  // Reset daily gains
+  resetDailyGains(): void {
+    this.dailyGains = 0;
+    
+    try {
+      localStorage.setItem(this.dailyGainsKey, '0');
+      
+      // Store the reset date
+      localStorage.setItem(this.lastResetDateKey, new Date().toISOString().split('T')[0]);
+      
+      console.log("Daily gains reset to 0");
+    } catch (e) {
+      console.error("Error resetting daily gains:", e);
+    }
+  }
 
-// Sync with database (placeholder for future integration)
-const syncWithDatabase = async () => {
-  // This would sync local balance with database
-  console.log('Balance synced with database');
-  return true;
-};
+  // Force update balance to a specific value
+  forceUpdate(newBalance: number): void {
+    if (isNaN(newBalance)) return;
+    
+    this.lastKnownBalance = newBalance;
+    
+    try {
+      localStorage.setItem('lastKnownBalance', this.lastKnownBalance.toString());
+      localStorage.setItem('currentBalance', this.lastKnownBalance.toString());
+      sessionStorage.setItem('currentBalance', this.lastKnownBalance.toString());
+      
+      // Trigger event to notify components
+      window.dispatchEvent(new CustomEvent('balance:local-update', {
+        detail: { balance: this.lastKnownBalance }
+      }));
+    } catch (e) {
+      console.error("Error forcing balance update:", e);
+    }
+  }
 
-// Force update (for testing and UI updates)
-const forceUpdate = (newBalance: number) => {
-  return forceBalanceSync(newBalance);
-};
+  // Add a transaction to the database and update balance
+  async addTransaction(userId: string, gain: number, description: string): Promise<boolean> {
+    if (!userId || isNaN(gain)) return false;
+    
+    try {
+      // Add to daily gains
+      if (gain > 0) {
+        this.addDailyGain(gain);
+      }
+      
+      // Add transaction to database
+      const { error } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          gain: gain,
+          report: description,
+          date: new Date().toISOString().split('T')[0]
+        });
+        
+      if (error) {
+        console.error("Error adding transaction:", error);
+        return false;
+      }
+      
+      // Update last known balance
+      this.lastKnownBalance += gain;
+      localStorage.setItem('lastKnownBalance', this.lastKnownBalance.toString());
+      
+      return true;
+    } catch (e) {
+      console.error("Error adding transaction:", e);
+      return false;
+    }
+  }
 
-// Export all functions
-export { 
-  getCurrentBalance,
-  getHighestBalance,
-  getDailyGains,
-  addDailyGain,
-  resetDailyCounters,
-  updateBalance,
-  forceBalanceSync,
-  resetBalance,
-  initialize,
-  getLastUpdateTime,
-  cleanupUserBalanceData,
-  addTransaction,
-  syncWithDatabase,
-  forceUpdate
-};
+  // Synchronize with database
+  async syncWithDatabase(): Promise<boolean> {
+    const userId = supabase.auth.getUser().then(({ data }) => data.user?.id);
+    
+    if (!userId || this.syncLock) return false;
+    
+    this.syncLock = true;
+    
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        this.syncLock = false;
+        return false;
+      }
+      
+      // Get balance from database
+      const { data, error } = await supabase
+        .from('user_balances')
+        .select('balance')
+        .eq('id', user.id)
+        .single();
+        
+      if (error) {
+        console.error("Error getting balance from database:", error);
+        this.syncLock = false;
+        return false;
+      }
+      
+      if (data) {
+        const databaseBalance = parseFloat(data.balance);
+        
+        // Use highest balance
+        if (!isNaN(databaseBalance) && databaseBalance > this.lastKnownBalance) {
+          this.forceUpdate(databaseBalance);
+        } else if (this.lastKnownBalance > databaseBalance) {
+          // Update database with local balance
+          await supabase
+            .from('user_balances')
+            .update({ balance: this.lastKnownBalance })
+            .eq('id', user.id);
+        }
+      }
+      
+      this.syncLock = false;
+      return true;
+    } catch (e) {
+      console.error("Error syncing with database:", e);
+      this.syncLock = false;
+      return false;
+    }
+  }
+}
 
-// Default export for convenience
-export default {
-  getCurrentBalance,
-  getHighestBalance,
-  getDailyGains,
-  addDailyGain,
-  resetDailyCounters,
-  updateBalance,
-  forceBalanceSync,
-  resetBalance,
-  initialize,
-  getLastUpdateTime,
-  cleanupUserBalanceData,
-  addTransaction,
-  syncWithDatabase,
-  forceUpdate
-};
+// Create and export singleton instance
+const balanceManager = new BalanceManager();
+
+export default balanceManager;
