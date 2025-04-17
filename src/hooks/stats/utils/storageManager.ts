@@ -6,7 +6,10 @@ const STORAGE_KEYS = {
   LAST_UPDATE: 'stats_last_update',
   BASE_DATE_SEED: 'stats_base_date_seed',
   DAILY_INCREMENT_ADS: 'stats_daily_increment_ads',
-  DAILY_INCREMENT_REVENUE: 'stats_daily_increment_revenue'
+  DAILY_INCREMENT_REVENUE: 'stats_daily_increment_revenue',
+  MAX_ADS_COUNT: 'stats_max_ads_count',
+  MAX_REVENUE_COUNT: 'stats_max_revenue_count',
+  LAST_SYNC_DATE: 'stats_last_sync_date'
 };
 
 // Constantes pour les valeurs minimales garanties
@@ -27,7 +30,7 @@ interface StoredValues {
  * Génère une valeur basée sur la date actuelle
  * Utilise un algorithme déterministe pour que la même date produise toujours la même valeur
  */
-const generateDateBasedValue = (baseSeed: number = 42, minValue: number = MIN_ADS_COUNT): number => {
+const generateDateBasedValue = (baseSeed: number = 42): number => {
   // Récupérer la date actuelle au format YYYYMMDD
   const now = new Date();
   const dateString = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
@@ -39,7 +42,35 @@ const generateDateBasedValue = (baseSeed: number = 42, minValue: number = MIN_AD
   const deterministicValue = (dateSeed * baseSeed) % 1000000;
   
   // S'assurer que la valeur est dans une plage raisonnable
-  return Math.max(minValue, deterministicValue);
+  return Math.max(MIN_ADS_COUNT, deterministicValue);
+};
+
+/**
+ * Récupère ou initialise les valeurs maximales atteintes
+ */
+const getMaxValues = (): { maxAdsCount: number, maxRevenueCount: number } => {
+  const storedMaxAds = localStorage.getItem(STORAGE_KEYS.MAX_ADS_COUNT);
+  const storedMaxRevenue = localStorage.getItem(STORAGE_KEYS.MAX_REVENUE_COUNT);
+  
+  return {
+    maxAdsCount: storedMaxAds ? parseInt(storedMaxAds, 10) : MIN_ADS_COUNT,
+    maxRevenueCount: storedMaxRevenue ? parseFloat(storedMaxRevenue) : MIN_REVENUE_COUNT
+  };
+};
+
+/**
+ * Met à jour les valeurs maximales si nécessaire
+ */
+const updateMaxValues = (adsCount: number, revenueCount: number): void => {
+  const { maxAdsCount, maxRevenueCount } = getMaxValues();
+  
+  if (adsCount > maxAdsCount) {
+    localStorage.setItem(STORAGE_KEYS.MAX_ADS_COUNT, adsCount.toString());
+  }
+  
+  if (revenueCount > maxRevenueCount) {
+    localStorage.setItem(STORAGE_KEYS.MAX_REVENUE_COUNT, revenueCount.toString());
+  }
 };
 
 /**
@@ -52,13 +83,19 @@ export const loadStoredValues = (): StoredValues => {
     const storedRevenueCount = localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT);
     const storedLastUpdate = localStorage.getItem(STORAGE_KEYS.LAST_UPDATE);
     
+    // Récupérer les valeurs maximales atteintes
+    const { maxAdsCount, maxRevenueCount } = getMaxValues();
+    
     // Si toutes les valeurs sont disponibles, les utiliser
     if (storedAdsCount && storedRevenueCount && storedLastUpdate) {
-      const adsCount = Math.max(MIN_ADS_COUNT, parseInt(storedAdsCount, 10));
-      const revenueCount = Math.max(MIN_REVENUE_COUNT, parseFloat(storedRevenueCount));
+      const adsCount = Math.max(maxAdsCount, parseInt(storedAdsCount, 10));
+      const revenueCount = Math.max(maxRevenueCount, parseFloat(storedRevenueCount));
       const lastUpdate = parseInt(storedLastUpdate, 10);
       
       console.log("Using stored values:", { hasStoredValues: true, adsCount, revenueCount, lastUpdate });
+      
+      // Mettre à jour la date de dernière synchronisation
+      localStorage.setItem(STORAGE_KEYS.LAST_SYNC_DATE, new Date().toDateString());
       
       return {
         hasStoredValues: true,
@@ -70,7 +107,7 @@ export const loadStoredValues = (): StoredValues => {
     
     // Si les valeurs ne sont pas disponibles, générer de nouvelles valeurs basées sur la date
     const baseSeed = parseInt(localStorage.getItem(STORAGE_KEYS.BASE_DATE_SEED) || '42', 10);
-    const baseAdsCount = generateDateBasedValue(baseSeed, MIN_ADS_COUNT);
+    const baseAdsCount = generateDateBasedValue(baseSeed);
     
     // Générer un facteur de revenus (entre 1.2 et 1.5 euros par publicité)
     const revenuePerAd = 1.2 + (Math.random() * 0.3);
@@ -91,6 +128,9 @@ export const loadStoredValues = (): StoredValues => {
       const dailyIncrement = baseRevenueCount * 0.018; // 1.8% par jour
       localStorage.setItem(STORAGE_KEYS.DAILY_INCREMENT_REVENUE, dailyIncrement.toString());
     }
+    
+    // Mettre à jour les valeurs maximales
+    updateMaxValues(baseAdsCount, baseRevenueCount);
     
     // Sauvegarder les nouvelles valeurs
     saveValues(baseAdsCount, baseRevenueCount);
@@ -120,20 +160,28 @@ export const loadStoredValues = (): StoredValues => {
 export const saveValues = (adsCount: number, revenueCount: number, partial: boolean = false): void => {
   try {
     const now = Date.now();
+    const { maxAdsCount, maxRevenueCount } = getMaxValues();
+    
+    // S'assurer que les nouvelles valeurs ne sont pas inférieures aux valeurs maximales
+    const safeAdsCount = Math.max(adsCount, maxAdsCount);
+    const safeRevenueCount = Math.max(revenueCount, maxRevenueCount);
     
     // Si mise à jour partielle, ne mettre à jour que les valeurs non-nulles
     if (partial) {
-      if (adsCount > 0) {
-        localStorage.setItem(STORAGE_KEYS.ADS_COUNT, adsCount.toString());
+      if (safeAdsCount > 0) {
+        localStorage.setItem(STORAGE_KEYS.ADS_COUNT, safeAdsCount.toString());
       }
-      if (revenueCount > 0) {
-        localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, revenueCount.toString());
+      if (safeRevenueCount > 0) {
+        localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, safeRevenueCount.toString());
       }
     } else {
       // Sinon, mettre à jour toutes les valeurs
-      localStorage.setItem(STORAGE_KEYS.ADS_COUNT, adsCount.toString());
-      localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, revenueCount.toString());
+      localStorage.setItem(STORAGE_KEYS.ADS_COUNT, safeAdsCount.toString());
+      localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, safeRevenueCount.toString());
     }
+    
+    // Mettre à jour les valeurs maximales si nécessaire
+    updateMaxValues(safeAdsCount, safeRevenueCount);
     
     // Toujours mettre à jour le timestamp
     localStorage.setItem(STORAGE_KEYS.LAST_UPDATE, now.toString());
@@ -179,9 +227,12 @@ export const incrementDateLinkedStats = (): { adsCount: number, revenueCount: nu
     const adsIncrement = Math.floor(adsIncrementPerMinute * minutesDiff * randomFactor);
     const revenueIncrement = revenueIncrementPerMinute * minutesDiff * randomFactor;
     
-    // Calculer les nouvelles valeurs
-    const newAdsCount = currentValues.adsCount + adsIncrement;
-    const newRevenueCount = currentValues.revenueCount + revenueIncrement;
+    // Récupérer les valeurs maximales atteintes
+    const { maxAdsCount, maxRevenueCount } = getMaxValues();
+    
+    // Calculer les nouvelles valeurs, jamais inférieures aux maximums précédents
+    const newAdsCount = Math.max(currentValues.adsCount + adsIncrement, maxAdsCount);
+    const newRevenueCount = Math.max(currentValues.revenueCount + revenueIncrement, maxRevenueCount);
     
     // Sauvegarder les nouvelles valeurs
     saveValues(newAdsCount, newRevenueCount);
@@ -218,14 +269,21 @@ export const resetDailyStats = (): void => {
   try {
     // Générer de nouvelles valeurs de base pour la nouvelle journée
     const baseSeed = parseInt(localStorage.getItem(STORAGE_KEYS.BASE_DATE_SEED) || '42', 10);
-    const baseAdsCount = generateDateBasedValue(baseSeed, MIN_ADS_COUNT);
+    const baseAdsCount = generateDateBasedValue(baseSeed);
     
     // Générer un facteur de revenus (entre 1.2 et 1.5 euros par publicité)
     const revenuePerAd = 1.2 + (Math.random() * 0.3);
     const baseRevenueCount = baseAdsCount * revenuePerAd;
     
+    // Récupérer les valeurs maximales actuelles
+    const { maxAdsCount, maxRevenueCount } = getMaxValues();
+    
+    // Utiliser les valeurs les plus élevées
+    const safeAdsCount = Math.max(baseAdsCount, maxAdsCount);
+    const safeRevenueCount = Math.max(baseRevenueCount, maxRevenueCount);
+    
     // Sauvegarder les nouvelles valeurs
-    saveValues(baseAdsCount, baseRevenueCount);
+    saveValues(safeAdsCount, safeRevenueCount);
     
     // Calculer de nouveaux incréments journaliers (augmenter légèrement)
     const currentAdsIncrement = parseInt(localStorage.getItem(STORAGE_KEYS.DAILY_INCREMENT_ADS) || '1000', 10);
@@ -240,3 +298,4 @@ export const resetDailyStats = (): void => {
     console.error('Error resetting daily stats:', error);
   }
 };
+

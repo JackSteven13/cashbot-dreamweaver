@@ -75,8 +75,8 @@ const StatsCounter = ({
       // Mettre à jour l'interface avec une fraction des nouveaux incréments
       // pour une progression visuelle plus fluide
       setStableValues(prev => {
-        const adsIncrement = incrementedStats.adsCount - prev.adsCount;
-        const revenueIncrement = incrementedStats.revenueCount - prev.revenueCount;
+        const adsIncrement = Math.max(0, incrementedStats.adsCount - prev.adsCount);
+        const revenueIncrement = Math.max(0, incrementedStats.revenueCount - prev.revenueCount);
         
         // Si les incréments sont positifs, ajouter une fraction
         return {
