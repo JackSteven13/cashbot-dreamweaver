@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
@@ -44,7 +43,13 @@ export const useManualSessions = ({
       return false;
     }
     
-    // Vérifier les limites quotidiennes
+    // Vérifier les limites quotidiennes de sessions
+    if (userData && userData.subscription === 'freemium' && dailySessionCount >= 1) {
+      // Strictement une seule session par jour pour les comptes freemium
+      return false;
+    }
+    
+    // Vérifier les limites financières quotidiennes
     if (userData) {
       const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       const todaysGains = balanceManager.getDailyGains();
@@ -56,7 +61,7 @@ export const useManualSessions = ({
     }
     
     return true;
-  }, [isSessionRunning, userData]);
+  }, [isSessionRunning, userData, dailySessionCount]);
 
   // Fonction pour démarrer une session manuelle
   const startSession = useCallback(async () => {

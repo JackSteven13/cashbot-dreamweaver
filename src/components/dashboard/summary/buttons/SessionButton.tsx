@@ -28,7 +28,10 @@ const SessionButton: React.FC<SessionButtonProps> = ({
 }) => {
   // Get the max daily sessions based on subscription
   const maxDailySessions = PLANS[subscription]?.dailyLimit || 1;
-  const hasReachedLimit = dailySessionCount >= maxDailySessions;
+  
+  // Pour les comptes freemium, strictement limité à 1 session
+  const isFreemium = subscription === 'freemium';
+  const hasReachedLimit = isFreemium ? dailySessionCount >= 1 : dailySessionCount >= maxDailySessions;
 
   // Check if bot is in cooldown period
   const isInCooldown = lastSessionTimestamp ? (
@@ -39,7 +42,10 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   const getTooltipMessage = () => {
     if (!isBotActive) return "Le système est temporairement indisponible";
     if (isLoading) return "Démarrage de la session...";
-    if (hasReachedLimit) return `Limite quotidienne atteinte (${dailySessionCount}/${maxDailySessions})`;
+    if (hasReachedLimit) {
+      if (isFreemium) return "Limite atteinte: 1 session par jour (freemium)";
+      return `Limite quotidienne atteinte (${dailySessionCount}/${maxDailySessions})`;
+    }
     if (isInCooldown) return "Période de refroidissement (5 min)";
     return "Démarrer une nouvelle session d'analyse";
   };
@@ -58,7 +64,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
             <Button
               onClick={handleClick}
               disabled={disabled || isLoading || hasReachedLimit || isInCooldown || !isBotActive}
-              className="w-full h-11 bg-green-600 hover:bg-green-700 text-white"
+              className={`w-full h-11 ${hasReachedLimit && isFreemium ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
               variant="default"
               size="lg"
               data-testid="session-button"
@@ -79,7 +85,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
                   )}
                   <span>
                     {!isBotActive ? "Indisponible" : 
-                     (hasReachedLimit ? "Limite atteinte" : 
+                     (hasReachedLimit ? (isFreemium ? "Limite (1/jour)" : "Limite atteinte") : 
                       (isInCooldown ? "En attente" : "Démarrer"))}
                   </span>
                 </div>

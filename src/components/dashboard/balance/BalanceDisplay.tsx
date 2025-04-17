@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { formatPrice } from '@/utils/balance/limitCalculations';
 import { CardContent } from '@/components/ui/card';
@@ -20,12 +19,19 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 }) => {
   // Use session storage as source of truth for page refreshes
   const [displayBalance, setDisplayBalance] = useState<number>(() => {
-    // Try sessionStorage first (priority for page refreshes)
-    const sessionBalance = parseFloat(sessionStorage.getItem('currentBalance') || '0');
-    const storedBalance = parseFloat(localStorage.getItem('currentBalance') || '0');
+    // Pour garantir la stabilité du solde entre les rechargements, prioriser le solde stocké
+    const storedBalance = parseFloat(localStorage.getItem('lastKnownBalance') || '0');
     
-    // Use the highest value available, or the passed balance
-    return Math.max(sessionBalance || 0, storedBalance || 0, balance || 0);
+    // Si le solde stocké est significativement différent (éviter les micro-fluctuations)
+    if (Math.abs(storedBalance - balance) > 1) {
+      // Pour les comptes freemium, limitons les fluctuations à la hausse uniquement
+      if (subscription === 'freemium') {
+        return Math.max(storedBalance, balance);
+      }
+    }
+    
+    // Utiliser le solde fourni par défaut
+    return balance || 0;
   });
   
   const [prevBalance, setPrevBalance] = useState<number>(displayBalance);
@@ -42,8 +48,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   
   // Keep sessionStorage and localStorage in sync with balance changes
   useEffect(() => {
-    // If input balance is higher than our stored values, update
-    if (balance > displayBalance) {
+    // Si le solde fourni est significativement plus élevé, mettre à jour
+    if (balance > displayBalance + 0.1) {
       setDisplayBalance(balance);
       
       // Save to both storage types
