@@ -4,94 +4,77 @@ import { UserData } from '@/types/userData';
 import balanceManager from '@/utils/balance/balanceManager';
 
 export const useBalanceSynchronization = (userData: UserData | null, isNewUser: boolean) => {
-  const [effectiveBalance, setEffectiveBalance] = useState(0);
-  const localBalanceRef = useRef<number>(0);
-  const highestBalanceRef = useRef<number>(0);
+  // Utiliser balanceManager comme source unique de vérité
+  const [effectiveBalance, setEffectiveBalance] = useState(() => balanceManager.getStableBalance());
+  const firstSyncRef = useRef<boolean>(true);
   const lastSyncTimeRef = useRef<number>(0);
   
-  // Function to sync balance from multiple sources
+  // Synchronisation initiale et lorsque les données utilisateur changent
+  useEffect(() => {
+    if (!userData) return;
+    
+    // Pour les nouveaux utilisateurs, toujours maintenir un solde à zéro
+    if (isNewUser) {
+      setEffectiveBalance(0);
+      balanceManager.resetBalance();
+      localStorage.removeItem('currentBalance');
+      localStorage.removeItem('lastKnownBalance');
+      sessionStorage.removeItem('currentBalance');
+      return;
+    }
+    
+    // Protection contre les synchronisations trop fréquentes
+    const now = Date.now();
+    if (now - lastSyncTimeRef.current < 5000 && !firstSyncRef.current) return;
+    lastSyncTimeRef.current = now;
+    
+    // Première synchronisation - initialiser le gestionnaire de solde
+    if (firstSyncRef.current && userData.balance !== undefined) {
+      console.log(`Première synchronisation du solde: ${userData.balance}€`);
+      balanceManager.initialize(userData.balance);
+      firstSyncRef.current = false;
+    }
+    // Synchronisations ultérieures - comparer avec le serveur
+    else if (userData.balance !== undefined) {
+      console.log(`Synchronisation du solde avec le serveur: ${userData.balance}€`);
+      balanceManager.syncWithServer(userData.balance);
+    }
+    
+    // Toujours mettre à jour l'état local avec le solde stable
+    const stableBalance = balanceManager.getStableBalance();
+    setEffectiveBalance(stableBalance);
+  }, [userData, isNewUser]);
+  
+  // S'abonner aux changements de solde via balanceManager
+  useEffect(() => {
+    const unsubscribe = balanceManager.addWatcher((newBalance) => {
+      setEffectiveBalance(newBalance);
+    });
+    
+    return unsubscribe;
+  }, []);
+  
+  // Fonction de synchronisation manuelle
   const syncBalance = useCallback(() => {
     if (isNewUser) {
       setEffectiveBalance(0);
       return;
     }
     
-    if (!userData) return;
+    if (!userData?.balance) return;
     
-    // Get current time
+    // Ne pas synchroniser trop fréquemment
     const now = Date.now();
-    
-    // Don't sync too frequently
     if (now - lastSyncTimeRef.current < 2000) return;
     lastSyncTimeRef.current = now;
     
-    // Get balances from different sources
-    const apiBalance = userData.balance || 0;
-    const storedBalance = parseFloat(localStorage.getItem('currentBalance') || '0');
-    const highestBalance = balanceManager.getHighestBalance();
+    // Synchroniser avec le serveur
+    balanceManager.syncWithServer(userData.balance);
     
-    // Use the highest balance from all sources
-    const maxBalance = Math.max(
-      highestBalance,
-      apiBalance,
-      storedBalance,
-      localBalanceRef.current
-    );
-    
-    // Update state if there's a significant change
-    if (Math.abs(maxBalance - effectiveBalance) > 0.01) {
-      setEffectiveBalance(maxBalance);
-      
-      // Update local refs
-      localBalanceRef.current = maxBalance;
-      highestBalanceRef.current = maxBalance;
-      
-      // Update balance manager and localStorage
-      balanceManager.forceBalanceSync(maxBalance);
-    }
-  }, [userData, isNewUser, effectiveBalance]);
-  
-  // Initial synchronization
-  useEffect(() => {
-    syncBalance();
-    
-    // Sync on interval
-    const syncInterval = setInterval(syncBalance, 15000);
-    return () => clearInterval(syncInterval);
-  }, [userData, syncBalance]);
-  
-  // Listen for external balance update events
-  useEffect(() => {
-    const handleForceUpdate = (event: CustomEvent) => {
-      const newBalance = event.detail?.newBalance;
-      if (typeof newBalance === 'number' && newBalance > 0) {
-        setEffectiveBalance(newBalance);
-        localBalanceRef.current = newBalance;
-        
-        // Also sync with balance manager
-        balanceManager.forceBalanceSync(newBalance);
-      }
-    };
-    
-    const handleBalanceUpdated = (event: CustomEvent) => {
-      const currentBalance = event.detail?.currentBalance;
-      if (typeof currentBalance === 'number' && currentBalance > 0) {
-        setEffectiveBalance(currentBalance);
-        localBalanceRef.current = currentBalance;
-      }
-    };
-    
-    // Register event handlers
-    window.addEventListener('balance:force-update' as any, handleForceUpdate);
-    window.addEventListener('balance:updated' as any, handleBalanceUpdated);
-    window.addEventListener('balance:force-sync' as any, handleForceUpdate);
-    
-    return () => {
-      window.removeEventListener('balance:force-update' as any, handleForceUpdate);
-      window.removeEventListener('balance:updated' as any, handleBalanceUpdated);
-      window.removeEventListener('balance:force-sync' as any, handleForceUpdate);
-    };
-  }, []);
+    // Mettre à jour l'état local
+    const stableBalance = balanceManager.getStableBalance();
+    setEffectiveBalance(stableBalance);
+  }, [userData, isNewUser]);
   
   return {
     effectiveBalance,

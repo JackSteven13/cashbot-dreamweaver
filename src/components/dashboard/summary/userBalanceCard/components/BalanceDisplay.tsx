@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { CircleDollarSign, TrendingUp, Award } from 'lucide-react';
 import { useAnimatedCounter } from '@/hooks/useAnimatedCounter';
 import { createMoneyParticles } from '@/utils/animations';
+import balanceManager from '@/utils/balance/balanceManager';
 
 interface BalanceDisplayProps {
   displayBalance: number;
@@ -25,8 +26,17 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   isBotActive = true,
   subscription = 'freemium'
 }) => {
+  // Utiliser balanceManager comme source unique de vérité
+  const [stableBalance, setStableBalance] = useState(() => {
+    return balanceManager.getStableBalance();
+  });
+  
+  // Utiliser le solde stable pour l'affichage
+  const effectiveBalance = animatedBalance !== undefined ? 
+    animatedBalance : (stableBalance || displayBalance);
+  
   const { formattedValue } = useAnimatedCounter({
-    value: animatedBalance !== undefined ? animatedBalance : displayBalance,
+    value: effectiveBalance,
     duration: 1000,
     decimals: 2
   });
@@ -34,7 +44,38 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const [showRain, setShowRain] = useState(false);
   const balanceRef = useRef<HTMLDivElement>(null);
   
-  // Effect pour le confetti lors des changements significatifs
+  // S'abonner aux changements de solde via balanceManager
+  useEffect(() => {
+    const unsubscribe = balanceManager.addWatcher((newBalance, oldBalance) => {
+      if (newBalance !== oldBalance) {
+        setStableBalance(newBalance);
+        
+        // Effet visuel sur changement significatif
+        if (balanceRef.current && Math.abs(newBalance - oldBalance) > 0.01) {
+          createMoneyParticles(balanceRef.current, 3);
+          setShowRain(true);
+          
+          const timer = setTimeout(() => setShowRain(false), 2000);
+          return () => clearTimeout(timer);
+        }
+      }
+    });
+    
+    return unsubscribe;
+  }, []);
+  
+  // Synchroniser le solde affiché avec displayBalance quand celui-ci change
+  useEffect(() => {
+    if (Math.abs(displayBalance - stableBalance) > 0.5) {
+      // Si différence significative, synchroniser mais ne pas animer
+      setStableBalance(prev => {
+        // Privilégier la valeur la plus élevée pour éviter de décevoir l'utilisateur
+        return Math.max(prev, displayBalance);
+      });
+    }
+  }, [displayBalance, stableBalance]);
+  
+  // Effet pour le confetti lors des changements significatifs
   useEffect(() => {
     if (balanceAnimating && balanceRef.current) {
       // Effet visuel pour l'animation
