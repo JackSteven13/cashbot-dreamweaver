@@ -24,7 +24,8 @@ export const createCheckoutSession = async (
         plan,
         successUrl,
         cancelUrl,
-        referralCode
+        referralCode,
+        timestamp: Date.now() // Ajout d'un timestamp pour éviter les problèmes de cache
       }
     });
 
