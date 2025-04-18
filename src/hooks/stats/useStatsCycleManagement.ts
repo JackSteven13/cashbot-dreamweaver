@@ -185,9 +185,11 @@ export const useStatsCycleManagement = ({
           // S'assurer que les valeurs minimales sont respectées dans le stockage
           enforceMinimumStats(40000, 50000);
         }
-      }
+      },
+      dailyAdsTarget,
+      dailyRevenueTarget
     );
-  }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount, lastResetDate]);
+  }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount, lastResetDate, dailyAdsTarget, dailyRevenueTarget]);
   
   return {
     scheduleCycleUpdate,

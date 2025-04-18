@@ -4,8 +4,8 @@ import { activeLocations } from '../data/locationData';
 
 export const scheduleMidnightReset = (
   resetCallback: () => void,
-  dailyAdsTarget: number,
-  dailyRevenueTarget: number
+  dailyAdsTarget: number = 28800,
+  dailyRevenueTarget: number = 40000
 ) => {
   const now = new Date();
   const tomorrow = new Date(now);
@@ -25,4 +25,3 @@ export const scheduleMidnightReset = (
   
   return setTimeout(resetCallback, timeUntilMidnight);
 };
-
