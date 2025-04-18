@@ -172,7 +172,7 @@ export const loadStoredValues = (): StoredValues => {
     
     // Si les valeurs ne sont pas disponibles, générer de nouvelles valeurs basées sur la date
     const baseSeed = parseInt(localStorage.getItem(STORAGE_KEYS.BASE_DATE_SEED) || '42', 10);
-    const baseAdsCount = generateDateBasedValue(baseSeed);
+    const baseAdsCount = generateDateBasedValue(); // Remove baseSeed argument
     
     // Générer un facteur de revenus (entre 1.2 et 1.5 euros par publicité)
     const revenuePerAd = 1.2 + (Math.random() * 0.3);
@@ -334,7 +334,7 @@ export const resetDailyStats = (): void => {
   try {
     const baseSeed = parseInt(localStorage.getItem(STORAGE_KEYS.BASE_DATE_SEED) || '42', 10);
     
-    const baseAdsCount = generateDateBasedValue(baseSeed);
+    const baseAdsCount = generateDateBasedValue(); // Remove baseSeed argument
     
     // Générer un facteur de revenus (entre 1.2 et 1.5 euros par publicité)
     const revenuePerAd = 1.2 + (Math.random() * 0.3);
