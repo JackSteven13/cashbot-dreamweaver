@@ -17,13 +17,16 @@ export const useAutoSessionScheduler = (
   const initialSessionExecutedRef = useRef<boolean>(false);
   const persistentBalanceRef = useRef<number>(userData?.balance || 0);
   const highestBalanceRef = useRef<number>(0);
-  const dailyProgressFactorRef = useRef<number>(() => {
-    // Générer un facteur journalier stable basé sur la date
+  
+  // Calculer un facteur journalier stable basé sur la date
+  const calcDailyProgressFactor = () => {
     const now = new Date();
     const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
     // Valeur entre 1 et 2 basée sur le jour de l'année
     return 1 + Math.sin(dayOfYear * 0.1) * 0.5;
-  });
+  };
+  
+  const dailyProgressFactorRef = useRef<number>(calcDailyProgressFactor());
   const globalBalanceSyncRef = useRef<NodeJS.Timeout | null>(null);
 
   // Effect to simulate automatic ad analysis

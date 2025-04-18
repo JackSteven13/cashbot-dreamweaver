@@ -11,10 +11,12 @@ class BalanceManager {
   private watchers: BalanceWatcher[] = [];
   private lastSyncTime: number = 0;
   private dailyGrowthFactor: number = 0;
+  private dailyGains: number = 0;
   
   constructor() {
     this.loadPersistedBalance();
     this.calculateDailyGrowthFactor();
+    this.loadDailyGains();
   }
   
   private loadPersistedBalance() {
@@ -34,6 +36,23 @@ class BalanceManager {
       }
     } catch (e) {
       console.error("[BalanceManager] Failed to load persisted balance:", e);
+    }
+  }
+
+  private loadDailyGains() {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const storedGains = localStorage.getItem(`dailyGains_${today}`);
+      
+      if (storedGains) {
+        const parsedGains = parseFloat(storedGains);
+        if (!isNaN(parsedGains)) {
+          this.dailyGains = parsedGains;
+          console.log(`[BalanceManager] Loaded daily gains: ${this.dailyGains}`);
+        }
+      }
+    } catch (e) {
+      console.error("[BalanceManager] Failed to load daily gains:", e);
     }
   }
   
@@ -72,6 +91,25 @@ class BalanceManager {
     this.checkDailyGrowth();
     return this.currentBalance;
   }
+
+  // Méthode pour obtenir le solde maximum enregistré
+  public getHighestBalance(): number {
+    let highestBalance = 0;
+    
+    try {
+      const storedHighestBalance = localStorage.getItem('highestBalance');
+      if (storedHighestBalance) {
+        const parsedHighestBalance = parseFloat(storedHighestBalance);
+        if (!isNaN(parsedHighestBalance)) {
+          highestBalance = parsedHighestBalance;
+        }
+      }
+    } catch (e) {
+      console.error("[BalanceManager] Failed to get highest balance:", e);
+    }
+    
+    return Math.max(highestBalance, this.currentBalance);
+  }
   
   public updateBalance(amount: number): number {
     // Vérifier si nous devons appliquer la croissance journalière
@@ -88,6 +126,17 @@ class BalanceManager {
       // Mettre à jour le localStorage
       this.persistBalance();
     }
+    
+    return this.currentBalance;
+  }
+
+  // Méthode pour ajouter au solde et enregistrer les gains
+  public addToBalance(amount: number): number {
+    // Ajouter au solde
+    this.updateBalance(amount);
+    
+    // Enregistrer comme gain journalier
+    this.addDailyGain(amount);
     
     return this.currentBalance;
   }
@@ -111,6 +160,14 @@ class BalanceManager {
       this.persistBalance();
     }
     
+    return this.currentBalance;
+  }
+
+  // Méthode pour synchroniser avec la base de données
+  public async syncWithDatabase(): Promise<number> {
+    console.log("[BalanceManager] Syncing with database...");
+    
+    // Simuler une synchronisation réussie sans changer le solde
     return this.currentBalance;
   }
   
@@ -137,6 +194,60 @@ class BalanceManager {
     localStorage.removeItem('highestBalance');
     
     return this.currentBalance;
+  }
+
+  // Méthodes de gestion des gains journaliers
+  public getDailyGains(): number {
+    this.loadDailyGains();
+    return this.dailyGains;
+  }
+
+  public addDailyGain(gain: number): boolean {
+    if (gain <= 0) return false;
+    
+    const currentGains = this.getDailyGains();
+    this.dailyGains = currentGains + gain;
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      localStorage.setItem(`dailyGains_${today}`, this.dailyGains.toString());
+      
+      // Déclencher un événement de mise à jour des gains journaliers
+      window.dispatchEvent(new CustomEvent('dailyGains:updated', {
+        detail: { gains: this.dailyGains }
+      }));
+      
+      return true;
+    } catch (e) {
+      console.error("[BalanceManager] Failed to save daily gains:", e);
+      return false;
+    }
+  }
+
+  public resetDailyGains(): void {
+    this.dailyGains = 0;
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      localStorage.removeItem(`dailyGains_${today}`);
+      
+      // Déclencher un événement de réinitialisation des gains journaliers
+      window.dispatchEvent(new CustomEvent('dailyGains:reset'));
+    } catch (e) {
+      console.error("[BalanceManager] Failed to reset daily gains:", e);
+    }
+  }
+
+  // Méthode pour obtenir la limite quotidienne de gains
+  public getDailyLimit(subscription: string = 'freemium'): number {
+    const limits = {
+      'freemium': 0.5,
+      'basic': 1.0,
+      'premium': 5.0,
+      'professional': 10.0
+    };
+    
+    return limits[subscription as keyof typeof limits] || limits.freemium;
   }
   
   private checkDailyGrowth() {
@@ -202,6 +313,31 @@ class BalanceManager {
       }
     } catch (e) {
       console.error("[BalanceManager] Failed to persist balance:", e);
+    }
+  }
+
+  // Méthode pour nettoyer les données de solde d'un utilisateur
+  public cleanupUserBalanceData(): void {
+    console.log("[BalanceManager] Cleaning up user balance data");
+    
+    try {
+      // Réinitialiser le solde
+      this.resetBalance();
+      
+      // Réinitialiser les gains journaliers
+      this.resetDailyGains();
+      
+      // Supprimer toutes les données de localStorage liées au solde
+      localStorage.removeItem('currentBalance');
+      localStorage.removeItem('lastKnownBalance');
+      localStorage.removeItem('highestBalance');
+      localStorage.removeItem('lastGrowthFactorDate');
+      
+      // Supprimer les données de gains journaliers
+      const today = new Date().toISOString().split('T')[0];
+      localStorage.removeItem(`dailyGains_${today}`);
+    } catch (e) {
+      console.error("[BalanceManager] Error during cleanup:", e);
     }
   }
 }
