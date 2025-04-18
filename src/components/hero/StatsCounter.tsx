@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
 import { formatRevenue } from '@/utils/formatters';
@@ -19,98 +19,171 @@ const StatsCounter = ({
     dailyRevenueTarget
   });
 
-  // État local pour éviter les clignotements pendant le chargement initial
-  const [stableValues, setStableValues] = useState(() => {
+  // Utiliser useRef pour suivre les valeurs stables et éviter les problèmes de re-rendu
+  const stableValuesRef = useRef(() => {
     const initialStats = loadStoredValues();
     return {
       adsCount: initialStats.adsCount,
       revenueCount: initialStats.revenueCount
     };
   });
+  
+  // État local pour l'affichage
+  const [displayValues, setDisplayValues] = useState(stableValuesRef.current);
+  
+  // Initialiser avec les valeurs stockées au chargement
+  useEffect(() => {
+    const storedValues = loadStoredValues();
+    
+    // S'assurer que nous avons des valeurs minimales raisonnables
+    const safeAdsCount = Math.max(40000, storedValues.adsCount);
+    const safeRevenueCount = Math.max(50000, storedValues.revenueCount);
+    
+    setDisplayValues({
+      adsCount: safeAdsCount,
+      revenueCount: safeRevenueCount
+    });
+    
+    stableValuesRef.current = {
+      adsCount: safeAdsCount,
+      revenueCount: safeRevenueCount
+    };
+    
+    // Persistance renforcée
+    localStorage.setItem('stats_last_sync', Date.now().toString());
+    localStorage.setItem('stats_ads_count', safeAdsCount.toString());
+    localStorage.setItem('stats_revenue_count', safeRevenueCount.toString());
+  }, []);
 
   // Mettre à jour les valeurs stables uniquement lorsqu'elles augmentent
   useEffect(() => {
-    if (displayedAdsCount > stableValues.adsCount) {
-      setStableValues(prev => ({
+    if (displayedAdsCount > stableValuesRef.current.adsCount) {
+      stableValuesRef.current = {
+        ...stableValuesRef.current,
+        adsCount: displayedAdsCount
+      };
+      
+      setDisplayValues(prev => ({
         ...prev,
         adsCount: displayedAdsCount
       }));
+      
+      // Persistance immédiate des nouvelles valeurs
+      localStorage.setItem('stats_ads_count', displayedAdsCount.toString());
     }
     
-    if (displayedRevenueCount > stableValues.revenueCount) {
-      setStableValues(prev => ({
+    if (displayedRevenueCount > stableValuesRef.current.revenueCount) {
+      stableValuesRef.current = {
+        ...stableValuesRef.current,
+        revenueCount: displayedRevenueCount
+      };
+      
+      setDisplayValues(prev => ({
         ...prev,
         revenueCount: displayedRevenueCount
       }));
+      
+      // Persistance immédiate des nouvelles valeurs
+      localStorage.setItem('stats_revenue_count', displayedRevenueCount.toString());
     }
   }, [displayedAdsCount, displayedRevenueCount]);
 
-  // Effet pour synchroniser les valeurs entre les utilisateurs
+  // Effet pour synchroniser les valeurs entre les utilisateurs et sessions
   useEffect(() => {
-    // Vérifie périodiquement les mises à jour des statistiques
+    // Vérifier périodiquement les mises à jour des statistiques de façon régulière
     const syncInterval = setInterval(() => {
       const refreshedStats = loadStoredValues();
       
-      // Mettre à jour seulement si les nouvelles valeurs sont plus élevées
-      if (refreshedStats.adsCount > stableValues.adsCount) {
-        setStableValues(prev => ({
-          ...prev,
-          adsCount: refreshedStats.adsCount
-        }));
-      }
+      // Utiliser les valeurs les plus élevées pour maintenir une progression
+      const newAdsCount = Math.max(refreshedStats.adsCount, stableValuesRef.current.adsCount);
+      const newRevenueCount = Math.max(refreshedStats.revenueCount, stableValuesRef.current.revenueCount);
       
-      if (refreshedStats.revenueCount > stableValues.revenueCount) {
-        setStableValues(prev => ({
-          ...prev,
-          revenueCount: refreshedStats.revenueCount
-        }));
+      // Mettre à jour seulement si les valeurs sont différentes
+      if (newAdsCount !== stableValuesRef.current.adsCount || 
+          newRevenueCount !== stableValuesRef.current.revenueCount) {
+        
+        stableValuesRef.current = {
+          adsCount: newAdsCount,
+          revenueCount: newRevenueCount
+        };
+        
+        setDisplayValues({
+          adsCount: newAdsCount,
+          revenueCount: newRevenueCount
+        });
+        
+        // Persistance des valeurs synchronisées
+        localStorage.setItem('stats_ads_count', newAdsCount.toString());
+        localStorage.setItem('stats_revenue_count', newRevenueCount.toString());
+        localStorage.setItem('stats_last_sync', Date.now().toString());
       }
-    }, 30000); // Vérifier toutes les 30 secondes
+    }, 10000); // Synchroniser toutes les 10 secondes
     
-    // Auto-increment effect to ensure values are never stagnant
+    // Auto-increment effect - plus régulier et prévisible
     const autoIncrementInterval = setInterval(() => {
-      // Forcer l'incrément des statistiques pour éviter la stagnation
+      // Incrémenter progressivement les stats avec des pas plus petits et plus réguliers
       const incrementedStats = incrementDateLinkedStats();
       
-      // Mettre à jour l'interface avec une fraction des nouveaux incréments
-      // pour une progression visuelle plus fluide
-      setStableValues(prev => {
-        const adsIncrement = Math.max(0, incrementedStats.newAdsCount - prev.adsCount);
-        const revenueIncrement = Math.max(0, incrementedStats.newRevenueCount - prev.revenueCount);
-        
-        // Si les incréments sont positifs, ajouter une fraction
-        return {
-          adsCount: adsIncrement > 0 
-            ? prev.adsCount + Math.max(1, Math.floor(adsIncrement * 0.2)) 
-            : prev.adsCount,
-          revenueCount: revenueIncrement > 0 
-            ? prev.revenueCount + Math.max(0.1, revenueIncrement * 0.2)
-            : prev.revenueCount
-        };
+      // Utilisation de pas prédéfinis pour une progression plus naturelle
+      const adsIncrement = Math.floor(Math.random() * 30) + 10;
+      const revenueIncrement = Math.random() * 5 + 1;
+      
+      // Mise à jour progressive
+      stableValuesRef.current = {
+        adsCount: stableValuesRef.current.adsCount + adsIncrement,
+        revenueCount: stableValuesRef.current.revenueCount + revenueIncrement
+      };
+      
+      setDisplayValues({
+        adsCount: stableValuesRef.current.adsCount,
+        revenueCount: stableValuesRef.current.revenueCount
       });
-    }, 45000 + Math.random() * 30000); // Entre 45 et 75 secondes
+      
+      // Persistance des valeurs incrémentées
+      localStorage.setItem('stats_ads_count', stableValuesRef.current.adsCount.toString());
+      localStorage.setItem('stats_revenue_count', stableValuesRef.current.revenueCount.toString());
+      localStorage.setItem('stats_last_update', Date.now().toString());
+    }, 60000); // Mettre à jour chaque minute pour une progression plus fluide
 
     // S'assurer que les valeurs ne tombent jamais en dessous des minimums
     const minimumCheckInterval = setInterval(() => {
       enforceMinimumStats(40000, 50000);
-    }, 60000); // Vérifier chaque minute
+      
+      // Récupérer les minimums appliqués
+      const minimums = loadStoredValues();
+      
+      // S'assurer que nos valeurs respectent aussi les minimums
+      if (minimums.adsCount > stableValuesRef.current.adsCount) {
+        stableValuesRef.current.adsCount = minimums.adsCount;
+        setDisplayValues(prev => ({...prev, adsCount: minimums.adsCount}));
+      }
+      
+      if (minimums.revenueCount > stableValuesRef.current.revenueCount) {
+        stableValuesRef.current.revenueCount = minimums.revenueCount;
+        setDisplayValues(prev => ({...prev, revenueCount: minimums.revenueCount}));
+      }
+    }, 20000); // Vérifier toutes les 20 secondes
     
     return () => {
       clearInterval(syncInterval);
       clearInterval(autoIncrementInterval);
       clearInterval(minimumCheckInterval);
+      
+      // Sauvegarder les valeurs avant de démonter le composant
+      localStorage.setItem('stats_ads_count', stableValuesRef.current.adsCount.toString());
+      localStorage.setItem('stats_revenue_count', stableValuesRef.current.revenueCount.toString());
     };
-  }, [stableValues]);
+  }, []);
 
   return (
     <div className="grid grid-cols-2 gap-2 w-full max-w-md mx-auto mb-4 md:mb-6">
       <StatPanel 
-        value={stableValues.adsCount.toLocaleString('fr-FR')}
+        value={displayValues.adsCount.toLocaleString('fr-FR')}
         label="Publicités analysées"
         className="text-sm animate-pulse-slow" 
       />
       <StatPanel 
-        value={formatRevenue(stableValues.revenueCount)}
+        value={formatRevenue(displayValues.revenueCount)}
         label="Revenus générés"
         className="text-sm animate-pulse-slow" 
       />
