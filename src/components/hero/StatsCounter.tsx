@@ -19,17 +19,17 @@ const StatsCounter = ({
     dailyRevenueTarget
   });
 
-  // Utiliser useRef pour suivre les valeurs stables et éviter les problèmes de re-rendu
-  const stableValuesRef = useRef(() => {
-    const initialStats = loadStoredValues();
-    return {
-      adsCount: initialStats.adsCount,
-      revenueCount: initialStats.revenueCount
-    };
+  // Utiliser useRef pour stocker des valeurs stables
+  const stableValuesRef = useRef({
+    adsCount: 40000,
+    revenueCount: 50000
   });
   
   // État local pour l'affichage
-  const [displayValues, setDisplayValues] = useState(stableValuesRef.current);
+  const [displayValues, setDisplayValues] = useState({
+    adsCount: 40000,
+    revenueCount: 50000
+  });
   
   // Initialiser avec les valeurs stockées au chargement
   useEffect(() => {
@@ -90,7 +90,7 @@ const StatsCounter = ({
 
   // Effet pour synchroniser les valeurs entre les utilisateurs et sessions
   useEffect(() => {
-    // Vérifier périodiquement les mises à jour des statistiques de façon régulière
+    // Vérifier périodiquement les mises à jour des statistiques
     const syncInterval = setInterval(() => {
       const refreshedStats = loadStoredValues();
       
@@ -119,9 +119,9 @@ const StatsCounter = ({
       }
     }, 10000); // Synchroniser toutes les 10 secondes
     
-    // Auto-increment effect - plus régulier et prévisible
+    // Auto-increment effect
     const autoIncrementInterval = setInterval(() => {
-      // Incrémenter progressivement les stats avec des pas plus petits et plus réguliers
+      // Incrémenter progressivement les stats
       const incrementedStats = incrementDateLinkedStats();
       
       // Utilisation de pas prédéfinis pour une progression plus naturelle
@@ -129,21 +129,24 @@ const StatsCounter = ({
       const revenueIncrement = Math.random() * 5 + 1;
       
       // Mise à jour progressive
+      const newAdsCount = stableValuesRef.current.adsCount + adsIncrement;
+      const newRevenueCount = stableValuesRef.current.revenueCount + revenueIncrement;
+      
       stableValuesRef.current = {
-        adsCount: stableValuesRef.current.adsCount + adsIncrement,
-        revenueCount: stableValuesRef.current.revenueCount + revenueIncrement
+        adsCount: newAdsCount,
+        revenueCount: newRevenueCount
       };
       
       setDisplayValues({
-        adsCount: stableValuesRef.current.adsCount,
-        revenueCount: stableValuesRef.current.revenueCount
+        adsCount: newAdsCount,
+        revenueCount: newRevenueCount
       });
       
       // Persistance des valeurs incrémentées
-      localStorage.setItem('stats_ads_count', stableValuesRef.current.adsCount.toString());
-      localStorage.setItem('stats_revenue_count', stableValuesRef.current.revenueCount.toString());
+      localStorage.setItem('stats_ads_count', newAdsCount.toString());
+      localStorage.setItem('stats_revenue_count', newRevenueCount.toString());
       localStorage.setItem('stats_last_update', Date.now().toString());
-    }, 60000); // Mettre à jour chaque minute pour une progression plus fluide
+    }, 60000); // Mettre à jour chaque minute
 
     // S'assurer que les valeurs ne tombent jamais en dessous des minimums
     const minimumCheckInterval = setInterval(() => {
@@ -154,13 +157,21 @@ const StatsCounter = ({
       
       // S'assurer que nos valeurs respectent aussi les minimums
       if (minimums.adsCount > stableValuesRef.current.adsCount) {
-        stableValuesRef.current.adsCount = minimums.adsCount;
-        setDisplayValues(prev => ({...prev, adsCount: minimums.adsCount}));
+        const newAdsCount = minimums.adsCount;
+        stableValuesRef.current = {
+          ...stableValuesRef.current,
+          adsCount: newAdsCount
+        };
+        setDisplayValues(prev => ({...prev, adsCount: newAdsCount}));
       }
       
       if (minimums.revenueCount > stableValuesRef.current.revenueCount) {
-        stableValuesRef.current.revenueCount = minimums.revenueCount;
-        setDisplayValues(prev => ({...prev, revenueCount: minimums.revenueCount}));
+        const newRevenueCount = minimums.revenueCount;
+        stableValuesRef.current = {
+          ...stableValuesRef.current,
+          revenueCount: newRevenueCount
+        };
+        setDisplayValues(prev => ({...prev, revenueCount: newRevenueCount}));
       }
     }, 20000); // Vérifier toutes les 20 secondes
     
