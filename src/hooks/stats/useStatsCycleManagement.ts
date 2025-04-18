@@ -4,7 +4,7 @@ import { calculateRevenueForLocation } from './utils/revenueCalculator';
 import { scheduleMidnightReset } from './utils/cycleManager';
 import { getTotalHourlyRate } from './utils/hourlyRates';
 import { calculateBurstActivity } from './utils/burstActivity';
-import { saveValues, enforceMinimumStats } from './utils/storageManager';
+import { saveValues, enforceMinimumStats, incrementDateLinkedStats } from './utils/storageManager';
 
 interface UseStatsCycleManagementParams {
   setAdsCount: React.Dispatch<React.SetStateAction<number>>;
