@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 // Clés utilisées pour le stockage local des statistiques
