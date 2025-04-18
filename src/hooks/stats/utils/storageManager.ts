@@ -53,10 +53,15 @@ export const loadStoredValues = () => {
 /**
  * Sauvegarde les valeurs dans le stockage
  */
-export const saveValues = (adsCount: number, revenueCount: number): void => {
+export const saveValues = (adsCount: number, revenueCount: number, updateOnlyProvided: boolean = false): void => {
   try {
-    localStorage.setItem(STORAGE_KEYS.ADS_COUNT, adsCount.toString());
-    localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, revenueCount.toString());
+    if (!updateOnlyProvided || (updateOnlyProvided && adsCount > 0)) {
+      localStorage.setItem(STORAGE_KEYS.ADS_COUNT, adsCount.toString());
+    }
+
+    if (!updateOnlyProvided || (updateOnlyProvided && revenueCount > 0)) {
+      localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, revenueCount.toString());
+    }
   } catch (error) {
     console.error("Error saving values:", error);
   }
@@ -80,10 +85,10 @@ export const incrementDateLinkedStats = () => {
     saveValues(newAdsCount, newRevenueCount);
     
     console.log("Auto-incrément des statistiques");
-    return { newAdsCount, newRevenueCount };
+    return { adsCount: newAdsCount, revenueCount: newRevenueCount };
   } catch (error) {
     console.error("Erreur lors de l'incrément des statistiques:", error);
-    return null;
+    return { adsCount: 0, revenueCount: 0 };
   }
 };
 

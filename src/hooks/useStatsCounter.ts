@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useStatsInitialization } from './stats/useStatsInitialization';
 import { useStatsAnimation } from './stats/useStatsAnimation';
@@ -199,4 +198,3 @@ export const useStatsCounter = ({
     displayedRevenueCount: Math.max(MINIMUM_REVENUE_COUNT, displayedRevenueCount)
   }), [displayedAdsCount, displayedRevenueCount]);
 };
-
