@@ -33,7 +33,7 @@ export const useManualSessions = ({
   // Vérifier si la limite quotidienne est atteinte pour les freemium
   useEffect(() => {
     if (userData && userData.subscription === 'freemium') {
-      const dailyGains = getDailyGains('freemium');
+      const dailyGains = getDailyGains();
       const dailyLimit = SUBSCRIPTION_LIMITS['freemium'] || 0.5;
       
       if (dailyGains >= dailyLimit || dailySessionCount >= 1) {
@@ -68,7 +68,7 @@ export const useManualSessions = ({
       }
       
       // Vérifier aussi la limite financière
-      const currentDailyGains = getDailyGains('freemium');
+      const currentDailyGains = getDailyGains();
       const dailyLimit = SUBSCRIPTION_LIMITS['freemium'] || 0.5;
       
       if (currentDailyGains >= dailyLimit) {
@@ -130,7 +130,7 @@ export const useManualSessions = ({
       
       // Pour les comptes freemium, vérifier strictement la limite quotidienne
       if (userData?.subscription === 'freemium') {
-        const currentDailyGains = getDailyGains('freemium');
+        const currentDailyGains = getDailyGains();
         const dailyLimit = SUBSCRIPTION_LIMITS['freemium'] || 0.5;
         const remainingLimit = dailyLimit - currentDailyGains;
         
@@ -164,7 +164,7 @@ export const useManualSessions = ({
       });
       
       // Ajouter le gain au total quotidien
-      if (!addDailyGain(gain, userData?.subscription || 'freemium')) {
+      if (!addDailyGain(gain)) {
         toast({
           title: "Limite journalière atteinte",
           description: `Vous avez atteint votre limite de gain journalier (${SUBSCRIPTION_LIMITS[userData?.subscription as keyof typeof SUBSCRIPTION_LIMITS || 'freemium']}€).`,
@@ -178,7 +178,7 @@ export const useManualSessions = ({
       
       // Mettre à jour le solde via balanceManager
       balanceManager.addDailyGain(gain);
-      balanceManager.updateBalance(gain);
+      balanceManager.addToBalance(gain);
       
       // Créer le rapport de la session
       const sessionReport = `Session manuelle #${dailySessionCount + 1}: ${gain.toFixed(2)}€ générés.`;
@@ -191,7 +191,7 @@ export const useManualSessions = ({
       
       // Vérifier si la limite est atteinte pour les comptes freemium
       if (userData?.subscription === 'freemium') {
-        const updatedDailyGains = getDailyGains('freemium');
+        const updatedDailyGains = getDailyGains();
         if (updatedDailyGains >= (SUBSCRIPTION_LIMITS['freemium'] || 0.5) || dailySessionCount >= 0) {
           setLimitReached(true);
         }

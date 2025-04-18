@@ -23,7 +23,10 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
   
   // S'abonner au balanceManager directement
   useEffect(() => {
-    const unsubscribe = balanceManager.addWatcher((newBalance, oldBalance) => {
+    const unsubscribe = balanceManager.addWatcher((newBalance) => {
+      // Get the current balance before update for comparison
+      const oldBalance = displayedBalance;
+      
       if (newBalance !== oldBalance) {
         // Store previous balance for gain calculation
         setPreviousBalance(oldBalance);
@@ -51,7 +54,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
     });
     
     return unsubscribe;
-  }, []);
+  }, [displayedBalance]);
   
   // Update balance with animation when it changes externally
   useEffect(() => {

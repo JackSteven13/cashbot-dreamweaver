@@ -84,6 +84,28 @@ class BalanceManager {
     return this.balance;
   }
   
+  // Update balance (alias for addToBalance with better naming)
+  updateBalance(amount: number): number {
+    return this.addToBalance(amount);
+  }
+  
+  // Force set balance to a specific value
+  forceBalanceSync(newBalance: number): number {
+    if (newBalance < 0) return this.balance;
+    
+    const oldBalance = this.balance;
+    this.balance = newBalance;
+    
+    // Update highest balance if needed
+    if (this.balance > this.highestBalance) {
+      this.highestBalance = this.balance;
+    }
+    
+    this.saveToStorage();
+    this.notifyWatchers();
+    return this.balance;
+  }
+  
   // Subtract from balance
   subtractFromBalance(amount: number): number {
     if (amount <= 0) return this.balance;

@@ -50,7 +50,7 @@ export const useInitUserData = () => {
               
               // Initialiser le gestionnaire de solde
               if (cachedBalance) {
-                balanceManager.updateBalance(parseFloat(cachedBalance));
+                balanceManager.initialize(parseFloat(cachedBalance));
               }
             }, 1000);
           } else {
@@ -61,7 +61,7 @@ export const useInitUserData = () => {
             
             // Initialiser le gestionnaire de solde
             if (cachedBalance) {
-              balanceManager.updateBalance(parseFloat(cachedBalance));
+              balanceManager.initialize(parseFloat(cachedBalance));
             }
           }
         } else {

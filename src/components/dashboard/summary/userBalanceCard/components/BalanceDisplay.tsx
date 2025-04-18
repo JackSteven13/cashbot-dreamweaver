@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { CircleDollarSign, TrendingUp, Award } from 'lucide-react';
 import { useAnimatedCounter } from '@/hooks/useAnimatedCounter';
@@ -50,7 +49,10 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   
   // S'abonner aux changements de solde via balanceManager
   useEffect(() => {
-    const unsubscribe = balanceManager.addWatcher((newBalance, oldBalance) => {
+    const unsubscribe = balanceManager.addWatcher((newBalance) => {
+      // Get the old balance for comparison
+      const oldBalance = stableBalance;
+      
       if (newBalance !== oldBalance) {
         setStableBalance(newBalance);
         
@@ -77,7 +79,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     });
     
     return unsubscribe;
-  }, []);
+  }, [stableBalance]);
   
   // Écouter les événements de mise à jour du solde pour les animations
   useEffect(() => {

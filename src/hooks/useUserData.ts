@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
@@ -153,7 +152,7 @@ export const useUserData = () => {
     
     try {
       // Mettre à jour le solde avec le gestionnaire central
-      const newBalance = balanceManager.updateBalance(gain);
+      const newBalance = balanceManager.addToBalance(gain);
       
       // Mise à jour optimiste de l'UI
       setUserData(prev => {
