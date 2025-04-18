@@ -1,3 +1,4 @@
+
 /**
  * Utility functions for date formatting and value generation
  */
@@ -12,8 +13,8 @@ export function formatDateForStorage(date: Date = new Date()): string {
 }
 
 /**
- * Generate a value based on the current date
- * This creates consistent values for the same day
+ * Generate a stable value based on the current date
+ * This ensures consistent values for the same day
  * @returns A number derived from the current date
  */
 export function generateDateBasedValue(): number {
@@ -30,3 +31,4 @@ export function generateDateBasedValue(): number {
   
   return Math.round(baseValue * randomFactor);
 }
+

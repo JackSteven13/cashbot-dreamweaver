@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { activeLocations } from './data/locationData';
 import { calculateRevenueForLocation } from './utils/revenueCalculator';
@@ -60,23 +59,6 @@ export const useStatsCycleManagement = ({
       incrementCountersRandomly();
     }, 10000);
     
-    const watchdogInterval = setInterval(() => {
-      const lastIncrementTime = localStorage.getItem(STORAGE_KEYS.LAST_INCREMENT_TIME);
-      
-      if (lastIncrementTime) {
-        const now = Date.now();
-        const lastTime = parseInt(lastIncrementTime, 10);
-        const timeSinceLastIncrement = now - lastTime;
-        
-        if (timeSinceLastIncrement > 300000) {
-          console.log("Watchdog: Forçage d'un incrément de compteurs après inactivité");
-          incrementCountersRandomly(true);
-        }
-      } else {
-        incrementCountersRandomly(true);
-      }
-    }, 60000);
-    
     // S'assurer périodiquement que les valeurs minimales sont respectées
     const minimumCheckInterval = setInterval(() => {
       enforceMinimumStats(40000, 50000);
@@ -84,80 +66,28 @@ export const useStatsCycleManagement = ({
     
     return () => {
       clearInterval(interval);
-      clearInterval(watchdogInterval);
       clearInterval(minimumCheckInterval);
     };
   }, [continuousMode]);
   
   const incrementCountersRandomly = useCallback((forceUpdate = false) => {
-    if (isPaused && !forceUpdate) {
-      return;
-    }
-    
-    if (Math.random() < 0.01 && !isPaused && !forceUpdate) {
-      setIsPaused(true);
-      console.log("Natural pause in counter updates");
-      
-      setTimeout(() => {
-        setIsPaused(false);
-        console.log("Resuming counter updates after pause");
-      }, 5000 + Math.random() * 10000);
-      
-      return;
-    }
+    if (isPaused && !forceUpdate) return;
     
     const now = Date.now();
     const timeDiff = forceUpdate ? 60000 : now - lastUpdateTime;
     
-    localStorage.setItem(STORAGE_KEYS.LAST_UPDATE_TIME, now.toString());
-    localStorage.setItem(STORAGE_KEYS.LAST_INCREMENT_TIME, now.toString());
+    const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
     
-    const baseHourlyRate = getTotalHourlyRate(activeLocations);
-    
-    const timeBasedIncrement = (baseHourlyRate * timeDiff) / (3600 * 1000);
-    
-    const variationFactor = 0.8 + Math.random() * 0.4;
-    let totalAdsIncrement = Math.max(1, Math.floor(timeBasedIncrement * variationFactor));
-    
-    if (forceUpdate) {
-      totalAdsIncrement = Math.max(totalAdsIncrement, 5);
-    }
-    
-    totalAdsIncrement = Math.min(totalAdsIncrement, forceUpdate ? 15 : 5);
-    totalAdsIncrement = Math.max(totalAdsIncrement, 1);
-    
-    let totalRevenue = 0;
-    
-    activeLocations.forEach(location => {
-      const locationShare = location.weight / activeLocations.reduce((sum, loc) => sum + loc.weight, 0);
-      const locationAds = Math.max(1, Math.floor(totalAdsIncrement * locationShare));
-      
-      totalRevenue += calculateRevenueForLocation(location, locationAds);
-    });
-    
-    setAdsCount(prev => {
-      const newValue = Math.max(40000, prev + totalAdsIncrement);
-      saveValues(newValue, 0, true);
-      return newValue;
-    });
-    
-    setRevenueCount(prev => {
-      const newValue = Math.max(50000, prev + totalRevenue);
-      saveValues(0, newValue, true);
-      return newValue;
-    });
+    setAdsCount(newAdsCount);
+    setRevenueCount(newRevenueCount);
+    setDisplayedAdsCount(newAdsCount);
+    setDisplayedRevenueCount(newRevenueCount);
     
     setLastUpdateTime(now);
+    saveValues(newAdsCount, newRevenueCount, true);
     
-    if (Math.random() < 0.4 || forceUpdate) {
-      const visibleAdsUpdate = Math.ceil(totalAdsIncrement * 0.3);
-      const visibleRevenueUpdate = totalRevenue * 0.3;
-      
-      setDisplayedAdsCount(prev => Math.max(40000, prev + visibleAdsUpdate));
-      setDisplayedRevenueCount(prev => Math.max(50000, prev + visibleRevenueUpdate));
-    }
   }, [lastUpdateTime, setAdsCount, setRevenueCount, isPaused, setDisplayedAdsCount, setDisplayedRevenueCount]);
-  
+
   const scheduleCycleUpdate = useCallback(() => {
     const today = new Date().toDateString();
     if (today === lastResetDate) {

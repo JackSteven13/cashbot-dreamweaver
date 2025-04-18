@@ -1,4 +1,3 @@
-
 /**
  * Gestionnaire de stockage pour les statistiques et valeurs
  */
