@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 // Clés utilisées pour le stockage local des statistiques
@@ -40,13 +41,16 @@ interface UserStats {
  * Génère une valeur basée sur la date actuelle
  * Utilise un algorithme déterministe pour que la même date produise toujours la même valeur
  */
-const generateDateBasedValue = (baseSeed: number = 42): number => {
+const generateDateBasedValue = (): number => {
   // Récupérer la date actuelle au format YYYYMMDD
   const now = new Date();
   const dateString = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
   
   // Créer une graine basée sur la date
   const dateSeed = parseInt(dateString, 10);
+  
+  // Récupérer la graine de base stockée ou utiliser la valeur par défaut
+  const baseSeed = parseInt(localStorage.getItem(STORAGE_KEYS.BASE_DATE_SEED) || '42', 10);
   
   // Combiner avec la graine de base pour créer une valeur déterministe
   const deterministicValue = (dateSeed * baseSeed) % 1000000;
@@ -172,7 +176,7 @@ export const loadStoredValues = (): StoredValues => {
     
     // Si les valeurs ne sont pas disponibles, générer de nouvelles valeurs basées sur la date
     const baseSeed = parseInt(localStorage.getItem(STORAGE_KEYS.BASE_DATE_SEED) || '42', 10);
-    const baseAdsCount = generateDateBasedValue(); // Remove baseSeed argument
+    const baseAdsCount = generateDateBasedValue();
     
     // Générer un facteur de revenus (entre 1.2 et 1.5 euros par publicité)
     const revenuePerAd = 1.2 + (Math.random() * 0.3);
@@ -334,7 +338,7 @@ export const resetDailyStats = (): void => {
   try {
     const baseSeed = parseInt(localStorage.getItem(STORAGE_KEYS.BASE_DATE_SEED) || '42', 10);
     
-    const baseAdsCount = generateDateBasedValue(); // Remove baseSeed argument
+    const baseAdsCount = generateDateBasedValue();
     
     // Générer un facteur de revenus (entre 1.2 et 1.5 euros par publicité)
     const revenuePerAd = 1.2 + (Math.random() * 0.3);

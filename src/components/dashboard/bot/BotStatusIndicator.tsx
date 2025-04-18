@@ -1,16 +1,48 @@
 
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface BotStatusIndicatorProps {
   active: boolean;
+  dailyLimitReached?: boolean;
+  pulseAnimation?: boolean;
+  className?: string;
 }
 
-const BotStatusIndicator: React.FC<BotStatusIndicatorProps> = ({ active }) => {
+const BotStatusIndicator: React.FC<BotStatusIndicatorProps> = ({
+  active,
+  dailyLimitReached = false,
+  pulseAnimation = true,
+  className
+}) => {
+  // Déterminer les textes à afficher
+  const statusText = active
+    ? "Actif"
+    : dailyLimitReached
+    ? "Limite atteinte"
+    : "Inactif";
+  
+  // Déterminer les classes CSS en fonction de l'état
+  const statusClasses = cn(
+    "flex items-center gap-2",
+    className
+  );
+  
+  const indicatorClasses = cn(
+    "flex-shrink-0 h-3 w-3 rounded-full",
+    active 
+      ? "bg-green-500" 
+      : dailyLimitReached
+      ? "bg-amber-500"
+      : "bg-red-500",
+    pulseAnimation && active && "animate-pulse"
+  );
+  
   return (
-    <div className="flex items-center gap-2">
-      <div className={`h-2.5 w-2.5 rounded-full ${active ? 'bg-green-500 animate-pulse' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-      <span className={`text-sm font-medium ${active ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
-        {active ? 'Actif' : 'Inactif'}
+    <div className={statusClasses}>
+      <span className={indicatorClasses}></span>
+      <span className="text-sm font-medium">
+        {statusText}
       </span>
     </div>
   );
