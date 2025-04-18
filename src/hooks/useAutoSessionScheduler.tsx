@@ -17,6 +17,13 @@ export const useAutoSessionScheduler = (
   const initialSessionExecutedRef = useRef<boolean>(false);
   const persistentBalanceRef = useRef<number>(userData?.balance || 0);
   const highestBalanceRef = useRef<number>(0);
+  const dailyProgressFactorRef = useRef<number>(() => {
+    // Générer un facteur journalier stable basé sur la date
+    const now = new Date();
+    const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+    // Valeur entre 1 et 2 basée sur le jour de l'année
+    return 1 + Math.sin(dayOfYear * 0.1) * 0.5;
+  });
   const globalBalanceSyncRef = useRef<NodeJS.Timeout | null>(null);
 
   // Effect to simulate automatic ad analysis
@@ -57,6 +64,50 @@ export const useAutoSessionScheduler = (
     
     // Configurer une synchronisation périodique du solde
     globalBalanceSyncRef.current = setInterval(() => {
+      // Vérifier si une journée s'est écoulée depuis la dernière mise à jour majeure
+      const lastMajorUpdate = localStorage.getItem('lastMajorBalanceUpdate');
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      
+      if (lastMajorUpdate !== today) {
+        // Nouvelle journée, augmenter le solde de manière significative
+        const subscription = userData?.subscription || 'freemium';
+        let dailyBonus = 0;
+        
+        // Calculer un bonus basé sur l'abonnement et un facteur aléatoire mais stable pour la journée
+        switch (subscription) {
+          case 'premium':
+            dailyBonus = 0.2 * dailyProgressFactorRef.current;
+            break;
+          case 'professional':
+            dailyBonus = 0.35 * dailyProgressFactorRef.current;
+            break;
+          case 'freemium':
+          default:
+            dailyBonus = 0.1 * dailyProgressFactorRef.current;
+            break;
+        }
+        
+        // Ajouter au solde
+        const currentBalance = persistentBalanceRef.current;
+        const newBalance = currentBalance + dailyBonus;
+        persistentBalanceRef.current = newBalance;
+        highestBalanceRef.current = Math.max(highestBalanceRef.current, newBalance);
+        
+        // Sauvegarder dans le localStorage
+        localStorage.setItem('highestBalance', highestBalanceRef.current.toString());
+        localStorage.setItem('currentBalance', newBalance.toString());
+        localStorage.setItem('lastKnownBalance', newBalance.toString());
+        localStorage.setItem('lastMajorBalanceUpdate', today);
+        
+        // Animer l'affichage du solde
+        window.dispatchEvent(new CustomEvent('balance:force-sync', { 
+          detail: { balance: newBalance, animate: true }
+        }));
+        
+        console.log(`[Scheduler] Bonus journalier appliqué: +${dailyBonus.toFixed(2)}€, nouveau solde: ${newBalance.toFixed(2)}€`);
+      }
+      
       // Déclencher un événement pour que tous les composants utilisent le solde le plus élevé
       if (highestBalanceRef.current > 0) {
         window.dispatchEvent(new CustomEvent('balance:force-sync', { 
@@ -78,8 +129,8 @@ export const useAutoSessionScheduler = (
     
     // Start an initial session after a short delay if bot is active
     const initialTimeout = setTimeout(() => {
-      // Vérifications de sécurité supplémentaires
-      if (botStatusRef.current && persistentBalanceRef.current < dailyLimit && !initialSessionExecutedRef.current) {
+      // Vérifications de sécurité supplémentaires - plus de limite basée sur le solde courant
+      if (botStatusRef.current && !initialSessionExecutedRef.current) {
         console.log("[Scheduler] Démarrage de la session initiale automatique");
         initialSessionExecutedRef.current = true; // Marquer comme exécuté
         generateAutomaticRevenue(true);
@@ -100,8 +151,8 @@ export const useAutoSessionScheduler = (
       const timeSinceLastSession = Date.now() - lastAutoSessionTimeRef.current;
       const randomInterval = Math.random() * 60000 + 120000; // Between 2 and 3 minutes
       
-      // Vérifier également qu'on n'a pas atteint la limite journalière
-      if (timeSinceLastSession >= randomInterval && persistentBalanceRef.current < dailyLimit && botStatusRef.current) {
+      // Générer des revenus automatiques sans limite sur le solde total
+      if (timeSinceLastSession >= randomInterval && botStatusRef.current) {
         console.log("[Scheduler] Génération automatique de revenus");
         generateAutomaticRevenue();
         lastAutoSessionTimeRef.current = Date.now();

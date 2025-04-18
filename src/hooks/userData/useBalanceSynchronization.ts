@@ -36,16 +36,53 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
       balanceManager.initialize(userData.balance);
       firstSyncRef.current = false;
     }
-    // Synchronisations ultérieures - comparer avec le serveur
+    // Synchronisations ultérieures - comparer avec le serveur mais éviter de réduire le solde local
     else if (userData.balance !== undefined) {
-      console.log(`Synchronisation du solde avec le serveur: ${userData.balance}€`);
-      balanceManager.syncWithServer(userData.balance);
+      const currentLocalBalance = balanceManager.getCurrentBalance();
+      const serverBalance = userData.balance;
+      
+      // Ne synchroniser avec le serveur que si le solde serveur est plus élevé
+      if (serverBalance > currentLocalBalance) {
+        console.log(`Synchronisation du solde avec le serveur: ${serverBalance}€ (local: ${currentLocalBalance}€)`);
+        balanceManager.syncWithServer(serverBalance);
+      } else {
+        console.log(`Solde local plus élevé que serveur, conservation: ${currentLocalBalance}€ (serveur: ${serverBalance}€)`);
+      }
     }
     
     // Toujours mettre à jour l'état local avec le solde stable
     const stableBalance = balanceManager.getCurrentBalance();
     setEffectiveBalance(stableBalance);
   }, [userData, isNewUser]);
+  
+  // Effet pour la croissance automatique quotidienne
+  useEffect(() => {
+    // Vérifier si une journée s'est écoulée depuis la dernière mise à jour
+    const checkDailyGrowth = () => {
+      const now = new Date();
+      const lastGrowthDate = localStorage.getItem('lastGrowthDate');
+      const today = now.toDateString();
+      
+      if (lastGrowthDate !== today && !isNewUser) {
+        // Nouvelle journée, mettre à jour le solde
+        const currentBalance = balanceManager.getCurrentBalance();
+        
+        // Synchroniser
+        setEffectiveBalance(currentBalance);
+        
+        // Enregistrer la date de la mise à jour
+        localStorage.setItem('lastGrowthDate', today);
+      }
+    };
+    
+    // Vérifier immédiatement
+    checkDailyGrowth();
+    
+    // Puis vérifier périodiquement
+    const interval = setInterval(checkDailyGrowth, 60000); // Toutes les minutes
+    
+    return () => clearInterval(interval);
+  }, [isNewUser]);
   
   // S'abonner aux changements de solde via balanceManager
   useEffect(() => {
@@ -54,6 +91,20 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
     });
     
     return unsubscribe;
+  }, []);
+  
+  // Écouter l'événement de croissance quotidienne
+  useEffect(() => {
+    const handleDailyGrowth = (event: CustomEvent) => {
+      const { growth, newBalance } = event.detail;
+      console.log(`[BalanceSynchronization] Daily growth detected: +${growth.toFixed(2)}€`);
+      
+      // Mettre à jour le solde affiché
+      setEffectiveBalance(newBalance);
+    };
+    
+    window.addEventListener('balance:daily-growth', handleDailyGrowth as EventListener);
+    return () => window.removeEventListener('balance:daily-growth', handleDailyGrowth as EventListener);
   }, []);
   
   // Fonction de synchronisation manuelle
@@ -70,10 +121,16 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
     if (now - lastSyncTimeRef.current < 2000) return;
     lastSyncTimeRef.current = now;
     
-    // Synchroniser avec le serveur
-    balanceManager.syncWithServer(userData.balance);
+    // Obtenir le solde local actuel
+    const currentLocalBalance = balanceManager.getCurrentBalance();
     
-    // Mettre à jour l'état local
+    // Ne synchroniser avec le serveur que si le solde serveur est plus élevé
+    if (userData.balance > currentLocalBalance) {
+      console.log(`Synchronisation manuelle du solde avec le serveur: ${userData.balance}€`);
+      balanceManager.syncWithServer(userData.balance);
+    }
+    
+    // Mettre à jour l'état local avec le solde le plus élevé
     const stableBalance = balanceManager.getCurrentBalance();
     setEffectiveBalance(stableBalance);
   }, [userData, isNewUser]);
