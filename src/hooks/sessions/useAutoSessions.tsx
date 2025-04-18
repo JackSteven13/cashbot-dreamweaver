@@ -1,22 +1,16 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { useAutoRevenueGenerator } from './useAutoRevenueGenerator';
-import { useAutoSessionScheduler } from './useAutoSessionScheduler';
-import { useDailyLimits } from './useDailyLimits';
-import { useActivitySimulation } from './useActivitySimulation';
-import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
 import { toast } from '@/components/ui/use-toast';
-import { addTransaction } from '@/hooks/user/transactionUtils';
+import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
 import balanceManager from '@/utils/balance/balanceManager';
-import { supabase } from '@/integrations/supabase/client';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import { loadUserStats, saveUserStats } from '@/hooks/stats/utils/storageManager';
 
-export const useAutoSessions = (
-  userData: any,
-  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>,
-  setShowLimitAlert: (show: boolean) => void
-) => {
+export const useAutoSessions = ({
+  userData,
+  updateBalance,
+  setShowLimitAlert
+}) => {
   // References to ensure data stability
   const todaysGainsRef = useRef(0);
   const lastKnownBalanceRef = useRef(userData?.balance || 0);
@@ -30,7 +24,7 @@ export const useAutoSessions = (
   
   // Pour suivre la limite quotidienne
   const [dailyLimitProgress, setDailyLimitProgress] = useState(0);
-
+  
   // State to track initial session execution
   const isInitialSessionExecuted = useRef(false);
   
@@ -59,10 +53,10 @@ export const useAutoSessions = (
     // Calculer aussi depuis les transactions
     if (userData?.transactions) {
       const today = new Date().toISOString().split('T')[0];
-      const todaysTransactions = userData.transactions.filter((tx: any) => 
+      const todaysTransactions = userData.transactions.filter((tx) => 
         tx.date?.startsWith(today) && tx.gain > 0
       );
-      const transactionsGains = todaysTransactions.reduce((sum: number, tx: any) => sum + (tx.gain || 0), 0);
+      const transactionsGains = todaysTransactions.reduce((sum, tx) => sum + (tx.gain || 0), 0);
       
       // Utiliser la valeur la plus élevée
       const actualDailyGains = Math.max(managerDailyGains, transactionsGains);
@@ -88,9 +82,6 @@ export const useAutoSessions = (
       }
     }
   };
-
-  // Custom hooks for automatic generation logic
-  const { getDailyLimit } = useDailyLimits(safeUserData.subscription);
   
   // Automatic session scheduler - activate immediately on component mount
   useEffect(() => {
@@ -278,11 +269,12 @@ export const useAutoSessions = (
   }
 
   return {
-    lastAutoSessionTime: Date.now(), // Always return current time to avoid stale data
-    activityLevel: "medium", // Placeholder for compatibility
-    generateAutomaticRevenue,
+    lastAutoSessionTime: new Date(),
+    activityLevel: 60,
     isBotActive,
     dailyLimitProgress,
-    isInitialSessionExecuted
+    generateAutomaticRevenue
   };
 };
+
+export default useAutoSessions;

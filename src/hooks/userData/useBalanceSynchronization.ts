@@ -5,7 +5,9 @@ import balanceManager from '@/utils/balance/balanceManager';
 
 export const useBalanceSynchronization = (userData: UserData | null, isNewUser: boolean) => {
   // Utiliser balanceManager comme source unique de vérité
-  const [effectiveBalance, setEffectiveBalance] = useState(() => balanceManager.getStableBalance());
+  const [effectiveBalance, setEffectiveBalance] = useState(() => {
+    return balanceManager.getCurrentBalance();
+  });
   const firstSyncRef = useRef<boolean>(true);
   const lastSyncTimeRef = useRef<number>(0);
   
@@ -41,7 +43,7 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
     }
     
     // Toujours mettre à jour l'état local avec le solde stable
-    const stableBalance = balanceManager.getStableBalance();
+    const stableBalance = balanceManager.getCurrentBalance();
     setEffectiveBalance(stableBalance);
   }, [userData, isNewUser]);
   
@@ -72,7 +74,7 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
     balanceManager.syncWithServer(userData.balance);
     
     // Mettre à jour l'état local
-    const stableBalance = balanceManager.getStableBalance();
+    const stableBalance = balanceManager.getCurrentBalance();
     setEffectiveBalance(stableBalance);
   }, [userData, isNewUser]);
   

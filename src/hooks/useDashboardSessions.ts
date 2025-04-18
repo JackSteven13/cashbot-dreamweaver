@@ -107,8 +107,8 @@ export const useDashboardSessions = ({
   const { 
     lastAutoSessionTime, 
     activityLevel, 
-    generateAutomaticRevenue,
-    isBotActive 
+    isBotActive,
+    generateAutomaticRevenue
   } = useAutoSessions({
     userData: safeUserData,
     updateBalance,
@@ -146,12 +146,13 @@ export const useDashboardSessions = ({
 
   return {
     isStartingSession: isSessionRunning,
-    handleStartSession, // Using the wrapped function
+    handleStartSession,
     handleWithdrawal,
     isProcessingWithdrawal,
     lastSessionTimestamp,
     localBalance: userData?.balance || 0,
-    isBotActive
+    isBotActive,
+    generateAutomaticRevenue
   };
 };
 

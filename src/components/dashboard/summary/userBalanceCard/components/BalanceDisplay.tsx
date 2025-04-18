@@ -28,7 +28,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 }) => {
   // Utiliser balanceManager comme source unique de vérité
   const [stableBalance, setStableBalance] = useState(() => {
-    return balanceManager.getStableBalance();
+    return balanceManager.getCurrentBalance();
   });
   
   // État pour suivre les animations

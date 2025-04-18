@@ -156,16 +156,19 @@ export const useUserData = () => {
       const newBalance = balanceManager.updateBalance(gain);
       
       // Mise à jour optimiste de l'UI
-      setUserData(prev => prev ? {
-        ...prev,
-        balance: newBalance,
-        transactions: [{
-          date: new Date().toISOString(),
-          gain,
-          report,
-          type: 'Session'
-        }, ...(prev.transactions || [])]
-      } : null);
+      setUserData(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          balance: newBalance,
+          transactions: [{
+            date: new Date().toISOString(),
+            gain,
+            report,
+            type: 'Session'
+          }, ...(prev.transactions || [])]
+        };
+      });
       
       // Mise à jour dans la base de données
       const { error } = await supabase
@@ -216,10 +219,13 @@ export const useUserData = () => {
       balanceManager.resetBalance();
       
       // Mise à jour optimiste
-      setUserData(prev => prev ? {
-        ...prev,
-        balance: 0
-      } : null);
+      setUserData(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          balance: 0
+        };
+      });
       
       // Mise à jour dans la base de données
       const { error } = await supabase

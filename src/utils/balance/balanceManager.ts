@@ -7,12 +7,14 @@
  */
 
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
+import { supabase } from '@/integrations/supabase/client';
 
 // Clés de stockage local
 const STORAGE_KEYS = {
   CURRENT_BALANCE: 'current_balance',
   DAILY_GAINS: 'stats_daily_gains',
-  LAST_SYNC_DATE: 'stats_last_sync_date'
+  LAST_SYNC_DATE: 'stats_last_sync_date',
+  HIGHEST_BALANCE: 'highest_balance'
 };
 
 // Type pour les observateurs de changement de solde
@@ -78,6 +80,12 @@ class BalanceManager {
   private saveToStorage(): void {
     localStorage.setItem(STORAGE_KEYS.CURRENT_BALANCE, this.currentBalance.toString());
     localStorage.setItem(STORAGE_KEYS.DAILY_GAINS, this.dailyGains.toString());
+    
+    // Mettre à jour également la valeur maximale du solde si nécessaire
+    const highestBalance = this.getHighestBalance();
+    if (this.currentBalance > highestBalance) {
+      localStorage.setItem(STORAGE_KEYS.HIGHEST_BALANCE, this.currentBalance.toString());
+    }
   }
 
   /**
@@ -96,7 +104,7 @@ class BalanceManager {
   /**
    * Initialise le gestionnaire avec un solde initial
    */
-  public initialize(initialBalance: number): void {
+  public initialize(initialBalance: number): number {
     const oldBalance = this.currentBalance;
     this.currentBalance = initialBalance;
     this.saveToStorage();
@@ -106,19 +114,20 @@ class BalanceManager {
     }
     
     this.isInitialized = true;
+    return this.currentBalance;
   }
 
   /**
    * Met à jour le solde
    */
-  public updateBalance(newAmount: number): void {
+  public updateBalance(newAmount: number): number {
     if (typeof newAmount !== 'number' || isNaN(newAmount)) {
       console.error('Invalid balance amount:', newAmount);
-      return;
+      return this.currentBalance;
     }
     
     const oldBalance = this.currentBalance;
-    this.currentBalance = Math.max(0, newAmount);
+    this.currentBalance = Math.max(0, this.currentBalance + newAmount);
     this.saveToStorage();
     
     this.notifyWatchers(oldBalance);
@@ -131,15 +140,17 @@ class BalanceManager {
         animate: true
       }
     }));
+    
+    return this.currentBalance;
   }
 
   /**
    * Force la synchronisation du solde avec une valeur donnée
    */
-  public forceBalanceSync(amount: number): void {
+  public forceBalanceSync(amount: number): number {
     if (typeof amount !== 'number' || isNaN(amount)) {
       console.error('Invalid balance amount for sync:', amount);
-      return;
+      return this.currentBalance;
     }
     
     const oldBalance = this.currentBalance;
@@ -147,6 +158,46 @@ class BalanceManager {
     this.saveToStorage();
     
     this.notifyWatchers(oldBalance);
+    return this.currentBalance;
+  }
+
+  /**
+   * Synchronise le solde avec le serveur
+   */
+  public async syncWithServer(serverBalance: number): Promise<number> {
+    const highestBalance = this.getHighestBalance();
+    
+    // Si le solde du serveur est plus élevé, utiliser celui-ci
+    if (serverBalance > highestBalance) {
+      this.forceBalanceSync(serverBalance);
+      return this.currentBalance;
+    }
+    
+    // Si notre solde local est plus élevé, essayer de mettre à jour le serveur
+    if (highestBalance > serverBalance) {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          const { error } = await supabase
+            .from('user_balances')
+            .update({ 
+              balance: highestBalance,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+            
+          if (error) {
+            console.error('Error updating server balance:', error);
+          } else {
+            console.log(`Updated server balance to match local: ${highestBalance}`);
+          }
+        }
+      } catch (e) {
+        console.error('Error during balance server sync:', e);
+      }
+    }
+    
+    return this.currentBalance;
   }
 
   /**
@@ -241,7 +292,7 @@ class BalanceManager {
   /**
    * Réinitialise le solde à 0
    */
-  public resetBalance(): void {
+  public resetBalance(): number {
     const oldBalance = this.currentBalance;
     this.currentBalance = 0;
     this.saveToStorage();
@@ -250,6 +301,17 @@ class BalanceManager {
     
     // Propager l'événement de réinitialisation du solde
     window.dispatchEvent(new CustomEvent('balance:reset-complete'));
+    
+    return this.currentBalance;
+  }
+
+  /**
+   * Réinitialise les gains quotidiens à 0
+   */
+  public resetDailyGains(): number {
+    this.dailyGains = 0;
+    localStorage.setItem(STORAGE_KEYS.DAILY_GAINS, '0');
+    return this.dailyGains;
   }
 
   /**
@@ -257,6 +319,26 @@ class BalanceManager {
    */
   public getCurrentBalance(): number {
     return this.currentBalance;
+  }
+
+  /**
+   * Obtient le solde stable (pour l'affichage)
+   */
+  public getStableBalance(): number {
+    return this.currentBalance;
+  }
+
+  /**
+   * Obtient le solde le plus élevé jamais atteint
+   */
+  public getHighestBalance(): number {
+    try {
+      const storedHighest = localStorage.getItem(STORAGE_KEYS.HIGHEST_BALANCE);
+      const highestBalance = storedHighest ? parseFloat(storedHighest) : 0;
+      return Math.max(highestBalance, this.currentBalance);
+    } catch (e) {
+      return this.currentBalance;
+    }
   }
 
   /**
@@ -285,6 +367,47 @@ class BalanceManager {
     return () => {
       this.watchers = this.watchers.filter(w => w !== watcher);
     };
+  }
+
+  /**
+   * Nettoyer les données utilisateur lors d'un changement d'utilisateur
+   */
+  public cleanupUserBalanceData(): void {
+    this.currentBalance = 0;
+    this.dailyGains = 0;
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_BALANCE);
+    localStorage.removeItem(STORAGE_KEYS.DAILY_GAINS);
+    localStorage.removeItem(STORAGE_KEYS.HIGHEST_BALANCE);
+  }
+  
+  /**
+   * Synchroniser avec la base de données
+   */
+  public async syncWithDatabase(): Promise<boolean> {
+    try {
+      const userId = localStorage.getItem('userId');
+      if (!userId) return false;
+      
+      // Récupérer le solde du serveur
+      const { data, error } = await supabase
+        .from('user_balances')
+        .select('balance')
+        .eq('id', userId)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching balance from database:', error);
+        return false;
+      }
+      
+      // Comparer avec notre solde local
+      const serverBalance = data?.balance || 0;
+      await this.syncWithServer(serverBalance);
+      return true;
+    } catch (e) {
+      console.error('Error during database sync:', e);
+      return false;
+    }
   }
 }
 
