@@ -28,6 +28,8 @@ export const useAutoSessionScheduler = (
   
   const dailyProgressFactorRef = useRef<number>(calcDailyProgressFactor());
   const globalBalanceSyncRef = useRef<NodeJS.Timeout | null>(null);
+  const lastBalanceUpdateRef = useRef<number>(Date.now());
+  const balanceUpdateDebounceTime = 5000; // 5 secondes minimum entre les mises à jour du solde
 
   // Effect to simulate automatic ad analysis
   useEffect(() => {
@@ -65,12 +67,17 @@ export const useAutoSessionScheduler = (
       console.error("Failed to read persisted balance:", e);
     }
     
-    // Configurer une synchronisation périodique du solde
+    // Configurer une synchronisation périodique du solde avec un debounce
     globalBalanceSyncRef.current = setInterval(() => {
+      const now = Date.now();
+      // Limiter la fréquence des mises à jour pour éviter les fluctuations
+      if (now - lastBalanceUpdateRef.current < balanceUpdateDebounceTime) {
+        return;
+      }
+      
       // Vérifier si une journée s'est écoulée depuis la dernière mise à jour majeure
       const lastMajorUpdate = localStorage.getItem('lastMajorBalanceUpdate');
-      const now = new Date();
-      const today = now.toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
       
       if (lastMajorUpdate !== today) {
         // Nouvelle journée, augmenter le solde de manière significative
@@ -102,20 +109,23 @@ export const useAutoSessionScheduler = (
         localStorage.setItem('currentBalance', newBalance.toString());
         localStorage.setItem('lastKnownBalance', newBalance.toString());
         localStorage.setItem('lastMajorBalanceUpdate', today);
+        lastBalanceUpdateRef.current = now;
         
         // Animer l'affichage du solde
         window.dispatchEvent(new CustomEvent('balance:force-sync', { 
-          detail: { balance: newBalance, animate: true }
+          detail: { newBalance, animate: true }
         }));
         
         console.log(`[Scheduler] Bonus journalier appliqué: +${dailyBonus.toFixed(2)}€, nouveau solde: ${newBalance.toFixed(2)}€`);
       }
       
       // Déclencher un événement pour que tous les composants utilisent le solde le plus élevé
-      if (highestBalanceRef.current > 0) {
+      // mais seulement si un certain temps s'est écoulé depuis la dernière mise à jour
+      if (highestBalanceRef.current > 0 && now - lastBalanceUpdateRef.current >= balanceUpdateDebounceTime) {
         window.dispatchEvent(new CustomEvent('balance:force-sync', { 
-          detail: { balance: highestBalanceRef.current }
+          detail: { newBalance: highestBalanceRef.current }
         }));
+        lastBalanceUpdateRef.current = now;
       }
     }, 30000); // Synchroniser toutes les 30 secondes
     
@@ -173,6 +183,12 @@ export const useAutoSessionScheduler = (
     
     // Écouter les changements de solde pour la persistence
     const handleBalanceUpdate = (event: CustomEvent) => {
+      const now = Date.now();
+      // Limiter la fréquence des mises à jour pour éviter les fluctuations
+      if (now - lastBalanceUpdateRef.current < balanceUpdateDebounceTime) {
+        return;
+      }
+      
       const newBalance = event.detail?.balance;
       if (typeof newBalance === 'number' && newBalance >= 0) {
         // Ne mettre à jour que si le nouveau solde est plus élevé
@@ -196,13 +212,20 @@ export const useAutoSessionScheduler = (
           // S'assurer que le localStorage est aussi à jour
           localStorage.setItem('lastKnownBalance', newBalance.toString());
           localStorage.setItem('currentBalance', newBalance.toString());
+          lastBalanceUpdateRef.current = now;
         }
       }
     };
     
     // Nouveau gestionnaire pour la synchronisation forcée
     const handleForceSyncBalance = (event: CustomEvent) => {
-      const syncedBalance = event.detail?.balance;
+      const now = Date.now();
+      // Limiter la fréquence des mises à jour pour éviter les fluctuations
+      if (now - lastBalanceUpdateRef.current < balanceUpdateDebounceTime) {
+        return;
+      }
+      
+      const syncedBalance = event.detail?.balance || event.detail?.newBalance;
       if (typeof syncedBalance === 'number' && syncedBalance > 0) {
         // Ne mettre à jour que si le solde synchronisé est plus élevé que notre maximum
         if (syncedBalance > highestBalanceRef.current) {
@@ -214,6 +237,7 @@ export const useAutoSessionScheduler = (
           localStorage.setItem('highestBalance', syncedBalance.toString());
           localStorage.setItem('currentBalance', syncedBalance.toString());
           localStorage.setItem('lastKnownBalance', syncedBalance.toString());
+          lastBalanceUpdateRef.current = now;
         }
       }
     };

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { formatPrice } from '@/utils/balance/limitCalculations';
 import { CardContent } from '@/components/ui/card';
@@ -17,19 +18,17 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   isLoading = false, 
   subscription = "freemium" 
 }) => {
-  // Use session storage as source of truth for page refreshes
+  // Use a single source of truth for the balance
   const [displayBalance, setDisplayBalance] = useState<number>(() => {
-    // Pour garantir la stabilité du solde entre les rechargements, prioriser le solde stocké
     const storedBalance = parseFloat(localStorage.getItem('lastKnownBalance') || '0');
-    
-    // Utiliser la valeur stockée ou fournie sans limites artificielles
-    return storedBalance || balance || 0;
+    return storedBalance > 0 ? storedBalance : balance || 0;
   });
   
   const [prevBalance, setPrevBalance] = useState<number>(displayBalance);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const balanceRef = useRef<HTMLDivElement>(null);
   const lastUpdateTime = useRef<number>(Date.now());
+  const updateDebounceTime = 2000; // 2 secondes minimum entre les mises à jour d'affichage
   
   const { formattedValue } = useAnimatedCounter({
     value: displayBalance,
@@ -38,68 +37,80 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     formatOptions: { style: 'currency', currency: 'EUR' }
   });
   
-  // Keep sessionStorage and localStorage in sync with balance changes
+  // Synchroniser avec le balance prop, mais avec debounce pour éviter les fluctuations rapides
   useEffect(() => {
-    // Si le solde fourni est significativement différent, mettre à jour
-    if (Math.abs(balance - displayBalance) > 0.01) {
+    const now = Date.now();
+    // Seulement mettre à jour si assez de temps s'est écoulé depuis la dernière mise à jour
+    if (now - lastUpdateTime.current > updateDebounceTime && Math.abs(balance - displayBalance) > 0.01) {
+      // Utiliser une transition
+      setPrevBalance(displayBalance);
       setDisplayBalance(balance);
+      setIsAnimating(true);
       
-      // Save to both storage types
-      sessionStorage.setItem('currentBalance', balance.toString());
+      // Enregistrer les valeurs dans le localStorage
       localStorage.setItem('currentBalance', balance.toString());
       localStorage.setItem('lastKnownBalance', balance.toString());
       
-      // Record update time
-      lastUpdateTime.current = Date.now();
+      // Enregistrer le moment de la mise à jour
+      lastUpdateTime.current = now;
+      
+      // Réinitialiser l'animation après un délai
+      setTimeout(() => setIsAnimating(false), 2000);
     }
   }, [balance, displayBalance]);
   
-  // Listen for force update events
+  // Gestionnaire unifié pour les événements de mise à jour du solde
   useEffect(() => {
-    const handleForceUpdate = (event: CustomEvent) => {
-      // Check if we should force update (no recent updates)
-      const timeSinceLastUpdate = Date.now() - lastUpdateTime.current;
-      if (timeSinceLastUpdate > 60000) { // 1 minute
-        // Force a small increment to show activity
-        const smallIncrement = Math.random() * 0.05 + 0.01; // 0.01-0.06€
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      const now = Date.now();
+      // Vérifier si assez de temps s'est écoulé depuis la dernière mise à jour
+      if (now - lastUpdateTime.current < updateDebounceTime) {
+        return; // Ignorer les mises à jour trop rapprochées
+      }
+      
+      const newBalance = event.detail?.newBalance || event.detail?.currentBalance;
+      const gain = event.detail?.gain || event.detail?.amount;
+      const shouldAnimate = event.detail?.animate === true;
+      
+      if (typeof newBalance === 'number' && newBalance > 0 && 
+          Math.abs(newBalance - displayBalance) > 0.01) {
         
-        // Calculer un incrément basé sur le niveau d'abonnement
-        let actualIncrement = smallIncrement;
-        if (subscription !== 'freemium') {
-          // Les abonnements premium ont des incréments plus importants
-          actualIncrement = smallIncrement * (subscription === 'premium' ? 3 : 
-                                             subscription === 'professional' ? 5 : 2);
-        }
-        
-        // Incrémenter le solde sans limite artificielle
-        const newBalance = displayBalance + actualIncrement;
-        
-        setDisplayBalance(newBalance);
+        // Mettre à jour le solde avec animation
         setPrevBalance(displayBalance);
-        setIsAnimating(true);
+        setDisplayBalance(newBalance);
+        setIsAnimating(shouldAnimate);
         
-        // Save to both storage types
-        sessionStorage.setItem('currentBalance', newBalance.toString());
+        // Enregistrer les valeurs
         localStorage.setItem('currentBalance', newBalance.toString());
         localStorage.setItem('lastKnownBalance', newBalance.toString());
         
-        // Record update time
-        lastUpdateTime.current = Date.now();
+        // Mettre à jour le timestamp
+        lastUpdateTime.current = now;
         
-        // Reset animation after delay
-        setTimeout(() => setIsAnimating(false), 2000);
+        // Réinitialiser l'animation après un délai
+        if (shouldAnimate) {
+          setTimeout(() => setIsAnimating(false), 2000);
+        }
       }
     };
     
-    window.addEventListener('balance:force-update', handleForceUpdate as EventListener);
-    return () => window.removeEventListener('balance:force-update', handleForceUpdate as EventListener);
-  }, [displayBalance, subscription]);
+    // Écouter tous les types d'événements liés au solde
+    window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
+    window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
+    window.addEventListener('balance:force-sync', handleBalanceUpdate as EventListener);
+    window.addEventListener('balance:daily-growth', handleBalanceUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
+      window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
+      window.removeEventListener('balance:force-sync', handleBalanceUpdate as EventListener);
+      window.removeEventListener('balance:daily-growth', handleBalanceUpdate as EventListener);
+    };
+  }, [displayBalance]);
   
-  // Save to session before unload for refresh protection
+  // Sauvegarder le solde avant déchargement de la page
   useEffect(() => {
     const handleBeforeUnload = () => {
-      // Save current balance to session storage
-      sessionStorage.setItem('currentBalance', displayBalance.toString());
       localStorage.setItem('currentBalance', displayBalance.toString());
       localStorage.setItem('lastKnownBalance', displayBalance.toString());
     };
@@ -108,22 +119,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [displayBalance]);
   
-  useEffect(() => {
-    // If balance increased, show animation
-    if (displayBalance > prevBalance && prevBalance !== 0) {
-      setIsAnimating(true);
-      
-      const timer = setTimeout(() => {
-        setIsAnimating(false);
-      }, 2000);
-      
-      return () => clearTimeout(timer);
-    }
-    
-    setPrevBalance(displayBalance);
-  }, [displayBalance, prevBalance]);
-  
-  // Determine premium styling based on subscription
+  // Déterminer le style premium en fonction de l'abonnement
   const isPremium = subscription !== 'freemium';
   
   return (
@@ -152,7 +148,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
             ) : (
               <>
                 {formattedValue}
-                {isAnimating && (
+                {isAnimating && (prevBalance !== displayBalance) && (
                   <span className="absolute -top-4 right-0 text-sm text-green-500 flex items-center animate-fade-in">
                     <ChevronUp className="h-3 w-3 mr-0.5" />
                     +{(displayBalance - prevBalance).toFixed(2)}€
