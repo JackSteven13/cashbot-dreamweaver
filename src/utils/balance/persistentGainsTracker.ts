@@ -18,7 +18,7 @@ export const getDailyGainsTracker = (): number => {
  * @returns {number} Le nouveau montant total des gains quotidiens
  */
 export const addDailyGainTracker = (gain: number): number => {
-  // Ajouter le gain et convertir le booléen en nombre (true = 1, false = 0)
+  // Ajouter le gain et retourner le nouveau total
   balanceManager.addDailyGain(gain);
   // Retourner le nouveau total
   return balanceManager.getDailyGains();

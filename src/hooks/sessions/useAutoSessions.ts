@@ -1,109 +1,111 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { UserData } from '@/types/userData';
-import { calculateAutoSessionGain } from '@/utils/subscription/sessionGain';
-import { useBotStatus } from '@/hooks/useBotStatus';
 import balanceManager from '@/utils/balance/balanceManager';
 
-interface AutoSessionsProps {
+interface UseAutoSessionsProps {
   userData: UserData;
   updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>;
   setShowLimitAlert: (show: boolean) => void;
 }
 
-export const useAutoSessions = ({ userData, updateBalance, setShowLimitAlert }: AutoSessionsProps) => {
-  const [lastAutoSessionTime, setLastAutoSessionTime] = useState<Date | null>(null);
-  const { isBotActive, activityLevel } = useBotStatus();
-
-  // Simuler une session automatique périodiquement si le bot est actif
+export const useAutoSessions = ({
+  userData,
+  updateBalance,
+  setShowLimitAlert
+}: UseAutoSessionsProps) => {
+  // Initialize auto session state
+  const [lastAutoSessionTime, setLastAutoSessionTime] = useState<Date>(new Date());
+  const [activityLevel, setActivityLevel] = useState<number>(0);
+  const [isBotActive, setIsBotActive] = useState<boolean>(false);
+  
+  // Effect to simulate bot activity
   useEffect(() => {
-    let sessionTimer: NodeJS.Timeout | null = null;
-
-    const runAutoSession = async () => {
-      if (!isBotActive || !userData?.subscription) {
-        return;
+    // Only activate if user has a valid profile
+    if (!userData?.profile?.id) return;
+    
+    // Start bot after a short delay
+    const timeout = setTimeout(() => {
+      setIsBotActive(true);
+      console.log("Bot activated for automated revenue generation");
+    }, 5000);
+    
+    // Update activity level periodically
+    const activityInterval = setInterval(() => {
+      setActivityLevel(prev => {
+        const newLevel = Math.min(100, prev + Math.random() * 5);
+        return Math.floor(newLevel);
+      });
+    }, 30000);
+    
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(activityInterval);
+    };
+  }, [userData?.profile?.id]);
+  
+  // Function to generate automatic revenue
+  const generateAutomaticRevenue = async (): Promise<boolean> => {
+    try {
+      if (!isBotActive || !userData?.profile?.id) {
+        return false;
       }
       
-      try {
-        // Calculer le gain en fonction du niveau d'abonnement et de l'activité du bot
-        const gain = calculateAutoSessionGain(
-          userData.subscription,
-          balanceManager.getDailyGains(),
-          userData.referrals?.length || 0
-        );
-
-        // Si le gain est nul (limite atteinte), ne pas continuer
-        if (gain <= 0) {
-          console.log("Limite quotidienne atteinte pour les sessions automatiques");
-          setShowLimitAlert(true);
-          return;
-        }
-        
-        console.log(`Génération automatique: gain=${gain}, activité=${activityLevel}`);
-
-        // Ajouter le gain au solde
-        const gainAdded = balanceManager.addDailyGain(gain, userData.subscription);
-        
-        // Si le gain n'a pas pu être ajouté (limite atteinte), désactiver le bot
-        if (!gainAdded) {
-          console.log("Limite quotidienne atteinte, désactivation du bot");
-          
-          // Désactiver le bot via l'événement global
-          window.dispatchEvent(new CustomEvent('bot:force-status', {
-            detail: { active: false, reason: 'limit_reached' }
-          }));
-          
-          setShowLimitAlert(true);
-          return;
-        }
-
-        // Ajouter le gain au bilan complet
-        const report = `Analyse automatique de contenu`;
-        await updateBalance(gain, report);
-        
-        // Mettre à jour l'heure de la dernière session
-        setLastAutoSessionTime(new Date());
-        
-        // Déclencher des événements d'activité
-        window.dispatchEvent(new CustomEvent('dashboard:activity', {
-          detail: { level: 'normal', agents: Math.ceil(Math.random() * 3) + 1 }
-        }));
-        
-        // Micro-gain pour les animations
-        window.dispatchEvent(new CustomEvent('micro-gain', {
-          detail: { amount: gain, agent: Math.ceil(Math.random() * 5) }
-        }));
-      } catch (error) {
-        console.error("Erreur lors de la session automatique:", error);
-      } finally {
-        // Planifier la prochaine session avec un délai variable
-        // Le délai est plus court si l'activité est élevée
-        const baseDelay = isBotActive ? 45000 : 120000; // 45s ou 2min
-        const activityFactor = Math.max(0.5, Math.min(1.5, activityLevel / 50));
-        const randomFactor = 0.8 + (Math.random() * 0.4); // 0.8-1.2
-        
-        const nextDelay = Math.floor(baseDelay / activityFactor * randomFactor);
-        
-        sessionTimer = setTimeout(runAutoSession, nextDelay);
+      // Calculate a small random gain based on subscription tier
+      const baseGain = 0.01; // Base gain for freemium
+      
+      // Adjust gain based on subscription
+      let multiplier = 1;
+      switch (userData.subscription) {
+        case 'premium':
+          multiplier = 2.5;
+          break;
+        case 'pro':
+          multiplier = 5;
+          break;
+        case 'ultimate':
+          multiplier = 10;
+          break;
       }
-    };
-
-    // Démarrer la première session automatique avec un délai initial
-    const initialDelay = 5000 + Math.random() * 8000; // 5-13 secondes
-    sessionTimer = setTimeout(runAutoSession, initialDelay);
-
-    // Nettoyer le timer quand le composant est démonté
-    return () => {
-      if (sessionTimer) {
-        clearTimeout(sessionTimer);
+      
+      // Add a small random variation
+      const randomFactor = 0.8 + Math.random() * 0.4; // 80% - 120%
+      const gain = baseGain * multiplier * randomFactor;
+      
+      // Format gain to 4 decimal places for consistency
+      const formattedGain = parseFloat(gain.toFixed(4));
+      
+      // Check if adding this gain would exceed daily limit
+      const currentDailyGains = balanceManager.getDailyGains();
+      const dailyLimit = balanceManager.getDailyLimit(userData.subscription);
+      
+      if (currentDailyGains + formattedGain > dailyLimit) {
+        // We've reached the daily limit
+        setShowLimitAlert(true);
+        return false;
       }
-    };
-  }, [isBotActive, userData, updateBalance, activityLevel, setShowLimitAlert]);
-
+      
+      // Update last session time
+      setLastAutoSessionTime(new Date());
+      
+      // Add to balance and create transaction record
+      await updateBalance(formattedGain, "Analyse automatique par le robot", false);
+      
+      // Update daily gains counter
+      balanceManager.addDailyGain(formattedGain);
+      
+      return true;
+    } catch (error) {
+      console.error("Error generating automatic revenue:", error);
+      return false;
+    }
+  };
+  
   return {
     lastAutoSessionTime,
     activityLevel,
-    isBotActive
+    isBotActive,
+    generateAutomaticRevenue
   };
 };
 
