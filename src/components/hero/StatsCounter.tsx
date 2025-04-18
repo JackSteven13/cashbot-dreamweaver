@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
 import { formatRevenue } from '@/utils/formatters';
-import { loadStoredValues, incrementDateLinkedStats } from '@/hooks/stats/utils/storageManager';
+import { loadStoredValues, incrementDateLinkedStats, enforceMinimumStats } from '@/hooks/stats/utils/storageManager';
 
 interface StatsCounterProps {
   dailyAdsTarget?: number;
@@ -75,8 +75,8 @@ const StatsCounter = ({
       // Mettre à jour l'interface avec une fraction des nouveaux incréments
       // pour une progression visuelle plus fluide
       setStableValues(prev => {
-        const adsIncrement = Math.max(0, incrementedStats.adsCount - prev.adsCount);
-        const revenueIncrement = Math.max(0, incrementedStats.revenueCount - prev.revenueCount);
+        const adsIncrement = Math.max(0, incrementedStats.newAdsCount - prev.adsCount);
+        const revenueIncrement = Math.max(0, incrementedStats.newRevenueCount - prev.revenueCount);
         
         // Si les incréments sont positifs, ajouter une fraction
         return {
@@ -89,10 +89,16 @@ const StatsCounter = ({
         };
       });
     }, 45000 + Math.random() * 30000); // Entre 45 et 75 secondes
+
+    // S'assurer que les valeurs ne tombent jamais en dessous des minimums
+    const minimumCheckInterval = setInterval(() => {
+      enforceMinimumStats(40000, 50000);
+    }, 60000); // Vérifier chaque minute
     
     return () => {
       clearInterval(syncInterval);
       clearInterval(autoIncrementInterval);
+      clearInterval(minimumCheckInterval);
     };
   }, [stableValues]);
 

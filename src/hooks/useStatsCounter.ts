@@ -1,8 +1,9 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { useStatsInitialization } from './stats/useStatsInitialization';
 import { useStatsAnimation } from './stats/useStatsAnimation';
 import { useStatsCycleManagement } from '@/hooks/stats/useStatsCycleManagement';
-import { loadStoredValues, incrementDateLinkedStats, saveValues } from './stats/utils/storageManager';
+import { loadStoredValues, incrementDateLinkedStats, saveValues, enforceMinimumStats } from './stats/utils/storageManager';
 
 interface UseStatsCounterParams {
   dailyAdsTarget: number;
@@ -96,6 +97,9 @@ export const useStatsCounter = ({
         saveValues(MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT);
         console.log("Compteurs initialisés avec les valeurs minimales");
       }
+      
+      // S'assurer que les valeurs respectent le minimum
+      enforceMinimumStats(MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT);
     }
   }, []);
   
@@ -125,17 +129,17 @@ export const useStatsCounter = ({
         const newValues = incrementDateLinkedStats();
         
         // Mettre à jour les compteurs avec les nouvelles valeurs
-        setAdsCount(newValues.adsCount);
-        setRevenueCount(newValues.revenueCount);
+        setAdsCount(newValues.newAdsCount);
+        setRevenueCount(newValues.newRevenueCount);
         
         // Forcer aussi une mise à jour partielle des valeurs affichées
         setDisplayedAdsCount(prev => {
-          const diff = newValues.adsCount - prev;
+          const diff = newValues.newAdsCount - prev;
           return prev + Math.max(1, Math.floor(diff * 0.2)); // 20% de la différence
         });
         
         setDisplayedRevenueCount(prev => {
-          const diff = newValues.revenueCount - prev;
+          const diff = newValues.newRevenueCount - prev;
           return prev + Math.max(0.01, diff * 0.2); // 20% de la différence
         });
       }
@@ -143,7 +147,7 @@ export const useStatsCounter = ({
     
     return () => clearInterval(autoIncrement);
   }, [countersInitialized, lastAutoIncrementTime]);
-  
+
   // Save to session storage on beforeunload to ensure values persist across refreshes
   useEffect(() => {
     const saveToSession = () => {
@@ -179,8 +183,8 @@ export const useStatsCounter = ({
       const newValues = incrementDateLinkedStats();
       
       // Mettre à jour les compteurs avec les nouvelles valeurs
-      setAdsCount(newValues.adsCount);
-      setRevenueCount(newValues.revenueCount);
+      setAdsCount(newValues.newAdsCount);
+      setRevenueCount(newValues.newRevenueCount);
     }, 60000 + Math.floor(Math.random() * 30000)); // Toutes les 60-90 secondes
     
     // Schedule reset at midnight
@@ -198,3 +202,5 @@ export const useStatsCounter = ({
     displayedRevenueCount: Math.max(MINIMUM_REVENUE_COUNT, displayedRevenueCount)
   }), [displayedAdsCount, displayedRevenueCount]);
 };
+
+export default useStatsCounter;

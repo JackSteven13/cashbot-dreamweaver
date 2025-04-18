@@ -1,10 +1,11 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { activeLocations } from './data/locationData';
 import { calculateRevenueForLocation } from './utils/revenueCalculator';
 import { scheduleMidnightReset } from './utils/cycleManager';
 import { getTotalHourlyRate } from './utils/hourlyRates';
 import { calculateBurstActivity } from './utils/burstActivity';
-import { saveValues } from './utils/storageManager';
+import { saveValues, enforceMinimumStats } from './utils/storageManager';
 
 interface UseStatsCycleManagementParams {
   setAdsCount: React.Dispatch<React.SetStateAction<number>>;
@@ -76,9 +77,15 @@ export const useStatsCycleManagement = ({
       }
     }, 60000);
     
+    // S'assurer périodiquement que les valeurs minimales sont respectées
+    const minimumCheckInterval = setInterval(() => {
+      enforceMinimumStats(40000, 50000);
+    }, 120000);
+    
     return () => {
       clearInterval(interval);
       clearInterval(watchdogInterval);
+      clearInterval(minimumCheckInterval);
     };
   }, [continuousMode]);
   
@@ -129,13 +136,13 @@ export const useStatsCycleManagement = ({
     });
     
     setAdsCount(prev => {
-      const newValue = Math.max(0, prev + totalAdsIncrement);
+      const newValue = Math.max(40000, prev + totalAdsIncrement);
       saveValues(newValue, 0, true);
       return newValue;
     });
     
     setRevenueCount(prev => {
-      const newValue = Math.max(0, prev + totalRevenue);
+      const newValue = Math.max(50000, prev + totalRevenue);
       saveValues(0, newValue, true);
       return newValue;
     });
@@ -146,8 +153,8 @@ export const useStatsCycleManagement = ({
       const visibleAdsUpdate = Math.ceil(totalAdsIncrement * 0.3);
       const visibleRevenueUpdate = totalRevenue * 0.3;
       
-      setDisplayedAdsCount(prev => Math.max(0, prev + visibleAdsUpdate));
-      setDisplayedRevenueCount(prev => Math.max(0, prev + visibleRevenueUpdate));
+      setDisplayedAdsCount(prev => Math.max(40000, prev + visibleAdsUpdate));
+      setDisplayedRevenueCount(prev => Math.max(50000, prev + visibleRevenueUpdate));
     }
   }, [lastUpdateTime, setAdsCount, setRevenueCount, isPaused, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
@@ -168,22 +175,19 @@ export const useStatsCycleManagement = ({
         setLastResetDate(resetDate);
         
         if (resetDate !== lastResetDate) {
-          setAdsCount(0);
-          setRevenueCount(0);
-          setDisplayedAdsCount(0);
-          setDisplayedRevenueCount(0);
+          // Ne réinitialisons pas à 0, mais appliquons les valeurs minimales
+          setAdsCount(prev => Math.max(40000, prev));
+          setRevenueCount(prev => Math.max(50000, prev));
+          setDisplayedAdsCount(prev => Math.max(40000, prev));
+          setDisplayedRevenueCount(prev => Math.max(50000, prev));
           setIsPaused(false);
           
-          localStorage.removeItem('stats_ads_count');
-          localStorage.removeItem('stats_revenue_count');
-          localStorage.removeItem('displayed_ads_count');
-          localStorage.removeItem('displayed_revenue_count');
+          // S'assurer que les valeurs minimales sont respectées dans le stockage
+          enforceMinimumStats(40000, 50000);
         }
-      },
-      dailyAdsTarget,
-      dailyRevenueTarget
+      }
     );
-  }, [dailyAdsTarget, dailyRevenueTarget, setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount, lastResetDate]);
+  }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount, lastResetDate]);
   
   return {
     scheduleCycleUpdate,
