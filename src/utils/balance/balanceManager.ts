@@ -9,7 +9,8 @@ const PERSISTENCE_KEYS = {
   HIGHEST_BALANCE: 'highest_balance',
   DAILY_INCREMENT: 'daily_balance_increment',
   LAST_BALANCE_UPDATE: 'last_balance_update',
-  BALANCE_HISTORY: 'balance_history_records'
+  BALANCE_HISTORY: 'balance_history_records',
+  DAILY_GAINS: 'daily_gains'
 };
 
 // État interne
@@ -18,6 +19,7 @@ const state = {
   highestBalance: 0,
   lastUpdateTime: Date.now(),
   dailyGrowthFactor: 0,
+  dailyGains: 0,
   historyEntries: [] as { amount: number, timestamp: number, source: string }[],
   watchers: [] as ((balance: number) => void)[]
 };
@@ -28,6 +30,7 @@ const initialize = (initialBalance: number, withRandomness = true) => {
     // Récupérer toutes les sources de solde possible
     const storedCurrentBalance = parseFloat(localStorage.getItem(PERSISTENCE_KEYS.CURRENT_BALANCE) || '0');
     const storedHighestBalance = parseFloat(localStorage.getItem(PERSISTENCE_KEYS.HIGHEST_BALANCE) || '0');
+    const storedDailyGains = parseFloat(localStorage.getItem(PERSISTENCE_KEYS.DAILY_GAINS) || '0');
     
     // Utiliser la valeur la plus élevée
     const persistedBalance = Math.max(storedCurrentBalance, storedHighestBalance, 0);
@@ -35,6 +38,7 @@ const initialize = (initialBalance: number, withRandomness = true) => {
     // La valeur passée a priorité si elle est définie et supérieure aux valeurs stockées
     state.currentBalance = Math.max(initialBalance, persistedBalance);
     state.highestBalance = state.currentBalance;
+    state.dailyGains = storedDailyGains;
     
     // Calculer un facteur de croissance quotidien aléatoire (entre 0.8% et 1.2% par jour)
     const randomFactor = withRandomness ? 0.8 + (Math.random() * 0.4) : 1;
@@ -55,9 +59,11 @@ const initialize = (initialBalance: number, withRandomness = true) => {
     localStorage.setItem(PERSISTENCE_KEYS.CURRENT_BALANCE, state.currentBalance.toString());
     localStorage.setItem(PERSISTENCE_KEYS.HIGHEST_BALANCE, state.highestBalance.toString());
     localStorage.setItem(PERSISTENCE_KEYS.LAST_BALANCE_UPDATE, Date.now().toString());
+    localStorage.setItem(PERSISTENCE_KEYS.DAILY_GAINS, state.dailyGains.toString());
     
     console.log(`[BalanceManager] Loaded persisted balance: ${state.currentBalance}`);
     console.log(`[BalanceManager] Daily growth factor: ${state.dailyGrowthFactor}`);
+    console.log(`[BalanceManager] Daily gains loaded: ${state.dailyGains}`);
     
     // Programmer la croissance quotidienne
     scheduleDailyGrowth();
@@ -69,6 +75,78 @@ const initialize = (initialBalance: number, withRandomness = true) => {
     console.error("[BalanceManager] Error initializing:", error);
     state.currentBalance = initialBalance;
   }
+};
+
+// Réinitialiser le solde complètement
+const resetBalance = () => {
+  state.currentBalance = 0;
+  state.highestBalance = 0;
+  localStorage.setItem(PERSISTENCE_KEYS.CURRENT_BALANCE, '0');
+  localStorage.setItem(PERSISTENCE_KEYS.HIGHEST_BALANCE, '0');
+  localStorage.setItem(PERSISTENCE_KEYS.LAST_BALANCE_UPDATE, Date.now().toString());
+  
+  // Notifier les observateurs
+  notifyWatchers();
+  
+  console.log("[BalanceManager] Balance reset to 0");
+  return 0;
+};
+
+// Réinitialiser uniquement les gains quotidiens
+const resetDailyGains = () => {
+  state.dailyGains = 0;
+  localStorage.setItem(PERSISTENCE_KEYS.DAILY_GAINS, '0');
+  console.log("[BalanceManager] Daily gains reset to 0");
+};
+
+// Obtenir les gains quotidiens actuels
+const getDailyGains = () => {
+  // Récupérer depuis le stockage local (pour prévenir les problèmes de rafraîchissement)
+  try {
+    const storedValue = localStorage.getItem(PERSISTENCE_KEYS.DAILY_GAINS);
+    if (storedValue) {
+      const parsedValue = parseFloat(storedValue);
+      if (!isNaN(parsedValue)) {
+        state.dailyGains = parsedValue;
+      }
+    }
+  } catch (e) {
+    console.error("Erreur lors de la récupération des gains quotidiens:", e);
+  }
+  
+  return state.dailyGains;
+};
+
+// Limite quotidienne basée sur l'abonnement
+const getDailyLimit = (subscription: string = 'freemium'): number => {
+  const limits: Record<string, number> = {
+    freemium: 0.5,
+    basic: 2.5,
+    premium: 5,
+    elite: 10
+  };
+  
+  return limits[subscription] || limits.freemium;
+};
+
+// Ajouter un gain quotidien
+const addDailyGain = (amount: number): boolean => {
+  if (isNaN(amount) || amount <= 0) return false;
+  
+  const currentGains = getDailyGains();
+  const newDailyGains = currentGains + amount;
+  
+  // Mettre à jour l'état et persister
+  state.dailyGains = newDailyGains;
+  localStorage.setItem(PERSISTENCE_KEYS.DAILY_GAINS, newDailyGains.toString());
+  
+  // Déclencher un événement pour la mise à jour de l'UI
+  window.dispatchEvent(new CustomEvent('dailyGains:updated', {
+    detail: { gains: newDailyGains }
+  }));
+  
+  console.log(`[BalanceManager] Added daily gain: ${amount}. New total: ${newDailyGains}`);
+  return true;
 };
 
 // Forcer une valeur spécifique pour le solde
@@ -97,6 +175,39 @@ const forceBalanceSync = (newBalance: number) => {
   }
 };
 
+// Synchroniser avec le serveur (utiliser la valeur la plus élevée)
+const syncWithServer = (serverBalance: number) => {
+  if (isNaN(serverBalance) || serverBalance < 0) return state.currentBalance;
+  
+  const currentBalance = state.currentBalance;
+  
+  // N'utiliser la valeur du serveur que si elle est plus élevée
+  if (serverBalance > currentBalance) {
+    state.currentBalance = serverBalance;
+    
+    // Mettre à jour le maximum historique si nécessaire
+    if (serverBalance > state.highestBalance) {
+      state.highestBalance = serverBalance;
+      localStorage.setItem(PERSISTENCE_KEYS.HIGHEST_BALANCE, serverBalance.toString());
+    }
+    
+    // Persister le nouveau solde
+    localStorage.setItem(PERSISTENCE_KEYS.CURRENT_BALANCE, serverBalance.toString());
+    localStorage.setItem(PERSISTENCE_KEYS.LAST_BALANCE_UPDATE, Date.now().toString());
+    
+    // Ajouter à l'historique
+    addToHistory(serverBalance - currentBalance, 'server-sync');
+    
+    // Notifier les observateurs
+    notifyWatchers();
+    
+    console.log(`[BalanceManager] Synced with server: ${serverBalance}€`);
+    return serverBalance;
+  }
+  
+  return currentBalance;
+};
+
 // Ajouter une entrée à l'historique
 const addToHistory = (amount: number, source: string) => {
   try {
@@ -119,10 +230,37 @@ const addToHistory = (amount: number, source: string) => {
   }
 };
 
+// Ajouter un montant au solde actuel
+const addToBalance = (amount: number): number => {
+  if (isNaN(amount) || amount <= 0) return state.currentBalance;
+  
+  const newBalance = state.currentBalance + amount;
+  state.currentBalance = newBalance;
+  state.lastUpdateTime = Date.now();
+  
+  // Mettre à jour le solde maximum si nécessaire
+  if (newBalance > state.highestBalance) {
+    state.highestBalance = newBalance;
+    localStorage.setItem(PERSISTENCE_KEYS.HIGHEST_BALANCE, newBalance.toString());
+  }
+  
+  // Persister le nouveau solde
+  localStorage.setItem(PERSISTENCE_KEYS.CURRENT_BALANCE, newBalance.toString());
+  localStorage.setItem(PERSISTENCE_KEYS.LAST_BALANCE_UPDATE, Date.now().toString());
+  
+  // Ajouter à l'historique
+  addToHistory(amount, 'add');
+  
+  // Notifier les observateurs
+  notifyWatchers();
+  
+  return newBalance;
+};
+
 // Mettre à jour le solde (ajouter un gain)
 const updateBalance = (gain: number) => {
   // Vérifier que le gain est positif et valide
-  if (isNaN(gain) || gain <= 0) return;
+  if (isNaN(gain) || gain <= 0) return state.currentBalance;
   
   // Calculer le nouveau solde
   const newBalance = state.currentBalance + gain;
@@ -239,6 +377,28 @@ const notifyWatchers = () => {
   });
 };
 
+// Nettoyer les données utilisateur lors de la déconnexion
+const cleanupUserBalanceData = () => {
+  // Réinitialiser l'état interne
+  state.currentBalance = 0;
+  state.highestBalance = 0;
+  state.dailyGains = 0;
+  state.historyEntries = [];
+  
+  // Supprimer les données du stockage local
+  localStorage.removeItem(PERSISTENCE_KEYS.CURRENT_BALANCE);
+  localStorage.removeItem(PERSISTENCE_KEYS.HIGHEST_BALANCE);
+  localStorage.removeItem(PERSISTENCE_KEYS.DAILY_GAINS);
+  localStorage.removeItem(PERSISTENCE_KEYS.LAST_BALANCE_UPDATE);
+  localStorage.removeItem(PERSISTENCE_KEYS.BALANCE_HISTORY);
+  localStorage.removeItem('last_balance_growth_date');
+  
+  // Notifier les observateurs
+  notifyWatchers();
+  
+  console.log("[BalanceManager] User balance data cleaned up");
+};
+
 // Ajouter un observateur
 const addWatcher = (callback: (balance: number) => void) => {
   state.watchers.push(callback);
@@ -267,7 +427,16 @@ const balanceManager = {
   getBalanceHistory,
   addWatcher,
   forceBalanceSync,
-  addBalanceGrowth
+  addBalanceGrowth,
+  // Ajouter les méthodes manquantes
+  resetBalance,
+  getDailyGains,
+  addDailyGain,
+  resetDailyGains,
+  addToBalance,
+  syncWithServer,
+  getDailyLimit,
+  cleanupUserBalanceData
 };
 
 export default balanceManager;

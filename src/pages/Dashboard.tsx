@@ -26,7 +26,8 @@ const Dashboard = () => {
     await refreshData();
   };
 
-  const { automaticRevenue, processAutomaticRevenue } = useAutomaticRevenue({
+  // Utilisation corrigée du hook useAutomaticRevenue
+  const { generateAutomaticRevenue } = useAutomaticRevenue({
     userData,
     updateBalance
   });
@@ -84,11 +85,12 @@ const Dashboard = () => {
             balanceManager.initialize(userData.balance);
           }
           
-          processAutomaticRevenue();
+          // Utiliser la nouvelle fonction
+          generateAutomaticRevenue(true);
         }, 5000);
       }
     }
-  }, [isInitializing, username, isFirstLoad, userData, processAutomaticRevenue]);
+  }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue]);
 
   // Heartbeat effect to ensure periodic updates
   useEffect(() => {
@@ -110,14 +112,14 @@ const Dashboard = () => {
           
           // Trigger more frequent automatic revenue generation
           if (Math.random() > 0.3) {
-            processAutomaticRevenue();
+            generateAutomaticRevenue();
           }
         }
       }
     }, 120000); // Heartbeat every 2 minutes
     
     return () => clearInterval(heartbeatInterval);
-  }, [userData, processAutomaticRevenue, lastProcessTime]);
+  }, [userData, generateAutomaticRevenue, lastProcessTime]);
   
   if (authLoading || !user) {
     return <DashboardSkeleton username="Chargement..." />;

@@ -5,17 +5,24 @@ import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscript
 import { calculateAutoSessionGain } from '@/utils/subscription/sessionGain';
 import balanceManager from '@/utils/balance/balanceManager';
 
-export const useAutomaticRevenue = (
-  userData: UserData | null, 
-  updateBalance: (gain: number, report: string, forceUpdate: boolean) => Promise<void>,
-  isNewUser: boolean
-) => {
+interface AutomaticRevenueProps {
+  userData: UserData | null;
+  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>;
+}
+
+export const useAutomaticRevenue = ({
+  userData,
+  updateBalance
+}: AutomaticRevenueProps) => {
   const [isBotActive, setIsBotActive] = useState(() => {
     // Récupérer l'état précédent ou activer par défaut
     return localStorage.getItem('bot_active') !== 'false';
   });
   const [dailyLimitProgress, setDailyLimitProgress] = useState(0);
   const [todaysGains, setTodaysGains] = useState(0);
+  
+  // Détermine si l'utilisateur est nouveau
+  const isNewUser = !userData?.balance || userData.balance <= 0;
   
   // Compteur de jours consécutifs
   const [consecutiveVisitDays, setConsecutiveVisitDays] = useState(() => {
@@ -110,12 +117,12 @@ export const useAutomaticRevenue = (
     const todaysTransactions = userData.transactions.filter(tx => 
       tx.date && tx.date.startsWith(today) && (tx.gain || 0) > 0
     );
-    const todaysGains = todaysTransactions.reduce((sum, tx) => sum + (tx.gain || 0), 0);
+    const dailyGains = todaysTransactions.reduce((sum, tx) => sum + (tx.gain || 0), 0);
     
-    setTodaysGains(todaysGains);
+    setTodaysGains(dailyGains);
     
     // Calculer le pourcentage de la limite quotidienne
-    const percentage = Math.min(100, (todaysGains / limit) * 100);
+    const percentage = Math.min(100, (dailyGains / limit) * 100);
     setDailyLimitProgress(percentage);
     
     // Si le pourcentage atteint 100%, désactiver le bot automatiquement
@@ -149,14 +156,14 @@ export const useAutomaticRevenue = (
   // Fonction de génération de revenus automatiques
   const generateAutomaticRevenue = useCallback(async (forceUpdate = false) => {
     if (!userData || isNewUser || !isBotActive) {
-      return;
+      return false;
     }
     
     const now = Date.now();
     // Vérifier le temps écoulé depuis le dernier gain
     if (!forceUpdate && now - lastGainTimeRef.current < minTimeBetweenGains) {
       console.log("Throttling automatic revenue generation - too frequent");
-      return;
+      return false;
     }
     
     try {
