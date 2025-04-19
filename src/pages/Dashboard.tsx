@@ -26,7 +26,7 @@ const Dashboard = () => {
     await refreshData();
   };
 
-  // Utilisation corrigée du hook useAutomaticRevenue
+  // Utilisation du hook useAutomaticRevenue
   const { generateAutomaticRevenue } = useAutomaticRevenue({
     userData,
     updateBalance
@@ -85,21 +85,21 @@ const Dashboard = () => {
             balanceManager.initialize(userData.balance);
           }
           
-          // Utiliser la nouvelle fonction
+          // Utiliser la fonction generateAutomaticRevenue
           generateAutomaticRevenue(true);
         }, 5000);
       }
     }
   }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue]);
 
-  // Heartbeat effect to ensure periodic updates
+  // Heartbeat effect pour assurer des mises à jour périodiques plus lentes
   useEffect(() => {
     const heartbeatInterval = setInterval(() => {
       if (userData) {
         const now = Date.now();
         
-        // Vérifier le temps écoulé depuis le dernier traitement pour éviter les mises à jour excessives
-        if (now - lastProcessTime > 60000) { // Au moins 1 minute entre les mises à jour
+        // Vérifier le temps écoulé depuis le dernier traitement - intervalle beaucoup plus long
+        if (now - lastProcessTime > 180000) { // Au moins 3 minutes entre les mises à jour
           console.log("Dashboard heartbeat - ensuring revenue generation is active");
           
           // Mettre à jour le timestamp du dernier processus
@@ -110,13 +110,13 @@ const Dashboard = () => {
             detail: { timestamp: now, animate: true } 
           }));
           
-          // Trigger more frequent automatic revenue generation
-          if (Math.random() > 0.3) {
+          // Déclencher l'automatic revenue moins souvent (30% de chance)
+          if (Math.random() > 0.7) {
             generateAutomaticRevenue();
           }
         }
       }
-    }, 120000); // Heartbeat every 2 minutes
+    }, 240000); // Heartbeat toutes les 4 minutes (beaucoup plus lent)
     
     return () => clearInterval(heartbeatInterval);
   }, [userData, generateAutomaticRevenue, lastProcessTime]);

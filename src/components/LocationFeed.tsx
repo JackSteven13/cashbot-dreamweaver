@@ -32,9 +32,9 @@ const LocationFeed = () => {
   const maxLocations = 5;
 
   useEffect(() => {
-    // Intervalle plus réaliste entre les nouvelles données
+    // Intervalle beaucoup plus lent entre les nouvelles données (12-20 secondes)
     const interval = setInterval(() => {
-      // Ajouter une nouvelle localisation aléatoire avec un temps plus réaliste
+      // Ajouter une nouvelle localisation aléatoire
       setLocations(prevLocations => {
         const randomLocation = westernLocations[Math.floor(Math.random() * westernLocations.length)];
         const newLocations = [randomLocation, ...prevLocations];
@@ -45,7 +45,7 @@ const LocationFeed = () => {
         }
         return newLocations;
       });
-    }, 3500); // Ralentir à 3.5 secondes pour plus de réalisme
+    }, 12000 + Math.floor(Math.random() * 8000)); // Entre 12 et 20 secondes
 
     return () => clearInterval(interval);
   }, []);
@@ -82,7 +82,7 @@ const LocationFeed = () => {
                   {location.latency}ms
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {index === 0 ? "À l'instant" : `Il y a ${index * 3 + Math.floor(Math.random() * 2)} min`}
+                  {index === 0 ? "À l'instant" : `Il y a ${index * 5 + Math.floor(Math.random() * 3)} min`}
                 </p>
               </div>
             </div>
