@@ -8,7 +8,7 @@ interface UseStatsAnimationParams {
   setDisplayedRevenueCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
-// Calculer un incrément approprié pour une animation fluide avec simulation de comportement de bots
+// Calculer un incrément très minimal pour une animation extrêmement lente
 const calculateCounterIncrement = (targetCount: number, currentCount: number): number => {
   // Différence entre la valeur cible et actuelle
   const difference = targetCount - currentCount;
@@ -22,14 +22,13 @@ const calculateCounterIncrement = (targetCount: number, currentCount: number): n
     return 0; // Ne pas autoriser de grandes baisses
   }
   
-  // Probabilité d'un petit "boost" dans le traitement (comme si plusieurs bots finissaient en même temps)
-  // Réduite à seulement 2% de chance
-  const isBoostMode = Math.random() > 0.98;
+  // Réduire encore plus la probabilité d'un "boost" (seulement 0.5% de chance)
+  const isBoostMode = Math.random() > 0.995;
   
-  // Limiter fortement l'incrément à seulement 1-3 vidéos maximum
+  // Limiter l'incrément à 1 vidéo maximum (exceptionnellement 2 en mode boost)
   return difference > 0 ? 
-    Math.min(isBoostMode ? 3 : 1, Math.max(1, Math.floor(Math.abs(difference) / 5000))) : 
-    -Math.min(isBoostMode ? 3 : 1, Math.max(1, Math.floor(Math.abs(difference) / 5000)));
+    Math.min(isBoostMode ? 2 : 1, 1) : 
+    -Math.min(isBoostMode ? 2 : 1, 1);
 };
 
 export const useStatsAnimation = ({
@@ -46,7 +45,7 @@ export const useStatsAnimation = ({
   const maxAdsCount = useRef(0);
   const maxRevenueCount = useRef(0);
   
-  // Compteur pour ralentir les mises à jour d'animation
+  // Compteur pour ralentir encore plus les mises à jour d'animation
   const [updateSkipCounter, setUpdateSkipCounter] = useState(0);
   
   // Référence pour l'heure de la dernière mise à jour
@@ -73,70 +72,66 @@ export const useStatsAnimation = ({
     }
   }, []);
   
-  // Forcer des mises à jour périodiques mais moins fréquentes et plus petites
+  // Forcer des mises à jour synchronisées avec le feed des publicités
   useEffect(() => {
-    const handleForcedUpdate = () => {
-      // Ajouter de petites progressions plus réalistes (maximum 1-3 vidéos)
-      setDisplayedAdsCount(prev => {
-        // Ne jamais descendre en dessous de la valeur maximale atteinte
-        if (prev > maxAdsCount.current) {
-          maxAdsCount.current = prev;
-          localStorage.setItem('max_ads_count', prev.toString());
-        }
+    const handleLocationAdded = (event: Event) => {
+      // Lors de l'ajout d'une nouvelle publicité dans le feed, incrémenter le compteur
+      // mais après un délai pour simuler le traitement
+      setTimeout(() => {
+        setDisplayedAdsCount(prev => {
+          // Ne jamais descendre en dessous de la valeur maximale atteinte
+          if (prev > maxAdsCount.current) {
+            maxAdsCount.current = prev;
+            localStorage.setItem('max_ads_count', prev.toString());
+          }
+          
+          // Toujours incrémenter de 1 exactement
+          return prev + 1;
+        });
         
-        // Si déjà à la valeur cible ou supérieur, ne pas changer
-        if (Math.abs(prev - adsCount) < 1 || prev > adsCount) return prev;
+        // Pour chaque vidéo, ajouter un montant fixe entre 0.25€ et 0.90€
+        const adValue = 0.25 + Math.random() * 0.65;
         
-        // Limiter strictement à 1-3 vidéos
-        const increment = 1 + Math.floor(Math.random() * 2); // 1 à 3
-        return Math.min(prev + increment, adsCount);
-      });
-      
-      setDisplayedRevenueCount(prev => {
-        // Ne jamais descendre en dessous de la valeur maximale atteinte
-        if (prev > maxRevenueCount.current) {
-          maxRevenueCount.current = prev;
-          localStorage.setItem('max_revenue_count', prev.toString());
-        }
-        
-        // Si déjà à la valeur cible ou supérieur, ne pas changer
-        if (Math.abs(prev - revenueCount) < 1 || prev > revenueCount) return prev;
-        
-        // Petits gains par vidéo (0.20€ à 0.90€)
-        const increment = 0.20 + Math.floor(Math.random() * 70) / 100;
-        return Math.min(prev + increment, revenueCount);
-      });
+        setDisplayedRevenueCount(prev => {
+          // Ne jamais descendre en dessous de la valeur maximale atteinte
+          if (prev > maxRevenueCount.current) {
+            maxRevenueCount.current = prev;
+            localStorage.setItem('max_revenue_count', prev.toString());
+          }
+          
+          return prev + adValue;
+        });
+      }, 1000 + Math.random() * 2000); // Délai entre 1 et 3 secondes
     };
     
-    window.addEventListener('stats:update', handleForcedUpdate);
-    return () => window.removeEventListener('stats:update', handleForcedUpdate);
-  }, [adsCount, revenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
+    window.addEventListener('location:added', handleLocationAdded);
+    return () => window.removeEventListener('location:added', handleLocationAdded);
+  }, []);
   
   const animateCounters = useCallback(() => {
     // Calculer le temps écoulé depuis la dernière mise à jour
     const now = Date.now();
     const elapsedTime = now - lastUpdateTime.current;
     
-    // Ralentir considérablement les animations (au moins 6 secondes entre chaque mise à jour)
-    // pour une progression beaucoup plus réaliste et lente
-    if (elapsedTime < 6000 + Math.random() * 4000) {
+    // Ralentir drastiquement les animations (au moins 15 secondes entre chaque mise à jour)
+    if (elapsedTime < 15000 + Math.random() * 10000) {
       return { animationActive: true }; // Continuer l'animation sans changer les valeurs
     }
     
     // Mettre à jour le temps de la dernière mise à jour
     lastUpdateTime.current = now;
     
-    // Réduire drastiquement la fréquence des mises à jour
+    // Réduire encore plus la fréquence des mises à jour
     setUpdateSkipCounter(prev => {
-      // Augmenter fortement la probabilité de sauter des frames (85% de chance)
-      const shouldSkipFrame = Math.random() > 0.15;
+      // Augmenter encore plus la probabilité de sauter des frames (95% de chance)
+      const shouldSkipFrame = Math.random() > 0.05;
       
-      if (prev < 10 && shouldSkipFrame) {
-        return prev + 1; // Sauter plus de frames
+      if (prev < 20 && shouldSkipFrame) {
+        return prev + 1; // Sauter beaucoup plus de frames
       }
       
-      // Réduire fortement la probabilité de "bursts" d'activité (seulement 4%)
-      const isBurstMode = Math.random() > 0.96;
+      // Réduire encore la probabilité de "bursts" d'activité (seulement 1%)
+      const isBurstMode = Math.random() > 0.99;
       
       // Animer le compteur d'annonces extrêmement lentement
       setDisplayedAdsCount((prevCount) => {
@@ -158,15 +153,10 @@ export const useStatsAnimation = ({
           return Math.max(prevCount, maxAdsCount.current);
         }
         
-        // Limiter fortement - maximum 1 vidéo en mode normal, jusqu'à 3 en mode burst
-        const increment = isBurstMode 
-          ? Math.min(3, 1)  // Maximum 3 en mode burst
-          : Math.min(1, 1); // Toujours 1 en mode normal
+        // Maximum 1 seule vidéo à la fois, même en mode burst
+        const increment = 1;
         
-        // Si l'incrément est 0, ne pas changer la valeur
-        if (increment === 0) return prevCount;
-        
-        // Calculer la nouvelle valeur avec une progression plus lente
+        // Calculer la nouvelle valeur avec une progression extrêmement lente
         const newValue = prevCount + increment;
         
         // Garantir qu'on ne dépasse pas la cible
@@ -178,7 +168,7 @@ export const useStatsAnimation = ({
         return finalValue;
       });
 
-      // Animer le compteur de revenus avec des gains réduits
+      // Animer le compteur de revenus avec des gains très réduits
       setDisplayedRevenueCount((prevCount) => {
         // Mettre à jour la valeur maximale si nécessaire
         if (prevCount > maxRevenueCount.current) {
@@ -197,25 +187,14 @@ export const useStatsAnimation = ({
           return Math.max(prevCount, maxRevenueCount.current);
         }
         
-        // Calculer un gain basé sur le prix moyen d'une publicité (fortement réduit)
-        // Valeurs plus réalistes: 0.20€-0.90€
-        const adValue = isBurstMode
-          ? (Math.random() * 0.5 + 0.4) // 0.40€-0.90€ pour pubs premium
-          : (Math.random() * 0.3 + 0.2); // 0.20€-0.50€ pour pubs standard
+        // Gain très faible, correspond exactement à une vidéo
+        const adValue = Math.random() * 0.45 + 0.25; // 0.25€-0.70€
         
-        // Limiter l'incrément aux valeurs réalistes d'une seule publicité
-        const increment = Math.min(adValue, Math.abs(revenueCount - prevCount));
-        
-        // Si l'incrément est trop petit, ne pas changer la valeur
-        if (increment < 0.01) return prevCount;
-        
-        // Calculer la nouvelle valeur avec une progression plus réaliste
-        const newValue = prevCount + (revenueCount > prevCount ? increment : -increment);
+        // Calculer la nouvelle valeur avec une progression beaucoup plus lente
+        const newValue = prevCount + adValue;
         
         // Garantir qu'on ne dépasse pas la cible
-        const finalValue = revenueCount > prevCount
-          ? Math.min(newValue, revenueCount)
-          : Math.max(Math.max(newValue, revenueCount), Math.max(0, maxRevenueCount.current));
+        const finalValue = Math.min(newValue, revenueCount);
           
         // Stocker la valeur précédente pour la comparaison
         setPrevRevenueCount(finalValue);
@@ -226,7 +205,6 @@ export const useStatsAnimation = ({
       return 0; // Réinitialiser le compteur
     });
 
-    // Indiquer si l'animation est toujours active
     return { 
       animationActive: adsCount !== 0 && revenueCount !== 0 && 
                       (Math.abs(adsCount - prevAdsCount) > 1 || 

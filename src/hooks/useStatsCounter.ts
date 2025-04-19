@@ -42,6 +42,7 @@ export const useStatsCounter = ({
     initialized: false,
     syncInProgress: false,
     lastAutoIncrementTime: Date.now(),
+    lastLocationUpdateTime: Date.now(),
     baseValues: {
       adsCount: MINIMUM_ADS_COUNT,
       revenueCount: MINIMUM_REVENUE_COUNT
@@ -111,7 +112,43 @@ export const useStatsCounter = ({
     }
   }, []);
   
-  // Traitement d'incrémentation automatique renforcé mais ralenti considérablement
+  // Synchroniser les incréments avec le feed des publicités
+  useEffect(() => {
+    if (!countersInitialized) return;
+    
+    const handleLocationAdded = (event: Event) => {
+      // Eviter les mises à jour trop fréquentes
+      const now = Date.now();
+      if (now - stableValuesRef.current.lastLocationUpdateTime < 5000) {
+        return;
+      }
+      stableValuesRef.current.lastLocationUpdateTime = now;
+      
+      // Incrémenter les compteurs de manière cohérente avec le feed
+      // en utilisant un délai pour simuler l'analyse
+      setTimeout(() => {
+        // Incrémenter uniquement d'une vidéo
+        const newAdsCount = adsCount + 1;
+        setAdsCount(newAdsCount);
+        
+        // Gain par vidéo réaliste (0.25€-0.80€)
+        const adValue = 0.25 + Math.random() * 0.55;
+        const newRevenueCount = revenueCount + adValue;
+        setRevenueCount(newRevenueCount);
+        
+        // Sauvegarder les valeurs
+        saveValues(newAdsCount, newRevenueCount);
+        
+        // Déclencher un événement pour que l'animation des compteurs soit synchronisée
+        window.dispatchEvent(new CustomEvent('stats:update'));
+      }, 800 + Math.random() * 1200); // Délai entre 0.8 et 2 secondes
+    };
+    
+    window.addEventListener('location:added', handleLocationAdded);
+    return () => window.removeEventListener('location:added', handleLocationAdded);
+  }, [countersInitialized, adsCount, revenueCount]);
+  
+  // Traitement d'incrémentation automatique extrêmement ralenti
   useEffect(() => {
     if (!countersInitialized) return;
     
@@ -123,8 +160,8 @@ export const useStatsCounter = ({
       return;
     }
     
-    // Pour garantir que les statistiques évoluent toujours, même sans interaction
-    // mais avec des intervalles beaucoup plus longs (2-3 minutes)
+    // Pour garantir que les statistiques évoluent toujours, mais très lentement
+    // avec des intervalles extrêmement longs (3-5 minutes)
     const autoIncrement = setInterval(() => {
       // Éviter les mises à jour simultanées
       if (stableValuesRef.current.syncInProgress) return;
@@ -133,26 +170,31 @@ export const useStatsCounter = ({
       const now = Date.now();
       const timeSinceLastIncrement = now - stableValuesRef.current.lastAutoIncrementTime;
       
-      // Incrémenter périodiquement, avec une progression beaucoup plus lente
-      if (timeSinceLastIncrement > 60000) { // Au moins 1 minute entre les incréments
+      // Incrémenter très rarement, avec une progression extrêmement lente
+      if (timeSinceLastIncrement > 180000) { // Au moins 3 minutes entre les incréments
         stableValuesRef.current.lastAutoIncrementTime = now;
         
-        // Réduire drastiquement les incréments (1-3 vidéos maximum)
-        const incrementedValues = {
-          newAdsCount: adsCount + (Math.floor(Math.random() * 2) + 1), // 1-3 vidéos
-          newRevenueCount: revenueCount + (Math.random() * 0.7 + 0.2) // 0.2-0.9€
-        };
-        
-        // Mettre à jour les compteurs avec les nouvelles valeurs
-        setAdsCount(incrementedValues.newAdsCount);
-        setRevenueCount(incrementedValues.newRevenueCount);
-        
-        // Sauvegarder les valeurs pour la persistance
-        saveValues(incrementedValues.newAdsCount, incrementedValues.newRevenueCount);
+        // Seulement 1 vidéo maximum avec probabilité réduite
+        if (Math.random() > 0.7) { // 30% de chance seulement
+          const incrementedValues = {
+            newAdsCount: adsCount + 1,
+            newRevenueCount: revenueCount + (Math.random() * 0.5 + 0.2) // 0.2-0.7€
+          };
+          
+          // Mettre à jour les compteurs avec les nouvelles valeurs
+          setAdsCount(incrementedValues.newAdsCount);
+          setRevenueCount(incrementedValues.newRevenueCount);
+          
+          // Simuler une nouvelle entrée dans le feed des publicités
+          window.dispatchEvent(new CustomEvent('location:added'));
+          
+          // Sauvegarder les valeurs pour la persistance
+          saveValues(incrementedValues.newAdsCount, incrementedValues.newRevenueCount);
+        }
       }
       
       stableValuesRef.current.syncInProgress = false;
-    }, 120000 + Math.floor(Math.random() * 60000)); // Entre 2 et 3 minutes
+    }, 180000 + Math.floor(Math.random() * 120000)); // Entre 3 et 5 minutes
     
     return () => clearInterval(autoIncrement);
   }, [countersInitialized, adsCount, revenueCount]);
@@ -178,7 +220,7 @@ export const useStatsCounter = ({
     return () => window.removeEventListener('beforeunload', saveToSession);
   }, [displayedAdsCount, displayedRevenueCount, adsCount, revenueCount]);
   
-  // Animation et mises à jour périodiques, mais beaucoup plus lentes
+  // Animation et mises à jour périodiques, mais extrêmement ralenties
   useEffect(() => {
     if (!countersInitialized) return;
     
@@ -192,27 +234,33 @@ export const useStatsCounter = ({
     // Start animation
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Interval for periodic counter updates with progression temporelle
-    // Ralenti significativement (5-7 minutes)
+    // Interval for very slow periodic counter updates
+    // Extrêmement ralenti (10-15 minutes)
     const updateInterval = setInterval(() => {
       // Éviter les mises à jour simultanées
       if (stableValuesRef.current.syncInProgress) return;
       stableValuesRef.current.syncInProgress = true;
       
-      // Incrémenter avec des valeurs très petites (1-3 vidéos maximum)
-      const increment = {
-        ads: Math.floor(Math.random() * 2) + 1, // 1-3
-        revenue: (Math.random() * 0.7 + 0.2) // 0.2-0.9€
-      };
-      
-      setAdsCount(prev => prev + increment.ads);
-      setRevenueCount(prev => prev + increment.revenue);
-      
-      // Sauvegarder pour la persistance
-      saveValues(adsCount + increment.ads, revenueCount + increment.revenue);
+      // Probabilité très faible d'incrément (20% de chance seulement)
+      if (Math.random() > 0.8) {
+        // Incrémenter avec des valeurs minimales (1 vidéo uniquement)
+        const increment = {
+          ads: 1,
+          revenue: (Math.random() * 0.5 + 0.2) // 0.2-0.7€
+        };
+        
+        setAdsCount(prev => prev + increment.ads);
+        setRevenueCount(prev => prev + increment.revenue);
+        
+        // Simuler une nouvelle entrée dans le feed
+        window.dispatchEvent(new CustomEvent('location:added'));
+        
+        // Sauvegarder pour la persistance
+        saveValues(adsCount + increment.ads, revenueCount + increment.revenue);
+      }
       
       stableValuesRef.current.syncInProgress = false;
-    }, 300000 + Math.floor(Math.random() * 120000)); // 5-7 minutes
+    }, 600000 + Math.floor(Math.random() * 300000)); // 10-15 minutes
     
     // Schedule reset at midnight
     const resetTimeout = scheduleCycleUpdate();
@@ -244,13 +292,13 @@ export const useStatsCounter = ({
           setDisplayedAdsCount(prev => {
             const diff = newAdsCount - prev;
             // Limiter l'incrément à maximum 1 vidéo
-            return prev + Math.min(1, Math.max(1, Math.floor(diff * 0.01)));
+            return prev + Math.min(1, Math.max(0, Math.floor(diff * 0.01)));
           });
           
           setDisplayedRevenueCount(prev => {
             const diff = newRevenueCount - prev;
-            // Limiter à des petits incréments
-            return prev + Math.min(0.25, Math.max(0.01, diff * 0.01));
+            // Limiter à des très petits incréments
+            return prev + Math.min(0.1, Math.max(0, diff * 0.01));
           });
         }
       }

@@ -64,34 +64,23 @@ const StatsCounter = ({
     
     // Persistance renforcée avec un timestamp
     localStorage.setItem('stats_last_sync', Date.now().toString());
-    
-    // Fréquence d'actualisation adaptative avec progression automatique
-    const autoProgressInterval = setInterval(() => {
-      // Incrémenter progressivement les statistiques
-      const incremented = incrementDateLinkedStats();
-      
-      // Mise à jour avec des pas plus conséquents
-      const newAdsCount = incremented.newAdsCount;
-      const newRevenueCount = incremented.newRevenueCount;
-      
-      // Mettre à jour la référence stable
-      stableValuesRef.current = {
-        adsCount: newAdsCount,
-        revenueCount: newRevenueCount,
-        lastUpdate: Date.now()
-      };
-      
-      // Mettre à jour l'affichage
-      setDisplayValues({
-        adsCount: newAdsCount,
-        revenueCount: newRevenueCount
-      });
-      
-    }, 60000); // Incrémenter toutes les minutes
-    
-    return () => {
-      clearInterval(autoProgressInterval);
+  }, []);
+  
+  // Synchroniser avec les événements de mise à jour du feed des publicités
+  useEffect(() => {
+    const handleLocationAdded = (event: CustomEvent) => {
+      // Attendre un peu pour que l'analyse soit simulée
+      setTimeout(() => {
+        // Incrémenter uniquement d'une vidéo
+        setDisplayValues(prev => ({
+          adsCount: prev.adsCount + 1,
+          revenueCount: prev.revenueCount + (Math.random() * 0.5 + 0.2) // 0.2-0.7€
+        }));
+      }, 1000 + Math.random() * 1500); // Délai entre 1 et 2.5 secondes
     };
+    
+    window.addEventListener('location:added', handleLocationAdded as EventListener);
+    return () => window.removeEventListener('location:added', handleLocationAdded as EventListener);
   }, []);
 
   // Mettre à jour les valeurs stables et persistantes si les valeurs de useStatsCounter augmentent
@@ -123,7 +112,7 @@ const StatsCounter = ({
     }
   }, [displayedAdsCount, displayedRevenueCount]);
 
-  // Effet pour assurer la progression continue, même pendant le temps d'inactivité
+  // Effet pour assurer la progression continue, mais très lente
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
