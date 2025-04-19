@@ -10,6 +10,7 @@ import { toast } from '@/components/ui/use-toast';
 import BalanceAnimation from '@/components/dashboard/BalanceAnimation';
 import useAutomaticRevenue from '@/hooks/useAutomaticRevenue';
 import balanceManager from '@/utils/balance/balanceManager';
+import AutoProgressNotification from '@/components/dashboard/AutoProgressNotification';
 
 const Dashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -118,9 +119,6 @@ const Dashboard = () => {
     return () => clearInterval(heartbeatInterval);
   }, [userData, processAutomaticRevenue, lastProcessTime]);
   
-  // Supprimer l'effet de mise à jour micro qui provoque des fluctuations aléatoires du solde
-  // Effect removed to prevent balance fluctuations on page refresh
-
   if (authLoading || !user) {
     return <DashboardSkeleton username="Chargement..." />;
   }
@@ -136,6 +134,7 @@ const Dashboard = () => {
       </Suspense>
       
       <BalanceAnimation position="top-right" />
+      <AutoProgressNotification />
       
       <SubscriptionSynchronizer onSync={(subscription) => {
         console.log("Subscription synchronized:", subscription);

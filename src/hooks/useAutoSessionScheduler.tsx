@@ -1,6 +1,7 @@
 
 import { useRef, useEffect } from 'react';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
+import { saveUserStats, getDailyGains } from '@/hooks/stats/utils/storageManager';
 
 /**
  * Hook for scheduling automatic sessions with improved persistence
@@ -19,8 +20,55 @@ export const useAutoSessionScheduler = (
     lastSessionTime: Date.now(),
     sessionCount: 0,
     persistentSessionsEnabled: true,
-    currentSubscription: userData?.subscription || 'freemium'
+    currentSubscription: userData?.subscription || 'freemium',
+    lastSavedBalance: userData?.balance || 0
   });
+
+  // Référence pour suivre les sessions entre les visites
+  const persistentDataRef = useRef({
+    lastVisitDate: localStorage.getItem('last_visit_date') || new Date().toDateString(),
+    dailyProgressIncrement: parseFloat(localStorage.getItem('daily_progress_increment') || '0'),
+    consecutiveVisitDays: parseInt(localStorage.getItem('consecutive_visit_days') || '1', 10)
+  });
+
+  // Fonction pour calculer les gains manqués depuis la dernière visite
+  const calculateMissedGains = () => {
+    const lastVisitDate = new Date(persistentDataRef.current.lastVisitDate);
+    const currentDate = new Date();
+    
+    // Réinitialiser à minuit
+    lastVisitDate.setHours(0, 0, 0, 0);
+    currentDate.setHours(0, 0, 0, 0);
+    
+    // Calculer le nombre de jours écoulés
+    const daysDifference = Math.floor((currentDate.getTime() - lastVisitDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysDifference > 0) {
+      // Incrémenter les jours consécutifs (plafonné à 30 pour éviter des valeurs excessives)
+      const newConsecutiveVisitDays = Math.min(30, persistentDataRef.current.consecutiveVisitDays + 1);
+      persistentDataRef.current.consecutiveVisitDays = newConsecutiveVisitDays;
+      localStorage.setItem('consecutive_visit_days', newConsecutiveVisitDays.toString());
+      
+      // Augmenter progressivement l'incrément quotidien (0.01€ de plus par jour consécutif)
+      const baseIncrement = 0.05; // incrément de base
+      const loyaltyBonus = Math.min(0.2, (newConsecutiveVisitDays - 1) * 0.01); // bonus de fidélité
+      const newDailyIncrement = baseIncrement + loyaltyBonus;
+      
+      persistentDataRef.current.dailyProgressIncrement = newDailyIncrement;
+      localStorage.setItem('daily_progress_increment', newDailyIncrement.toString());
+      
+      // Enregistrer la date de visite actuelle
+      persistentDataRef.current.lastVisitDate = currentDate.toDateString();
+      localStorage.setItem('last_visit_date', currentDate.toDateString());
+      
+      return {
+        daysMissed: daysDifference,
+        gainAmount: newDailyIncrement * Math.min(daysDifference, 3) // Limiter le rattrapage à 3 jours max
+      };
+    }
+    
+    return { daysMissed: 0, gainAmount: 0 };
+  };
 
   // Configuration du planificateur selon le niveau d'abonnement
   useEffect(() => {
@@ -43,6 +91,42 @@ export const useAutoSessionScheduler = (
     
     // Mettre à jour le type d'abonnement
     scheduleDataRef.current.currentSubscription = userData?.subscription || 'freemium';
+    scheduleDataRef.current.lastSavedBalance = userData?.balance || 0;
+    
+    // Vérifier si c'est une nouvelle journée ou une longue absence
+    const { daysMissed, gainAmount } = calculateMissedGains();
+    
+    if (daysMissed > 0 && gainAmount > 0) {
+      console.log(`Connexion après ${daysMissed} jours. Progression automatique de ${gainAmount.toFixed(2)}€`);
+      
+      // On simule une progression même quand l'utilisateur était absent
+      setTimeout(() => {
+        // Déclencher un événement pour montrer la progression
+        window.dispatchEvent(new CustomEvent('balance:daily-growth', { 
+          detail: { 
+            amount: gainAmount, 
+            daysMissed,
+            consecutiveVisitDays: persistentDataRef.current.consecutiveVisitDays
+          }
+        }));
+        
+        // Générer une session automatique après un court délai
+        setTimeout(() => {
+          generateAutomaticRevenue(true);
+        }, 5000);
+      }, 3000);
+    } else {
+      // Si c'est la même journée, mais qu'on a eu une longue période d'inactivité
+      const now = Date.now();
+      const lastSessionTime = parseInt(localStorage.getItem('last_auto_session_time') || '0', 10);
+      
+      if (now - lastSessionTime > 2 * 60 * 60 * 1000) { // Plus de 2 heures d'inactivité
+        // Générer une session après un court délai
+        setTimeout(() => {
+          generateAutomaticRevenue(true);
+        }, 5000);
+      }
+    }
     
     // Ne pas démarrer de nouvelles sessions si le bot est inactif
     if (!isBotActive) return;
@@ -81,6 +165,9 @@ export const useAutoSessionScheduler = (
         scheduleDataRef.current.lastSessionTime = now;
         scheduleDataRef.current.sessionCount++;
         
+        // Enregistrer le temps de la dernière session pour persistance
+        localStorage.setItem('last_auto_session_time', now.toString());
+        
         // Générer une nouvelle session avec progression
         generateAutomaticRevenue(false);
       }
@@ -98,6 +185,9 @@ export const useAutoSessionScheduler = (
           console.log("Recovering missed session after inactivity");
           scheduleDataRef.current.lastSessionTime = now;
           scheduleDataRef.current.sessionCount++;
+          
+          // Enregistrer le temps de la dernière session pour persistance
+          localStorage.setItem('last_auto_session_time', now.toString());
           
           // Session de récupération
           generateAutomaticRevenue(false);
@@ -119,6 +209,9 @@ export const useAutoSessionScheduler = (
         
         scheduleDataRef.current.lastSessionTime = now;
         scheduleDataRef.current.sessionCount++;
+        
+        // Enregistrer le temps de la dernière session pour persistance
+        localStorage.setItem('last_auto_session_time', now.toString());
         
         // Session aléatoire bonus
         console.log("Random bonus session triggered");
@@ -146,7 +239,8 @@ export const useAutoSessionScheduler = (
       if (document.visibilityState === 'visible') {
         // À la réactivation de la page, vérifier si nous devons générer une session
         const now = Date.now();
-        const timeSinceLastSession = now - scheduleDataRef.current.lastSessionTime;
+        const lastSessionTime = parseInt(localStorage.getItem('last_auto_session_time') || scheduleDataRef.current.lastSessionTime.toString(), 10);
+        const timeSinceLastSession = now - lastSessionTime;
         
         // Si plus de 2 minutes sans session et que le bot est actif
         if (timeSinceLastSession > 2 * 60 * 1000 && isBotActive && scheduleDataRef.current.persistentSessionsEnabled) {
@@ -154,8 +248,19 @@ export const useAutoSessionScheduler = (
           scheduleDataRef.current.lastSessionTime = now;
           scheduleDataRef.current.sessionCount++;
           
+          // Enregistrer le temps de la session
+          localStorage.setItem('last_auto_session_time', now.toString());
+          
           // Session de rattrapage
           generateAutomaticRevenue(false);
+        }
+        
+        // Vérifier si le solde a changé significativement depuis la dernière visite
+        if (userData?.balance > scheduleDataRef.current.lastSavedBalance + 0.05) {
+          scheduleDataRef.current.lastSavedBalance = userData.balance;
+          
+          // Sauvegarder le solde actuel pour la prochaine visite
+          localStorage.setItem('last_known_balance', userData.balance.toString());
         }
       }
     };
@@ -165,7 +270,7 @@ export const useAutoSessionScheduler = (
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [generateAutomaticRevenue, isBotActive]);
+  }, [generateAutomaticRevenue, isBotActive, userData]);
   
   // Écouter les changements dans les limites ou les paramètres de l'utilisateur
   useEffect(() => {
@@ -173,8 +278,16 @@ export const useAutoSessionScheduler = (
       const subscription = userData?.subscription || 'freemium';
       const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
+      // Récupérer les gains journaliers actuels
+      const currentGains = getDailyGains(subscription);
+      
+      // Mettre à jour la référence des gains journaliers
+      if (todaysGainsRef.current !== currentGains) {
+        todaysGainsRef.current = currentGains;
+      }
+      
       // Vérifier si nous avons dépassé les limites quotidiennes
-      if (todaysGainsRef.current >= dailyLimit) {
+      if (currentGains >= dailyLimit) {
         // Désactiver temporairement les sessions automatiques
         scheduleDataRef.current.persistentSessionsEnabled = false;
       } else {
@@ -208,7 +321,10 @@ export const useAutoSessionScheduler = (
     disablePersistentSessions: () => {
       scheduleDataRef.current.persistentSessionsEnabled = false;
       localStorage.setItem('persistent_sessions_enabled', 'false');
-    }
+    },
+    // Exposer les données de progression continue
+    consecutiveVisitDays: persistentDataRef.current.consecutiveVisitDays,
+    dailyProgressIncrement: persistentDataRef.current.dailyProgressIncrement
   };
 };
 

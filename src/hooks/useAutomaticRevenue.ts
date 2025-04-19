@@ -1,136 +1,213 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { UserData } from '@/types/userData';
-import useAutomaticRevenueTransactions from './useAutomaticRevenueTransactions';
+import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
+import { calculateAutoSessionGain } from '@/utils/subscription/sessionGain';
+import balanceManager from '@/utils/balance/balanceManager';
 
-interface AutomaticRevenueProps {
-  userData: UserData | null;
-  updateBalance: (gain: number, report: string) => Promise<void>;
-}
-
-export const useAutomaticRevenue = ({ userData, updateBalance }: AutomaticRevenueProps) => {
-  const [lastRevenueTime, setLastRevenueTime] = useState<Date | null>(null);
-  const [automaticRevenue, setAutomaticRevenue] = useState<number>(0);
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const generationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { recordAutomaticTransaction } = useAutomaticRevenueTransactions();
+export const useAutomaticRevenue = (
+  userData: UserData | null, 
+  updateBalance: (gain: number, report: string, forceUpdate: boolean) => Promise<void>,
+  isNewUser: boolean
+) => {
+  const [isBotActive, setIsBotActive] = useState(() => {
+    // Récupérer l'état précédent ou activer par défaut
+    return localStorage.getItem('bot_active') !== 'false';
+  });
+  const [dailyLimitProgress, setDailyLimitProgress] = useState(0);
+  const [todaysGains, setTodaysGains] = useState(0);
   
-  // Clean up timeout on unmount
+  // Compteur de jours consécutifs
+  const [consecutiveVisitDays, setConsecutiveVisitDays] = useState(() => {
+    return parseInt(localStorage.getItem('consecutive_visit_days') || '1', 10);
+  });
+  
+  // Référence pour éviter les gains trop fréquents
+  const lastGainTimeRef = useRef(Date.now());
+  const minTimeBetweenGains = 10000; // 10 secondes minimum entre deux gains
+  
+  // Référence pour les valeurs persistentes entre rendus
+  const dataRef = useRef({
+    balanceHistory: [] as {amount: number, timestamp: number}[],
+    lastDayProcessed: localStorage.getItem('last_day_processed') || '',
+    dailyIncrement: parseFloat(localStorage.getItem('daily_progress_increment') || '0.05')
+  });
+  
+  // Traiter la progression journalière au chargement du composant
   useEffect(() => {
-    return () => {
-      if (generationTimeoutRef.current) {
-        clearTimeout(generationTimeoutRef.current);
+    const processDailyProgress = () => {
+      const today = new Date().toDateString();
+      
+      if (today !== dataRef.current.lastDayProcessed) {
+        const previousVisitDay = dataRef.current.lastDayProcessed 
+          ? new Date(dataRef.current.lastDayProcessed) 
+          : new Date(Date.now() - 24 * 60 * 60 * 1000);
+        
+        // Calculer le nombre de jours écoulés
+        const daysDifference = Math.floor(
+          (new Date(today).getTime() - previousVisitDay.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        
+        if (daysDifference > 0) {
+          // Incrémenter les jours consécutifs
+          const newConsecutiveDays = Math.min(30, consecutiveVisitDays + 1);
+          setConsecutiveVisitDays(newConsecutiveDays);
+          localStorage.setItem('consecutive_visit_days', newConsecutiveDays.toString());
+          
+          // Augmenter l'incrément quotidien (0.01€ supplémentaire par jour, plafonné à 0.25€)
+          const baseIncrement = 0.05;
+          const loyaltyBonus = Math.min(0.20, (newConsecutiveDays - 1) * 0.01);
+          const newDailyIncrement = baseIncrement + loyaltyBonus;
+          
+          dataRef.current.dailyIncrement = newDailyIncrement;
+          localStorage.setItem('daily_progress_increment', newDailyIncrement.toString());
+          
+          // Si nous avons manqué plusieurs jours, appliquer une progression
+          const catchupAmount = Math.min(daysDifference, 3) * newDailyIncrement;
+          
+          if (catchupAmount > 0 && userData?.balance && !isNewUser) {
+            console.log(`Progression automatique de ${catchupAmount.toFixed(2)}€ après ${daysDifference} jours`);
+            
+            // Simuler une évolution du solde même pendant l'absence
+            setTimeout(() => {
+              balanceManager.addBalanceGrowth(catchupAmount);
+              
+              // Déclencher un événement pour montrer la progression
+              window.dispatchEvent(new CustomEvent('balance:daily-growth', { 
+                detail: { 
+                  amount: catchupAmount, 
+                  daysMissed: daysDifference,
+                  consecutiveVisitDays: newConsecutiveDays
+                }
+              }));
+            }, 3000);
+          }
+        }
+        
+        // Enregistrer la date du jour
+        dataRef.current.lastDayProcessed = today;
+        localStorage.setItem('last_day_processed', today);
       }
+    };
+    
+    if (!isNewUser) {
+      processDailyProgress();
+    }
+  }, [userData?.balance, isNewUser, consecutiveVisitDays]);
+  
+  // Calcul du pourcentage de la limite atteinte
+  useEffect(() => {
+    if (!userData || isNewUser) {
+      setDailyLimitProgress(0);
+      return;
+    }
+    
+    const effectiveSub = getEffectiveSubscription(userData.subscription);
+    const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    
+    // Calculer les gains quotidiens à partir des transactions du jour
+    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const todaysTransactions = userData.transactions.filter(tx => 
+      tx.date && tx.date.startsWith(today) && (tx.gain || 0) > 0
+    );
+    const todaysGains = todaysTransactions.reduce((sum, tx) => sum + (tx.gain || 0), 0);
+    
+    setTodaysGains(todaysGains);
+    
+    // Calculer le pourcentage de la limite quotidienne
+    const percentage = Math.min(100, (todaysGains / limit) * 100);
+    setDailyLimitProgress(percentage);
+    
+    // Si le pourcentage atteint 100%, désactiver le bot automatiquement
+    if (percentage >= 100 && isBotActive) {
+      setIsBotActive(false);
+      localStorage.setItem('bot_active', 'false');
+      console.log("Désactivation automatique du bot : limite quotidienne atteinte");
+    }
+  }, [userData, isBotActive, isNewUser]);
+  
+  // Écouter les événements externes qui modifient l'état du bot
+  useEffect(() => {
+    const handleBotStatusChange = (event: CustomEvent) => {
+      const isActive = event.detail?.active;
+      if (typeof isActive === 'boolean') {
+        console.log(`Mise à jour de l'état du bot dans useAutomaticRevenue: ${isActive ? 'actif' : 'inactif'}`);
+        setIsBotActive(isActive);
+        localStorage.setItem('bot_active', isActive.toString());
+      }
+    };
+    
+    window.addEventListener('bot:status-change' as any, handleBotStatusChange);
+    window.addEventListener('bot:external-status-change' as any, handleBotStatusChange);
+    
+    return () => {
+      window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
+      window.removeEventListener('bot:external-status-change' as any, handleBotStatusChange);
     };
   }, []);
   
-  // Function to generate automatic revenue
-  const processAutomaticRevenue = useCallback(async () => {
-    if (isGenerating || !userData) return;
+  // Fonction de génération de revenus automatiques
+  const generateAutomaticRevenue = useCallback(async (forceUpdate = false) => {
+    if (!userData || isNewUser || !isBotActive) {
+      return;
+    }
     
-    setIsGenerating(true);
+    const now = Date.now();
+    // Vérifier le temps écoulé depuis le dernier gain
+    if (!forceUpdate && now - lastGainTimeRef.current < minTimeBetweenGains) {
+      console.log("Throttling automatic revenue generation - too frequent");
+      return;
+    }
     
     try {
-      const now = new Date();
-      const subscription = userData.subscription || 'freemium';
+      // Utiliser la fonction de calcul de gain pour les sessions automatiques
+      const effectiveSub = getEffectiveSubscription(userData.subscription);
+      const gain = calculateAutoSessionGain(effectiveSub, todaysGains, userData.referrals?.length || 0);
       
-      // Calculate a random gain amount based on subscription level
-      let baseAmount = 0;
+      // Appliquer une bonification basée sur les jours consécutifs (jusqu'à +30%)
+      const loyaltyMultiplier = 1 + Math.min(0.3, (consecutiveVisitDays - 1) * 0.01);
+      const finalGain = parseFloat((gain * loyaltyMultiplier).toFixed(2));
       
-      switch (subscription) {
-        case 'premium':
-          baseAmount = 0.2;
-          break;
-        case 'professional':
-          baseAmount = 0.4;
-          break;
-        case 'freemium':
-        default:
-          baseAmount = 0.1;
-          break;
+      if (finalGain <= 0) {
+        console.log("Limite quotidienne atteinte, gain nul");
+        return false;
       }
       
-      // Add some randomness to the gain amount (±20%)
-      const randomFactor = 0.8 + (Math.random() * 0.4); // 0.8 to 1.2
-      const gain = parseFloat((baseAmount * randomFactor).toFixed(2));
+      // Créer un rapport pour la transaction
+      const report = `Analyse automatique de contenu (jour ${consecutiveVisitDays})`;
       
-      console.log(`Generating automatic revenue: ${gain}€`);
+      // Mettre à jour le solde avec le gain généré
+      await updateBalance(finalGain, report, forceUpdate);
+      lastGainTimeRef.current = now;
       
-      // Update UI with the generated revenue
-      setAutomaticRevenue(prev => parseFloat((prev + gain).toFixed(2)));
-      setLastRevenueTime(now);
+      console.log(`Revenu automatique généré: ${finalGain}€ (multiplicateur de fidélité: ${loyaltyMultiplier.toFixed(2)})`);
       
-      // Trigger the balance update animation
-      window.dispatchEvent(new CustomEvent('automatic:revenue', { 
-        detail: { amount: gain, automatic: true, timestamp: now.getTime() }
-      }));
+      // Enregistrer la progression pour persistance
+      dataRef.current.balanceHistory.push({
+        amount: finalGain,
+        timestamp: now
+      });
       
-      // Record the transaction
-      await recordAutomaticTransaction(gain);
+      // Limiter l'historique à 50 entrées
+      if (dataRef.current.balanceHistory.length > 50) {
+        dataRef.current.balanceHistory.shift();
+      }
       
-      // Update the balance
-      await updateBalance(gain, "Revenu automatique");
-      
+      return true;
     } catch (error) {
-      console.error("Error generating automatic revenue:", error);
-    } finally {
-      setIsGenerating(false);
-      
-      // Schedule the next revenue generation (2-3 minutes)
-      const nextInterval = 120000 + Math.random() * 60000; // 2-3 minutes
-      
-      if (generationTimeoutRef.current) {
-        clearTimeout(generationTimeoutRef.current);
-      }
-      
-      generationTimeoutRef.current = setTimeout(() => {
-        processAutomaticRevenue();
-      }, nextInterval);
+      console.error("Erreur lors de la génération de revenus automatiques:", error);
+      return false;
     }
-  }, [isGenerating, userData, updateBalance, recordAutomaticTransaction]);
+  }, [userData, isNewUser, isBotActive, updateBalance, todaysGains, consecutiveVisitDays]);
   
-  // Set up the initial timer for revenue generation
-  useEffect(() => {
-    if (userData && !isGenerating) {
-      console.log("Setting up automatic revenue generation");
-      
-      // Initial random delay (10-30 seconds) to start the process
-      const initialDelay = 10000 + Math.random() * 20000;
-      
-      if (generationTimeoutRef.current) {
-        clearTimeout(generationTimeoutRef.current);
-      }
-      
-      generationTimeoutRef.current = setTimeout(() => {
-        processAutomaticRevenue();
-      }, initialDelay);
-    }
-    
-    return () => {
-      if (generationTimeoutRef.current) {
-        clearTimeout(generationTimeoutRef.current);
-      }
-    };
-  }, [userData, isGenerating, processAutomaticRevenue]);
-  
-  // Listen for dashboard heartbeat to ensure revenue generation stays active
-  useEffect(() => {
-    const handleHeartbeat = () => {
-      // If it's been more than 5 minutes since the last revenue generation, force a new one
-      if (lastRevenueTime && (new Date().getTime() - lastRevenueTime.getTime() > 300000)) {
-        console.log("Heartbeat detected long pause in revenue generation, restarting...");
-        processAutomaticRevenue();
-      }
-    };
-    
-    window.addEventListener('dashboard:heartbeat', handleHeartbeat);
-    
-    return () => {
-      window.removeEventListener('dashboard:heartbeat', handleHeartbeat);
-    };
-  }, [lastRevenueTime, processAutomaticRevenue]);
-  
-  return { automaticRevenue, lastRevenueTime, processAutomaticRevenue };
+  return {
+    isBotActive,
+    dailyLimitProgress,
+    generateAutomaticRevenue,
+    todaysGains,
+    consecutiveVisitDays,
+    dailyIncrement: dataRef.current.dailyIncrement
+  };
 };
 
 export default useAutomaticRevenue;
