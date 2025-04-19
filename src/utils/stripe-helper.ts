@@ -84,22 +84,15 @@ export const openStripeCheckout = (url: string): boolean => {
     localStorage.setItem('pendingPayment', 'true');
     localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
     
-    // Sur mobile, rediriger directement
-    if (isMobileDevice()) {
-      window.location.href = cleanUrl;
-      return true;
-    }
-    
-    // Sur desktop, ouvrir dans une nouvelle fenêtre
-    const newWindow = window.open(cleanUrl, '_blank', 'noopener,noreferrer');
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      // Si le blocage de popup est détecté, rediriger directement
-      window.location.href = cleanUrl;
-    }
+    // Redirection directe - la méthode la plus fiable sur tous les dispositifs
+    console.log("Redirection directe vers Stripe:", cleanUrl);
+    window.location.href = cleanUrl;
     return true;
   } catch (error) {
     console.error("Erreur lors de l'ouverture de Stripe:", error);
-    window.location.href = url; // Tenter une redirection directe en dernier recours
+    // Tenter une redirection directe en dernier recours
+    window.location.href = url;
     return false;
   }
 };
+

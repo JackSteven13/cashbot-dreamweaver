@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, CreditCard, CheckCircle } from 'lucide-react';
-import { openStripeWindow } from '@/hooks/payment/stripeWindowManager';
+import { openStripeCheckout } from '@/utils/stripe-helper';
 import { isMobileDevice } from '@/utils/stripe-helper';
 
 interface CheckoutTransitionProps {
@@ -28,8 +28,8 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
     
     // Timing adapté pour laisser à l'utilisateur le temps de comprendre
     const timing = {
-      step2: 1500,  // 1.5 secondes
-      step3: 3000   // 3 secondes total
+      step2: 800,   // 0.8 secondes
+      step3: 1500   // 1.5 secondes total
     };
     
     // Étape 2: Préparer le paiement
@@ -45,9 +45,7 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
       
       // Ouvrir automatiquement Stripe
       if (stripeUrl) {
-        setTimeout(() => {
-          openStripeWindow(stripeUrl);
-        }, 1000);
+        openStripeCheckout(stripeUrl);
       }
     }, timing.step3);
     
@@ -88,13 +86,13 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
         <h2 className="text-xl md:text-2xl font-semibold mb-3">
           {step === 1 && "Préparation de votre paiement..."}
           {step === 2 && "Connexion à Stripe..."}
-          {step === 3 && "Tout est prêt !"}
+          {step === 3 && "Redirection en cours..."}
         </h2>
         
         <p className="text-gray-600 dark:text-gray-300 mb-4 text-base">
           {step === 1 && "Nous préparons votre session de paiement sécurisée."}
           {step === 2 && "Connexion au système de paiement sécurisé Stripe."}
-          {step === 3 && "La page de paiement Stripe va s'ouvrir automatiquement."}
+          {step === 3 && "Vous êtes redirigé vers la page de paiement Stripe."}
         </p>
         
         {/* Barre de progression animée */}
@@ -115,3 +113,4 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
 };
 
 export default CheckoutTransition;
+

@@ -7,7 +7,7 @@ import PaymentCard from '@/components/payment/PaymentCard';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { PLANS } from '@/utils/plans';
-import { hasPendingStripePayment } from '@/utils/stripe-helper';
+import { hasPendingStripePayment, openStripeCheckout } from '@/utils/stripe-helper';
 import PaymentSteps from '@/components/payment/PaymentSteps';
 import CheckoutTransition from '@/components/payment/CheckoutTransition';
 import { useAuth } from '@/hooks/useAuth';
@@ -81,25 +81,45 @@ const Payment = () => {
       return () => clearTimeout(timeout);
     }
   }, [selectedPlan, currentSubscription, isAuthChecking, isAuthLoading, navigate]);
+
+  // Ouvrir automatiquement Stripe si l'URL est disponible
+  useEffect(() => {
+    if (stripeCheckoutUrl && !isStripeProcessing) {
+      console.log("URL Stripe disponible, redirection automatique");
+      // Délai court pour permettre au toast de s'afficher
+      const timer = setTimeout(() => {
+        openStripeCheckout(stripeCheckoutUrl);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [stripeCheckoutUrl, isStripeProcessing]);
   
   // Gérer le paiement - directement sans modal de confirmation
   const handlePayment = () => {
-    setShowTransition(true); // Afficher la transition
-    initiateStripeCheckout(); // Déclencher le paiement
-  };
-  
-  // Lorsque la transition est terminée
-  const handleTransitionComplete = () => {
-    console.log("Transition terminée, attendant que l'utilisateur clique pour continuer vers Stripe");
+    if (stripeCheckoutUrl) {
+      // Si on a déjà une URL, l'utiliser directement
+      openStripeCheckout(stripeCheckoutUrl);
+    } else {
+      // Sinon, initialiser le processus Stripe
+      toast({
+        title: "Préparation du paiement",
+        description: "Veuillez patienter pendant que nous préparons votre session de paiement...",
+        duration: 3000
+      });
+      initiateStripeCheckout();
+    }
   };
 
   // Gérer l'aide pour les problèmes de paiement
   const handleHelp = () => {
     setShowMobileHelper(false);
-    toast({
-      title: "Redirection en cours",
-      description: "Vous allez être redirigé vers la page de paiement..."
-    });
+    if (stripeCheckoutUrl) {
+      toast({
+        title: "Redirection en cours",
+        description: "Vous allez être redirigé vers la page de paiement..."
+      });
+      openStripeCheckout(stripeCheckoutUrl);
+    }
   };
 
   if (isAuthChecking || isAuthLoading) {
@@ -128,18 +148,10 @@ const Payment = () => {
           onHelp={handleHelp}
           stripeUrl={stripeCheckoutUrl}
         />
-        
-        {/* Transition animée pour le paiement */}
-        {showTransition && (
-          <CheckoutTransition 
-            isStarted={showTransition}
-            stripeUrl={stripeCheckoutUrl}
-            onComplete={handleTransitionComplete}
-          />
-        )}
       </div>
     </PaymentLayout>
   );
 };
 
 export default Payment;
+

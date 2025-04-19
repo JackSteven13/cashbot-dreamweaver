@@ -27,20 +27,17 @@ export const openStripeWindow = (stripeUrl: string): boolean => {
     localStorage.setItem('pendingPayment', 'true');
     localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
     
+    console.log("Redirection vers Stripe:", stripeUrl);
+    
     // Redirection directe vers Stripe - méthode la plus fiable
-    // Ajouter un délai pour que l'utilisateur puisse voir la transition
-    setTimeout(() => {
-      window.location.href = stripeUrl;
-    }, 1500); // Délai de 1.5 secondes avant la redirection
+    window.location.href = stripeUrl;
     
     return true;
   } catch (error) {
     console.error("Erreur lors de la redirection vers Stripe:", error);
     
     // Dernière tentative avec redirection directe
-    setTimeout(() => {
-      window.location.href = stripeUrl;
-    }, 1500);
+    window.location.href = stripeUrl;
     
     return false;
   }
@@ -86,3 +83,4 @@ export const recoverStripeSession = (): boolean => {
     return false;
   }
 };
+

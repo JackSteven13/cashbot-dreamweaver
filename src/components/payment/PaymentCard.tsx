@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
 import { Shield, CreditCard } from 'lucide-react';
+import { openStripeCheckout } from '@/utils/stripe-helper';
 
 interface PaymentCardProps {
   selectedPlan: PlanType | null;
@@ -50,7 +51,19 @@ const PaymentCard = ({
       return;
     }
 
-    // Déclencher directement la procédure de paiement
+    // Si on a déjà une URL Stripe, rediriger directement
+    if (stripeCheckoutUrl) {
+      openStripeCheckout(stripeCheckoutUrl);
+      return;
+    }
+
+    // Sinon, déclencher la procédure de paiement
+    toast({
+      title: "Préparation du paiement",
+      description: "Veuillez patienter pendant que nous préparons votre paiement...",
+      duration: 3000
+    });
+    
     onStripeCheckout();
   };
 
@@ -127,3 +140,4 @@ const PaymentCard = ({
 };
 
 export default PaymentCard;
+
