@@ -32,9 +32,22 @@ const LocationFeed = () => {
   const maxLocations = 5;
   const lastUpdateTimeRef = useRef<number>(Date.now());
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
+  const [lastAddedTime, setLastAddedTime] = useState<number>(0);
+  
+  // Limites de fréquence extrêmement strictes
+  const MIN_INTERVAL_BETWEEN_ADDS = 30000; // Au moins 30 secondes entre les ajouts
+  const INITIAL_DELAY_BETWEEN_LOCATIONS = 15000; // 15 secondes entre les premiers ajouts
+  
   // Ajouter une nouvelle localisation avec un événement synchronisé
   const addNewLocation = () => {
+    const now = Date.now();
+    
+    // Vérifier si le temps minimum entre les ajouts est respecté
+    if (now - lastAddedTime < MIN_INTERVAL_BETWEEN_ADDS) {
+      console.log('Tentative d\'ajout trop rapide, ignorée');
+      return;
+    }
+    
     const randomLocation = westernLocations[Math.floor(Math.random() * westernLocations.length)];
     setLocations(prevLocations => {
       const newLocations = [randomLocation, ...prevLocations];
@@ -46,18 +59,21 @@ const LocationFeed = () => {
       return newLocations;
     });
     
-    // Émettre un événement pour synchroniser avec les compteurs
+    // Mettre à jour le timestamp du dernier ajout
+    setLastAddedTime(now);
+    
+    // Émettre un événement pour synchroniser avec les compteurs - une vidéo à la fois
     window.dispatchEvent(new CustomEvent('location:added', { 
       detail: { location: randomLocation } 
     }));
     
-    lastUpdateTimeRef.current = Date.now();
+    lastUpdateTimeRef.current = now;
   };
 
   useEffect(() => {
-    // Charger les premières localisations avec un léger délai initial
+    // Charger les premières localisations avec un délai initial beaucoup plus long
     const initialDelay = setTimeout(() => {
-      // Ajouter 3 localisations initiales avec un petit délai entre chacune
+      // Ajouter 3 localisations initiales avec un délai bien plus important entre chacune
       addNewLocation();
       
       setTimeout(() => {
@@ -65,13 +81,14 @@ const LocationFeed = () => {
         
         setTimeout(() => {
           addNewLocation();
-        }, 4000);
-      }, 3000);
-    }, 1500);
+        }, INITIAL_DELAY_BETWEEN_LOCATIONS);
+      }, INITIAL_DELAY_BETWEEN_LOCATIONS);
+    }, 2500);
     
-    // Définir un intervalle très lent et variable entre 25-45 secondes
+    // Définir un intervalle EXTRÊMEMENT lent entre 1 et 2 minutes
     const setupNewInterval = () => {
-      const nextDelay = 25000 + Math.floor(Math.random() * 20000);
+      // Intervalle variable entre 60-120 secondes (1-2 minutes)
+      const nextDelay = 60000 + Math.floor(Math.random() * 60000);
       
       updateIntervalRef.current = setTimeout(() => {
         addNewLocation();
@@ -79,10 +96,10 @@ const LocationFeed = () => {
       }, nextDelay);
     };
     
-    // Démarrer l'intervalle après les locations initiales
+    // Démarrer l'intervalle après les locations initiales avec un délai encore plus long
     const startIntervalTimer = setTimeout(() => {
       setupNewInterval();
-    }, 10000);
+    }, 45000); // 45 secondes de délai avant le démarrage des mises à jour périodiques
     
     return () => {
       clearTimeout(initialDelay);
@@ -123,7 +140,7 @@ const LocationFeed = () => {
                   {location.latency}ms
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {index === 0 ? "À l'instant" : `Il y a ${index * 10 + Math.floor(Math.random() * 5)} min`}
+                  {index === 0 ? "À l'instant" : `Il y a ${index * 15 + Math.floor(Math.random() * 5)} min`}
                 </p>
               </div>
             </div>

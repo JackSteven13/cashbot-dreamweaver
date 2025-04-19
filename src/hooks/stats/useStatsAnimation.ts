@@ -8,27 +8,25 @@ interface UseStatsAnimationParams {
   setDisplayedRevenueCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
-// Calculer un incrément très minimal pour une animation extrêmement lente
+// Calculer un incrément microscopique pour une animation ultra-lente
 const calculateCounterIncrement = (targetCount: number, currentCount: number): number => {
   // Différence entre la valeur cible et actuelle
   const difference = targetCount - currentCount;
   
-  // Si la différence est très faible, ne pas bouger
-  if (Math.abs(difference) < 0.5) return 0;
+  // Si la différence est quasi nulle, ne pas bouger du tout
+  if (Math.abs(difference) < 0.2) return 0;
   
-  // Protection contre les différences négatives importantes (qui indiqueraient une réinitialisation)
-  if (difference < -1000 && targetCount > 0) {
-    console.log("Detected major negative difference, ignoring reset", { targetCount, currentCount, difference });
-    return 0; // Ne pas autoriser de grandes baisses
+  // Protection absolue contre les différences négatives
+  if (difference < -0.1 && targetCount > 0) {
+    console.log("Différence négative détectée, mouvement ignoré", { targetCount, currentCount, difference });
+    return 0; // Ne jamais autoriser de baisses
   }
   
-  // Réduire encore plus la probabilité d'un "boost" (seulement 0.5% de chance)
-  const isBoostMode = Math.random() > 0.995;
+  // Réduire drastiquement la probabilité d'un incrément (seulement 0.1% de chance)
+  const shouldIncrement = Math.random() > 0.999;
   
-  // Limiter l'incrément à 1 vidéo maximum (exceptionnellement 2 en mode boost)
-  return difference > 0 ? 
-    Math.min(isBoostMode ? 2 : 1, 1) : 
-    -Math.min(isBoostMode ? 2 : 1, 1);
+  // Aucun mouvement dans 99.9% des cas, sinon +1 maximum
+  return shouldIncrement && difference > 0 ? 1 : 0;
 };
 
 export const useStatsAnimation = ({
@@ -45,10 +43,10 @@ export const useStatsAnimation = ({
   const maxAdsCount = useRef(0);
   const maxRevenueCount = useRef(0);
   
-  // Compteur pour ralentir encore plus les mises à jour d'animation
+  // Compteur pour supprimer presque toutes les mises à jour d'animation
   const [updateSkipCounter, setUpdateSkipCounter] = useState(0);
   
-  // Référence pour l'heure de la dernière mise à jour
+  // Référence pour l'heure de la dernière mise à jour autorisée
   const lastUpdateTime = useRef<number>(Date.now());
   
   // Initialiser les valeurs maximales au montage du composant
@@ -72,36 +70,11 @@ export const useStatsAnimation = ({
     }
   }, []);
   
-  // Forcer des mises à jour synchronisées avec le feed des publicités
+  // S'abonner strictement aux événements du feed de publicités
   useEffect(() => {
     const handleLocationAdded = (event: Event) => {
-      // Lors de l'ajout d'une nouvelle publicité dans le feed, incrémenter le compteur
-      // mais après un délai pour simuler le traitement
-      setTimeout(() => {
-        setDisplayedAdsCount(prev => {
-          // Ne jamais descendre en dessous de la valeur maximale atteinte
-          if (prev > maxAdsCount.current) {
-            maxAdsCount.current = prev;
-            localStorage.setItem('max_ads_count', prev.toString());
-          }
-          
-          // Toujours incrémenter de 1 exactement
-          return prev + 1;
-        });
-        
-        // Pour chaque vidéo, ajouter un montant fixe entre 0.25€ et 0.90€
-        const adValue = 0.25 + Math.random() * 0.65;
-        
-        setDisplayedRevenueCount(prev => {
-          // Ne jamais descendre en dessous de la valeur maximale atteinte
-          if (prev > maxRevenueCount.current) {
-            maxRevenueCount.current = prev;
-            localStorage.setItem('max_revenue_count', prev.toString());
-          }
-          
-          return prev + adValue;
-        });
-      }, 1000 + Math.random() * 2000); // Délai entre 1 et 3 secondes
+      // Ne rien faire ici - la synchronisation est gérée ailleurs
+      // Cette fonction est maintenue pour compatibilité, mais n'effectue plus d'incréments automatiques
     };
     
     window.addEventListener('location:added', handleLocationAdded);
@@ -113,102 +86,60 @@ export const useStatsAnimation = ({
     const now = Date.now();
     const elapsedTime = now - lastUpdateTime.current;
     
-    // Ralentir drastiquement les animations (au moins 15 secondes entre chaque mise à jour)
-    if (elapsedTime < 15000 + Math.random() * 10000) {
-      return { animationActive: true }; // Continuer l'animation sans changer les valeurs
+    // Bloquer presque toutes les animations (attendre au moins 2-5 minutes entre chaque)
+    if (elapsedTime < 120000 + Math.random() * 180000) {
+      return { animationActive: false }; // Animation pratiquement gelée
     }
     
     // Mettre à jour le temps de la dernière mise à jour
     lastUpdateTime.current = now;
     
-    // Réduire encore plus la fréquence des mises à jour
+    // Sauter la quasi-totalité des updates (99.8%)
     setUpdateSkipCounter(prev => {
-      // Augmenter encore plus la probabilité de sauter des frames (95% de chance)
-      const shouldSkipFrame = Math.random() > 0.05;
+      const shouldSkipFrame = Math.random() > 0.002; // 0.2% de chance seulement de ne pas sauter
       
-      if (prev < 20 && shouldSkipFrame) {
-        return prev + 1; // Sauter beaucoup plus de frames
+      if (shouldSkipFrame) {
+        return prev + 1; // Accumuler les sauts
       }
       
-      // Réduire encore la probabilité de "bursts" d'activité (seulement 1%)
-      const isBurstMode = Math.random() > 0.99;
+      // Aucun burst d'activité autorisé
+      const isBurstMode = false;
       
-      // Animer le compteur d'annonces extrêmement lentement
-      setDisplayedAdsCount((prevCount) => {
-        // Mettre à jour la valeur maximale si nécessaire
-        if (prevCount > maxAdsCount.current) {
-          maxAdsCount.current = prevCount;
-          localStorage.setItem('max_ads_count', prevCount.toString());
-        }
-        
-        // S'assurer que la valeur ne descend jamais sous zéro
-        if (prevCount <= 0 && adsCount <= 0) return 0;
-        
-        // Si déjà à la valeur cible, ne pas changer
-        if (Math.abs(prevCount - adsCount) < 1) return adsCount;
-        
-        // Protection contre la redescente - ne jamais descendre
-        if (adsCount < maxAdsCount.current) {
-          console.log("Target ads count is less than max, maintaining max", { adsCount, maxAdsCount: maxAdsCount.current });
-          return Math.max(prevCount, maxAdsCount.current);
-        }
-        
-        // Maximum 1 seule vidéo à la fois, même en mode burst
-        const increment = 1;
-        
-        // Calculer la nouvelle valeur avec une progression extrêmement lente
-        const newValue = prevCount + increment;
-        
-        // Garantir qu'on ne dépasse pas la cible
-        const finalValue = Math.min(newValue, adsCount);
+      // Animation complètement bloquée - changement extrêmement rare
+      if (Math.random() > 0.998) { // 0.2% de chance de mise à jour
+        setDisplayedAdsCount((prevCount) => {
+          // Mettre à jour la valeur maximale si nécessaire
+          if (prevCount > maxAdsCount.current) {
+            maxAdsCount.current = prevCount;
+            localStorage.setItem('max_ads_count', prevCount.toString());
+          }
           
-        // Stocker la valeur précédente pour la comparaison
-        setPrevAdsCount(finalValue);
-        
-        return finalValue;
-      });
+          // Maximum +1 vidéo à la fois, jamais plus
+          return prevCount + 1;
+        });
 
-      // Animer le compteur de revenus avec des gains très réduits
-      setDisplayedRevenueCount((prevCount) => {
-        // Mettre à jour la valeur maximale si nécessaire
-        if (prevCount > maxRevenueCount.current) {
-          maxRevenueCount.current = prevCount;
-          localStorage.setItem('max_revenue_count', prevCount.toString());
-        }
-        
-        // S'assurer que la valeur ne descend jamais sous zéro
-        if (prevCount <= 0 && revenueCount <= 0) return 0;
-        
-        // Si déjà à la valeur cible, ne pas changer
-        if (Math.abs(prevCount - revenueCount) < 0.1) return revenueCount;
-        
-        // Protection contre la redescente - ne jamais descendre
-        if (revenueCount < maxRevenueCount.current) {
-          return Math.max(prevCount, maxRevenueCount.current);
-        }
-        
-        // Gain très faible, correspond exactement à une vidéo
-        const adValue = Math.random() * 0.45 + 0.25; // 0.25€-0.70€
-        
-        // Calculer la nouvelle valeur avec une progression beaucoup plus lente
-        const newValue = prevCount + adValue;
-        
-        // Garantir qu'on ne dépasse pas la cible
-        const finalValue = Math.min(newValue, revenueCount);
+        // Animer le compteur de revenus avec un gain minuscule
+        setDisplayedRevenueCount((prevCount) => {
+          // Mettre à jour la valeur maximale si nécessaire
+          if (prevCount > maxRevenueCount.current) {
+            maxRevenueCount.current = prevCount;
+            localStorage.setItem('max_revenue_count', prevCount.toString());
+          }
           
-        // Stocker la valeur précédente pour la comparaison
-        setPrevRevenueCount(finalValue);
-        
-        return finalValue;
-      });
+          // Gain très faible correspondant à une seule vidéo
+          const adValue = Math.random() * 0.2 + 0.2; // 0.2€-0.4€
+          return prevCount + adValue;
+        });
+      }
       
-      return 0; // Réinitialiser le compteur
+      return 0; // Réinitialiser le compteur de sauts
     });
 
+    // Animation presque toujours inactive
     return { 
-      animationActive: adsCount !== 0 && revenueCount !== 0 && 
-                      (Math.abs(adsCount - prevAdsCount) > 1 || 
-                       Math.abs(revenueCount - prevRevenueCount) > 0.1)
+      animationActive: Math.random() > 0.95 &&
+                      (Math.abs(adsCount - prevAdsCount) > 5 || 
+                       Math.abs(revenueCount - prevRevenueCount) > 3)
     };
   }, [adsCount, revenueCount, setDisplayedAdsCount, setDisplayedRevenueCount, prevAdsCount, prevRevenueCount]);
 

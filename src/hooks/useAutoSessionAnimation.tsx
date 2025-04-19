@@ -6,6 +6,7 @@ import { animateBalanceUpdate } from '@/utils/animations';
 export const useAutoSessionAnimation = () => {
   const balanceElementRef = useRef<HTMLElement | null>(null);
   const [highestBalance, setHighestBalance] = useState<number>(0);
+  const lastUpdateTimeRef = useRef<number>(Date.now());
   
   // Initialiser avec la valeur localStorage au montage
   useEffect(() => {
@@ -50,14 +51,26 @@ export const useAutoSessionAnimation = () => {
   }, []);
   
   useEffect(() => {
-    // Gérer les événements de mise à jour du solde
+    // Gérer les événements de mise à jour du solde avec limitation stricte
     const handleBalanceUpdate = (event: Event) => {
+      // Limiter la fréquence des mises à jour
+      const now = Date.now();
+      if (now - lastUpdateTimeRef.current < 30000) { // Au moins 30 secondes entre les mises à jour
+        console.log("Animation de solde ignorée - trop fréquente");
+        return;
+      }
+      
+      lastUpdateTimeRef.current = now;
+      
       const customEvent = event as CustomEvent;
       const amount = customEvent.detail?.amount || 0;
+      
+      // Limiter le gain maximum par mise à jour
+      const limitedAmount = Math.min(0.5, amount);
       const currentBalance = customEvent.detail?.currentBalance || 0;
       
       // Assurer que nous n'avons que des augmentations de solde
-      if (balanceElementRef.current && amount > 0) {
+      if (balanceElementRef.current && limitedAmount > 0) {
         // Vérifier le solde actuel pour garantir qu'il ne diminue jamais
         const displayElement = balanceElementRef.current.querySelector('.text-5xl span:first-child');
         const currentDisplayBalance = displayElement ? parseFloat(displayElement.textContent || '0') : 0;
@@ -66,7 +79,12 @@ export const useAutoSessionAnimation = () => {
         // - Le solde affiché actuellement
         // - Le nouveau solde calculé
         // - Le solde le plus élevé jamais atteint (stocké dans state)
-        const newBalance = Math.max(currentDisplayBalance, currentBalance, highestBalance);
+        const newBalance = Math.max(
+          currentDisplayBalance, 
+          currentBalance, 
+          highestBalance,
+          currentDisplayBalance + limitedAmount // Garantir qu'on augmente toujours
+        );
         
         // Mettre à jour notre référence du solde le plus élevé
         if (newBalance > highestBalance) {
@@ -74,11 +92,11 @@ export const useAutoSessionAnimation = () => {
           localStorage.setItem('highestBalance', newBalance.toString());
         }
         
-        // Animer l'élément de solde, mais seulement vers le haut
+        // Animer l'élément de solde, mais seulement vers le haut et avec un gain limité
         animateBalanceUpdate(
           currentDisplayBalance, 
-          newBalance,
-          1000,
+          Math.min(currentDisplayBalance + limitedAmount, newBalance),
+          2000, // Animation plus lente
           (value) => {
             if (balanceElementRef.current) {
               const displayElement = balanceElementRef.current.querySelector('.text-5xl span:first-child');
@@ -110,7 +128,7 @@ export const useAutoSessionAnimation = () => {
         // Afficher une notification sobre et technique
         toast({
           title: "Revenus générés",
-          description: `Analyse de données vidéo terminée. Revenus comptabilisés: ${amount.toFixed(2)}€`,
+          description: `Analyse de données vidéo terminée. Revenus comptabilisés: ${limitedAmount.toFixed(2)}€`,
           duration: 4000,
           className: "mobile-toast"
         });
@@ -127,7 +145,15 @@ export const useAutoSessionAnimation = () => {
         return;
       }
       
+      // Limiter la fréquence
+      const now = Date.now();
+      if (now - lastUpdateTimeRef.current < 30000) { // Au moins 30 secondes
+        return;
+      }
+      
       if (type === 'income' && balanceElementRef.current) {
+        lastUpdateTimeRef.current = now;
+        
         // Ajouter une classe pour l'effet de lueur subtil
         balanceElementRef.current.classList.add('glow-effect');
         

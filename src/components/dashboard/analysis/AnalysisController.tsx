@@ -29,6 +29,13 @@ const AnalysisController: React.FC = () => {
           : "L'analyse des publicités est terminée.",
         duration: 5000,
       });
+      
+      // Déclencher UNIQUEMENT l'ajout d'UNE SEULE vidéo dans le feed
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('location:added', { 
+          detail: { single: true } // Indiquer que c'est un ajout unitaire
+        }));
+      }, 1500);
     }
   }, [analysisComplete, limitReached, isBackgroundMode]);
   
