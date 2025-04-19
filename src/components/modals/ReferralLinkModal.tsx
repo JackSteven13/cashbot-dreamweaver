@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogClose } from '@/components/ui/dialog';
-import { Copy, CheckCheck, X } from 'lucide-react';
+import { Copy, CheckCheck, X, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { COMMISSION_RATES } from '@/components/dashboard/summary/constants';
@@ -51,6 +51,40 @@ const ReferralLinkModal: React.FC<ReferralLinkModalProps> = ({
     }, 2000);
   };
 
+  const handleShare = async () => {
+    if (!displayedLink) {
+      toast({
+        title: "Erreur",
+        description: "Lien d'affiliation indisponible",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Vérifier si l'API de partage est disponible
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Rejoignez-moi sur Stream Genius',
+          text: 'Découvrez Stream Genius, une plateforme innovante pour gagner des revenus passifs',
+          url: displayedLink,
+        });
+        toast({
+          title: "Partage réussi !",
+          description: "Votre lien a été partagé",
+          duration: 3000,
+        });
+      } catch (error) {
+        console.error('Erreur lors du partage:', error);
+        // Si le partage échoue ou est annulé, proposer la copie
+        handleCopyLink();
+      }
+    } else {
+      // Si l'API de partage n'est pas disponible, copier dans le presse-papiers
+      handleCopyLink();
+    }
+  };
+
   // Obtenir le taux de commission en fonction de l'abonnement
   const commissionRate = COMMISSION_RATES[subscription as keyof typeof COMMISSION_RATES] || 0.2;
   const commissionPercent = Math.round(commissionRate * 100);
@@ -80,14 +114,23 @@ const ReferralLinkModal: React.FC<ReferralLinkModalProps> = ({
               onClick={(e) => (e.target as HTMLInputElement).select()}
               className="w-full p-2 pr-10 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md font-mono overflow-x-auto"
             />
-            <div className="mt-2">
+            <div className="mt-2 flex gap-2">
               <Button 
                 onClick={handleCopyLink} 
                 variant={copied ? "default" : "outline"}
-                className={`w-full ${copied ? "bg-green-600" : ""}`}
+                className={`flex-1 ${copied ? "bg-green-600" : ""}`}
               >
                 {copied ? <CheckCheck className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                {copied ? "Copié" : "Copier"}
+                {copied ? "Copié" : "Copier le lien"}
+              </Button>
+              
+              <Button
+                onClick={handleShare}
+                variant="secondary"
+                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                <Share2 className="h-4 w-4 mr-1" />
+                Partager
               </Button>
             </div>
           </div>
@@ -108,4 +151,3 @@ const ReferralLinkModal: React.FC<ReferralLinkModalProps> = ({
 };
 
 export default ReferralLinkModal;
-

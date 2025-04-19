@@ -42,7 +42,7 @@ const ReferralButton: React.FC<ReferralButtonProps> = ({
             >
               <div className="flex items-center">
                 <Share2 className="mr-2 h-5 w-5" />
-                <span>{hasValidReferralLink ? "Affiliation" : "Activer l'affiliation"}</span>
+                <span>Programme d'affiliation</span>
               </div>
             </Button>
           </TooltipTrigger>
@@ -63,4 +63,3 @@ const ReferralButton: React.FC<ReferralButtonProps> = ({
 };
 
 export default ReferralButton;
-

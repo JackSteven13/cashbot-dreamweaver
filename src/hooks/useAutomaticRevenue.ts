@@ -30,10 +30,10 @@ export const useAutomaticRevenue = ({
   });
   
   // Référence pour éviter les gains trop fréquents
-  const lastGainTimeRef = useRef(Date.now());
+  const lastGainTimeRef = useRef(Date.now() - 60000); // Commencer avec un décalage pour permettre un gain initial immédiat
   const minTimeBetweenGains = 10000; // 10 secondes minimum entre deux gains
   
-  // Référence pour les valeurs persistentes entre rendus
+  // Référence pour les valeurs persistantes entre rendus
   const dataRef = useRef({
     balanceHistory: [] as {amount: number, timestamp: number}[],
     lastDayProcessed: localStorage.getItem('last_day_processed') || '',
@@ -77,7 +77,7 @@ export const useAutomaticRevenue = ({
             
             // Simuler une évolution du solde même pendant l'absence
             setTimeout(() => {
-              balanceManager.addBalanceGrowth(catchupAmount);
+              balanceManager.updateBalance(catchupAmount);
               
               // Déclencher un événement pour montrer la progression
               window.dispatchEvent(new CustomEvent('balance:daily-growth', { 
@@ -87,6 +87,10 @@ export const useAutomaticRevenue = ({
                   consecutiveVisitDays: newConsecutiveDays
                 }
               }));
+
+              // Ajouter une transaction pour cette progression automatique
+              const report = `Progression automatique de ${daysDifference} jour(s)`;
+              updateBalance(catchupAmount, report, true);
             }, 3000);
           }
         }
@@ -100,7 +104,7 @@ export const useAutomaticRevenue = ({
     if (!isNewUser) {
       processDailyProgress();
     }
-  }, [userData?.balance, isNewUser, consecutiveVisitDays]);
+  }, [userData?.balance, isNewUser, consecutiveVisitDays, updateBalance]);
   
   // Calcul du pourcentage de la limite atteinte
   useEffect(() => {
@@ -153,9 +157,24 @@ export const useAutomaticRevenue = ({
     };
   }, []);
   
+  // Activer le bot par défaut au chargement initial
+  useEffect(() => {
+    if (localStorage.getItem('bot_active') === null) {
+      // Si c'est la première fois, activer le bot
+      setIsBotActive(true);
+      localStorage.setItem('bot_active', 'true');
+      console.log("Bot activé automatiquement au chargement initial");
+      
+      // Déclencher une première génération de revenus après 10 secondes
+      setTimeout(() => {
+        generateAutomaticRevenue(true);
+      }, 10000);
+    }
+  }, []);
+  
   // Fonction de génération de revenus automatiques
   const generateAutomaticRevenue = useCallback(async (forceUpdate = false) => {
-    if (!userData || isNewUser || !isBotActive) {
+    if (!userData || isNewUser || (!isBotActive && !forceUpdate)) {
       return false;
     }
     
@@ -199,6 +218,21 @@ export const useAutomaticRevenue = ({
       if (dataRef.current.balanceHistory.length > 50) {
         dataRef.current.balanceHistory.shift();
       }
+      
+      // Déclencher un événement pour notifier les autres composants
+      window.dispatchEvent(new CustomEvent('automatic:revenue', { 
+        detail: { 
+          gain: finalGain, 
+          timestamp: now
+        }
+      }));
+      
+      // Rafraîchir également l'affichage des transactions
+      window.dispatchEvent(new CustomEvent('transactions:refresh', { 
+        detail: { 
+          timestamp: now 
+        }
+      }));
       
       return true;
     } catch (error) {

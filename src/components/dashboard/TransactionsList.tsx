@@ -30,7 +30,7 @@ const TransactionsList = memo(({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   
-  // Setup real-time update listeners
+  // Setup real-time update listeners with more frequent checks
   useEffect(() => {
     const handleRealtimeUpdate = () => {
       setIsRefreshing(true);
@@ -52,12 +52,49 @@ const TransactionsList = memo(({
       }, 500);
     };
     
+    // Écouter plus d'événements pour s'assurer que les transactions sont à jour
     window.addEventListener('transactions:refresh', handleRealtimeUpdate);
     window.addEventListener('balance:update', handleRealtimeUpdate);
+    window.addEventListener('automatic:revenue', handleRealtimeUpdate);
+    window.addEventListener('balance:daily-growth', handleRealtimeUpdate);
+    
+    // Rafraîchir automatiquement toutes les 2 minutes
+    const autoRefresh = setInterval(() => {
+      handleManualRefresh()
+        .then(() => {
+          setLastUpdated(new Date());
+          console.log("Transactions auto-refreshed");
+        })
+        .catch(() => {
+          console.error("Failed to auto-refresh transactions");
+        });
+    }, 120000); // 2 minutes
     
     return () => {
       window.removeEventListener('transactions:refresh', handleRealtimeUpdate);
       window.removeEventListener('balance:update', handleRealtimeUpdate);
+      window.removeEventListener('automatic:revenue', handleRealtimeUpdate);
+      window.removeEventListener('balance:daily-growth', handleRealtimeUpdate);
+      clearInterval(autoRefresh);
+    };
+  }, [handleManualRefresh]);
+  
+  // Refresh transactions on first load
+  useEffect(() => {
+    // Premier rafraîchissement après 5 secondes pour laisser le temps aux données de se charger
+    const initialRefreshTimeout = setTimeout(() => {
+      handleManualRefresh()
+        .then(() => {
+          setLastUpdated(new Date());
+          console.log("Initial transaction refresh complete");
+        })
+        .catch((error) => {
+          console.error("Failed to refresh transactions:", error);
+        });
+    }, 5000);
+    
+    return () => {
+      clearTimeout(initialRefreshTimeout);
     };
   }, [handleManualRefresh]);
   

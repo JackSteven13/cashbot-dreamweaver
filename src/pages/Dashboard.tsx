@@ -27,7 +27,11 @@ const Dashboard = () => {
   };
 
   // Utilisation du hook useAutomaticRevenue
-  const { generateAutomaticRevenue } = useAutomaticRevenue({
+  const { 
+    generateAutomaticRevenue,
+    isBotActive,
+    dailyLimitProgress 
+  } = useAutomaticRevenue({
     userData,
     updateBalance
   });
@@ -91,6 +95,32 @@ const Dashboard = () => {
       }
     }
   }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue]);
+
+  // Générer des revenus toutes les 2 minutes - beaucoup plus fréquent qu'avant
+  useEffect(() => {
+    if (userData && isBotActive) {
+      // Intervalle pour les mises à jour automatiques régulières
+      const revenueInterval = setInterval(() => {
+        const now = Date.now();
+        
+        // Au moins 60 secondes entre les mises à jour
+        if (now - lastProcessTime > 60000) {
+          console.log("Generating automatic revenue - periodic update");
+          setLastProcessTime(now);
+          
+          // Générer un nouveau revenu automatique
+          generateAutomaticRevenue();
+          
+          // Force a balance update to show progress
+          window.dispatchEvent(new CustomEvent('balance:force-update', { 
+            detail: { timestamp: now, animate: true } 
+          }));
+        }
+      }, 120000); // Toutes les 2 minutes
+      
+      return () => clearInterval(revenueInterval);
+    }
+  }, [userData, isBotActive, generateAutomaticRevenue, lastProcessTime]);
 
   // Heartbeat effect pour assurer des mises à jour périodiques plus lentes
   useEffect(() => {
