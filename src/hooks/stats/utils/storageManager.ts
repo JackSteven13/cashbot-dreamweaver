@@ -11,141 +11,217 @@ const STORAGE_KEYS = {
   STORAGE_DATE: 'stats_storage_date',
   SUBSCRIPTION_GAINS: 'subscription_daily_gains_',
   HIGHEST_VALUES: 'stats_highest_values',
+  GLOBAL_ADS_COUNT: 'global_stats_adsCount',
+  GLOBAL_REVENUE_COUNT: 'global_stats_revenueCount',
+  PERSISTENT_START_DATE: 'stats_persistent_start_date',
+};
+
+// Assurer que les données sont stockées dans des formats cohérents
+const ensureConsistentDataFormat = () => {
+  try {
+    // Migrer les anciennes clés vers le nouveau format si nécessaire
+    const oldAdsCount = localStorage.getItem('stats_ads_count');
+    const oldRevenueCount = localStorage.getItem('stats_revenue_count');
+    
+    if (oldAdsCount && !localStorage.getItem(STORAGE_KEYS.ADS_COUNT)) {
+      localStorage.setItem(STORAGE_KEYS.ADS_COUNT, oldAdsCount);
+    }
+    
+    if (oldRevenueCount && !localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT)) {
+      localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, oldRevenueCount);
+    }
+    
+    // Créer une date de départ persistante si elle n'existe pas
+    if (!localStorage.getItem(STORAGE_KEYS.PERSISTENT_START_DATE)) {
+      const now = new Date();
+      const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 jours en arrière
+      localStorage.setItem(STORAGE_KEYS.PERSISTENT_START_DATE, startDate.toISOString());
+    }
+    
+    // Synchroniser les valeurs globales et locales
+    const adsCount = parseInt(localStorage.getItem(STORAGE_KEYS.ADS_COUNT) || '40000', 10);
+    const revenueCount = parseFloat(localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT) || '50000');
+    
+    localStorage.setItem(STORAGE_KEYS.GLOBAL_ADS_COUNT, adsCount.toString());
+    localStorage.setItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT, revenueCount.toString());
+    
+    return { adsCount, revenueCount };
+  } catch (error) {
+    console.error("Erreur lors de la normalisation des données:", error);
+    return { adsCount: 40000, revenueCount: 50000 };
+  }
 };
 
 /**
- * Charge les valeurs stockées
+ * Charge les valeurs stockées avec amélioration de la persistance
  */
 export const loadStoredValues = () => {
   try {
-    const storedAdsCount = localStorage.getItem(STORAGE_KEYS.ADS_COUNT);
-    const storedRevenueCount = localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT);
+    // D'abord, assurer que les données sont en format cohérent
+    const { adsCount: initialAdsCount, revenueCount: initialRevenueCount } = ensureConsistentDataFormat();
     
-    // Vérifie également les valeurs maximales historiques
+    // Récupérer toutes les sources possibles de valeurs
+    const sources = {
+      ads: [
+        localStorage.getItem(STORAGE_KEYS.ADS_COUNT),
+        localStorage.getItem(STORAGE_KEYS.GLOBAL_ADS_COUNT),
+        localStorage.getItem('stats_ads_count'),
+        sessionStorage.getItem('displayed_ads_count'),
+      ],
+      revenue: [
+        localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT),
+        localStorage.getItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT),
+        localStorage.getItem('stats_revenue_count'),
+        sessionStorage.getItem('displayed_revenue_count'),
+      ]
+    };
+    
+    // Trouver les valeurs maximales à partir de toutes les sources
+    let maxAdsCount = initialAdsCount;
+    let maxRevenueCount = initialRevenueCount;
+    
+    // Parcourir toutes les sources d'ads count
+    sources.ads.forEach(source => {
+      if (source) {
+        try {
+          const value = parseInt(source, 10);
+          if (!isNaN(value) && value > maxAdsCount) {
+            maxAdsCount = value;
+          }
+        } catch (e) {
+          console.error("Erreur lors de l'analyse d'une valeur ads:", e);
+        }
+      }
+    });
+    
+    // Parcourir toutes les sources de revenue count
+    sources.revenue.forEach(source => {
+      if (source) {
+        try {
+          const value = parseFloat(source);
+          if (!isNaN(value) && value > maxRevenueCount) {
+            maxRevenueCount = value;
+          }
+        } catch (e) {
+          console.error("Erreur lors de l'analyse d'une valeur revenue:", e);
+        }
+      }
+    });
+    
+    // Récupérer les valeurs maximales historiques
     const highestValuesStr = localStorage.getItem(STORAGE_KEYS.HIGHEST_VALUES);
-    let highestAds = 0;
-    let highestRevenue = 0;
-    
     if (highestValuesStr) {
       try {
         const highestValues = JSON.parse(highestValuesStr);
-        highestAds = highestValues.ads || 0;
-        highestRevenue = highestValues.revenue || 0;
+        if (highestValues.ads > maxAdsCount) maxAdsCount = highestValues.ads;
+        if (highestValues.revenue > maxRevenueCount) maxRevenueCount = highestValues.revenue;
       } catch (e) {
-        console.error("Error parsing highest values:", e);
+        console.error("Erreur lors de l'analyse des valeurs maximales:", e);
       }
     }
     
-    if (storedAdsCount && storedRevenueCount) {
-      const parsedAds = parseInt(storedAdsCount, 10);
-      const parsedRevenue = parseFloat(storedRevenueCount);
-      
-      if (!isNaN(parsedAds) && !isNaN(parsedRevenue)) {
-        // Utiliser la plus grande valeur entre celle stockée et la valeur historique maximale
-        const finalAdsCount = Math.max(parsedAds, highestAds);
-        const finalRevenueCount = Math.max(parsedRevenue, highestRevenue);
-        
-        // Mettre à jour les valeurs maximales si nécessaire
-        if (finalAdsCount > highestAds || finalRevenueCount > highestRevenue) {
-          localStorage.setItem(STORAGE_KEYS.HIGHEST_VALUES, JSON.stringify({
-            ads: finalAdsCount,
-            revenue: finalRevenueCount
-          }));
-        }
-        
-        console.log("Using stored values:", {
-          adsCount: finalAdsCount,
-          revenueCount: finalRevenueCount,
-          hasStoredValues: true
-        });
-        
-        return {
-          adsCount: finalAdsCount,
-          revenueCount: finalRevenueCount,
-          hasStoredValues: true
-        };
-      }
-    }
+    // Assurer les valeurs minimales
+    maxAdsCount = Math.max(40000, maxAdsCount);
+    maxRevenueCount = Math.max(50000, maxRevenueCount);
+    
+    // Persister les valeurs maximales dans toutes les sources
+    persistMaxValues(maxAdsCount, maxRevenueCount);
+    
+    console.log("Using stored values:", {
+      adsCount: maxAdsCount,
+      revenueCount: maxRevenueCount,
+      hasStoredValues: true
+    });
+    
+    return {
+      adsCount: maxAdsCount,
+      revenueCount: maxRevenueCount,
+      hasStoredValues: true
+    };
   } catch (error) {
     console.error("Error loading stored values:", error);
+    return {
+      adsCount: 40000,
+      revenueCount: 50000,
+      hasStoredValues: false
+    };
   }
-  
-  return {
-    adsCount: 0,
-    revenueCount: 0,
-    hasStoredValues: false
-  };
 };
 
 /**
- * Sauvegarde les valeurs dans le stockage
+ * Persiste les valeurs maximales dans toutes les sources de stockage
+ */
+const persistMaxValues = (adsCount: number, revenueCount: number) => {
+  try {
+    // Stocker dans localStorage avec toutes les clés possibles
+    localStorage.setItem(STORAGE_KEYS.ADS_COUNT, adsCount.toString());
+    localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, revenueCount.toString());
+    localStorage.setItem(STORAGE_KEYS.GLOBAL_ADS_COUNT, adsCount.toString());
+    localStorage.setItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT, revenueCount.toString());
+    localStorage.setItem('stats_ads_count', adsCount.toString());
+    localStorage.setItem('stats_revenue_count', revenueCount.toString());
+    
+    // Mettre à jour la date de stockage
+    localStorage.setItem(STORAGE_KEYS.STORAGE_DATE, new Date().toDateString());
+    
+    // Mettre à jour les valeurs maximales historiques
+    localStorage.setItem(STORAGE_KEYS.HIGHEST_VALUES, JSON.stringify({
+      ads: adsCount,
+      revenue: revenueCount
+    }));
+    
+    // Stocker aussi dans sessionStorage pour la session en cours
+    try {
+      sessionStorage.setItem('displayed_ads_count', adsCount.toString());
+      sessionStorage.setItem('displayed_revenue_count', revenueCount.toString());
+    } catch (e) {
+      console.error("Erreur lors du stockage dans sessionStorage:", e);
+    }
+  } catch (error) {
+    console.error("Erreur lors de la persistance des valeurs maximales:", error);
+  }
+};
+
+/**
+ * Sauvegarde les valeurs dans le stockage avec contrôle de cohérence
  */
 export const saveValues = (adsCount: number, revenueCount: number, updateOnlyProvided: boolean = false): void => {
   try {
-    // Vérifier si les nouvelles valeurs sont plus grandes que celles stockées
-    const currentAdsCount = localStorage.getItem(STORAGE_KEYS.ADS_COUNT) 
-      ? parseInt(localStorage.getItem(STORAGE_KEYS.ADS_COUNT) || '0', 10) 
-      : 0;
-    
-    const currentRevenueCount = localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT)
-      ? parseFloat(localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT) || '0')
-      : 0;
+    // Vérifier les valeurs actuelles dans toutes les sources
+    const current = loadStoredValues();
     
     // Ne mettre à jour que si les nouvelles valeurs sont plus grandes
-    if (!updateOnlyProvided || (updateOnlyProvided && adsCount > currentAdsCount)) {
-      localStorage.setItem(STORAGE_KEYS.ADS_COUNT, Math.max(adsCount, currentAdsCount).toString());
-    }
-
-    if (!updateOnlyProvided || (updateOnlyProvided && revenueCount > currentRevenueCount)) {
-      localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, Math.max(revenueCount, currentRevenueCount).toString());
-    }
+    const finalAdsCount = Math.max(adsCount, current.adsCount);
+    const finalRevenueCount = Math.max(revenueCount, current.revenueCount);
     
-    // Mettre à jour également les valeurs maximales historiques
-    const highestValuesStr = localStorage.getItem(STORAGE_KEYS.HIGHEST_VALUES);
-    let highestAds = 0;
-    let highestRevenue = 0;
+    // Persister dans toutes les sources
+    persistMaxValues(finalAdsCount, finalRevenueCount);
     
-    if (highestValuesStr) {
-      try {
-        const highestValues = JSON.parse(highestValuesStr);
-        highestAds = highestValues.ads || 0;
-        highestRevenue = highestValues.revenue || 0;
-      } catch (e) {
-        console.error("Error parsing highest values:", e);
-      }
-    }
-    
-    // Mettre à jour les valeurs maximales si nécessaire
-    const newHighestAds = Math.max(adsCount, highestAds);
-    const newHighestRevenue = Math.max(revenueCount, highestRevenue);
-    
-    if (newHighestAds > highestAds || newHighestRevenue > highestRevenue) {
-      localStorage.setItem(STORAGE_KEYS.HIGHEST_VALUES, JSON.stringify({
-        ads: newHighestAds,
-        revenue: newHighestRevenue
-      }));
-    }
   } catch (error) {
     console.error("Error saving values:", error);
   }
 };
 
 /**
- * Incrémente les statistiques en fonction de la date
+ * Incrémente les statistiques en fonction de la date et de l'interaction
  */
 export const incrementDateLinkedStats = () => {
   try {
     const { adsCount, revenueCount } = loadStoredValues();
     
-    // Calculer l'incrément basé sur la date
-    const dailyAdsIncrement = Math.floor(generateDateBasedValue() / 100) % 90 + 10; // 10-100 ads par jour
-    const dailyRevenueIncrement = parseFloat(((generateDateBasedValue() % 400) / 100 + 0.7).toFixed(2)); // 0.7-4.7€ par jour
+    // Facteurs de progression naturelle plus importants
+    const dailyAdsIncrement = Math.floor(Math.random() * 50) + 30; // 30-80 ads
+    const dailyRevenueIncrement = parseFloat(((Math.random() * 6) + 2).toFixed(2)); // 2-8€
     
-    // Appliquer les incréments - toujours ajouter, ne jamais diminuer
-    const newAdsCount = adsCount + dailyAdsIncrement;
-    const newRevenueCount = revenueCount + dailyRevenueIncrement;
+    // S'assurer que les incréments ne sont pas trop petits
+    const safeAdsIncrement = Math.max(dailyAdsIncrement, 35);
+    const safeRevenueIncrement = Math.max(dailyRevenueIncrement, 4);
     
-    // Sauvegarder en s'assurant que les valeurs n'ont pas diminué
+    // Appliquer les incréments progressivement
+    const newAdsCount = adsCount + safeAdsIncrement;
+    const newRevenueCount = revenueCount + safeRevenueIncrement;
+    
+    // Sauvegarder en s'assurant que les valeurs ne diminuent jamais
     saveValues(newAdsCount, newRevenueCount);
     
     console.log("Auto-incrément des statistiques");
@@ -259,7 +335,7 @@ export const getDailyGains = (subscription = 'freemium'): number => {
 };
 
 /**
- * Force la valeur minimale des statistiques
+ * Force la valeur minimale des statistiques et assure la progression continue
  */
 export const enforceMinimumStats = (minAdsCount: number, minRevenueCount: number) => {
   try {
@@ -280,5 +356,80 @@ export const enforceMinimumStats = (minAdsCount: number, minRevenueCount: number
   } catch (error) {
     console.error("Erreur lors de l'application des minimums:", error);
     return false;
+  }
+};
+
+/**
+ * Calculer une progression continue des statistiques basée sur le temps écoulé
+ */
+export const calculateTimeBasedProgression = () => {
+  try {
+    // Récupérer la date de départ persistante
+    const startDateStr = localStorage.getItem(STORAGE_KEYS.PERSISTENT_START_DATE);
+    if (!startDateStr) {
+      const now = new Date();
+      const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 jours en arrière
+      localStorage.setItem(STORAGE_KEYS.PERSISTENT_START_DATE, startDate.toISOString());
+      return { adsBase: 40000, revenueBase: 50000 };
+    }
+    
+    // Calculer le temps écoulé depuis la date de départ
+    const startDate = new Date(startDateStr);
+    const now = new Date();
+    const elapsedDays = Math.max(1, Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    
+    // Facteurs de progression moyens par jour
+    const averageDailyAdsIncrement = 2000; // En moyenne 2000 publicités par jour
+    const averageDailyRevenueIncrement = 500; // En moyenne 500€ par jour
+    
+    // Calculer les bases avec progression temporelle
+    const variationFactor = 0.2 + (Math.sin(elapsedDays / 7) + 1) / 10; // Variation entre 0.2 et 0.4
+    const adsBase = 40000 + (elapsedDays * averageDailyAdsIncrement * variationFactor);
+    const revenueBase = 50000 + (elapsedDays * averageDailyRevenueIncrement * variationFactor);
+    
+    return { 
+      adsBase: Math.floor(adsBase), 
+      revenueBase: Math.floor(revenueBase)
+    };
+  } catch (error) {
+    console.error("Erreur lors du calcul de la progression temporelle:", error);
+    return { adsBase: 40000, revenueBase: 50000 };
+  }
+};
+
+/**
+ * Récupère ou génère des valeurs statistiques basées sur la date actuelle
+ * pour assurer des valeurs cohérentes et progressives
+ */
+export const getDateConsistentStats = () => {
+  try {
+    // D'abord, vérifier les valeurs stockées
+    const storedValues = loadStoredValues();
+    
+    // Si nous avons des valeurs stockées, c'est la source prioritaire
+    if (storedValues.hasStoredValues && 
+        storedValues.adsCount >= 40000 && 
+        storedValues.revenueCount >= 50000) {
+      return {
+        adsCount: storedValues.adsCount,
+        revenueCount: storedValues.revenueCount
+      };
+    }
+    
+    // Sinon, calculer des valeurs basées sur la progression temporelle
+    const { adsBase, revenueBase } = calculateTimeBasedProgression();
+    
+    // Ajouter une variation journalière cohérente
+    const dailyVariation = generateDateBasedValue() % 1000;
+    const adsCount = adsBase + dailyVariation;
+    const revenueCount = revenueBase + (dailyVariation / 5);
+    
+    // Sauvegarder ces valeurs
+    saveValues(adsCount, revenueCount);
+    
+    return { adsCount, revenueCount };
+  } catch (error) {
+    console.error("Erreur lors du calcul des statistiques cohérentes:", error);
+    return { adsCount: 40000, revenueCount: 50000 };
   }
 };

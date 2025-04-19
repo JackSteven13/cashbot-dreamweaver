@@ -3,266 +3,213 @@ import { useRef, useEffect } from 'react';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
 /**
- * Hook for scheduling automatic sessions
+ * Hook for scheduling automatic sessions with improved persistence
  */
 export const useAutoSessionScheduler = (
   todaysGainsRef: React.MutableRefObject<number>,
   generateAutomaticRevenue: (isFirst?: boolean) => Promise<void>,
   userData: any,
-  isBotActive: boolean = true
+  isBotActive: boolean
 ) => {
-  // Utiliser useRef au lieu de useState pour éviter les erreurs React
-  const lastAutoSessionTimeRef = useRef<number>(Date.now());
-  const botStatusRef = useRef<boolean>(isBotActive);
-  const initialSessionExecutedRef = useRef<boolean>(false);
-  const persistentBalanceRef = useRef<number>(userData?.balance || 0);
-  const highestBalanceRef = useRef<number>(0);
-  
-  // Calculer un facteur journalier stable basé sur la date
-  const calcDailyProgressFactor = () => {
-    const now = new Date();
-    const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
-    // Valeur entre 1 et 2 basée sur le jour de l'année
-    return 1 + Math.sin(dayOfYear * 0.1) * 0.5;
-  };
-  
-  const dailyProgressFactorRef = useRef<number>(calcDailyProgressFactor());
-  const globalBalanceSyncRef = useRef<NodeJS.Timeout | null>(null);
-  const lastBalanceUpdateRef = useRef<number>(Date.now());
-  const balanceUpdateDebounceTime = 5000; // 5 secondes minimum entre les mises à jour du solde
+  // Utiliser des références pour la stabilité entre les rendus
+  const scheduleDataRef = useRef({
+    primaryInterval: null as NodeJS.Timeout | null,
+    secondaryInterval: null as NodeJS.Timeout | null,
+    randomInterval: null as NodeJS.Timeout | null,
+    lastSessionTime: Date.now(),
+    sessionCount: 0,
+    persistentSessionsEnabled: true,
+    currentSubscription: userData?.subscription || 'freemium'
+  });
 
-  // Effect to simulate automatic ad analysis
+  // Configuration du planificateur selon le niveau d'abonnement
   useEffect(() => {
-    // Synchroniser notre référence avec la prop
-    botStatusRef.current = isBotActive;
+    if (!generateAutomaticRevenue) return;
     
-    // Récupérer la balance depuis localStorage pour une meilleure persistance
-    try {
-      const storedHighestBalance = localStorage.getItem('highestBalance');
-      const storedBalance = localStorage.getItem('currentBalance') || localStorage.getItem('lastKnownBalance');
-      
-      if (storedHighestBalance) {
-        const parsedBalance = parseFloat(storedHighestBalance);
-        if (!isNaN(parsedBalance)) {
-          highestBalanceRef.current = parsedBalance;
-          console.log(`[Scheduler] Got highest persisted balance: ${highestBalanceRef.current}`);
-        }
-      }
-      
-      if (storedBalance) {
-        const parsedBalance = parseFloat(storedBalance);
-        if (!isNaN(parsedBalance)) {
-          // Toujours utiliser la valeur la plus élevée
-          persistentBalanceRef.current = Math.max(parsedBalance, persistentBalanceRef.current, highestBalanceRef.current);
-          console.log(`[Scheduler] Got persisted balance: ${persistentBalanceRef.current}`);
-          
-          // Stocker également comme solde le plus élevé s'il est plus grand
-          if (persistentBalanceRef.current > highestBalanceRef.current) {
-            highestBalanceRef.current = persistentBalanceRef.current;
-            localStorage.setItem('highestBalance', highestBalanceRef.current.toString());
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Failed to read persisted balance:", e);
+    // Nettoyer tous les intervalles existants
+    if (scheduleDataRef.current.primaryInterval) {
+      clearInterval(scheduleDataRef.current.primaryInterval);
+    }
+    if (scheduleDataRef.current.secondaryInterval) {
+      clearInterval(scheduleDataRef.current.secondaryInterval);
+    }
+    if (scheduleDataRef.current.randomInterval) {
+      clearInterval(scheduleDataRef.current.randomInterval);
     }
     
-    // Configurer une synchronisation périodique du solde avec un debounce
-    globalBalanceSyncRef.current = setInterval(() => {
-      const now = Date.now();
-      // Limiter la fréquence des mises à jour pour éviter les fluctuations
-      if (now - lastBalanceUpdateRef.current < balanceUpdateDebounceTime) {
-        return;
-      }
-      
-      // Vérifier si une journée s'est écoulée depuis la dernière mise à jour majeure
-      const lastMajorUpdate = localStorage.getItem('lastMajorBalanceUpdate');
-      const today = new Date().toISOString().split('T')[0];
-      
-      if (lastMajorUpdate !== today) {
-        // Nouvelle journée, augmenter le solde de manière significative
-        const subscription = userData?.subscription || 'freemium';
-        let dailyBonus = 0;
-        
-        // Calculer un bonus basé sur l'abonnement et un facteur aléatoire mais stable pour la journée
-        switch (subscription) {
-          case 'premium':
-            dailyBonus = 0.2 * dailyProgressFactorRef.current;
-            break;
-          case 'professional':
-            dailyBonus = 0.35 * dailyProgressFactorRef.current;
-            break;
-          case 'freemium':
-          default:
-            dailyBonus = 0.1 * dailyProgressFactorRef.current;
-            break;
-        }
-        
-        // Ajouter au solde
-        const currentBalance = persistentBalanceRef.current;
-        const newBalance = currentBalance + dailyBonus;
-        persistentBalanceRef.current = newBalance;
-        highestBalanceRef.current = Math.max(highestBalanceRef.current, newBalance);
-        
-        // Sauvegarder dans le localStorage
-        localStorage.setItem('highestBalance', highestBalanceRef.current.toString());
-        localStorage.setItem('currentBalance', newBalance.toString());
-        localStorage.setItem('lastKnownBalance', newBalance.toString());
-        localStorage.setItem('lastMajorBalanceUpdate', today);
-        lastBalanceUpdateRef.current = now;
-        
-        // Animer l'affichage du solde
-        window.dispatchEvent(new CustomEvent('balance:force-sync', { 
-          detail: { newBalance, animate: true }
-        }));
-        
-        console.log(`[Scheduler] Bonus journalier appliqué: +${dailyBonus.toFixed(2)}€, nouveau solde: ${newBalance.toFixed(2)}€`);
-      }
-      
-      // Déclencher un événement pour que tous les composants utilisent le solde le plus élevé
-      // mais seulement si un certain temps s'est écoulé depuis la dernière mise à jour
-      if (highestBalanceRef.current > 0 && now - lastBalanceUpdateRef.current >= balanceUpdateDebounceTime) {
-        window.dispatchEvent(new CustomEvent('balance:force-sync', { 
-          detail: { newBalance: highestBalanceRef.current }
-        }));
-        lastBalanceUpdateRef.current = now;
-      }
-    }, 30000); // Synchroniser toutes les 30 secondes
+    // Charger l'état de persistance
+    const persistentSessionsEnabled = localStorage.getItem('persistent_sessions_enabled') !== 'false';
+    scheduleDataRef.current.persistentSessionsEnabled = persistentSessionsEnabled;
     
-    // Get the daily limit for the current subscription
-    const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    // Mettre à jour le type d'abonnement
+    scheduleDataRef.current.currentSubscription = userData?.subscription || 'freemium';
     
-    // Skip all auto sessions if bot is not active
-    if (!isBotActive) {
-      console.log("Bot inactif, aucune session automatique ne sera programmée");
-      return () => {
-        if (globalBalanceSyncRef.current) clearInterval(globalBalanceSyncRef.current);
-      };
-    }
-    
-    // Start an initial session after a short delay if bot is active
-    const initialTimeout = setTimeout(() => {
-      // Vérifications de sécurité supplémentaires - plus de limite basée sur le solde courant
-      if (botStatusRef.current && !initialSessionExecutedRef.current) {
-        console.log("[Scheduler] Démarrage de la session initiale automatique");
-        initialSessionExecutedRef.current = true; // Marquer comme exécuté
-        generateAutomaticRevenue(true);
-        lastAutoSessionTimeRef.current = Date.now();
-      } else {
-        console.log("[Scheduler] Conditions non remplies pour session initiale");
-      }
-    }, 10000);
-    
-    // Set up interval for automatic sessions
-    const autoSessionInterval = setInterval(() => {
-      // Vérification stricte du statut du bot
-      if (!botStatusRef.current) {
-        return;
-      }
-      
-      // Check if 2-3 minutes have passed since the last session
-      const timeSinceLastSession = Date.now() - lastAutoSessionTimeRef.current;
-      const randomInterval = Math.random() * 60000 + 120000; // Between 2 and 3 minutes
-      
-      // Générer des revenus automatiques sans limite sur le solde total
-      if (timeSinceLastSession >= randomInterval && botStatusRef.current) {
-        console.log("[Scheduler] Génération automatique de revenus");
-        generateAutomaticRevenue();
-        lastAutoSessionTimeRef.current = Date.now();
-      }
-    }, 30000); // Check every 30 seconds
+    // Ne pas démarrer de nouvelles sessions si le bot est inactif
+    if (!isBotActive) return;
 
-    // Écouter les changements d'état du bot
-    const handleBotStatusChange = (event: CustomEvent) => {
-      const isActive = event.detail?.active;
-      if (typeof isActive === 'boolean') {
-        botStatusRef.current = isActive;
-        console.log(`[Scheduler] Bot status updated: ${isActive ? 'active' : 'inactive'}`);
+    // Configuration adaptée au type d'abonnement
+    const getIntervalForSubscription = () => {
+      const sub = scheduleDataRef.current.currentSubscription;
+      switch (sub) {
+        case 'pro':
+        case 'ultimate':
+          return { min: 25000, max: 45000 }; // 25-45 secondes
+        case 'premium':
+          return { min: 35000, max: 65000 }; // 35-65 secondes
+        case 'basic':
+          return { min: 45000, max: 75000 }; // 45-75 secondes
+        case 'freemium':
+        default:
+          return { min: 60000, max: 120000 }; // 60-120 secondes
       }
     };
     
-    // Écouter les changements de solde pour la persistence
-    const handleBalanceUpdate = (event: CustomEvent) => {
+    const { min, max } = getIntervalForSubscription();
+    
+    // Intervalle principal - génération régulière
+    scheduleDataRef.current.primaryInterval = setInterval(() => {
       const now = Date.now();
-      // Limiter la fréquence des mises à jour pour éviter les fluctuations
-      if (now - lastBalanceUpdateRef.current < balanceUpdateDebounceTime) {
+      
+      // Vérifier le temps écoulé depuis la dernière session pour éviter le spam
+      const timeSinceLastSession = now - scheduleDataRef.current.lastSessionTime;
+      if (timeSinceLastSession < min * 0.8) {
+        console.log("Session generation throttled - too soon");
         return;
       }
       
-      const newBalance = event.detail?.balance;
-      if (typeof newBalance === 'number' && newBalance >= 0) {
-        // Ne mettre à jour que si le nouveau solde est plus élevé
-        if (newBalance > persistentBalanceRef.current) {
-          persistentBalanceRef.current = newBalance;
-          console.log(`[Scheduler] Updated persistent balance to ${newBalance}`);
+      if (isBotActive && scheduleDataRef.current.persistentSessionsEnabled) {
+        scheduleDataRef.current.lastSessionTime = now;
+        scheduleDataRef.current.sessionCount++;
+        
+        // Générer une nouvelle session avec progression
+        generateAutomaticRevenue(false);
+      }
+    }, min + Math.random() * (max - min));
+    
+    // Intervalle secondaire - récupération après inactivité
+    scheduleDataRef.current.secondaryInterval = setInterval(() => {
+      // Vérifier si nous avons manqué des sessions pendant l'inactivité de la page
+      if (isBotActive && scheduleDataRef.current.persistentSessionsEnabled) {
+        const now = Date.now();
+        const timeSinceLastSession = now - scheduleDataRef.current.lastSessionTime;
+        
+        // Si plus de 3 minutes sans session, rattraper une session manquée
+        if (timeSinceLastSession > 3 * 60 * 1000) {
+          console.log("Recovering missed session after inactivity");
+          scheduleDataRef.current.lastSessionTime = now;
+          scheduleDataRef.current.sessionCount++;
           
-          // Mettre à jour aussi le solde le plus élevé si nécessaire
-          if (newBalance > highestBalanceRef.current) {
-            highestBalanceRef.current = newBalance;
-            console.log(`[Scheduler] Updated highest balance to ${newBalance}`);
-            
-            // S'assurer que le localStorage est aussi à jour
-            try {
-              localStorage.setItem('highestBalance', highestBalanceRef.current.toString());
-            } catch (e) {
-              console.error("Failed to store highest balance:", e);
-            }
-          }
-          
-          // S'assurer que le localStorage est aussi à jour
-          localStorage.setItem('lastKnownBalance', newBalance.toString());
-          localStorage.setItem('currentBalance', newBalance.toString());
-          lastBalanceUpdateRef.current = now;
+          // Session de récupération
+          generateAutomaticRevenue(false);
         }
       }
-    };
+    }, 60000); // Vérifier chaque minute
     
-    // Nouveau gestionnaire pour la synchronisation forcée
-    const handleForceSyncBalance = (event: CustomEvent) => {
-      const now = Date.now();
-      // Limiter la fréquence des mises à jour pour éviter les fluctuations
-      if (now - lastBalanceUpdateRef.current < balanceUpdateDebounceTime) {
-        return;
-      }
-      
-      const syncedBalance = event.detail?.balance || event.detail?.newBalance;
-      if (typeof syncedBalance === 'number' && syncedBalance > 0) {
-        // Ne mettre à jour que si le solde synchronisé est plus élevé que notre maximum
-        if (syncedBalance > highestBalanceRef.current) {
-          console.log(`[Scheduler] Forced sync of highest balance: ${syncedBalance}`);
-          highestBalanceRef.current = syncedBalance;
-          persistentBalanceRef.current = syncedBalance;
-          
-          // Mettre à jour localStorage
-          localStorage.setItem('highestBalance', syncedBalance.toString());
-          localStorage.setItem('currentBalance', syncedBalance.toString());
-          localStorage.setItem('lastKnownBalance', syncedBalance.toString());
-          lastBalanceUpdateRef.current = now;
+    // Sessions aléatoires - pour plus de variabilité
+    scheduleDataRef.current.randomInterval = setInterval(() => {
+      // 25% de chance de générer une session aléatoire supplémentaire
+      if (isBotActive && scheduleDataRef.current.persistentSessionsEnabled && Math.random() < 0.25) {
+        const now = Date.now();
+        
+        // Vérifier le temps écoulé pour éviter le spam
+        const timeSinceLastSession = now - scheduleDataRef.current.lastSessionTime;
+        if (timeSinceLastSession < min * 0.6) {
+          return;
         }
+        
+        scheduleDataRef.current.lastSessionTime = now;
+        scheduleDataRef.current.sessionCount++;
+        
+        // Session aléatoire bonus
+        console.log("Random bonus session triggered");
+        generateAutomaticRevenue(false);
       }
-    };
+    }, 90000 + Math.random() * 60000); // Entre 1.5 et 2.5 minutes
     
-    window.addEventListener('bot:status-change' as any, handleBotStatusChange);
-    window.addEventListener('balance:local-update' as any, handleBalanceUpdate);
-    window.addEventListener('balance:force-update' as any, handleBalanceUpdate);
-    window.addEventListener('balance:force-sync' as any, handleForceSyncBalance);
-
+    // Nettoyage lors du démontage du composant
     return () => {
-      clearTimeout(initialTimeout);
-      clearInterval(autoSessionInterval);
-      if (globalBalanceSyncRef.current) clearInterval(globalBalanceSyncRef.current);
-      window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
-      window.removeEventListener('balance:local-update' as any, handleBalanceUpdate);
-      window.removeEventListener('balance:force-update' as any, handleBalanceUpdate);
-      window.removeEventListener('balance:force-sync' as any, handleForceSyncBalance);
+      if (scheduleDataRef.current.primaryInterval) {
+        clearInterval(scheduleDataRef.current.primaryInterval);
+      }
+      if (scheduleDataRef.current.secondaryInterval) {
+        clearInterval(scheduleDataRef.current.secondaryInterval);
+      }
+      if (scheduleDataRef.current.randomInterval) {
+        clearInterval(scheduleDataRef.current.randomInterval);
+      }
     };
-  }, [isBotActive, userData.subscription, generateAutomaticRevenue, todaysGainsRef]);
-
-  // Exposer les valeurs de référence de manière sécurisée
+  }, [generateAutomaticRevenue, isBotActive, userData?.subscription]);
+  
+  // Gérer les changements de visibilité de la page
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // À la réactivation de la page, vérifier si nous devons générer une session
+        const now = Date.now();
+        const timeSinceLastSession = now - scheduleDataRef.current.lastSessionTime;
+        
+        // Si plus de 2 minutes sans session et que le bot est actif
+        if (timeSinceLastSession > 2 * 60 * 1000 && isBotActive && scheduleDataRef.current.persistentSessionsEnabled) {
+          console.log("Generating catch-up session on page visibility");
+          scheduleDataRef.current.lastSessionTime = now;
+          scheduleDataRef.current.sessionCount++;
+          
+          // Session de rattrapage
+          generateAutomaticRevenue(false);
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [generateAutomaticRevenue, isBotActive]);
+  
+  // Écouter les changements dans les limites ou les paramètres de l'utilisateur
+  useEffect(() => {
+    const checkGainLimits = () => {
+      const subscription = userData?.subscription || 'freemium';
+      const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      
+      // Vérifier si nous avons dépassé les limites quotidiennes
+      if (todaysGainsRef.current >= dailyLimit) {
+        // Désactiver temporairement les sessions automatiques
+        scheduleDataRef.current.persistentSessionsEnabled = false;
+      } else {
+        // Réactiver les sessions automatiques
+        scheduleDataRef.current.persistentSessionsEnabled = true;
+      }
+      
+      // Persister l'état
+      localStorage.setItem('persistent_sessions_enabled', scheduleDataRef.current.persistentSessionsEnabled.toString());
+    };
+    
+    // Vérification périodique des limites
+    const limitsInterval = setInterval(checkGainLimits, 30000);
+    
+    // Vérification initiale
+    checkGainLimits();
+    
+    return () => {
+      clearInterval(limitsInterval);
+    };
+  }, [todaysGainsRef, userData]);
+  
   return {
-    lastAutoSessionTime: lastAutoSessionTimeRef.current,
-    getLastAutoSessionTime: () => lastAutoSessionTimeRef.current,
-    isInitialSessionExecuted: () => initialSessionExecutedRef.current,
-    getCurrentPersistentBalance: () => Math.max(persistentBalanceRef.current, highestBalanceRef.current)
+    sessionCount: scheduleDataRef.current.sessionCount,
+    lastSessionTime: scheduleDataRef.current.lastSessionTime,
+    persistentSessionsEnabled: scheduleDataRef.current.persistentSessionsEnabled,
+    enablePersistentSessions: () => {
+      scheduleDataRef.current.persistentSessionsEnabled = true;
+      localStorage.setItem('persistent_sessions_enabled', 'true');
+    },
+    disablePersistentSessions: () => {
+      scheduleDataRef.current.persistentSessionsEnabled = false;
+      localStorage.setItem('persistent_sessions_enabled', 'false');
+    }
   };
 };
+
+export default useAutoSessionScheduler;
