@@ -1,93 +1,109 @@
 
 import { useState, useEffect, useRef } from 'react';
 
-interface UseAnimatedCounterProps {
+interface AnimatedCounterProps {
   value: number;
   duration?: number;
   decimals?: number;
   formatOptions?: Intl.NumberFormatOptions;
-  easing?: (t: number) => number;
 }
 
 export const useAnimatedCounter = ({
   value,
   duration = 1000,
   decimals = 0,
-  formatOptions = {},
-  easing
-}: UseAnimatedCounterProps) => {
+  formatOptions
+}: AnimatedCounterProps) => {
   const [displayValue, setDisplayValue] = useState(value);
-  const [formattedValue, setFormattedValue] = useState('0');
-  const previousValueRef = useRef(value);
-  const animationFrameId = useRef<number | null>(null);
-  const startTimeRef = useRef<number | null>(null);
+  const [formattedValue, setFormattedValue] = useState('');
+  const [isAnimating, setIsAnimating] = useState(false);
+  const prevValueRef = useRef(value);
+  const animationFrameRef = useRef<number | null>(null);
   
-  // Default easing function (easeOutQuart for more natural animation)
-  const defaultEasing = (t: number) => 1 - Math.pow(1 - t, 4);
-  const easingFunction = easing || defaultEasing;
-
-  useEffect(() => {
-    if (Math.abs(value - previousValueRef.current) < 0.001) {
-      setDisplayValue(value);
-      previousValueRef.current = value;
-      return;
+  // Fonction pour mettre à jour la valeur cible externe
+  const setTargetValue = (newTarget: number) => {
+    // Annuler l'animation en cours si elle existe
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
     }
     
-    // Clean up any existing animation
-    if (animationFrameId.current !== null) {
-      cancelAnimationFrame(animationFrameId.current);
-    }
+    // Démarrer une nouvelle animation vers la nouvelle cible
+    animate(prevValueRef.current, newTarget);
+  };
+  
+  // Fonction d'animation
+  const animate = (startValue: number, endValue: number) => {
+    setIsAnimating(true);
+    const startTime = Date.now();
     
-    const startValue = previousValueRef.current;
-    const valueChange = value - startValue;
-    startTimeRef.current = null;
-    
-    const step = (timestamp: number) => {
-      if (!startTimeRef.current) startTimeRef.current = timestamp;
-      const elapsed = timestamp - startTimeRef.current;
-      const progress = Math.min(elapsed / duration, 1);
+    const step = () => {
+      const currentTime = Date.now();
+      const elapsed = currentTime - startTime;
       
-      // Apply easing function
-      const easedProgress = easingFunction(progress);
-      const currentValue = startValue + valueChange * easedProgress;
+      if (elapsed >= duration) {
+        // Animation terminée
+        setDisplayValue(endValue);
+        prevValueRef.current = endValue;
+        setIsAnimating(false);
+        animationFrameRef.current = null;
+        return;
+      }
       
+      // Calculer la valeur actuelle avec easing
+      const progress = elapsed / duration;
+      const easedProgress = easeOutCubic(progress);
+      const currentValue = startValue + (endValue - startValue) * easedProgress;
+      
+      // Mettre à jour la valeur affichée
       setDisplayValue(currentValue);
       
-      if (progress < 1) {
-        animationFrameId.current = requestAnimationFrame(step);
-      } else {
-        setDisplayValue(value);
-        previousValueRef.current = value;
-        animationFrameId.current = null;
-      }
+      // Continuer l'animation
+      animationFrameRef.current = requestAnimationFrame(step);
     };
     
-    animationFrameId.current = requestAnimationFrame(step);
-    
-    return () => {
-      if (animationFrameId.current !== null) {
-        cancelAnimationFrame(animationFrameId.current);
-      }
-    };
-  }, [value, duration, easingFunction]);
+    // Démarrer l'animation
+    step();
+  };
   
-  // Format the display value and update whenever it changes
+  // Fonction d'easing pour une animation plus naturelle
+  const easeOutCubic = (x: number): number => {
+    return 1 - Math.pow(1 - x, 3);
+  };
+  
+  // Formater la valeur pour l'affichage
   useEffect(() => {
-    const options: Intl.NumberFormatOptions = {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-      ...formatOptions
-    };
+    let formatted: string;
     
-    // Format using Intl.NumberFormat for proper localization
-    const formatter = new Intl.NumberFormat('fr-FR', options);
-    setFormattedValue(formatter.format(displayValue));
+    if (formatOptions) {
+      formatted = new Intl.NumberFormat(undefined, formatOptions).format(displayValue);
+    } else {
+      formatted = displayValue.toFixed(decimals);
+    }
+    
+    setFormattedValue(formatted);
   }, [displayValue, decimals, formatOptions]);
   
-  return { 
-    displayValue, 
+  // Démarrer l'animation lors d'un changement de valeur
+  useEffect(() => {
+    if (value !== prevValueRef.current) {
+      animate(prevValueRef.current, value);
+    }
+  }, [value, duration]);
+  
+  // Nettoyer l'animation lors du démontage du composant
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
+  
+  return {
+    displayValue,
     formattedValue,
-    isAnimating: animationFrameId.current !== null
+    isAnimating,
+    setTargetValue
   };
 };
 

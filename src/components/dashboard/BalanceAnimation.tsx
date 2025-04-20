@@ -14,8 +14,9 @@ const BalanceAnimation: React.FC<BalanceAnimationProps> = ({ position = 'top-rig
 
   useEffect(() => {
     const handleBalanceUpdate = (event: CustomEvent) => {
+      console.log("Balance animation received event:", event.type, event.detail);
       const gain = event.detail?.amount || event.detail?.gain || 0;
-      const shouldAnimate = event.detail?.animate === true;
+      const shouldAnimate = event.detail?.animate !== false;
       
       if (gain > 0 && shouldAnimate) {
         setAmount(gain);
@@ -23,14 +24,15 @@ const BalanceAnimation: React.FC<BalanceAnimationProps> = ({ position = 'top-rig
         
         // Créer des particules si gain significatif
         if (gain >= 0.01 && animationRef.current) {
-          const particleCount = Math.min(20, Math.ceil(gain * 30));
+          // Augmenter significativement le nombre de particules pour un effet plus visible
+          const particleCount = Math.min(30, Math.ceil(gain * 50));
           createMoneyParticles(animationRef.current, particleCount);
         }
         
         // Masquer après animation
         setTimeout(() => {
           setIsVisible(false);
-        }, 3000);
+        }, 5000); // Durée plus longue pour l'affichage
       }
     };
     
@@ -38,11 +40,13 @@ const BalanceAnimation: React.FC<BalanceAnimationProps> = ({ position = 'top-rig
     window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
     window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
     window.addEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
+    window.addEventListener('balance:animation', handleBalanceUpdate as EventListener);
     
     return () => {
       window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
       window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
       window.removeEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
+      window.removeEventListener('balance:animation', handleBalanceUpdate as EventListener);
     };
   }, []);
   
@@ -62,10 +66,10 @@ const BalanceAnimation: React.FC<BalanceAnimationProps> = ({ position = 'top-rig
   return (
     <div 
       ref={animationRef}
-      className={`fixed ${positionClassName} z-50 transition-all duration-300 opacity-100`}
+      className={`fixed ${positionClassName} z-50 transition-all duration-500 opacity-100 animate-bounce`}
     >
-      <div className="bg-gradient-to-r from-green-500 to-green-600 text-white py-2 px-4 rounded-lg shadow-lg animate-bounce">
-        <span className="text-lg font-bold">+{amount.toFixed(2)}€</span>
+      <div className="bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-6 rounded-lg shadow-xl">
+        <span className="text-xl font-bold">+{amount.toFixed(2)}€</span>
       </div>
     </div>
   );

@@ -26,26 +26,35 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   
   const [prevBalance, setPrevBalance] = useState<number>(displayBalance);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
+  const [gainAmount, setGainAmount] = useState<number | null>(null);
   const balanceRef = useRef<HTMLDivElement>(null);
   const lastUpdateTime = useRef<number>(Date.now());
-  const updateDebounceTime = 2000; // 2 secondes minimum entre les mises à jour d'affichage
+  const updateDebounceTime = 1000; // 1 seconde minimum entre les mises à jour d'affichage
   
-  const { formattedValue } = useAnimatedCounter({
+  const { formattedValue, setTargetValue } = useAnimatedCounter({
     value: displayBalance,
     duration: 1200,
     decimals: 2,
     formatOptions: { style: 'currency', currency: 'EUR' }
   });
   
-  // Synchroniser avec le balance prop, mais avec debounce pour éviter les fluctuations rapides
+  // Synchroniser avec le balance prop
   useEffect(() => {
     const now = Date.now();
     // Seulement mettre à jour si assez de temps s'est écoulé depuis la dernière mise à jour
-    if (now - lastUpdateTime.current > updateDebounceTime && Math.abs(balance - displayBalance) > 0.01) {
+    // ou si la différence est significative
+    if ((now - lastUpdateTime.current > updateDebounceTime || 
+        Math.abs(balance - displayBalance) > 0.1) && 
+        balance > displayBalance) {
+      
+      console.log(`Updating display balance from ${displayBalance} to ${balance}`);
+      
       // Utiliser une transition
       setPrevBalance(displayBalance);
       setDisplayBalance(balance);
+      setTargetValue(balance); // Important: mettre à jour la valeur cible de l'animation
       setIsAnimating(true);
+      setGainAmount(balance - displayBalance);
       
       // Enregistrer les valeurs dans le localStorage
       localStorage.setItem('currentBalance', balance.toString());
@@ -55,41 +64,86 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       lastUpdateTime.current = now;
       
       // Réinitialiser l'animation après un délai
-      setTimeout(() => setIsAnimating(false), 2000);
+      setTimeout(() => {
+        setIsAnimating(false);
+        setGainAmount(null);
+      }, 2000);
     }
-  }, [balance, displayBalance]);
+  }, [balance, displayBalance, setTargetValue]);
   
   // Gestionnaire unifié pour les événements de mise à jour du solde
   useEffect(() => {
     const handleBalanceUpdate = (event: CustomEvent) => {
+      console.log("Balance display received event:", event.type, event.detail);
+      
       const now = Date.now();
-      // Vérifier si assez de temps s'est écoulé depuis la dernière mise à jour
-      if (now - lastUpdateTime.current < updateDebounceTime) {
-        return; // Ignorer les mises à jour trop rapprochées
-      }
       
       const newBalance = event.detail?.newBalance || event.detail?.currentBalance;
       const gain = event.detail?.gain || event.detail?.amount;
-      const shouldAnimate = event.detail?.animate === true;
+      const oldBalance = event.detail?.oldBalance || displayBalance;
+      const shouldAnimate = event.detail?.animate !== false;
       
-      if (typeof newBalance === 'number' && newBalance > 0 && 
-          Math.abs(newBalance - displayBalance) > 0.01) {
+      // Si nous avons un nouveau solde explicite
+      if (typeof newBalance === 'number' && newBalance > 0) {
+        console.log(`Updating balance display to ${newBalance} (from ${oldBalance})`);
+        
+        if (Math.abs(newBalance - displayBalance) > 0.01) {
+          // Mettre à jour le solde avec animation
+          setPrevBalance(displayBalance);
+          setDisplayBalance(newBalance);
+          setTargetValue(newBalance); // Important pour l'animation
+          setIsAnimating(shouldAnimate);
+          
+          // Calculer et afficher le gain
+          const calculatedGain = newBalance - displayBalance;
+          if (calculatedGain > 0) {
+            setGainAmount(calculatedGain);
+          } else if (typeof gain === 'number' && gain > 0) {
+            setGainAmount(gain);
+          }
+          
+          // Enregistrer les valeurs
+          localStorage.setItem('currentBalance', newBalance.toString());
+          localStorage.setItem('lastKnownBalance', newBalance.toString());
+          
+          // Mettre à jour le timestamp
+          lastUpdateTime.current = now;
+          
+          // Réinitialiser l'animation après un délai
+          if (shouldAnimate) {
+            setTimeout(() => {
+              setIsAnimating(false);
+              setGainAmount(null);
+            }, 3000);
+          }
+        }
+      }
+      // Si nous avons seulement un gain
+      else if (typeof gain === 'number' && gain > 0) {
+        console.log(`Updating balance display with gain ${gain}`);
+        
+        const calculatedNewBalance = displayBalance + gain;
         
         // Mettre à jour le solde avec animation
         setPrevBalance(displayBalance);
-        setDisplayBalance(newBalance);
+        setDisplayBalance(calculatedNewBalance);
+        setTargetValue(calculatedNewBalance); // Important pour l'animation
         setIsAnimating(shouldAnimate);
+        setGainAmount(gain);
         
         // Enregistrer les valeurs
-        localStorage.setItem('currentBalance', newBalance.toString());
-        localStorage.setItem('lastKnownBalance', newBalance.toString());
+        localStorage.setItem('currentBalance', calculatedNewBalance.toString());
+        localStorage.setItem('lastKnownBalance', calculatedNewBalance.toString());
         
         // Mettre à jour le timestamp
         lastUpdateTime.current = now;
         
         // Réinitialiser l'animation après un délai
         if (shouldAnimate) {
-          setTimeout(() => setIsAnimating(false), 2000);
+          setTimeout(() => {
+            setIsAnimating(false);
+            setGainAmount(null);
+          }, 3000);
         }
       }
     };
@@ -99,14 +153,18 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
     window.addEventListener('balance:force-sync', handleBalanceUpdate as EventListener);
     window.addEventListener('balance:daily-growth', handleBalanceUpdate as EventListener);
+    window.addEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
+    window.addEventListener('balance:animation', handleBalanceUpdate as EventListener);
     
     return () => {
       window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
       window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
       window.removeEventListener('balance:force-sync', handleBalanceUpdate as EventListener);
       window.removeEventListener('balance:daily-growth', handleBalanceUpdate as EventListener);
+      window.removeEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
+      window.removeEventListener('balance:animation', handleBalanceUpdate as EventListener);
     };
-  }, [displayBalance]);
+  }, [displayBalance, setTargetValue]);
   
   // Sauvegarder le solde avant déchargement de la page
   useEffect(() => {
@@ -148,10 +206,10 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
             ) : (
               <>
                 {formattedValue}
-                {isAnimating && (prevBalance !== displayBalance) && (
-                  <span className="absolute -top-4 right-0 text-sm text-green-500 flex items-center animate-fade-in">
+                {isAnimating && gainAmount !== null && (
+                  <span className="absolute -top-4 right-0 text-sm text-green-500 flex items-center animate-bounce">
                     <ChevronUp className="h-3 w-3 mr-0.5" />
-                    +{(displayBalance - prevBalance).toFixed(2)}€
+                    +{gainAmount.toFixed(2)}€
                   </span>
                 )}
               </>

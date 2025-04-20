@@ -9,6 +9,8 @@
 export function createMoneyParticles(element: HTMLElement, count: number = 10): void {
   if (!element) return;
   
+  console.log(`Creating ${count} money particles around element`, element);
+  
   const elementRect = element.getBoundingClientRect();
   const centerX = elementRect.left + elementRect.width / 2;
   const centerY = elementRect.top + elementRect.height / 2;
@@ -67,7 +69,7 @@ export function createMoneyParticles(element: HTMLElement, count: number = 10): 
         setTimeout(() => {
           document.body.removeChild(particle);
         }, 500);
-      }, 500);
+      }, 800);
     }, Math.random() * 200); // Départ légèrement décalé
   }
 }

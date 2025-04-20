@@ -55,7 +55,7 @@ class BalanceManager {
     // Persister
     try {
       localStorage.setItem('cachedBalance', this.balance.toString());
-      localStorage.setItem('lastBalanceUpdate', Date.now().toString());
+      localStorage.setItem('lastBalanceUpdate', Date.now().toString()); // Convert to string to fix TypeScript error
     } catch (e) {
       console.error("[BalanceManager] Error saving to localStorage:", e);
     }

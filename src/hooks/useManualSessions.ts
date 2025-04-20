@@ -7,7 +7,17 @@ import { useBotStatus } from '@/hooks/useBotStatus';
 import { useSessionAnimations } from '@/hooks/sessions/animations/useSessionAnimations';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import balanceManager from '@/utils/balance/balanceManager';
-import { addDailyGain, getDailyGains } from '@/hooks/stats/utils/storageManager';
+
+// Helper functions for daily gains since we're missing the actual storageManager import
+const addDailyGain = (gain: number): void => {
+  const current = getDailyGains();
+  localStorage.setItem('dailyGains', (current + gain).toFixed(2));
+};
+
+const getDailyGains = (): number => {
+  const gains = localStorage.getItem('dailyGains');
+  return gains ? parseFloat(gains) : 0;
+};
 
 interface ManualSessionHookProps {
   userData: UserData | null;
@@ -123,8 +133,8 @@ export const useManualSessions = ({
         // Utiliser la fonction de calcul du gain
         gain = calculateSessionGain(
           userData.subscription, 
-          dailySessionCount,
-          activityLevel
+          balanceManager.getDailyGains(),
+          userData.referrals?.length || 0
         );
       }
       
@@ -176,28 +186,6 @@ export const useManualSessions = ({
       // Calculer le nouveau solde après mise à jour
       const newBalance = balanceManager.getCurrentBalance();
       
-      // Déclencher des événements d'animation pour le solde de manière EXPLICITE
-      window.dispatchEvent(new CustomEvent('balance:update', {
-        detail: {
-          amount: gain,
-          oldBalance: oldBalance,
-          newBalance: newBalance,
-          animate: true,
-          duration: 1500
-        }
-      }));
-      
-      // Simuler plusieurs événements de mise à jour pour renforcer l'animation
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('balance:force-update', {
-          detail: {
-            amount: gain,
-            currentBalance: newBalance,
-            animate: true
-          }
-        }));
-      }, 500);
-      
       // Créer le rapport de la session
       const sessionReport = `Session manuelle #${dailySessionCount + 1}: ${gain.toFixed(2)}€ générés.`;
       
@@ -214,6 +202,44 @@ export const useManualSessions = ({
           setLimitReached(true);
         }
       }
+      
+      // IMPORTANT: Déclencher plusieurs événements d'animation pour le solde
+      // Ces événements multiples assurent que tous les composants sont notifiés
+      
+      // Événement 1: balance:update - pour les animations principales
+      window.dispatchEvent(new CustomEvent('balance:update', {
+        detail: {
+          amount: gain,
+          oldBalance: oldBalance,
+          newBalance: newBalance,
+          animate: true,
+          duration: 1500
+        }
+      }));
+      
+      // Événement 2: balance:force-update - pour forcer la mise à jour des composants
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('balance:force-update', {
+          detail: {
+            amount: gain,
+            currentBalance: newBalance,
+            oldBalance: oldBalance,
+            newBalance: newBalance,
+            animate: true
+          }
+        }));
+      }, 100);
+      
+      // Événement 3: balance:animation - événement spécifique pour les animations
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('balance:animation', {
+          detail: {
+            amount: gain,
+            oldBalance: oldBalance,
+            newBalance: newBalance
+          }
+        }));
+      }, 200);
       
       // Afficher un toast de confirmation
       toast({
@@ -239,7 +265,7 @@ export const useManualSessions = ({
               animate: true 
             } 
           }));
-        }, 1000 + i * 1000);
+        }, 500 + i * 400); // Intervalles plus courts pour un effet plus visible
       }
       
     } catch (error) {
