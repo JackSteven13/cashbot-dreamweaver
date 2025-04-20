@@ -91,20 +91,20 @@ const Dashboard = () => {
           
           // Utiliser la fonction generateAutomaticRevenue
           generateAutomaticRevenue(true);
-        }, 5000);
+        }, 3000);
       }
     }
   }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue]);
 
-  // Générer des revenus toutes les 2 minutes - beaucoup plus fréquent qu'avant
+  // MODIFIÉ - Générer des revenus beaucoup plus fréquemment - toutes les 20-30 secondes
   useEffect(() => {
     if (userData && isBotActive) {
       // Intervalle pour les mises à jour automatiques régulières
       const revenueInterval = setInterval(() => {
         const now = Date.now();
         
-        // Au moins 60 secondes entre les mises à jour
-        if (now - lastProcessTime > 60000) {
+        // Au moins 20 secondes entre les mises à jour
+        if (now - lastProcessTime > 20000) {
           console.log("Generating automatic revenue - periodic update");
           setLastProcessTime(now);
           
@@ -116,11 +116,38 @@ const Dashboard = () => {
             detail: { timestamp: now, animate: true } 
           }));
         }
-      }, 120000); // Toutes les 2 minutes
+      }, 20000 + Math.random() * 10000); // Toutes les 20-30 secondes
       
       return () => clearInterval(revenueInterval);
     }
   }, [userData, isBotActive, generateAutomaticRevenue, lastProcessTime]);
+
+  // NOUVEAU - Seconde vérification encore plus fréquente
+  useEffect(() => {
+    if (userData) {
+      const quickInterval = setInterval(() => {
+        // Vérifier que le bot est toujours actif
+        const botShouldBeActive = localStorage.getItem('bot_active') !== 'false';
+        
+        if (!isBotActive && botShouldBeActive) {
+          // Réactiver le bot s'il devrait être actif
+          window.dispatchEvent(new CustomEvent('bot:status-change', {
+            detail: { active: true }
+          }));
+          
+          console.log("Bot réactivé par la vérification rapide");
+        }
+        
+        // Déclencher une mise à jour forcée du solde
+        window.dispatchEvent(new CustomEvent('balance:force-update', {
+          detail: { timestamp: Date.now() }  
+        }));
+        
+      }, 10000); // Vérification toutes les 10 secondes
+      
+      return () => clearInterval(quickInterval);
+    }
+  }, [userData, isBotActive]);
 
   // Heartbeat effect pour assurer des mises à jour périodiques plus lentes
   useEffect(() => {
@@ -128,25 +155,25 @@ const Dashboard = () => {
       if (userData) {
         const now = Date.now();
         
-        // Vérifier le temps écoulé depuis le dernier traitement - intervalle beaucoup plus long
-        if (now - lastProcessTime > 180000) { // Au moins 3 minutes entre les mises à jour
+        // Vérifier le temps écoulé depuis le dernier traitement - intervalle plus court
+        if (now - lastProcessTime > 60000) { // Au moins 1 minute entre les heartbeats
           console.log("Dashboard heartbeat - ensuring revenue generation is active");
           
           // Mettre à jour le timestamp du dernier processus
           setLastProcessTime(now);
           
-          // Force a balance update to show progress, but without random increments
+          // Force a balance update to show progress
           window.dispatchEvent(new CustomEvent('balance:force-update', { 
             detail: { timestamp: now, animate: true } 
           }));
           
-          // Déclencher l'automatic revenue moins souvent (30% de chance)
-          if (Math.random() > 0.7) {
+          // Générer un revenu avec une forte probabilité
+          if (Math.random() > 0.2) { // 80% de chances
             generateAutomaticRevenue();
           }
         }
       }
-    }, 240000); // Heartbeat toutes les 4 minutes (beaucoup plus lent)
+    }, 60000); // Heartbeat toutes les minutes
     
     return () => clearInterval(heartbeatInterval);
   }, [userData, generateAutomaticRevenue, lastProcessTime]);

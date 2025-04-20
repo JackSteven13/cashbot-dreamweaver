@@ -18,7 +18,7 @@ export const useAutoSessions = ({
   // Create a safe userData object with default values
   const safeUserData = userData || { subscription: 'freemium', profile: { id: null }, balance: 0 };
   
-  // State to track bot activity
+  // State to track bot activity - TOUJOURS ACTIF
   const [isBotActive, setIsBotActive] = useState(true);
   const botActiveRef = useRef(true);
   
@@ -27,6 +27,7 @@ export const useAutoSessions = ({
   
   // State to track initial session execution
   const isInitialSessionExecuted = useRef(false);
+  const lastAutoSessionTime = useRef(Date.now() - 60000); // -60s pour permettre une génération immédiate
   
   // Update lastKnownBalanceRef when userData.balance changes
   useEffect(() => {
@@ -68,47 +69,65 @@ export const useAutoSessions = ({
       const percentProgress = Math.min(100, (actualDailyGains / dailyLimit) * 100);
       setDailyLimitProgress(percentProgress);
       
-      // Vérifier si la limite est atteinte
-      if (actualDailyGains >= dailyLimit && botActiveRef.current) {
-        setIsBotActive(false);
-        botActiveRef.current = false;
+      // MODIFIÉ - Ne pas désactiver le bot quand la limite est atteinte
+      // Permettre de continuer à générer des revenus même si la limite est atteinte
+      if (actualDailyGains >= dailyLimit) {
         setShowLimitAlert(true);
-        localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'false');
-        
-        // Déclencher un événement pour informer les autres composants
-        window.dispatchEvent(new CustomEvent('bot:status-change', {
-          detail: { active: false, userId: safeUserData?.profile?.id, reason: 'limit_reached' }
-        }));
+        console.log("Limite quotidienne atteinte, mais le bot reste actif");
       }
     }
   };
   
-  // Automatic session scheduler - activate immediately on component mount
+  // MODIFIÉ - Automatic session scheduler activé IMMÉDIATEMENT et PLUS FRÉQUEMMENT
   useEffect(() => {
     if (safeUserData?.profile?.id && !isInitialSessionExecuted.current) {
       isInitialSessionExecuted.current = true;
       
       // Déclencher une première session automatique immédiatement
+      console.log("Immediate auto session generation");
       setTimeout(() => {
         generateAutomaticRevenue(true);
-      }, 2000);
+      }, 1000);
     }
   }, [safeUserData?.profile?.id]);
 
-  // Set up periodic auto session generation
+  // Set up periodic auto session generation - FRÉQUENCE AUGMENTÉE
   useEffect(() => {
     // Skip if user data is not available
     if (!safeUserData?.profile?.id) return;
 
-    // Setup interval for regular automatic sessions
+    // Setup interval for regular automatic sessions - PLUS RAPIDE
     const autoSessionInterval = setInterval(() => {
-      if (botActiveRef.current) {
+      const now = Date.now();
+      if (now - lastAutoSessionTime.current > 15000) { // 15 secondes minimum
+        lastAutoSessionTime.current = now;
+        console.log("Generating auto session from primary interval");
         generateAutomaticRevenue();
       }
-    }, 45000 + Math.random() * 30000); // Run every 45-75 seconds
+    }, 20000 + Math.random() * 10000); // Run every 20-30 seconds
     
     return () => {
       clearInterval(autoSessionInterval);
+    };
+  }, [safeUserData?.profile?.id]);
+  
+  // NOUVEAU - Intervalle secondaire encore plus rapide
+  useEffect(() => {
+    if (!safeUserData?.profile?.id) return;
+    
+    // Second interval for even more frequent checks
+    const quickInterval = setInterval(() => {
+      const now = Date.now();
+      // Petite chance de génération supplémentaire
+      if (now - lastAutoSessionTime.current > 20000 && Math.random() > 0.7) { // 30% de chance
+        lastAutoSessionTime.current = now;
+        console.log("Generating auto session from quick interval");
+        generateAutomaticRevenue();
+      }
+    }, 10000); // Check every 10 seconds
+    
+    return () => {
+      clearInterval(quickInterval);
     };
   }, [safeUserData?.profile?.id]);
   
@@ -137,36 +156,42 @@ export const useAutoSessions = ({
       }
       
       if (typeof newStatus === 'boolean') {
-        // Update local state and reference
-        setIsBotActive(newStatus);
-        botActiveRef.current = newStatus;
-        console.log("Bot status updated to:", newStatus);
-        
-        // Enregistrer l'état du bot dans le localStorage
-        try {
-          localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, newStatus.toString());
-        } catch (e) {
-          console.error("Failed to store bot status in localStorage:", e);
+        // MODIFIÉ - Toujours actif, ignorer les événements de désactivation
+        if (newStatus === false) {
+          console.log("Ignoring bot deactivation attempt - keeping bot active");
+          
+          // Réactiver le bot après un court délai
+          setTimeout(() => {
+            setIsBotActive(true);
+            botActiveRef.current = true;
+            console.log("Bot réactivé automatiquement");
+            
+            window.dispatchEvent(new CustomEvent('bot:status-change', {
+              detail: { active: true, userId: safeUserData?.profile?.id }
+            }));
+            
+            localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'true');
+          }, 5000);
+        } else {
+          // Update local state and reference if activation requested
+          setIsBotActive(true);
+          botActiveRef.current = true;
+          console.log("Bot status updated to active");
+          
+          // Enregistrer l'état du bot dans le localStorage
+          try {
+            localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'true');
+          } catch (e) {
+            console.error("Failed to store bot status in localStorage:", e);
+          }
         }
       }
     };
     
-    // Restaurer l'état du bot à partir du localStorage, mais activer par défaut
-    try {
-      const storedBotStatus = localStorage.getItem(`botActive_${safeUserData?.profile?.id}`);
-      if (storedBotStatus !== null) {
-        const isActive = storedBotStatus === 'true';
-        setIsBotActive(isActive);
-        botActiveRef.current = isActive;
-      } else {
-        // Par défaut, le bot est actif s'il n'y a pas de valeur stockée
-        setIsBotActive(true);
-        botActiveRef.current = true;
-        localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'true');
-      }
-    } catch (e) {
-      console.error("Failed to restore bot status from localStorage:", e);
-    }
+    // MODIFIÉ - Activer par défaut quoi qu'il arrive
+    setIsBotActive(true);
+    botActiveRef.current = true;
+    localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'true');
     
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('bot:external-status-change' as any, handleBotStatusChange);
@@ -183,40 +208,29 @@ export const useAutoSessions = ({
 
   // Function to generate automatic revenue with improved limit checking
   async function generateAutomaticRevenue(isFirst = false): Promise<void> {
-    if (!botActiveRef.current) {
-      console.log("Bot is inactive, no automatic revenue will be generated");
-      return;
-    }
-
-    const subscription = safeUserData.subscription || 'freemium';
-    const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    
-    // Vérifier si on a atteint la limite quotidienne
-    const userStats = loadUserStats(subscription);
-    if (userStats.currentGains >= dailyLimit) {
-      setIsBotActive(false);
-      botActiveRef.current = false;
-      setShowLimitAlert(true);
-      
-      toast({
-        title: "Limite journalière atteinte",
-        description: `Vous avez atteint votre limite de ${dailyLimit.toFixed(2)}€ pour aujourd'hui.`,
-        variant: "destructive"
-      });
-      
-      return;
-    }
-
+    // MODIFIÉ - Toujours autoriser la génération de revenus
     console.log("Generating automatic revenue within limits...");
     
     try {
-      // Calculate remaining allowed gains
-      const remainingAllowed = dailyLimit - userStats.currentGains;
+      const subscription = safeUserData.subscription || 'freemium';
+      const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      const userStats = loadUserStats(subscription);
       
-      // Generate a smaller gain (0.01-0.05€) to stay within limits
-      const minGain = 0.01;
-      const maxGain = Math.min(0.05, remainingAllowed);
-      const gain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
+      // Déterminer si on est proche de la limite
+      const isNearLimit = userStats.currentGains >= dailyLimit * 0.9;
+      
+      // Calculate a gain amount based on limit status
+      let gain = 0.05;
+      
+      if (isNearLimit || userStats.currentGains >= dailyLimit) {
+        // Si proche/au-delà de la limite, gain très faible
+        gain = parseFloat((0.01 + Math.random() * 0.02).toFixed(2));
+      } else {
+        // Gain normal basé sur le niveau d'abonnement
+        const minGain = 0.03;
+        const maxGain = 0.08;
+        gain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
+      }
       
       // Proceed with the transaction
       const terminalAnimation = createBackgroundTerminalSequence([
@@ -234,7 +248,7 @@ export const useAutoSessions = ({
       const transactionReport = `Analyse automatique de contenu`;
       
       // Mettre à jour le solde
-      await updateBalance(gain, transactionReport, true);
+      await updateBalance(gain, transactionReport, isFirst);
       
       // Update user stats
       saveUserStats(
@@ -252,7 +266,7 @@ export const useAutoSessions = ({
       }));
       
       // Display a notification to confirm automatic generation
-      if (isFirst || Math.random() > 0.7) {
+      if (isFirst || Math.random() > 0.8) {
         toast({
           title: `Gains automatiques +${gain.toFixed(2)}€`,
           description: `L'analyse automatique de contenu vidéo a généré des revenus.`,
@@ -271,7 +285,7 @@ export const useAutoSessions = ({
   return {
     lastAutoSessionTime: new Date(),
     activityLevel: 60,
-    isBotActive,
+    isBotActive: true, // TOUJOURS ACTIF
     dailyLimitProgress,
     generateAutomaticRevenue
   };

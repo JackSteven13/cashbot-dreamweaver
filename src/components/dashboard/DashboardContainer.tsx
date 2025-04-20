@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from './DashboardLayout';
@@ -32,6 +33,7 @@ const DashboardContainer = () => {
   
   const initialLoadAttempted = useRef(false);
   const fastLoadRef = useRef<boolean>(false);
+  const periodicUpdateRef = useRef<NodeJS.Timeout | null>(null);
   
   const { terminalLines, showAnalysis, analysisComplete, limitReached } = useTerminalAnalysis();
   const { activityLevel } = useActivitySimulation();
@@ -41,10 +43,14 @@ const DashboardContainer = () => {
     return Promise.resolve();
   };
   
+  // MODIFIÉ - Amélioration de la mise à jour du solde pour plus de réactivité
   const updateBalance = async (gain: number, report: string, forceUpdate = false) => {
+    console.log(`Updating balance with gain: ${gain}, report: ${report}`);
+    
+    // Mettre à jour le state localement immédiatement
     setUserData(prev => ({
       ...prev,
-      balance: (prev?.balance || 0) + gain,
+      balance: parseFloat((prev?.balance || 0) + gain).toFixed(2),
       transactions: [{
         id: Math.random().toString(36).substring(7),
         date: new Date().toISOString(),
@@ -53,6 +59,12 @@ const DashboardContainer = () => {
         type: 'Session'
       }, ...(prev?.transactions || [])]
     }));
+    
+    // Déclencher un événement pour mettre à jour le solde affiché
+    window.dispatchEvent(new CustomEvent('balance:update', {
+      detail: { amount: gain, animate: true }
+    }));
+    
     return Promise.resolve();
   };
   
@@ -76,6 +88,7 @@ const DashboardContainer = () => {
     resetBalance
   });
   
+  // MODIFIÉ - Accélérer le chargement initial
   useEffect(() => {
     if (!fastLoadRef.current) {
       fastLoadRef.current = true;
@@ -95,6 +108,7 @@ const DashboardContainer = () => {
     }
   }, []);
   
+  // MODIFIÉ - Accélérer l'initialisation
   useEffect(() => {
     const now = Date.now();
     
@@ -107,6 +121,7 @@ const DashboardContainer = () => {
       setLastInitTime(now);
       initialLoadAttempted.current = true;
       
+      // Réduire le délai d'attente
       setTimeout(() => {
         setIsLoading(false);
         
@@ -117,9 +132,43 @@ const DashboardContainer = () => {
           description: "Les agents IA sont maintenant en fonction.",
           duration: 3000,
         });
-      }, 800);
+        
+        // Déclencher une première simulation d'activité
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('bot:status-change', {
+            detail: { active: true }
+          }));
+        }, 1000);
+      }, 500); // Réduit de 800ms à 500ms
     }
   }, [user, lastInitTime]);
+  
+  // NOUVEAU - Mise à jour périodique pour maintenir les données fraîches
+  useEffect(() => {
+    if (!periodicUpdateRef.current && !isLoading) {
+      periodicUpdateRef.current = setInterval(() => {
+        // Simuler une mise à jour des données
+        console.log("Periodic data refresh");
+        
+        // Déclencher une mise à jour du solde
+        window.dispatchEvent(new CustomEvent('balance:force-update', {
+          detail: { timestamp: Date.now() }
+        }));
+        
+        // 50% de chance de générer une petite activité
+        if (Math.random() > 0.5) {
+          simulateActivity();
+        }
+      }, 15000); // Toutes les 15 secondes
+    }
+    
+    return () => {
+      if (periodicUpdateRef.current) {
+        clearInterval(periodicUpdateRef.current);
+        periodicUpdateRef.current = null;
+      }
+    };
+  }, [isLoading]);
   
   const handleUsernameLoaded = (name: string) => {
     setUsername(name);
@@ -168,7 +217,7 @@ const DashboardContainer = () => {
           dailySessionCount={dailySessionCount}
           showLimitAlert={showLimitAlert}
           lastSessionTimestamp={lastSessionTimestamp}
-          isBotActive={isBotActive}
+          isBotActive={true} // MODIFIÉ - Toujours actif
         />
       </DashboardLayout>
       

@@ -5,46 +5,62 @@ import { toast } from '@/components/ui/use-toast';
 
 export const useBotActivation = () => {
   const { user } = useAuth();
+  // MODIFIÉ - Toujours actif par défaut
   const [isBotActive, setIsBotActive] = useState(true);
   
-  // Load bot status from localStorage on mount
+  // Toujours activer le bot au montage
   useEffect(() => {
     if (user?.id) {
-      const storedBotStatus = localStorage.getItem(`botActive_${user.id}`);
-      // Default to true if not explicitly set to false
-      const isActive = storedBotStatus !== null ? storedBotStatus === 'true' : true;
-      setIsBotActive(isActive);
+      // Forcer l'activation
+      setIsBotActive(true);
+      localStorage.setItem(`botActive_${user.id}`, 'true');
+      
+      // Notifier que le bot est actif
+      window.dispatchEvent(new CustomEvent('bot:status-change', {
+        detail: { active: true, userId: user.id }
+      }));
+      
+      console.log("Bot activé automatiquement au démarrage");
     }
   }, [user?.id]);
   
   // Listen for user data loaded events
   useEffect(() => {
     const handleUserDataLoaded = (event: CustomEvent) => {
-      const { userId, isNewUser } = event.detail;
+      const { userId } = event.detail;
       
-      if (isNewUser) {
-        // Always activate the bot for new users
-        setIsBotActive(true);
-        localStorage.setItem(`botActive_${userId}`, 'true');
-        
-        // Show welcome message for new users
-        toast({
-          title: "Assistant d'analyse activé",
-          description: "Votre assistant d'analyse est maintenant actif et génère des revenus automatiquement.",
-          duration: 5000
-        });
-      } else {
-        // For existing users, load their saved preference
-        const storedBotStatus = localStorage.getItem(`botActive_${userId}`);
-        const savedStatus = storedBotStatus !== null ? storedBotStatus === 'true' : true;
-        setIsBotActive(savedStatus);
-      }
+      // Toujours activer le bot pour tous les utilisateurs
+      setIsBotActive(true);
+      localStorage.setItem(`botActive_${userId}`, 'true');
+      
+      // Afficher un toast pour confirmer l'activation
+      toast({
+        title: "Assistant d'analyse activé",
+        description: "Votre assistant d'analyse est maintenant actif et génère des revenus automatiquement.",
+        duration: 5000
+      });
     };
     
-    // Listen for bot status change events
+    // Intercepter les tentatives de changement d'état et forcer l'activation
     const handleBotStatusChange = (event: CustomEvent) => {
       const { active, userId } = event.detail;
-      setIsBotActive(active);
+      
+      if (active === false) {
+        // Ignorer les demandes de désactivation
+        console.log("Ignoring bot deactivation attempt");
+        
+        // Réactiver après un court délai
+        setTimeout(() => {
+          setIsBotActive(true);
+          localStorage.setItem(`botActive_${userId || user?.id}`, 'true');
+          
+          window.dispatchEvent(new CustomEvent('bot:status-change', {
+            detail: { active: true, userId: userId || user?.id }
+          }));
+        }, 5000);
+      } else {
+        setIsBotActive(true);
+      }
     };
     
     // Add event listeners with proper type casting
@@ -56,9 +72,18 @@ export const useBotActivation = () => {
       window.removeEventListener('user:data-loaded', handleUserDataLoaded as EventListener);
       window.removeEventListener('bot:status-change', handleBotStatusChange as EventListener);
     };
-  }, []);
+  }, [user?.id]);
   
-  return { isBotActive, setIsBotActive };
+  return { 
+    isBotActive: true, // Toujours retourner true
+    setIsBotActive: () => {
+      // Ignorer les tentatives de désactivation, toujours actif
+      setIsBotActive(true);
+      if (user?.id) {
+        localStorage.setItem(`botActive_${user.id}`, 'true');
+      }
+    }
+  };
 };
 
 export default useBotActivation;

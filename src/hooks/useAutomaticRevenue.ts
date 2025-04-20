@@ -4,6 +4,7 @@ import { UserData } from '@/types/userData';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 import { calculateAutoSessionGain } from '@/utils/subscription/sessionGain';
 import balanceManager from '@/utils/balance/balanceManager';
+import { toast } from '@/components/ui/use-toast';
 
 interface AutomaticRevenueProps {
   userData: UserData | null;
@@ -30,7 +31,7 @@ export const useAutomaticRevenue = ({
   });
   
   // Référence pour éviter les gains trop fréquents
-  const lastGainTimeRef = useRef(Date.now() - 60000); // Commencer avec un décalage pour permettre un gain initial immédiat
+  const lastGainTimeRef = useRef(Date.now() - 60000);
   const minTimeBetweenGains = 10000; // 10 secondes minimum entre deux gains
   
   // Référence pour les valeurs persistantes entre rendus
@@ -39,6 +40,58 @@ export const useAutomaticRevenue = ({
     lastDayProcessed: localStorage.getItem('last_day_processed') || '',
     dailyIncrement: parseFloat(localStorage.getItem('daily_progress_increment') || '0.05')
   });
+
+  // NOUVEAU - Forcer l'activation du bot
+  useEffect(() => {
+    if (!isBotActive) {
+      console.log("Force activating bot");
+      setIsBotActive(true);
+      localStorage.setItem('bot_active', 'true');
+      
+      // Déclencher un événement pour informer les autres composants
+      window.dispatchEvent(new CustomEvent('bot:status-change', {
+        detail: { active: true }
+      }));
+      
+      // Afficher un toast pour informer l'utilisateur
+      toast({
+        title: "Bot activé",
+        description: "Le bot d'analyse a été activé automatiquement.",
+        duration: 3000
+      });
+    }
+  }, [isBotActive]);
+
+  // NOUVEAU - Générer un revenu immédiat au chargement
+  useEffect(() => {
+    // Déclencher une génération de revenus après 2 secondes
+    const timer = setTimeout(() => {
+      if (!isNewUser) {
+        console.log("Generating immediate revenue on load");
+        generateAutomaticRevenue(true);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // MODIFIÉ - Générer des revenus plus fréquemment - toutes les 15-30 secondes
+  useEffect(() => {
+    if (isBotActive && userData && !isNewUser) {
+      console.log("Setting up frequent revenue generation");
+      
+      // Intervalle court pour les générations fréquentes
+      const frequentInterval = setInterval(() => {
+        const now = Date.now();
+        if (now - lastGainTimeRef.current > 15000) { // 15 secondes minimum
+          console.log("Generating automatic revenue from frequent interval");
+          generateAutomaticRevenue();
+        }
+      }, 15000 + Math.floor(Math.random() * 15000)); // 15-30 secondes
+      
+      return () => clearInterval(frequentInterval);
+    }
+  }, [isBotActive, userData, isNewUser]);
   
   // Traiter la progression journalière au chargement du composant
   useEffect(() => {
@@ -118,9 +171,10 @@ export const useAutomaticRevenue = ({
     
     // Calculer les gains quotidiens à partir des transactions du jour
     const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
-    const todaysTransactions = userData.transactions.filter(tx => 
+    const todaysTransactions = userData.transactions?.filter(tx => 
       tx.date && tx.date.startsWith(today) && (tx.gain || 0) > 0
-    );
+    ) || [];
+    
     const dailyGains = todaysTransactions.reduce((sum, tx) => sum + (tx.gain || 0), 0);
     
     setTodaysGains(dailyGains);
@@ -129,11 +183,16 @@ export const useAutomaticRevenue = ({
     const percentage = Math.min(100, (dailyGains / limit) * 100);
     setDailyLimitProgress(percentage);
     
-    // Si le pourcentage atteint 100%, désactiver le bot automatiquement
+    // MODIFIÉ - Ne pas désactiver le bot quand la limite est atteinte
+    // Permettre de continuer à générer des revenus même si la limite est atteinte
     if (percentage >= 100 && isBotActive) {
-      setIsBotActive(false);
-      localStorage.setItem('bot_active', 'false');
-      console.log("Désactivation automatique du bot : limite quotidienne atteinte");
+      console.log("Limite quotidienne atteinte, mais le bot reste actif");
+      // Notification mais pas de désactivation
+      toast({
+        title: "Limite quotidienne atteinte",
+        description: "Vous continuez à générer des revenus à vitesse réduite.",
+        duration: 5000
+      });
     }
   }, [userData, isBotActive, isNewUser]);
   
@@ -159,22 +218,22 @@ export const useAutomaticRevenue = ({
   
   // Activer le bot par défaut au chargement initial
   useEffect(() => {
-    if (localStorage.getItem('bot_active') === null) {
-      // Si c'est la première fois, activer le bot
-      setIsBotActive(true);
-      localStorage.setItem('bot_active', 'true');
-      console.log("Bot activé automatiquement au chargement initial");
-      
-      // Déclencher une première génération de revenus après 10 secondes
-      setTimeout(() => {
-        generateAutomaticRevenue(true);
-      }, 10000);
-    }
+    // Force activer le bot dans tous les cas
+    setIsBotActive(true);
+    localStorage.setItem('bot_active', 'true');
+    console.log("Bot activé automatiquement au chargement initial");
+    
+    // Déclencher une première génération de revenus après 5 secondes
+    setTimeout(() => {
+      generateAutomaticRevenue(true);
+    }, 5000);
   }, []);
   
   // Fonction de génération de revenus automatiques
   const generateAutomaticRevenue = useCallback(async (forceUpdate = false) => {
-    if (!userData || isNewUser || (!isBotActive && !forceUpdate)) {
+    // Vérifier si nous pouvons générer des revenus
+    if (!userData && !forceUpdate) {
+      console.log("No userData available for revenue generation");
       return false;
     }
     
@@ -187,26 +246,33 @@ export const useAutomaticRevenue = ({
     
     try {
       // Utiliser la fonction de calcul de gain pour les sessions automatiques
-      const effectiveSub = getEffectiveSubscription(userData.subscription);
-      const gain = calculateAutoSessionGain(effectiveSub, todaysGains, userData.referrals?.length || 0);
+      const effectiveSub = userData?.subscription ? getEffectiveSubscription(userData.subscription) : 'freemium';
       
-      // Appliquer une bonification basée sur les jours consécutifs (jusqu'à +30%)
-      const loyaltyMultiplier = 1 + Math.min(0.3, (consecutiveVisitDays - 1) * 0.01);
-      const finalGain = parseFloat((gain * loyaltyMultiplier).toFixed(2));
+      // Si on a atteint la limite, mais forceUpdate est actif, appliquer un gain réduit
+      let finalGain = 0;
       
-      if (finalGain <= 0) {
-        console.log("Limite quotidienne atteinte, gain nul");
-        return false;
+      if (dailyLimitProgress >= 100 && !forceUpdate) {
+        // Gain très faible si la limite est atteinte
+        finalGain = parseFloat((0.01 + Math.random() * 0.02).toFixed(2));
+      } else {
+        // Gain normal basé sur l'abonnement
+        const baseGain = calculateAutoSessionGain(effectiveSub, todaysGains, userData?.referrals?.length || 0);
+        
+        // Appliquer une bonification basée sur les jours consécutifs (jusqu'à +30%)
+        const loyaltyMultiplier = 1 + Math.min(0.3, (consecutiveVisitDays - 1) * 0.01);
+        finalGain = parseFloat((baseGain * loyaltyMultiplier).toFixed(2));
+        
+        // Assurer un gain minimum
+        finalGain = Math.max(finalGain, 0.01);
       }
       
       // Créer un rapport pour la transaction
       const report = `Analyse automatique de contenu (jour ${consecutiveVisitDays})`;
       
       // Mettre à jour le solde avec le gain généré
+      console.log(`Generating revenue: ${finalGain}€`);
       await updateBalance(finalGain, report, forceUpdate);
       lastGainTimeRef.current = now;
-      
-      console.log(`Revenu automatique généré: ${finalGain}€ (multiplicateur de fidélité: ${loyaltyMultiplier.toFixed(2)})`);
       
       // Enregistrer la progression pour persistance
       dataRef.current.balanceHistory.push({
@@ -234,12 +300,20 @@ export const useAutomaticRevenue = ({
         }
       }));
       
+      // Déclencher une mise à jour forcée du solde
+      window.dispatchEvent(new CustomEvent('balance:force-update', {
+        detail: { 
+          timestamp: now,
+          animate: true
+        }
+      }));
+      
       return true;
     } catch (error) {
       console.error("Erreur lors de la génération de revenus automatiques:", error);
       return false;
     }
-  }, [userData, isNewUser, isBotActive, updateBalance, todaysGains, consecutiveVisitDays]);
+  }, [userData, updateBalance, todaysGains, consecutiveVisitDays, dailyLimitProgress]);
   
   return {
     isBotActive,

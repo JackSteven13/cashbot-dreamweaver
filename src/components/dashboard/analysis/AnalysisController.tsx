@@ -35,6 +35,11 @@ const AnalysisController: React.FC = () => {
         window.dispatchEvent(new CustomEvent('location:added', { 
           detail: { single: true } // Indiquer que c'est un ajout unitaire
         }));
+        
+        // Déclencher également une mise à jour de solde
+        window.dispatchEvent(new CustomEvent('balance:force-update', {
+          detail: { timestamp: Date.now(), animate: true }
+        }));
       }, 1500);
     }
   }, [analysisComplete, limitReached, isBackgroundMode]);
