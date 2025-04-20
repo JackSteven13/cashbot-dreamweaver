@@ -111,7 +111,7 @@ export const useManualSessions = ({
       
       // Mettre à jour le solde via balanceManager
       balanceManager.addDailyGain(gain);
-      balanceManager.addToBalance(gain);
+      balanceManager.updateBalance(gain); // Changé de addToBalance à updateBalance
       
       // Déclencher des événements d'animation pour le solde
       const oldBalance = balanceManager.getCurrentBalance() - gain;

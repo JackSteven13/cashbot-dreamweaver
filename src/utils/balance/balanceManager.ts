@@ -90,6 +90,19 @@ class BalanceManager {
   }
 
   /**
+   * Obtient la limite quotidienne en fonction de l'abonnement
+   */
+  getDailyLimit(subscription: string): number {
+    const limits: Record<string, number> = {
+      'freemium': 0.5,
+      'basic': 2.0,
+      'premium': 5.0,
+      'elite': 15.0
+    };
+    return limits[subscription] || limits.freemium;
+  }
+
+  /**
    * Met à jour le solde avec un nouveau gain
    */
   updateBalance(gain: number): void {
@@ -105,6 +118,13 @@ class BalanceManager {
     
     // Notifier les observateurs
     this.notifyWatchers();
+  }
+
+  /**
+   * Ajoute directement au solde (alias pour updateBalance)
+   */
+  addToBalance(gain: number): void {
+    this.updateBalance(gain);
   }
 
   /**
@@ -128,6 +148,80 @@ class BalanceManager {
     
     // Notifier les observateurs
     this.notifyWatchers();
+  }
+
+  /**
+   * Initialise le solde avec une valeur de base
+   */
+  initialize(balance: number): void {
+    if (isNaN(balance)) return;
+    
+    const parsedBalance = parseFloat(balance.toFixed(2));
+    
+    // Lors de l'initialisation, définir le solde actuel
+    this.currentBalance = parsedBalance;
+    
+    // Mettre à jour le solde le plus élevé si nécessaire
+    if (parsedBalance > this.highestBalance) {
+      this.highestBalance = parsedBalance;
+    }
+    
+    this.saveToStorage();
+    this.initialized = true;
+    
+    // Notifier les observateurs
+    this.notifyWatchers();
+  }
+
+  /**
+   * Réinitialise le solde à zéro
+   */
+  resetBalance(): void {
+    this.currentBalance = 0;
+    this.saveToStorage();
+    
+    // Notifier les observateurs
+    this.notifyWatchers();
+  }
+
+  /**
+   * Synchronise le solde avec le serveur
+   */
+  syncWithServer(serverBalance: number): void {
+    if (isNaN(serverBalance)) return;
+    
+    const parsedBalance = parseFloat(serverBalance.toFixed(2));
+    
+    // Prendre la valeur la plus élevée entre le solde local et le solde serveur
+    if (parsedBalance > this.currentBalance) {
+      this.currentBalance = parsedBalance;
+      
+      // Mettre à jour également le solde le plus élevé si nécessaire
+      if (parsedBalance > this.highestBalance) {
+        this.highestBalance = parsedBalance;
+      }
+      
+      this.saveToStorage();
+      
+      // Notifier les observateurs
+      this.notifyWatchers();
+    }
+  }
+
+  /**
+   * Nettoie les données de solde utilisateur lors du changement d'utilisateur
+   */
+  cleanupUserBalanceData(): void {
+    this.currentBalance = 0;
+    this.highestBalance = 0;
+    this.dailyGains = 0;
+    this.watchers = [];
+    this.initialized = false;
+    
+    // Supprimer les données du stockage local
+    localStorage.removeItem('currentBalance');
+    localStorage.removeItem('highestBalance');
+    localStorage.removeItem('dailyGains');
   }
 
   /**

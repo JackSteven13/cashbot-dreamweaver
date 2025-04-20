@@ -93,7 +93,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         "Initialisation de l'analyse vidéo..."
       ]);
       
-      terminalAnimation.addLine("Traitement des données en cours...");
+      // Utiliser add pour ajouter une ligne au lieu de addLine
+      terminalAnimation.add("Traitement des données en cours...");
       
       // Attendre un court instant pour l'animation visuelle avant d'appeler la fonction principale
       setTimeout(() => {

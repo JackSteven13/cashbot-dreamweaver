@@ -77,7 +77,7 @@ export const useAutoSessions = ({
       
       // Check if adding this gain would exceed daily limit
       const currentDailyGains = balanceManager.getDailyGains();
-      const dailyLimit = balanceManager.getDailyLimit(userData.subscription);
+      const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription] || 0.5;
       
       if (currentDailyGains + formattedGain > dailyLimit) {
         // We've reached the daily limit

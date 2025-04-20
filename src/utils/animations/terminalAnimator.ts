@@ -99,7 +99,7 @@ export const createTypingAnimation = (
     speed?: number;
     onComplete?: () => void;
   } = {}
-): void => {
+): (() => void) => {
   const { speed = 50, onComplete } = options;
   const words = text.split(' ');
   let wordIndex = 0;

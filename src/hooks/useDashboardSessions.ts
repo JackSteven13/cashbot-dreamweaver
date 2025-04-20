@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { useSessionStats } from './useSessionStats';
@@ -24,16 +23,13 @@ const useDashboardSessions = ({
   const referralCount = userData?.referrals?.length || 0;
   const balanceDisplayRef = useRef<HTMLElement | null>(null);
   
-  // Référence pour trouver l'élément d'affichage du solde
   useEffect(() => {
-    // Tenter de trouver l'élément d'affichage du solde
     const balanceElement = document.querySelector('.balance-display') as HTMLElement;
     if (balanceElement) {
       balanceDisplayRef.current = balanceElement;
     }
   }, []);
   
-  // Suivi des statistiques des sessions
   const { 
     addSessionResult, 
     sessionCount, 
@@ -41,9 +37,7 @@ const useDashboardSessions = ({
     activityLevel
   } = useSessionStats(userData?.subscription);
   
-  // NOUVEAU - Maintenir le bot toujours actif
   useEffect(() => {
-    // S'assurer que le bot est toujours actif
     if (!isBotActive) {
       setIsBotActive(true);
       console.log("Bot réactivé automatiquement");
@@ -61,7 +55,6 @@ const useDashboardSessions = ({
     return () => clearInterval(forceActiveInterval);
   }, [isBotActive]);
   
-  // Fonction pour démarrer une session manuelle
   const handleStartSession = useCallback(async () => {
     if (isStartingSession || !userData) {
       toast({
@@ -75,7 +68,6 @@ const useDashboardSessions = ({
     try {
       setIsStartingSession(true);
       
-      // AMÉLIORATION: Utiliser une animation visible
       const terminalAnimation = createBackgroundTerminalSequence([
         "Initialisation de l'analyse...",
         "Récupération des données..."
@@ -84,58 +76,47 @@ const useDashboardSessions = ({
       const startTime = Date.now();
       setLastSessionTimestamp(startTime);
       
-      // Simuler un temps de traitement
       const processingTime = Math.random() * 1000 + 1500;
       await new Promise(resolve => {
         sessionTimeoutRef.current = setTimeout(resolve, processingTime);
       });
       
-      terminalAnimation.addLine("Analyse des contenus publicitaires...");
+      terminalAnimation.add("Analyse des contenus publicitaires...");
       
-      // Calculer le gain
       const subscription = userData.subscription || 'freemium';
       const dailyLimit = SUBSCRIPTION_LIMITS[subscription] || 0.5;
       
-      // Déterminer si la limite quotidienne est atteinte
       const todaysGains = balanceManager.getDailyGains();
       const remainingToLimit = Math.max(0, dailyLimit - todaysGains);
       
-      // Générer un gain basé sur l'abonnement
       let gain = 0;
       
       if (remainingToLimit > 0) {
-        // Gain normal selon l'abonnement
         const baseGain = subscription === 'freemium' ? 0.05 : 0.1;
-        const randomFactor = 0.8 + (Math.random() * 0.4); // 0.8-1.2
+        const randomFactor = 0.8 + (Math.random() * 0.4);
         
         gain = Math.min(
           remainingToLimit,
           baseGain * randomFactor * (1 + referralCount * 0.05)
         );
         
-        // Arrondir à 2 décimales
         gain = Math.round(gain * 100) / 100;
       } else {
-        // Limite atteinte
         setShowLimitAlert(true);
         gain = Math.min(0.01, remainingToLimit);
       }
       
-      terminalAnimation.addLine(`Analyse terminée! Gain calculé: ${gain.toFixed(2)}€`);
+      terminalAnimation.add(`Analyse terminée! Gain calculé: ${gain.toFixed(2)}€`);
       
-      // Sauvegarder l'ancien solde
       const oldBalance = balanceManager.getCurrentBalance();
       
-      // Mettre à jour le solde dans balanceManager
       balanceManager.addDailyGain(gain);
       balanceManager.updateBalance(gain);
       
-      // Créer des particules d'argent si l'élément est trouvé
       if (balanceDisplayRef.current) {
         createMoneyParticles(balanceDisplayRef.current, Math.min(15, Math.ceil(gain * 20)));
       }
       
-      // Déclencher un événement d'animation de solde
       window.dispatchEvent(new CustomEvent('balance:update', {
         detail: {
           amount: gain,
@@ -145,37 +126,28 @@ const useDashboardSessions = ({
         }
       }));
       
-      // Mettre à jour le solde
       const sessionReport = `Session manuelle #${dailySessionCount + 1}: ${gain}€`;
       
-      // Mettre à jour les statistiques locales
       addSessionResult(gain);
       
-      // Mettre à jour le solde dans la base de données
       await updateBalance(gain, sessionReport);
       
-      // Incrémenter le compteur de sessions
       await incrementSessionCount();
       
-      // Afficher une confirmation
       toast({
         title: "Session terminée",
         description: `${gain.toFixed(2)}€ ont été ajoutés à votre solde.`,
         duration: 3000,
       });
       
-      // Sauvegarder pour référence future
       setRevenueGenerated(gain);
       
-      // Animation terminée
       terminalAnimation.complete(gain);
       
-      // Générer des animations d'activité
       window.dispatchEvent(new CustomEvent('dashboard:activity', { 
         detail: { level: 'high' } 
       }));
       
-      // Générer des animations de petit gain
       for (let i = 0; i < 3; i++) {
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('dashboard:micro-gain', { 
@@ -184,7 +156,6 @@ const useDashboardSessions = ({
         }, 1000 + i * 800);
       }
       
-      // Durée totale
       const sessionDuration = Date.now() - startTime;
       console.log(`Session completed in ${sessionDuration}ms with gain ${gain}€`);
       
@@ -209,7 +180,6 @@ const useDashboardSessions = ({
     addSessionResult
   ]);
   
-  // Fonction pour retirer le solde
   const handleWithdrawal = useCallback(async () => {
     if (!userData) return;
     
@@ -231,11 +201,9 @@ const useDashboardSessions = ({
         duration: 3000,
       });
       
-      // Réinitialiser le solde
       await resetBalance();
       balanceManager.forceBalanceSync(0);
       
-      // Confirmation
       toast({
         title: "Retrait effectué !",
         description: `${currentBalance.toFixed(2)}€ ont été transférés sur votre compte.`,
@@ -251,25 +219,21 @@ const useDashboardSessions = ({
     }
   }, [userData, resetBalance]);
 
-  // NOUVEAU - Génération périodique automatique
   useEffect(() => {
     if (!userData) return;
     
-    // Simuler une génération automatique périodique
     const autoGenInterval = setInterval(() => {
-      // Déclencher une activité sur le dashboard
       window.dispatchEvent(new CustomEvent('dashboard:activity', { 
         detail: { level: 'medium' } 
       }));
       
-      // 50% de chance de générer un petit gain
       if (Math.random() > 0.5) {
         const microGain = Math.random() * 0.03 + 0.01;
         window.dispatchEvent(new CustomEvent('dashboard:micro-gain', { 
           detail: { amount: microGain, timestamp: Date.now(), animate: true } 
           }));
       }
-    }, 8000); // Toutes les 8 secondes
+    }, 8000);
     
     return () => clearInterval(autoGenInterval);
   }, [userData]);
@@ -281,7 +245,7 @@ const useDashboardSessions = ({
     revenueGenerated,
     lastSessionTimestamp,
     sessionCount,
-    isBotActive: true, // Toujours actif
+    isBotActive: true,
     activityLevel
   };
 };

@@ -89,7 +89,7 @@ const Dashboard = () => {
           
           // Pour les utilisateurs existants, initialiser le solde
           if (!isNewUser) {
-            balanceManager.initialize(userData.balance);
+            balanceManager.forceBalanceSync(userData.balance || 0);
           }
           
           // Générer un premier revenu automatique

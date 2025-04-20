@@ -33,7 +33,7 @@ export const animateBalance = (
   setLocalBalance: (value: number) => void
 ): Promise<void> => {
   return new Promise((resolve) => {
-    // Pass onComplete as the sixth parameter instead of fifth
+    // Updated to match the correct parameter signature
     animateBalanceUpdate(
       startBalance,
       newBalance,

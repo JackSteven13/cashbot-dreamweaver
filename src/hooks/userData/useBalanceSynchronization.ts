@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { UserData } from '@/types/userData';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -17,7 +18,7 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
     // Pour les nouveaux utilisateurs, toujours maintenir un solde à zéro
     if (isNewUser) {
       setEffectiveBalance(0);
-      balanceManager.resetBalance();
+      balanceManager.forceBalanceSync(0);
       localStorage.removeItem('currentBalance');
       localStorage.removeItem('lastKnownBalance');
       sessionStorage.removeItem('currentBalance');
@@ -32,7 +33,7 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
     // Première synchronisation - initialiser le gestionnaire de solde
     if (firstSyncRef.current && userData.balance !== undefined) {
       console.log(`Première synchronisation du solde: ${userData.balance}€`);
-      balanceManager.initialize(userData.balance);
+      balanceManager.forceBalanceSync(userData.balance);
       firstSyncRef.current = false;
     }
     // Synchronisations ultérieures - comparer avec le serveur mais éviter de réduire le solde local
@@ -43,7 +44,7 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
       // Ne synchroniser avec le serveur que si le solde serveur est plus élevé
       if (serverBalance > currentLocalBalance) {
         console.log(`Synchronisation du solde avec le serveur: ${serverBalance}€ (local: ${currentLocalBalance}€)`);
-        balanceManager.syncWithServer(serverBalance);
+        balanceManager.forceBalanceSync(serverBalance);
       } else {
         console.log(`Solde local plus élevé que serveur, conservation: ${currentLocalBalance}€ (serveur: ${serverBalance}€)`);
       }
@@ -126,7 +127,7 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
     // Ne synchroniser avec le serveur que si le solde serveur est plus élevé
     if (userData.balance > currentLocalBalance) {
       console.log(`Synchronisation manuelle du solde avec le serveur: ${userData.balance}€`);
-      balanceManager.syncWithServer(userData.balance);
+      balanceManager.forceBalanceSync(userData.balance);
     }
     
     // Mettre à jour l'état local avec le solde le plus élevé

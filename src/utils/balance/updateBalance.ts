@@ -86,8 +86,8 @@ export const updateUserBalance = async (
         // Mettre à jour le gestionnaire central de solde
         const dbReturnedBalance = data?.[0]?.balance;
         if (typeof dbReturnedBalance === 'number' && !isNaN(dbReturnedBalance)) {
-          // Initialisation du gestionnaire avec la valeur de la base
-          balanceManager.initialize(dbReturnedBalance);
+          // Forcer la synchronisation avec la valeur de la base
+          balanceManager.forceBalanceSync(dbReturnedBalance);
         } else {
           // Sinon, mettre à jour avec la valeur calculée localement
           balanceManager.updateBalance(positiveGain);

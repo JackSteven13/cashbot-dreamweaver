@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { fetchUserBalance } from '@/utils/user/balanceUtils';
@@ -144,7 +145,7 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
       
       // Initialiser le gestionnaire de solde avec la valeur de la base de données
       if (balanceData) {
-        balanceManager.initialize(balanceData.balance);
+        balanceManager.forceBalanceSync(balanceData.balance);
       }
     }
 

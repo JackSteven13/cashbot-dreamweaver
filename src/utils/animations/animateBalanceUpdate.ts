@@ -7,45 +7,39 @@
  * Déclenche une animation de mise à jour du solde
  */
 export const animateBalanceUpdate = (
-  amount: number, 
-  newBalance: number,
-  options: {
-    animate?: boolean;
-    userId?: string;
-    transactionDate?: string;
-  } = {}
+  startValue: number, 
+  endValue: number,
+  duration = 1000,
+  onUpdate: (value: number) => void,
+  easing: (t: number) => number = (t) => t * t * (3 - 2 * t), // Easing par défaut
+  onComplete?: () => void
 ): void => {
-  const { animate = true, userId, transactionDate = new Date().toISOString() } = options;
+  const startTime = performance.now();
   
-  // Déclencher l'événement de mise à jour du solde
-  window.dispatchEvent(new CustomEvent('balance:update', {
-    detail: {
-      amount,
-      newBalance,
-      animate,
-      userId,
-      transactionDate
-    }
-  }));
-  
-  // Si l'animation est activée, ajouter des effets visuels
-  if (animate) {
-    // Déclencher une animation de particules si elle existe
-    window.dispatchEvent(new CustomEvent('balance:animate', {
-      detail: {
-        amount,
-        type: amount > 0 ? 'gain' : 'loss'
-      }
-    }));
+  const animate = (currentTime: number) => {
+    const elapsedTime = currentTime - startTime;
+    const progress = Math.min(elapsedTime / duration, 1);
+    const easedProgress = easing(progress);
     
-    // Déclencher une mise à jour du terminal si disponible
-    window.dispatchEvent(new CustomEvent('terminal:update', {
-      detail: {
-        message: `${amount > 0 ? 'Gain' : 'Perte'} de ${Math.abs(amount).toFixed(2)}€`,
-        type: amount > 0 ? 'success' : 'warning'
+    // Calculer la valeur actuelle
+    const currentValue = startValue + (endValue - startValue) * easedProgress;
+    
+    // Appeler la fonction de mise à jour
+    onUpdate(parseFloat(currentValue.toFixed(2)));
+    
+    // Continuer l'animation si elle n'est pas terminée
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // Animation terminée, appeler le callback de fin si disponible
+      if (onComplete) {
+        onComplete();
       }
-    }));
-  }
+    }
+  };
+  
+  // Démarrer l'animation
+  requestAnimationFrame(animate);
 };
 
 /**
@@ -56,7 +50,7 @@ export const setupBalanceAnimations = (): () => void => {
   const handleMicroGain = (event: CustomEvent) => {
     const { amount } = event.detail || {};
     if (typeof amount === 'number' && amount > 0) {
-      animateBalanceUpdate(amount, 0, { animate: true });
+      animateBalanceUpdate(0, amount, 1000, () => {}, undefined);
     }
   };
   
@@ -64,7 +58,7 @@ export const setupBalanceAnimations = (): () => void => {
   const handleAnalysisComplete = (event: CustomEvent) => {
     const { gain } = event.detail || {};
     if (typeof gain === 'number' && gain > 0) {
-      animateBalanceUpdate(gain, 0, { animate: true });
+      animateBalanceUpdate(0, gain, 1000, () => {}, undefined);
     }
   };
 
