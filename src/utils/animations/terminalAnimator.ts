@@ -1,119 +1,153 @@
 
 /**
- * Gestionnaire d'animation de terminal pour les simulations d'analyse
+ * Utilitaires pour les animations du terminal dans le dashboard
  */
 
+/**
+ * Interface pour une séquence d'animation du terminal
+ */
 interface TerminalSequence {
-  addLine: (text: string, type?: 'info' | 'warning' | 'error' | 'success') => void;
-  complete: (gain?: number) => void;
+  add: (text: string) => void;
+  complete: (result?: number) => void;
+  cancel: () => void;
 }
 
 /**
  * Crée une séquence d'animation de terminal en arrière-plan
  */
 export const createBackgroundTerminalSequence = (
-  initialLines: string[] = [],
-  silent: boolean = false
+  lines: string[] = [],
+  animate: boolean = true
 ): TerminalSequence => {
-  // Tableau pour stocker les lignes de terminal
-  const lines = [...initialLines];
+  // Identifiant unique pour cette séquence
+  const sequenceId = Math.random().toString(36).substring(2, 9);
   
-  // Déclencher l'événement initial avec animation immédiate
-  if (!silent) {
-    console.log("Démarrage d'une animation de terminal avec les lignes:", initialLines);
-    
-    window.dispatchEvent(new CustomEvent('terminal:show', {
+  // Ajouter les lignes initiales
+  lines.forEach(line => {
+    window.dispatchEvent(new CustomEvent('terminal:update', {
       detail: {
-        lines: initialLines.map(text => ({ text, type: 'info' })),
-        isComplete: false
+        id: sequenceId,
+        message: line,
+        background: true,
+        animate
       }
     }));
-    
-    // Déclencher également l'événement d'analyse pour les animations
-    window.dispatchEvent(new CustomEvent('dashboard:analysis-start', {
-      detail: { animate: true, timestamp: Date.now() }
-    }));
-  }
-
-  /**
-   * Ajoute une ligne au terminal
-   */
-  const addLine = (text: string, type: 'info' | 'warning' | 'error' | 'success' = 'info') => {
-    lines.push(text);
-    
-    if (!silent) {
-      console.log(`Terminal: ${type.toUpperCase()} - ${text}`);
-      
-      // Mettre à jour l'affichage du terminal
+  });
+  
+  return {
+    // Ajouter une nouvelle ligne à la séquence
+    add: (text: string): void => {
       window.dispatchEvent(new CustomEvent('terminal:update', {
         detail: {
-          lines: lines.map(l => ({ text: l, type: 'info' })),
-          lastLine: { text, type },
-          isComplete: false
+          id: sequenceId,
+          message: text,
+          background: true,
+          animate
+        }
+      }));
+    },
+    
+    // Terminer la séquence avec un résultat facultatif
+    complete: (result?: number): void => {
+      if (typeof result === 'number') {
+        window.dispatchEvent(new CustomEvent('terminal:update', {
+          detail: {
+            id: sequenceId,
+            message: `Résultat: +${result.toFixed(2)}€`,
+            status: 'success',
+            background: true,
+            animate,
+            complete: true
+          }
+        }));
+      } else {
+        window.dispatchEvent(new CustomEvent('terminal:update', {
+          detail: {
+            id: sequenceId,
+            message: 'Opération terminée',
+            status: 'info',
+            background: true,
+            animate,
+            complete: true
+          }
+        }));
+      }
+    },
+    
+    // Annuler la séquence
+    cancel: (): void => {
+      window.dispatchEvent(new CustomEvent('terminal:update', {
+        detail: {
+          id: sequenceId,
+          message: 'Opération annulée',
+          status: 'error',
+          background: true,
+          animate,
+          complete: true
         }
       }));
     }
   };
+};
 
-  /**
-   * Termine la séquence d'animation et affiche le gain optionnel
-   */
-  const complete = (gain: number = 0) => {
-    if (gain > 0) {
-      lines.push(`Analyse terminée avec succès: +${gain.toFixed(2)}€`);
-    } else {
-      lines.push('Analyse terminée.');
+/**
+ * Crée une animation de type "typing" dans le terminal
+ */
+export const createTypingAnimation = (
+  text: string,
+  options: {
+    speed?: number;
+    onComplete?: () => void;
+  } = {}
+): void => {
+  const { speed = 50, onComplete } = options;
+  const words = text.split(' ');
+  let wordIndex = 0;
+  
+  const sequenceId = Math.random().toString(36).substring(2, 9);
+  
+  // Afficher le premier mot
+  window.dispatchEvent(new CustomEvent('terminal:typing', {
+    detail: {
+      id: sequenceId,
+      text: words[0],
+      isComplete: false
     }
+  }));
+  
+  // Afficher progressivement les mots suivants
+  const interval = setInterval(() => {
+    wordIndex++;
     
-    if (!silent) {
-      // Mettre à jour l'affichage du terminal avec l'état complet
-      window.dispatchEvent(new CustomEvent('terminal:complete', {
+    if (wordIndex >= words.length) {
+      clearInterval(interval);
+      // Animation terminée
+      window.dispatchEvent(new CustomEvent('terminal:typing', {
         detail: {
-          lines: lines.map(text => ({ text, type: gain > 0 ? 'success' : 'info' })),
-          gain,
+          id: sequenceId,
+          text: text,
           isComplete: true
         }
       }));
       
-      // Déclencher l'événement de fin d'analyse
-      window.dispatchEvent(new CustomEvent('dashboard:analysis-complete', {
-        detail: { gain, animate: true, timestamp: Date.now() }
-      }));
+      if (onComplete) {
+        onComplete();
+      }
+      return;
     }
+    
+    // Afficher progressivement les mots
+    window.dispatchEvent(new CustomEvent('terminal:typing', {
+      detail: {
+        id: sequenceId,
+        text: words.slice(0, wordIndex + 1).join(' '),
+        isComplete: false
+      }
+    }));
+  }, speed);
+  
+  // Retourne la fonction de nettoyage
+  return () => {
+    clearInterval(interval);
   };
-
-  return {
-    addLine,
-    complete
-  };
-};
-
-/**
- * Fonction pour créer une animation de terminal complète avec progression
- */
-export const createTerminalAnimation = (
-  title: string = 'Analyse en cours',
-  duration: number = 3000,
-  gain: number = 0.1
-) => {
-  const sequence = createBackgroundTerminalSequence([title]);
-  
-  // Ajouter des lignes avec un délai pour simuler une progression
-  setTimeout(() => sequence.addLine('Initialisation de l\'analyse...'), 500);
-  setTimeout(() => sequence.addLine('Traitement des données vidéo...'), 1200);
-  setTimeout(() => sequence.addLine('Optimisation des résultats...'), 2000);
-  
-  // Terminer la séquence après la durée spécifiée
-  setTimeout(() => sequence.complete(gain), duration);
-  
-  return sequence;
-};
-
-/**
- * Fonction pour déclencher une notification de gain
- */
-export const triggerGainNotification = (gain: number) => {
-  window.dispatchEvent(new CustomEvent('balance:update', {
-    detail: { amount: gain, animate: true }
-  }));
 };
