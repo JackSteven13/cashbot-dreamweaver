@@ -1,78 +1,72 @@
 
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { createMoneyParticles } from '@/utils/animations';
 
 interface BalanceAnimationProps {
-  position?: 'top-right' | 'bottom-right';
+  position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'center';
 }
 
-const BalanceAnimation: React.FC<BalanceAnimationProps> = ({ 
-  position = 'top-right'
-}) => {
-  const [showAnimation, setShowAnimation] = useState(false);
-  const [amount, setAmount] = useState(0);
-  const [animationKey, setAnimationKey] = useState(0);
-  
-  const positionClasses = {
-    'top-right': 'top-4 right-4',
-    'bottom-right': 'bottom-4 right-4'
-  };
-  
+const BalanceAnimation: React.FC<BalanceAnimationProps> = ({ position = 'top-right' }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [amount, setAmount] = useState<number | null>(null);
+  const animationRef = useRef<HTMLDivElement>(null);
+  const positionClassName = getPositionClass(position);
+
   useEffect(() => {
-    const handleBalanceUpdate = (event: Event) => {
-      if (event instanceof CustomEvent && event.detail) {
-        const { gain, amount, animate } = event.detail;
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      const gain = event.detail?.amount || event.detail?.gain || 0;
+      const shouldAnimate = event.detail?.animate === true;
+      
+      if (gain > 0 && shouldAnimate) {
+        setAmount(gain);
+        setIsVisible(true);
         
-        // Determine the amount to display (support different event formats)
-        const displayAmount = gain || amount || 0;
-        
-        // Only animate if explicitly requested or automatic
-        if ((animate || event.detail.automatic) && typeof displayAmount === 'number' && displayAmount > 0) {
-          setAmount(parseFloat(displayAmount.toFixed(2)));
-          setShowAnimation(true);
-          setAnimationKey(prev => prev + 1);
-          
-          // Hide the animation after a delay
-          setTimeout(() => {
-            setShowAnimation(false);
-          }, 3000);
+        // Créer des particules si gain significatif
+        if (gain >= 0.01 && animationRef.current) {
+          const particleCount = Math.min(20, Math.ceil(gain * 30));
+          createMoneyParticles(animationRef.current, particleCount);
         }
+        
+        // Masquer après animation
+        setTimeout(() => {
+          setIsVisible(false);
+        }, 3000);
       }
     };
     
+    // Écouter les différents événements de mise à jour du solde
     window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
-    window.addEventListener('automatic:revenue', handleBalanceUpdate as EventListener);
-    
-    // Add manual trigger for testing
-    const testInterval = setInterval(() => {
-      // This is just for development to ensure the animation works
-      // console.log("Testing balance animation");
-    }, 60000);
+    window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
+    window.addEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
     
     return () => {
       window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
-      window.removeEventListener('automatic:revenue', handleBalanceUpdate as EventListener);
-      clearInterval(testInterval);
+      window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
+      window.removeEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
     };
   }, []);
   
+  function getPositionClass(position: string): string {
+    switch(position) {
+      case 'top-right': return 'top-20 right-8';
+      case 'top-left': return 'top-20 left-8';
+      case 'bottom-right': return 'bottom-20 right-8';
+      case 'bottom-left': return 'bottom-20 left-8';
+      case 'center': return 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2';
+      default: return 'top-20 right-8';
+    }
+  }
+
+  if (!isVisible || !amount) return null;
+
   return (
-    <div className={`fixed ${positionClasses[position]} z-50`}>
-      <AnimatePresence>
-        {showAnimation && (
-          <motion.div
-            key={animationKey}
-            initial={{ opacity: 0, y: 20, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.8 }}
-            className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 font-medium px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2"
-          >
-            <TrendingUp className="h-4 w-4" />
-            <span>+{amount.toFixed(2)}€</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div 
+      ref={animationRef}
+      className={`fixed ${positionClassName} z-50 transition-all duration-300 opacity-100`}
+    >
+      <div className="bg-gradient-to-r from-green-500 to-green-600 text-white py-2 px-4 rounded-lg shadow-lg animate-bounce">
+        <span className="text-lg font-bold">+{amount.toFixed(2)}€</span>
+      </div>
     </div>
   );
 };

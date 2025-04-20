@@ -163,28 +163,46 @@ export const useManualSessions = ({
         sessionTimeoutRef.current = setTimeout(resolve, simulationTime);
       });
       
+      // IMPORTANT: Récupérer la valeur actuelle du solde AVANT la mise à jour
+      const oldBalance = balanceManager.getCurrentBalance();
+      
       // Ajouter le gain au total quotidien
-      if (!addDailyGain(gain)) {
-        toast({
-          title: "Limite journalière atteinte",
-          description: `Vous avez atteint votre limite de gain journalier (${SUBSCRIPTION_LIMITS[userData?.subscription as keyof typeof SUBSCRIPTION_LIMITS || 'freemium']}€).`,
-          variant: "destructive",
-          duration: 3000
-        });
-        stopAnimation();
-        setIsSessionRunning(false);
-        return;
-      }
+      addDailyGain(gain);
       
       // Mettre à jour le solde via balanceManager
       balanceManager.addDailyGain(gain);
       balanceManager.addToBalance(gain);
       
+      // Calculer le nouveau solde après mise à jour
+      const newBalance = balanceManager.getCurrentBalance();
+      
+      // Déclencher des événements d'animation pour le solde de manière EXPLICITE
+      window.dispatchEvent(new CustomEvent('balance:update', {
+        detail: {
+          amount: gain,
+          oldBalance: oldBalance,
+          newBalance: newBalance,
+          animate: true,
+          duration: 1500
+        }
+      }));
+      
+      // Simuler plusieurs événements de mise à jour pour renforcer l'animation
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('balance:force-update', {
+          detail: {
+            amount: gain,
+            currentBalance: newBalance,
+            animate: true
+          }
+        }));
+      }, 500);
+      
       // Créer le rapport de la session
       const sessionReport = `Session manuelle #${dailySessionCount + 1}: ${gain.toFixed(2)}€ générés.`;
       
-      // Mettre à jour le solde via la fonction fournie
-      await updateBalance(gain, sessionReport);
+      // Mettre à jour le solde via la fonction fournie (avec forceUpdate pour mise à jour immédiate)
+      await updateBalance(gain, sessionReport, true);
       
       // Incrémenter le compteur de sessions
       await incrementSessionCount();
@@ -210,10 +228,16 @@ export const useManualSessions = ({
       
       // Déclencher des événements de dashboard pour les animations
       window.dispatchEvent(new CustomEvent('dashboard:activity', { detail: { level: 'high' } }));
+      
+      // Envoyer plusieurs micro-gains pour améliorer l'animation
       for (let i = 0; i < 3; i++) {
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('dashboard:micro-gain', { 
-            detail: { amount: gain / 3, timestamp: Date.now() } 
+            detail: { 
+              amount: gain / 3, 
+              timestamp: Date.now(),
+              animate: true 
+            } 
           }));
         }, 1000 + i * 1000);
       }
