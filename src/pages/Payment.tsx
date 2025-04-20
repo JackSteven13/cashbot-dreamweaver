@@ -9,6 +9,7 @@ import { toast } from '@/components/ui/use-toast';
 import { PLANS } from '@/utils/plans';
 import { hasPendingStripePayment, openStripeCheckout } from '@/utils/stripe-helper';
 import PaymentSteps from '@/components/payment/PaymentSteps';
+import { useAuth } from '@/hooks/useAuth';
 // import MobilePaymentHelper from '@/components/payment/MobilePaymentHelper'; // removed
 
 const Payment = () => {
