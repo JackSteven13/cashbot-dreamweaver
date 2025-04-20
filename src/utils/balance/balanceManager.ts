@@ -1,4 +1,3 @@
-
 /**
  * Gestionnaire centralisé pour le solde utilisateur
  * Permet de gérer le solde sans dépendre uniquement des mises à jour de la base de données
