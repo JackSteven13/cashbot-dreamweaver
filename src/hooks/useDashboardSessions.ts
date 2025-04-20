@@ -25,6 +25,12 @@ interface UseDashboardSessionsResult {
   toggleBotActive?: () => void;
 }
 
+// Define the return type for canStartManualSession to match the implementation
+interface SessionStartResult {
+  canStart: boolean;
+  reason?: string;
+}
+
 export const useDashboardSessions = ({
   userData,
   dailySessionCount,
@@ -60,9 +66,8 @@ export const useDashboardSessions = ({
       const canStartResult = canStartManualSession(
         userData?.subscription || 'freemium',
         sessionCountRef.current,
-        /* Pass a default value for the third parameter */
-        {}
-      );
+        0 // Pass 0 as the current balance (third parameter)
+      ) as SessionStartResult;
       
       if (!canStartResult.canStart) {
         toast({
@@ -92,11 +97,11 @@ export const useDashboardSessions = ({
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Get subscription-based gain percentage
-      const gainPercentage = MANUAL_SESSION_GAIN_PERCENTAGES[userData?.subscription as keyof typeof MANUAL_SESSION_GAIN_PERCENTAGES] || 
+      const gainPercentageObj = MANUAL_SESSION_GAIN_PERCENTAGES[userData?.subscription as keyof typeof MANUAL_SESSION_GAIN_PERCENTAGES] || 
         MANUAL_SESSION_GAIN_PERCENTAGES.freemium;
         
       // Calculate gain with some variance
-      const baseGain = gainPercentage;
+      const baseGain = gainPercentageObj.min + Math.random() * (gainPercentageObj.max - gainPercentageObj.min);
       const variance = baseGain * 0.2; // 20% variance
       const randomFactor = Math.random() * variance * 2 - variance; // range: -variance to +variance
       const gain = parseFloat((baseGain + randomFactor).toFixed(2));
