@@ -9,9 +9,7 @@ import { toast } from '@/components/ui/use-toast';
 import { PLANS } from '@/utils/plans';
 import { hasPendingStripePayment, openStripeCheckout } from '@/utils/stripe-helper';
 import PaymentSteps from '@/components/payment/PaymentSteps';
-import CheckoutTransition from '@/components/payment/CheckoutTransition';
-import { useAuth } from '@/hooks/useAuth';
-import MobilePaymentHelper from '@/components/payment/MobilePaymentHelper';
+// import MobilePaymentHelper from '@/components/payment/MobilePaymentHelper'; // removed
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -142,12 +140,7 @@ const Payment = () => {
           stripeCheckoutUrl={stripeCheckoutUrl}
         />
         
-        {/* Aide en cas de problème avec le paiement */}
-        <MobilePaymentHelper 
-          isVisible={showMobileHelper}
-          onHelp={handleHelp}
-          stripeUrl={stripeCheckoutUrl}
-        />
+        {/* Removed MobilePaymentHelper */}
       </div>
     </PaymentLayout>
   );
