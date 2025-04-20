@@ -33,16 +33,14 @@ export const animateBalance = (
   setLocalBalance: (value: number) => void
 ): Promise<void> => {
   return new Promise((resolve) => {
-    // Updated to match the correct parameter signature
+    // Updated to match the correct parameter signature (using only 3 arguments)
     animateBalanceUpdate(
       startBalance,
       newBalance,
-      1500, // longer animation duration for better visibility
       (value) => {
         setLocalBalance(value);
-      },
-      undefined, // Use default easing function
-      () => resolve() // This is the onComplete callback
+        if (value === newBalance) resolve();
+      }
     );
   });
 };

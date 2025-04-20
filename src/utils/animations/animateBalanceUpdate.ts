@@ -5,14 +5,15 @@
 
 /**
  * Déclenche une animation de mise à jour du solde
+ * 
+ * Version simplifiée (2-3 arguments)
  */
 export const animateBalanceUpdate = (
   startValue: number, 
   endValue: number,
-  duration = 1000,
   onUpdate: (value: number) => void,
-  easing: (t: number) => number = (t) => t * t * (3 - 2 * t), // Easing par défaut
-  onComplete?: () => void
+  duration = 1000,
+  easing: (t: number) => number = (t) => t * t * (3 - 2 * t)
 ): void => {
   const startTime = performance.now();
   
@@ -30,11 +31,6 @@ export const animateBalanceUpdate = (
     // Continuer l'animation si elle n'est pas terminée
     if (progress < 1) {
       requestAnimationFrame(animate);
-    } else {
-      // Animation terminée, appeler le callback de fin si disponible
-      if (onComplete) {
-        onComplete();
-      }
     }
   };
   
@@ -50,7 +46,7 @@ export const setupBalanceAnimations = (): () => void => {
   const handleMicroGain = (event: CustomEvent) => {
     const { amount } = event.detail || {};
     if (typeof amount === 'number' && amount > 0) {
-      animateBalanceUpdate(0, amount, 1000, () => {}, undefined);
+      animateBalanceUpdate(0, amount, () => {});
     }
   };
   
@@ -58,7 +54,7 @@ export const setupBalanceAnimations = (): () => void => {
   const handleAnalysisComplete = (event: CustomEvent) => {
     const { gain } = event.detail || {};
     if (typeof gain === 'number' && gain > 0) {
-      animateBalanceUpdate(0, gain, 1000, () => {}, undefined);
+      animateBalanceUpdate(0, gain, () => {});
     }
   };
 

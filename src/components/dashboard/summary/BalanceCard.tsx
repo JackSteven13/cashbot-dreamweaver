@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import BalanceDisplay from './userBalanceCard/components/BalanceDisplay';
@@ -65,14 +64,11 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
           animateBalanceUpdate(
             animatedBalance,
             currentBalance,
-            1500,
             (value) => {
               setAnimatedBalance(value);
+              if (value === currentBalance) setBalanceAnimating(false);
             },
-            undefined,
-            () => {
-              setBalanceAnimating(false);
-            }
+            1500 // longer animation duration for better visibility
           );
         } else {
           // Mise à jour instantanée sans animation
@@ -89,14 +85,11 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
           animateBalanceUpdate(
             animatedBalance,
             newBalance,
-            1500,
             (value) => {
               setAnimatedBalance(value);
+              if (value === newBalance) setBalanceAnimating(false);
             },
-            undefined,
-            () => {
-              setBalanceAnimating(false);
-            }
+            1500
           );
         } else {
           // Mise à jour instantanée sans animation
@@ -122,22 +115,20 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
           animateBalanceUpdate(
             animatedBalance,
             newBalance,
-            1500,
             (value) => {
               setAnimatedBalance(value);
               
               // Mettre à jour le gestionnaire de solde pour les références persistantes
-              balanceManager.updateBalance(value);
+              balanceManager.updateBalance(value - animatedBalance);
+              
+              if (value === newBalance) setBalanceAnimating(false);
             },
-            undefined,
-            () => {
-              setBalanceAnimating(false);
-            }
+            1500
           );
         } else {
           // Mise à jour instantanée sans animation
           setAnimatedBalance(newBalance);
-          balanceManager.updateBalance(newBalance);
+          balanceManager.updateBalance(newBalance - animatedBalance);
         }
       }
     };
@@ -171,17 +162,16 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
       animateBalanceUpdate(
         animatedBalance,
         safeBalance,
-        1000,
         (value) => {
           setAnimatedBalance(value);
           
           // Mettre à jour le gestionnaire de solde pour les références persistantes
-          balanceManager.updateBalance(value);
+          if (value === safeBalance) {
+            balanceManager.updateBalance(0);
+            setBalanceAnimating(false);
+          }
         },
-        undefined,
-        () => {
-          setBalanceAnimating(false);
-        }
+        1000
       );
     }
   }, [balance]);

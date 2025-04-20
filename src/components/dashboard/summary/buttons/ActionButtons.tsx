@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Zap, Download, Coins } from 'lucide-react';
@@ -30,7 +29,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   const [localBotActive, setLocalBotActive] = useState(isBotActive);
   const [limitReached, setLimitReached] = useState(false);
 
-  // Écouter les changements d'état du bot
   useEffect(() => {
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
@@ -54,7 +52,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     window.addEventListener('bot:limit-reached' as any, handleLimitReached);
     window.addEventListener('dashboard:limit-reached' as any, handleLimitReached);
     
-    // Initialiser avec la prop
     setLocalBotActive(isBotActive);
     
     return () => {
@@ -73,7 +70,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       return;
     }
     
-    // Vérifier si la limite a été atteinte
     if (limitReached) {
       toast({
         title: "Limite journalière atteinte",
@@ -88,18 +84,15 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       console.log("Démarrage de l'animation et de l'analyse");
       setIsLocallyProcessing(true);
       
-      // Créer une séquence d'animation qui s'affiche immédiatement
       const terminalAnimation = createBackgroundTerminalSequence([
         "Initialisation de l'analyse vidéo..."
       ]);
       
-      terminalAnimation.addLine("Traitement des données en cours...");
+      terminalAnimation.add("Traitement des données en cours...");
       
-      // Appeler immédiatement la fonction onStartSession
       console.log("Appel de onStartSession");
       onStartSession();
       
-      // Attendre un court instant avant de réinitialiser l'état local
       setTimeout(() => {
         setIsLocallyProcessing(false);
       }, 500);
@@ -119,7 +112,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     onWithdrawal();
   };
 
-  // Déterminer l'état visuel du bouton en fonction des différents états
   const getButtonState = () => {
     if (isStartingSession || isLocallyProcessing) {
       return {
@@ -161,7 +153,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       text: 'Lancer l\'analyse',
       disabled: false,
       animate: false,
-      color: 'bg-green-600 hover:bg-green-700'  // Changé à vert pour plus de visibilité
+      color: 'bg-green-600 hover:bg-green-700'
     };
   };
   

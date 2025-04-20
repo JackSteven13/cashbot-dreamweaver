@@ -6,7 +6,7 @@ export const cleanupUserData = (userId: string | null) => {
   console.log(`Cleaning up data for user ${userId || 'unknown'}`);
   
   // Clean up balance data
-  balanceManager.forceBalanceSync(0);
+  balanceManager.cleanupUserBalanceData();
   
   // Clean up other user-specific data
   localStorage.removeItem('lastSessionTime');
