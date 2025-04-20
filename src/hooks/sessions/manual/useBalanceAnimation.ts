@@ -33,7 +33,7 @@ export const animateBalance = (
   setLocalBalance: (value: number) => void
 ): Promise<void> => {
   return new Promise((resolve) => {
-    // Utilisez la fonction avec le bon nombre de paramètres (3 arguments + durée par défaut + easing par défaut)
+    // Utiliser la fonction avec le bon nombre de paramètres (3 arguments)
     animateBalanceUpdate(
       startBalance,
       newBalance,

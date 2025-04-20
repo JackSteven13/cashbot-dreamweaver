@@ -1,252 +1,210 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { toast } from '@/components/ui/use-toast';
-import { useSessionStats } from './useSessionStats';
-import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
-import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
-import balanceManager from '@/utils/balance/balanceManager';
-import { createMoneyParticles } from '@/utils/animations';
 
-const useDashboardSessions = ({
+import { useState, useRef, useEffect } from 'react';
+import { toast } from '@/components/ui/use-toast';
+import { resetUserBalance } from '@/utils/balance/resetBalance';
+import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
+import { canStartManualSession } from '@/utils/subscription/sessionManagement';
+import { MANUAL_SESSION_GAIN_PERCENTAGES } from '@/utils/subscription/constants';
+import { simulateActivity } from '@/utils/animations/moneyParticles';
+
+interface UseDashboardSessionsProps {
+  userData: any;
+  dailySessionCount: number;
+  incrementSessionCount: () => Promise<void>;
+  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>;
+  setShowLimitAlert: React.Dispatch<React.SetStateAction<boolean>>;
+  resetBalance: () => Promise<void>;
+}
+
+interface UseDashboardSessionsResult {
+  isStartingSession: boolean;
+  handleStartSession: () => Promise<void>;
+  handleWithdrawal: () => Promise<void>;
+  lastSessionTimestamp: number | null;
+  isBotActive: boolean;
+  toggleBotActive?: () => void;
+}
+
+export const useDashboardSessions = ({
   userData,
   dailySessionCount,
   incrementSessionCount,
   updateBalance,
   setShowLimitAlert,
   resetBalance
-}) => {
+}: UseDashboardSessionsProps): UseDashboardSessionsResult => {
   const [isStartingSession, setIsStartingSession] = useState(false);
-  const [revenueGenerated, setRevenueGenerated] = useState(0);
-  const [lastSessionTimestamp, setLastSessionTimestamp] = useState(0);
-  const [isBotActive, setIsBotActive] = useState(true); // TOUJOURS ACTIF
+  const [lastSessionTimestamp, setLastSessionTimestamp] = useState<number | null>(null);
+  const [isBotActive, setIsBotActive] = useState(true);
   
-  const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const referralCount = userData?.referrals?.length || 0;
-  const balanceDisplayRef = useRef<HTMLElement | null>(null);
+  const sessionInProgressRef = useRef(false);
+  const withdrawalInProgressRef = useRef(false);
+  const sessionCountRef = useRef(dailySessionCount);
   
+  // Update ref when prop changes
   useEffect(() => {
-    const balanceElement = document.querySelector('.balance-display') as HTMLElement;
-    if (balanceElement) {
-      balanceDisplayRef.current = balanceElement;
-    }
-  }, []);
-  
-  const { 
-    addSessionResult, 
-    sessionCount, 
-    todaysGainRef, 
-    activityLevel
-  } = useSessionStats(userData?.subscription);
-  
-  useEffect(() => {
-    if (!isBotActive) {
-      setIsBotActive(true);
-      console.log("Bot réactivé automatiquement");
-    }
-    
-    const forceActiveInterval = setInterval(() => {
-      if (!isBotActive) {
-        setIsBotActive(true);
-        window.dispatchEvent(new CustomEvent('bot:status-change', { 
-          detail: { active: true } 
-        }));
-      }
-    }, 5000);
-    
-    return () => clearInterval(forceActiveInterval);
-  }, [isBotActive]);
-  
-  const handleStartSession = useCallback(async () => {
-    if (isStartingSession || !userData) {
-      toast({
-        title: "Session en cours",
-        description: "Veuillez attendre la fin de l'analyse en cours.",
-        duration: 3000
-      });
+    sessionCountRef.current = dailySessionCount;
+  }, [dailySessionCount]);
+
+  const handleStartSession = async () => {
+    // Prevent multiple concurrent sessions
+    if (sessionInProgressRef.current || isStartingSession) {
       return;
     }
     
     try {
+      sessionInProgressRef.current = true;
       setIsStartingSession(true);
       
-      const terminalAnimation = createBackgroundTerminalSequence([
-        "Initialisation de l'analyse...",
-        "Récupération des données..."
-      ]);
+      // Check if user can start a manual session
+      const { canStart, reason } = canStartManualSession(
+        userData?.subscription || 'freemium',
+        sessionCountRef.current
+      );
       
-      const startTime = Date.now();
-      setLastSessionTimestamp(startTime);
-      
-      const processingTime = Math.random() * 1000 + 1500;
-      await new Promise(resolve => {
-        sessionTimeoutRef.current = setTimeout(resolve, processingTime);
-      });
-      
-      terminalAnimation.add("Analyse des contenus publicitaires...");
-      
-      const subscription = userData.subscription || 'freemium';
-      const dailyLimit = SUBSCRIPTION_LIMITS[subscription] || 0.5;
-      
-      const todaysGains = balanceManager.getDailyGains();
-      const remainingToLimit = Math.max(0, dailyLimit - todaysGains);
-      
-      let gain = 0;
-      
-      if (remainingToLimit > 0) {
-        const baseGain = subscription === 'freemium' ? 0.05 : 0.1;
-        const randomFactor = 0.8 + (Math.random() * 0.4);
-        
-        gain = Math.min(
-          remainingToLimit,
-          baseGain * randomFactor * (1 + referralCount * 0.05)
-        );
-        
-        gain = Math.round(gain * 100) / 100;
-      } else {
-        setShowLimitAlert(true);
-        gain = Math.min(0.01, remainingToLimit);
-      }
-      
-      terminalAnimation.add(`Analyse terminée! Gain calculé: ${gain.toFixed(2)}€`);
-      
-      const oldBalance = balanceManager.getCurrentBalance();
-      
-      balanceManager.addDailyGain(gain);
-      balanceManager.updateBalance(gain);
-      
-      if (balanceDisplayRef.current) {
-        createMoneyParticles(balanceDisplayRef.current, Math.min(15, Math.ceil(gain * 20)));
-      }
-      
-      window.dispatchEvent(new CustomEvent('balance:update', {
-        detail: {
-          amount: gain,
-          oldBalance: oldBalance,
-          newBalance: oldBalance + gain,
-          animate: true
-        }
-      }));
-      
-      const sessionReport = `Session manuelle #${dailySessionCount + 1}: ${gain}€`;
-      
-      addSessionResult(gain);
-      
-      await updateBalance(gain, sessionReport);
-      
-      await incrementSessionCount();
-      
-      toast({
-        title: "Session terminée",
-        description: `${gain.toFixed(2)}€ ont été ajoutés à votre solde.`,
-        duration: 3000,
-      });
-      
-      setRevenueGenerated(gain);
-      
-      terminalAnimation.complete(gain);
-      
-      window.dispatchEvent(new CustomEvent('dashboard:activity', { 
-        detail: { level: 'high' } 
-      }));
-      
-      for (let i = 0; i < 3; i++) {
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('dashboard:micro-gain', { 
-            detail: { amount: gain / 3, timestamp: Date.now(), animate: true } 
-          }));
-        }, 1000 + i * 800);
-      }
-      
-      const sessionDuration = Date.now() - startTime;
-      console.log(`Session completed in ${sessionDuration}ms with gain ${gain}€`);
-      
-    } catch (error) {
-      console.error("Error during session:", error);
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue pendant l'analyse",
-        variant: "destructive",
-      });
-    } finally {
-      setIsStartingSession(false);
-    }
-  }, [
-    isStartingSession, 
-    userData, 
-    dailySessionCount, 
-    updateBalance, 
-    incrementSessionCount,
-    setShowLimitAlert,
-    referralCount,
-    addSessionResult
-  ]);
-  
-  const handleWithdrawal = useCallback(async () => {
-    if (!userData) return;
-    
-    try {
-      const currentBalance = userData.balance;
-      
-      if (currentBalance < 0.01) {
+      if (!canStart) {
         toast({
-          title: "Solde insuffisant",
-          description: "Votre solde doit être supérieur à 0.01€ pour effectuer un retrait.",
-          variant: "destructive",
+          title: "Session impossible",
+          description: reason || "Vous ne pouvez pas démarrer de session maintenant.",
+          variant: "destructive"
         });
         return;
       }
       
-      toast({
-        title: "Retrait en cours",
-        description: "Votre demande de retrait est en cours de traitement.",
-        duration: 3000,
-      });
+      // Start session animation in terminal
+      const terminalSequence = createBackgroundTerminalSequence([
+        "Initialisation de la session d'analyse manuelle..."
+      ]);
       
-      await resetBalance();
-      balanceManager.forceBalanceSync(0);
+      // Add visual effects
+      window.dispatchEvent(new CustomEvent('session:start', { detail: { manual: true } }));
+      simulateActivity(true);
+      
+      // Add more terminal messages for realism
+      terminalSequence.add("Analyse des données en cours...");
+      
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      terminalSequence.add("Optimisation des résultats...");
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Get subscription-based gain percentage
+      const gainPercentage = MANUAL_SESSION_GAIN_PERCENTAGES[userData?.subscription as keyof typeof MANUAL_SESSION_GAIN_PERCENTAGES] || 
+        MANUAL_SESSION_GAIN_PERCENTAGES.freemium;
+        
+      // Calculate gain with some variance
+      const baseGain = gainPercentage;
+      const variance = baseGain * 0.2; // 20% variance
+      const randomFactor = Math.random() * variance * 2 - variance; // range: -variance to +variance
+      const gain = parseFloat((baseGain + randomFactor).toFixed(2));
+      
+      // Update the session timestamp before incrementing count to prevent double submissions
+      setLastSessionTimestamp(Date.now());
+      
+      // Increment session count
+      await incrementSessionCount();
+      
+      // Add final terminal message before updating balance
+      terminalSequence.add(`Résultats optimisés! Gain: ${gain.toFixed(2)}€`);
+      
+      // Update user balance
+      await updateBalance(gain, `Session d'analyse manuelle: +${gain.toFixed(2)}€`);
+      
+      // Complete terminal sequence
+      terminalSequence.complete(gain);
       
       toast({
-        title: "Retrait effectué !",
-        description: `${currentBalance.toFixed(2)}€ ont été transférés sur votre compte.`,
-        duration: 5000,
+        title: "Session complétée",
+        description: `Votre session a généré ${gain.toFixed(2)}€`,
       });
     } catch (error) {
-      console.error("Error during withdrawal:", error);
+      console.error('Error starting session:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de traiter votre demande de retrait.",
-        variant: "destructive",
+        description: "Une erreur est survenue lors de la session.",
+        variant: "destructive"
       });
+    } finally {
+      setIsStartingSession(false);
+      sessionInProgressRef.current = false;
     }
-  }, [userData, resetBalance]);
+  };
 
-  useEffect(() => {
-    if (!userData) return;
+  const handleWithdrawal = async () => {
+    // Prevent multiple concurrent withdrawals
+    if (withdrawalInProgressRef.current) {
+      return;
+    }
     
-    const autoGenInterval = setInterval(() => {
-      window.dispatchEvent(new CustomEvent('dashboard:activity', { 
-        detail: { level: 'medium' } 
-      }));
+    try {
+      withdrawalInProgressRef.current = true;
       
-      if (Math.random() > 0.5) {
-        const microGain = Math.random() * 0.03 + 0.01;
-        window.dispatchEvent(new CustomEvent('dashboard:micro-gain', { 
-          detail: { amount: microGain, timestamp: Date.now(), animate: true } 
-          }));
+      // Check if user has enough balance to withdraw
+      if (!userData?.balance || userData.balance < 10) {
+        toast({
+          title: "Retrait impossible",
+          description: "Vous devez avoir au moins 10€ pour effectuer un retrait.",
+          variant: "destructive"
+        });
+        return;
       }
-    }, 8000);
+      
+      // Confirm withdrawal
+      if (!window.confirm(`Êtes-vous sûr de vouloir retirer ${userData.balance.toFixed(2)}€ sur votre compte bancaire?`)) {
+        return;
+      }
+      
+      // Reset the balance in database
+      if (userData?.profile?.id) {
+        const result = await resetUserBalance(userData.profile.id, userData.balance);
+        
+        if (result.success) {
+          // Reset local balance after successful withdrawal
+          await resetBalance();
+          
+          toast({
+            title: "Retrait effectué",
+            description: `${userData.balance.toFixed(2)}€ ont été retirés avec succès. Le transfert sera visible sur votre compte bancaire sous 1 à 3 jours ouvrés.`,
+          });
+        } else {
+          throw new Error("Le retrait a échoué");
+        }
+      }
+    } catch (error) {
+      console.error('Error processing withdrawal:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors du traitement du retrait.",
+        variant: "destructive"
+      });
+    } finally {
+      withdrawalInProgressRef.current = false;
+    }
+  };
+  
+  // Listen for bot status changes
+  useEffect(() => {
+    const handleBotStatusChange = (event: CustomEvent) => {
+      const active = event.detail?.active;
+      if (typeof active === 'boolean') {
+        setIsBotActive(active);
+      }
+    };
     
-    return () => clearInterval(autoGenInterval);
-  }, [userData]);
-
+    window.addEventListener('bot:status-change' as any, handleBotStatusChange);
+    
+    return () => {
+      window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
+    };
+  }, []);
+  
   return {
     isStartingSession,
     handleStartSession,
     handleWithdrawal,
-    revenueGenerated,
     lastSessionTimestamp,
-    sessionCount,
-    isBotActive: true,
-    activityLevel
+    isBotActive
   };
 };
 

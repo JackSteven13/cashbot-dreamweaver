@@ -1,22 +1,61 @@
 
 import balanceManager from './balance/balanceManager';
 
-// Function to clean up user data when switching users
-export const cleanupUserData = (userId: string | null) => {
-  console.log(`Cleaning up data for user ${userId || 'unknown'}`);
-  
-  // Clean up balance data
+/**
+ * Nettoie les données de solde lors du changement d'utilisateur
+ */
+export const cleanUserData = () => {
+  // Nettoyer les données du gestionnaire de solde
   balanceManager.cleanupUserBalanceData();
   
-  // Clean up other user-specific data
-  localStorage.removeItem('lastSessionTime');
-  localStorage.removeItem('sessionCount');
-  localStorage.removeItem('lastKnownUsername');
-  localStorage.removeItem('lastKnownBalance');
-  localStorage.removeItem('referralLink');
-  localStorage.removeItem('welcomeMessageShown');
+  // Nettoyer les clés de localStorage générales
+  const keysToCleanup = [
+    'currentBalance',
+    'lastKnownBalance',
+    'highestBalance',
+    'dailyGains',
+    'userStats',
+    'dailySessionCount',
+    'lastSessionTimestamp',
+    'lastGrowthDate'
+  ];
   
-  console.log("User data cleanup completed");
+  keysToCleanup.forEach(key => {
+    localStorage.removeItem(key);
+  });
+  
+  console.log("User data cleaned successfully for user switch");
 };
 
-export default cleanupUserData;
+/**
+ * Nettoyage complet de toutes les données utilisateur (logout)
+ */
+export const purgeAllUserData = () => {
+  // Nettoyer d'abord les données du gestionnaire de solde
+  balanceManager.cleanupUserBalanceData();
+  
+  // Clés à préserver même après déconnexion
+  const keysToPreserve = [
+    'theme',
+    'language',
+    'first_use_date',
+    'stats_ads_count',
+    'stats_revenue_count'
+  ];
+  
+  // Récupérer toutes les clés du localStorage
+  const allKeys = Object.keys(localStorage);
+  
+  // Filtrer et supprimer toutes les clés liées aux données utilisateur
+  allKeys.forEach(key => {
+    // Ne pas supprimer les clés à préserver
+    if (!keysToPreserve.includes(key)) {
+      localStorage.removeItem(key);
+    }
+  });
+  
+  // Effacer aussi le sessionStorage
+  sessionStorage.clear();
+  
+  console.log("All user data purged for logout");
+};

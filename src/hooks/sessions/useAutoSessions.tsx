@@ -65,7 +65,7 @@ export const useAutoSessions = ({
       
       // Calculer le pourcentage atteint pour la limite quotidienne
       const subscription = safeUserData.subscription || 'freemium';
-      const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      const dailyLimit = balanceManager.getDailyLimit(subscription);
       const percentProgress = Math.min(100, (actualDailyGains / dailyLimit) * 100);
       setDailyLimitProgress(percentProgress);
       
@@ -213,7 +213,7 @@ export const useAutoSessions = ({
     
     try {
       const subscription = safeUserData.subscription || 'freemium';
-      const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      const dailyLimit = balanceManager.getDailyLimit(subscription);
       const userStats = loadUserStats(subscription);
       
       // Déterminer si on est proche de la limite
@@ -237,12 +237,12 @@ export const useAutoSessions = ({
         "Initialisation de l'analyse du contenu vidéo..."
       ], true);
       
-      terminalAnimation.addLine("Traitement des données algorithmiques...");
+      terminalAnimation.add("Traitement des données algorithmiques...");
       
       // Short delay to simulate processing
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      terminalAnimation.addLine(`Analyse complétée. Optimisation des résultats: ${gain.toFixed(2)}€`);
+      terminalAnimation.add(`Analyse complétée. Optimisation des résultats: ${gain.toFixed(2)}€`);
       
       // Create a descriptive message for the transaction
       const transactionReport = `Analyse automatique de contenu`;
@@ -251,10 +251,10 @@ export const useAutoSessions = ({
       await updateBalance(gain, transactionReport, isFirst);
       
       // Update user stats
-      saveUserStats(
-        userStats.currentGains + gain,
-        userStats.sessionCount + 1
-      );
+      saveUserStats({
+        currentGains: userStats.currentGains + gain,
+        sessionCount: userStats.sessionCount + 1
+      });
       
       // Trigger animated balance update with a custom event
       window.dispatchEvent(new CustomEvent('balance:update', {

@@ -12,6 +12,7 @@ class BalanceManager {
   private dailyGains: number = 0;
   private watchers: BalanceWatcher[] = [];
   private initialized: boolean = false;
+  private lastSyncWithDatabase: number = 0;
 
   constructor() {
     this.loadFromStorage();
@@ -151,26 +152,11 @@ class BalanceManager {
   }
 
   /**
-   * Initialise le solde avec une valeur de base
+   * Initialise le solde avec une valeur de base (alias pour forceBalanceSync)
    */
   initialize(balance: number): void {
-    if (isNaN(balance)) return;
-    
-    const parsedBalance = parseFloat(balance.toFixed(2));
-    
-    // Lors de l'initialisation, définir le solde actuel
-    this.currentBalance = parsedBalance;
-    
-    // Mettre à jour le solde le plus élevé si nécessaire
-    if (parsedBalance > this.highestBalance) {
-      this.highestBalance = parsedBalance;
-    }
-    
-    this.saveToStorage();
+    this.forceBalanceSync(balance);
     this.initialized = true;
-    
-    // Notifier les observateurs
-    this.notifyWatchers();
   }
 
   /**
@@ -185,7 +171,7 @@ class BalanceManager {
   }
 
   /**
-   * Synchronise le solde avec le serveur
+   * Synchronise le solde avec le serveur (alias pour forceBalanceSync quand plus élevé)
    */
   syncWithServer(serverBalance: number): void {
     if (isNaN(serverBalance)) return;
@@ -194,17 +180,29 @@ class BalanceManager {
     
     // Prendre la valeur la plus élevée entre le solde local et le solde serveur
     if (parsedBalance > this.currentBalance) {
-      this.currentBalance = parsedBalance;
-      
-      // Mettre à jour également le solde le plus élevé si nécessaire
-      if (parsedBalance > this.highestBalance) {
-        this.highestBalance = parsedBalance;
-      }
-      
-      this.saveToStorage();
-      
-      // Notifier les observateurs
-      this.notifyWatchers();
+      this.forceBalanceSync(parsedBalance);
+    }
+  }
+
+  /**
+   * Synchronise avec la base de données (nouvelle fonction optimisée)
+   */
+  async syncWithDatabase(): Promise<boolean> {
+    // Éviter les synchronisations trop fréquentes
+    const now = Date.now();
+    if (now - this.lastSyncWithDatabase < 30000) { // Limiter à une fois toutes les 30 secondes
+      return true;
+    }
+    
+    this.lastSyncWithDatabase = now;
+    
+    try {
+      // Cette méthode sera implémentée pour effectuer une synchronisation bidirectionnelle avec la base de données
+      // Pour l'instant, c'est juste un placeholder
+      return true;
+    } catch (error) {
+      console.error("Erreur de synchronisation avec la base de données:", error);
+      return false;
     }
   }
 

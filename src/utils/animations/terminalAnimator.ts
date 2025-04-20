@@ -99,7 +99,7 @@ export const createTypingAnimation = (
     speed?: number;
     onComplete?: () => void;
   } = {}
-): (() => void) => { // Retourne explicitement une fonction de nettoyage
+): () => void => { // Retourne explicitement une fonction de nettoyage
   const { speed = 50, onComplete } = options;
   const words = text.split(' ');
   let wordIndex = 0;
