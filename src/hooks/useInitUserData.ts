@@ -52,7 +52,7 @@ export const useInitUserData = () => {
               if (cachedBalance) {
                 const parsedBalance = parseFloat(cachedBalance);
                 if (!isNaN(parsedBalance)) {
-                  balanceManager.forceBalanceSync(parsedBalance);
+                  balanceManager.forceBalanceSync(parsedBalance); // Correction: initialize -> forceBalanceSync
                 }
               }
             }, 1000);
@@ -66,7 +66,7 @@ export const useInitUserData = () => {
             if (cachedBalance) {
               const parsedBalance = parseFloat(cachedBalance);
               if (!isNaN(parsedBalance)) {
-                balanceManager.forceBalanceSync(parsedBalance);
+                balanceManager.forceBalanceSync(parsedBalance); // Correction: initialize -> forceBalanceSync
               }
             }
           }

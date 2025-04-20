@@ -23,7 +23,7 @@ interface BalanceCardProps {
 }
 
 const BalanceCard: React.FC<BalanceCardProps> = ({
-  balance = 0, // Provide default value to avoid null issues
+  balance = 0,
   isStartingSession,
   handleStartSession,
   handleWithdrawal,
@@ -35,7 +35,6 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
   referralBonus = 0,
   isBotActive = true
 }) => {
-  // État interne pour l'animation du solde
   const [previousBalance, setPreviousBalance] = useState(balance);
   const [animatedBalance, setAnimatedBalance] = useState(balance);
   const [balanceAnimating, setBalanceAnimating] = useState(false);
@@ -43,21 +42,16 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
 
   const balanceRef = useRef<HTMLDivElement>(null);
   
-  // Obtenir la limite en fonction de l'abonnement
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
-  // Écouter les mises à jour de solde pour les animations
   useEffect(() => {
-    // La mise à jour du composant à partir des propriétés est gérée séparément
     const handleBalanceUpdate = (event: CustomEvent) => {
       const amount = event.detail?.amount;
       const currentBalance = event.detail?.currentBalance;
       const shouldAnimate = event.detail?.animate !== false;
       
       if (typeof currentBalance === 'number' && currentBalance > 0) {
-        // Si un solde complet est fourni, l'utiliser
         if (shouldAnimate && currentBalance !== animatedBalance) {
-          // Animer la transition du solde
           setPreviousBalance(animatedBalance);
           setBalanceAnimating(true);
           
@@ -68,14 +62,12 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
               setAnimatedBalance(value);
               if (value === currentBalance) setBalanceAnimating(false);
             },
-            1500 // longer animation duration for better visibility
+            1500
           );
         } else {
-          // Mise à jour instantanée sans animation
           setAnimatedBalance(currentBalance);
         }
       } else if (typeof amount === 'number' && amount > 0) {
-        // Sinon ajouter le montant au solde actuel
         const newBalance = animatedBalance + amount;
         
         if (shouldAnimate) {
@@ -92,33 +84,28 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
             1500
           );
         } else {
-          // Mise à jour instantanée sans animation
           setAnimatedBalance(newBalance);
         }
       }
     };
     
-    // Forcer la synchronisation du solde
     const handleForceUpdate = (event: CustomEvent) => {
       const newBalance = event.detail?.newBalance;
       const gain = event.detail?.gain;
       const shouldAnimate = event.detail?.animate !== false;
       
       if (typeof newBalance === 'number' && newBalance > 0) {
-        // Sauvegarder l'état actuel pour l'animation
         setPreviousBalance(animatedBalance);
         
         if (shouldAnimate && newBalance !== animatedBalance) {
           setBalanceAnimating(true);
           
-          // Animer la transition du solde vers la nouvelle valeur
           animateBalanceUpdate(
             animatedBalance,
             newBalance,
             (value) => {
               setAnimatedBalance(value);
               
-              // Mettre à jour le gestionnaire de solde pour les références persistantes
               balanceManager.updateBalance(value - animatedBalance);
               
               if (value === newBalance) setBalanceAnimating(false);
@@ -126,14 +113,12 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
             1500
           );
         } else {
-          // Mise à jour instantanée sans animation
           setAnimatedBalance(newBalance);
           balanceManager.updateBalance(newBalance - animatedBalance);
         }
       }
     };
-
-    // S'abonner aux événements globaux de mise à jour du solde
+    
     window.addEventListener('balance:update' as any, handleBalanceUpdate);
     window.addEventListener('balance:force-update' as any, handleForceUpdate);
     window.addEventListener('balance:reset-complete' as any, () => {
@@ -149,13 +134,10 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
     };
   }, [animatedBalance]);
   
-  // Synchroniser avec la prop balance lorsqu'elle change significativement
   useEffect(() => {
-    // Ensure balance is a number to avoid issues with undefined/null
     const safeBalance = typeof balance === 'number' ? balance : 0;
     
     if (Math.abs(safeBalance - animatedBalance) > 0.01) {
-      // Si le solde a changé significativement, mettre à jour avec animation
       setPreviousBalance(animatedBalance);
       setBalanceAnimating(true);
       
@@ -165,7 +147,6 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
         (value) => {
           setAnimatedBalance(value);
           
-          // Mettre à jour le gestionnaire de solde pour les références persistantes
           if (value === safeBalance) {
             balanceManager.updateBalance(0);
             setBalanceAnimating(false);

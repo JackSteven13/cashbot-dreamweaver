@@ -5,8 +5,6 @@
 
 /**
  * Déclenche une animation de mise à jour du solde
- * 
- * Version simplifiée (2-3 arguments)
  */
 export const animateBalanceUpdate = (
   startValue: number, 
