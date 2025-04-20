@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { UserData } from '@/types/userData';
 import balanceManager from '@/utils/balance/balanceManager';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
 interface UseAutoSessionsProps {
   userData: UserData;

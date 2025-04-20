@@ -110,7 +110,7 @@ export const useManualSessions = ({
       
       // Mettre à jour le solde via balanceManager
       balanceManager.addDailyGain(gain);
-      balanceManager.updateBalance(gain);
+      balanceManager.addToBalance(gain); // Maintenant défini dans balanceManager
       
       // Créer le rapport de la session
       const sessionReport = `Session manuelle #${dailySessionCount + 1}: ${gain.toFixed(2)}€ générés.`;

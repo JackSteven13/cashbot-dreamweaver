@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 import { toast } from '@/components/ui/use-toast';

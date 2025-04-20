@@ -67,6 +67,28 @@ class BalanceManager {
   }
   
   /**
+   * Ajouter au solde (méthode alias pour updateBalance)
+   */
+  addToBalance(gain: number): number {
+    this.updateBalance(gain);
+    return this.balance;
+  }
+  
+  /**
+   * Réinitialiser le solde à zéro
+   */
+  resetBalance(): void {
+    this.balance = 0;
+    try {
+      localStorage.setItem('cachedBalance', '0');
+      localStorage.setItem('lastBalanceUpdate', Date.now().toString());
+    } catch (e) {
+      console.error("[BalanceManager] Error resetting balance in localStorage:", e);
+    }
+    this.notifyWatchers();
+  }
+  
+  /**
    * Ajouter un watcher pour les changements de solde
    */
   addWatcher(callback: (balance: number) => void): () => void {
@@ -106,9 +128,34 @@ class BalanceManager {
   }
   
   /**
+   * Synchroniser avec le serveur (méthode alias pour forceBalanceSync)
+   */
+  syncWithServer(balance: number): void {
+    this.forceBalanceSync(balance);
+  }
+  
+  /**
    * Obtenir le solde actuel
    */
   getCurrentBalance(): number {
+    return this.balance;
+  }
+  
+  /**
+   * Obtenir le solde le plus élevé
+   */
+  getHighestBalance(): number {
+    try {
+      const storedHighest = localStorage.getItem('highestBalance');
+      if (storedHighest) {
+        const parsedHighest = parseFloat(storedHighest);
+        if (!isNaN(parsedHighest)) {
+          return Math.max(parsedHighest, this.balance);
+        }
+      }
+    } catch (e) {
+      console.error("[BalanceManager] Error getting highest balance:", e);
+    }
     return this.balance;
   }
   
@@ -278,6 +325,55 @@ class BalanceManager {
    */
   getDailyGains(): number {
     return this.dailyGains;
+  }
+  
+  /**
+   * Réinitialiser les gains quotidiens
+   */
+  resetDailyGains(): void {
+    this.dailyGains = 0;
+    try {
+      localStorage.setItem('dailyGains', '0');
+    } catch (e) {
+      console.error("[BalanceManager] Error resetting daily gains in localStorage:", e);
+    }
+  }
+  
+  /**
+   * Obtenir la limite quotidienne basée sur l'abonnement
+   */
+  getDailyLimit(subscription: string): number {
+    // Limites par défaut
+    const limits: { [key: string]: number } = {
+      freemium: 0.5,
+      premium: 2.5,
+      pro: 5,
+      ultimate: 10
+    };
+    
+    return limits[subscription] || limits.freemium;
+  }
+  
+  /**
+   * Nettoyer les données utilisateur lors d'un changement d'utilisateur
+   */
+  cleanupUserBalanceData(): void {
+    this.balance = 0;
+    this.dailyGains = 0;
+    this.isInitialized = false;
+    
+    // Nettoyer le localStorage
+    try {
+      localStorage.removeItem('cachedBalance');
+      localStorage.removeItem('dailyGains');
+      localStorage.removeItem('lastBalanceUpdate');
+      localStorage.removeItem('highestBalance');
+      localStorage.removeItem('lastDailyReset');
+    } catch (e) {
+      console.error("[BalanceManager] Error cleaning up user data:", e);
+    }
+    
+    this.notifyWatchers();
   }
 }
 

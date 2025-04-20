@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { fetchUserBalance } from '@/utils/user/balanceUtils';
@@ -51,7 +50,7 @@ export const useBalanceLoader = (onNewUser: (value: boolean) => void) => {
       });
       
       // Protection critique: vérifier si le solde de la base est inférieur au solde maximum stocké
-      const highestStoredBalance = balanceManager.getHighestBalance(); // Obtenir le solde maximum de notre système de persistance
+      const highestStoredBalance = balanceManager.getHighestBalance(); // Maintenant défini dans balanceManager
       
       // Pour les nouveaux utilisateurs, on initialise le solde et le nombre de sessions à 0
       if (isUserNew && balanceData) {

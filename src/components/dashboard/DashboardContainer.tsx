@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from './DashboardLayout';
@@ -43,11 +42,9 @@ const DashboardContainer = () => {
     return Promise.resolve();
   };
   
-  // MODIFIÉ - Amélioration de la mise à jour du solde pour plus de réactivité
   const updateBalance = async (gain: number, report: string, forceUpdate = false) => {
     console.log(`Updating balance with gain: ${gain}, report: ${report}`);
     
-    // Mettre à jour le state localement immédiatement
     setUserData(prev => ({
       ...prev,
       balance: parseFloat((prev?.balance || 0) + gain).toFixed(2),
@@ -60,7 +57,6 @@ const DashboardContainer = () => {
       }, ...(prev?.transactions || [])]
     }));
     
-    // Déclencher un événement pour mettre à jour le solde affiché
     window.dispatchEvent(new CustomEvent('balance:update', {
       detail: { amount: gain, animate: true }
     }));
@@ -88,7 +84,6 @@ const DashboardContainer = () => {
     resetBalance
   });
   
-  // MODIFIÉ - Accélérer le chargement initial
   useEffect(() => {
     if (!fastLoadRef.current) {
       fastLoadRef.current = true;
@@ -108,7 +103,6 @@ const DashboardContainer = () => {
     }
   }, []);
   
-  // MODIFIÉ - Accélérer l'initialisation
   useEffect(() => {
     const now = Date.now();
     
@@ -121,7 +115,6 @@ const DashboardContainer = () => {
       setLastInitTime(now);
       initialLoadAttempted.current = true;
       
-      // Réduire le délai d'attente
       setTimeout(() => {
         setIsLoading(false);
         
@@ -133,33 +126,28 @@ const DashboardContainer = () => {
           duration: 3000,
         });
         
-        // Déclencher une première simulation d'activité
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('bot:status-change', {
             detail: { active: true }
           }));
         }, 1000);
-      }, 500); // Réduit de 800ms à 500ms
+      }, 500);
     }
   }, [user, lastInitTime]);
   
-  // NOUVEAU - Mise à jour périodique pour maintenir les données fraîches
   useEffect(() => {
     if (!periodicUpdateRef.current && !isLoading) {
       periodicUpdateRef.current = setInterval(() => {
-        // Simuler une mise à jour des données
         console.log("Periodic data refresh");
         
-        // Déclencher une mise à jour du solde
         window.dispatchEvent(new CustomEvent('balance:force-update', {
           detail: { timestamp: Date.now() }
         }));
         
-        // 50% de chance de générer une petite activité
         if (Math.random() > 0.5) {
           simulateActivity();
         }
-      }, 15000); // Toutes les 15 secondes
+      }, 15000);
     }
     
     return () => {
@@ -217,7 +205,7 @@ const DashboardContainer = () => {
           dailySessionCount={dailySessionCount}
           showLimitAlert={showLimitAlert}
           lastSessionTimestamp={lastSessionTimestamp}
-          isBotActive={true} // MODIFIÉ - Toujours actif
+          isBotActive={true}
         />
       </DashboardLayout>
       

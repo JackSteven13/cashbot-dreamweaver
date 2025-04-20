@@ -1,19 +1,22 @@
 
 import balanceManager from './balance/balanceManager';
 
-/**
- * Méthode utilitaire pour nettoyer les données utilisateur lors d'un changement d'utilisateur
- */
-export const cleanupUserData = () => {
+// Function to clean up user data when switching users
+export const cleanupUserData = (userId: string | null) => {
+  console.log(`Cleaning up data for user ${userId || 'unknown'}`);
+  
+  // Clean up balance data
   balanceManager.cleanupUserBalanceData();
   
-  // Autres nettoyages possibles
+  // Clean up other user-specific data
+  localStorage.removeItem('lastSessionTime');
+  localStorage.removeItem('sessionCount');
   localStorage.removeItem('lastKnownUsername');
-  // etc.
+  localStorage.removeItem('lastKnownBalance');
+  localStorage.removeItem('referralLink');
+  localStorage.removeItem('welcomeMessageShown');
   
-  console.log('User data cleanup completed');
+  console.log("User data cleanup completed");
 };
 
-export default {
-  cleanupUserData
-};
+export default cleanupUserData;
