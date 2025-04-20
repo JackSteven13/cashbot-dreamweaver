@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Play, Pause, Settings, CheckCircle } from 'lucide-react';
 import BotStatusIndicator from './BotStatusIndicator';
 import BotSettingsPanel from './BotSettingsPanel';
+import { toast } from '@/components/ui/use-toast';
 
 interface BotControlPanelProps {
   isActive: boolean;
@@ -24,13 +24,10 @@ const BotControlPanel: React.FC<BotControlPanelProps> = ({
   userId
 }) => {
   const [showSettings, setShowSettings] = useState(false);
-  // État local forcé à true
   const [forcedActive, setForcedActive] = useState(true);
   
-  // Vérifier si l'utilisateur a accès au bot en fonction de son abonnement
   const hasAccess = subscription !== 'freemium';
   
-  // NOUVEAU - Forcer l'activation du bot au chargement
   useEffect(() => {
     if (!isActive) {
       console.log("Bot control panel: force activating bot");
@@ -38,14 +35,13 @@ const BotControlPanel: React.FC<BotControlPanelProps> = ({
       setForcedActive(true);
     }
     
-    // Interval pour s'assurer que le bot reste actif
     const keepActiveInterval = setInterval(() => {
       if (!forcedActive) {
         console.log("Bot control panel: ensuring bot remains active");
         onActivate();
         setForcedActive(true);
       }
-    }, 10000); // Vérifier toutes les 10 secondes
+    }, 10000);
     
     return () => clearInterval(keepActiveInterval);
   }, [isActive, onActivate, forcedActive]);
@@ -56,7 +52,7 @@ const BotControlPanel: React.FC<BotControlPanelProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Contrôle du Bot</span>
-            <BotStatusIndicator active={true} /> {/* Toujours actif */}
+            <BotStatusIndicator active={true} />
           </CardTitle>
           <CardDescription>
             L'assistant IA analyse automatiquement du contenu pour générer des revenus.
@@ -89,7 +85,7 @@ const BotControlPanel: React.FC<BotControlPanelProps> = ({
                 <Button 
                   className="w-full sm:w-auto bg-green-600 hover:bg-green-700" 
                   onClick={onActivate}
-                  disabled={true} // Toujours désactivé car déjà actif
+                  disabled={true}
                 >
                   <Play className="mr-2 h-4 w-4" /> Bot actif
                 </Button>
@@ -97,14 +93,13 @@ const BotControlPanel: React.FC<BotControlPanelProps> = ({
                   className="w-full sm:w-auto" 
                   variant="outline" 
                   onClick={() => {
-                    // Ignorer la demande de désactivation
                     toast({
                       title: "Mode maintenance",
                       description: "La désactivation du bot est temporairement indisponible.",
                       duration: 3000
                     });
                   }}
-                  disabled={true} // Désactivé pour empêcher la désactivation
+                  disabled={true}
                 >
                   <Pause className="mr-2 h-4 w-4" /> Désactiver
                 </Button>
@@ -119,7 +114,7 @@ const BotControlPanel: React.FC<BotControlPanelProps> = ({
               
               {showSettings && (
                 <BotSettingsPanel 
-                  isActive={true} // Toujours actif
+                  isActive={true}
                   subscription={subscription}
                 />
               )}
