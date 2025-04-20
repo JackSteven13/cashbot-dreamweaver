@@ -57,15 +57,17 @@ export const useDashboardSessions = ({
       setIsStartingSession(true);
       
       // Check if user can start a manual session
-      const { canStart, reason } = canStartManualSession(
+      const canStartResult = canStartManualSession(
         userData?.subscription || 'freemium',
-        sessionCountRef.current
+        sessionCountRef.current,
+        /* Pass a default value for the third parameter */
+        {}
       );
       
-      if (!canStart) {
+      if (!canStartResult.canStart) {
         toast({
           title: "Session impossible",
-          description: reason || "Vous ne pouvez pas démarrer de session maintenant.",
+          description: canStartResult.reason || "Vous ne pouvez pas démarrer de session maintenant.",
           variant: "destructive"
         });
         return;
@@ -78,7 +80,7 @@ export const useDashboardSessions = ({
       
       // Add visual effects
       window.dispatchEvent(new CustomEvent('session:start', { detail: { manual: true } }));
-      simulateActivity(true);
+      simulateActivity();
       
       // Add more terminal messages for realism
       terminalSequence.add("Analyse des données en cours...");

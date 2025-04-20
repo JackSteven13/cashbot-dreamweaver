@@ -163,3 +163,92 @@ export const loadStoredValues = (): { adsCount: number; revenueCount: number; ha
     };
   }
 };
+
+/**
+ * Sauvegarde les valeurs des compteurs de statistiques
+ */
+export const saveValues = (adsCount: number, revenueCount: number, forceUpdate: boolean = false): void => {
+  const currentAdsCount = parseInt(localStorage.getItem('stats_ads_count') || '0', 10);
+  const currentRevenueCount = parseFloat(localStorage.getItem('stats_revenue_count') || '0');
+  
+  // Ne mettre à jour que si les nouvelles valeurs sont plus grandes ou si forceUpdate est vrai
+  if (forceUpdate || adsCount > currentAdsCount) {
+    localStorage.setItem('stats_ads_count', String(adsCount));
+  }
+  
+  if (forceUpdate || revenueCount > currentRevenueCount) {
+    localStorage.setItem('stats_revenue_count', String(revenueCount));
+  }
+  
+  // Mémoriser la date de la dernière sauvegarde
+  localStorage.setItem('stats_last_update', new Date().toISOString());
+};
+
+/**
+ * Incrémente les statistiques en fonction de la date
+ */
+export const incrementDateLinkedStats = (): { newAdsCount: number; newRevenueCount: number } => {
+  // Récupérer les valeurs actuelles
+  const storedValues = loadStoredValues();
+  
+  // Récupérer la date actuelle
+  const now = new Date();
+  const currentHour = now.getHours();
+  
+  // Facteur d'activité basé sur l'heure (plus d'activité entre 10h et 22h)
+  const activityFactor = currentHour >= 10 && currentHour <= 22 ? 1.2 : 0.8;
+  
+  // Calculer de petits incréments cohérents
+  const adsIncrement = Math.floor(Math.random() * 3) + 1; // 1-3 vues de publicités
+  const revenueIncrement = parseFloat((Math.random() * 0.5 + 0.1).toFixed(2)) * activityFactor; // 0.1-0.6€ par vue
+  
+  // Calculer les nouvelles valeurs
+  const newAdsCount = storedValues.adsCount + adsIncrement;
+  const newRevenueCount = parseFloat((storedValues.revenueCount + revenueIncrement).toFixed(2));
+  
+  // Sauvegarder les nouvelles valeurs
+  saveValues(newAdsCount, newRevenueCount);
+  
+  return { newAdsCount, newRevenueCount };
+};
+
+/**
+ * S'assure que les statistiques ne tombent pas en dessous des valeurs minimales
+ */
+export const enforceMinimumStats = (minAdsCount: number, minRevenueCount: number): void => {
+  const currentAdsCount = parseInt(localStorage.getItem('stats_ads_count') || '0', 10);
+  const currentRevenueCount = parseFloat(localStorage.getItem('stats_revenue_count') || '0');
+  
+  let updated = false;
+  
+  if (currentAdsCount < minAdsCount) {
+    localStorage.setItem('stats_ads_count', String(minAdsCount));
+    updated = true;
+  }
+  
+  if (currentRevenueCount < minRevenueCount) {
+    localStorage.setItem('stats_revenue_count', String(minRevenueCount));
+    updated = true;
+  }
+  
+  if (updated) {
+    console.log("Minimum stats enforced:", { minAdsCount, minRevenueCount });
+  }
+};
+
+/**
+ * Récupère des statistiques cohérentes basées sur la date
+ */
+export const getDateConsistentStats = (): { adsCount: number; revenueCount: number } => {
+  const storedValues = loadStoredValues();
+  
+  // Récupérer également les dernières valeurs affichées si disponibles
+  const lastDisplayedAds = parseInt(localStorage.getItem('last_displayed_ads_count') || '0', 10);
+  const lastDisplayedRevenue = parseFloat(localStorage.getItem('last_displayed_revenue_count') || '0');
+  
+  // Utiliser les valeurs les plus élevées entre les différentes sources
+  const adsCount = Math.max(storedValues.adsCount, lastDisplayedAds, 40000);
+  const revenueCount = Math.max(storedValues.revenueCount, lastDisplayedRevenue, 50000);
+  
+  return { adsCount, revenueCount };
+};
