@@ -72,59 +72,75 @@ export const getUserStats = (): Record<string, any> => {
  */
 export const loadStoredValues = (): { adsCount: number; revenueCount: number; hasStoredValues: boolean } => {
   try {
-    const adsCountStr = localStorage.getItem('stats_ads_count');
-    const revenueCountStr = localStorage.getItem('stats_revenue_count');
-    const adsCount = adsCountStr ? parseInt(adsCountStr) : 0;
-    const revenueCount = revenueCountStr ? parseFloat(revenueCountStr) : 0;
-    
-    // Vérifier si nous avons des valeurs stockées valides
-    const hasStoredValues = adsCount > 0 && revenueCount > 0;
-    
-    // Progression basée sur le temps écoulé depuis la dernière mise à jour
-    if (hasStoredValues) {
-      const lastUpdate = parseInt(localStorage.getItem('stats_last_update') || Date.now().toString(), 10);
-      const now = Date.now();
-      const hoursSinceUpdate = Math.min(24, (now - lastUpdate) / (1000 * 60 * 60));
-      
-      if (hoursSinceUpdate > 1) {
-        // Progression très lente basée sur le temps écoulé
-        const adsIncrement = Math.round(hoursSinceUpdate * 15); // ~15 ads par heure
-        const revenueIncrement = parseFloat((hoursSinceUpdate * 0.25).toFixed(2)); // ~0.25€ par heure
-        
-        const updatedAds = adsCount + adsIncrement;
-        const updatedRevenue = revenueCount + revenueIncrement;
-        
-        // Enregistrer les valeurs mises à jour
-        localStorage.setItem('stats_ads_count', updatedAds.toString());
-        localStorage.setItem('stats_revenue_count', updatedRevenue.toString());
-        localStorage.setItem('stats_last_update', now.toString());
-        
-        console.log("Using stored values:", { 
-          adsCount: updatedAds, 
-          revenueCount: updatedRevenue, 
-          hasStoredValues: true 
-        });
-        
-        return { 
-          adsCount: updatedAds, 
-          revenueCount: updatedRevenue, 
-          hasStoredValues: true 
-        };
-      }
-      
-      console.log("Using stored values:", { 
-        adsCount, 
-        revenueCount, 
-        hasStoredValues: true 
-      });
-      
-      return { adsCount, revenueCount, hasStoredValues: true };
+    // Récupérer la date de première utilisation ou définir la date actuelle
+    const firstUseDate = localStorage.getItem('first_use_date') || new Date().toISOString();
+    if (!localStorage.getItem('first_use_date')) {
+      localStorage.setItem('first_use_date', firstUseDate);
     }
     
-    return { adsCount: 0, revenueCount: 0, hasStoredValues: false };
+    // Calculer le nombre de jours écoulés depuis la première utilisation
+    const daysSinceFirstUse = Math.max(1, Math.floor((new Date().getTime() - new Date(firstUseDate).getTime()) / (1000 * 3600 * 24)));
+    
+    // Récupérer les valeurs stockées
+    const adsCountStr = localStorage.getItem('stats_ads_count');
+    const revenueCountStr = localStorage.getItem('stats_revenue_count');
+    
+    // Définir les valeurs de base
+    let baseAdsCount = 56500; // Valeur minimale de départ
+    let baseRevenueCount = 51800; // Valeur minimale de départ
+    
+    // Calculer la progression en fonction du temps écoulé
+    const monthlyGrowthFactor = 1.15; // +15% par mois
+    const daysInMonth = 30;
+    const monthsSinceStart = daysSinceFirstUse / daysInMonth;
+    
+    // Calculer les valeurs avec croissance exponentielle
+    const growthMultiplier = Math.pow(monthlyGrowthFactor, monthsSinceStart);
+    
+    // Calculer les valeurs cibles en fonction du temps écoulé (croissance plus agressive)
+    const targetAdsCount = Math.floor(baseAdsCount * growthMultiplier * Math.sqrt(daysSinceFirstUse * 1.5));
+    const targetRevenueCount = Math.floor(baseRevenueCount * growthMultiplier * Math.sqrt(daysSinceFirstUse * 1.2));
+    
+    // Si nous avons des valeurs stockées, les utiliser comme base, sinon utiliser les valeurs calculées
+    let adsCount = adsCountStr ? parseInt(adsCountStr) : targetAdsCount;
+    let revenueCount = revenueCountStr ? parseFloat(revenueCountStr) : targetRevenueCount;
+    
+    // S'assurer que les valeurs ne sont pas inférieures aux cibles calculées
+    adsCount = Math.max(adsCount, targetAdsCount);
+    revenueCount = Math.max(revenueCount, targetRevenueCount);
+    
+    // Calculer la progression quotidienne
+    const lastUpdate = parseInt(localStorage.getItem('stats_last_update') || '0', 10);
+    const now = Date.now();
+    const hoursSinceUpdate = Math.min(24, (now - lastUpdate) / (1000 * 60 * 60));
+    
+    if (hoursSinceUpdate > 1) {
+      // Progression basée sur le temps écoulé
+      const baseHourlyAdsGrowth = 15 + (daysSinceFirstUse * 2); // Croissance progressive
+      const baseHourlyRevenueGrowth = 0.25 + (daysSinceFirstUse * 0.05); // Croissance progressive
+      
+      const adsIncrement = Math.round(hoursSinceUpdate * baseHourlyAdsGrowth);
+      const revenueIncrement = parseFloat((hoursSinceUpdate * baseHourlyRevenueGrowth).toFixed(2));
+      
+      const updatedAds = adsCount + adsIncrement;
+      const updatedRevenue = revenueCount + revenueIncrement;
+      
+      // Enregistrer les valeurs mises à jour
+      localStorage.setItem('stats_ads_count', updatedAds.toString());
+      localStorage.setItem('stats_revenue_count', updatedRevenue.toString());
+      localStorage.setItem('stats_last_update', now.toString());
+      
+      return { 
+        adsCount: updatedAds, 
+        revenueCount: updatedRevenue, 
+        hasStoredValues: true 
+      };
+    }
+    
+    return { adsCount, revenueCount, hasStoredValues: true };
   } catch (e) {
     console.error("Error loading stored values:", e);
-    return { adsCount: 0, revenueCount: 0, hasStoredValues: false };
+    return { adsCount: 60000, revenueCount: 55000, hasStoredValues: false };
   }
 };
 
@@ -149,15 +165,23 @@ export const saveValues = (adsCount: number, revenueCount: number, updateTimesta
  */
 export const enforceMinimumStats = (minAds: number, minRevenue: number): void => {
   try {
+    // Récupérer la date de première utilisation
+    const firstUseDate = localStorage.getItem('first_use_date') || new Date().toISOString();
+    const daysSinceFirstUse = Math.max(1, Math.floor((new Date().getTime() - new Date(firstUseDate).getTime()) / (1000 * 3600 * 24)));
+    
+    // Ajuster les minimums en fonction du temps écoulé
+    const adjustedMinAds = minAds * (1 + (daysSinceFirstUse / 30) * 0.4); // +40% par mois
+    const adjustedMinRevenue = minRevenue * (1 + (daysSinceFirstUse / 30) * 0.35); // +35% par mois
+    
     const currentAds = parseInt(localStorage.getItem('stats_ads_count') || '0');
     const currentRevenue = parseFloat(localStorage.getItem('stats_revenue_count') || '0');
     
-    if (currentAds < minAds || isNaN(currentAds)) {
-      localStorage.setItem('stats_ads_count', minAds.toString());
+    if (currentAds < adjustedMinAds || isNaN(currentAds)) {
+      localStorage.setItem('stats_ads_count', Math.round(adjustedMinAds).toString());
     }
     
-    if (currentRevenue < minRevenue || isNaN(currentRevenue)) {
-      localStorage.setItem('stats_revenue_count', minRevenue.toString());
+    if (currentRevenue < adjustedMinRevenue || isNaN(currentRevenue)) {
+      localStorage.setItem('stats_revenue_count', adjustedMinRevenue.toString());
     }
   } catch (e) {
     console.error("Error enforcing minimum stats:", e);
@@ -169,37 +193,67 @@ export const enforceMinimumStats = (minAds: number, minRevenue: number): void =>
  */
 export const getDateConsistentStats = (): { adsCount: number; revenueCount: number } => {
   try {
+    // Récupérer la date de première utilisation ou définir la date actuelle
+    const firstUseDate = localStorage.getItem('first_use_date') || new Date().toISOString();
+    if (!localStorage.getItem('first_use_date')) {
+      localStorage.setItem('first_use_date', firstUseDate);
+    }
+    
+    // Calculer le nombre de jours écoulés depuis la première utilisation
+    const daysSinceFirstUse = Math.max(1, Math.floor((new Date().getTime() - new Date(firstUseDate).getTime()) / (1000 * 3600 * 24)));
+    
+    // Définir les valeurs de base
+    const baseAdsCount = 55000;
+    const baseRevenueCount = 50000;
+    
+    // Calculer la progression en fonction du temps écoulé
+    const monthlyGrowthFactor = 1.15; // +15% par mois
+    const daysInMonth = 30;
+    const monthsSinceStart = daysSinceFirstUse / daysInMonth;
+    
+    // Calculer les valeurs avec croissance exponentielle
+    const growthMultiplier = Math.pow(monthlyGrowthFactor, monthsSinceStart);
+    
+    // Calculer les valeurs cibles
+    const targetAdsCount = Math.floor(baseAdsCount * growthMultiplier * (1 + (daysSinceFirstUse * 0.03)));
+    const targetRevenueCount = Math.floor(baseRevenueCount * growthMultiplier * (1 + (daysSinceFirstUse * 0.025)));
+    
     // Vérifier si nous avons des valeurs stockées pour aujourd'hui
     const today = new Date().toDateString();
     const storedDate = localStorage.getItem('stats_storage_date');
     
     if (storedDate === today) {
       // Les valeurs sont cohérentes avec la date actuelle
-      const storedValues = loadStoredValues();
+      const storedAds = parseInt(localStorage.getItem('stats_ads_count') || '0');
+      const storedRevenue = parseFloat(localStorage.getItem('stats_revenue_count') || '0');
+      
+      // Utiliser le maximum entre valeurs stockées et valeurs cibles
+      const finalAdsCount = Math.max(storedAds, targetAdsCount);
+      const finalRevenueCount = Math.max(storedRevenue, targetRevenueCount);
+      
+      // Enregistrer les valeurs ajustées
+      localStorage.setItem('stats_ads_count', finalAdsCount.toString());
+      localStorage.setItem('stats_revenue_count', finalRevenueCount.toString());
+      
       return {
-        adsCount: storedValues.adsCount,
-        revenueCount: storedValues.revenueCount
+        adsCount: finalAdsCount,
+        revenueCount: finalRevenueCount
       };
     }
     
-    // Si les données sont d'une date différente, appliquer une progression minimale
-    const storedValues = loadStoredValues();
-    const baseAdsCount = Math.max(40000, storedValues.adsCount);
-    const baseRevenueCount = Math.max(50000, storedValues.revenueCount);
-    
-    // Enregistrer la date actuelle et les valeurs ajustées
+    // Si les données sont d'une date différente, utiliser les valeurs cibles
     localStorage.setItem('stats_storage_date', today);
-    localStorage.setItem('stats_ads_count', baseAdsCount.toString());
-    localStorage.setItem('stats_revenue_count', baseRevenueCount.toString());
+    localStorage.setItem('stats_ads_count', targetAdsCount.toString());
+    localStorage.setItem('stats_revenue_count', targetRevenueCount.toString());
     
     return {
-      adsCount: baseAdsCount,
-      revenueCount: baseRevenueCount
+      adsCount: targetAdsCount,
+      revenueCount: targetRevenueCount
     };
   } catch (e) {
     console.error("Error getting date consistent stats:", e);
     return {
-      adsCount: 40000,
+      adsCount: 55000,
       revenueCount: 50000
     };
   }
@@ -212,13 +266,19 @@ export const incrementDateLinkedStats = (): { newAdsCount: number; newRevenueCou
   try {
     const { adsCount, revenueCount } = loadStoredValues();
     
-    // Petite incrémentation basée sur l'heure actuelle
-    const now = new Date();
-    const hourFactor = (now.getHours() + 1) / 24; // Facteur entre 1/24 et 1
-    const minuteFactor = now.getMinutes() / 60; // Facteur entre 0 et 1
+    // Récupérer la date de première utilisation
+    const firstUseDate = localStorage.getItem('first_use_date') || new Date().toISOString();
+    const daysSinceFirstUse = Math.max(1, Math.floor((new Date().getTime() - new Date(firstUseDate).getTime()) / (1000 * 3600 * 24)));
     
-    const adsIncrement = Math.ceil(hourFactor * 100) + Math.ceil(minuteFactor * 50);
-    const revenueIncrement = parseFloat((hourFactor * 5 + minuteFactor * 2).toFixed(2));
+    // Facteurs d'incrémentation basés sur la durée d'utilisation
+    const now = new Date();
+    const baseIncrement = Math.max(20, Math.floor(daysSinceFirstUse / 4)); // Augmente avec le temps
+    const hourFactor = (now.getHours() + 1) / 12; // Facteur entre 1/12 et 2
+    const minuteFactor = now.getMinutes() / 30; // Facteur entre 0 et 2
+    
+    // Incrémentations dynamiques qui augmentent avec le temps
+    const adsIncrement = Math.ceil(baseIncrement * hourFactor) + Math.ceil(minuteFactor * baseIncrement/2);
+    const revenueIncrement = parseFloat((baseIncrement * 0.25 * hourFactor + minuteFactor * baseIncrement * 0.1).toFixed(2));
     
     const newAdsCount = adsCount + adsIncrement;
     const newRevenueCount = revenueCount + revenueIncrement;
@@ -227,8 +287,6 @@ export const incrementDateLinkedStats = (): { newAdsCount: number; newRevenueCou
     localStorage.setItem('stats_ads_count', newAdsCount.toString());
     localStorage.setItem('stats_revenue_count', newRevenueCount.toString());
     localStorage.setItem('stats_last_update', Date.now().toString());
-    
-    console.log("Auto-incrément des statistiques");
     
     return { newAdsCount, newRevenueCount };
   } catch (e) {

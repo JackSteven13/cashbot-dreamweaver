@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
@@ -5,10 +6,9 @@ import { UserData, Transaction } from '@/types/userData';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
 import { generateReferralLink } from '@/utils/referral/referralLinks';
-import balanceManager from '@/utils/balance/balanceManager';
 
 /**
- * Hook pour récupérer et gérer les données utilisateur avec une meilleure synchronisation du solde
+ * Hook pour récupérer et gérer les données utilisateur
  */
 export const useUserData = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -54,7 +54,8 @@ export const useUserData = () => {
       // Récupérer les transactions explicitement
       console.log('Fetching transactions for user:', user.id);
       const transactions = await fetchUserTransactions(user.id);
-      
+      console.log('Fetched transactions:', transactions);
+
       // Récupérer les parrainages de l'utilisateur
       const { data: referralsData, error: referralsError } = await supabase
         .from('referrals')
@@ -67,42 +68,12 @@ export const useUserData = () => {
       
       // Générer le lien de parrainage avec l'ID utilisateur
       const userReferralLink = generateReferralLink(user.id);
-      
-      // Obtenir le solde à utiliser (valeur locale ou distante)
-      const serverBalance = balanceData?.balance || 0;
-      const localHighestBalance = balanceManager.getHighestBalance();
-      
-      // Utiliser le plus grand des deux soldes
-      const effectiveBalance = Math.max(serverBalance, localHighestBalance);
-      
-      // Synchroniser le balanceManager si nécessaire
-      if (serverBalance > 0 && Math.abs(serverBalance - localHighestBalance) > 0.01) {
-        // Si le solde du serveur est significativement différent, forcer la synchronisation
-        if (serverBalance > localHighestBalance) {
-          balanceManager.forceBalanceSync(serverBalance);
-        } else if (localHighestBalance > 0) {
-          // Si notre solde local est plus élevé, mettre à jour le serveur
-          try {
-            const { error: updateError } = await supabase
-              .from('user_balances')
-              .update({ balance: localHighestBalance })
-              .eq('id', user.id);
-              
-            if (updateError) {
-              console.error('Error updating server balance:', updateError);
-            } else {
-              console.log(`Updated server balance to match local: ${localHighestBalance}`);
-            }
-          } catch (e) {
-            console.error('Error during balance server sync:', e);
-          }
-        }
-      }
+      console.log('Generated referral link:', userReferralLink);
       
       // Construire l'objet de données utilisateur
       const newUserData: UserData = {
         username: profileData?.full_name || user.email?.split('@')[0] || 'User',
-        balance: effectiveBalance,
+        balance: balanceData?.balance || 0,
         subscription: balanceData?.subscription || 'freemium',
         transactions: transactions || [],
         profile: profileData || { id: user.id },
@@ -151,15 +122,15 @@ export const useUserData = () => {
     if (!user?.id || !userData) return;
     
     try {
-      // Mettre à jour le solde avec le gestionnaire central
-      const newBalance = balanceManager.addToBalance(gain);
-      
-      // Mise à jour optimiste de l'UI
+      // Optimistic update with type safety
       setUserData(prev => {
         if (!prev) return null;
+        
+        const updatedBalance: number = (prev.balance || 0) + gain;
+        
         return {
           ...prev,
-          balance: newBalance,
+          balance: updatedBalance,
           transactions: [{
             date: new Date().toISOString(),
             gain,
@@ -169,17 +140,18 @@ export const useUserData = () => {
         };
       });
       
-      // Mise à jour dans la base de données
+      // Mettre à jour le solde dans la base de données en utilisant une mise à jour directe
+      // au lieu de l'appel RPC increase_balance qui n'est pas disponible
       const { error } = await supabase
         .from('user_balances')
         .update({ 
-          balance: newBalance,
+          balance: (userData.balance || 0) + gain,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
         
       if (error) {
-        console.error('Error updating balance in database:', error);
+        console.error('Error updating balance:', error);
         throw error;
       }
       
@@ -209,51 +181,12 @@ export const useUserData = () => {
     }
   }, [user, userData, refreshUserData]);
   
-  // Réinitialiser le solde (pour les retraits)
-  const resetBalance = useCallback(async () => {
-    if (!user?.id) return;
-    
-    try {
-      // Réinitialiser le solde local
-      balanceManager.resetBalance();
-      
-      // Mise à jour optimiste
-      setUserData(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          balance: 0
-        };
-      });
-      
-      // Mise à jour dans la base de données
-      const { error } = await supabase
-        .from('user_balances')
-        .update({ 
-          balance: 0,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-        
-      if (error) {
-        console.error('Error resetting balance in database:', error);
-        throw error;
-      }
-      
-      await refreshUserData();
-    } catch (error) {
-      console.error('Error in resetBalance:', error);
-      refreshUserData();
-    }
-  }, [user, refreshUserData]);
-  
   return {
     userData,
     isNewUser,
     isLoading,
     refreshUserData,
-    updateBalance,
-    resetBalance
+    updateBalance
   };
 };
 

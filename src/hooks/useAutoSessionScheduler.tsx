@@ -1,3 +1,4 @@
+
 import { useRef, useEffect } from 'react';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import { getDailyGains } from '@/hooks/stats/utils/storageManager';

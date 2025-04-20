@@ -26,8 +26,8 @@ const StatsCounter = ({
 
   // Utiliser useRef pour stocker des valeurs stables entre les rendus
   const stableValuesRef = useRef({
-    adsCount: 40000,
-    revenueCount: 50000,
+    adsCount: 60000, // Valeur de départ plus élevée
+    revenueCount: 55000, // Valeur de départ plus élevée
     lastUpdate: Date.now(),
     lastSyncTime: Date.now()
   });
@@ -42,6 +42,19 @@ const StatsCounter = ({
     };
   });
   
+  // Initialiser la date de première utilisation si elle n'existe pas encore
+  useEffect(() => {
+    if (!localStorage.getItem('first_use_date')) {
+      // Définir une date antérieure pour simuler une utilisation plus longue (30 jours dans le passé)
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 30);
+      localStorage.setItem('first_use_date', pastDate.toISOString());
+    }
+    
+    // Assurer des valeurs de départ élevées
+    enforceMinimumStats(60000, 55000);
+  }, []);
+  
   // Synchroniser les valeurs stables avec les valeurs stockées au chargement
   useEffect(() => {
     // Récupérer les valeurs stockées avec progression temporelle intégrée
@@ -51,8 +64,9 @@ const StatsCounter = ({
     const lastDisplayedAds = parseInt(localStorage.getItem('last_displayed_ads_count') || '0', 10);
     const lastDisplayedRevenue = parseFloat(localStorage.getItem('last_displayed_revenue_count') || '0');
     
-    const finalAdsCount = Math.max(consistentStats.adsCount, lastDisplayedAds || 40000);
-    const finalRevenueCount = Math.max(consistentStats.revenueCount, lastDisplayedRevenue || 50000);
+    // Calcul plus agressif pour obtenir des valeurs plus élevées
+    const finalAdsCount = Math.max(consistentStats.adsCount, lastDisplayedAds || 60000);
+    const finalRevenueCount = Math.max(consistentStats.revenueCount, lastDisplayedRevenue || 55000);
     
     // Stocker dans la référence stable
     stableValuesRef.current = {
@@ -73,97 +87,41 @@ const StatsCounter = ({
     localStorage.setItem('last_displayed_revenue_count', finalRevenueCount.toString());
     
     // S'assurer que les valeurs minimales sont respectées
-    enforceMinimumStats(40000, 50000);
+    enforceMinimumStats(60000, 55000);
     
     // Persistance renforcée avec un timestamp
     localStorage.setItem('stats_last_sync', Date.now().toString());
   }, []);
   
-  // Synchroniser avec les événements de mise à jour du feed des publicités de façon STRICTE
+  // Effet d'incrémentation périodique pour assurer une progression visible
   useEffect(() => {
-    const handleLocationAdded = (event: CustomEvent) => {
-      // Vérifier le temps écoulé depuis la dernière mise à jour pour empêcher les mises à jour trop fréquentes
-      const now = Date.now();
-      if (now - stableValuesRef.current.lastSyncTime < 15000) { // Au moins 15 secondes entre les mises à jour
-        console.log("Mise à jour des stats trop rapide, ignorée");
-        return;
-      }
+    const incrementInterval = setInterval(() => {
+      // Incrémenter statistiques de façon plus agressive
+      const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
       
-      stableValuesRef.current.lastSyncTime = now;
+      setDisplayValues({
+        adsCount: newAdsCount,
+        revenueCount: newRevenueCount
+      });
       
-      // Attendre un délai plus important pour que l'analyse soit simulée
-      setTimeout(() => {
-        // Incrémenter UNIQUEMENT d'une vidéo à la fois, jamais plus
-        setDisplayValues(prev => {
-          const newAdsCount = prev.adsCount + 1;
-          const newRevenueCount = prev.revenueCount + (Math.random() * 0.3 + 0.2); // 0.2-0.5€ par vidéo
-          
-          // Persister immédiatement pour maintenir la cohérence entre les sessions
-          localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
-          localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
-          
-          return {
-            adsCount: newAdsCount,
-            revenueCount: newRevenueCount
-          };
-        });
-      }, 5000 + Math.random() * 3000); // Délai entre 5 et 8 secondes
-    };
+      // Sauvegarder les valeurs affichées
+      localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
+      localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
+      
+    }, 30000); // Incrémenter toutes les 30 secondes
     
-    window.addEventListener('location:added', handleLocationAdded as EventListener);
-    return () => window.removeEventListener('location:added', handleLocationAdded as EventListener);
+    return () => clearInterval(incrementInterval);
   }, []);
-
-  // Mettre à jour les valeurs stables et persistantes seulement si les valeurs de useStatsCounter augmentent significativement
-  useEffect(() => {
-    if (displayedAdsCount > stableValuesRef.current.adsCount + 10) { // Seuil de différence significative
-      stableValuesRef.current = {
-        ...stableValuesRef.current,
-        adsCount: displayedAdsCount,
-        lastUpdate: Date.now()
-      };
-      
-      // Ne pas mettre à jour l'interface trop rapidement, progression extrêmement lente
-      setDisplayValues(prev => {
-        const newAdsCount = prev.adsCount + 1; // Toujours incrémenter de 1 seulement
-        // Persister pour maintenir la cohérence
-        localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
-        return {
-          ...prev,
-          adsCount: newAdsCount
-        };
-      });
-    }
-    
-    if (displayedRevenueCount > stableValuesRef.current.revenueCount + 5) { // Seuil de différence significative
-      stableValuesRef.current = {
-        ...stableValuesRef.current,
-        revenueCount: displayedRevenueCount,
-        lastUpdate: Date.now()
-      };
-      
-      // Progression très lente du revenu également
-      setDisplayValues(prev => {
-        const newRevenueCount = prev.revenueCount + 0.3; // Incrément très faible
-        // Persister pour maintenir la cohérence
-        localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
-        return {
-          ...prev,
-          revenueCount: newRevenueCount
-        };
-      });
-    }
-  }, [displayedAdsCount, displayedRevenueCount]);
-
-  // Effet pour assurer la progression continue mais EXTRÊMEMENT lente
+  
+  // Effet pour assurer la progression continue
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         const now = Date.now();
         const timeSinceLastUpdate = now - stableValuesRef.current.lastUpdate;
         
-        // Si plus de 10 minutes se sont écoulées, récupérer les statistiques cohérentes
-        if (timeSinceLastUpdate > 10 * 60 * 1000) {
+        // Si plus de 2 minutes se sont écoulées, récupérer les statistiques cohérentes
+        if (timeSinceLastUpdate > 2 * 60 * 1000) {
           const consistentStats = getDateConsistentStats();
           
           // Récupérer également les dernières valeurs affichées
@@ -175,14 +133,14 @@ const StatsCounter = ({
             stableValuesRef.current.adsCount, 
             consistentStats.adsCount,
             lastDisplayedAds || 0,
-            40000
+            60000
           );
           
           const maxRevenueCount = Math.max(
             stableValuesRef.current.revenueCount, 
             consistentStats.revenueCount,
             lastDisplayedRevenue || 0,
-            50000
+            55000
           );
           
           // Mettre à jour la référence stable
