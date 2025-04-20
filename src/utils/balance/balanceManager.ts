@@ -224,7 +224,6 @@ class BalanceManager {
         // Persister
         try {
           localStorage.setItem('cachedBalance', newBalance.toString());
-          // Fix: Convert number timestamp to string
           localStorage.setItem('lastBalanceUpdate', now.toString());
         } catch (e) {
           console.error("[BalanceManager] Error saving to localStorage:", e);
