@@ -1,3 +1,4 @@
+
 /**
  * Gestionnaire centralisé pour le solde utilisateur
  * Permet de gérer le solde sans dépendre uniquement des mises à jour de la base de données
@@ -120,7 +121,7 @@ class BalanceManager {
     // Persister
     try {
       localStorage.setItem('cachedBalance', balance.toString());
-      localStorage.setItem('lastBalanceUpdate', Date.now().toString());
+      localStorage.setItem('lastBalanceUpdate', Date.now().toString()); // Convert to string to fix TypeScript error
     } catch (e) {
       console.error("[BalanceManager] Error saving to localStorage:", e);
     }

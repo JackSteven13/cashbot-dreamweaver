@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
@@ -110,7 +111,19 @@ export const useManualSessions = ({
       
       // Mettre à jour le solde via balanceManager
       balanceManager.addDailyGain(gain);
-      balanceManager.addToBalance(gain); // Maintenant défini dans balanceManager
+      balanceManager.addToBalance(gain);
+      
+      // Déclencher des événements d'animation pour le solde
+      const oldBalance = balanceManager.getCurrentBalance() - gain;
+      window.dispatchEvent(new CustomEvent('balance:update', {
+        detail: {
+          amount: gain,
+          oldBalance: oldBalance,
+          newBalance: balanceManager.getCurrentBalance(),
+          animate: true,
+          duration: 1500
+        }
+      }));
       
       // Créer le rapport de la session
       const sessionReport = `Session manuelle #${dailySessionCount + 1}: ${gain.toFixed(2)}€ générés.`;
@@ -134,10 +147,16 @@ export const useManualSessions = ({
       
       // Déclencher des événements de dashboard pour les animations
       window.dispatchEvent(new CustomEvent('dashboard:activity', { detail: { level: 'high' } }));
+      
+      // Envoyer plusieurs micro-gains pour améliorer l'animation
       for (let i = 0; i < 3; i++) {
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('dashboard:micro-gain', { 
-            detail: { amount: gain / 3, timestamp: Date.now() } 
+            detail: { 
+              amount: gain / 3, 
+              timestamp: Date.now(),
+              animate: true 
+            } 
           }));
         }, 1000 + i * 1000);
       }

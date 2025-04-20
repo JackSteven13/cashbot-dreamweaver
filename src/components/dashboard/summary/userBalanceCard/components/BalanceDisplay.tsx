@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { CircleDollarSign, TrendingUp, Award } from 'lucide-react';
 import { useAnimatedCounter } from '@/hooks/useAnimatedCounter';
@@ -27,7 +28,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 }) => {
   // Utiliser balanceManager comme source unique de vérité
   const [stableBalance, setStableBalance] = useState(() => {
-    return balanceManager.getCurrentBalance();
+    return balanceManager.getCurrentBalance() || displayBalance;
   });
   
   // État pour suivre les animations
@@ -53,7 +54,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       // Get the old balance for comparison
       const oldBalance = stableBalance;
       
-      if (newBalance !== oldBalance) {
+      if (Math.abs(newBalance - oldBalance) > 0.01) {
         setStableBalance(newBalance);
         
         // Calculer le gain
@@ -64,14 +65,23 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           
           // Effet visuel sur changement significatif
           if (balanceRef.current && gain > 0.01) {
-            createMoneyParticles(balanceRef.current, 3);
+            createMoneyParticles(balanceRef.current, Math.min(10, Math.ceil(gain * 20)));
             setShowRain(true);
+            
+            // Dispatch animation event for other components
+            window.dispatchEvent(new CustomEvent('balance:animation', {
+              detail: { 
+                oldBalance: oldBalance,
+                newBalance: newBalance,
+                gain: gain
+              }
+            }));
             
             const timer = setTimeout(() => {
               setShowRain(false);
               setIsAnimating(false);
               setGainAmount(null);
-            }, 2000);
+            }, 3000);
             return () => clearTimeout(timer);
           }
         }
@@ -86,8 +96,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     const handleBalanceUpdate = (event: CustomEvent) => {
       const amount = event.detail?.amount;
       const currentBalance = event.detail?.currentBalance;
+      const animate = event.detail?.animate !== false;
       
-      // Mettre à jour le solde si spécifié
+      if (!animate) return;
+      
+      // Mettre à jour le solde si spécifié et différent
       if (currentBalance !== undefined && Math.abs(currentBalance - stableBalance) > 0.01) {
         setStableBalance(currentBalance);
       }
@@ -99,14 +112,14 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         
         // Effet visuel
         if (balanceRef.current) {
-          createMoneyParticles(balanceRef.current, Math.min(10, Math.ceil(amount * 10)));
+          createMoneyParticles(balanceRef.current, Math.min(15, Math.ceil(amount * 20)));
           setShowRain(true);
           
           const timer = setTimeout(() => {
             setShowRain(false);
             setIsAnimating(false);
             setGainAmount(null);
-          }, 2000);
+          }, 3000);
           return () => clearTimeout(timer);
         }
       }
@@ -115,11 +128,13 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     // Écouter les événements de mise à jour du solde
     window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
     window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
+    window.addEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
     
     // Nettoyage
     return () => {
       window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
       window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
+      window.removeEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
     };
   }, [stableBalance]);
   
@@ -141,7 +156,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   
   // Effet pour l'animation lors des gains
   useEffect(() => {
-    if (balanceAnimating && balanceRef.current) {
+    if ((balanceAnimating || isAnimating) && balanceRef.current) {
       // Effet visuel pour l'animation
       createMoneyParticles(balanceRef.current, 5);
       setShowRain(true);
@@ -150,10 +165,10 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       const timer = setTimeout(() => {
         setShowRain(false);
         setIsAnimating(false);
-      }, 2000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [balanceAnimating]);
+  }, [balanceAnimating, isAnimating]);
   
   return (
     <div className="mb-4 relative">

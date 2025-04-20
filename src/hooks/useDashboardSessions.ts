@@ -5,6 +5,7 @@ import { useSessionStats } from './useSessionStats';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
 import balanceManager from '@/utils/balance/balanceManager';
+import { createMoneyParticles } from '@/utils/animations';
 
 const useDashboardSessions = ({
   userData,
@@ -21,6 +22,16 @@ const useDashboardSessions = ({
   
   const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const referralCount = userData?.referrals?.length || 0;
+  const balanceDisplayRef = useRef<HTMLElement | null>(null);
+  
+  // Référence pour trouver l'élément d'affichage du solde
+  useEffect(() => {
+    // Tenter de trouver l'élément d'affichage du solde
+    const balanceElement = document.querySelector('.balance-display') as HTMLElement;
+    if (balanceElement) {
+      balanceDisplayRef.current = balanceElement;
+    }
+  }, []);
   
   // Suivi des statistiques des sessions
   const { 
@@ -112,13 +123,33 @@ const useDashboardSessions = ({
       
       terminalAnimation.addLine(`Analyse terminée! Gain calculé: ${gain.toFixed(2)}€`);
       
+      // Sauvegarder l'ancien solde
+      const oldBalance = balanceManager.getCurrentBalance();
+      
+      // Mettre à jour le solde dans balanceManager
+      balanceManager.addDailyGain(gain);
+      balanceManager.updateBalance(gain);
+      
+      // Créer des particules d'argent si l'élément est trouvé
+      if (balanceDisplayRef.current) {
+        createMoneyParticles(balanceDisplayRef.current, Math.min(15, Math.ceil(gain * 20)));
+      }
+      
+      // Déclencher un événement d'animation de solde
+      window.dispatchEvent(new CustomEvent('balance:update', {
+        detail: {
+          amount: gain,
+          oldBalance: oldBalance,
+          newBalance: oldBalance + gain,
+          animate: true
+        }
+      }));
+      
       // Mettre à jour le solde
       const sessionReport = `Session manuelle #${dailySessionCount + 1}: ${gain}€`;
       
       // Mettre à jour les statistiques locales
       addSessionResult(gain);
-      balanceManager.updateBalance(gain);
-      balanceManager.addDailyGain(gain);
       
       // Mettre à jour le solde dans la base de données
       await updateBalance(gain, sessionReport);
@@ -148,7 +179,7 @@ const useDashboardSessions = ({
       for (let i = 0; i < 3; i++) {
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('dashboard:micro-gain', { 
-            detail: { amount: gain / 3, timestamp: Date.now() } 
+            detail: { amount: gain / 3, timestamp: Date.now(), animate: true } 
           }));
         }, 1000 + i * 800);
       }
@@ -235,8 +266,8 @@ const useDashboardSessions = ({
       if (Math.random() > 0.5) {
         const microGain = Math.random() * 0.03 + 0.01;
         window.dispatchEvent(new CustomEvent('dashboard:micro-gain', { 
-          detail: { amount: microGain, timestamp: Date.now() } 
-        }));
+          detail: { amount: microGain, timestamp: Date.now(), animate: true } 
+          }));
       }
     }, 8000); // Toutes les 8 secondes
     
