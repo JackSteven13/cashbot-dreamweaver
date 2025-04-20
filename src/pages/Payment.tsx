@@ -10,6 +10,7 @@ import { PLANS } from '@/utils/plans';
 import { hasPendingStripePayment, openStripeCheckout } from '@/utils/stripe-helper';
 import PaymentSteps from '@/components/payment/PaymentSteps';
 import { useAuth } from '@/hooks/useAuth';
+import CheckoutTransition from '@/components/payment/CheckoutTransition';
 // import MobilePaymentHelper from '@/components/payment/MobilePaymentHelper'; // removed
 
 const Payment = () => {
@@ -81,23 +82,19 @@ const Payment = () => {
     }
   }, [selectedPlan, currentSubscription, isAuthChecking, isAuthLoading, navigate]);
 
-  // Ouvrir automatiquement Stripe si l'URL est disponible
+  // Ouvrir automatiquement Stripe si l'URL est disponible et animation terminée
   useEffect(() => {
-    if (stripeCheckoutUrl && !isStripeProcessing) {
-      console.log("URL Stripe disponible, redirection automatique");
-      // Délai court pour permettre au toast de s'afficher
-      const timer = setTimeout(() => {
-        openStripeCheckout(stripeCheckoutUrl);
-      }, 500);
-      return () => clearTimeout(timer);
+    if (stripeCheckoutUrl && !isStripeProcessing && !showTransition) {
+      console.log("URL Stripe disponible, préparation de la transition");
+      setShowTransition(true);
     }
   }, [stripeCheckoutUrl, isStripeProcessing]);
   
-  // Gérer le paiement - directement sans modal de confirmation
+  // Gérer le paiement avec transition
   const handlePayment = () => {
     if (stripeCheckoutUrl) {
-      // Si on a déjà une URL, l'utiliser directement
-      openStripeCheckout(stripeCheckoutUrl);
+      // Afficher l'animation de transition
+      setShowTransition(true);
     } else {
       // Sinon, initialiser le processus Stripe
       toast({
@@ -118,6 +115,16 @@ const Payment = () => {
         description: "Vous allez être redirigé vers la page de paiement..."
       });
       openStripeCheckout(stripeCheckoutUrl);
+    }
+  };
+  
+  // Gérer la fin de l'animation de transition
+  const handleTransitionComplete = () => {
+    if (stripeCheckoutUrl) {
+      // Un petit délai pour que l'utilisateur voie la fin de l'animation
+      setTimeout(() => {
+        openStripeCheckout(stripeCheckoutUrl);
+      }, 400);
     }
   };
 
@@ -141,11 +148,17 @@ const Payment = () => {
           stripeCheckoutUrl={stripeCheckoutUrl}
         />
         
-        {/* Removed MobilePaymentHelper */}
+        {/* Animation de transition avant le paiement */}
+        {showTransition && (
+          <CheckoutTransition 
+            isStarted={showTransition}
+            stripeUrl={stripeCheckoutUrl}
+            onComplete={handleTransitionComplete}
+          />
+        )}
       </div>
     </PaymentLayout>
   );
 };
 
 export default Payment;
-

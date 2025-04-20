@@ -69,8 +69,7 @@ export const getAbsoluteCancelUrl = (): string => {
 
 /**
  * Ouvre Stripe en fonction du type d'appareil
- * Sur mobile: redirection directe
- * Sur desktop: nouvelle fenêtre
+ * Méthode améliorée avec gestion optimale des redirections
  */
 export const openStripeCheckout = (url: string): boolean => {
   if (!url) return false;
@@ -84,9 +83,39 @@ export const openStripeCheckout = (url: string): boolean => {
     localStorage.setItem('pendingPayment', 'true');
     localStorage.setItem('stripeRedirectTimestamp', Date.now().toString());
     
-    // Redirection directe - la méthode la plus fiable sur tous les dispositifs
+    // Jouer un son de caisse enregistreuse pour indiquer que le processus est lancé
+    try {
+      const audio = new Audio('/sounds/cash-register.mp3');
+      audio.volume = 0.2; // Volume bas pour ne pas surprendre
+      audio.play().catch(e => console.log('Son non joué:', e));
+    } catch (e) {
+      // Ignorer les erreurs de son - non critique
+    }
+    
     console.log("Redirection directe vers Stripe:", cleanUrl);
-    window.location.href = cleanUrl;
+    
+    // Forcer un petit délai pour permettre la transition
+    setTimeout(() => {
+      // Sur mobile, forcer l'ouverture dans le navigateur principal
+      if (isMobileDevice()) {
+        console.log("Redirection mobile optimisée");
+        window.location.href = cleanUrl;
+      } else {
+        // Sur desktop, ouvrir dans une nouvelle fenêtre puis rediriger
+        try {
+          const stripeWindow = window.open(cleanUrl, '_blank');
+          if (!stripeWindow || stripeWindow.closed || typeof stripeWindow.closed === 'undefined') {
+            // Si la fenêtre est bloquée, essayer une redirection directe
+            console.log("Ouverture de fenêtre bloquée, redirection directe");
+            window.location.href = cleanUrl;
+          }
+        } catch (e) {
+          console.error("Erreur d'ouverture de fenêtre:", e);
+          window.location.href = cleanUrl;
+        }
+      }
+    }, 300);
+    
     return true;
   } catch (error) {
     console.error("Erreur lors de l'ouverture de Stripe:", error);
@@ -95,4 +124,3 @@ export const openStripeCheckout = (url: string): boolean => {
     return false;
   }
 };
-

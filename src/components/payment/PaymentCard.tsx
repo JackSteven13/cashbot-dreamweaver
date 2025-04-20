@@ -51,19 +51,16 @@ const PaymentCard = ({
       return;
     }
 
-    // Si on a déjà une URL Stripe, rediriger directement
-    if (stripeCheckoutUrl) {
-      openStripeCheckout(stripeCheckoutUrl);
-      return;
+    // Jouer un son de clic pour feedback
+    try {
+      const audio = new Audio('/sounds/button-click.mp3');
+      audio.volume = 0.2;
+      audio.play().catch(e => console.log('Son non joué:', e));
+    } catch (e) {
+      // Ignorer les erreurs de son - non critique
     }
 
-    // Sinon, déclencher la procédure de paiement
-    toast({
-      title: "Préparation du paiement",
-      description: "Veuillez patienter pendant que nous préparons votre paiement...",
-      duration: 3000
-    });
-    
+    // Déclencher le processus de paiement
     onStripeCheckout();
   };
 
@@ -140,4 +137,3 @@ const PaymentCard = ({
 };
 
 export default PaymentCard;
-

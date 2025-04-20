@@ -42,11 +42,6 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
       
       // Notifier que la transition est terminée
       onComplete();
-      
-      // Ouvrir automatiquement Stripe
-      if (stripeUrl) {
-        openStripeCheckout(stripeUrl);
-      }
     }, timing.step3);
     
     return () => {
@@ -113,4 +108,3 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
 };
 
 export default CheckoutTransition;
-
