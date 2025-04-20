@@ -69,7 +69,7 @@ export const getAbsoluteCancelUrl = (): string => {
 
 /**
  * Ouvre Stripe en fonction du type d'appareil
- * Méthode améliorée avec gestion optimale des redirections
+ * Méthode améliorée avec ouverture optimisée des nouveaux onglets
  */
 export const openStripeCheckout = (url: string): boolean => {
   if (!url) return false;
@@ -92,34 +92,47 @@ export const openStripeCheckout = (url: string): boolean => {
       // Ignorer les erreurs de son - non critique
     }
     
-    console.log("Redirection directe vers Stripe:", cleanUrl);
-    
-    // Forcer un petit délai pour permettre la transition
-    setTimeout(() => {
-      // Sur mobile, forcer l'ouverture dans le navigateur principal
-      if (isMobileDevice()) {
-        console.log("Redirection mobile optimisée");
-        window.location.href = cleanUrl;
-      } else {
-        // Sur desktop, ouvrir dans une nouvelle fenêtre puis rediriger
-        try {
-          const stripeWindow = window.open(cleanUrl, '_blank');
-          if (!stripeWindow || stripeWindow.closed || typeof stripeWindow.closed === 'undefined') {
-            // Si la fenêtre est bloquée, essayer une redirection directe
-            console.log("Ouverture de fenêtre bloquée, redirection directe");
-            window.location.href = cleanUrl;
-          }
-        } catch (e) {
-          console.error("Erreur d'ouverture de fenêtre:", e);
+    console.log("Redirection vers Stripe:", cleanUrl);
+
+    // Sur mobile, utiliser une approche différente pour maximiser la compatibilité
+    if (isMobileDevice()) {
+      // Sur mobile, essayer d'ouvrir dans un nouvel onglet puis rediriger si bloqué
+      try {
+        // Créer dynamiquement un lien et simuler un clic pour forcer l'ouverture dans un nouvel onglet
+        const link = document.createElement('a');
+        link.href = cleanUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Vérifier après un court délai si la navigation a été bloquée
+        setTimeout(() => {
+          // Si l'utilisateur est toujours sur la même page après 300ms, c'est que l'ouverture
+          // dans un nouvel onglet a probablement été bloquée, rediriger directement
           window.location.href = cleanUrl;
-        }
+        }, 300);
+      } catch (e) {
+        console.error("Erreur lors de l'ouverture sur mobile:", e);
+        window.location.href = cleanUrl;
       }
-    }, 300);
+    } else {
+      // Sur desktop, ouvrir dans une nouvelle fenêtre avec _blank
+      const newWindow = window.open(cleanUrl, '_blank', 'noopener,noreferrer');
+      
+      // Si l'ouverture est bloquée, tenter une redirection directe
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        console.warn("Ouverture bloquée, tentative de redirection directe");
+        window.location.href = cleanUrl;
+      }
+    }
     
     return true;
   } catch (error) {
     console.error("Erreur lors de l'ouverture de Stripe:", error);
-    // Tenter une redirection directe en dernier recours
+    
+    // Dernière tentative: redirection directe
     window.location.href = url;
     return false;
   }

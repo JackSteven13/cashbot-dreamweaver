@@ -48,7 +48,7 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
       clearTimeout(timer1);
       clearTimeout(timer2);
     };
-  }, [isStarted, onComplete, isMobile, stripeUrl]);
+  }, [isStarted, onComplete]);
 
   if (!isStarted) return null;
 
@@ -87,7 +87,7 @@ const CheckoutTransition: React.FC<CheckoutTransitionProps> = ({
         <p className="text-gray-600 dark:text-gray-300 mb-4 text-base">
           {step === 1 && "Nous préparons votre session de paiement sécurisée."}
           {step === 2 && "Connexion au système de paiement sécurisé Stripe."}
-          {step === 3 && "Vous êtes redirigé vers la page de paiement Stripe."}
+          {step === 3 && "Vous êtes redirigé vers la page de paiement Stripe dans un nouvel onglet."}
         </p>
         
         {/* Barre de progression animée */}

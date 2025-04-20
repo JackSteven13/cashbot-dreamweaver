@@ -11,7 +11,6 @@ import { hasPendingStripePayment, openStripeCheckout } from '@/utils/stripe-help
 import PaymentSteps from '@/components/payment/PaymentSteps';
 import { useAuth } from '@/hooks/useAuth';
 import CheckoutTransition from '@/components/payment/CheckoutTransition';
-// import MobilePaymentHelper from '@/components/payment/MobilePaymentHelper'; // removed
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -123,6 +122,7 @@ const Payment = () => {
     if (stripeCheckoutUrl) {
       // Un petit délai pour que l'utilisateur voie la fin de l'animation
       setTimeout(() => {
+        // Ouvrir Stripe dans un nouvel onglet
         openStripeCheckout(stripeCheckoutUrl);
       }, 400);
     }
