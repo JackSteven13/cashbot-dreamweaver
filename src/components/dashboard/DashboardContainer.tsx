@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from './DashboardLayout';
@@ -188,6 +189,9 @@ const DashboardContainer = () => {
     ? terminalLines.map(line => (typeof line === 'string' ? { text: line, type: 'info' } : line))
     : [];
 
+  // Convert lastSessionTimestamp from number to string for the DashboardContent component
+  const lastSessionTimestampStr = lastSessionTimestamp ? lastSessionTimestamp.toString() : '';
+
   return (
     <>
       <DashboardLayout 
@@ -204,7 +208,7 @@ const DashboardContainer = () => {
           isNewUser={isNewUser}
           dailySessionCount={dailySessionCount}
           showLimitAlert={showLimitAlert}
-          lastSessionTimestamp={lastSessionTimestamp}
+          lastSessionTimestamp={lastSessionTimestampStr}
           isBotActive={true}
         />
       </DashboardLayout>
