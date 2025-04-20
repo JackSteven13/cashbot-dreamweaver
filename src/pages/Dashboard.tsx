@@ -21,12 +21,13 @@ const Dashboard = () => {
   const [isPreloaded, setIsPreloaded] = useState(false);
   const [lastProcessTime, setLastProcessTime] = useState<number>(0);
   
+  // Fonction pour mettre à jour le solde
   const updateBalance = async (gain: number, report: string) => {
     console.log(`Updating balance with gain: ${gain}, report: ${report}`);
     await refreshData();
   };
 
-  // Utilisation du hook useAutomaticRevenue
+  // Utilisation du hook useAutomaticRevenue avec activation forcée
   const { 
     generateAutomaticRevenue,
     isBotActive,
@@ -36,6 +37,7 @@ const Dashboard = () => {
     updateBalance
   });
   
+  // Préchargement
   useEffect(() => {
     if (!isPreloaded) {
       const timer = setTimeout(() => {
@@ -46,6 +48,7 @@ const Dashboard = () => {
     }
   }, [isPreloaded]);
   
+  // Redirection si non authentifié
   useEffect(() => {
     if (!authLoading && !user) {
       console.log("Not authenticated, redirecting to login");
@@ -57,6 +60,7 @@ const Dashboard = () => {
     }
   }, [user, authLoading, navigate]);
   
+  // Message de bienvenue et initialisation
   useEffect(() => {
     if (!isInitializing && username && isFirstLoad) {
       setIsFirstLoad(false);
@@ -74,7 +78,7 @@ const Dashboard = () => {
       const initTimestamp = Date.now();
       localStorage.setItem('dashboardLastInit', initTimestamp.toString());
       
-      // Définir le dernier temps de traitement également pour éviter des doubles traitements
+      // Définir le dernier temps de traitement
       setLastProcessTime(initTimestamp);
 
       if (userData) {
@@ -83,54 +87,53 @@ const Dashboard = () => {
           // Vérifier si c'est un nouvel utilisateur
           const isNewUser = !userData.balance || userData.balance <= 0;
           
-          // Pour les utilisateurs existants, initialiser le solde uniquement au premier chargement
+          // Pour les utilisateurs existants, initialiser le solde
           if (!isNewUser) {
-            // Initialiser le gestionnaire de solde sans fluctuations aléatoires
             balanceManager.initialize(userData.balance);
           }
           
-          // Utiliser la fonction generateAutomaticRevenue
+          // Générer un premier revenu automatique
           generateAutomaticRevenue(true);
-        }, 3000);
+        }, 2000);
       }
     }
   }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue]);
 
-  // MODIFIÉ - Générer des revenus beaucoup plus fréquemment - toutes les 20-30 secondes
+  // AMÉLIORATION - Génération de revenus plus fréquente (10-20 secondes)
   useEffect(() => {
-    if (userData && isBotActive) {
-      // Intervalle pour les mises à jour automatiques régulières
+    if (userData) {
+      // Intervalle pour les mises à jour automatiques très fréquentes
       const revenueInterval = setInterval(() => {
         const now = Date.now();
         
-        // Au moins 20 secondes entre les mises à jour
-        if (now - lastProcessTime > 20000) {
-          console.log("Generating automatic revenue - periodic update");
+        // Au moins 10 secondes entre les mises à jour
+        if (now - lastProcessTime > 10000) {
+          console.log("Generating revenue: automatic update");
           setLastProcessTime(now);
           
           // Générer un nouveau revenu automatique
           generateAutomaticRevenue();
           
-          // Force a balance update to show progress
+          // Forcer une mise à jour du solde
           window.dispatchEvent(new CustomEvent('balance:force-update', { 
             detail: { timestamp: now, animate: true } 
           }));
         }
-      }, 20000 + Math.random() * 10000); // Toutes les 20-30 secondes
+      }, 10000 + Math.random() * 10000); // Toutes les 10-20 secondes
       
       return () => clearInterval(revenueInterval);
     }
-  }, [userData, isBotActive, generateAutomaticRevenue, lastProcessTime]);
+  }, [userData, generateAutomaticRevenue, lastProcessTime]);
 
-  // NOUVEAU - Seconde vérification encore plus fréquente
+  // NOUVEAU - Vérification encore plus fréquente
   useEffect(() => {
     if (userData) {
       const quickInterval = setInterval(() => {
         // Vérifier que le bot est toujours actif
-        const botShouldBeActive = localStorage.getItem('bot_active') !== 'false';
+        const botShouldBeActive = true; // Toujours actif
         
         if (!isBotActive && botShouldBeActive) {
-          // Réactiver le bot s'il devrait être actif
+          // Réactiver le bot s'il n'est pas actif
           window.dispatchEvent(new CustomEvent('bot:status-change', {
             detail: { active: true }
           }));
@@ -140,24 +143,24 @@ const Dashboard = () => {
         
         // Déclencher une mise à jour forcée du solde
         window.dispatchEvent(new CustomEvent('balance:force-update', {
-          detail: { timestamp: Date.now() }  
+          detail: { timestamp: Date.now() }
         }));
         
-      }, 10000); // Vérification toutes les 10 secondes
+      }, 5000); // Vérification toutes les 5 secondes
       
       return () => clearInterval(quickInterval);
     }
   }, [userData, isBotActive]);
 
-  // Heartbeat effect pour assurer des mises à jour périodiques plus lentes
+  // AMÉLIORATION - Heartbeat plus fréquent
   useEffect(() => {
     const heartbeatInterval = setInterval(() => {
       if (userData) {
         const now = Date.now();
         
-        // Vérifier le temps écoulé depuis le dernier traitement - intervalle plus court
-        if (now - lastProcessTime > 60000) { // Au moins 1 minute entre les heartbeats
-          console.log("Dashboard heartbeat - ensuring revenue generation is active");
+        // Vérifier le temps écoulé depuis le dernier traitement
+        if (now - lastProcessTime > 30000) { // Au moins 30 secondes entre les heartbeats
+          console.log("Dashboard heartbeat - ensuring revenue generation");
           
           // Mettre à jour le timestamp du dernier processus
           setLastProcessTime(now);
@@ -167,13 +170,11 @@ const Dashboard = () => {
             detail: { timestamp: now, animate: true } 
           }));
           
-          // Générer un revenu avec une forte probabilité
-          if (Math.random() > 0.2) { // 80% de chances
-            generateAutomaticRevenue();
-          }
+          // Garantir une génération de revenus
+          generateAutomaticRevenue();
         }
       }
-    }, 60000); // Heartbeat toutes les minutes
+    }, 30000); // Heartbeat toutes les 30 secondes
     
     return () => clearInterval(heartbeatInterval);
   }, [userData, generateAutomaticRevenue, lastProcessTime]);

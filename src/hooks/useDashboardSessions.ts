@@ -1,158 +1,257 @@
 
-import { useState, useEffect, useRef } from 'react';
-import { UserData } from '@/types/userData';
-import { useAutoSessions } from './sessions/useAutoSessions';
-import { useManualSessions } from './sessions/manual/useManualSessions';
-import { useWithdrawal } from './sessions/useWithdrawal';
-import { useMidnightReset } from './sessions/useMidnightReset';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { toast } from '@/components/ui/use-toast';
+import { useSessionStats } from './useSessionStats';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
+import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
+import balanceManager from '@/utils/balance/balanceManager';
 
-// Define the interface for the hook parameters
-interface DashboardSessionsProps {
-  userData: UserData | null;
-  dailySessionCount: number;
-  incrementSessionCount: () => Promise<void>;
-  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>;
-  setShowLimitAlert: (show: boolean) => void;
-  resetBalance: () => Promise<void>;
-}
-
-export const useDashboardSessions = ({
+const useDashboardSessions = ({
   userData,
   dailySessionCount,
   incrementSessionCount,
   updateBalance,
   setShowLimitAlert,
   resetBalance
-}: DashboardSessionsProps) => {
-  const [lastSessionTimestamp, setLastSessionTimestamp] = useState<string | undefined>(undefined);
-  const hasProcessedTransactions = useRef(false);
-  const previousTransactionsLength = useRef<number | null>(null);
-  const forceUpdateRef = useRef<NodeJS.Timeout | null>(null);
+}) => {
+  const [isStartingSession, setIsStartingSession] = useState(false);
+  const [revenueGenerated, setRevenueGenerated] = useState(0);
+  const [lastSessionTimestamp, setLastSessionTimestamp] = useState(0);
+  const [isBotActive, setIsBotActive] = useState(true); // TOUJOURS ACTIF
   
-  // Extract timestamp of last session from transactions without creating loops
+  const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const referralCount = userData?.referrals?.length || 0;
+  
+  // Suivi des statistiques des sessions
+  const { 
+    addSessionResult, 
+    sessionCount, 
+    todaysGainRef, 
+    activityLevel
+  } = useSessionStats(userData?.subscription);
+  
+  // NOUVEAU - Maintenir le bot toujours actif
   useEffect(() => {
-    // Check if transactions have changed to avoid unnecessary processing
-    if (userData?.transactions && 
-        (previousTransactionsLength.current === null || 
-         previousTransactionsLength.current !== userData.transactions.length) && 
-        !hasProcessedTransactions.current) {
-      
-      previousTransactionsLength.current = userData.transactions.length;
-      hasProcessedTransactions.current = true;
-      
-      // Find the last transaction of type "Session manuelle"
-      const manualSessions = userData.transactions.filter(
-        tx => tx.report && tx.report.includes('Session manuelle')
-      );
-      
-      if (manualSessions.length > 0) {
-        // Sort by descending date to get the most recent
-        manualSessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
-        // Use the date of the most recent transaction
-        const lastManualSessionDate = manualSessions[0].date;
-        
-        // Create ISO timestamp from the date (noon to avoid timezone issues)
-        const lastDate = new Date(lastManualSessionDate);
-        lastDate.setHours(12, 0, 0, 0);
-        setLastSessionTimestamp(lastDate.toISOString());
-        
-        console.log("Dernière session manuelle détectée:", lastDate.toISOString());
-      }
+    // S'assurer que le bot est toujours actif
+    if (!isBotActive) {
+      setIsBotActive(true);
+      console.log("Bot réactivé automatiquement");
     }
     
-    // Reset when userData changes significantly
-    return () => {
-      // Only reset when user data is completely different
-      // not on every minor change in transactions
-      if (!userData || !userData.transactions) {
-        hasProcessedTransactions.current = false;
-        previousTransactionsLength.current = null;
-      }
-    };
-  }, [userData?.transactions]);  // Simplified dependency
-
-  // Force refresh periodically to ensure data is up-to-date
-  useEffect(() => {
-    // Setup a timer to force refresh every 60 seconds
-    if (!forceUpdateRef.current && userData?.profile?.id) {
-      forceUpdateRef.current = setInterval(() => {
-        // Trigger an event to force refresh balance display
-        window.dispatchEvent(new CustomEvent('balance:force-update', { 
-          detail: { timestamp: Date.now() }
+    const forceActiveInterval = setInterval(() => {
+      if (!isBotActive) {
+        setIsBotActive(true);
+        window.dispatchEvent(new CustomEvent('bot:status-change', { 
+          detail: { active: true } 
         }));
-      }, 60000);
+      }
+    }, 5000);
+    
+    return () => clearInterval(forceActiveInterval);
+  }, [isBotActive]);
+  
+  // Fonction pour démarrer une session manuelle
+  const handleStartSession = useCallback(async () => {
+    if (isStartingSession || !userData) {
+      toast({
+        title: "Session en cours",
+        description: "Veuillez attendre la fin de l'analyse en cours.",
+        duration: 3000
+      });
+      return;
     }
     
-    return () => {
-      if (forceUpdateRef.current) {
-        clearInterval(forceUpdateRef.current);
-        forceUpdateRef.current = null;
-      }
-    };
-  }, [userData?.profile?.id]);
-
-  // Create a safe userData object with default values to prevent null access
-  const safeUserData = userData || { 
-    profile: { id: null },
-    balance: 0,
-    transactions: [],
-    subscription: 'freemium',
-    username: '',
-    referrals: [],
-    referralLink: ''
-  };
-
-  // Use individual hooks for each functionality
-  const { 
-    lastAutoSessionTime, 
-    activityLevel, 
-    isBotActive,
-    generateAutomaticRevenue
-  } = useAutoSessions({
-    userData: safeUserData,
-    updateBalance,
-    setShowLimitAlert
-  });
-
-  const { 
-    isSessionRunning, 
-    startSession,
-    canStartSession 
-  } = useManualSessions({
-    userData,
-    dailySessionCount,
-    incrementSessionCount,
-    updateBalance
-  });
-
-  const { handleWithdrawal, isProcessingWithdrawal } = useWithdrawal(
-    safeUserData,
-    resetBalance
-  );
-
-  // Set up midnight reset
-  useMidnightReset();
-  
-  // Wrapped function to log and call the startSession function
-  const handleStartSession = async () => {
-    console.log("useDashboardSessions: handleStartSession called");
     try {
-      await startSession();
+      setIsStartingSession(true);
+      
+      // AMÉLIORATION: Utiliser une animation visible
+      const terminalAnimation = createBackgroundTerminalSequence([
+        "Initialisation de l'analyse...",
+        "Récupération des données..."
+      ]);
+      
+      const startTime = Date.now();
+      setLastSessionTimestamp(startTime);
+      
+      // Simuler un temps de traitement
+      const processingTime = Math.random() * 1000 + 1500;
+      await new Promise(resolve => {
+        sessionTimeoutRef.current = setTimeout(resolve, processingTime);
+      });
+      
+      terminalAnimation.addLine("Analyse des contenus publicitaires...");
+      
+      // Calculer le gain
+      const subscription = userData.subscription || 'freemium';
+      const dailyLimit = SUBSCRIPTION_LIMITS[subscription] || 0.5;
+      
+      // Déterminer si la limite quotidienne est atteinte
+      const todaysGains = balanceManager.getDailyGains();
+      const remainingToLimit = Math.max(0, dailyLimit - todaysGains);
+      
+      // Générer un gain basé sur l'abonnement
+      let gain = 0;
+      
+      if (remainingToLimit > 0) {
+        // Gain normal selon l'abonnement
+        const baseGain = subscription === 'freemium' ? 0.05 : 0.1;
+        const randomFactor = 0.8 + (Math.random() * 0.4); // 0.8-1.2
+        
+        gain = Math.min(
+          remainingToLimit,
+          baseGain * randomFactor * (1 + referralCount * 0.05)
+        );
+        
+        // Arrondir à 2 décimales
+        gain = Math.round(gain * 100) / 100;
+      } else {
+        // Limite atteinte
+        setShowLimitAlert(true);
+        gain = Math.min(0.01, remainingToLimit);
+      }
+      
+      terminalAnimation.addLine(`Analyse terminée! Gain calculé: ${gain.toFixed(2)}€`);
+      
+      // Mettre à jour le solde
+      const sessionReport = `Session manuelle #${dailySessionCount + 1}: ${gain}€`;
+      
+      // Mettre à jour les statistiques locales
+      addSessionResult(gain);
+      balanceManager.updateBalance(gain);
+      balanceManager.addDailyGain(gain);
+      
+      // Mettre à jour le solde dans la base de données
+      await updateBalance(gain, sessionReport);
+      
+      // Incrémenter le compteur de sessions
+      await incrementSessionCount();
+      
+      // Afficher une confirmation
+      toast({
+        title: "Session terminée",
+        description: `${gain.toFixed(2)}€ ont été ajoutés à votre solde.`,
+        duration: 3000,
+      });
+      
+      // Sauvegarder pour référence future
+      setRevenueGenerated(gain);
+      
+      // Animation terminée
+      terminalAnimation.complete(gain);
+      
+      // Générer des animations d'activité
+      window.dispatchEvent(new CustomEvent('dashboard:activity', { 
+        detail: { level: 'high' } 
+      }));
+      
+      // Générer des animations de petit gain
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('dashboard:micro-gain', { 
+            detail: { amount: gain / 3, timestamp: Date.now() } 
+          }));
+        }, 1000 + i * 800);
+      }
+      
+      // Durée totale
+      const sessionDuration = Date.now() - startTime;
+      console.log(`Session completed in ${sessionDuration}ms with gain ${gain}€`);
+      
     } catch (error) {
-      console.error("Error in handleStartSession:", error);
+      console.error("Error during session:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue pendant l'analyse",
+        variant: "destructive",
+      });
+    } finally {
+      setIsStartingSession(false);
     }
-  };
+  }, [
+    isStartingSession, 
+    userData, 
+    dailySessionCount, 
+    updateBalance, 
+    incrementSessionCount,
+    setShowLimitAlert,
+    referralCount,
+    addSessionResult
+  ]);
+  
+  // Fonction pour retirer le solde
+  const handleWithdrawal = useCallback(async () => {
+    if (!userData) return;
+    
+    try {
+      const currentBalance = userData.balance;
+      
+      if (currentBalance < 0.01) {
+        toast({
+          title: "Solde insuffisant",
+          description: "Votre solde doit être supérieur à 0.01€ pour effectuer un retrait.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Retrait en cours",
+        description: "Votre demande de retrait est en cours de traitement.",
+        duration: 3000,
+      });
+      
+      // Réinitialiser le solde
+      await resetBalance();
+      balanceManager.forceBalanceSync(0);
+      
+      // Confirmation
+      toast({
+        title: "Retrait effectué !",
+        description: `${currentBalance.toFixed(2)}€ ont été transférés sur votre compte.`,
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error("Error during withdrawal:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de traiter votre demande de retrait.",
+        variant: "destructive",
+      });
+    }
+  }, [userData, resetBalance]);
+
+  // NOUVEAU - Génération périodique automatique
+  useEffect(() => {
+    if (!userData) return;
+    
+    // Simuler une génération automatique périodique
+    const autoGenInterval = setInterval(() => {
+      // Déclencher une activité sur le dashboard
+      window.dispatchEvent(new CustomEvent('dashboard:activity', { 
+        detail: { level: 'medium' } 
+      }));
+      
+      // 50% de chance de générer un petit gain
+      if (Math.random() > 0.5) {
+        const microGain = Math.random() * 0.03 + 0.01;
+        window.dispatchEvent(new CustomEvent('dashboard:micro-gain', { 
+          detail: { amount: microGain, timestamp: Date.now() } 
+        }));
+      }
+    }, 8000); // Toutes les 8 secondes
+    
+    return () => clearInterval(autoGenInterval);
+  }, [userData]);
 
   return {
-    isStartingSession: isSessionRunning,
+    isStartingSession,
     handleStartSession,
     handleWithdrawal,
-    isProcessingWithdrawal,
+    revenueGenerated,
     lastSessionTimestamp,
-    localBalance: userData?.balance || 0,
-    isBotActive,
-    generateAutomaticRevenue
+    sessionCount,
+    isBotActive: true, // Toujours actif
+    activityLevel
   };
 };
 

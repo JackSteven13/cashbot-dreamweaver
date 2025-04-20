@@ -1,17 +1,19 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
 
 export const useBotActivation = () => {
   const { user } = useAuth();
-  // MODIFIÉ - Toujours actif par défaut
+  // TOUJOURS ACTIF - Sans condition
   const [isBotActive, setIsBotActive] = useState(true);
+  const activationRef = useRef(true);
   
-  // Toujours activer le bot au montage
+  // Activer le bot au montage
   useEffect(() => {
     if (user?.id) {
-      // Forcer l'activation
+      // Forcer l'activation sans condition
+      activationRef.current = true;
       setIsBotActive(true);
       localStorage.setItem(`botActive_${user.id}`, 'true');
       
@@ -21,64 +23,96 @@ export const useBotActivation = () => {
       }));
       
       console.log("Bot activé automatiquement au démarrage");
+      
+      // Notification pour confirmer l'activation
+      setTimeout(() => {
+        toast({
+          title: "Assistant d'analyse activé",
+          description: "Votre assistant d'analyse est maintenant actif et génère des revenus automatiquement.",
+          duration: 5000
+        });
+      }, 2000);
     }
   }, [user?.id]);
   
-  // Listen for user data loaded events
+  // Intercepter toutes les tentatives de désactivation
   useEffect(() => {
-    const handleUserDataLoaded = (event: CustomEvent) => {
-      const { userId } = event.detail;
-      
-      // Toujours activer le bot pour tous les utilisateurs
-      setIsBotActive(true);
-      localStorage.setItem(`botActive_${userId}`, 'true');
-      
-      // Afficher un toast pour confirmer l'activation
-      toast({
-        title: "Assistant d'analyse activé",
-        description: "Votre assistant d'analyse est maintenant actif et génère des revenus automatiquement.",
-        duration: 5000
-      });
-    };
-    
-    // Intercepter les tentatives de changement d'état et forcer l'activation
     const handleBotStatusChange = (event: CustomEvent) => {
       const { active, userId } = event.detail;
       
-      if (active === false) {
-        // Ignorer les demandes de désactivation
-        console.log("Ignoring bot deactivation attempt");
-        
-        // Réactiver après un court délai
-        setTimeout(() => {
-          setIsBotActive(true);
-          localStorage.setItem(`botActive_${userId || user?.id}`, 'true');
+      // Ignorer toutes les tentatives de désactivation
+      if (event.detail && typeof active === 'boolean') {
+        if (active === false) {
+          console.log("Ignorer la tentative de désactivation du bot");
           
-          window.dispatchEvent(new CustomEvent('bot:status-change', {
-            detail: { active: true, userId: userId || user?.id }
-          }));
-        }, 5000);
-      } else {
-        setIsBotActive(true);
+          // Réactiver après un court délai
+          setTimeout(() => {
+            setIsBotActive(true);
+            activationRef.current = true;
+            
+            if (user?.id) {
+              localStorage.setItem(`botActive_${user?.id}`, 'true');
+            }
+            
+            window.dispatchEvent(new CustomEvent('bot:status-change', {
+              detail: { active: true, userId: userId || user?.id }
+            }));
+            
+            console.log("Bot réactivé automatiquement");
+          }, 500);
+        } else {
+          // Renforcer l'activation
+          setIsBotActive(true);
+          activationRef.current = true;
+        }
       }
     };
     
-    // Add event listeners with proper type casting
-    window.addEventListener('user:data-loaded', handleUserDataLoaded as EventListener);
+    const handleUserDataLoaded = (event: CustomEvent) => {
+      // Toujours activer le bot quand les données utilisateur sont chargées
+      setIsBotActive(true);
+      activationRef.current = true;
+      
+      if (user?.id) {
+        localStorage.setItem(`botActive_${user.id}`, 'true');
+      }
+      
+      console.log("Bot activé après chargement des données utilisateur");
+    };
+    
+    // Ajouter les écouteurs d'événements
     window.addEventListener('bot:status-change', handleBotStatusChange as EventListener);
+    window.addEventListener('user:data-loaded', handleUserDataLoaded as EventListener);
+    
+    // Vérification périodique pour s'assurer que le bot reste actif
+    const keepAliveInterval = setInterval(() => {
+      if (!activationRef.current) {
+        setIsBotActive(true);
+        activationRef.current = true;
+        
+        if (user?.id) {
+          localStorage.setItem(`botActive_${user.id}`, 'true');
+        }
+        
+        console.log("Bot réactivé par le keepAlive");
+      }
+    }, 10000);
     
     return () => {
-      // Clean up event listeners
-      window.removeEventListener('user:data-loaded', handleUserDataLoaded as EventListener);
       window.removeEventListener('bot:status-change', handleBotStatusChange as EventListener);
+      window.removeEventListener('user:data-loaded', handleUserDataLoaded as EventListener);
+      clearInterval(keepAliveInterval);
     };
   }, [user?.id]);
   
+  // Toujours retourner que le bot est actif
   return { 
-    isBotActive: true, // Toujours retourner true
+    isBotActive: true,
     setIsBotActive: () => {
-      // Ignorer les tentatives de désactivation, toujours actif
+      // Ignorer toute tentative de désactivation
       setIsBotActive(true);
+      activationRef.current = true;
+      
       if (user?.id) {
         localStorage.setItem(`botActive_${user.id}`, 'true');
       }

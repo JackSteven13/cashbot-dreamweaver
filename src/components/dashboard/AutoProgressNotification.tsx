@@ -1,100 +1,89 @@
 
-import React, { useEffect, useState } from 'react';
-import { Check, ChevronUp, TrendingUp, Calendar } from 'lucide-react';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
-import { AnimatePresence, motion } from "framer-motion";
-import { formatRevenue } from '@/utils/formatters';
+import React, { useState, useEffect } from 'react';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Bot, DollarSign, TrendingUp } from 'lucide-react';
 
-interface AutoProgressNotificationProps {
-  delay?: number;
-}
-
-const AutoProgressNotification = ({ delay = 4000 }: AutoProgressNotificationProps) => {
-  const [visible, setVisible] = useState(false);
-  const [progressData, setProgressData] = useState<{
-    amount: number;
-    daysMissed: number;
-    consecutiveVisitDays: number;
-  } | null>(null);
-
+const AutoProgressNotification = () => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [counter, setCounter] = useState(0);
+  const [gain, setGain] = useState(0);
+  const [showTooltip, setShowTooltip] = useState(false);
+  
   useEffect(() => {
-    const handleDailyProgress = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const data = customEvent.detail;
-      
-      if (data && data.amount && data.amount > 0) {
-        setProgressData({
-          amount: data.amount,
-          daysMissed: data.daysMissed || 1,
-          consecutiveVisitDays: data.consecutiveVisitDays || 1
-        });
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      if (event.detail?.automatic) {
+        const amount = event.detail?.amount || 0;
         
-        setTimeout(() => {
-          setVisible(true);
-          
-          // Masquer après 7 secondes
-          setTimeout(() => {
-            setVisible(false);
-          }, 7000);
-        }, delay);
+        // Incrémenter le gain accumulé
+        setGain(prev => parseFloat((prev + amount).toFixed(2)));
+        
+        // Incrémenter le compteur d'analyses
+        setCounter(prev => prev + 1);
+        
+        // Afficher la notification
+        setIsVisible(true);
+        
+        // Cacher après 5 secondes
+        const hideTimer = setTimeout(() => {
+          setIsVisible(false);
+        }, 5000);
+        
+        return () => clearTimeout(hideTimer);
       }
     };
-
-    window.addEventListener('balance:daily-growth', handleDailyProgress as EventListener);
+    
+    // Reset périodique des compteurs
+    const resetInterval = setInterval(() => {
+      setCounter(0);
+      setGain(0);
+    }, 300000); // Reset toutes les 5 minutes
+    
+    window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
+    window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
     
     return () => {
-      window.removeEventListener('balance:daily-growth', handleDailyProgress as EventListener);
+      window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
+      window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
+      clearInterval(resetInterval);
     };
-  }, [delay]);
-
-  if (!progressData) return null;
-
+  }, []);
+  
+  // Ne rien afficher si pas de génération
+  if (!isVisible || counter === 0) {
+    return null;
+  }
+  
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          initial={{ opacity: 0, y: -50 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -50 }}
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-full px-4"
-        >
-          <Alert className="bg-blue-900 border-blue-600 text-white">
-            <TrendingUp className="h-5 w-5 text-blue-300" />
-            <AlertTitle className="mb-2 flex items-center">
-              <span>Progression automatique</span>
-              <span className="ml-2 bg-green-600 text-white text-xs px-2 py-0.5 rounded-full flex items-center">
-                <Check className="h-3 w-3 mr-0.5" /> Actif
-              </span>
-            </AlertTitle>
-            <AlertDescription className="text-blue-100">
-              <div className="flex items-center justify-between mb-1">
-                <span>Gain automatique généré</span>
-                <span className="font-semibold text-green-300 flex items-center">
-                  <ChevronUp className="h-4 w-4 mr-0.5" />
-                  +{formatRevenue(progressData.amount)}
-                </span>
+    <TooltipProvider>
+      <Tooltip open={showTooltip} onOpenChange={setShowTooltip}>
+        <TooltipTrigger asChild>
+          <div 
+            className="fixed bottom-4 right-4 bg-blue-600 text-white px-3 py-2 rounded-full flex items-center gap-2 shadow-lg animate-pulse-slow cursor-pointer z-50"
+            onClick={() => setShowTooltip(!showTooltip)}
+          >
+            <Bot className="h-4 w-4" />
+            <span className="text-sm font-medium">{counter} analyses</span>
+            <DollarSign className="h-4 w-4" />
+            <span className="text-sm font-medium">+{gain.toFixed(2)}€</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="bg-blue-800 text-white border-blue-900">
+          <div className="p-1">
+            <div className="flex items-center gap-2 mb-1">
+              <Bot className="h-4 w-4" />
+              <span className="font-medium">Bot d'analyse actif</span>
+            </div>
+            <div className="text-xs opacity-90">
+              Analyses en cours pour générer des revenus automatiquement
+              <div className="flex items-center gap-1 mt-1">
+                <TrendingUp className="h-3 w-3" />
+                <span>Génération continue 24/7</span>
               </div>
-              <div className="flex items-center text-xs text-blue-200 mt-2">
-                <Calendar className="h-3 w-3 mr-1" />
-                <span>
-                  {progressData.daysMissed > 1 
-                    ? `Progression sur ${progressData.daysMissed} jours` 
-                    : "Progression quotidienne"}
-                </span>
-                <span className="ml-auto flex items-center">
-                  <TrendingUp className="h-3 w-3 mr-1" />
-                  Jour {progressData.consecutiveVisitDays}
-                </span>
-              </div>
-            </AlertDescription>
-          </Alert>
-        </motion.div>
-      )}
-    </AnimatePresence>
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
