@@ -1,7 +1,7 @@
 
 import { useRef, useEffect } from 'react';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
-import { saveUserStats, getDailyGains } from '@/hooks/stats/utils/storageManager';
+import { getDailyGains } from '@/hooks/stats/utils/storageManager';
 
 /**
  * Hook for scheduling automatic sessions with improved persistence

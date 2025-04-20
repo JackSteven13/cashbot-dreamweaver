@@ -1,4 +1,3 @@
-
 /**
  * Gestionnaire de stockage pour les statistiques et valeurs
  */
@@ -316,5 +315,65 @@ export const getDateConsistentStats = () => {
   } catch (error) {
     console.error("Error getting date consistent stats:", error);
     return { adsCount: 40000, revenueCount: 50000 };
+  }
+};
+
+/**
+ * Sauvegarde les statistiques de l'utilisateur
+ */
+export const saveUserStats = (data: any): void => {
+  try {
+    const { adsCount, revenueCount } = data;
+    if (adsCount && revenueCount) {
+      saveValues(adsCount, revenueCount);
+    }
+  } catch (error) {
+    console.error("Error saving user stats:", error);
+  }
+};
+
+/**
+ * Ajoute un gain journalier
+ */
+export const addDailyGain = (gain: number): boolean => {
+  try {
+    // Récupérer le gain journalier actuel
+    const currentGain = getDailyGains();
+    
+    // Ajouter le nouveau gain
+    const newGain = parseFloat((currentGain + gain).toFixed(2));
+    
+    // Stocker le nouveau gain
+    localStorage.setItem(STORAGE_KEYS.DAILY_GAINS, newGain.toString());
+    
+    return true;
+  } catch (error) {
+    console.error("Error adding daily gain:", error);
+    return false;
+  }
+};
+
+/**
+ * Récupérer les gains journaliers
+ */
+export const getDailyGains = (subscription: string = 'freemium'): number => {
+  try {
+    // Récupérer le gain journalier depuis le stockage
+    const storedGain = localStorage.getItem(STORAGE_KEYS.DAILY_GAINS);
+    const subscriptionSpecificGain = localStorage.getItem(`${STORAGE_KEYS.SUBSCRIPTION_GAINS}${subscription}`);
+    
+    // Utiliser la valeur la plus élevée
+    if (storedGain && subscriptionSpecificGain) {
+      return Math.max(parseFloat(storedGain), parseFloat(subscriptionSpecificGain));
+    } else if (storedGain) {
+      return parseFloat(storedGain);
+    } else if (subscriptionSpecificGain) {
+      return parseFloat(subscriptionSpecificGain);
+    }
+    
+    return 0;
+  } catch (error) {
+    console.error("Error getting daily gains:", error);
+    return 0;
   }
 };
