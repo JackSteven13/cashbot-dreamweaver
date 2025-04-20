@@ -1,382 +1,191 @@
-
 /**
- * Gestionnaire centralisé pour le solde utilisateur
- * Permet de gérer le solde sans dépendre uniquement des mises à jour de la base de données
+ * Gestionnaire de solde centralisé pour l'application
  */
 
-import { supabase } from '@/integrations/supabase/client';
+// Interface pour les observateurs
+interface BalanceWatcher {
+  (balance: number): void;
+}
 
 class BalanceManager {
-  private balance: number = 0;
+  private currentBalance: number;
+  private watchers: BalanceWatcher[] = [];
   private dailyGains: number = 0;
-  private dailyResetTimestamp: number = 0;
-  private lastSyncTime: number = 0;
-  private isInitialized: boolean = false;
-  private growthFactor: number = 1 + (Math.random() * 0.2); // 1.0-1.2
-  private watchers: ((balance: number) => void)[] = [];
+  private lastUpdateTimestamp: number = Date.now();
   
   constructor() {
-    this.loadPersistedBalance();
-    this.setupDailyReset();
+    this.currentBalance = this.loadBalance();
+    this.dailyGains = this.loadDailyGains();
+    this.lastUpdateTimestamp = this.loadLastUpdateTimestamp();
     
-    // Log pour debugging
-    console.log("[BalanceManager] Daily growth factor:", this.growthFactor);
+    // Mise à jour des gains quotidiens au démarrage
+    this.updateDailyGains();
   }
   
   /**
-   * Initialiser le gestionnaire avec un solde connu
+   * Charge le solde depuis le localStorage
    */
-  initialize(balance: number): void {
-    if (!this.isInitialized || Math.abs(this.balance - balance) > 0.2) {
-      this.balance = balance;
-      this.isInitialized = true;
-      
-      // Persister
-      try {
-        localStorage.setItem('cachedBalance', balance.toString());
-      } catch (e) {
-        console.error("[BalanceManager] Error saving to localStorage:", e);
-      }
-      
-      // Notifier les watchers
-      this.notifyWatchers();
-    }
-  }
-  
-  /**
-   * Mettre à jour le solde avec un gain
-   */
-  updateBalance(gain: number): void {
-    if (isNaN(gain) || gain < 0) return;
-    
-    const oldBalance = this.balance;
-    this.balance = parseFloat((this.balance + gain).toFixed(2));
-    
-    // Persister
+  private loadBalance(): number {
     try {
-      localStorage.setItem('cachedBalance', this.balance.toString());
-      localStorage.setItem('lastBalanceUpdate', Date.now().toString()); // Convert to string to fix TypeScript error
-    } catch (e) {
-      console.error("[BalanceManager] Error saving to localStorage:", e);
-    }
-    
-    // Notifier les watchers si changement significatif
-    if (this.balance !== oldBalance) {
-      this.notifyWatchers();
+      const storedBalance = localStorage.getItem('currentBalance');
+      return storedBalance ? parseFloat(storedBalance) : 0;
+    } catch (error) {
+      console.error("Erreur lors du chargement du solde depuis le localStorage:", error);
+      return 0;
     }
   }
   
   /**
-   * Ajouter au solde (méthode alias pour updateBalance)
+   * Charge les gains quotidiens depuis le localStorage
    */
-  addToBalance(gain: number): number {
-    this.updateBalance(gain);
-    return this.balance;
-  }
-  
-  /**
-   * Réinitialiser le solde à zéro
-   */
-  resetBalance(): void {
-    this.balance = 0;
+  private loadDailyGains(): number {
     try {
-      localStorage.setItem('cachedBalance', '0');
-      localStorage.setItem('lastBalanceUpdate', Date.now().toString());
-    } catch (e) {
-      console.error("[BalanceManager] Error resetting balance in localStorage:", e);
+      const storedGains = localStorage.getItem('dailyGains');
+      return storedGains ? parseFloat(storedGains) : 0;
+    } catch (error) {
+      console.error("Erreur lors du chargement des gains quotidiens depuis le localStorage:", error);
+      return 0;
     }
+  }
+  
+  /**
+   * Charge le timestamp de la dernière mise à jour depuis le localStorage
+   */
+  private loadLastUpdateTimestamp(): number {
+    try {
+      const storedTimestamp = localStorage.getItem('lastBalanceUpdate');
+      return storedTimestamp ? parseInt(storedTimestamp, 10) : Date.now();
+    } catch (error) {
+      console.error("Erreur lors du chargement du timestamp depuis le localStorage:", error);
+      return Date.now();
+    }
+  }
+  
+  /**
+   * Sauvegarde le solde dans le localStorage
+   */
+  private saveBalance(): void {
+    try {
+      localStorage.setItem('currentBalance', this.currentBalance.toString());
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde du solde dans le localStorage:", error);
+    }
+  }
+  
+  /**
+   * Sauvegarde les gains quotidiens dans le localStorage
+   */
+  private saveDailyGains(): void {
+    try {
+      localStorage.setItem('dailyGains', this.dailyGains.toString());
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde des gains quotidiens dans le localStorage:", error);
+    }
+  }
+  
+  /**
+   * Sauvegarde le timestamp de la dernière mise à jour dans le localStorage
+   */
+  private saveLastUpdateTimestamp(): void {
+    try {
+      localStorage.setItem('lastBalanceUpdate', this.lastUpdateTimestamp.toString());
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde du timestamp dans le localStorage:", error);
+    }
+  }
+  
+  /**
+   * Retourne le solde actuel
+   */
+  getCurrentBalance(): number {
+    return this.currentBalance;
+  }
+  
+  /**
+   * Force la synchronisation du solde
+   */
+  forceBalanceSync(newBalance: number): void {
+    this.currentBalance = newBalance;
+    this.saveBalance();
     this.notifyWatchers();
   }
   
   /**
-   * Ajouter un watcher pour les changements de solde
+   * Met à jour le solde et notifie les observateurs
    */
-  addWatcher(callback: (balance: number) => void): () => void {
-    this.watchers.push(callback);
+  updateBalance(gain: number): void {
+    this.currentBalance += gain;
+    this.saveBalance();
+    this.notifyWatchers();
+  }
+  
+  /**
+   * Ajoute un observateur
+   */
+  addWatcher(watcher: BalanceWatcher): () => void {
+    this.watchers.push(watcher);
+    
+    // Retourne une fonction pour supprimer l'observateur
     return () => {
-      this.watchers = this.watchers.filter(watcher => watcher !== callback);
+      this.watchers = this.watchers.filter(w => w !== watcher);
     };
   }
   
   /**
-   * Notifier tous les watchers
+   * Notifie tous les observateurs du solde actuel
    */
   private notifyWatchers(): void {
-    for (const watcher of this.watchers) {
-      try {
-        watcher(this.balance);
-      } catch (e) {
-        console.error("[BalanceManager] Error in watcher:", e);
-      }
-    }
+    this.watchers.forEach(watcher => watcher(this.currentBalance));
   }
   
   /**
-   * Forcer une synchronisation du solde
-   */
-  forceBalanceSync(balance: number): void {
-    this.balance = balance;
-    this.notifyWatchers();
-    
-    // Persister
-    try {
-      localStorage.setItem('cachedBalance', balance.toString());
-      localStorage.setItem('lastBalanceUpdate', Date.now().toString()); // Convert to string to fix TypeScript error
-    } catch (e) {
-      console.error("[BalanceManager] Error saving to localStorage:", e);
-    }
-  }
-  
-  /**
-   * Synchroniser avec le serveur (méthode alias pour forceBalanceSync)
-   */
-  syncWithServer(balance: number): void {
-    this.forceBalanceSync(balance);
-  }
-  
-  /**
-   * Obtenir le solde actuel
-   */
-  getCurrentBalance(): number {
-    return this.balance;
-  }
-  
-  /**
-   * Obtenir le solde le plus élevé
-   */
-  getHighestBalance(): number {
-    try {
-      const storedHighest = localStorage.getItem('highestBalance');
-      if (storedHighest) {
-        const parsedHighest = parseFloat(storedHighest);
-        if (!isNaN(parsedHighest)) {
-          return Math.max(parsedHighest, this.balance);
-        }
-      }
-    } catch (e) {
-      console.error("[BalanceManager] Error getting highest balance:", e);
-    }
-    return this.balance;
-  }
-  
-  /**
-   * Charger le solde depuis le localStorage
-   */
-  private loadPersistedBalance(): void {
-    try {
-      const cachedBalance = localStorage.getItem('cachedBalance');
-      if (cachedBalance) {
-        const parsedBalance = parseFloat(cachedBalance);
-        if (!isNaN(parsedBalance)) {
-          this.balance = parsedBalance;
-          this.isInitialized = true;
-          console.log("[BalanceManager] Loaded persisted balance:", this.balance);
-        }
-      }
-      
-      // Charger aussi les gains quotidiens
-      const cachedDailyGains = localStorage.getItem('dailyGains');
-      if (cachedDailyGains) {
-        const parsedDailyGains = parseFloat(cachedDailyGains);
-        if (!isNaN(parsedDailyGains)) {
-          this.dailyGains = parsedDailyGains;
-          console.log("[BalanceManager] Daily gains loaded:", this.dailyGains);
-        }
-      }
-    } catch (e) {
-      console.error("[BalanceManager] Error loading from localStorage:", e);
-    }
-  }
-  
-  /**
-   * Synchroniser avec la base de données
-   */
-  async syncWithDatabase(): Promise<boolean> {
-    try {
-      // Limiter la fréquence des synchronisations
-      const now = Date.now();
-      if (now - this.lastSyncTime < 30000) { // Maximum une fois toutes les 30 secondes
-        return false;
-      }
-      
-      this.lastSyncTime = now;
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
-      
-      // Récupérer le solde depuis la base de données
-      const { data, error } = await supabase
-        .from('user_balances')
-        .select('balance')
-        .eq('id', user.id)
-        .single();
-        
-      if (error || !data) return false;
-      
-      // Mettre à jour seulement si la différence est significative
-      const dbBalance = parseFloat(data.balance);
-      
-      if (!isNaN(dbBalance) && Math.abs(dbBalance - this.balance) > 0.2) {
-        // Utiliser la valeur la plus élevée (jamais réduire le solde de l'utilisateur)
-        const newBalance = Math.max(dbBalance, this.balance);
-        this.balance = newBalance;
-        
-        // Persister
-        try {
-          localStorage.setItem('cachedBalance', newBalance.toString());
-          localStorage.setItem('lastBalanceUpdate', now.toString());
-        } catch (e) {
-          console.error("[BalanceManager] Error saving to localStorage:", e);
-        }
-        
-        // Notifier les watchers
-        this.notifyWatchers();
-        
-        return true;
-      }
-      
-      return false;
-    } catch (e) {
-      console.error("[BalanceManager] Error syncing with database:", e);
-      return false;
-    }
-  }
-  
-  /**
-   * Configuration de la réinitialisation quotidienne
-   */
-  private setupDailyReset(): void {
-    try {
-      // Charger le timestamp de la dernière réinitialisation
-      const lastResetStr = localStorage.getItem('lastDailyReset');
-      if (lastResetStr) {
-        this.dailyResetTimestamp = parseInt(lastResetStr, 10);
-      }
-      
-      // Vérifier si une réinitialisation est nécessaire
-      this.checkAndResetDaily();
-      
-      // Configurer une vérification périodique
-      setInterval(() => {
-        this.checkAndResetDaily();
-      }, 300000); // Vérifier toutes les 5 minutes
-    } catch (e) {
-      console.error("[BalanceManager] Error setting up daily reset:", e);
-    }
-  }
-  
-  /**
-   * Vérifier et effectuer la réinitialisation quotidienne si nécessaire
-   */
-  private checkAndResetDaily(): void {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    // Si aucune réinitialisation ou si la dernière réinitialisation était avant aujourd'hui
-    if (this.dailyResetTimestamp === 0 || this.dailyResetTimestamp < today.getTime()) {
-      // Réinitialiser les gains quotidiens
-      this.dailyGains = 0;
-      
-      // Mettre à jour le timestamp
-      this.dailyResetTimestamp = today.getTime();
-      
-      // Persister
-      try {
-        localStorage.setItem('dailyGains', '0');
-        localStorage.setItem('lastDailyReset', this.dailyResetTimestamp.toString());
-      } catch (e) {
-        console.error("[BalanceManager] Error saving reset to localStorage:", e);
-      }
-      
-      // Calculer le temps restant jusqu'à la prochaine réinitialisation
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const minutesUntilReset = Math.floor((tomorrow.getTime() - now.getTime()) / (60 * 1000));
-      console.log(`Prochaine réinitialisation dans ${minutesUntilReset} minutes`);
-      
-      // Notifier pour les mises à jour UI
-      window.dispatchEvent(new CustomEvent('dailyGains:reset'));
-    }
-  }
-  
-  /**
-   * Ajouter un gain aux gains quotidiens
+   * Ajoute un gain au total quotidien
    */
   addDailyGain(gain: number): void {
-    if (isNaN(gain) || gain < 0) return;
+    if (isNaN(gain) || gain <= 0) return;
     
-    this.dailyGains = parseFloat((this.dailyGains + gain).toFixed(2));
+    this.dailyGains += gain;
+    this.dailyGains = parseFloat(this.dailyGains.toFixed(2));
+    this.saveDailyGains();
     
-    // Persister
-    try {
-      localStorage.setItem('dailyGains', this.dailyGains.toString());
-    } catch (e) {
-      console.error("[BalanceManager] Error saving daily gains to localStorage:", e);
-    }
-    
-    // Notifier
-    window.dispatchEvent(new CustomEvent('dailyGains:updated', {
-      detail: { amount: this.dailyGains }
+    // Déclencher un événement pour informer les autres composants
+    window.dispatchEvent(new CustomEvent('dailyGains:updated', { 
+      detail: { gains: this.dailyGains } 
     }));
   }
   
   /**
-   * Obtenir le total des gains quotidiens
+   * Récupère le total des gains quotidiens
    */
   getDailyGains(): number {
     return this.dailyGains;
   }
   
   /**
-   * Réinitialiser les gains quotidiens
+   * Réinitialise les gains quotidiens
    */
   resetDailyGains(): void {
     this.dailyGains = 0;
-    try {
-      localStorage.setItem('dailyGains', '0');
-    } catch (e) {
-      console.error("[BalanceManager] Error resetting daily gains in localStorage:", e);
-    }
+    this.saveDailyGains();
+    
+    // Déclencher un événement pour informer les autres composants
+    window.dispatchEvent(new CustomEvent('dailyGains:reset'));
   }
   
   /**
-   * Obtenir la limite quotidienne basée sur l'abonnement
+   * Met à jour les gains quotidiens en vérifiant si un nouveau jour a commencé
    */
-  getDailyLimit(subscription: string): number {
-    // Limites par défaut
-    const limits: { [key: string]: number } = {
-      freemium: 0.5,
-      premium: 2.5,
-      pro: 5,
-      ultimate: 10
-    };
+  updateDailyGains(): void {
+    const now = new Date();
+    const today = now.toDateString();
+    const lastResetDate = localStorage.getItem('lastResetDate');
     
-    return limits[subscription] || limits.freemium;
-  }
-  
-  /**
-   * Nettoyer les données utilisateur lors d'un changement d'utilisateur
-   */
-  cleanupUserBalanceData(): void {
-    this.balance = 0;
-    this.dailyGains = 0;
-    this.isInitialized = false;
-    
-    // Nettoyer le localStorage
-    try {
-      localStorage.removeItem('cachedBalance');
-      localStorage.removeItem('dailyGains');
-      localStorage.removeItem('lastBalanceUpdate');
-      localStorage.removeItem('highestBalance');
-      localStorage.removeItem('lastDailyReset');
-    } catch (e) {
-      console.error("[BalanceManager] Error cleaning up user data:", e);
+    if (lastResetDate !== today) {
+      this.resetDailyGains();
+      localStorage.setItem('lastResetDate', today);
     }
-    
-    this.notifyWatchers();
   }
 }
 
-// Instance singleton
 const balanceManager = new BalanceManager();
 export default balanceManager;

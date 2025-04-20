@@ -1,4 +1,3 @@
-
 import { useRef, useEffect } from 'react';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import { getDailyGains } from '@/hooks/stats/utils/storageManager';
@@ -279,7 +278,7 @@ export const useAutoSessionScheduler = (
       const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
       // Récupérer les gains journaliers actuels
-      const currentGains = getDailyGains(subscription);
+      const currentGains = getDailyGains();
       
       // Mettre à jour la référence des gains journaliers
       if (todaysGainsRef.current !== currentGains) {
