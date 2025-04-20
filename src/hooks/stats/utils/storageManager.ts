@@ -1,3 +1,4 @@
+
 /**
  * Gestionnaire de stockage pour les statistiques et valeurs
  */
@@ -14,6 +15,8 @@ const STORAGE_KEYS = {
   GLOBAL_ADS_COUNT: 'global_stats_adsCount',
   GLOBAL_REVENUE_COUNT: 'global_stats_revenueCount',
   PERSISTENT_START_DATE: 'stats_persistent_start_date',
+  LAST_DISPLAYED_ADS: 'last_displayed_ads_count',
+  LAST_DISPLAYED_REVENUE: 'last_displayed_revenue_count',
 };
 
 // Assurer que les données sont stockées dans des formats cohérents
@@ -42,10 +45,20 @@ const ensureConsistentDataFormat = () => {
     const adsCount = parseInt(localStorage.getItem(STORAGE_KEYS.ADS_COUNT) || '40000', 10);
     const revenueCount = parseFloat(localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT) || '50000');
     
-    localStorage.setItem(STORAGE_KEYS.GLOBAL_ADS_COUNT, adsCount.toString());
-    localStorage.setItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT, revenueCount.toString());
+    // Stocker également les dernières valeurs affichées
+    const lastDisplayedAds = localStorage.getItem(STORAGE_KEYS.LAST_DISPLAYED_ADS);
+    const lastDisplayedRevenue = localStorage.getItem(STORAGE_KEYS.LAST_DISPLAYED_REVENUE);
     
-    return { adsCount, revenueCount };
+    // Si nous avons déjà des valeurs affichées précédemment, les utiliser comme minimum
+    const finalAdsCount = lastDisplayedAds ? Math.max(adsCount, parseInt(lastDisplayedAds, 10)) : adsCount;
+    const finalRevenueCount = lastDisplayedRevenue ? Math.max(revenueCount, parseFloat(lastDisplayedRevenue)) : revenueCount;
+    
+    localStorage.setItem(STORAGE_KEYS.GLOBAL_ADS_COUNT, finalAdsCount.toString());
+    localStorage.setItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT, finalRevenueCount.toString());
+    localStorage.setItem(STORAGE_KEYS.ADS_COUNT, finalAdsCount.toString());
+    localStorage.setItem(STORAGE_KEYS.REVENUE_COUNT, finalRevenueCount.toString());
+    
+    return { adsCount: finalAdsCount, revenueCount: finalRevenueCount };
   } catch (error) {
     console.error("Erreur lors de la normalisation des données:", error);
     return { adsCount: 40000, revenueCount: 50000 };
@@ -67,12 +80,14 @@ export const loadStoredValues = () => {
         localStorage.getItem(STORAGE_KEYS.GLOBAL_ADS_COUNT),
         localStorage.getItem('stats_ads_count'),
         sessionStorage.getItem('displayed_ads_count'),
+        localStorage.getItem(STORAGE_KEYS.LAST_DISPLAYED_ADS),
       ],
       revenue: [
         localStorage.getItem(STORAGE_KEYS.REVENUE_COUNT),
         localStorage.getItem(STORAGE_KEYS.GLOBAL_REVENUE_COUNT),
         localStorage.getItem('stats_revenue_count'),
         sessionStorage.getItem('displayed_revenue_count'),
+        localStorage.getItem(STORAGE_KEYS.LAST_DISPLAYED_REVENUE),
       ]
     };
     
@@ -161,6 +176,10 @@ const persistMaxValues = (adsCount: number, revenueCount: number) => {
     localStorage.setItem('stats_ads_count', adsCount.toString());
     localStorage.setItem('stats_revenue_count', revenueCount.toString());
     
+    // Stocker également les dernières valeurs affichées
+    localStorage.setItem(STORAGE_KEYS.LAST_DISPLAYED_ADS, adsCount.toString());
+    localStorage.setItem(STORAGE_KEYS.LAST_DISPLAYED_REVENUE, revenueCount.toString());
+    
     // Mettre à jour la date de stockage
     localStorage.setItem(STORAGE_KEYS.STORAGE_DATE, new Date().toDateString());
     
@@ -194,6 +213,10 @@ export const saveValues = (adsCount: number, revenueCount: number, updateOnlyPro
     const finalAdsCount = Math.max(adsCount, current.adsCount);
     const finalRevenueCount = Math.max(revenueCount, current.revenueCount);
     
+    // Enregistrer également les valeurs comme dernières affichées
+    localStorage.setItem(STORAGE_KEYS.LAST_DISPLAYED_ADS, finalAdsCount.toString());
+    localStorage.setItem(STORAGE_KEYS.LAST_DISPLAYED_REVENUE, finalRevenueCount.toString());
+    
     // Persister dans toutes les sources
     persistMaxValues(finalAdsCount, finalRevenueCount);
     
@@ -225,211 +248,73 @@ export const incrementDateLinkedStats = () => {
     saveValues(newAdsCount, newRevenueCount);
     
     console.log("Auto-incrément des statistiques");
-    return { 
-      newAdsCount, 
-      newRevenueCount 
-    };
+    
+    return { newAdsCount, newRevenueCount };
   } catch (error) {
-    console.error("Erreur lors de l'incrément des statistiques:", error);
-    return { 
-      newAdsCount: 0, 
-      newRevenueCount: 0 
-    };
+    console.error("Error incrementing stats:", error);
+    return { newAdsCount: 0, newRevenueCount: 0 };
   }
 };
 
 /**
- * Charge les statistiques utilisateur
+ * Vérifie si une réinitialisation quotidienne est nécessaire et l'effectue si besoin
  */
-export const loadUserStats = (subscription = 'freemium') => {
+export const checkAndResetDailyStats = (): boolean => {
   try {
-    const key = `${STORAGE_KEYS.SUBSCRIPTION_GAINS}${subscription}`;
-    const date = formatDateForStorage();
-    const dateKey = `${key}_${date}`;
+    const lastResetStr = localStorage.getItem('stats_last_reset_date');
+    const today = new Date().toDateString();
     
-    const currentGains = parseFloat(localStorage.getItem(dateKey) || '0');
-    const sessionCount = parseInt(localStorage.getItem(`${key}_sessions_${date}`) || '0', 10);
-    
-    return { 
-      currentGains: isNaN(currentGains) ? 0 : currentGains,
-      sessionCount: isNaN(sessionCount) ? 0 : sessionCount
-    };
-  } catch (error) {
-    console.error("Error loading user stats:", error);
-    return { currentGains: 0, sessionCount: 0 };
-  }
-};
-
-/**
- * Sauvegarde les statistiques utilisateur
- */
-export const saveUserStats = (currentGains: number, sessionCount: number, subscription = 'freemium') => {
-  try {
-    const key = `${STORAGE_KEYS.SUBSCRIPTION_GAINS}${subscription}`;
-    const date = formatDateForStorage();
-    const dateKey = `${key}_${date}`;
-    const sessionKey = `${key}_sessions_${date}`;
-    
-    localStorage.setItem(dateKey, currentGains.toString());
-    localStorage.setItem(sessionKey, sessionCount.toString());
-    
-    return true;
-  } catch (error) {
-    console.error("Error saving user stats:", error);
-    return false;
-  }
-};
-
-/**
- * Ajoute un gain journalier pour une subscription donnée
- */
-export const addDailyGain = (amount: number, subscription = 'freemium'): boolean => {
-  try {
-    const key = `${STORAGE_KEYS.SUBSCRIPTION_GAINS}${subscription}`;
-    const date = formatDateForStorage();
-    const dateKey = `${key}_${date}`;
-    
-    const currentGains = parseFloat(localStorage.getItem(dateKey) || '0');
-    const newGains = currentGains + amount;
-    
-    // Vérifier si le gain ne dépasse pas la limite quotidienne
-    const LIMITS: Record<string, number> = {
-      'freemium': 0.5,
-      'basic': 1.5,
-      'premium': 2.5,
-      'pro': 7.5,
-      'ultimate': 15.0
-    };
-    
-    const limit = LIMITS[subscription] || LIMITS.freemium;
-    
-    // Si ajout dépasse la limite, ne pas autoriser
-    if (newGains > limit) {
-      return false;
-    }
-    
-    // Stocker la nouvelle valeur
-    localStorage.setItem(dateKey, newGains.toString());
-    return true;
-  } catch (error) {
-    console.error("Error adding daily gain:", error);
-    return false;
-  }
-};
-
-/**
- * Récupère les gains journaliers pour une subscription
- */
-export const getDailyGains = (subscription = 'freemium'): number => {
-  try {
-    const key = `${STORAGE_KEYS.SUBSCRIPTION_GAINS}${subscription}`;
-    const date = formatDateForStorage();
-    const dateKey = `${key}_${date}`;
-    
-    const gains = parseFloat(localStorage.getItem(dateKey) || '0');
-    return isNaN(gains) ? 0 : gains;
-  } catch (error) {
-    console.error("Error getting daily gains:", error);
-    return 0;
-  }
-};
-
-/**
- * Force la valeur minimale des statistiques et assure la progression continue
- */
-export const enforceMinimumStats = (minAdsCount: number, minRevenueCount: number) => {
-  try {
-    const { adsCount, revenueCount } = loadStoredValues();
-    
-    // Si les valeurs actuelles sont inférieures aux minimums, mettre à jour
-    if (adsCount < minAdsCount || revenueCount < minRevenueCount) {
-      saveValues(
-        Math.max(adsCount, minAdsCount),
-        Math.max(revenueCount, minRevenueCount)
-      );
+    if (lastResetStr !== today) {
+      // Nouvelle journée, sauvegarder les dernières valeurs avant la mise à jour
+      const current = loadStoredValues();
       
-      console.log("Statistiques minimales appliquées");
+      localStorage.setItem(STORAGE_KEYS.LAST_DISPLAYED_ADS, current.adsCount.toString());
+      localStorage.setItem(STORAGE_KEYS.LAST_DISPLAYED_REVENUE, current.revenueCount.toString());
+      
+      // Mettre à jour la date de dernière réinitialisation
+      localStorage.setItem('stats_last_reset_date', today);
+      console.log("Réinitialisation quotidienne des statistiques effectuée");
       return true;
     }
     
+    console.log("Reset already happened today, skipping");
     return false;
   } catch (error) {
-    console.error("Erreur lors de l'application des minimums:", error);
+    console.error("Error checking daily stats reset:", error);
     return false;
   }
 };
 
 /**
- * Calculer une progression continue des statistiques basée sur le temps écoulé
+ * S'assure que les valeurs minimales sont respectées pour les statistiques
  */
-export const calculateTimeBasedProgression = () => {
+export const enforceMinimumStats = (minAds: number, minRevenue: number): void => {
   try {
-    // Récupérer la date de départ persistante
-    const startDateStr = localStorage.getItem(STORAGE_KEYS.PERSISTENT_START_DATE);
-    if (!startDateStr) {
-      const now = new Date();
-      const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 jours en arrière
-      localStorage.setItem(STORAGE_KEYS.PERSISTENT_START_DATE, startDate.toISOString());
-      return { adsBase: 40000, revenueBase: 50000 };
+    const current = loadStoredValues();
+    
+    if (current.adsCount < minAds || current.revenueCount < minRevenue) {
+      saveValues(
+        Math.max(current.adsCount, minAds),
+        Math.max(current.revenueCount, minRevenue)
+      );
     }
-    
-    // Calculer le temps écoulé depuis la date de départ
-    const startDate = new Date(startDateStr);
-    const now = new Date();
-    const elapsedDays = Math.max(1, Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
-    
-    // Facteurs de progression moyens par jour
-    const averageDailyAdsIncrement = 2000; // En moyenne 2000 publicités par jour
-    const averageDailyRevenueIncrement = 500; // En moyenne 500€ par jour
-    
-    // Calculer les bases avec progression temporelle
-    const variationFactor = 0.2 + (Math.sin(elapsedDays / 7) + 1) / 10; // Variation entre 0.2 et 0.4
-    const adsBase = 40000 + (elapsedDays * averageDailyAdsIncrement * variationFactor);
-    const revenueBase = 50000 + (elapsedDays * averageDailyRevenueIncrement * variationFactor);
-    
-    return { 
-      adsBase: Math.floor(adsBase), 
-      revenueBase: Math.floor(revenueBase)
-    };
   } catch (error) {
-    console.error("Erreur lors du calcul de la progression temporelle:", error);
-    return { adsBase: 40000, revenueBase: 50000 };
+    console.error("Error enforcing minimum stats:", error);
   }
 };
 
 /**
- * Récupère ou génère des valeurs statistiques basées sur la date actuelle
- * pour assurer des valeurs cohérentes et progressives
+ * Récupère des statistiques cohérentes basées sur la date
  */
 export const getDateConsistentStats = () => {
   try {
-    // D'abord, vérifier les valeurs stockées
-    const storedValues = loadStoredValues();
+    // Vérifier la réinitialisation quotidienne
+    checkAndResetDailyStats();
     
-    // Si nous avons des valeurs stockées, c'est la source prioritaire
-    if (storedValues.hasStoredValues && 
-        storedValues.adsCount >= 40000 && 
-        storedValues.revenueCount >= 50000) {
-      return {
-        adsCount: storedValues.adsCount,
-        revenueCount: storedValues.revenueCount
-      };
-    }
-    
-    // Sinon, calculer des valeurs basées sur la progression temporelle
-    const { adsBase, revenueBase } = calculateTimeBasedProgression();
-    
-    // Ajouter une variation journalière cohérente
-    const dailyVariation = generateDateBasedValue() % 1000;
-    const adsCount = adsBase + dailyVariation;
-    const revenueCount = revenueBase + (dailyVariation / 5);
-    
-    // Sauvegarder ces valeurs
-    saveValues(adsCount, revenueCount);
-    
-    return { adsCount, revenueCount };
+    // Charger les valeurs stockées
+    return loadStoredValues();
   } catch (error) {
-    console.error("Erreur lors du calcul des statistiques cohérentes:", error);
+    console.error("Error getting date consistent stats:", error);
     return { adsCount: 40000, revenueCount: 50000 };
   }
 };

@@ -47,19 +47,30 @@ const StatsCounter = ({
     // Récupérer les valeurs stockées avec progression temporelle intégrée
     const consistentStats = getDateConsistentStats();
     
+    // Assurer les valeurs minimales pour éviter les fluctuations négatives
+    const lastDisplayedAds = parseInt(localStorage.getItem('last_displayed_ads_count') || '0', 10);
+    const lastDisplayedRevenue = parseFloat(localStorage.getItem('last_displayed_revenue_count') || '0');
+    
+    const finalAdsCount = Math.max(consistentStats.adsCount, lastDisplayedAds || 40000);
+    const finalRevenueCount = Math.max(consistentStats.revenueCount, lastDisplayedRevenue || 50000);
+    
     // Stocker dans la référence stable
     stableValuesRef.current = {
-      adsCount: consistentStats.adsCount,
-      revenueCount: consistentStats.revenueCount,
+      adsCount: finalAdsCount,
+      revenueCount: finalRevenueCount,
       lastUpdate: Date.now(),
       lastSyncTime: Date.now()
     };
     
     // Mettre à jour l'affichage
     setDisplayValues({
-      adsCount: consistentStats.adsCount,
-      revenueCount: consistentStats.revenueCount
+      adsCount: finalAdsCount,
+      revenueCount: finalRevenueCount
     });
+    
+    // Persister pour assurer la cohérence entre les rendus
+    localStorage.setItem('last_displayed_ads_count', finalAdsCount.toString());
+    localStorage.setItem('last_displayed_revenue_count', finalRevenueCount.toString());
     
     // S'assurer que les valeurs minimales sont respectées
     enforceMinimumStats(40000, 50000);
@@ -83,10 +94,19 @@ const StatsCounter = ({
       // Attendre un délai plus important pour que l'analyse soit simulée
       setTimeout(() => {
         // Incrémenter UNIQUEMENT d'une vidéo à la fois, jamais plus
-        setDisplayValues(prev => ({
-          adsCount: prev.adsCount + 1,
-          revenueCount: prev.revenueCount + (Math.random() * 0.3 + 0.2) // 0.2-0.5€ par vidéo (montant plus réaliste)
-        }));
+        setDisplayValues(prev => {
+          const newAdsCount = prev.adsCount + 1;
+          const newRevenueCount = prev.revenueCount + (Math.random() * 0.3 + 0.2); // 0.2-0.5€ par vidéo
+          
+          // Persister immédiatement pour maintenir la cohérence entre les sessions
+          localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
+          localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
+          
+          return {
+            adsCount: newAdsCount,
+            revenueCount: newRevenueCount
+          };
+        });
       }, 5000 + Math.random() * 3000); // Délai entre 5 et 8 secondes
     };
     
@@ -104,10 +124,15 @@ const StatsCounter = ({
       };
       
       // Ne pas mettre à jour l'interface trop rapidement, progression extrêmement lente
-      setDisplayValues(prev => ({
-        ...prev,
-        adsCount: prev.adsCount + 1 // Toujours incrémenter de 1 seulement
-      }));
+      setDisplayValues(prev => {
+        const newAdsCount = prev.adsCount + 1; // Toujours incrémenter de 1 seulement
+        // Persister pour maintenir la cohérence
+        localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
+        return {
+          ...prev,
+          adsCount: newAdsCount
+        };
+      });
     }
     
     if (displayedRevenueCount > stableValuesRef.current.revenueCount + 5) { // Seuil de différence significative
@@ -118,10 +143,15 @@ const StatsCounter = ({
       };
       
       // Progression très lente du revenu également
-      setDisplayValues(prev => ({
-        ...prev,
-        revenueCount: prev.revenueCount + 0.3 // Incrément très faible
-      }));
+      setDisplayValues(prev => {
+        const newRevenueCount = prev.revenueCount + 0.3; // Incrément très faible
+        // Persister pour maintenir la cohérence
+        localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
+        return {
+          ...prev,
+          revenueCount: newRevenueCount
+        };
+      });
     }
   }, [displayedAdsCount, displayedRevenueCount]);
 
@@ -136,23 +166,42 @@ const StatsCounter = ({
         if (timeSinceLastUpdate > 10 * 60 * 1000) {
           const consistentStats = getDateConsistentStats();
           
-          // Mettre à jour seulement si les nouvelles valeurs sont plus grandes
-          const newAdsCount = Math.max(stableValuesRef.current.adsCount, consistentStats.adsCount);
-          const newRevenueCount = Math.max(stableValuesRef.current.revenueCount, consistentStats.revenueCount);
+          // Récupérer également les dernières valeurs affichées
+          const lastDisplayedAds = parseInt(localStorage.getItem('last_displayed_ads_count') || '0', 10);
+          const lastDisplayedRevenue = parseFloat(localStorage.getItem('last_displayed_revenue_count') || '0');
+          
+          // Utiliser le maximum entre toutes les sources
+          const maxAdsCount = Math.max(
+            stableValuesRef.current.adsCount, 
+            consistentStats.adsCount,
+            lastDisplayedAds || 0,
+            40000
+          );
+          
+          const maxRevenueCount = Math.max(
+            stableValuesRef.current.revenueCount, 
+            consistentStats.revenueCount,
+            lastDisplayedRevenue || 0,
+            50000
+          );
           
           // Mettre à jour la référence stable
           stableValuesRef.current = {
             ...stableValuesRef.current,
-            adsCount: newAdsCount,
-            revenueCount: newRevenueCount,
+            adsCount: maxAdsCount,
+            revenueCount: maxRevenueCount,
             lastUpdate: now
           };
           
-          // Mettre à jour l'affichage de façon très progressive
-          setDisplayValues(prev => ({
-            adsCount: prev.adsCount + 1, // Toujours +1 seulement
-            revenueCount: prev.revenueCount + 0.25 // Très petit incrément
-          }));
+          // Mettre à jour l'affichage et persister
+          setDisplayValues({
+            adsCount: maxAdsCount,
+            revenueCount: maxRevenueCount
+          });
+          
+          // Persister pour maintenir la cohérence
+          localStorage.setItem('last_displayed_ads_count', maxAdsCount.toString());
+          localStorage.setItem('last_displayed_revenue_count', maxRevenueCount.toString());
         }
       }
     };
