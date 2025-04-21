@@ -8,16 +8,23 @@ import balanceManager from "../balance/balanceManager";
  */
 export const fetchUserTransactions = async (userId: string, forceRefresh = false): Promise<Transaction[]> => {
   try {
-    // Check cache if forceRefresh isn't requested
+    // Always force refresh if explicitly requested
+    if (forceRefresh) {
+      console.log("Forced refresh of transactions requested");
+      localStorage.removeItem('cachedTransactions');
+      localStorage.removeItem('transactionsLastRefresh');
+    }
+
+    // Check cache if forceRefresh isn't requested - but with a very short cache lifetime (10 seconds)
     if (!forceRefresh) {
       try {
         const cachedTx = localStorage.getItem('cachedTransactions');
         const lastRefreshTime = localStorage.getItem('transactionsLastRefresh');
         
-        // Use cache only if it exists and is less than 30 seconds old (reduced for better responsiveness)
+        // Use cache only if it exists and is less than 10 seconds old (reduced for better responsiveness)
         if (cachedTx && lastRefreshTime) {
           const cacheAge = Date.now() - parseInt(lastRefreshTime, 10);
-          if (cacheAge < 30000) { // 30 seconds
+          if (cacheAge < 10000) { // 10 seconds - much shorter for better responsiveness
             return JSON.parse(cachedTx);
           }
         }
@@ -26,16 +33,30 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
       }
     }
 
+    // Add a timestamp to prevent caching by the Supabase client
+    const timestamp = new Date().getTime();
+    
     const { data: transactionsData, error: transactionsError } = await supabase
       .from('transactions')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .then(result => {
+        console.log("Raw transactions from DB:", result.data?.length || 0);
+        return result;
+      });
       
     if (transactionsError) {
       console.error("Error fetching transactions:", transactionsError);
       return [];
     }
+    
+    if (!transactionsData || transactionsData.length === 0) {
+      console.log("No transactions found for user:", userId);
+      return [];
+    }
+    
+    console.log(`${transactionsData.length} transactions retrieved from database`);
     
     // Map database transactions to our Transaction interface with proper date handling
     const transactions = (transactionsData || []).map(t => {
@@ -56,7 +77,7 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
       };
     });
     
-    // Update cache for future requests
+    // Update cache for future requests - but with a very short lifetime
     try {
       localStorage.setItem('cachedTransactions', JSON.stringify(transactions));
       localStorage.setItem('transactionsLastRefresh', Date.now().toString());
@@ -70,7 +91,7 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
       try {
         return tx.date.startsWith(today);
       } catch (e) {
-        console.error("Invalid transaction date:", tx.date, e);
+        console.error("Invalid transaction date:", e, tx.date);
         return false;
       }
     });
@@ -123,20 +144,24 @@ export const addTransaction = async (
     
     console.log("Transaction added successfully:", data);
     
-    // Invalidate transaction cache immediately
+    // Immediately invalidate transaction cache to ensure fresh data
     localStorage.removeItem('cachedTransactions');
     localStorage.removeItem('transactionsLastRefresh');
     
     // Trigger multiple refresh events to ensure UI updates
-    window.dispatchEvent(new CustomEvent('transactions:refresh'));
+    window.dispatchEvent(new CustomEvent('transactions:refresh', {
+      detail: { timestamp: Date.now(), forceRefresh: true }
+    }));
     
     // Update balance manager daily gains
     balanceManager.addDailyGain(gain);
     
     // Also trigger refresh after a short delay to ensure database has propagated changes
     setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('transactions:refresh'));
-    }, 1000);
+      window.dispatchEvent(new CustomEvent('transactions:refresh', {
+        detail: { timestamp: Date.now(), forceRefresh: true }
+      }));
+    }, 500);
     
     console.log(`Transaction recorded: ${gain}€ - ${report} with date ${dateString}`);
     return true;

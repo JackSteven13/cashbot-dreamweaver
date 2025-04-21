@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
+import balanceManager from '@/utils/balance/balanceManager';
 
 interface UseLocalBalanceProps {
   initialBalance: number;
@@ -24,6 +25,12 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
       return initialBalance;
     }
     
+    // D'abord, vérifier si balanceManager a déjà une valeur
+    const managerBalance = balanceManager.getCurrentBalance();
+    if (managerBalance > 0) {
+      return managerBalance;
+    }
+    
     // Utiliser UNIQUEMENT des clés spécifiques à l'utilisateur
     const userBalanceKey = `user_balance_${userId}`;
     const userHighestBalanceKey = `highest_balance_${userId}`;
@@ -32,7 +39,9 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
     const sources = [
       localStorage.getItem(userBalanceKey),
       localStorage.getItem(userHighestBalanceKey),
-      localStorage.getItem(userLastKnownBalanceKey)
+      localStorage.getItem(userLastKnownBalanceKey),
+      localStorage.getItem('currentBalance'),
+      localStorage.getItem('lastKnownBalance'),
     ];
     
     // Trouver la valeur maximale parmi toutes les sources (y compris initialBalance)
@@ -57,11 +66,11 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
         localStorage.setItem(userBalanceKey, highestValue.toString());
         localStorage.setItem(userHighestBalanceKey, highestValue.toString());
         localStorage.setItem(userLastKnownBalanceKey, highestValue.toString());
+        localStorage.setItem('currentBalance', highestValue.toString());
+        localStorage.setItem('lastKnownBalance', highestValue.toString());
         
-        // Nettoyer les anciennes clés génériques pour éviter les confusions
-        localStorage.removeItem('currentBalance');
-        localStorage.removeItem('lastKnownBalance');
-        localStorage.removeItem('highestBalance');
+        // Synchroniser avec balanceManager
+        balanceManager.forceBalanceSync(highestValue, userId);
       } catch (e) {
         console.error("Failed to persist initial balance:", e);
       }
@@ -83,10 +92,26 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
       previousBalanceRef.current = currentValue;
       isInitializedRef.current = true;
       
-      // Synchroniser avec une valeur persistée au chargement
+      // Synchroniser avec balanceManager
+      balanceManager.forceBalanceSync(currentValue, userId);
+      
       console.log(`[useLocalBalance] Initialized with persisted balance for user ${userId}: ${currentValue}`);
     }
   }, [userId]);
+  
+  // Ajouter un watcher à balanceManager
+  useEffect(() => {
+    if (!userId) return;
+    
+    const unsubscribe = balanceManager.addWatcher((newBalance) => {
+      if (newBalance !== localBalance) {
+        setLocalBalance(newBalance);
+        previousBalanceRef.current = newBalance;
+      }
+    });
+    
+    return unsubscribe;
+  }, [userId, localBalance]);
   
   // Mettre à jour le localStorage quand le solde change
   useEffect(() => {
@@ -101,12 +126,22 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
       localStorage.setItem(userBalanceKey, localBalance.toString());
       localStorage.setItem(userHighestBalanceKey, localBalance.toString());
       localStorage.setItem(userLastKnownBalanceKey, localBalance.toString());
+      localStorage.setItem('currentBalance', localBalance.toString());
+      localStorage.setItem('lastKnownBalance', localBalance.toString());
       
       previousBalanceRef.current = localBalance;
+      
+      // Synchroniser avec balanceManager
+      balanceManager.forceBalanceSync(localBalance, userId);
       
       // Informer les autres composants du changement avec l'ID utilisateur
       window.dispatchEvent(new CustomEvent('balance:local-update', {
         detail: { balance: localBalance, userId }
+      }));
+      
+      // Déclencher également un rafraîchissement des transactions
+      window.dispatchEvent(new CustomEvent('transactions:refresh', {
+        detail: { timestamp: Date.now(), forceRefresh: true }
       }));
     }
   }, [localBalance, userId]);
@@ -120,12 +155,13 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
       const newBalance = event.detail?.newBalance;
       const eventUserId = event.detail?.userId;
       
-      // Ne traiter que les événements pour cet utilisateur
+      // Ne traiter que les événements pour cet utilisateur ou sans userId spécifié
       if (eventUserId && eventUserId !== userId) return;
       
       if (typeof newBalance === 'number' && newBalance >= 0) {
         console.log(`[useLocalBalance] Force update balance for user ${userId} from ${localBalance} to ${newBalance}`);
         setLocalBalance(newBalance);
+        previousBalanceRef.current = newBalance;
         
         // Aussi persister immédiatement pour éviter toute perte
         const userBalanceKey = `user_balance_${userId}`;
@@ -135,22 +171,30 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
         localStorage.setItem(userBalanceKey, newBalance.toString());
         localStorage.setItem(userHighestBalanceKey, newBalance.toString());
         localStorage.setItem(userLastKnownBalanceKey, newBalance.toString());
+        localStorage.setItem('currentBalance', newBalance.toString());
+        localStorage.setItem('lastKnownBalance', newBalance.toString());
+        
+        // Déclencher également un rafraîchissement des transactions
+        window.dispatchEvent(new CustomEvent('transactions:refresh', {
+          detail: { timestamp: Date.now(), forceRefresh: true }
+        }));
       }
     };
     
     // Écouter les mises à jour incrémentielles
     const handleBalanceUpdate = (event: CustomEvent) => {
-      const amount = event.detail?.amount;
-      const currentBalance = event.detail?.currentBalance;
+      const amount = event.detail?.gain;
+      const currentBalance = event.detail?.newBalance;
       const eventUserId = event.detail?.userId;
       
-      // Ne traiter que les événements pour cet utilisateur
+      // Ne traiter que les événements pour cet utilisateur ou sans userId spécifié
       if (eventUserId && eventUserId !== userId) return;
       
       if (typeof currentBalance === 'number' && currentBalance >= 0) {
         // Si un solde complet est fourni, l'utiliser
         console.log(`[useLocalBalance] Update balance for user ${userId} with full value: ${currentBalance}`);
         setLocalBalance(currentBalance);
+        previousBalanceRef.current = currentBalance;
         
         // Persister immédiatement
         const userBalanceKey = `user_balance_${userId}`;
@@ -160,7 +204,14 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
         localStorage.setItem(userBalanceKey, currentBalance.toString());
         localStorage.setItem(userHighestBalanceKey, currentBalance.toString());
         localStorage.setItem(userLastKnownBalanceKey, currentBalance.toString());
-      } else if (typeof amount === 'number') {
+        localStorage.setItem('currentBalance', currentBalance.toString());
+        localStorage.setItem('lastKnownBalance', currentBalance.toString());
+        
+        // Déclencher également un rafraîchissement des transactions
+        window.dispatchEvent(new CustomEvent('transactions:refresh', {
+          detail: { timestamp: Date.now() }
+        }));
+      } else if (typeof amount === 'number' && amount > 0) {
         // Sinon ajouter le montant au solde actuel
         console.log(`[useLocalBalance] Update balance for user ${userId} with increment: +${amount}`);
         setLocalBalance(prev => {
@@ -174,31 +225,24 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
           localStorage.setItem(userBalanceKey, newBalance.toString());
           localStorage.setItem(userHighestBalanceKey, newBalance.toString());
           localStorage.setItem(userLastKnownBalanceKey, newBalance.toString());
+          localStorage.setItem('currentBalance', newBalance.toString());
+          localStorage.setItem('lastKnownBalance', newBalance.toString());
+          
+          // Synchroniser avec balanceManager
+          balanceManager.forceBalanceSync(newBalance, userId);
+          
+          // Déclencher également un rafraîchissement des transactions
+          window.dispatchEvent(new CustomEvent('transactions:refresh', {
+            detail: { timestamp: Date.now() }
+          }));
           
           return newBalance;
         });
       }
     };
     
-    // Écouter les événements de synchronisation de solde
-    const handleBalanceSync = (event: CustomEvent) => {
-      const eventUserId = event.detail?.userId;
-      
-      // Ne traiter que les événements pour cet utilisateur
-      if (eventUserId && eventUserId !== userId) return;
-      
-      // Vérifier toutes les sources pour prendre la valeur la plus élevée
-      const syncedBalance = getPersistedBalance();
-      if (syncedBalance > localBalance) {
-        console.log(`[useLocalBalance] Syncing to higher balance for user ${userId}: ${syncedBalance}`);
-        setLocalBalance(syncedBalance);
-      }
-    };
-    
     window.addEventListener('balance:force-update' as any, handleForceUpdate);
     window.addEventListener('balance:update' as any, handleBalanceUpdate);
-    window.addEventListener('balance:sync-request' as any, handleBalanceSync);
-    window.addEventListener('balance:consistent-update' as any, handleBalanceUpdate);
     
     // Émettre un événement pour synchroniser le solde au montage
     window.dispatchEvent(new CustomEvent('balance:local-update', {
@@ -208,8 +252,6 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
     return () => {
       window.removeEventListener('balance:force-update' as any, handleForceUpdate);
       window.removeEventListener('balance:update' as any, handleBalanceUpdate);
-      window.removeEventListener('balance:sync-request' as any, handleBalanceSync);
-      window.removeEventListener('balance:consistent-update' as any, handleBalanceUpdate);
     };
   }, [localBalance, userId]);
   
@@ -225,8 +267,18 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
     localStorage.setItem(userBalanceKey, newBalance.toString());
     localStorage.setItem(userHighestBalanceKey, newBalance.toString());
     localStorage.setItem(userLastKnownBalanceKey, newBalance.toString());
+    localStorage.setItem('currentBalance', newBalance.toString());
+    localStorage.setItem('lastKnownBalance', newBalance.toString());
     
     setLocalBalance(newBalance);
+    
+    // Synchroniser avec balanceManager
+    balanceManager.forceBalanceSync(newBalance, userId);
+    
+    // Déclencher également un rafraîchissement des transactions
+    window.dispatchEvent(new CustomEvent('transactions:refresh', {
+      detail: { timestamp: Date.now(), forceRefresh: true }
+    }));
   };
   
   const addToLocalBalance = (amount: number) => {
@@ -243,6 +295,16 @@ export const useLocalBalance = ({ initialBalance, userId }: UseLocalBalanceProps
       localStorage.setItem(userBalanceKey, newBalance.toString());
       localStorage.setItem(userHighestBalanceKey, newBalance.toString());
       localStorage.setItem(userLastKnownBalanceKey, newBalance.toString());
+      localStorage.setItem('currentBalance', newBalance.toString());
+      localStorage.setItem('lastKnownBalance', newBalance.toString());
+      
+      // Synchroniser avec balanceManager
+      balanceManager.forceBalanceSync(newBalance, userId);
+      
+      // Déclencher également un rafraîchissement des transactions
+      window.dispatchEvent(new CustomEvent('transactions:refresh', {
+        detail: { timestamp: Date.now() }
+      }));
       
       return newBalance;
     });
