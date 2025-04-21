@@ -1,11 +1,50 @@
-
-import { SUBSCRIPTION_LIMITS } from './constants';
+import { SUBSCRIPTION_LIMITS } from '@/components/dashboard/summary/constants';
 import { SUBSCRIPTION_PRICES } from '@/components/dashboard/calculator/constants';
 
-/**
- * Calcule les gains potentiels en fonction du type d'abonnement et des sessions
- * avec des valeurs très réalistes
- */
+export const calculateAllPlansRevenue = (
+  sessionsPerDay: number,
+  daysPerMonth: number
+): Record<string, { revenue: number, profit: number }> => {
+  const results: Record<string, { revenue: number, profit: number }> = {};
+  
+  Object.entries(SUBSCRIPTION_LIMITS).forEach(([plan, dailyLimit]) => {
+    try {
+      // Prix mensuel de l'abonnement (divisé par 12 pour obtenir le coût mensuel)
+      const monthlySubscriptionCost = SUBSCRIPTION_PRICES[plan] / 12;
+      
+      // Calculer l'utilisation moyenne (entre 80% et 95% de la limite quotidienne)
+      const baseUtilization = 0.80 + (Math.min(sessionsPerDay, 5) / 5) * 0.15;
+      
+      // Multiplicateur de performance par plan
+      let performanceMultiplier = 1.0;
+      if (plan === 'starter') performanceMultiplier = 1.30;
+      if (plan === 'gold') performanceMultiplier = 1.45;
+      if (plan === 'elite') performanceMultiplier = 1.60;
+      
+      // Calcul du revenu mensuel
+      const monthlyRevenue = Number(dailyLimit) * baseUtilization * daysPerMonth * performanceMultiplier;
+      
+      // Calcul du profit mensuel (revenu - coût de l'abonnement)
+      const monthlyProfit = monthlyRevenue - monthlySubscriptionCost;
+      
+      results[plan] = {
+        revenue: parseFloat(monthlyRevenue.toFixed(2)),
+        profit: parseFloat(monthlyProfit.toFixed(2))
+      };
+      
+    } catch (error) {
+      console.error(`Erreur lors du calcul pour le plan ${plan}:`, error);
+      results[plan] = {
+        revenue: 0,
+        profit: -SUBSCRIPTION_PRICES[plan] / 12 || 0
+      };
+    }
+  });
+  
+  return results;
+};
+
+// Conserver la fonction existante pour compatibilité
 export const calculatePotentialGains = (
   subscriptionType: string,
   sessionsPerDay: number = 1,
@@ -29,55 +68,4 @@ export const calculatePotentialGains = (
     dailyGain: parseFloat(dailyGain.toFixed(2)),
     monthlyGain: parseFloat(monthlyGain.toFixed(2))
   };
-};
-
-/**
- * Calcule les revenus pour tous les plans d'abonnement avec des valeurs réalistes
- */
-export const calculateAllPlansRevenue = (
-  sessionsPerDay: number,
-  daysPerMonth: number
-): Record<string, { revenue: number, profit: number }> => {
-  const results: Record<string, { revenue: number, profit: number }> = {};
-  
-  // Pour chaque plan, calculer les revenus et profits mensuels
-  Object.entries(SUBSCRIPTION_LIMITS).forEach(([plan, dailyLimit]) => {
-    try {
-      // Obtenir le prix de l'abonnement
-      const subscriptionPrice = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] || 0;
-      
-      // Calculer l'utilisation moyenne (entre 55% et 70% de la limite quotidienne - plus réaliste)
-      // Plus de sessions = meilleure utilisation de la limite, mais avec plafond bas
-      const baseUtilization = 0.55 + (Math.min(sessionsPerDay, 5) / 5) * 0.15;
-      
-      // Multiplicateur de performance selon le plan (valeurs crédibles)
-      let performanceMultiplier = 1.0;
-      if (plan === 'starter') performanceMultiplier = 1.03; // 3% de bonus
-      if (plan === 'gold') performanceMultiplier = 1.07;    // 7% de bonus
-      if (plan === 'elite') performanceMultiplier = 1.12;   // 12% de bonus
-      
-      // Calcul du revenu mensuel avec le multiplicateur
-      const monthlyRevenue = dailyLimit * baseUtilization * daysPerMonth * performanceMultiplier;
-      
-      // Ajustement du prix mensuel de l'abonnement (annuellement divisé par 12)
-      const monthlySubscriptionPrice = subscriptionPrice / 12;
-      
-      // Le profit est le revenu moins le coût mensuel de l'abonnement
-      const profit = monthlyRevenue - monthlySubscriptionPrice;
-      
-      // Résultats avec 2 décimales
-      results[plan] = {
-        revenue: parseFloat(monthlyRevenue.toFixed(2)),
-        profit: parseFloat(profit.toFixed(2))
-      };
-    } catch (error) {
-      console.error(`Erreur lors du calcul pour le plan ${plan}:`, error);
-      results[plan] = {
-        revenue: 0,
-        profit: -SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] || 0
-      };
-    }
-  });
-  
-  return results;
 };
