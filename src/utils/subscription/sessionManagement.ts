@@ -1,131 +1,115 @@
 
 import { SUBSCRIPTION_LIMITS } from './constants';
+import { supabase } from '@/integrations/supabase/client';
 
-/**
- * Interface for session start results
- */
+// Define types
 export interface SessionStartResult {
-  canStart: boolean;
-  reason?: string;
+  success: boolean;
+  error?: string;
+  gain?: number;
 }
 
-/**
- * Strict session limit implementation
- * Ensures users can only start sessions if within their daily limit
- */
-export const canStartManualSession = (
-  subscription: string,
-  sessionCount: number,
-  todaysGains: number
-): SessionStartResult => {
-  // Check if daily limit has been reached
-  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-  
-  // Strict limit check - if already at 95% of the limit, block further sessions
-  if (todaysGains >= dailyLimit * 0.95) {
-    console.log(`Session blocked: daily gains (${todaysGains}) at or above 95% of limit (${dailyLimit})`);
-    return { 
-      canStart: false, 
-      reason: `Limite quotidienne de ${dailyLimit}€ atteinte (${todaysGains.toFixed(2)}€)`
-    };
-  }
-  
-  // For freemium accounts, strictly enforce 1 session per day limit
-  if (subscription === 'freemium' && sessionCount >= 1) {
-    console.log('Session blocked: freemium account already used daily session');
-    return {
-      canStart: false,
-      reason: "Limite de session quotidienne atteinte pour compte freemium"
-    };
-  }
-  
-  return { canStart: true };
-};
+export interface DailyLimitResult {
+  allowed: boolean;
+  adjustedGain: number;
+}
 
-/**
- * Strict daily limit implementation
- * Ensures all revenue generation respects daily limits
- */
+// Function to check if daily limits are respected
 export const respectsDailyLimit = (
   subscription: string,
-  todaysGains: number,
+  currentDailyGains: number,
   potentialGain: number
-): { allowed: boolean; adjustedGain: number } => {
+): DailyLimitResult => {
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
-  // If adding the potential gain would exceed the limit
-  if (todaysGains + potentialGain > dailyLimit) {
-    // If already at limit, block the gain entirely
-    if (todaysGains >= dailyLimit) {
-      console.log(`Gain blocked: daily limit of ${dailyLimit}€ already reached (current: ${todaysGains}€)`);
-      return { allowed: false, adjustedGain: 0 };
+  // Check if adding the potential gain would exceed the daily limit
+  if (currentDailyGains + potentialGain > dailyLimit) {
+    // Calculate how much gain we can still add without exceeding the limit
+    const remainingAllowance = Math.max(0, dailyLimit - currentDailyGains);
+    
+    if (remainingAllowance <= 0) {
+      // No more gains allowed today
+      return {
+        allowed: false,
+        adjustedGain: 0
+      };
     }
     
-    // Otherwise, adjust the gain to reach exactly the limit
-    const adjustedGain = parseFloat((dailyLimit - todaysGains).toFixed(2));
-    console.log(`Gain adjusted from ${potentialGain}€ to ${adjustedGain}€ to respect daily limit`);
-    return { allowed: true, adjustedGain };
+    // Allow a partial gain to reach exactly the daily limit
+    return {
+      allowed: true,
+      adjustedGain: parseFloat(remainingAllowance.toFixed(2))
+    };
   }
   
-  // Gain is within limits
-  return { allowed: true, adjustedGain: potentialGain };
+  // The potential gain is within limits, allow it
+  return {
+    allowed: true,
+    adjustedGain: potentialGain
+  };
 };
 
-/**
- * Reset daily counters (sessions, gains) at midnight
- */
-export const shouldResetDailyCounters = (lastResetTime: number): boolean => {
+// Function to check if daily counters should be reset
+export const shouldResetDailyCounters = (): boolean => {
   const now = new Date();
-  const lastReset = new Date(lastResetTime);
+  const lastResetTimeStr = localStorage.getItem('lastResetTime');
   
-  // Reset if last reset was on a different calendar day
-  return lastReset.getDate() !== now.getDate() || 
-         lastReset.getMonth() !== now.getMonth() ||
-         lastReset.getFullYear() !== now.getFullYear();
+  if (!lastResetTimeStr) {
+    // No previous reset, should reset now
+    localStorage.setItem('lastResetTime', now.toISOString());
+    return true;
+  }
+  
+  const lastResetTime = new Date(lastResetTimeStr);
+  
+  // Check if it's a new day (comparing day components)
+  if (now.getDate() !== lastResetTime.getDate() || 
+      now.getMonth() !== lastResetTime.getMonth() ||
+      now.getFullYear() !== lastResetTime.getFullYear()) {
+    
+    // It's a new day, update last reset time
+    localStorage.setItem('lastResetTime', now.toISOString());
+    return true;
+  }
+  
+  return false;
 };
 
-/**
- * Initialize a new day's tracking
- */
-export const initializeNewDay = (): number => {
-  // Reset daily counters in local storage
-  localStorage.setItem('dailySessionCount', '0');
-  localStorage.setItem('dailyGains', '0');
-  localStorage.setItem('lastResetTime', Date.now().toString());
+// Function to check if a manual session can be started
+export const canStartManualSession = (
+  subscription: string,
+  dailySessionCount: number,
+  currentDailyGains: number
+): boolean => {
+  // Check subscription limit for number of sessions
+  let maxSessions = 1;  // Default for freemium
   
-  // Dispatch reset event
-  window.dispatchEvent(new CustomEvent('dailyGains:reset'));
+  if (subscription === 'basic') {
+    maxSessions = 3;
+  } else if (subscription === 'premium') {
+    maxSessions = 5;
+  }
   
-  return Date.now();
+  // Check if daily session limit is reached
+  if (dailySessionCount >= maxSessions) {
+    return false;
+  }
+  
+  // Check daily gains limit
+  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  if (currentDailyGains >= dailyLimit) {
+    return false;
+  }
+  
+  return true;
 };
 
-/**
- * Force synchronization with transactions from the database
- * This ensures our local tracking matches server data
- */
-export const syncDailyGainsWithTransactions = (todaysTransactions: any[]): number => {
-  // Calculate total gains from today's transactions
-  const totalGains = todaysTransactions.reduce((sum, tx) => {
-    return sum + (tx.gain || 0);
-  }, 0);
-  
-  // Update localStorage
-  localStorage.setItem('dailyGains', totalGains.toString());
-  
-  // Dispatch updated event
-  window.dispatchEvent(new CustomEvent('dailyGains:updated', {
-    detail: { gains: totalGains }
-  }));
-  
-  return totalGains;
-};
-
-// These functions will be added to fix the subscription issues in index.ts
+// These functions for backward compatibility
 export const subscribeToAuthChanges = () => {
-  console.log("Auth change subscription function called - placeholder");
-  return () => {}; // Noop cleanup function
+  console.log("Auth change subscription function called - deprecated");
+  return () => {}; // Return noop cleanup function
 };
 
 export const unsubscribeFromAuthChanges = () => {
-  console.log("Auth change unsubscription function called - placeholder");
+  console.log("Auth change unsubscription function called - deprecated");
 };

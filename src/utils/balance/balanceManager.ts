@@ -1,8 +1,10 @@
+
 class BalanceManager {
   private currentBalance: number = 0;
   private dailyGains: number = 0;
   private highestBalance: number = 0;
   private userId: string | null = null;
+  private watchers: ((balance: number) => void)[] = [];
 
   constructor() {
     this.loadBalanceFromStorage();
@@ -57,6 +59,9 @@ class BalanceManager {
       this.highestBalance = this.currentBalance;
       localStorage.setItem('highestBalance', this.highestBalance.toString());
     }
+    
+    // Notify watchers of balance update
+    this.notifyWatchers();
   }
 
   forceBalanceSync(balance: number) {
@@ -68,6 +73,9 @@ class BalanceManager {
       this.highestBalance = this.currentBalance;
       localStorage.setItem('highestBalance', this.highestBalance.toString());
     }
+    
+    // Notify watchers of balance update
+    this.notifyWatchers();
   }
 
   getCurrentBalance(): number {
@@ -117,6 +125,24 @@ class BalanceManager {
     localStorage.removeItem('dailySessionCount');
     
     console.log('User balance data cleaned up successfully');
+  }
+  
+  // Add watcher methods for balance changes
+  addWatcher(callback: (balance: number) => void): () => void {
+    this.watchers.push(callback);
+    return () => {
+      this.watchers = this.watchers.filter(watcher => watcher !== callback);
+    };
+  }
+  
+  private notifyWatchers() {
+    for (const watcher of this.watchers) {
+      try {
+        watcher(this.currentBalance);
+      } catch (error) {
+        console.error('Error in balance watcher:', error);
+      }
+    }
   }
 }
 

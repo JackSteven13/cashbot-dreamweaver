@@ -99,7 +99,7 @@ export const useManualSessions = ({
         toast({
           title: "Limite journalière presque atteinte",
           description: `Vous avez déjà généré ${todaysGains.toFixed(2)}€ aujourd'hui, proche de la limite de ${dailyLimit}€.`,
-          variant: "warning",
+          variant: "destructive", // Changed from "warning" to "destructive"
           duration: 5000
         });
         setIsSessionRunning(false);

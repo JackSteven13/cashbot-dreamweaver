@@ -14,9 +14,9 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
       setIsBalanceLoading(true);
       console.log("Loading balance for user:", userId);
       
-      // Fetch balance from database
+      // Fetch balance from user_balances table instead of profiles
       const { data: balanceData, error: balanceError } = await supabase
-        .from('profiles')
+        .from('user_balances')
         .select('balance')
         .eq('id', userId)
         .single();

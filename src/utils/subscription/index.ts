@@ -9,7 +9,8 @@ export {
 export { 
   canStartManualSession,
   subscribeToAuthChanges,
-  unsubscribeFromAuthChanges
+  unsubscribeFromAuthChanges,
+  respectsDailyLimit
 } from './sessionManagement';
 
 export { 
@@ -32,4 +33,8 @@ export {
 } from './constants';
 
 // Re-export interfaces
-export type { SessionStartResult } from './sessionManagement';
+export type { 
+  SessionStartResult,
+  DailyLimitResult 
+} from './sessionManagement';
+
