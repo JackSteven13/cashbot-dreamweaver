@@ -14,7 +14,7 @@ export const calculatePotentialGains = (
   const dailyLimit = SUBSCRIPTION_LIMITS[subscriptionType as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
   // Facteur d'efficacité basé sur le nombre de sessions (plus de sessions = meilleure efficacité)
-  const efficiencyFactor = Math.min(0.75 + (sessionsPerDay * 0.05), 0.95);
+  const efficiencyFactor = Math.min(0.65 + (sessionsPerDay * 0.05), 0.85);
   
   // Calcul du gain journalier (limité au maximum quotidien)
   const rawDailyGain = dailyLimit * efficiencyFactor;
@@ -31,7 +31,7 @@ export const calculatePotentialGains = (
 
 /**
  * Calcule les revenus pour tous les plans d'abonnement sans référence au ROI
- * AJUSTÉ POUR ASSURER QUE LE PROFIT EST TOUJOURS POSITIF
+ * AJUSTÉ POUR DES VALEURS PLUS RÉALISTES
  */
 export const calculateAllPlansRevenue = (
   sessionsPerDay: number,
@@ -45,15 +45,15 @@ export const calculateAllPlansRevenue = (
       // Obtenir le prix de l'abonnement
       const subscriptionPrice = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] || 0;
       
-      // Calculer l'utilisation moyenne (entre 80% et 95% de la limite quotidienne)
+      // Calculer l'utilisation moyenne (entre 65% et 85% de la limite quotidienne)
       // Plus de sessions = meilleure utilisation de la limite
-      const baseUtilization = 0.80 + (Math.min(sessionsPerDay, 5) / 5) * 0.15;
+      const baseUtilization = 0.65 + (Math.min(sessionsPerDay, 5) / 5) * 0.20;
       
-      // Multiplicateur de performance selon le plan (augmenté)
+      // Multiplicateur de performance selon le plan (plus réaliste)
       let performanceMultiplier = 1.0;
-      if (plan === 'starter') performanceMultiplier = 1.30;   // Augmenté de 1.15
-      if (plan === 'gold') performanceMultiplier = 1.45;      // Augmenté de 1.3
-      if (plan === 'elite') performanceMultiplier = 1.60;     // Augmenté de 1.45
+      if (plan === 'starter') performanceMultiplier = 1.10;
+      if (plan === 'gold') performanceMultiplier = 1.20;
+      if (plan === 'elite') performanceMultiplier = 1.30;
       
       // Calcul du revenu mensuel avec le multiplicateur
       const monthlyRevenue = dailyLimit * baseUtilization * daysPerMonth * performanceMultiplier;

@@ -26,7 +26,7 @@ const getDynamicMinimumValues = () => {
   const firstUseDate = localStorage.getItem('first_use_date');
   if (!firstUseDate) {
     const pastDate = new Date();
-    pastDate.setDate(pastDate.getDate() - 90); // 90 jours dans le passé par défaut
+    pastDate.setDate(pastDate.getDate() - 30); // 30 jours dans le passé (plus réaliste)
     localStorage.setItem('first_use_date', pastDate.toISOString());
   }
   
@@ -36,13 +36,12 @@ const getDynamicMinimumValues = () => {
   const diffTime = Math.abs(now.getTime() - installDate.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
-  // Facteur de progression basé sur l'ancienneté - croissance non linéaire
-  // Plus l'app est utilisée longtemps, plus la progression s'accélère
-  const progressFactor = Math.min(1 + (diffDays * 0.01) + (Math.pow(diffDays, 1.5) / 10000), 5);
+  // Facteur de progression basé sur l'ancienneté - croissance plus modérée
+  const progressFactor = Math.min(1 + (diffDays * 0.005), 2.5); // Max 2.5x après 300 jours
   
   return {
-    minAdsCount: Math.floor(60000 * progressFactor), // Valeur de base * facteur de progression
-    minRevenueCount: 55000 * progressFactor // Valeur de base * facteur de progression
+    minAdsCount: Math.floor(12000 * progressFactor), // Valeur de base plus réaliste
+    minRevenueCount: 8500 * progressFactor // Valeur de base plus réaliste
   };
 };
 
@@ -80,23 +79,27 @@ export const useStatsInitialization = ({
       const safeAds = Math.max(minAdsCount, storedValues.adsCount);
       const safeRevenue = Math.max(minRevenueCount, storedValues.revenueCount);
       
-      setAdsCount(safeAds);
-      setRevenueCount(safeRevenue);
-      setDisplayedAdsCount(safeAds);
-      setDisplayedRevenueCount(safeRevenue);
+      // Plafonner à des valeurs raisonnables
+      const cappedAds = Math.min(safeAds, 120000);
+      const cappedRevenue = Math.min(safeRevenue, 85000);
+      
+      setAdsCount(cappedAds);
+      setRevenueCount(cappedRevenue);
+      setDisplayedAdsCount(cappedAds);
+      setDisplayedRevenueCount(cappedRevenue);
       setInitialized(true);
       
       // Sauvegarder les valeurs sécurisées
-      saveValues(safeAds, safeRevenue);
+      saveValues(cappedAds, cappedRevenue);
       return;
     }
     
     // Si pas de valeurs stockées, calculer des valeurs initiales avec progression basée sur le temps
     const { initialAds, initialRevenue } = calculateInitialValues(dailyAdsTarget, dailyRevenueTarget);
     
-    // Garantir des valeurs minimales élevées
-    const safeAds = Math.max(minAdsCount, initialAds);
-    const safeRevenue = Math.max(minRevenueCount, initialRevenue);
+    // Garantir des valeurs minimales réalistes et plafonner
+    const safeAds = Math.min(Math.max(minAdsCount, initialAds), 120000);
+    const safeRevenue = Math.min(Math.max(minRevenueCount, initialRevenue), 85000);
     
     setAdsCount(safeAds);
     setRevenueCount(safeRevenue);

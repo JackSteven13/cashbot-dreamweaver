@@ -4,10 +4,10 @@
  * avec une progression continue au fil du temps
  */
 
-// Valeurs minimales beaucoup plus élevées pour assurer une cohérence avec l'usage à long terme
-const MINIMUM_ADS_COUNT = 40000;
-const MINIMUM_REVENUE_COUNT = 50000;
-const DAILY_PROGRESSIVE_FACTOR = 0.02; // 2% d'augmentation par jour
+// Valeurs minimales plus réalistes pour assurer une cohérence avec l'usage à long terme
+const MINIMUM_ADS_COUNT = 12000;
+const MINIMUM_REVENUE_COUNT = 8500;
+const DAILY_PROGRESSIVE_FACTOR = 0.01; // 1% d'augmentation par jour (plus modéré)
 
 /**
  * Charge les valeurs stockées avec progression temporelle
@@ -25,7 +25,7 @@ export const loadStoredValues = () => {
     if (storageDate) {
       const daysDifference = getDaysDifference(new Date(storageDate), new Date());
       if (daysDifference > 0) {
-        // Progression plus importante dans le temps - accumulation exponentielle
+        // Progression plus modérée dans le temps - accumulation linéaire
         const progressFactor = 1 + (DAILY_PROGRESSIVE_FACTOR * Math.min(daysDifference, 30));
         adsCount = Math.floor(adsCount * progressFactor);
         revenueCount = revenueCount * progressFactor;
@@ -34,6 +34,10 @@ export const loadStoredValues = () => {
         saveValues(adsCount, revenueCount);
       }
     }
+    
+    // Plafonnement des valeurs à des chiffres crédibles
+    adsCount = Math.min(adsCount, 120000);
+    revenueCount = Math.min(revenueCount, 85000);
     
     // Toujours s'assurer que les valeurs minimales sont respectées
     adsCount = Math.max(MINIMUM_ADS_COUNT, adsCount);
@@ -63,14 +67,18 @@ export const saveValues = (adsCount: number, revenueCount: number, skipDateUpdat
     const safeAdsCount = Math.max(MINIMUM_ADS_COUNT, adsCount);
     const safeRevenueCount = Math.max(MINIMUM_REVENUE_COUNT, revenueCount);
     
-    localStorage.setItem('stats_ads_count', safeAdsCount.toString());
-    localStorage.setItem('stats_revenue_count', safeRevenueCount.toString());
+    // Plafonnement à des valeurs raisonnables
+    const cappedAdsCount = Math.min(safeAdsCount, 120000);
+    const cappedRevenueCount = Math.min(safeRevenueCount, 85000);
+    
+    localStorage.setItem('stats_ads_count', cappedAdsCount.toString());
+    localStorage.setItem('stats_revenue_count', cappedRevenueCount.toString());
     
     if (!skipDateUpdate) {
       localStorage.setItem('stats_storage_date', new Date().toDateString());
     }
     
-    return { safeAdsCount, safeRevenueCount };
+    return { safeAdsCount: cappedAdsCount, safeRevenueCount: cappedRevenueCount };
   } catch (error) {
     console.error('Erreur lors de la sauvegarde des valeurs :', error);
     return { safeAdsCount: adsCount, safeRevenueCount: revenueCount };
@@ -134,12 +142,11 @@ export const getDateConsistentStats = () => {
   const installDate = localStorage.getItem('first_use_date') || new Date().toISOString();
   const daysSinceInstall = getDaysDifference(new Date(installDate), new Date());
   
-  // Effet cumulatif: plus l'app est utilisée longtemps, plus les valeurs augmentent
-  // Assure une progression à long terme jusqu'à des valeurs élevées
-  const ageBonus = Math.min(daysSinceInstall * 0.1, 30) / 100; // max +30% après 300 jours
+  // Effet cumulatif plus modéré: augmentation graduelle et plafonnée
+  const ageBonus = Math.min(daysSinceInstall * 0.05, 20) / 100; // max +20% après 400 jours
   
-  const adsCount = Math.floor(base.adsCount * (1 + ageBonus));
-  const revenueCount = base.revenueCount * (1 + ageBonus);
+  const adsCount = Math.min(Math.floor(base.adsCount * (1 + ageBonus)), 120000);
+  const revenueCount = Math.min(base.revenueCount * (1 + ageBonus), 85000);
   
   return {
     adsCount,

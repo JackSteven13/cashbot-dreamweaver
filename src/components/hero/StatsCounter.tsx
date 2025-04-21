@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
@@ -16,17 +15,17 @@ interface StatsCounterProps {
 }
 
 const StatsCounter = ({
-  dailyAdsTarget = 35000, // Valeur plus réaliste
-  dailyRevenueTarget = 15000 // Valeur plus réaliste
+  dailyAdsTarget = 15000, // Valeur plus réaliste
+  dailyRevenueTarget = 8000 // Valeur plus réaliste
 }: StatsCounterProps) => {
   const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
     dailyAdsTarget,
     dailyRevenueTarget
   });
 
-  // Base de départ plus élevée pour permettre une progression plus visible
-  const MINIMUM_ADS = 60000;
-  const MINIMUM_REVENUE = 55000;
+  // Base de départ plus réaliste pour une progression crédible
+  const MINIMUM_ADS = 12000;
+  const MINIMUM_REVENUE = 8500;
 
   // Utiliser useRef pour stocker des valeurs stables entre les rendus
   const stableValuesRef = useRef({
@@ -41,8 +40,8 @@ const StatsCounter = ({
     // Récupérer des valeurs cohérentes dès le début
     const consistentStats = getDateConsistentStats();
     return {
-      adsCount: Math.max(MINIMUM_ADS, consistentStats.adsCount),
-      revenueCount: Math.max(MINIMUM_REVENUE, consistentStats.revenueCount)
+      adsCount: Math.min(Math.max(MINIMUM_ADS, consistentStats.adsCount), 120000),
+      revenueCount: Math.min(Math.max(MINIMUM_REVENUE, consistentStats.revenueCount), 85000)
     };
   });
 
@@ -51,9 +50,9 @@ const StatsCounter = ({
     // Récupérer ou créer la date d'installation
     const firstUseDate = localStorage.getItem('first_use_date');
     if (!firstUseDate) {
-      // Définir une date antérieure pour simuler une utilisation plus longue (90 jours dans le passé)
+      // Définir une date antérieure pour simuler une utilisation plus longue (30 jours dans le passé)
       const pastDate = new Date();
-      pastDate.setDate(pastDate.getDate() - 90);
+      pastDate.setDate(pastDate.getDate() - 30);
       localStorage.setItem('first_use_date', pastDate.toISOString());
     }
     
@@ -63,9 +62,8 @@ const StatsCounter = ({
     const diffTime = Math.abs(now.getTime() - installDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    // Calculer un facteur de progression basé sur l'ancienneté
-    // Plus l'app est utilisée longtemps, plus la progression est importante
-    const progressFactor = Math.min(1 + (diffDays * 0.01), 2);
+    // Calculer un facteur de progression basé sur l'ancienneté - plus modéré
+    const progressFactor = Math.min(1 + (diffDays * 0.005), 2); // Maximum double après 200 jours
     
     return {
       diffDays,
