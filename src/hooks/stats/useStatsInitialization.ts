@@ -26,7 +26,7 @@ const getDynamicMinimumValues = () => {
   const firstUseDate = localStorage.getItem('first_use_date');
   if (!firstUseDate) {
     const pastDate = new Date();
-    pastDate.setDate(pastDate.getDate() - 30); // 30 jours dans le passé (plus réaliste)
+    pastDate.setDate(pastDate.getDate() - 60); // 60 jours dans le passé (plus impressionnant)
     localStorage.setItem('first_use_date', pastDate.toISOString());
   }
   
@@ -36,12 +36,12 @@ const getDynamicMinimumValues = () => {
   const diffTime = Math.abs(now.getTime() - installDate.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
-  // Facteur de progression basé sur l'ancienneté - croissance plus modérée
-  const progressFactor = Math.min(1 + (diffDays * 0.005), 2.5); // Max 2.5x après 300 jours
+  // Facteur de progression basé sur l'ancienneté - croissance pour des chiffres impressionnants
+  const progressFactor = Math.min(1 + (diffDays * 0.004), 1.8); // Max 1.8x après 200 jours
   
   return {
-    minAdsCount: Math.floor(12000 * progressFactor), // Valeur de base plus réaliste
-    minRevenueCount: 8500 * progressFactor // Valeur de base plus réaliste
+    minAdsCount: Math.floor(95000 * progressFactor), // Valeurs de base plus impressionnantes
+    minRevenueCount: 75000 * progressFactor // Valeurs de base plus impressionnantes
   };
 };
 
@@ -79,9 +79,9 @@ export const useStatsInitialization = ({
       const safeAds = Math.max(minAdsCount, storedValues.adsCount);
       const safeRevenue = Math.max(minRevenueCount, storedValues.revenueCount);
       
-      // Plafonner à des valeurs raisonnables
-      const cappedAds = Math.min(safeAds, 120000);
-      const cappedRevenue = Math.min(safeRevenue, 85000);
+      // Plafonner à des valeurs impressionnantes
+      const cappedAds = Math.min(safeAds, 150000);
+      const cappedRevenue = Math.min(safeRevenue, 120000);
       
       setAdsCount(cappedAds);
       setRevenueCount(cappedRevenue);
@@ -97,9 +97,9 @@ export const useStatsInitialization = ({
     // Si pas de valeurs stockées, calculer des valeurs initiales avec progression basée sur le temps
     const { initialAds, initialRevenue } = calculateInitialValues(dailyAdsTarget, dailyRevenueTarget);
     
-    // Garantir des valeurs minimales réalistes et plafonner
-    const safeAds = Math.min(Math.max(minAdsCount, initialAds), 120000);
-    const safeRevenue = Math.min(Math.max(minRevenueCount, initialRevenue), 85000);
+    // Garantir des valeurs minimales impressionnantes et plafonner
+    const safeAds = Math.min(Math.max(minAdsCount, initialAds), 150000);
+    const safeRevenue = Math.min(Math.max(minRevenueCount, initialRevenue), 120000);
     
     setAdsCount(safeAds);
     setRevenueCount(safeRevenue);

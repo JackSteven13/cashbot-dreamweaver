@@ -30,8 +30,7 @@ export const calculatePotentialGains = (
 };
 
 /**
- * Calcule les revenus pour tous les plans d'abonnement sans référence au ROI
- * AJUSTÉ POUR DES VALEURS PLUS RÉALISTES
+ * Calcule les revenus pour tous les plans d'abonnement avec des valeurs crédibles
  */
 export const calculateAllPlansRevenue = (
   sessionsPerDay: number,
@@ -49,11 +48,11 @@ export const calculateAllPlansRevenue = (
       // Plus de sessions = meilleure utilisation de la limite
       const baseUtilization = 0.65 + (Math.min(sessionsPerDay, 5) / 5) * 0.20;
       
-      // Multiplicateur de performance selon le plan (plus réaliste)
+      // Multiplicateur de performance selon le plan (valeurs crédibles)
       let performanceMultiplier = 1.0;
-      if (plan === 'starter') performanceMultiplier = 1.10;
-      if (plan === 'gold') performanceMultiplier = 1.20;
-      if (plan === 'elite') performanceMultiplier = 1.30;
+      if (plan === 'starter') performanceMultiplier = 1.05; // 5% de bonus
+      if (plan === 'gold') performanceMultiplier = 1.12;    // 12% de bonus
+      if (plan === 'elite') performanceMultiplier = 1.20;   // 20% de bonus
       
       // Calcul du revenu mensuel avec le multiplicateur
       const monthlyRevenue = dailyLimit * baseUtilization * daysPerMonth * performanceMultiplier;
