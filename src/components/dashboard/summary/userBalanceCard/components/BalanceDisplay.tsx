@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { CircleDollarSign, TrendingUp, Award } from 'lucide-react';
 import { useAnimatedCounter } from '@/hooks/useAnimatedCounter';
@@ -26,9 +25,13 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   isBotActive = true,
   subscription = 'freemium'
 }) => {
-  // Utiliser balanceManager comme source unique de vérité
+  // S'assurer que displayBalance est toujours un nombre valide
+  const safeDisplayBalance = isNaN(displayBalance) ? 0 : displayBalance;
+  
+  // Utiliser balanceManager comme source unique de vérité avec vérification
   const [stableBalance, setStableBalance] = useState(() => {
-    return balanceManager.getCurrentBalance() || displayBalance;
+    const initialBalance = balanceManager.getCurrentBalance();
+    return isNaN(initialBalance) ? safeDisplayBalance : initialBalance;
   });
   
   // État pour suivre les animations
@@ -36,8 +39,9 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const [gainAmount, setGainAmount] = useState<number | null>(null);
   
   // Utiliser le solde stable pour l'affichage ou la prop si elle est fournie
-  const effectiveBalance = animatedBalance !== undefined ? 
-    animatedBalance : (stableBalance || displayBalance);
+  const effectiveBalance = typeof animatedBalance === 'number' && !isNaN(animatedBalance) 
+    ? animatedBalance 
+    : (isNaN(stableBalance) ? 0 : stableBalance);
   
   const { formattedValue } = useAnimatedCounter({
     value: effectiveBalance,
@@ -51,6 +55,12 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   // S'abonner aux changements de solde via balanceManager
   useEffect(() => {
     const unsubscribe = balanceManager.addWatcher((newBalance) => {
+      // Vérifier que la nouvelle valeur est un nombre valide
+      if (isNaN(newBalance)) {
+        console.error("Balance watcher received NaN value");
+        return;
+      }
+      
       // Get the old balance for comparison
       const oldBalance = stableBalance;
       
@@ -91,65 +101,24 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     return unsubscribe;
   }, [stableBalance]);
   
-  // Écouter les événements de mise à jour du solde pour les animations
-  useEffect(() => {
-    const handleBalanceUpdate = (event: CustomEvent) => {
-      const amount = event.detail?.amount;
-      const currentBalance = event.detail?.currentBalance;
-      const animate = event.detail?.animate !== false;
-      
-      if (!animate) return;
-      
-      // Mettre à jour le solde si spécifié et différent
-      if (currentBalance !== undefined && Math.abs(currentBalance - stableBalance) > 0.01) {
-        setStableBalance(currentBalance);
-      }
-      
-      // Afficher l'animation de gain si un montant est spécifié
-      if (amount !== undefined && amount > 0) {
-        setGainAmount(amount);
-        setIsAnimating(true);
-        
-        // Effet visuel
-        if (balanceRef.current) {
-          createMoneyParticles(balanceRef.current, Math.min(15, Math.ceil(amount * 20)));
-          setShowRain(true);
-          
-          const timer = setTimeout(() => {
-            setShowRain(false);
-            setIsAnimating(false);
-            setGainAmount(null);
-          }, 3000);
-          return () => clearTimeout(timer);
-        }
-      }
-    };
-    
-    // Écouter les événements de mise à jour du solde
-    window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
-    window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
-    window.addEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
-    
-    // Nettoyage
-    return () => {
-      window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
-      window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
-      window.removeEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
-    };
-  }, [stableBalance]);
-  
   // Synchroniser le solde affiché avec displayBalance quand celui-ci change significativement
   useEffect(() => {
-    if (Math.abs(displayBalance - stableBalance) > 0.5) {
+    // S'assurer que toutes les valeurs sont numériques
+    const safeDisplayBalance = isNaN(displayBalance) ? 0 : displayBalance;
+    const safeStableBalance = isNaN(stableBalance) ? 0 : stableBalance;
+    
+    if (safeDisplayBalance > 0 && Math.abs(safeDisplayBalance - safeStableBalance) > 0.5) {
       // Si différence significative, synchroniser mais ne pas animer
       setStableBalance(prev => {
+        const safePrev = isNaN(prev) ? 0 : prev;
         // Privilégier la valeur la plus élevée pour éviter de décevoir l'utilisateur
-        return Math.max(prev, displayBalance);
+        return Math.max(safePrev, safeDisplayBalance);
       });
       
       // Synchroniser aussi le balanceManager
-      if (Math.abs(displayBalance - balanceManager.getCurrentBalance()) > 0.5) {
-        balanceManager.forceBalanceSync(displayBalance);
+      const currentBalance = balanceManager.getCurrentBalance();
+      if (Math.abs(safeDisplayBalance - (isNaN(currentBalance) ? 0 : currentBalance)) > 0.5) {
+        balanceManager.forceBalanceSync(safeDisplayBalance);
       }
     }
   }, [displayBalance, stableBalance]);

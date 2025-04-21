@@ -15,9 +15,21 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
       
       // Récupérer le solde local avant toute opération réseau
       const localBalance = balanceManager.getCurrentBalance();
-      const highestLocalBalance = balanceManager.getHighestBalance();
+      let highestLocalBalance = 0;
       
-      console.log(`Solde local avant chargement: ${localBalance}€ (record: ${highestLocalBalance}€)`);
+      // Vérifier si getHighestBalance existe et l'utiliser
+      if (typeof balanceManager.getHighestBalance === 'function') {
+        highestLocalBalance = balanceManager.getHighestBalance();
+      } else {
+        // Fallback si la méthode n'existe pas
+        highestLocalBalance = parseFloat(localStorage.getItem('highest_balance') || '0');
+      }
+      
+      // S'assurer que les valeurs sont des nombres valides
+      const validLocalBalance = isNaN(localBalance) ? 0 : localBalance;
+      const validHighestBalance = isNaN(highestLocalBalance) ? 0 : highestLocalBalance;
+      
+      console.log(`Solde local avant chargement: ${validLocalBalance}€ (record: ${validHighestBalance}€)`);
       
       // Fetch balance from user_balances table instead of profiles
       const { data: balanceData, error: balanceError } = await supabase
@@ -29,18 +41,18 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
       if (balanceError) {
         console.error("Error loading balance:", balanceError);
         
-        // En cas d'erreur, utiliser le solde local s'il existe
-        if (localBalance > 0) {
-          console.log(`Utilisation du solde local en cas d'erreur: ${localBalance}€`);
+        // En cas d'erreur, utiliser le solde local s'il existe et est valide
+        if (validLocalBalance > 0) {
+          console.log(`Utilisation du solde local en cas d'erreur: ${validLocalBalance}€`);
           setIsBalanceLoaded(true);
           
           // Informer le système que les données utilisateur sont chargées avec le solde local
           window.dispatchEvent(new CustomEvent('user:data-loaded', { 
-            detail: { balance: localBalance, source: 'local-fallback' }
+            detail: { balance: validLocalBalance, source: 'local-fallback' }
           }));
           
           return {
-            balance: localBalance,
+            balance: validLocalBalance,
             loaded: true
           };
         }
@@ -50,10 +62,13 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
       
       // If balance exists, use it
       if (balanceData && typeof balanceData.balance === 'number') {
-        const serverBalance = parseFloat(balanceData.balance.toFixed(2));
+        // S'assurer que serverBalance est un nombre valide
+        const serverBalance = balanceData.balance !== null && !isNaN(balanceData.balance) 
+          ? parseFloat(balanceData.balance.toFixed(2)) 
+          : 0;
         
         // Comparer avec le solde local et prendre le plus élevé
-        const effectiveBalance = Math.max(serverBalance, localBalance);
+        const effectiveBalance = Math.max(serverBalance, validLocalBalance, validHighestBalance);
         
         // If balance is zero or very low, might be a new user
         if (effectiveBalance <= 0.1) {
@@ -69,15 +84,25 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
         // Synchronize with balance manager, always keeping the highest value
         balanceManager.forceBalanceSync(effectiveBalance, userId);
         
-        console.log(`Solde chargé: ${effectiveBalance}€ (serveur: ${serverBalance}€, local: ${localBalance}€)`);
+        console.log(`Solde chargé: ${effectiveBalance}€ (serveur: ${serverBalance}€, local: ${validLocalBalance}€)`);
         setIsBalanceLoaded(true);
         
         // Store highest balance seen
-        balanceManager.updateHighestBalance(effectiveBalance);
+        if (typeof balanceManager.updateHighestBalance === 'function') {
+          balanceManager.updateHighestBalance(effectiveBalance);
+        } else {
+          // Fallback si la méthode n'existe pas
+          localStorage.setItem('highest_balance', effectiveBalance.toString());
+        }
         
         // Informer le système que les données utilisateur sont chargées
         window.dispatchEvent(new CustomEvent('user:data-loaded', { 
-          detail: { balance: effectiveBalance, serverBalance, localBalance, source: 'server' }
+          detail: { 
+            balance: effectiveBalance, 
+            serverBalance, 
+            localBalance: validLocalBalance, 
+            source: 'server' 
+          }
         }));
         
         return {
@@ -88,18 +113,18 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
         console.log("No balance found, user might be new");
         
         // Si aucun solde serveur mais un solde local existe et est significatif
-        if (localBalance > 0.5) {
-          console.log(`Utilisation du solde local existant: ${localBalance}€`);
+        if (validLocalBalance > 0.5) {
+          console.log(`Utilisation du solde local existant: ${validLocalBalance}€`);
           setIsBalanceLoaded(true);
           setIsNewUser(false);
           
           // Informer le système que les données utilisateur sont chargées
           window.dispatchEvent(new CustomEvent('user:data-loaded', { 
-            detail: { balance: localBalance, source: 'local-only' }
+            detail: { balance: validLocalBalance, source: 'local-only' }
           }));
           
           return {
-            balance: localBalance,
+            balance: validLocalBalance,
             loaded: true
           };
         } else {
@@ -112,7 +137,10 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
       }
     } catch (error) {
       console.error("Error in loadUserBalance:", error);
-      return null;
+      return {
+        balance: 0,
+        loaded: false
+      };
     } finally {
       setIsBalanceLoading(false);
     }

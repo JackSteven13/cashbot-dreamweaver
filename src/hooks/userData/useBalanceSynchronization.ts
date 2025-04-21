@@ -1,17 +1,23 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { UserData } from '@/types/userData';
 import balanceManager from '@/utils/balance/balanceManager';
 import { toast } from '@/components/ui/use-toast';
 
 export const useBalanceSynchronization = (userData: UserData | null, isNewUser: boolean) => {
-  // Utiliser balanceManager comme source unique de vérité
+  // Utiliser balanceManager comme source unique de vérité avec garantie de valeur numérique
   const [effectiveBalance, setEffectiveBalance] = useState(() => {
-    return balanceManager.getCurrentBalance();
+    const initialBalance = balanceManager.getCurrentBalance();
+    return isNaN(initialBalance) ? 0 : initialBalance;
   });
+  
   const firstSyncRef = useRef<boolean>(true);
   const lastSyncTimeRef = useRef<number>(0);
-  const highestBalanceRef = useRef<number>(balanceManager.getHighestBalance());
+  const highestBalanceRef = useRef<number>(() => {
+    const highest = typeof balanceManager.getHighestBalance === 'function' 
+      ? balanceManager.getHighestBalance() 
+      : parseFloat(localStorage.getItem('highest_balance') || '0');
+    return isNaN(highest) ? 0 : highest;
+  });
   
   // Synchronisation initiale et lorsque les données utilisateur changent
   useEffect(() => {
@@ -36,13 +42,21 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
     if (firstSyncRef.current && userData.balance !== undefined) {
       console.log(`Première synchronisation du solde: ${userData.balance}€`);
       
-      // Vérifier si on a un solde local plus élevé
+      // Garantir que toutes les valeurs sont des nombres valides
       const currentLocalBalance = balanceManager.getCurrentBalance();
-      const highestStoredBalance = balanceManager.getHighestBalance();
-      const serverBalance = userData.balance;
+      const validLocalBalance = isNaN(currentLocalBalance) ? 0 : currentLocalBalance;
+      
+      const highestStored = typeof balanceManager.getHighestBalance === 'function' 
+        ? balanceManager.getHighestBalance() 
+        : parseFloat(localStorage.getItem('highest_balance') || '0');
+      const validHighestBalance = isNaN(highestStored) ? 0 : highestStored;
+      
+      const serverBalance = userData.balance !== null && !isNaN(userData.balance) 
+        ? userData.balance 
+        : 0;
       
       // Utiliser le solde le plus élevé parmi toutes les sources
-      const effectiveBalance = Math.max(serverBalance, currentLocalBalance, highestStoredBalance);
+      const effectiveBalance = Math.max(serverBalance, validLocalBalance, validHighestBalance);
       
       if (effectiveBalance > serverBalance) {
         console.log(`Le solde local (${effectiveBalance}€) est plus élevé que celui du serveur (${serverBalance}€)`);
@@ -50,10 +64,15 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
       
       // Synchroniser le gestionnaire avec le solde le plus élevé
       balanceManager.forceBalanceSync(effectiveBalance);
-      balanceManager.updateHighestBalance(effectiveBalance);
+      
+      if (typeof balanceManager.updateHighestBalance === 'function') {
+        balanceManager.updateHighestBalance(effectiveBalance);
+      } else {
+        localStorage.setItem('highest_balance', effectiveBalance.toString());
+      }
       
       // Si le solde local est significativement plus élevé, afficher une notification
-      if (effectiveBalance > serverBalance * 1.2) { // 20% de différence
+      if (effectiveBalance > serverBalance * 1.2 && effectiveBalance - serverBalance > 0.5) {
         toast({
           title: "Solde synchronisé",
           description: "Un solde plus élevé a été trouvé localement et a été restauré.",
@@ -61,44 +80,60 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
         });
       }
       
+      // Mettre à jour l'état local
+      setEffectiveBalance(effectiveBalance);
       firstSyncRef.current = false;
     }
     // Synchronisations ultérieures - comparer avec le serveur mais éviter de réduire le solde local
     else if (userData.balance !== undefined) {
       const currentLocalBalance = balanceManager.getCurrentBalance();
-      const highestStoredBalance = balanceManager.getHighestBalance();
-      const serverBalance = userData.balance;
+      const validLocalBalance = isNaN(currentLocalBalance) ? 0 : currentLocalBalance;
+      
+      const highestStored = typeof balanceManager.getHighestBalance === 'function' 
+        ? balanceManager.getHighestBalance() 
+        : parseFloat(localStorage.getItem('highest_balance') || '0');
+      const validHighestBalance = isNaN(highestStored) ? 0 : highestStored;
+      
+      const serverBalance = userData.balance !== null && !isNaN(userData.balance) 
+        ? userData.balance 
+        : 0;
       
       // Si le solde stocké localement est plus élevé que celui du serveur
-      if (Math.max(currentLocalBalance, highestStoredBalance) > serverBalance) {
-        console.log(`Solde local (${Math.max(currentLocalBalance, highestStoredBalance)}€) supérieur au serveur (${serverBalance}€)`);
+      if (Math.max(validLocalBalance, validHighestBalance) > serverBalance) {
+        console.log(`Solde local (${Math.max(validLocalBalance, validHighestBalance)}€) supérieur au serveur (${serverBalance}€)`);
         
         // Utiliser le plus élevé des deux soldes
-        const effectiveBalance = Math.max(currentLocalBalance, highestStoredBalance);
-        balanceManager.forceBalanceSync(effectiveBalance);
+        const effectiveBal = Math.max(validLocalBalance, validHighestBalance);
+        balanceManager.forceBalanceSync(effectiveBal);
         
         // Mettre à jour le solde le plus élevé si nécessaire
-        if (effectiveBalance > highestBalanceRef.current) {
-          balanceManager.updateHighestBalance(effectiveBalance);
-          highestBalanceRef.current = effectiveBalance;
+        if (effectiveBal > highestBalanceRef.current) {
+          if (typeof balanceManager.updateHighestBalance === 'function') {
+            balanceManager.updateHighestBalance(effectiveBal);
+          }
+          highestBalanceRef.current = effectiveBal;
         }
+        
+        // Mettre à jour l'état local
+        setEffectiveBalance(effectiveBal);
       } 
       // Si le solde du serveur est plus élevé que le local
-      else if (serverBalance > currentLocalBalance) {
-        console.log(`Solde du serveur (${serverBalance}€) supérieur au solde local (${currentLocalBalance}€)`);
+      else if (serverBalance > validLocalBalance) {
+        console.log(`Solde du serveur (${serverBalance}€) supérieur au solde local (${validLocalBalance}€)`);
         balanceManager.forceBalanceSync(serverBalance);
         
         // Mettre à jour le solde le plus élevé si nécessaire
         if (serverBalance > highestBalanceRef.current) {
-          balanceManager.updateHighestBalance(serverBalance);
+          if (typeof balanceManager.updateHighestBalance === 'function') {
+            balanceManager.updateHighestBalance(serverBalance);
+          }
           highestBalanceRef.current = serverBalance;
         }
+        
+        // Mettre à jour l'état local
+        setEffectiveBalance(serverBalance);
       }
     }
-    
-    // Toujours mettre à jour l'état local avec le solde stable
-    const stableBalance = balanceManager.getCurrentBalance();
-    setEffectiveBalance(stableBalance);
   }, [userData, isNewUser]);
   
   // Effet pour la croissance automatique quotidienne
@@ -130,50 +165,16 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
     return () => clearInterval(interval);
   }, [isNewUser]);
   
-  // S'abonner aux changements de solde via balanceManager
+  // Écouter les modifications du balanceManager
   useEffect(() => {
-    const unsubscribe = balanceManager.addWatcher((newBalance) => {
-      setEffectiveBalance(newBalance);
-    });
-    
-    return unsubscribe;
-  }, []);
-  
-  // Écouter l'événement de croissance quotidienne
-  useEffect(() => {
-    const handleDailyGrowth = (event: CustomEvent) => {
-      const { growth, newBalance } = event.detail;
-      console.log(`[BalanceSynchronization] Daily growth detected: +${growth.toFixed(2)}€`);
-      
-      // Mettre à jour le solde affiché
-      setEffectiveBalance(newBalance);
-    };
-    
-    // Écouter l'événement de restauration de solde
-    const handleBalanceRestored = (event: CustomEvent) => {
-      const { balance, previousBalance } = event.detail;
-      
-      if (balance > previousBalance) {
-        console.log(`[BalanceSynchronization] Balance restored: ${previousBalance}€ -> ${balance}€`);
-        
-        // Notifier l'utilisateur
-        toast({
-          title: "Solde restauré",
-          description: `Votre solde précédent de ${balance.toFixed(2)}€ a été restauré.`,
-          duration: 5000
-        });
-        
-        setEffectiveBalance(balance);
+    const handleBalanceChange = (newBalance: number) => {
+      if (!isNaN(newBalance)) {
+        setEffectiveBalance(newBalance);
       }
     };
     
-    window.addEventListener('balance:daily-growth', handleDailyGrowth as EventListener);
-    window.addEventListener('balance:restored', handleBalanceRestored as EventListener);
-    
-    return () => {
-      window.removeEventListener('balance:daily-growth', handleDailyGrowth as EventListener);
-      window.removeEventListener('balance:restored', handleBalanceRestored as EventListener);
-    };
+    const unsubscribe = balanceManager.addWatcher(handleBalanceChange);
+    return unsubscribe;
   }, []);
   
   // Fonction de synchronisation manuelle
@@ -190,33 +191,41 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
     if (now - lastSyncTimeRef.current < 2000) return;
     lastSyncTimeRef.current = now;
     
-    // Obtenir le solde local actuel
+    // S'assurer que toutes les valeurs sont numériques
     const currentLocalBalance = balanceManager.getCurrentBalance();
-    const highestStoredBalance = balanceManager.getHighestBalance();
+    const validLocalBalance = isNaN(currentLocalBalance) ? 0 : currentLocalBalance;
+    
+    const highestStored = typeof balanceManager.getHighestBalance === 'function' 
+      ? balanceManager.getHighestBalance() 
+      : parseFloat(localStorage.getItem('highest_balance') || '0');
+    const validHighestBalance = isNaN(highestStored) ? 0 : highestStored;
+    
+    const serverBalance = userData.balance !== null && !isNaN(userData.balance) 
+      ? userData.balance 
+      : 0;
     
     // Déterminer le solde effectif à utiliser
-    const effectiveLocalBalance = Math.max(currentLocalBalance, highestStoredBalance);
-    const serverBalance = userData.balance;
+    const effectiveLocalBalance = Math.max(validLocalBalance, validHighestBalance);
     
     // Toujours utiliser le solde le plus élevé entre local et serveur
     if (effectiveLocalBalance > serverBalance) {
       console.log(`Synchronisation manuelle: solde local (${effectiveLocalBalance}€) supérieur au serveur (${serverBalance}€)`);
       balanceManager.forceBalanceSync(effectiveLocalBalance);
-    } else if (serverBalance > currentLocalBalance) {
-      console.log(`Synchronisation manuelle: solde serveur (${serverBalance}€) supérieur au local (${currentLocalBalance}€)`);
+      setEffectiveBalance(effectiveLocalBalance);
+    } else if (serverBalance > validLocalBalance) {
+      console.log(`Synchronisation manuelle: solde serveur (${serverBalance}€) supérieur au local (${validLocalBalance}€)`);
       balanceManager.forceBalanceSync(serverBalance);
+      setEffectiveBalance(serverBalance);
     }
     
     // Mettre à jour le solde le plus élevé
     const highestBalance = Math.max(effectiveLocalBalance, serverBalance);
     if (highestBalance > highestBalanceRef.current) {
-      balanceManager.updateHighestBalance(highestBalance);
+      if (typeof balanceManager.updateHighestBalance === 'function') {
+        balanceManager.updateHighestBalance(highestBalance);
+      }
       highestBalanceRef.current = highestBalance;
     }
-    
-    // Mettre à jour l'état local avec le solde le plus élevé
-    const stableBalance = balanceManager.getCurrentBalance();
-    setEffectiveBalance(stableBalance);
   }, [userData, isNewUser]);
   
   return {

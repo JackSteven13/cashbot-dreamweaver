@@ -17,10 +17,17 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   isLoading = false, 
   subscription = "freemium" 
 }) => {
+  // Garantir que balance est toujours une valeur numérique valide
+  const safeBalance = !isNaN(balance) ? balance : 0;
+  
   // Use a single source of truth for the balance
   const [displayBalance, setDisplayBalance] = useState<number>(() => {
-    const storedBalance = parseFloat(localStorage.getItem('lastKnownBalance') || '0');
-    return storedBalance > 0 ? storedBalance : balance || 0;
+    // Récupérer et valider le solde stocké
+    const storedValue = localStorage.getItem('lastKnownBalance');
+    const storedBalance = storedValue ? parseFloat(storedValue) : 0;
+    
+    // Utiliser la valeur stockée si elle est valide, sinon utiliser la prop balance (avec vérification)
+    return !isNaN(storedBalance) && storedBalance > 0 ? storedBalance : safeBalance;
   });
   
   const [prevBalance, setPrevBalance] = useState<number>(displayBalance);
@@ -39,20 +46,22 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     formatOptions: { style: 'currency', currency: 'EUR' }
   });
   
-  // Synchroniser avec la balance prop
+  // Synchroniser avec la balance prop - avec validation
   useEffect(() => {
     const now = Date.now();
+    const safeCurrentBalance = isNaN(displayBalance) ? 0 : displayBalance;
+    
     // Seulement mettre à jour si assez de temps s'est écoulé depuis la dernière mise à jour
     // ou si la différence est significative et positive
-    if ((now - lastUpdateTime.current > updateDebounceTime || 
-        Math.abs(balance - displayBalance) > 0.15) && 
-        balance > displayBalance) {
+    if (((now - lastUpdateTime.current > updateDebounceTime || 
+        Math.abs(safeBalance - safeCurrentBalance) > 0.15) && 
+        safeBalance > safeCurrentBalance) && !isNaN(safeBalance)) {
       
-      console.log(`Updating display balance from ${displayBalance} to ${balance}`);
+      console.log(`Updating display balance from ${safeCurrentBalance} to ${safeBalance}`);
       
       // ANTI-SPAM: Limiter les mises à jour trop importantes ou trop fréquentes
       const timeSinceLastGain = now - lastGainTimeRef.current;
-      const gainAmount = balance - displayBalance;
+      const gainAmount = safeBalance - safeCurrentBalance;
       
       // Si le gain est trop important ou trop fréquent, limiter
       if (gainAmount > 0.5 && timeSinceLastGain < 60000) {
@@ -66,15 +75,15 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       }
       
       // Mise à jour avec contrôle de fréquence
-      setPrevBalance(displayBalance);
-      setDisplayBalance(balance);
-      setTargetValue(balance); // Important pour l'animation
+      setPrevBalance(safeCurrentBalance);
+      setDisplayBalance(safeBalance);
+      setTargetValue(safeBalance); // Important pour l'animation
       setIsAnimating(true);
       setGainAmount(gainAmount);
       
       // Enregistrer les valeurs dans le localStorage
-      localStorage.setItem('currentBalance', balance.toString());
-      localStorage.setItem('lastKnownBalance', balance.toString());
+      localStorage.setItem('currentBalance', safeBalance.toString());
+      localStorage.setItem('lastKnownBalance', safeBalance.toString());
       
       // Mettre à jour les compteurs de contrôle
       lastUpdateTime.current = now;
@@ -92,7 +101,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         consecutiveUpdatesRef.current = 0;
       }, 60000);
     }
-  }, [balance, displayBalance, setTargetValue]);
+  }, [balance, displayBalance, safeBalance, setTargetValue]);
   
   // Gestionnaire unifié pour les événements de mise à jour du solde avec anti-spam
   useEffect(() => {

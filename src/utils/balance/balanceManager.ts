@@ -127,9 +127,9 @@ class BalanceManager {
           this.userIds.add(userId);
         }
         
-        if (typeof newBalance === 'number') {
+        if (typeof newBalance === 'number' && !isNaN(newBalance)) {
           this.updateBalance(newBalance);
-        } else if (typeof gain === 'number') {
+        } else if (typeof gain === 'number' && !isNaN(gain)) {
           this.addToBalance(gain);
         }
       }) as EventListener);
@@ -159,7 +159,7 @@ class BalanceManager {
           this.userIds.add(userId);
         }
         
-        if (typeof balance === 'number' && balance > this.currentBalance) {
+        if (typeof balance === 'number' && !isNaN(balance) && balance > this.currentBalance) {
           this.updateBalance(balance);
         }
       }) as EventListener);
@@ -168,7 +168,7 @@ class BalanceManager {
       window.addEventListener('user:data-loaded', ((event: CustomEvent) => {
         const serverBalance = event.detail?.balance;
         
-        if (typeof serverBalance === 'number') {
+        if (typeof serverBalance === 'number' && !isNaN(serverBalance)) {
           // Comparer le solde du serveur avec celui stocké localement
           if (serverBalance > this.currentBalance) {
             console.log(`Le solde du serveur (${serverBalance}€) est supérieur au solde local (${this.currentBalance}€). Mise à jour...`);
@@ -251,9 +251,9 @@ class BalanceManager {
    * Met à jour le solde avec une nouvelle valeur
    */
   updateBalance(newBalance: number) {
-    // N'accepter que des valeurs positives ou nulles
-    if (newBalance < 0) {
-      console.warn("Tentative de mise à jour du solde avec une valeur négative:", newBalance);
+    // N'accepter que des valeurs positives ou nulles et valides
+    if (newBalance < 0 || isNaN(newBalance)) {
+      console.warn("Tentative de mise à jour du solde avec une valeur invalide:", newBalance);
       return;
     }
     
@@ -278,6 +278,12 @@ class BalanceManager {
    * Ajoute un montant au solde actuel
    */
   addToBalance(amount: number) {
+    // Vérifier que le montant est valide
+    if (isNaN(amount)) {
+      console.warn("Tentative d'ajout d'un montant invalide au solde:", amount);
+      return;
+    }
+    
     const newBalance = parseFloat((this.currentBalance + amount).toFixed(2));
     this.updateBalance(newBalance);
   }
@@ -286,7 +292,7 @@ class BalanceManager {
    * Ajoute un montant aux gains journaliers
    */
   addDailyGain(amount: number) {
-    if (amount <= 0) return;
+    if (amount <= 0 || isNaN(amount)) return;
     
     this.dailyGains = parseFloat((this.dailyGains + amount).toFixed(2));
     this.persistDailyGains();
@@ -299,7 +305,7 @@ class BalanceManager {
    * Définit les gains journaliers à une valeur spécifique
    */
   setDailyGains(amount: number) {
-    if (amount < 0) return;
+    if (amount < 0 || isNaN(amount)) return;
     
     this.dailyGains = parseFloat(amount.toFixed(2));
     this.persistDailyGains();
@@ -319,7 +325,7 @@ class BalanceManager {
    * Utile pour garantir la cohérence entre les différentes parties de l'application
    */
   forceBalanceSync(balance: number, userId?: string) {
-    if (typeof balance !== 'number' || balance < 0) {
+    if (typeof balance !== 'number' || isNaN(balance) || balance < 0) {
       console.warn("Tentative de synchronisation forcée avec une valeur invalide:", balance);
       return;
     }
@@ -406,6 +412,11 @@ class BalanceManager {
    */
   updateHighestBalance(balance: number): void {
     try {
+      // Vérifier que la valeur est valide
+      if (isNaN(balance) || balance < 0) {
+        return;
+      }
+      
       const current = this.getHighestBalance();
       if (balance > current) {
         localStorage.setItem(this.highestBalanceKey, balance.toString());
@@ -507,7 +518,8 @@ class BalanceManager {
    * et envoie un événement pour alerter le système
    */
   checkForSignificantBalanceChange(serverBalance: number): void {
-    if (!serverBalance) return;
+    // Vérifier que la valeur est valide
+    if (!serverBalance || isNaN(serverBalance)) return;
     
     const localBalance = this.currentBalance;
     const difference = Math.abs(localBalance - serverBalance);

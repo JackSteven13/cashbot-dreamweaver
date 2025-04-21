@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Coins } from 'lucide-react';
@@ -11,9 +12,16 @@ interface BalanceDisplayProps {
 }
 
 const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = false }) => {
+  // S'assurer que balance est toujours un nombre valide
+  const safeBalance = isNaN(balance) ? 0 : balance;
+  
+  // Initialiser avec un solde valide en vérifiant toutes les sources
   const [displayedBalance, setDisplayedBalance] = useState(() => {
-    return balanceManager.getCurrentBalance() || balance;
+    const managerBalance = balanceManager.getCurrentBalance();
+    const safeManagerBalance = isNaN(managerBalance) ? 0 : managerBalance;
+    return safeManagerBalance || safeBalance;
   });
+  
   const [isAnimating, setIsAnimating] = useState(false);
   const [previousBalance, setPreviousBalance] = useState<number | null>(null);
   const [gain, setGain] = useState<number | null>(null);
@@ -21,8 +29,15 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
   const lastUpdateTimeRef = useRef<number>(Date.now());
   const updateDebounceTime = 15000; // Temps minimum entre deux mises à jour
   
+  // S'abonner aux changements dans le gestionnaire de solde
   useEffect(() => {
     const unsubscribe = balanceManager.addWatcher((newBalance) => {
+      // Vérifier que la nouvelle valeur n'est pas NaN
+      if (isNaN(newBalance)) {
+        console.error("Received NaN balance from watcher");
+        return;
+      }
+      
       const now = Date.now();
       if (now - lastUpdateTimeRef.current < 15000) {
         console.log("Mise à jour du solde trop fréquente, ignorée");
@@ -31,7 +46,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
       
       lastUpdateTimeRef.current = now;
       
-      const oldBalance = displayedBalance;
+      const oldBalance = isNaN(displayedBalance) ? 0 : displayedBalance;
       
       if (Math.abs(newBalance - oldBalance) > 0.1) {
         setPreviousBalance(oldBalance);
@@ -52,22 +67,34 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
     return unsubscribe;
   }, [displayedBalance]);
   
+  // Mettre à jour si la prop balance change significativement
   useEffect(() => {
     const now = Date.now();
     if (now - lastUpdateTimeRef.current < 30000) {
       return;
     }
     
-    if (Math.abs(balance - displayedBalance) > 0.2) {
-      const gainAmount = Math.min(0.5, balance - displayedBalance);
+    // S'assurer que toutes les valeurs sont des nombres valides
+    const safeDisplayed = isNaN(displayedBalance) ? 0 : displayedBalance;
+    const safeBalanceProp = isNaN(balance) ? 0 : balance;
+    const currentManagerBalance = isNaN(balanceManager.getCurrentBalance()) ? 0 : balanceManager.getCurrentBalance();
+    
+    if (safeBalanceProp > 0 && Math.abs(safeBalanceProp - safeDisplayed) > 0.2) {
+      const gainAmount = Math.min(0.5, safeBalanceProp - safeDisplayed);
       if (gainAmount > 0) {
-        setPreviousBalance(displayedBalance);
+        setPreviousBalance(safeDisplayed);
         setGain(gainAmount);
         setIsAnimating(true);
-        setDisplayedBalance(prev => prev + gainAmount);
-        if (Math.abs(balance - balanceManager.getCurrentBalance()) > 0.2) {
-          balanceManager.forceBalanceSync(displayedBalance + gainAmount);
+        setDisplayedBalance(prev => {
+          const safePrev = isNaN(prev) ? 0 : prev;
+          return safePrev + gainAmount;
+        });
+        
+        // Synchroniser avec le gestionnaire de solde si nécessaire
+        if (Math.abs(safeBalanceProp - currentManagerBalance) > 0.2) {
+          balanceManager.forceBalanceSync(safeDisplayed + gainAmount);
         }
+        
         const animationTimer = setTimeout(() => {
           setIsAnimating(false);
           setGain(null);
@@ -178,12 +205,16 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
             ) : (
               <>
                 <CountUp
-                  start={previousBalance || displayedBalance - (gain || 0)}
+                  start={previousBalance !== null ? previousBalance : displayedBalance - (gain || 0)}
                   end={displayedBalance}
                   duration={1.5}
                   decimals={2}
                   suffix="€"
                   useEasing={true}
+                  formattingFn={(value) => {
+                    // Protection contre NaN
+                    return isNaN(value) ? "0.00€" : `${value.toFixed(2)}€`;
+                  }}
                 />
                 
                 {gain && isAnimating && (

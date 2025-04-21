@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,10 @@ const UserBalanceCard = ({
   referralBonus = 0,
   withdrawalThreshold
 }: UserBalanceCardProps) => {
+  // Assurer que le solde est toujours un nombre valide
+  const safeBalance = isNaN(balance) ? 0 : balance;
+  const safeReferralBonus = isNaN(referralBonus) ? 0 : referralBonus;
+  
   const BalanceDisplay = ({ balance, isNewUser }: { balance: number; isNewUser?: boolean }) => (
     <div className="text-3xl font-semibold tracking-tight">
       {isNewUser ? '0.00' : balance.toFixed(2)}€
@@ -35,7 +40,7 @@ const UserBalanceCard = ({
     showGains ? (
       <div className="flex items-center text-sm font-medium opacity-75 mt-1">
         <Sparkles className="mr-1 h-4 w-4" />
-        Gains: {(balance - referralBonus).toFixed(2)}€ (+{referralBonus.toFixed(2)}€ parrainage)
+        Gains: {(safeBalance - safeReferralBonus).toFixed(2)}€ (+{safeReferralBonus.toFixed(2)}€ parrainage)
       </div>
     ) : null
   );
@@ -82,10 +87,10 @@ const UserBalanceCard = ({
       </CardHeader>
       
       <CardContent className="p-4">
-        <BalanceDisplay balance={balance} isNewUser={isNewUser} />
-        <GainsDisplay showGains={!isNewUser && balance > 0} referralBonus={referralBonus} />
+        <BalanceDisplay balance={safeBalance} isNewUser={isNewUser} />
+        <GainsDisplay showGains={!isNewUser && safeBalance > 0} referralBonus={safeReferralBonus} />
         <ProgressBar 
-          displayBalance={balance} 
+          displayBalance={safeBalance} 
           subscription={subscription} 
           withdrawalThreshold={withdrawalThreshold}
         />
