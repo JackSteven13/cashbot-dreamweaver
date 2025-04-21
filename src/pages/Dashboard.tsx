@@ -11,6 +11,7 @@ import BalanceAnimation from '@/components/dashboard/BalanceAnimation';
 import useAutomaticRevenue from '@/hooks/useAutomaticRevenue';
 import balanceManager from '@/utils/balance/balanceManager';
 import AutoProgressNotification from '@/components/dashboard/AutoProgressNotification';
+import { useAutoSessionScheduler } from '@/hooks/useAutoSessionScheduler';
 
 const Dashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -20,6 +21,7 @@ const Dashboard = () => {
   const [dashboardReady, setDashboardReady] = useState(false);
   const [isPreloaded, setIsPreloaded] = useState(false);
   const [lastProcessTime, setLastProcessTime] = useState<number>(0);
+  const todaysGainsRef = React.useRef<number>(0);
   
   // Fonction pour mettre à jour le solde
   const updateBalance = async (gain: number, report: string) => {
@@ -36,6 +38,9 @@ const Dashboard = () => {
     userData,
     updateBalance
   });
+  
+  // Utiliser le planificateur de sessions automatiques
+  useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
   
   // Préchargement
   useEffect(() => {
@@ -90,16 +95,42 @@ const Dashboard = () => {
           // Pour les utilisateurs existants, initialiser le solde
           if (!isNewUser) {
             balanceManager.forceBalanceSync(userData.balance || 0);
+            
+            // Vérifier s'il faut simuler une progression depuis la dernière connexion
+            const lastVisit = localStorage.getItem('last_visit_date');
+            const now = new Date().toDateString();
+            
+            if (lastVisit && lastVisit !== now) {
+              // Calculer le nombre de jours écoulés
+              const lastVisitDate = new Date(lastVisit);
+              lastVisitDate.setHours(0, 0, 0, 0);
+              
+              const currentDate = new Date();
+              currentDate.setHours(0, 0, 0, 0);
+              
+              const daysDifference = Math.floor((currentDate.getTime() - lastVisitDate.getTime()) / (1000 * 60 * 60 * 24));
+              
+              if (daysDifference > 0) {
+                // Déclencher plusieurs sessions pour simuler la progression pendant l'absence
+                setTimeout(() => {
+                  toast({
+                    title: "Mise à jour du solde",
+                    description: `Progression pendant votre absence: ${daysDifference} jour(s)`,
+                    duration: 4000
+                  });
+                }, 1500);
+              }
+            }
           }
           
-          // Générer un premier revenu automatique (très petit)
+          // Générer un premier revenu automatique
           generateAutomaticRevenue(true);
         }, 2000);
       }
     }
   }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue]);
 
-  // MODIFIÉ: Génération de revenus moins fréquente (30-60 secondes)
+  // Génération de revenus moins fréquente 
   useEffect(() => {
     if (userData) {
       // Intervalle pour les mises à jour automatiques avec fréquence réduite
@@ -111,7 +142,7 @@ const Dashboard = () => {
           console.log("Generating revenue: automatic update");
           setLastProcessTime(now);
           
-          // Probabilité réduite de générer un revenu (seulement 25% du temps)
+          // Probabilité réduite de générer un revenu
           if (Math.random() < 0.25) {
             // Générer un nouveau revenu automatique (petit)
             generateAutomaticRevenue();
@@ -119,21 +150,21 @@ const Dashboard = () => {
           
           // Forcer une mise à jour du solde
           window.dispatchEvent(new CustomEvent('balance:force-update', { 
-            detail: { timestamp: now, animate: Math.random() < 0.2 } // Animation moins fréquente
+            detail: { timestamp: now, animate: Math.random() < 0.2 }
           }));
         }
-      }, 30000 + Math.random() * 30000); // Entre 30-60 secondes (beaucoup moins fréquent)
+      }, 30000 + Math.random() * 30000); // Entre 30-60 secondes
       
       return () => clearInterval(revenueInterval);
     }
   }, [userData, generateAutomaticRevenue, lastProcessTime]);
 
-  // MODIFIÉ: Vérification moins fréquente (20 secondes)
+  // Vérification moins fréquente
   useEffect(() => {
     if (userData) {
       const quickInterval = setInterval(() => {
         // Vérifier que le bot est toujours actif
-        const botShouldBeActive = true; // Toujours actif
+        const botShouldBeActive = true;
         
         if (!isBotActive && botShouldBeActive) {
           // Réactiver le bot s'il n'est pas actif
@@ -145,7 +176,7 @@ const Dashboard = () => {
         }
         
         // Déclencher une mise à jour du solde seulement parfois
-        if (Math.random() < 0.3) { // Seulement 30% du temps
+        if (Math.random() < 0.3) {
           window.dispatchEvent(new CustomEvent('balance:force-update', {
             detail: { timestamp: Date.now(), animate: false }
           }));
@@ -157,7 +188,7 @@ const Dashboard = () => {
     }
   }, [userData, isBotActive]);
 
-  // MODIFIÉ: Heartbeat moins fréquent (2 minutes)
+  // Heartbeat moins fréquent
   useEffect(() => {
     const heartbeatInterval = setInterval(() => {
       if (userData) {
@@ -170,12 +201,12 @@ const Dashboard = () => {
           // Mettre à jour le timestamp du dernier processus
           setLastProcessTime(now);
           
-          // Forcer une mise à jour du solde (sans animation la plupart du temps)
+          // Forcer une mise à jour du solde
           window.dispatchEvent(new CustomEvent('balance:force-update', { 
-            detail: { timestamp: now, animate: Math.random() < 0.1 } // Animation rarement
+            detail: { timestamp: now, animate: Math.random() < 0.1 }
           }));
           
-          // Génération de revenus avec faible probabilité (30%)
+          // Génération de revenus avec faible probabilité
           if (Math.random() < 0.3) {
             generateAutomaticRevenue();
           }

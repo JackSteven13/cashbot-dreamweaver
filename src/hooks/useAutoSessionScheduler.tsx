@@ -110,11 +110,23 @@ export const useAutoSessionScheduler = (
           }
         }));
         
-        // Générer une session automatique après un court délai
+        // Générer une série de petites sessions automatiques pour simuler l'activité manquée
+        const simulateBacklogSessions = async () => {
+          // Nombre de sessions à simuler (1 à 3 par jour manqué)
+          const sessionsToSimulate = Math.min(daysMissed * 2, 6);
+          
+          for (let i = 0; i < sessionsToSimulate; i++) {
+            // Attendre un court délai entre les sessions
+            await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
+            await generateAutomaticRevenue(i === 0);
+          }
+        };
+        
+        // Lancer la simulation après un court délai
         setTimeout(() => {
-          generateAutomaticRevenue(true);
-        }, 5000);
-      }, 3000);
+          simulateBacklogSessions();
+        }, 3000);
+      }, 2000);
     } else {
       // Si c'est la même journée, mais qu'on a eu une longue période d'inactivité
       const now = Date.now();
@@ -254,14 +266,6 @@ export const useAutoSessionScheduler = (
           // Session de rattrapage
           generateAutomaticRevenue(false);
         }
-        
-        // Vérifier si le solde a changé significativement depuis la dernière visite
-        if (userData?.balance > scheduleDataRef.current.lastSavedBalance + 0.05) {
-          scheduleDataRef.current.lastSavedBalance = userData.balance;
-          
-          // Sauvegarder le solde actuel pour la prochaine visite
-          localStorage.setItem('last_known_balance', userData.balance.toString());
-        }
       }
     };
     
@@ -270,61 +274,16 @@ export const useAutoSessionScheduler = (
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [generateAutomaticRevenue, isBotActive, userData]);
+  }, [generateAutomaticRevenue, isBotActive]);
   
-  // Écouter les changements dans les limites ou les paramètres de l'utilisateur
-  useEffect(() => {
-    const checkGainLimits = () => {
-      const subscription = userData?.subscription || 'freemium';
-      const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-      
-      // Récupérer les gains journaliers actuels
-      const currentGains = getDailyGains();
-      
-      // Mettre à jour la référence des gains journaliers
-      if (todaysGainsRef.current !== currentGains) {
-        todaysGainsRef.current = currentGains;
-      }
-      
-      // Vérifier si nous avons dépassé les limites quotidiennes
-      if (currentGains >= dailyLimit) {
-        // Désactiver temporairement les sessions automatiques
-        scheduleDataRef.current.persistentSessionsEnabled = false;
-      } else {
-        // Réactiver les sessions automatiques
-        scheduleDataRef.current.persistentSessionsEnabled = true;
-      }
-      
-      // Persister l'état
-      localStorage.setItem('persistent_sessions_enabled', scheduleDataRef.current.persistentSessionsEnabled.toString());
-    };
-    
-    // Vérification périodique des limites
-    const limitsInterval = setInterval(checkGainLimits, 30000);
-    
-    // Vérification initiale
-    checkGainLimits();
-    
-    return () => {
-      clearInterval(limitsInterval);
-    };
-  }, [todaysGainsRef, userData]);
-  
+  // Retourner des fonctions utiles pour contrôler le planificateur
   return {
-    sessionCount: scheduleDataRef.current.sessionCount,
-    lastSessionTime: scheduleDataRef.current.lastSessionTime,
-    persistentSessionsEnabled: scheduleDataRef.current.persistentSessionsEnabled,
-    enablePersistentSessions: () => {
-      scheduleDataRef.current.persistentSessionsEnabled = true;
-      localStorage.setItem('persistent_sessions_enabled', 'true');
+    isPersistentEnabled: scheduleDataRef.current.persistentSessionsEnabled,
+    togglePersistence: (enabled: boolean) => {
+      scheduleDataRef.current.persistentSessionsEnabled = enabled;
+      localStorage.setItem('persistent_sessions_enabled', enabled.toString());
     },
-    disablePersistentSessions: () => {
-      scheduleDataRef.current.persistentSessionsEnabled = false;
-      localStorage.setItem('persistent_sessions_enabled', 'false');
-    },
-    // Exposer les données de progression continue
-    consecutiveVisitDays: persistentDataRef.current.consecutiveVisitDays,
-    dailyProgressIncrement: persistentDataRef.current.dailyProgressIncrement
+    sessionCount: scheduleDataRef.current.sessionCount
   };
 };
 
