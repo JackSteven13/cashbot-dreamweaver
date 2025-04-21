@@ -36,7 +36,7 @@ const SummaryPanel: React.FC<SummaryPanelProps> = memo(({
   canStartSession = true,
   referrals = [],
   referralCount = 0,
-  withdrawalThreshold = 200,
+  withdrawalThreshold = 300,  // Par défaut 300 maintenant
   lastSessionTimestamp,
   isBotActive = true
 }) => {

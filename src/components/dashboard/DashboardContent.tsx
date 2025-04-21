@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import SummaryPanel from './summary/SummaryPanel';
 import DashboardTabs from './metrics/tabs/DashboardTabs';
 import { ReferralLinkDisplay } from './referral';
 import { Card } from '@/components/ui/card';
 import { UserData } from '@/types/userData';
+import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
 
 interface DashboardContentProps {
   userData: UserData | null;
@@ -38,6 +40,9 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   const referralCount = referrals.length;
   const referralBonus = referralCount * 10;
 
+  // Utiliser le seuil de retrait cohérent selon subscription
+  const withdrawalThreshold = getWithdrawalThreshold(subscription);
+
   return (
     <div className="space-y-8 pb-10">
       <SummaryPanel
@@ -52,7 +57,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         canStartSession={!showLimitAlert}
         referrals={referrals}
         referralCount={referralCount}
-        withdrawalThreshold={200}
+        withdrawalThreshold={withdrawalThreshold}  {/* Utilisation dynamique */}
         lastSessionTimestamp={lastSessionTimestamp}
         isBotActive={isBotActive}
       />
