@@ -1,4 +1,3 @@
-
 /**
  * BalanceManager - Gestionnaire centralisé pour le solde de l'utilisateur
  * Permet de synchroniser l'état du solde entre les différentes parties de l'application
@@ -236,7 +235,7 @@ class BalanceManager {
   /**
    * Obtient le solde actuel
    */
-  getCurrentBalance(): number {
+  getCurrentBalance(userId?: string): number {
     return this.currentBalance;
   }
   
@@ -340,7 +339,7 @@ class BalanceManager {
       console.log(`Synchronisation forcée: ${this.currentBalance}€ -> ${balance}€ (augmentation)`)
       this.updateBalance(balance);
       
-      // Émettre un événement pour informer les autres composants
+      // Émettre un ��vénement pour informer les autres composants
       window.dispatchEvent(new CustomEvent('balance:force-update', {
         detail: {
           newBalance: this.currentBalance,
@@ -392,7 +391,7 @@ class BalanceManager {
   /**
    * Récupère le solde le plus élevé jamais enregistré
    */
-  getHighestBalance(): number {
+  getHighestBalance(userId?: string): number {
     try {
       const storedHighest = localStorage.getItem(this.highestBalanceKey);
       if (storedHighest) {
@@ -410,7 +409,7 @@ class BalanceManager {
   /**
    * Met à jour le solde le plus élevé si nécessaire
    */
-  updateHighestBalance(balance: number): void {
+  updateHighestBalance(balance: number, userId?: string): void {
     try {
       // Vérifier que la valeur est valide
       if (isNaN(balance) || balance < 0) {
@@ -517,7 +516,7 @@ class BalanceManager {
    * Vérifie si le solde a changé significativement depuis le dernier chargement
    * et envoie un événement pour alerter le système
    */
-  checkForSignificantBalanceChange(serverBalance: number): void {
+  checkForSignificantBalanceChange(serverBalance: number, userId?: string): void {
     // Vérifier que la valeur est valide
     if (!serverBalance || isNaN(serverBalance)) return;
     

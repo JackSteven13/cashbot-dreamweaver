@@ -105,7 +105,7 @@ export const useSessionGain = () => {
       
       // Mettre à jour le solde le plus élevé si nécessaire
       if (typeof balanceManager.updateHighestBalance === 'function') {
-        balanceManager.updateHighestBalance(newBalance, userId);
+        balanceManager.updateHighestBalance(newBalance);
       }
       
       // Déclencher un événement pour informer les autres composants

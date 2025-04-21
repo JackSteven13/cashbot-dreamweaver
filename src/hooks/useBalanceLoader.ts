@@ -23,12 +23,12 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
       };
       
       // Récupérer le solde local avant toute opération réseau
-      const localBalance = balanceManager.getCurrentBalance(userId);
+      const localBalance = balanceManager.getCurrentBalance();
       let highestLocalBalance = 0;
       
       // Vérifier si getHighestBalance existe et l'utiliser
       if (typeof balanceManager.getHighestBalance === 'function') {
-        highestLocalBalance = balanceManager.getHighestBalance(userId);
+        highestLocalBalance = balanceManager.getHighestBalance();
       } else {
         // Fallback si la méthode n'existe pas
         highestLocalBalance = parseFloat(localStorage.getItem(userSpecificKeys.highestBalance) || '0');
@@ -100,7 +100,7 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
         }
         
         // Informer balanceManager du solde du serveur pour comparaison
-        balanceManager.checkForSignificantBalanceChange(serverBalance, userId);
+        balanceManager.checkForSignificantBalanceChange(serverBalance);
         
         // Synchronize with balance manager, always keeping the highest value
         balanceManager.forceBalanceSync(effectiveBalance, userId);
@@ -116,7 +116,7 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
         
         // Store highest balance seen with clé spécifique à l'utilisateur
         if (typeof balanceManager.updateHighestBalance === 'function') {
-          balanceManager.updateHighestBalance(effectiveBalance, userId);
+          balanceManager.updateHighestBalance(effectiveBalance);
         } else {
           // Fallback si la méthode n'existe pas
           localStorage.setItem(userSpecificKeys.highestBalance, effectiveBalance.toString());
