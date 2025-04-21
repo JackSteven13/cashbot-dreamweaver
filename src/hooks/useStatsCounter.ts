@@ -21,9 +21,30 @@ interface StatsCounterData {
   displayedRevenueCount: number;
 }
 
-// Minimum baseline values that should never be dropped below
-const MINIMUM_ADS_COUNT = 40000;
-const MINIMUM_REVENUE_COUNT = 50000;
+// Valeurs minimales plus élevées et variables en fonction du temps
+const getMinimumValues = () => {
+  // Récupérer la date de première utilisation
+  const firstUseDate = localStorage.getItem('first_use_date');
+  if (!firstUseDate) {
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - 90);
+    localStorage.setItem('first_use_date', pastDate.toISOString());
+  }
+  
+  // Calculer le nombre de jours depuis l'installation
+  const installDate = new Date(localStorage.getItem('first_use_date') || '');
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - installDate.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  // Facteur de progression basé sur l'ancienneté
+  const progressFactor = Math.min(1 + (diffDays * 0.01), 3); // max 3x après 200 jours
+  
+  return {
+    ADS_COUNT: Math.floor(60000 * progressFactor),
+    REVENUE_COUNT: 55000 * progressFactor
+  };
+};
 
 // Storage keys for global counters
 const STORAGE_KEYS = {
@@ -34,9 +55,12 @@ const STORAGE_KEYS = {
 };
 
 export const useStatsCounter = ({
-  dailyAdsTarget = 350000,
-  dailyRevenueTarget = 1500000
+  dailyAdsTarget = 35000,
+  dailyRevenueTarget = 15000
 }: UseStatsCounterParams): StatsCounterData => {
+  // Récupérer les valeurs minimales dynamiques
+  const { ADS_COUNT: MINIMUM_ADS_COUNT, REVENUE_COUNT: MINIMUM_REVENUE_COUNT } = getMinimumValues();
+  
   // Utiliser useRef pour assurer la stabilité entre les rendus
   const stableValuesRef = useRef({
     initialized: false,
@@ -84,22 +108,22 @@ export const useStatsCounter = ({
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [countersInitialized, setCountersInitialized] = useState(false);
   
-  // Initialisation cohérente avec les valeurs minimales
+  // Initialisation cohérente avec les valeurs minimales dynamiques
   useEffect(() => {
     if (!countersInitialized) {
       // Récupérer des valeurs cohérentes basées sur la date
       const consistentStats = getDateConsistentStats();
       
-      // Initialiser avec ces valeurs
-      setAdsCount(consistentStats.adsCount);
-      setRevenueCount(consistentStats.revenueCount);
-      setDisplayedAdsCount(consistentStats.adsCount);
-      setDisplayedRevenueCount(consistentStats.revenueCount);
+      // Initialiser avec ces valeurs mais s'assurer qu'elles respectent les minimums dynamiques
+      setAdsCount(Math.max(consistentStats.adsCount, MINIMUM_ADS_COUNT));
+      setRevenueCount(Math.max(consistentStats.revenueCount, MINIMUM_REVENUE_COUNT));
+      setDisplayedAdsCount(Math.max(consistentStats.adsCount, MINIMUM_ADS_COUNT));
+      setDisplayedRevenueCount(Math.max(consistentStats.revenueCount, MINIMUM_REVENUE_COUNT));
       
       // Stocker les valeurs de base dans la référence stable
       stableValuesRef.current.baseValues = {
-        adsCount: consistentStats.adsCount,
-        revenueCount: consistentStats.revenueCount
+        adsCount: Math.max(consistentStats.adsCount, MINIMUM_ADS_COUNT),
+        revenueCount: Math.max(consistentStats.revenueCount, MINIMUM_REVENUE_COUNT)
       };
       
       setCountersInitialized(true);
@@ -108,44 +132,48 @@ export const useStatsCounter = ({
       // S'assurer que les valeurs respectent le minimum
       enforceMinimumStats(MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT);
       
-      console.log("Compteurs initialisés avec des valeurs cohérentes:", consistentStats);
+      console.log("Compteurs initialisés avec des valeurs cohérentes et progressives:", {
+        adsCount: Math.max(consistentStats.adsCount, MINIMUM_ADS_COUNT),
+        revenueCount: Math.max(consistentStats.revenueCount, MINIMUM_REVENUE_COUNT)
+      });
     }
-  }, []);
+  }, [MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT]);
   
-  // Synchroniser les incréments STRICTEMENT avec le feed des publicités
+  // Synchroniser les incréments avec le feed des publicités
   useEffect(() => {
     if (!countersInitialized) return;
     
     const handleLocationAdded = (event: Event) => {
-      // Limiter strictement les mises à jour (30 seconds minimum entre chaque)
+      // Limiter les mises à jour (10 secondes minimum entre chaque)
       const now = Date.now();
-      if (now - stableValuesRef.current.lastLocationUpdateTime < 30000) {
-        console.log("Mise à jour de stats bloquée - trop rapprochée");
+      if (now - stableValuesRef.current.lastLocationUpdateTime < 10000) {
         return;
       }
       stableValuesRef.current.lastLocationUpdateTime = now;
       
       // Incrémenter après un délai pour simuler l'analyse
       setTimeout(() => {
-        // Incrémenter TOUJOURS d'UNE SEULE vidéo
-        const newAdsCount = adsCount + 1;
-        setAdsCount(newAdsCount);
+        // Incréments plus importants basés sur l'ancienneté
+        const { ADS_COUNT: minAds } = getMinimumValues();
+        const adsIncrement = Math.floor(Math.random() * 5) + 1;
+        const adValue = Math.random() * 0.5 + 0.2;
         
-        // Gain très faible par vidéo (0.2€-0.4€)
-        const adValue = 0.2 + Math.random() * 0.2;
+        const newAdsCount = adsCount + adsIncrement;
         const newRevenueCount = revenueCount + adValue;
-        setRevenueCount(newRevenueCount);
+        
+        setAdsCount(Math.max(newAdsCount, minAds));
+        setRevenueCount(Math.max(newRevenueCount, MINIMUM_REVENUE_COUNT));
         
         // Sauvegarder les valeurs
-        saveValues(newAdsCount, newRevenueCount);
-      }, 3000 + Math.random() * 2000); // Délai entre 3 et 5 secondes
+        saveValues(Math.max(newAdsCount, minAds), Math.max(newRevenueCount, MINIMUM_REVENUE_COUNT));
+      }, 1000 + Math.random() * 2000);
     };
     
     window.addEventListener('location:added', handleLocationAdded);
     return () => window.removeEventListener('location:added', handleLocationAdded);
-  }, [countersInitialized, adsCount, revenueCount]);
+  }, [countersInitialized, adsCount, revenueCount, MINIMUM_REVENUE_COUNT]);
   
-  // Auto-incrémentation EXTRÊMEMENT ralentie
+  // Auto-incrémentation plus agressive
   useEffect(() => {
     if (!countersInitialized) return;
     
@@ -157,7 +185,7 @@ export const useStatsCounter = ({
       return;
     }
     
-    // Progression glaciale avec des intervalles extrêmement longs (10-20 minutes)
+    // Progression avec des intervalles plus courts (5-10 minutes)
     const autoIncrement = setInterval(() => {
       // Éviter les mises à jour simultanées
       if (stableValuesRef.current.syncInProgress) return;
@@ -166,16 +194,19 @@ export const useStatsCounter = ({
       const now = Date.now();
       const timeSinceLastIncrement = now - stableValuesRef.current.lastAutoIncrementTime;
       
-      // Incrémenter très rarement
-      if (timeSinceLastIncrement > 600000) { // Au moins 10 minutes entre les incréments
+      // Incrémenter plus souvent
+      if (timeSinceLastIncrement > 300000) { // 5 minutes entre les incréments
         stableValuesRef.current.lastAutoIncrementTime = now;
         
-        // Probabilité encore plus faible (10% de chance)
-        if (Math.random() > 0.9) { 
-          // Toujours une seule vidéo
+        // Probabilité plus élevée (30% de chance)
+        if (Math.random() > 0.7) { 
+          // Incréments plus significatifs
+          const adsIncrease = Math.floor(Math.random() * 5) + 3;
+          const revenueIncrease = Math.random() * 0.4 + 0.3;
+          
           const incrementedValues = {
-            newAdsCount: adsCount + 1,
-            newRevenueCount: revenueCount + (Math.random() * 0.2 + 0.2) // 0.2-0.4€
+            newAdsCount: adsCount + adsIncrease,
+            newRevenueCount: revenueCount + revenueIncrease
           };
           
           // Mettre à jour les compteurs
@@ -191,7 +222,7 @@ export const useStatsCounter = ({
       }
       
       stableValuesRef.current.syncInProgress = false;
-    }, 600000 + Math.floor(Math.random() * 600000)); // Entre 10 et 20 minutes
+    }, 300000 + Math.floor(Math.random() * 300000)); // Entre 5 et 10 minutes
     
     return () => clearInterval(autoIncrement);
   }, [countersInitialized, adsCount, revenueCount]);
@@ -205,8 +236,8 @@ export const useStatsCounter = ({
         
         // Sauvegarder aussi dans localStorage pour une persistance maximale
         saveValues(
-          Math.max(displayedAdsCount, adsCount), 
-          Math.max(displayedRevenueCount, revenueCount)
+          Math.max(displayedAdsCount, adsCount, MINIMUM_ADS_COUNT), 
+          Math.max(displayedRevenueCount, revenueCount, MINIMUM_REVENUE_COUNT)
         );
       } catch (e) {
         console.error('Error saving counters to sessionStorage', e);
@@ -215,18 +246,18 @@ export const useStatsCounter = ({
     
     window.addEventListener('beforeunload', saveToSession);
     return () => window.removeEventListener('beforeunload', saveToSession);
-  }, [displayedAdsCount, displayedRevenueCount, adsCount, revenueCount]);
+  }, [displayedAdsCount, displayedRevenueCount, adsCount, revenueCount, MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT]);
   
-  // Animation et mises à jour périodiques ultra-ralenties
+  // Animation et mises à jour périodiques
   useEffect(() => {
     if (!countersInitialized) return;
     
-    // Animation frame rate extrêmement réduit
+    // Animation frame rate optimisé
     let animationFrameId: number;
     let lastFrameTime = 0;
     
     const updateAnimation = (timestamp: number) => {
-      // Limiter le framerate à 1 frame par seconde maximum
+      // Optimiser le framerate (1 frame par seconde)
       if (timestamp - lastFrameTime > 1000) {
         lastFrameTime = timestamp;
         animateCounters();
@@ -234,35 +265,36 @@ export const useStatsCounter = ({
       animationFrameId = requestAnimationFrame(updateAnimation);
     };
     
-    // Start animation avec framerate réduit
+    // Start animation avec framerate optimisé
     animationFrameId = requestAnimationFrame(updateAnimation);
     
-    // Mises à jour périodiques extrêmement espacées (30-40 minutes)
+    // Mises à jour périodiques plus fréquentes (15-20 minutes)
     const updateInterval = setInterval(() => {
       // Éviter les mises à jour simultanées
       if (stableValuesRef.current.syncInProgress) return;
       stableValuesRef.current.syncInProgress = true;
       
-      // Probabilité infime d'incrément (5% de chance)
-      if (Math.random() > 0.95) {
-        // Toujours une seule vidéo
-        const increment = {
-          ads: 1,
-          revenue: (Math.random() * 0.2 + 0.2) // 0.2-0.4€
-        };
+      // Probabilité d'incrément plus élevée (20% de chance)
+      if (Math.random() > 0.8) {
+        // Incréments plus significatifs
+        const adsIncrease = Math.floor(Math.random() * 10) + 5;
+        const revenueIncrease = Math.random() * 0.5 + 0.3;
         
-        setAdsCount(prev => prev + increment.ads);
-        setRevenueCount(prev => prev + increment.revenue);
+        setAdsCount(prev => Math.max(prev + adsIncrease, MINIMUM_ADS_COUNT));
+        setRevenueCount(prev => Math.max(prev + revenueIncrease, MINIMUM_REVENUE_COUNT));
         
         // Simuler une nouvelle entrée dans le feed
         window.dispatchEvent(new CustomEvent('location:added'));
         
         // Sauvegarder
-        saveValues(adsCount + increment.ads, revenueCount + increment.revenue);
+        saveValues(
+          Math.max(adsCount + adsIncrease, MINIMUM_ADS_COUNT), 
+          Math.max(revenueCount + revenueIncrease, MINIMUM_REVENUE_COUNT)
+        );
       }
       
       stableValuesRef.current.syncInProgress = false;
-    }, 1800000 + Math.floor(Math.random() * 600000)); // 30-40 minutes
+    }, 900000 + Math.floor(Math.random() * 300000)); // 15-20 minutes
     
     // Reset at midnight
     const resetTimeout = scheduleCycleUpdate();
@@ -272,9 +304,9 @@ export const useStatsCounter = ({
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
       clearInterval(updateInterval);
     };
-  }, [animateCounters, incrementCountersRandomly, scheduleCycleUpdate, countersInitialized]);
+  }, [animateCounters, incrementCountersRandomly, scheduleCycleUpdate, countersInitialized, MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT, adsCount, revenueCount]);
 
-  // Synchroniser avec visibilitychange pour progression minime
+  // Synchroniser avec visibilitychange pour progression continue
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && countersInitialized) {
@@ -282,36 +314,38 @@ export const useStatsCounter = ({
         const consistentStats = getDateConsistentStats();
         
         // Utiliser les valeurs les plus élevées
-        const newAdsCount = Math.max(adsCount, consistentStats.adsCount);
-        const newRevenueCount = Math.max(revenueCount, consistentStats.revenueCount);
+        const newAdsCount = Math.max(
+          adsCount, 
+          consistentStats.adsCount,
+          MINIMUM_ADS_COUNT
+        );
         
-        // Mettre à jour si nécessaire, mais avec une différence significative uniquement
-        if (newAdsCount > adsCount + 5 || newRevenueCount > revenueCount + 2) {
+        const newRevenueCount = Math.max(
+          revenueCount, 
+          consistentStats.revenueCount,
+          MINIMUM_REVENUE_COUNT
+        );
+        
+        // Mettre à jour si nécessaire
+        if (newAdsCount > adsCount + 2 || newRevenueCount > revenueCount + 1) {
           setAdsCount(newAdsCount);
           setRevenueCount(newRevenueCount);
           
-          // Transition visuelle ultra-lente
-          setDisplayedAdsCount(prev => {
-            // Limiter à +1 maximum
-            return prev + 1;
-          });
-          
-          setDisplayedRevenueCount(prev => {
-            // Limiter à un très petit incrément
-            return prev + 0.2;
-          });
+          // Transition visuelle progressive
+          setDisplayedAdsCount(prev => Math.max(prev + Math.floor(Math.random() * 3) + 1, newAdsCount));
+          setDisplayedRevenueCount(prev => Math.max(prev + Math.random() * 0.5 + 0.2, newRevenueCount));
         }
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [countersInitialized, adsCount, revenueCount]);
+  }, [countersInitialized, adsCount, revenueCount, MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT]);
 
   return useMemo(() => ({
     displayedAdsCount: Math.max(MINIMUM_ADS_COUNT, displayedAdsCount),
     displayedRevenueCount: Math.max(MINIMUM_REVENUE_COUNT, displayedRevenueCount)
-  }), [displayedAdsCount, displayedRevenueCount]);
+  }), [displayedAdsCount, displayedRevenueCount, MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT]);
 };
 
 export default useStatsCounter;

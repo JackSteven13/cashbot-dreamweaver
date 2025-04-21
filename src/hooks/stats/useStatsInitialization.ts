@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { loadStoredValues, saveValues } from './utils/storageManager';
 import { calculateInitialValues } from './utils/valueCalculator';
@@ -19,14 +20,43 @@ interface UseStatsInitializationResult {
   initializeCounters: () => void;
 }
 
+// Fonction pour calculer les valeurs minimales dynamiques basées sur l'ancienneté
+const getDynamicMinimumValues = () => {
+  // Récupérer la date de première utilisation
+  const firstUseDate = localStorage.getItem('first_use_date');
+  if (!firstUseDate) {
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - 90); // 90 jours dans le passé par défaut
+    localStorage.setItem('first_use_date', pastDate.toISOString());
+  }
+  
+  // Calculer le nombre de jours depuis l'installation
+  const installDate = new Date(localStorage.getItem('first_use_date') || '');
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - installDate.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  // Facteur de progression basé sur l'ancienneté - croissance non linéaire
+  // Plus l'app est utilisée longtemps, plus la progression s'accélère
+  const progressFactor = Math.min(1 + (diffDays * 0.01) + (Math.pow(diffDays, 1.5) / 10000), 5);
+  
+  return {
+    minAdsCount: Math.floor(60000 * progressFactor), // Valeur de base * facteur de progression
+    minRevenueCount: 55000 * progressFactor // Valeur de base * facteur de progression
+  };
+};
+
 export const useStatsInitialization = ({
   dailyAdsTarget,
   dailyRevenueTarget
 }: UseStatsInitializationParams): UseStatsInitializationResult => {
-  const [adsCount, setAdsCount] = useState<number>(0);
-  const [revenueCount, setRevenueCount] = useState<number>(0);
-  const [displayedAdsCount, setDisplayedAdsCount] = useState<number>(0);
-  const [displayedRevenueCount, setDisplayedRevenueCount] = useState<number>(0);
+  // Utiliser des valeurs minimales dynamiques basées sur l'ancienneté
+  const { minAdsCount, minRevenueCount } = getDynamicMinimumValues();
+  
+  const [adsCount, setAdsCount] = useState<number>(minAdsCount);
+  const [revenueCount, setRevenueCount] = useState<number>(minRevenueCount);
+  const [displayedAdsCount, setDisplayedAdsCount] = useState<number>(minAdsCount);
+  const [displayedRevenueCount, setDisplayedRevenueCount] = useState<number>(minRevenueCount);
   const [lastResetDate, setLastResetDate] = useState<string>(() => {
     return localStorage.getItem('stats_last_reset_date') || new Date().toDateString();
   });
@@ -45,18 +75,28 @@ export const useStatsInitialization = ({
     
     if (storedValues.hasStoredValues) {
       console.log("Using stored values:", storedValues);
-      setAdsCount(storedValues.adsCount);
-      setRevenueCount(storedValues.revenueCount);
-      setDisplayedAdsCount(storedValues.adsCount);
-      setDisplayedRevenueCount(storedValues.revenueCount);
+      
+      // Garantir que les valeurs ne sont jamais inférieures aux minimums dynamiques
+      const safeAds = Math.max(minAdsCount, storedValues.adsCount);
+      const safeRevenue = Math.max(minRevenueCount, storedValues.revenueCount);
+      
+      setAdsCount(safeAds);
+      setRevenueCount(safeRevenue);
+      setDisplayedAdsCount(safeAds);
+      setDisplayedRevenueCount(safeRevenue);
       setInitialized(true);
+      
+      // Sauvegarder les valeurs sécurisées
+      saveValues(safeAds, safeRevenue);
       return;
     }
     
+    // Si pas de valeurs stockées, calculer des valeurs initiales avec progression basée sur le temps
     const { initialAds, initialRevenue } = calculateInitialValues(dailyAdsTarget, dailyRevenueTarget);
     
-    const safeAds = Math.max(40000, initialAds);
-    const safeRevenue = Math.max(50000, initialRevenue);
+    // Garantir des valeurs minimales élevées
+    const safeAds = Math.max(minAdsCount, initialAds);
+    const safeRevenue = Math.max(minRevenueCount, initialRevenue);
     
     setAdsCount(safeAds);
     setRevenueCount(safeRevenue);
@@ -67,8 +107,8 @@ export const useStatsInitialization = ({
     saveValues(safeAds, safeRevenue);
     localStorage.setItem('stats_storage_date', today);
     
-    console.log(`Initialized counters: Ads=${safeAds}, Revenue=${safeRevenue}`);
-  }, [dailyAdsTarget, dailyRevenueTarget, lastResetDate, initialized]);
+    console.log(`Initialized counters with progressive values: Ads=${safeAds}, Revenue=${safeRevenue}`);
+  }, [dailyAdsTarget, dailyRevenueTarget, lastResetDate, initialized, minAdsCount, minRevenueCount]);
   
   useEffect(() => {
     if (!initialized) {
@@ -83,12 +123,16 @@ export const useStatsInitialization = ({
       const storedValues = loadStoredValues();
       
       if (storedValues.hasStoredValues) {
-        if (storedValues.adsCount > adsCount) {
+        // Vérifier s'il y a des valeurs plus élevées dans le stockage global
+        const safeMinAdsCount = Math.max(minAdsCount, adsCount);
+        const safeMinRevenueCount = Math.max(minRevenueCount, revenueCount);
+        
+        if (storedValues.adsCount > safeMinAdsCount) {
           setAdsCount(storedValues.adsCount);
           setDisplayedAdsCount(storedValues.adsCount);
         }
         
-        if (storedValues.revenueCount > revenueCount) {
+        if (storedValues.revenueCount > safeMinRevenueCount) {
           setRevenueCount(storedValues.revenueCount);
           setDisplayedRevenueCount(storedValues.revenueCount);
         }
@@ -97,17 +141,18 @@ export const useStatsInitialization = ({
     
     const syncInterval = setInterval(syncWithGlobalValues, 10000);
     return () => clearInterval(syncInterval);
-  }, [adsCount, revenueCount, initialized]);
+  }, [adsCount, revenueCount, initialized, minAdsCount, minRevenueCount]);
   
   useEffect(() => {
     if (initialized && adsCount > 0 && revenueCount > 0) {
+      // Lors de la sauvegarde, toujours garantir les valeurs minimales
       saveValues(
-        Math.max(40000, adsCount),
-        Math.max(50000, revenueCount)
+        Math.max(minAdsCount, adsCount),
+        Math.max(minRevenueCount, revenueCount)
       );
       localStorage.setItem('stats_storage_date', new Date().toDateString());
     }
-  }, [adsCount, revenueCount, initialized]);
+  }, [adsCount, revenueCount, initialized, minAdsCount, minRevenueCount]);
   
   return {
     adsCount,
