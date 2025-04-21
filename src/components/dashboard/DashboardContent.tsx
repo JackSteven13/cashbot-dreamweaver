@@ -57,7 +57,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         canStartSession={!showLimitAlert}
         referrals={referrals}
         referralCount={referralCount}
-        withdrawalThreshold={withdrawalThreshold} {/* Utilisation dynamique */}
+        withdrawalThreshold={withdrawalThreshold} /* Utilisation dynamique */
         lastSessionTimestamp={lastSessionTimestamp}
         isBotActive={isBotActive}
       />
