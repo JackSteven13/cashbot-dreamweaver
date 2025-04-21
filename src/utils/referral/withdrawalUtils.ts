@@ -124,10 +124,18 @@ export const calculateReferralToReachThreshold = (
   };
 };
 
+// Export all needed constants and functions
 export {
-  WITHDRAWAL_THRESHOLDS
+  WITHDRAWAL_THRESHOLDS,
+  getWithdrawalThreshold,
+  canWithdraw,
+  getWithdrawalProgress,
+  isWithdrawalAllowed,
+  calculateWithdrawalFee,
+  calculateReferralToReachThreshold
 };
 
+// Keep the default export for backward compatibility
 export default {
   getWithdrawalThreshold,
   canWithdraw,

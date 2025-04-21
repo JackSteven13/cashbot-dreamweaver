@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { TrendingUp, Calendar, Clock, ArrowUpRight, ChevronDown } from 'lucide-react';
 import { formatRevenue } from '@/utils/formatters';
 import EliteBadge from '@/components/subscriptions/EliteBadge';
-import { SUBSCRIPTION_LIMITS, WITHDRAWAL_THRESHOLDS } from '@/utils/subscription/constants';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
 
 interface OverviewTabProps {
