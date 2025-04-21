@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, ArrowRight, RefreshCw, Home, RotateCw } from 'lucide-react';
@@ -16,7 +15,6 @@ const PaymentSuccess = () => {
   const [processingStatus, setProcessingStatus] = useState('checking');
   const { refreshUserData } = useUserDataRefresh();
   
-  // Plus robuste fonction pour vérifier et mettre à jour l'abonnement
   const updateSubscription = useCallback(async () => {
     try {
       setProcessingStatus('checking');
@@ -32,7 +30,6 @@ const PaymentSuccess = () => {
         return;
       }
       
-      // Premier essai - requête normale
       setProcessingStatus('querying');
       const { data: userBalanceData, error } = await supabase
         .from('user_balances')
@@ -46,17 +43,16 @@ const PaymentSuccess = () => {
         localStorage.setItem('forceRefreshBalance', 'true');
         setProcessingStatus('success');
         
-        // Rafraîchir les données utilisateur dans l'état global
         await refreshUserData();
-        
-        // Marquer le paiement comme terminé
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 1000);
         localStorage.removeItem('pendingPayment');
         localStorage.removeItem('lastStripeUrl');
         
         return;
       }
 
-      // Deuxième essai - fonction RPC
       setProcessingStatus('rpc_checking');
       const { data: rpcData, error: rpcError } = await supabase
         .rpc('get_current_subscription', { user_id: session.user.id });
@@ -67,21 +63,19 @@ const PaymentSuccess = () => {
         localStorage.setItem('forceRefreshBalance', 'true');
         setProcessingStatus('success');
         
-        // Rafraîchir les données utilisateur dans l'état global
         await refreshUserData();
-        
-        // Marquer le paiement comme terminé
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 1000);
         localStorage.removeItem('pendingPayment');
         localStorage.removeItem('lastStripeUrl');
         
         return;
       }
       
-      // Si les deux tentatives ont échoué
       setProcessingStatus('retrying');
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Dernière tentative
       const { data: finalData, error: finalError } = await supabase
         .from('user_balances')
         .select('subscription')
@@ -93,10 +87,10 @@ const PaymentSuccess = () => {
         localStorage.setItem('subscription', finalData.subscription);
         setProcessingStatus('success');
         
-        // Rafraîchir les données utilisateur dans l'état global
         await refreshUserData();
-        
-        // Marquer le paiement comme terminé
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 1000);
         localStorage.removeItem('pendingPayment');
         localStorage.removeItem('lastStripeUrl');
       } else {
@@ -108,26 +102,22 @@ const PaymentSuccess = () => {
     } finally {
       setIsUpdating(false);
     }
-  }, [refreshUserData]);
+  }, [refreshUserData, navigate]);
 
   useEffect(() => {
-    // Afficher un toast de succès
     toast({
       title: "Paiement réussi",
       description: "Votre abonnement est en cours d'activation...",
     });
 
-    // Lancer le processus de mise à jour
     updateSubscription();
     
-    // Configurer un minuteur pour rediriger vers le tableau de bord si tout est réussi
     const successTimer = setTimeout(() => {
       if (processingStatus === 'success') {
         navigate('/dashboard', { replace: true });
       }
     }, 2500);
     
-    // Configurer un délai maximal pour éviter de rester bloqué sur cette page
     const maxWaitTimer = setTimeout(() => {
       if (isUpdating) {
         setIsUpdating(false);

@@ -3,14 +3,14 @@
  * Utilitaires liés aux seuils de retrait selon le niveau d'abonnement
  */
 
-// Seuils de retrait par type d'abonnement - AUGMENTÉS POUR AMÉLIORER LA RÉTENTION
+// Seuils de retrait par type d'abonnement - ALIGNÉS AVEC LES CONSTANTES GLOBALES, et SUPERIEURS sur chaque offre
 const WITHDRAWAL_THRESHOLDS = {
-  freemium: 200,   // Augmenté de 20€ à 200€
-  starter: 150,    // Augmenté de 15€ à 150€
-  gold: 100,       // Augmenté de 10€ à 100€
-  elite: 50,       // Augmenté de 5€ à 50€
+  freemium: 300,   // 300€
+  starter: 600,    // 600€
+  gold: 1200,      // 1200€
+  elite: 2500,     // 2500€
   // Fallback
-  default: 200     // Augmenté de 20€ à 200€
+  default: 300     // 300€
 };
 
 /**

@@ -4,6 +4,7 @@ import { TrendingUp, Calendar, Clock, ArrowUpRight, ChevronDown } from 'lucide-r
 import { formatRevenue } from '@/utils/formatters';
 import EliteBadge from '@/components/subscriptions/EliteBadge';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
+import { WITHDRAWAL_THRESHOLDS } from '@/utils/referral/withdrawalUtils';
 
 interface OverviewTabProps {
   subscription: string;
@@ -25,6 +26,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   balance
 }) => {
   const displaySubscription = subscription === "alpha" ? "starter" : subscription;
+
+  const withdrawalThreshold = WITHDRAWAL_THRESHOLDS[displaySubscription as keyof typeof WITHDRAWAL_THRESHOLDS] ?? 200;
 
   const calculateRevenueForDisplay = () => {
     const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
@@ -145,6 +148,12 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
                 <span className="text-sm text-slate-600 dark:text-slate-300">Ce mois</span>
                 <span className="font-medium text-slate-700 dark:text-slate-300">
                   +{formatRevenue(revenues.month)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-slate-600 dark:text-slate-300">Seuil de retrait</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">
+                  {withdrawalThreshold}€
                 </span>
               </div>
             </div>

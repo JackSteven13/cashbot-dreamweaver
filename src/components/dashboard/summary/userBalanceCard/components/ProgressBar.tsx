@@ -21,9 +21,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
 }) => {
   // Déterminer le seuil correct - utiliser la prop si fournie, sinon la fonction utilitaire
   const withdrawalThreshold = useMemo(() => {
-    if (propsThreshold !== undefined) return propsThreshold;
+    // Toujours se baser sur getWithdrawalThreshold (qui utilise les constants principales harmonisées), ignore la prop si possible
     return getWithdrawalThreshold(subscription);
-  }, [propsThreshold, subscription]);
+  }, [subscription]);
   
   // Calculer le pourcentage d'avancement
   const progressPercentage = useMemo(() => {
