@@ -13,6 +13,8 @@ class BalanceManager {
   private dailyGains: number;
   private lastUpdateTime: number;
   private watchers: BalanceWatcher[];
+  private userId: string | null;
+  private highestRecordedBalance: number;
   
   constructor() {
     // Initialiser avec les valeurs stockées localement ou des valeurs par défaut
@@ -20,6 +22,8 @@ class BalanceManager {
     this.dailyGains = this.getStoredDailyGains();
     this.lastUpdateTime = Date.now();
     this.watchers = [];
+    this.userId = null;
+    this.highestRecordedBalance = this.currentBalance;
     
     // Vérifier si nous devons réinitialiser les compteurs quotidiens
     this.checkDailyReset();
@@ -86,6 +90,11 @@ class BalanceManager {
     const newBalance = parseFloat((this.currentBalance + gain).toFixed(2));
     this.currentBalance = newBalance;
     
+    // Mettre à jour le solde le plus élevé si nécessaire
+    if (newBalance > this.highestRecordedBalance) {
+      this.highestRecordedBalance = newBalance;
+    }
+    
     try {
       localStorage.setItem('currentBalance', newBalance.toString());
       localStorage.setItem('lastBalanceUpdateTime', Date.now().toString());
@@ -94,6 +103,51 @@ class BalanceManager {
     }
     
     // Notifier tous les observateurs
+    this.notifyWatchers();
+  }
+  
+  /**
+   * Récupérer le solde le plus élevé jamais atteint
+   */
+  getHighestBalance(): number {
+    return this.highestRecordedBalance;
+  }
+  
+  /**
+   * Définir l'ID utilisateur pour le suivi
+   */
+  setUserId(userId: string): void {
+    this.userId = userId;
+    
+    try {
+      localStorage.setItem('currentUserId', userId);
+    } catch (e) {
+      console.error("Erreur lors de l'enregistrement de l'ID utilisateur:", e);
+    }
+  }
+  
+  /**
+   * Nettoyer les données de solde d'un utilisateur
+   */
+  cleanupUserBalanceData(): void {
+    console.log("Nettoyage des données utilisateur dans le gestionnaire de solde");
+    this.currentBalance = 0;
+    this.dailyGains = 0;
+    this.highestRecordedBalance = 0;
+    this.userId = null;
+    
+    try {
+      localStorage.removeItem('currentBalance');
+      localStorage.removeItem('dailyGains');
+      localStorage.removeItem('dailyGainsDate');
+      localStorage.removeItem('currentUserId');
+      localStorage.removeItem('lastBalanceUpdateTime');
+      localStorage.removeItem('lastKnownBalance');
+    } catch (e) {
+      console.error("Erreur lors du nettoyage des données de solde:", e);
+    }
+    
+    // Notifier les observateurs du changement
     this.notifyWatchers();
   }
   
@@ -107,6 +161,11 @@ class BalanceManager {
     }
     
     this.currentBalance = parseFloat(newBalance.toFixed(2));
+    
+    // Mettre à jour le solde le plus élevé si nécessaire
+    if (newBalance > this.highestRecordedBalance) {
+      this.highestRecordedBalance = newBalance;
+    }
     
     try {
       localStorage.setItem('currentBalance', this.currentBalance.toString());

@@ -32,3 +32,6 @@ export const shouldResetDailyCounters = (lastResetTime: number): boolean => {
          lastReset.getMonth() !== now.getMonth() ||
          lastReset.getFullYear() !== now.getFullYear();
 }
+
+// Re-export pour garantir la compatibilité
+export { SUBSCRIPTION_LIMITS } from './constants';

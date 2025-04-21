@@ -27,6 +27,18 @@ export const respectsDailyLimit = (
 ): DailyLimitResult => {
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
+  // Log pour traçabilité et débogage
+  console.log(`Vérification limite: ${subscription}, gains actuels ${currentDailyGains}€/${dailyLimit}€, gain potentiel ${potentialGain}€`);
+  
+  // Vérification stricte: si nous sommes déjà au-delà de 99.5% de la limite, bloquer tout gain
+  if (currentDailyGains >= dailyLimit * 0.995) {
+    console.log(`Limite atteinte (${currentDailyGains}€/${dailyLimit}€): blocage complet des gains`);
+    return {
+      allowed: false,
+      adjustedGain: 0
+    };
+  }
+  
   // Check if adding the potential gain would exceed the daily limit
   if (currentDailyGains + potentialGain > dailyLimit) {
     // Calculate how much gain we can still add without exceeding the limit
@@ -34,6 +46,7 @@ export const respectsDailyLimit = (
     
     if (remainingAllowance <= 0) {
       // No more gains allowed today
+      console.log(`Aucun gain autorisé: limite journalière atteinte`);
       return {
         allowed: false,
         adjustedGain: 0
@@ -41,6 +54,7 @@ export const respectsDailyLimit = (
     }
     
     // Allow a partial gain to reach exactly the daily limit
+    console.log(`Gain ajusté de ${potentialGain}€ à ${remainingAllowance.toFixed(2)}€ pour respecter la limite`);
     return {
       allowed: true,
       adjustedGain: parseFloat(remainingAllowance.toFixed(2))
@@ -48,6 +62,7 @@ export const respectsDailyLimit = (
   }
   
   // The potential gain is within limits, allow it
+  console.log(`Gain autorisé: ${potentialGain}€ (total sera ${(currentDailyGains + potentialGain).toFixed(2)}€/${dailyLimit}€)`);
   return {
     allowed: true,
     adjustedGain: potentialGain
@@ -89,10 +104,12 @@ export const canStartManualSession = (
   // Check subscription limit for number of sessions
   let maxSessions = 1;  // Default for freemium
   
-  if (subscription === 'basic') {
-    maxSessions = 3;
-  } else if (subscription === 'premium') {
-    maxSessions = 5;
+  if (subscription === 'starter') {
+    maxSessions = 10;
+  } else if (subscription === 'gold') {
+    maxSessions = 30;
+  } else if (subscription === 'elite') {
+    maxSessions = 60;
   }
   
   // Check if daily session limit is reached
