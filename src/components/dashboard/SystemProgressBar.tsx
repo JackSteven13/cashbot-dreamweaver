@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
@@ -24,45 +23,37 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
   const [localBotActive, setLocalBotActive] = useState(botActive);
   const [limitReached, setLimitReached] = useState(false);
   
-  // Calculer les limites et pourcentages et vérifier si la limite est atteinte
   useEffect(() => {
     const effectiveSub = getEffectiveSubscription(subscription);
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     setEffectiveLimit(limit);
     
-    // Calculer le pourcentage actuel de la limite journalière
     const percentage = Math.min(100, (displayBalance / limit) * 100);
     setCalculatedPercentage(percentage);
     
-    // Déterminer si la limite est presque atteinte (90%)
     const isLimitReached = percentage >= 90;
     setLimitReached(isLimitReached);
     
-    // Si le pourcentage atteint 90% (= limite presque atteinte), désactiver le bot
     if (isLimitReached && localBotActive) {
       setLocalBotActive(false);
       
-      // Propager le changement d'état du bot à travers l'application
       window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
         detail: { active: false } 
       }));
       
-      // Enregistrer dans le localStorage
       localStorage.setItem('botActive', 'false');
       
       console.log("Limite presque atteinte dans SystemProgressBar, bot désactivé");
       
-      // Afficher un toast pour informer l'utilisateur
       toast({
         title: "Limite journalière presque atteinte",
         description: `Vous approchez de votre limite journalière de ${limit.toFixed(2)}€. Le bot est maintenant en pause.`,
-        variant: "warning",
+        variant: "destructive",
         duration: 6000
       });
     }
   }, [subscription, displayBalance, dailyLimit, limitPercentage, localBotActive]);
   
-  // Synchroniser l'état local avec la prop botActive et écouter les événements
   useEffect(() => {
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
@@ -71,23 +62,19 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
       if (typeof isActive === 'boolean') {
         console.log(`SystemProgressBar received bot status update: ${isActive ? 'active' : 'inactive'}`);
         
-        // Si on active le bot mais que la limite est presque atteinte, empêcher l'activation
         if (isActive && limitReached && checkLimit) {
           console.log("Tentative d'activation du bot avec limite presque atteinte, bloqué");
           
-          // Renvoyer immédiatement l'information que le bot doit rester inactif
           window.dispatchEvent(new CustomEvent('bot:force-status', { 
             detail: { active: false, reason: 'limit_reached' } 
           }));
           
-          // Enregistrer dans le localStorage
           localStorage.setItem('botActive', 'false');
           
-          // Afficher un toast pour informer l'utilisateur
           toast({
-            title: "Limite journalière presque atteinte",
-            description: `Vous approchez de votre limite journalière de ${effectiveLimit.toFixed(2)}€. Revenez demain ou passez à un forfait supérieur.`,
-            variant: "warning",
+            title: "Limite journalière atteinte",
+            description: `Vous avez atteint votre limite de gain journalier de ${effectiveLimit.toFixed(2)}€. Revenez demain ou passez à un forfait supérieur.`,
+            variant: "destructive",
             duration: 5000
           });
         } else {
@@ -99,7 +86,6 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('bot:external-status-change' as any, handleBotStatusChange);
     
-    // Synchroniser avec la prop botActive au montage
     setLocalBotActive(botActive);
     
     return () => {
@@ -108,14 +94,12 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
     };
   }, [botActive, limitReached, effectiveLimit]);
   
-  // Fonction pour basculer manuellement l'état du bot
   const toggleBotStatus = () => {
-    // Si la limite est presque atteinte et qu'on essaie d'activer le bot, bloquer et afficher un toast
     if (limitReached && !localBotActive) {
       toast({
         title: "Impossible d'activer l'analyse",
         description: `Vous approchez de votre limite journalière de ${effectiveLimit.toFixed(2)}€. Revenez demain ou passez à un forfait supérieur.`,
-        variant: "warning",
+        variant: "destructive",
         duration: 5000
       });
       return;
@@ -124,13 +108,10 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
     const newStatus = !localBotActive;
     console.log(`Toggling bot status from ${localBotActive} to ${newStatus}`);
     
-    // Mettre à jour l'état local
     setLocalBotActive(newStatus);
     
-    // Enregistrer dans le localStorage
     localStorage.setItem('botActive', newStatus.toString());
     
-    // Propager le changement à toute l'application avec vérification de limite
     window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
       detail: { 
         active: newStatus,
@@ -152,7 +133,6 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
             {Math.round(calculatedPercentage)}%
           </span> / {effectiveLimit.toFixed(2)}€ par jour
           
-          {/* Indicateur d'état du bot amélioré avec possibilité de cliquer */}
           <div 
             className="ml-2 flex items-center cursor-pointer" 
             onClick={toggleBotStatus}
