@@ -5,7 +5,7 @@
  
 @layer base {
   :root {
-    /* Configuration uniquement pour le mode sombre */
+    /* Configuration pour le mode sombre */
     --background: 222.2 47% 11%;
     --foreground: 210 40% 98%;
  
@@ -15,8 +15,8 @@
     --popover: 222.2 47% 11%;
     --popover-foreground: 210 40% 98%;
  
-    --primary: 142 71% 45%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 215 70% 40%;
+    --primary-foreground: 210 40% 98%;
  
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -39,7 +39,7 @@
     /* Professional Financial Theme - Dark Mode */
     --cyber-bg: 215 30% 10%;
     --cyber-text: 210 15% 90%;
-    --cyber-accent: 142 71% 45%;
+    --cyber-accent: 215 70% 40%;
     --cyber-border: 215 20% 25%;
     --cyber-panel: 215 30% 16%;
     --cyber-card: 215 30% 18%;
@@ -54,7 +54,7 @@
   }
   body {
     @apply bg-slate-900 text-foreground;
-    font-family: 'Arial', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 
   /* Classes pour le mode sombre uniquement */

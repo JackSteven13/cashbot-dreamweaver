@@ -24,7 +24,7 @@ export function Toaster() {
             {...props} 
             className={`toast-notification ${isError ? 'destructive bg-red-950/90 text-white border-red-700/50' : ''} 
               max-w-[85vw] md:max-w-md z-[9999] fixed shadow-lg 
-              border border-blue-500/30 bg-slate-900/95`}
+              border border-slate-700/50 bg-slate-900/95`}
           >
             <div className="grid gap-1.5 w-full">
               {title && <ToastTitle className="text-sm font-semibold sm:text-base text-white">{title}</ToastTitle>}

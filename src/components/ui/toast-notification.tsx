@@ -32,7 +32,7 @@ export function ToastNotification({
       toastOptions={{
         className: cn(
           "group toast-notification font-medium transition-colors duration-300",
-          "border border-blue-500/30 bg-slate-900/95 text-white shadow-lg",
+          "border border-slate-700/50 bg-slate-900/95 text-white shadow-lg",
           toastClassName
         ),
         style: {

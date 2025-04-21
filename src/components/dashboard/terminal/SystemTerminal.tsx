@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Bot, BotOff } from 'lucide-react';
+import { Activity, Server } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import TerminalOutput from './TerminalOutput';
 
@@ -43,8 +43,8 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
       { text: `Balance actuelle: ${displayBalance.toFixed(2)}€`, type: "success" },
       { text: `Parrainages actifs: ${referralCount}`, type: "info" },
       { text: isBotActive 
-        ? "Assistant d'analyse démarré. Génération de revenus en cours..."
-        : "Assistant d'analyse en pause. Activez-le pour générer des revenus.", 
+        ? "Module d'analyse actif. Génération de revenus en cours..."
+        : "Module d'analyse en pause. Activez-le pour générer des revenus.", 
         type: isBotActive ? "success" : "warning" 
       }
     ];
@@ -62,7 +62,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
       setScrollToBottom(true);
     };
     
-    // Ajouter des entrées au terminal lorsque le bot change d'état
+    // Ajouter des entrées au terminal lorsque le système change d'état
     const handleBotStatusChange = (event: CustomEvent) => {
       const { active } = event.detail;
       
@@ -70,8 +70,8 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
         ...prev, 
         { 
           text: active 
-            ? "Assistant d'analyse activé. Démarrage de l'analyse de contenu..." 
-            : "Assistant d'analyse désactivé. Arrêt de l'analyse de contenu.",
+            ? "Module d'analyse activé. Démarrage de l'optimisation..." 
+            : "Module d'analyse désactivé. Arrêt de l'optimisation.",
           type: active ? "success" : "warning"
         }
       ]);
@@ -99,7 +99,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
     const handleDailyReset = () => {
       setOutputs(prev => [
         ...prev,
-        { text: "Réinitialisation quotidienne effectuée. Nouveaux compteurs disponibles.", type: "system" }
+        { text: "Réinitialisation quotidienne effectuée. Nouveaux quotas disponibles.", type: "system" }
       ]);
       
       handleTerminalUpdate();
@@ -112,7 +112,7 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
       if (amount && agent) {
         setOutputs(prev => [
           ...prev,
-          { text: `Agent IA #${agent}: Micro-gain de ${amount}€ généré`, type: "success" }
+          { text: `Module #${agent}: Optimisation de ${amount}€ générée`, type: "success" }
         ]);
         
         handleTerminalUpdate();
@@ -125,18 +125,18 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
       
       if (Math.random() > 0.7) { // Ne pas afficher tous les événements pour éviter de surcharger
         const messages = [
-          "Analyse de contenu vidéo en cours...",
-          "Identification des annonces publicitaires...",
-          "Algorithme de traitement activé...",
-          "Optimisation des publicités ciblées...",
-          "Vérification de la compatibilité des annonces..."
+          "Analyse du système en cours...",
+          "Optimisation des paramètres...",
+          "Vérification des performances...",
+          "Surveillance des composants...",
+          "Synchronisation avec les services externes..."
         ];
         
         const randomMessage = messages[Math.floor(Math.random() * messages.length)];
         
         setOutputs(prev => [
           ...prev,
-          { text: `${randomMessage} [${agents || 3} agents actifs]`, type: "info" }
+          { text: `${randomMessage} [${agents || 3} modules actifs]`, type: "info" }
         ]);
         
         handleTerminalUpdate();
@@ -173,14 +173,14 @@ const SystemTerminal: React.FC<SystemTerminalProps> = ({
   
   return (
     <Card className={cn(
-      "h-[450px] bg-black border-slate-800 font-mono text-sm overflow-hidden",
-      animationActive && "border-green-500/50 shadow-[0_0_15px_rgba(74,222,128,0.2)]"
+      "h-[450px] bg-slate-900 border-slate-800 font-mono text-sm overflow-hidden",
+      animationActive && "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
     )}>
-      <div className="bg-slate-900 p-2 border-b border-slate-800 flex items-center">
+      <div className="bg-slate-800 p-2 border-b border-slate-800 flex items-center">
         {isBotActive ? (
-          <Bot className="h-4 w-4 text-green-400 mr-2" />
+          <Server className="h-4 w-4 text-blue-400 mr-2" />
         ) : (
-          <BotOff className="h-4 w-4 text-amber-400 mr-2" />
+          <Activity className="h-4 w-4 text-amber-400 mr-2" />
         )}
         <div className="text-xs text-slate-400">
           Système {isBotActive ? "actif" : "en pause"} | {subscription} | Limite: {dailyLimit}€/jour

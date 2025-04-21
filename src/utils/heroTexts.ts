@@ -1,3 +1,3 @@
 
-export const heroMainTitle = "Générez des revenus passifs avec nos agents IA qui visionnent des publicités";
-export const heroSubtitle = "Nos agents d'intelligence artificielle génèrent automatiquement des revenus 24h/24 en regardant des publicités sponsorisées.";
+export const heroMainTitle = "Optimisez vos revenus passifs avec notre technologie d'automatisation intelligente";
+export const heroSubtitle = "Notre système d'agents automatisés optimise en continu vos performances pour générer des revenus passifs.";

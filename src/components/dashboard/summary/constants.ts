@@ -10,9 +10,9 @@ export const SESSION_LIMITS = {
 // Limites de revenus journaliers selon le forfait - ALIGNÉES AVEC LES LIMITES GLOBALES
 export const DAILY_REVENUE_LIMITS = {
   'freemium': 0.50,   // 0,50€ par jour
-  'starter': 2.00,    // 2€ par jour (corrigé à partir de 5€)
-  'gold': 5.00,       // 5€ par jour (corrigé à partir de 20€)
-  'elite': 15.00      // 15€ par jour (corrigé à partir de 50€)
+  'starter': 2.00,    // 2€ par jour
+  'gold': 5.00,       // 5€ par jour
+  'elite': 15.00      // 15€ par jour
 };
 
 // Taux de commission pour le parrainage selon l'abonnement
@@ -41,10 +41,10 @@ export const LEVEL2_COMMISSION_RATES = {
 
 // Seuils de retrait selon l'abonnement - ALIGNÉS AVEC LES SEUILS GLOBAUX
 export const WITHDRAWAL_THRESHOLDS = {
-  'freemium': 20,     // 20€ minimum (corrigé à partir de 200€)
-  'starter': 15,      // 15€ minimum (corrigé à partir de 100€)
-  'gold': 10,         // 10€ minimum (corrigé à partir de 50€)
-  'elite': 5          // 5€ minimum (corrigé à partir de 25€)
+  'freemium': 20,     // 20€ minimum
+  'starter': 15,      // 15€ minimum
+  'gold': 10,         // 10€ minimum
+  'elite': 5          // 5€ minimum
 };
 
 // Export SUBSCRIPTION_LIMITS pour la compatibilité avec d'autres fichiers
