@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,6 @@ import { Progress } from '@/components/ui/progress';
 import { getWithdrawalThreshold, getWithdrawalProgress } from '@/utils/referral/withdrawalUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-// Define payment method type
 interface PaymentMethod {
   id: string;
   type: string;
@@ -21,7 +19,6 @@ const WalletPage = () => {
   const [progressValue, setProgressValue] = useState(0);
   const [withdrawalThreshold, setWithdrawalThreshold] = useState(0);
 
-  // Calculer le seuil de retrait et la progression
   useEffect(() => {
     if (userData) {
       const threshold = getWithdrawalThreshold(userData.subscription);
@@ -32,7 +29,6 @@ const WalletPage = () => {
     }
   }, [userData]);
 
-  // Default payment methods if none exist
   const paymentMethods: PaymentMethod[] = [];
 
   return (
@@ -52,10 +48,9 @@ const WalletPage = () => {
               {isLoading ? "..." : `${userData?.balance.toFixed(2) || '0.00'} €`}
             </div>
             
-            {/* Nouvelle section pour afficher la progression vers le seuil de retrait */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-muted-foreground">Seuil de retrait</span>
+                <span className="text-sm text-muted-foreground">Progression</span>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -65,12 +60,18 @@ const WalletPage = () => {
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Vous devez atteindre {withdrawalThreshold}€ pour retirer vos gains</p>
+                      <p>Continuez à générer des revenus et à parrainer pour accélérer vos gains!</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <Progress value={progressValue} className="h-2" />
+              <p className="text-xs text-blue-600 mt-1">
+                {progressValue < 25 ? "Début prometteur! Continuez ainsi!" : 
+                 progressValue < 50 ? "Vous progressez bien! Parrainez des amis pour accélérer!" : 
+                 progressValue < 75 ? "Vous êtes sur la bonne voie! Continuez!" : 
+                 "Presque là! Encore un peu d'efforts!"}
+              </p>
             </div>
             
             <div className="flex space-x-3">
@@ -81,10 +82,11 @@ const WalletPage = () => {
               <Button 
                 size="sm"
                 disabled={userData?.balance < withdrawalThreshold}
-                title={userData?.balance < withdrawalThreshold ? `Minimum de retrait: ${withdrawalThreshold}€` : undefined}
+                title={userData?.balance < withdrawalThreshold ? `Objectif: ${withdrawalThreshold}€` : undefined}
+                className={userData?.balance >= withdrawalThreshold ? "bg-green-600 hover:bg-green-700" : ""}
               >
                 <ArrowUpToLine className="mr-2 h-4 w-4" />
-                Retirer
+                {userData?.balance >= withdrawalThreshold ? "Retirer" : `Objectif: ${withdrawalThreshold}€`}
               </Button>
             </div>
           </CardContent>
@@ -162,32 +164,31 @@ const WalletPage = () => {
         </CardContent>
       </Card>
       
-      {/* Section informative sur le programme d'affiliation */}
-      <Card className="mt-6">
+      <Card className="mt-6 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-purple-200 dark:border-purple-800/50">
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <CardTitle className="flex items-center text-purple-800 dark:text-purple-300">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
               <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
               <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
-            Programme d'affiliation
+            Boostez vos revenus avec l'affiliation
           </CardTitle>
-          <CardDescription>Augmentez vos gains grâce aux parrainages</CardDescription>
+          <CardDescription className="text-purple-700 dark:text-purple-400">Les affiliés peuvent retirer leurs gains bien plus rapidement!</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="bg-muted p-4 rounded-lg mb-4">
-            <p className="font-medium mb-2">Pourquoi parrainer?</p>
-            <ul className="list-disc ml-5 space-y-1">
-              <li>Recevez jusqu'à 50% de commission sur les gains de vos filleuls</li>
-              <li>Augmentez votre vitesse de génération de revenus</li>
-              <li>Accès prioritaire aux retraits</li>
-              <li>Débloquez les seuils de retrait plus rapidement</li>
+          <div className="bg-white dark:bg-purple-900/30 p-4 rounded-lg mb-4 border border-purple-100 dark:border-purple-800/50">
+            <p className="font-medium mb-2 text-purple-900 dark:text-purple-300">Avantages exclusifs:</p>
+            <ul className="list-disc ml-5 space-y-1 text-purple-800 dark:text-purple-300">
+              <li><span className="font-medium">50% de commission</span> sur les gains de vos filleuls</li>
+              <li><span className="font-medium">Accès prioritaire aux retraits</span> dès 3 parrainages actifs</li>
+              <li><span className="font-medium">Bonus d'affiliation immédiat</span> pour chaque nouveau membre</li>
+              <li><span className="font-medium">Frais de retrait réduits</span> pour les affiliateurs actifs</li>
             </ul>
           </div>
-          <Button className="w-full bg-purple-600 hover:bg-purple-700">
-            Accéder à mon programme d'affiliation
+          <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+            Commencer à parrainer maintenant
           </Button>
         </CardContent>
       </Card>

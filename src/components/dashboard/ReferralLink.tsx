@@ -133,13 +133,16 @@ const AffiliationLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals 
       <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
         <div className="flex items-center gap-2">
           <Award className="text-amber-500 dark:text-amber-400 h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0" />
-          <h3 className="text-lg sm:text-xl font-semibold text-[#1e3a5f] dark:text-blue-100">Programme d'affiliation</h3>
+          <h3 className="text-lg sm:text-xl font-semibold text-[#1e3a5f] dark:text-blue-100">Programme VIP d'affiliation</h3>
         </div>
         
         <div className="bg-white dark:bg-slate-800/60 rounded-lg p-3 sm:p-4 shadow-sm border border-blue-100 dark:border-blue-800/50">
-          <p className="text-xs sm:text-sm text-[#486581] dark:text-slate-300 mb-2 sm:mb-3 font-medium">
-            Partagez ce lien avec vos amis et gagnez <span className="font-bold text-green-600 dark:text-green-400">20% de commission</span> sur les abonnements!
-          </p>
+          <div className="mb-3 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-900/40 p-2 rounded-md border border-amber-200 dark:border-amber-800/30">
+            <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300 font-medium flex items-center">
+              <span className="flex-shrink-0 h-4 w-4 mr-1 bg-amber-400 dark:bg-amber-600 rounded-full flex items-center justify-center text-white text-xs">!</span>
+              Offre spéciale: Recevez <span className="font-bold text-amber-900 dark:text-amber-200 mx-1">50%</span> de commission sur les abonnements!
+            </p>
+          </div>
           
           <div className="flex flex-col gap-2 sm:gap-3">
             <div className="relative w-full">
@@ -179,17 +182,17 @@ const AffiliationLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals 
           </div>
           
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div className="bg-amber-50 dark:bg-amber-900/20 p-2 sm:p-3 rounded-md border border-amber-100 dark:border-amber-800/50 flex items-start gap-2">
+            <div className="bg-green-50 dark:bg-green-900/20 p-2 sm:p-3 rounded-md border border-green-100 dark:border-green-800/50 flex items-start gap-2">
               <div>
-                <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300 font-medium">Gagnez 20% de commission</p>
-                <p className="text-xs text-amber-700 dark:text-amber-400">Sans limite d'affiliés!</p>
+                <p className="text-xs sm:text-sm text-green-800 dark:text-green-300 font-medium">Gains immédiats garantis</p>
+                <p className="text-xs text-green-700 dark:text-green-400">Commissions versées directement</p>
               </div>
             </div>
             <div className="bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-3 rounded-md border border-blue-100 dark:border-blue-800/50 flex items-start gap-2">
               <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-300 font-medium">{referrals.length} membre{referrals.length !== 1 ? 's' : ''}</p>
-                <p className="text-xs text-blue-700 dark:text-blue-400">Invitez vos amis!</p>
+                <p className="text-xs text-blue-700 dark:text-blue-400">Objectif: {Math.max(3, referrals.length + 3)} affiliés!</p>
               </div>
             </div>
           </div>
@@ -219,15 +222,15 @@ const AffiliationLink: React.FC<ReferralLinkProps> = ({ referralLink, referrals 
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="item-1" className="border-none">
             <AccordionTrigger className="text-blue-600 dark:text-blue-400 text-xs sm:text-sm font-medium py-1 hover:no-underline">
-              Comment ça marche ?
+              Pourquoi rejoindre le programme VIP ?
             </AccordionTrigger>
             <AccordionContent className="bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-3 rounded-md border border-blue-100 dark:border-blue-800/50 text-xs text-blue-700 dark:text-blue-300">
               <ol className="list-decimal ml-4 space-y-1">
-                <li>Partagez votre lien d'affiliation</li>
-                <li>Vos amis créent un compte et s'abonnent</li>
-                <li>Vous recevez 20% de leur abonnement</li>
-                <li>Les commissions sont ajoutées à votre solde chaque mois</li>
-                <li>Augmentez vos revenus passifs avec chaque nouvel affilié</li>
+                <li><span className="font-medium">Revenus garantis</span> sur chaque abonnement</li>
+                <li><span className="font-medium">Accès prioritaire</span> aux retraits à partir de 3 affiliés</li>
+                <li><span className="font-medium">Déblocage immédiat</span> des options premium</li>
+                <li><span className="font-medium">Frais réduits</span> pour vos transactions</li>
+                <li><span className="font-medium">Support dédié</span> pour les affiliateurs VIP</li>
               </ol>
             </AccordionContent>
           </AccordionItem>

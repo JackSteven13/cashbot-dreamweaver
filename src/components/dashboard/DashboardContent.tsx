@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import SummaryPanel from './summary/SummaryPanel';
 import DashboardTabs from './metrics/tabs/DashboardTabs';
@@ -42,9 +41,45 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
 
   // Utiliser le seuil de retrait cohérent selon subscription
   const withdrawalThreshold = getWithdrawalThreshold(subscription);
+  
+  // Calculer le pourcentage d'avancement vers le seuil de retrait
+  const withdrawalPercentage = balance > 0 ? Math.min(100, (balance / withdrawalThreshold) * 100) : 0;
+  
+  // Déterminer si l'utilisateur est un affiliateur actif (3+ affiliés)
+  const isActiveReferrer = referralCount >= 3;
+  
+  // Déterminer si l'utilisateur a récemment parrainé quelqu'un (simulé)
+  const hasRecentReferral = referrals.some(ref => {
+    if (!ref.date && !ref.created_at) return false;
+    const refDate = ref.date ? new Date(ref.date) : ref.created_at ? new Date(ref.created_at) : null;
+    if (!refDate) return false;
+    const daysSinceRef = (Date.now() - refDate.getTime()) / (1000 * 60 * 60 * 24);
+    return daysSinceRef < 7; // Dans les 7 derniers jours
+  });
+
+  // Message d'encouragement personnalisé
+  const getMotivationalMessage = () => {
+    if (isNewUser) return "Bienvenue! Démarrez votre première session pour commencer à générer des revenus!";
+    if (isActiveReferrer) return "Félicitations! Votre statut VIP vous donne accès aux retraits prioritaires!";
+    if (hasRecentReferral) return "Excellent travail! Votre dernier parrainage accélère votre progression!";
+    if (withdrawalPercentage >= 75) return "Vous vous rapprochez rapidement de votre premier retrait!";
+    if (withdrawalPercentage >= 50) return "Continuez ainsi, vous êtes sur la bonne voie!";
+    if (referralCount > 0) return "Vos parrainages boostent votre progression, continuez!";
+    return "Parrainez des amis pour débloquer des avantages exclusifs!";
+  };
 
   return (
     <div className="space-y-8 pb-10">
+      {/* Message d'encouragement */}
+      {!isNewUser && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800/40 mb-4">
+          <p className="text-sm text-blue-800 dark:text-blue-300 font-medium flex items-center">
+            <TrendingUp className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
+            {getMotivationalMessage()}
+          </p>
+        </div>
+      )}
+      
       <SummaryPanel
         balance={balance}
         referralLink={referralLink}
@@ -57,7 +92,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         canStartSession={!showLimitAlert}
         referrals={referrals}
         referralCount={referralCount}
-        withdrawalThreshold={withdrawalThreshold} /* Utilisation dynamique */
+        withdrawalThreshold={withdrawalThreshold}
         lastSessionTimestamp={lastSessionTimestamp}
         isBotActive={isBotActive}
       />

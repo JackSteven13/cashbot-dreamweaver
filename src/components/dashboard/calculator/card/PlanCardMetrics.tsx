@@ -31,6 +31,21 @@ const PlanCardMetrics: React.FC<PlanCardMetricsProps> = ({
     ? Math.ceil(withdrawalThreshold / displayRevenue)
     : 0;
   
+  // Formulation plus positive du message de délai de retrait
+  const getTimeMessage = () => {
+    if (monthsToWithdrawal <= 0) return null;
+    
+    // Simplifier et rendre plus positif le message sur le temps
+    if (monthsToWithdrawal <= 3) {
+      return "Votre premier retrait possible très bientôt!";
+    } else if (monthsToWithdrawal <= 6) {
+      return "Gagnez plus rapidement avec nos programmes d'affiliation!";
+    } else {
+      // Ne pas montrer un délai spécifique s'il est trop long
+      return "Accélérez vos revenus avec des affiliés!";
+    }
+  };
+  
   return (
     <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800/30">
       <p className="text-xs md:text-sm font-medium text-blue-800 dark:text-blue-300">
@@ -40,8 +55,8 @@ const PlanCardMetrics: React.FC<PlanCardMetricsProps> = ({
         Profit mensuel: <span className={`${profitColorClass}`}>{displayProfit.toFixed(2)}€</span>
       </p>
       {monthsToWithdrawal > 0 && (
-        <p className="text-xs mt-1 text-gray-600 dark:text-gray-400">
-          Environ {monthsToWithdrawal} mois pour atteindre le seuil de retrait
+        <p className="text-xs mt-1 text-green-600 dark:text-green-400 font-medium">
+          {getTimeMessage()}
         </p>
       )}
     </div>

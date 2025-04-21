@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Activity, TrendingUp } from 'lucide-react';
+import { Activity, TrendingUp, Star } from 'lucide-react';
 import usePersistentStats from '@/hooks/stats/usePersistentStats';
 import { useUserSession } from '@/hooks/useUserSession';
 import { initStatsSync } from '@/utils/stats/statsSynchronizer';
@@ -22,7 +22,7 @@ const StatsSummary: React.FC = () => {
   }, [userId]);
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4 text-white">
@@ -46,6 +46,23 @@ const StatsSummary: React.FC = () => {
           <div className="p-4 flex items-center">
             <span className="text-2xl md:text-3xl font-bold">
               {new Intl.NumberFormat('fr-FR').format(Math.round(revenueCount))} €
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="overflow-hidden">
+        <CardContent className="p-0">
+          <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-4 text-white">
+            <Star className="h-6 w-6 mb-2" />
+            <h3 className="font-bold text-lg">Affiliés actifs</h3>
+          </div>
+          <div className="p-4 flex items-center justify-between">
+            <span className="text-2xl md:text-3xl font-bold">
+              {new Intl.NumberFormat('fr-FR').format(Math.round(adsCount / 750))}
+            </span>
+            <span className="text-xs text-green-500 font-medium bg-green-100 px-2 py-0.5 rounded-full">
+              En hausse!
             </span>
           </div>
         </CardContent>

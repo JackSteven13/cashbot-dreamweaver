@@ -73,27 +73,27 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
 
   return (
     <Alert 
-      className={`mb-4 md:mb-6 ${isLimitReached ? 'bg-amber-50 border-amber-300 dark:bg-amber-900/40 dark:border-amber-600' : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-700'}`}
-      variant={isLimitReached ? "destructive" : "warning"}
+      className={`mb-4 md:mb-6 ${isLimitReached ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/40 dark:border-blue-600' : 'bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700'}`}
+      variant={isLimitReached ? "default" : "default"}
     >
-      <AlertTitle className={`text-sm md:text-base ${isLimitReached ? 'text-amber-800 dark:text-amber-300' : 'text-yellow-800 dark:text-yellow-300'}`}>
-        {isLimitReached ? 'Limite journalière atteinte' : 'Limite journalière presque atteinte'}
+      <AlertTitle className={`text-sm md:text-base ${isLimitReached ? 'text-blue-800 dark:text-blue-300' : 'text-blue-800 dark:text-blue-300'}`}>
+        {isLimitReached ? 'Objectif quotidien atteint!' : 'Objectif quotidien presque atteint!'}
       </AlertTitle>
       <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 md:gap-4">
         <div className="flex-1">
-          <span className={`text-xs md:text-sm ${isLimitReached ? 'text-amber-700 dark:text-amber-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
+          <span className={`text-xs md:text-sm ${isLimitReached ? 'text-blue-700 dark:text-blue-400' : 'text-blue-700 dark:text-blue-400'}`}>
             {isLimitReached 
-              ? `Vous avez atteint votre limite de gain journalier de ${effectiveLimit}€ avec votre compte ${effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1)}.
+              ? `Félicitations! Vous avez atteint votre objectif quotidien de ${effectiveLimit}€ avec votre compte ${effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1)}.
                  Votre solde total est de ${currentBalance.toFixed(2)}€.`
-              : `Vous approchez de votre limite de gain journalier de ${effectiveLimit}€ avec votre compte ${effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1)}.
+              : `Vous approchez de votre objectif quotidien de ${effectiveLimit}€ avec votre compte ${effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1)}.
                  Votre solde total est de ${currentBalance.toFixed(2)}€.`
             }
           </span>
           
-          {/* Progress bar for visual representation */}
+          {/* Progress bar for visual representation with positive colors */}
           <div className="w-full h-1.5 md:h-2 bg-gray-200 dark:bg-gray-700 rounded-full mt-1.5 md:mt-2 overflow-hidden">
             <div 
-              className={`h-full ${isLimitReached ? 'bg-amber-500' : isNearLimit ? 'bg-orange-500' : 'bg-yellow-500'}`}
+              className={`h-full ${isLimitReached ? 'bg-green-500' : isNearLimit ? 'bg-blue-500' : 'bg-blue-500'}`}
               style={{ width: `${limitPercentage}%` }}
             />
           </div>
@@ -103,9 +103,9 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
           <Button 
             variant="default" 
             size={isMobile ? "sm" : "default"}
-            className={`w-full sm:w-auto whitespace-normal h-auto py-1.5 md:py-2 px-2 md:px-3 text-xs md:text-sm ${isLimitReached ? 'bg-amber-600 hover:bg-amber-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white`}
+            className={`w-full sm:w-auto whitespace-normal h-auto py-1.5 md:py-2 px-2 md:px-3 text-xs md:text-sm ${isLimitReached ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white`}
           >
-            Augmenter ma limite
+            Augmenter mon potentiel
           </Button>
         </Link>
       </AlertDescription>
