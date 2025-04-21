@@ -1,3 +1,4 @@
+
 /**
  * BalanceManager - Gestionnaire centralisé pour le solde de l'utilisateur
  * Permet de synchroniser l'état du solde entre les différentes parties de l'application
@@ -32,12 +33,23 @@ class BalanceManager {
       // Essayer de récupérer le solde persisté
       const persistedBalance = localStorage.getItem(this.persistentBalanceKey);
       const storedDailyGains = localStorage.getItem(this.dailyGainsKey);
+      const storedHighestBalance = localStorage.getItem(this.highestBalanceKey);
       
-      // Si on a un solde persisté, l'utiliser
+      let highestBalance = 0;
+      
+      // Si on a un solde persisté, l'utiliser comme base
       if (persistedBalance) {
         const balance = parseFloat(persistedBalance);
         if (!isNaN(balance)) {
-          this.currentBalance = balance;
+          highestBalance = Math.max(highestBalance, balance);
+        }
+      }
+      
+      // Si on a le solde le plus élevé jamais atteint, le comparer
+      if (storedHighestBalance) {
+        const highest = parseFloat(storedHighestBalance);
+        if (!isNaN(highest)) {
+          highestBalance = Math.max(highestBalance, highest);
         }
       }
       
@@ -49,27 +61,31 @@ class BalanceManager {
         }
       }
       
-      // Vérifier d'autres sources de vérité
-      const sources = [
+      // Vérifier TOUTES les sources potentielles de solde
+      const potentialSources = [
         localStorage.getItem('currentBalance'),
         localStorage.getItem('lastKnownBalance'),
+        ...Object.keys(localStorage)
+          .filter(key => key.startsWith('user_balance_') || key.startsWith('highest_balance_') || key.startsWith('last_known_balance_'))
+          .map(key => localStorage.getItem(key))
       ];
       
       // Utiliser la valeur la plus élevée parmi toutes les sources
-      for (const source of sources) {
+      for (const source of potentialSources) {
         if (source) {
           try {
             const value = parseFloat(source);
-            if (!isNaN(value) && value > this.currentBalance) {
-              this.currentBalance = value;
-              // Persister immédiatement la valeur la plus élevée
-              this.persistBalance();
+            if (!isNaN(value)) {
+              highestBalance = Math.max(highestBalance, value);
             }
           } catch (e) {
             console.error("Erreur lors de la lecture d'une source de solde:", e);
           }
         }
       }
+      
+      // Mettre à jour le solde avec la valeur la plus élevée trouvée
+      this.currentBalance = highestBalance;
       
       console.log(`BalanceManager initialisé avec un solde de ${this.currentBalance}€`);
       
@@ -78,12 +94,22 @@ class BalanceManager {
       
       this.initialized = true;
       this.lastUpdateTime = Date.now();
+      
+      // Persister le solde initial et sauvegarder comme valeur la plus élevée
+      this.persistBalance();
+      this.updateHighestBalance(this.currentBalance);
+      
+      // Annoncer le solde initial avec un événement
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('balance:initialized', {
+          detail: {
+            balance: this.currentBalance,
+          }
+        }));
+      }, 100);
     } catch (e) {
       console.error("Erreur lors de l'initialisation du BalanceManager:", e);
     }
-    
-    // Toujours persister le solde initial
-    this.persistBalance();
   }
   
   /**
@@ -137,6 +163,32 @@ class BalanceManager {
           this.updateBalance(balance);
         }
       }) as EventListener);
+      
+      // Nouvelle logique: écouter les événements de récupération de solde du serveur
+      window.addEventListener('user:data-loaded', ((event: CustomEvent) => {
+        const serverBalance = event.detail?.balance;
+        
+        if (typeof serverBalance === 'number') {
+          // Comparer le solde du serveur avec celui stocké localement
+          if (serverBalance > this.currentBalance) {
+            console.log(`Le solde du serveur (${serverBalance}€) est supérieur au solde local (${this.currentBalance}€). Mise à jour...`);
+            this.updateBalance(serverBalance);
+          } else {
+            console.log(`Le solde local (${this.currentBalance}€) est supérieur ou égal au solde du serveur (${serverBalance}€). Conservation du solde local.`);
+            
+            // Force la synchronisation avec le serveur si le solde local est significativement plus élevé
+            if (this.currentBalance > serverBalance * 1.1) {  // 10% de différence
+              console.log(`La différence de solde est significative. Émission d'un événement pour synchroniser avec le serveur.`);
+              window.dispatchEvent(new CustomEvent('balance:server-sync-needed', {
+                detail: {
+                  localBalance: this.currentBalance,
+                  serverBalance: serverBalance
+                }
+              }));
+            }
+          }
+        }
+      }) as EventListener);
     } catch (e) {
       console.error("Erreur lors de l'ajout des écouteurs d'événements:", e);
     }
@@ -162,6 +214,9 @@ class BalanceManager {
       // Sauvegarder la dernière mise à jour
       this.lastUpdateTime = Date.now();
       localStorage.setItem('lastBalanceUpdateTime', this.lastUpdateTime.toString());
+      
+      // Mettre à jour également le solde le plus élevé si nécessaire
+      this.updateHighestBalance(this.currentBalance);
     } catch (e) {
       console.error("Erreur lors de la persistance du solde:", e);
     }
@@ -273,18 +328,22 @@ class BalanceManager {
       this.userIds.add(userId);
     }
     
-    // Mettre à jour le solde
-    this.updateBalance(balance);
-    
-    // Émettre un événement pour informer les autres composants
-    window.dispatchEvent(new CustomEvent('balance:force-update', {
-      detail: {
-        newBalance: this.currentBalance,
-        userId: Array.from(this.userIds)[0] || null
-      }
-    }));
-    
-    console.log(`Synchronisation forcée du solde à ${this.currentBalance}€`);
+    // IMPORTANT: Ne mettre à jour le solde que si la nouvelle valeur est supérieure
+    // pour éviter les régressions du solde
+    if (balance > this.currentBalance) {
+      console.log(`Synchronisation forcée: ${this.currentBalance}€ -> ${balance}€ (augmentation)`)
+      this.updateBalance(balance);
+      
+      // Émettre un événement pour informer les autres composants
+      window.dispatchEvent(new CustomEvent('balance:force-update', {
+        detail: {
+          newBalance: this.currentBalance,
+          userId: Array.from(this.userIds)[0] || null
+        }
+      }));
+    } else {
+      console.log(`Synchronisation forcée ignorée: ${balance}€ <= ${this.currentBalance}€ (maintien du solde supérieur)`);
+    }
   }
   
   /**
@@ -350,6 +409,7 @@ class BalanceManager {
       const current = this.getHighestBalance();
       if (balance > current) {
         localStorage.setItem(this.highestBalanceKey, balance.toString());
+        console.log(`Nouveau record de solde enregistré: ${balance}€`);
       }
     } catch (e) {
       console.error("Failed to update highest balance:", e);
@@ -367,14 +427,41 @@ class BalanceManager {
       // Vérifier les soldes spécifiques à l'utilisateur
       try {
         const userBalanceKey = `user_balance_${userId}`;
+        const userHighestBalanceKey = `highest_balance_${userId}`;
         const storedBalance = localStorage.getItem(userBalanceKey);
+        const storedHighestBalance = localStorage.getItem(userHighestBalanceKey);
         
+        let highestKnownBalance = this.currentBalance;
+        
+        // Vérifier le solde stocké pour cet utilisateur
         if (storedBalance) {
           const parsedBalance = parseFloat(storedBalance);
-          if (!isNaN(parsedBalance) && parsedBalance > this.currentBalance) {
-            this.updateBalance(parsedBalance);
-            console.log(`Restored balance for user ${userId}: ${parsedBalance}€`);
+          if (!isNaN(parsedBalance)) {
+            highestKnownBalance = Math.max(highestKnownBalance, parsedBalance);
           }
+        }
+        
+        // Vérifier aussi le solde le plus élevé stocké pour cet utilisateur
+        if (storedHighestBalance) {
+          const parsedHighest = parseFloat(storedHighestBalance);
+          if (!isNaN(parsedHighest)) {
+            highestKnownBalance = Math.max(highestKnownBalance, parsedHighest);
+          }
+        }
+        
+        // Si on a trouvé un solde plus élevé, l'utiliser
+        if (highestKnownBalance > this.currentBalance) {
+          this.updateBalance(highestKnownBalance);
+          console.log(`Restored balance for user ${userId}: ${highestKnownBalance}€`);
+          
+          // Informer le système d'un changement de solde significatif
+          window.dispatchEvent(new CustomEvent('balance:restored', {
+            detail: { 
+              balance: highestKnownBalance, 
+              userId,
+              previousBalance: this.currentBalance
+            }
+          }));
         }
       } catch (e) {
         console.error("Error checking user-specific balance:", e);
@@ -413,6 +500,37 @@ class BalanceManager {
     this.lastUpdateTime = 0;
     
     console.log("User balance data cleanup complete");
+  }
+  
+  /**
+   * Vérifie si le solde a changé significativement depuis le dernier chargement
+   * et envoie un événement pour alerter le système
+   */
+  checkForSignificantBalanceChange(serverBalance: number): void {
+    if (!serverBalance) return;
+    
+    const localBalance = this.currentBalance;
+    const difference = Math.abs(localBalance - serverBalance);
+    const threshold = 0.5; // Différence significative à partir de 0,50€
+    
+    if (difference > threshold) {
+      console.log(`Différence significative de solde détectée: Local=${localBalance}€, Serveur=${serverBalance}€`);
+      
+      // Utiliser toujours le solde le plus élevé
+      const highestBalance = Math.max(localBalance, serverBalance);
+      
+      if (highestBalance !== localBalance) {
+        this.updateBalance(highestBalance);
+      }
+      
+      window.dispatchEvent(new CustomEvent('balance:significant-change', {
+        detail: {
+          localBalance,
+          serverBalance,
+          resolvedBalance: highestBalance
+        }
+      }));
+    }
   }
 }
 

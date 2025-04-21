@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { UserData } from '@/types/userData';
 import balanceManager from '@/utils/balance/balanceManager';
+import { toast } from '@/components/ui/use-toast';
 
 export const useBalanceSynchronization = (userData: UserData | null, isNewUser: boolean) => {
   // Utiliser balanceManager comme source unique de vérité
@@ -10,6 +11,7 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
   });
   const firstSyncRef = useRef<boolean>(true);
   const lastSyncTimeRef = useRef<number>(0);
+  const highestBalanceRef = useRef<number>(balanceManager.getHighestBalance());
   
   // Synchronisation initiale et lorsque les données utilisateur changent
   useEffect(() => {
@@ -33,20 +35,64 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
     // Première synchronisation - initialiser le gestionnaire de solde
     if (firstSyncRef.current && userData.balance !== undefined) {
       console.log(`Première synchronisation du solde: ${userData.balance}€`);
-      balanceManager.forceBalanceSync(userData.balance);
+      
+      // Vérifier si on a un solde local plus élevé
+      const currentLocalBalance = balanceManager.getCurrentBalance();
+      const highestStoredBalance = balanceManager.getHighestBalance();
+      const serverBalance = userData.balance;
+      
+      // Utiliser le solde le plus élevé parmi toutes les sources
+      const effectiveBalance = Math.max(serverBalance, currentLocalBalance, highestStoredBalance);
+      
+      if (effectiveBalance > serverBalance) {
+        console.log(`Le solde local (${effectiveBalance}€) est plus élevé que celui du serveur (${serverBalance}€)`);
+      }
+      
+      // Synchroniser le gestionnaire avec le solde le plus élevé
+      balanceManager.forceBalanceSync(effectiveBalance);
+      balanceManager.updateHighestBalance(effectiveBalance);
+      
+      // Si le solde local est significativement plus élevé, afficher une notification
+      if (effectiveBalance > serverBalance * 1.2) { // 20% de différence
+        toast({
+          title: "Solde synchronisé",
+          description: "Un solde plus élevé a été trouvé localement et a été restauré.",
+          duration: 5000
+        });
+      }
+      
       firstSyncRef.current = false;
     }
     // Synchronisations ultérieures - comparer avec le serveur mais éviter de réduire le solde local
     else if (userData.balance !== undefined) {
       const currentLocalBalance = balanceManager.getCurrentBalance();
+      const highestStoredBalance = balanceManager.getHighestBalance();
       const serverBalance = userData.balance;
       
-      // Ne synchroniser avec le serveur que si le solde serveur est plus élevé
-      if (serverBalance > currentLocalBalance) {
-        console.log(`Synchronisation du solde avec le serveur: ${serverBalance}€ (local: ${currentLocalBalance}€)`);
+      // Si le solde stocké localement est plus élevé que celui du serveur
+      if (Math.max(currentLocalBalance, highestStoredBalance) > serverBalance) {
+        console.log(`Solde local (${Math.max(currentLocalBalance, highestStoredBalance)}€) supérieur au serveur (${serverBalance}€)`);
+        
+        // Utiliser le plus élevé des deux soldes
+        const effectiveBalance = Math.max(currentLocalBalance, highestStoredBalance);
+        balanceManager.forceBalanceSync(effectiveBalance);
+        
+        // Mettre à jour le solde le plus élevé si nécessaire
+        if (effectiveBalance > highestBalanceRef.current) {
+          balanceManager.updateHighestBalance(effectiveBalance);
+          highestBalanceRef.current = effectiveBalance;
+        }
+      } 
+      // Si le solde du serveur est plus élevé que le local
+      else if (serverBalance > currentLocalBalance) {
+        console.log(`Solde du serveur (${serverBalance}€) supérieur au solde local (${currentLocalBalance}€)`);
         balanceManager.forceBalanceSync(serverBalance);
-      } else {
-        console.log(`Solde local plus élevé que serveur, conservation: ${currentLocalBalance}€ (serveur: ${serverBalance}€)`);
+        
+        // Mettre à jour le solde le plus élevé si nécessaire
+        if (serverBalance > highestBalanceRef.current) {
+          balanceManager.updateHighestBalance(serverBalance);
+          highestBalanceRef.current = serverBalance;
+        }
       }
     }
     
@@ -103,8 +149,31 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
       setEffectiveBalance(newBalance);
     };
     
+    // Écouter l'événement de restauration de solde
+    const handleBalanceRestored = (event: CustomEvent) => {
+      const { balance, previousBalance } = event.detail;
+      
+      if (balance > previousBalance) {
+        console.log(`[BalanceSynchronization] Balance restored: ${previousBalance}€ -> ${balance}€`);
+        
+        // Notifier l'utilisateur
+        toast({
+          title: "Solde restauré",
+          description: `Votre solde précédent de ${balance.toFixed(2)}€ a été restauré.`,
+          duration: 5000
+        });
+        
+        setEffectiveBalance(balance);
+      }
+    };
+    
     window.addEventListener('balance:daily-growth', handleDailyGrowth as EventListener);
-    return () => window.removeEventListener('balance:daily-growth', handleDailyGrowth as EventListener);
+    window.addEventListener('balance:restored', handleBalanceRestored as EventListener);
+    
+    return () => {
+      window.removeEventListener('balance:daily-growth', handleDailyGrowth as EventListener);
+      window.removeEventListener('balance:restored', handleBalanceRestored as EventListener);
+    };
   }, []);
   
   // Fonction de synchronisation manuelle
@@ -123,11 +192,26 @@ export const useBalanceSynchronization = (userData: UserData | null, isNewUser: 
     
     // Obtenir le solde local actuel
     const currentLocalBalance = balanceManager.getCurrentBalance();
+    const highestStoredBalance = balanceManager.getHighestBalance();
     
-    // Ne synchroniser avec le serveur que si le solde serveur est plus élevé
-    if (userData.balance > currentLocalBalance) {
-      console.log(`Synchronisation manuelle du solde avec le serveur: ${userData.balance}€`);
-      balanceManager.forceBalanceSync(userData.balance);
+    // Déterminer le solde effectif à utiliser
+    const effectiveLocalBalance = Math.max(currentLocalBalance, highestStoredBalance);
+    const serverBalance = userData.balance;
+    
+    // Toujours utiliser le solde le plus élevé entre local et serveur
+    if (effectiveLocalBalance > serverBalance) {
+      console.log(`Synchronisation manuelle: solde local (${effectiveLocalBalance}€) supérieur au serveur (${serverBalance}€)`);
+      balanceManager.forceBalanceSync(effectiveLocalBalance);
+    } else if (serverBalance > currentLocalBalance) {
+      console.log(`Synchronisation manuelle: solde serveur (${serverBalance}€) supérieur au local (${currentLocalBalance}€)`);
+      balanceManager.forceBalanceSync(serverBalance);
+    }
+    
+    // Mettre à jour le solde le plus élevé
+    const highestBalance = Math.max(effectiveLocalBalance, serverBalance);
+    if (highestBalance > highestBalanceRef.current) {
+      balanceManager.updateHighestBalance(highestBalance);
+      highestBalanceRef.current = highestBalance;
     }
     
     // Mettre à jour l'état local avec le solde le plus élevé
