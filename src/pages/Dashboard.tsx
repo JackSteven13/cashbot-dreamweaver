@@ -92,40 +92,43 @@ const Dashboard = () => {
             balanceManager.forceBalanceSync(userData.balance || 0);
           }
           
-          // Générer un premier revenu automatique
+          // Générer un premier revenu automatique (très petit)
           generateAutomaticRevenue(true);
         }, 2000);
       }
     }
   }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue]);
 
-  // AMÉLIORATION - Génération de revenus plus fréquente (10-20 secondes)
+  // MODIFIÉ: Génération de revenus moins fréquente (30-60 secondes)
   useEffect(() => {
     if (userData) {
-      // Intervalle pour les mises à jour automatiques très fréquentes
+      // Intervalle pour les mises à jour automatiques avec fréquence réduite
       const revenueInterval = setInterval(() => {
         const now = Date.now();
         
-        // Au moins 10 secondes entre les mises à jour
-        if (now - lastProcessTime > 10000) {
+        // Au moins 30 secondes entre les mises à jour
+        if (now - lastProcessTime > 30000) {
           console.log("Generating revenue: automatic update");
           setLastProcessTime(now);
           
-          // Générer un nouveau revenu automatique
-          generateAutomaticRevenue();
+          // Probabilité réduite de générer un revenu (seulement 25% du temps)
+          if (Math.random() < 0.25) {
+            // Générer un nouveau revenu automatique (petit)
+            generateAutomaticRevenue();
+          }
           
           // Forcer une mise à jour du solde
           window.dispatchEvent(new CustomEvent('balance:force-update', { 
-            detail: { timestamp: now, animate: true } 
+            detail: { timestamp: now, animate: Math.random() < 0.2 } // Animation moins fréquente
           }));
         }
-      }, 10000 + Math.random() * 10000); // Toutes les 10-20 secondes
+      }, 30000 + Math.random() * 30000); // Entre 30-60 secondes (beaucoup moins fréquent)
       
       return () => clearInterval(revenueInterval);
     }
   }, [userData, generateAutomaticRevenue, lastProcessTime]);
 
-  // NOUVEAU - Vérification encore plus fréquente
+  // MODIFIÉ: Vérification moins fréquente (20 secondes)
   useEffect(() => {
     if (userData) {
       const quickInterval = setInterval(() => {
@@ -138,43 +141,47 @@ const Dashboard = () => {
             detail: { active: true }
           }));
           
-          console.log("Bot réactivé par la vérification rapide");
+          console.log("Bot réactivé par la vérification");
         }
         
-        // Déclencher une mise à jour forcée du solde
-        window.dispatchEvent(new CustomEvent('balance:force-update', {
-          detail: { timestamp: Date.now() }
-        }));
+        // Déclencher une mise à jour du solde seulement parfois
+        if (Math.random() < 0.3) { // Seulement 30% du temps
+          window.dispatchEvent(new CustomEvent('balance:force-update', {
+            detail: { timestamp: Date.now(), animate: false }
+          }));
+        }
         
-      }, 5000); // Vérification toutes les 5 secondes
+      }, 20000); // Vérification toutes les 20 secondes
       
       return () => clearInterval(quickInterval);
     }
   }, [userData, isBotActive]);
 
-  // AMÉLIORATION - Heartbeat plus fréquent
+  // MODIFIÉ: Heartbeat moins fréquent (2 minutes)
   useEffect(() => {
     const heartbeatInterval = setInterval(() => {
       if (userData) {
         const now = Date.now();
         
         // Vérifier le temps écoulé depuis le dernier traitement
-        if (now - lastProcessTime > 30000) { // Au moins 30 secondes entre les heartbeats
-          console.log("Dashboard heartbeat - ensuring revenue generation");
+        if (now - lastProcessTime > 120000) { // Au moins 2 minutes entre les heartbeats
+          console.log("Dashboard heartbeat - checking revenue generation");
           
           // Mettre à jour le timestamp du dernier processus
           setLastProcessTime(now);
           
-          // Force a balance update to show progress
+          // Forcer une mise à jour du solde (sans animation la plupart du temps)
           window.dispatchEvent(new CustomEvent('balance:force-update', { 
-            detail: { timestamp: now, animate: true } 
+            detail: { timestamp: now, animate: Math.random() < 0.1 } // Animation rarement
           }));
           
-          // Garantir une génération de revenus
-          generateAutomaticRevenue();
+          // Génération de revenus avec faible probabilité (30%)
+          if (Math.random() < 0.3) {
+            generateAutomaticRevenue();
+          }
         }
       }
-    }, 30000); // Heartbeat toutes les 30 secondes
+    }, 120000); // Heartbeat toutes les 2 minutes
     
     return () => clearInterval(heartbeatInterval);
   }, [userData, generateAutomaticRevenue, lastProcessTime]);

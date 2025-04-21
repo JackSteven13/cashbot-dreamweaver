@@ -4,6 +4,7 @@ import { SUBSCRIPTION_PRICES } from '@/components/dashboard/calculator/constants
 
 /**
  * Calcule les gains potentiels en fonction du type d'abonnement et des sessions
+ * avec des valeurs très réalistes
  */
 export const calculatePotentialGains = (
   subscriptionType: string,
@@ -13,8 +14,9 @@ export const calculatePotentialGains = (
   // Obtenir la limite quotidienne selon l'abonnement
   const dailyLimit = SUBSCRIPTION_LIMITS[subscriptionType as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
-  // Facteur d'efficacité basé sur le nombre de sessions (plus de sessions = meilleure efficacité)
-  const efficiencyFactor = Math.min(0.65 + (sessionsPerDay * 0.05), 0.85);
+  // Facteur d'efficacité basé sur le nombre de sessions (plus réaliste)
+  // L'efficacité plafonne rapidement
+  const efficiencyFactor = Math.min(0.55 + (sessionsPerDay * 0.03), 0.75);
   
   // Calcul du gain journalier (limité au maximum quotidien)
   const rawDailyGain = dailyLimit * efficiencyFactor;
@@ -30,7 +32,7 @@ export const calculatePotentialGains = (
 };
 
 /**
- * Calcule les revenus pour tous les plans d'abonnement avec des valeurs crédibles
+ * Calcule les revenus pour tous les plans d'abonnement avec des valeurs réalistes
  */
 export const calculateAllPlansRevenue = (
   sessionsPerDay: number,
@@ -44,15 +46,15 @@ export const calculateAllPlansRevenue = (
       // Obtenir le prix de l'abonnement
       const subscriptionPrice = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] || 0;
       
-      // Calculer l'utilisation moyenne (entre 65% et 85% de la limite quotidienne)
-      // Plus de sessions = meilleure utilisation de la limite
-      const baseUtilization = 0.65 + (Math.min(sessionsPerDay, 5) / 5) * 0.20;
+      // Calculer l'utilisation moyenne (entre 55% et 70% de la limite quotidienne - plus réaliste)
+      // Plus de sessions = meilleure utilisation de la limite, mais avec plafond bas
+      const baseUtilization = 0.55 + (Math.min(sessionsPerDay, 5) / 5) * 0.15;
       
       // Multiplicateur de performance selon le plan (valeurs crédibles)
       let performanceMultiplier = 1.0;
-      if (plan === 'starter') performanceMultiplier = 1.05; // 5% de bonus
-      if (plan === 'gold') performanceMultiplier = 1.12;    // 12% de bonus
-      if (plan === 'elite') performanceMultiplier = 1.20;   // 20% de bonus
+      if (plan === 'starter') performanceMultiplier = 1.03; // 3% de bonus
+      if (plan === 'gold') performanceMultiplier = 1.07;    // 7% de bonus
+      if (plan === 'elite') performanceMultiplier = 1.12;   // 12% de bonus
       
       // Calcul du revenu mensuel avec le multiplicateur
       const monthlyRevenue = dailyLimit * baseUtilization * daysPerMonth * performanceMultiplier;

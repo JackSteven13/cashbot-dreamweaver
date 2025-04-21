@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { formatPrice } from '@/utils/balance/limitCalculations';
 import { CardContent } from '@/components/ui/card';
@@ -29,7 +28,9 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const [gainAmount, setGainAmount] = useState<number | null>(null);
   const balanceRef = useRef<HTMLDivElement>(null);
   const lastUpdateTime = useRef<number>(Date.now());
-  const updateDebounceTime = 1000; // 1 seconde minimum entre les mises à jour d'affichage
+  const updateDebounceTime = 2000; // 2 secondes minimum entre les mises à jour d'affichage
+  const lastGainTimeRef = useRef<number>(Date.now() - 60000);
+  const consecutiveUpdatesRef = useRef<number>(0);
   
   const { formattedValue, setTargetValue } = useAnimatedCounter({
     value: displayBalance,
@@ -38,60 +39,110 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     formatOptions: { style: 'currency', currency: 'EUR' }
   });
   
-  // Synchroniser avec le balance prop
+  // Synchroniser avec la balance prop
   useEffect(() => {
     const now = Date.now();
     // Seulement mettre à jour si assez de temps s'est écoulé depuis la dernière mise à jour
-    // ou si la différence est significative
+    // ou si la différence est significative et positive
     if ((now - lastUpdateTime.current > updateDebounceTime || 
-        Math.abs(balance - displayBalance) > 0.1) && 
+        Math.abs(balance - displayBalance) > 0.15) && 
         balance > displayBalance) {
       
       console.log(`Updating display balance from ${displayBalance} to ${balance}`);
       
-      // Utiliser une transition
+      // ANTI-SPAM: Limiter les mises à jour trop importantes ou trop fréquentes
+      const timeSinceLastGain = now - lastGainTimeRef.current;
+      const gainAmount = balance - displayBalance;
+      
+      // Si le gain est trop important ou trop fréquent, limiter
+      if (gainAmount > 0.5 && timeSinceLastGain < 60000) {
+        console.log("Gain trop important trop rapidement, ignoré");
+        return;
+      }
+      
+      if (consecutiveUpdatesRef.current > 3 && timeSinceLastGain < 120000) {
+        console.log("Trop de mises à jour consécutives, ignorée");
+        return;
+      }
+      
+      // Mise à jour avec contrôle de fréquence
       setPrevBalance(displayBalance);
       setDisplayBalance(balance);
-      setTargetValue(balance); // Important: mettre à jour la valeur cible de l'animation
+      setTargetValue(balance); // Important pour l'animation
       setIsAnimating(true);
-      setGainAmount(balance - displayBalance);
+      setGainAmount(gainAmount);
       
       // Enregistrer les valeurs dans le localStorage
       localStorage.setItem('currentBalance', balance.toString());
       localStorage.setItem('lastKnownBalance', balance.toString());
       
-      // Enregistrer le moment de la mise à jour
+      // Mettre à jour les compteurs de contrôle
       lastUpdateTime.current = now;
+      lastGainTimeRef.current = now;
+      consecutiveUpdatesRef.current += 1;
       
       // Réinitialiser l'animation après un délai
       setTimeout(() => {
         setIsAnimating(false);
         setGainAmount(null);
       }, 2000);
+      
+      // Réinitialiser le compteur de mises à jour consécutives après un délai
+      setTimeout(() => {
+        consecutiveUpdatesRef.current = 0;
+      }, 60000);
     }
   }, [balance, displayBalance, setTargetValue]);
   
-  // Gestionnaire unifié pour les événements de mise à jour du solde
+  // Gestionnaire unifié pour les événements de mise à jour du solde avec anti-spam
   useEffect(() => {
     const handleBalanceUpdate = (event: CustomEvent) => {
       console.log("Balance display received event:", event.type, event.detail);
       
       const now = Date.now();
       
+      // ANTI-SPAM: Vérifier le temps écoulé depuis la dernière mise à jour
+      if (now - lastUpdateTime.current < updateDebounceTime) {
+        console.log("Mise à jour trop rapide, ignorée");
+        return;
+      }
+      
       const newBalance = event.detail?.newBalance || event.detail?.currentBalance;
       const gain = event.detail?.gain || event.detail?.amount;
       const oldBalance = event.detail?.oldBalance || displayBalance;
       const shouldAnimate = event.detail?.animate !== false;
       
+      // Contrôle anti-spam pour les gains
+      if (typeof gain === 'number' && gain > 0) {
+        // Si le gain est trop important ou trop fréquent, ignorer
+        if (gain > 0.5 && now - lastGainTimeRef.current < 60000) {
+          console.log(`Gain trop important (${gain}€) trop rapidement, ignoré`);
+          return;
+        }
+        
+        if (consecutiveUpdatesRef.current > 3 && now - lastGainTimeRef.current < 180000) {
+          console.log("Trop de gains consécutifs, ignoré");
+          return;
+        }
+      }
+      
       // Si nous avons un nouveau solde explicite
       if (typeof newBalance === 'number' && newBalance > 0) {
-        console.log(`Updating balance display to ${newBalance} (from ${oldBalance})`);
-        
-        if (Math.abs(newBalance - displayBalance) > 0.01) {
-          // Mettre à jour le solde avec animation
+        // Éviter les sauts trop grands
+        if (newBalance - displayBalance > 1.0 && now - lastGainTimeRef.current < 300000) {
+          console.log("Augmentation trop importante du solde, limitée");
+          // Limiter l'augmentation
+          const limitedNewBalance = displayBalance + 0.25;
+          setPrevBalance(displayBalance);
+          setDisplayBalance(limitedNewBalance);
+          setTargetValue(limitedNewBalance);
+          setIsAnimating(shouldAnimate);
+          setGainAmount(0.25);
+        } else if (Math.abs(newBalance - displayBalance) > 0.01) {
+          // Mise à jour normale
           setPrevBalance(displayBalance);
           setDisplayBalance(newBalance);
-          setTargetValue(newBalance); // Important pour l'animation
+          setTargetValue(newBalance);
           setIsAnimating(shouldAnimate);
           
           // Calculer et afficher le gain
@@ -101,45 +152,38 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           } else if (typeof gain === 'number' && gain > 0) {
             setGainAmount(gain);
           }
-          
-          // Enregistrer les valeurs
-          localStorage.setItem('currentBalance', newBalance.toString());
-          localStorage.setItem('lastKnownBalance', newBalance.toString());
-          
-          // Mettre à jour le timestamp
-          lastUpdateTime.current = now;
-          
-          // Réinitialiser l'animation après un délai
-          if (shouldAnimate) {
-            setTimeout(() => {
-              setIsAnimating(false);
-              setGainAmount(null);
-            }, 3000);
-          }
         }
       }
       // Si nous avons seulement un gain
       else if (typeof gain === 'number' && gain > 0) {
-        console.log(`Updating balance display with gain ${gain}`);
+        // Limiter la taille du gain
+        const safeGain = Math.min(gain, 0.25);
         
-        const calculatedNewBalance = displayBalance + gain;
+        const calculatedNewBalance = displayBalance + safeGain;
         
-        // Mettre à jour le solde avec animation
+        // Mise à jour normale
         setPrevBalance(displayBalance);
         setDisplayBalance(calculatedNewBalance);
-        setTargetValue(calculatedNewBalance); // Important pour l'animation
+        setTargetValue(calculatedNewBalance);
         setIsAnimating(shouldAnimate);
-        setGainAmount(gain);
+        setGainAmount(safeGain);
+      }
+      
+      // Mise à jour des compteurs de contrôle
+      if ((typeof newBalance === 'number' && newBalance > displayBalance) || 
+          (typeof gain === 'number' && gain > 0)) {
+        lastUpdateTime.current = now;
+        lastGainTimeRef.current = now;
+        consecutiveUpdatesRef.current += 1;
         
         // Enregistrer les valeurs
-        localStorage.setItem('currentBalance', calculatedNewBalance.toString());
-        localStorage.setItem('lastKnownBalance', calculatedNewBalance.toString());
+        localStorage.setItem('currentBalance', displayBalance.toString());
+        localStorage.setItem('lastKnownBalance', displayBalance.toString());
         
-        // Mettre à jour le timestamp
-        lastUpdateTime.current = now;
-        
-        // Trigger a transaction refresh
-        window.dispatchEvent(new CustomEvent('transactions:refresh'));
+        // Déclencher une mise à jour des transactions si nécessaire
+        if (Math.random() < 0.3) {
+          window.dispatchEvent(new CustomEvent('transactions:refresh'));
+        }
         
         // Réinitialiser l'animation après un délai
         if (shouldAnimate) {
@@ -148,6 +192,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
             setGainAmount(null);
           }, 3000);
         }
+        
+        // Réinitialiser le compteur de mises à jour consécutives après un délai
+        setTimeout(() => {
+          consecutiveUpdatesRef.current = 0;
+        }, 180000);
       }
     };
     
@@ -167,7 +216,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       window.removeEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
       window.removeEventListener('balance:animation', handleBalanceUpdate as EventListener);
     };
-  }, [displayBalance, setTargetValue]);
+  }, [displayBalance, setTargetValue, updateDebounceTime]);
   
   // Sauvegarder le solde avant déchargement de la page
   useEffect(() => {
@@ -195,7 +244,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         <div className="relative w-full">
           <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
             Solde disponible
-            {isPremium && (
+            {subscription !== 'freemium' && (
               <span className="ml-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs px-1.5 py-0.5 rounded">
                 {subscription.toUpperCase()}
               </span>

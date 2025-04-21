@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
@@ -16,17 +15,17 @@ interface StatsCounterProps {
 }
 
 const StatsCounter = ({
-  dailyAdsTarget = 15000, // Valeur plus impressionnante
-  dailyRevenueTarget = 12000 // Valeur plus impressionnante
+  dailyAdsTarget = 10000, // Valeur plus réaliste
+  dailyRevenueTarget = 8000 // Valeur plus réaliste
 }: StatsCounterProps) => {
   const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
     dailyAdsTarget,
     dailyRevenueTarget
   });
 
-  // Base de départ plus impressionnante
-  const MINIMUM_ADS = 95000;
-  const MINIMUM_REVENUE = 75000;
+  // Base de départ réaliste
+  const MINIMUM_ADS = 35000;
+  const MINIMUM_REVENUE = 25000;
 
   // Utiliser useRef pour stocker des valeurs stables entre les rendus
   const stableValuesRef = useRef({
@@ -38,22 +37,22 @@ const StatsCounter = ({
   
   // État local pour l'affichage avec initialisation améliorée
   const [displayValues, setDisplayValues] = useState(() => {
-    // Récupérer des valeurs cohérentes et impressionnantes dès le début
+    // Récupérer des valeurs cohérentes et réalistes dès le début
     const consistentStats = getDateConsistentStats();
     return {
-      adsCount: Math.min(Math.max(MINIMUM_ADS, consistentStats.adsCount), 150000),
-      revenueCount: Math.min(Math.max(MINIMUM_REVENUE, consistentStats.revenueCount), 120000)
+      adsCount: Math.min(Math.max(MINIMUM_ADS, consistentStats.adsCount), 180000),
+      revenueCount: Math.min(Math.max(MINIMUM_REVENUE, consistentStats.revenueCount), 140000)
     };
   });
 
-  // Fonction pour simuler une progression progressive basée sur l'ancienneté
+  // Fonction pour simuler une progression très graduelle basée sur l'ancienneté
   const calculateProgression = () => {
     // Récupérer ou créer la date d'installation
     const firstUseDate = localStorage.getItem('first_use_date');
     if (!firstUseDate) {
-      // Définir une date antérieure pour simuler une utilisation plus longue (60 jours dans le passé)
+      // Définir une date antérieure pour simuler une utilisation plus longue (30 jours dans le passé - plus crédible)
       const pastDate = new Date();
-      pastDate.setDate(pastDate.getDate() - 60);
+      pastDate.setDate(pastDate.getDate() - 30);
       localStorage.setItem('first_use_date', pastDate.toISOString());
     }
     
@@ -63,8 +62,8 @@ const StatsCounter = ({
     const diffTime = Math.abs(now.getTime() - installDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    // Calculer un facteur de progression basé sur l'ancienneté
-    const progressFactor = Math.min(1 + (diffDays * 0.004), 1.8); // Maximum 1.8x après 200 jours
+    // Calculer un facteur de progression TRÈS limité basé sur l'ancienneté
+    const progressFactor = Math.min(1 + (diffDays * 0.002), 1.25); // Maximum 1.25x après 125 jours
     
     return {
       diffDays,
@@ -75,21 +74,21 @@ const StatsCounter = ({
   // Initialiser la date de première utilisation si elle n'existe pas encore
   useEffect(() => {
     if (!localStorage.getItem('first_use_date')) {
-      // Définir une date antérieure pour simuler une utilisation plus longue (90 jours dans le passé)
+      // Définir une date antérieure pour simuler une utilisation plus longue (30 jours dans le passé)
       const pastDate = new Date();
-      pastDate.setDate(pastDate.getDate() - 90);
+      pastDate.setDate(pastDate.getDate() - 30);
       localStorage.setItem('first_use_date', pastDate.toISOString());
     }
     
-    // S'assurer des valeurs de départ impressionnantes
+    // S'assurer des valeurs de départ réalistes
     enforceMinimumStats(MINIMUM_ADS, MINIMUM_REVENUE);
     
     // Initialiser la progression
     const { diffDays, progressFactor } = calculateProgression();
     
-    // Si l'application est utilisée depuis plus de 30 jours, augmenter davantage les valeurs de base
+    // Si l'application est utilisée depuis plus de 30 jours, augmenter légèrement les valeurs de base
     if (diffDays > 30) {
-      const additionalProgressFactor = 1 + ((diffDays - 30) * 0.004);
+      const additionalProgressFactor = 1 + ((diffDays - 30) * 0.001); // Progression TRÈS lente
       const newMinimumAds = MINIMUM_ADS * additionalProgressFactor;
       const newMinimumRevenue = MINIMUM_REVENUE * additionalProgressFactor;
       
@@ -146,10 +145,10 @@ const StatsCounter = ({
     localStorage.setItem('stats_last_sync', Date.now().toString());
   }, []);
   
-  // Effet d'incrémentation périodique pour assurer une progression visible
+  // Effet d'incrémentation périodique avec progression TRÈS lente
   useEffect(() => {
     const incrementInterval = setInterval(() => {
-      // Incrémenter statistiques de façon plus agressive
+      // Incrémenter statistiques de façon TRÈS modérée
       const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
       
       setDisplayValues({
@@ -161,7 +160,7 @@ const StatsCounter = ({
       localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
       localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
       
-    }, 25000); // Incrémenter toutes les 25 secondes
+    }, 120000); // Incrémenter toutes les 2 minutes (beaucoup moins fréquent)
     
     return () => clearInterval(incrementInterval);
   }, []);

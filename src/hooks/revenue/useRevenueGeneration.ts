@@ -1,6 +1,7 @@
 
 /**
  * Hook optimisé pour la génération de revenus automatiques avec respect strict des limites
+ * et des incréments BEAUCOUP PLUS RÉALISTES et crédibles
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { UserData } from '@/types/userData';
@@ -25,9 +26,12 @@ export const useRevenueGeneration = ({
   const [dailyLimitProgress, setDailyLimitProgress] = useState(0);
   const [lastGenerationTime, setLastGenerationTime] = useState(Date.now() - 60000);
   const [limitReached, setLimitReached] = useState(false);
+  const [lastGainAmount, setLastGainAmount] = useState(0);
+  const [consecutiveGenerationCount, setConsecutiveGenerationCount] = useState(0);
   
   const isInitialized = useRef(false);
   const todaysGainsRef = useRef(0);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Fonction pour vérifier et mettre à jour l'état des limites quotidiennes
   const checkDailyLimits = useCallback(async () => {
@@ -102,40 +106,40 @@ export const useRevenueGeneration = ({
     return () => clearInterval(checkInterval);
   }, [userData, checkDailyLimits]);
   
-  // Écouter les événements externes qui modifient l'état du bot
-  useEffect(() => {
-    const handleBotStatusChange = (event: CustomEvent) => {
-      const isActive = event.detail?.active;
-      if (typeof isActive === 'boolean') {
-        // Vérifier d'abord si la limite n'est pas atteinte avant d'activer
-        if (isActive && limitReached) {
-          console.log("Tentative d'activation du bot avec limite atteinte, ignorée");
-          return;
-        }
-        
-        console.log(`Mise à jour de l'état du bot dans useRevenueGeneration: ${isActive ? 'actif' : 'inactif'}`);
-        setIsBotActive(isActive);
-      }
-    };
-    
-    window.addEventListener('bot:status-change' as any, handleBotStatusChange);
-    window.addEventListener('bot:external-status-change' as any, handleBotStatusChange);
-    
-    return () => {
-      window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
-      window.removeEventListener('bot:external-status-change' as any, handleBotStatusChange);
-    };
-  }, [limitReached]);
-  
-  // Fonction principale de génération de revenus
+  // Fonction principale de génération de revenus avec contrôles de fréquence et de montant
   const generateAutomaticRevenue = useCallback(async (forceUpdate = false) => {
     if (!userData || limitReached || !isBotActive) {
       return false;
     }
     
     try {
+      // NOUVEAU: Vérifier les gains récents et espacer les générations
+      const now = Date.now();
+      const timeSinceLastGeneration = now - lastGenerationTime;
+      
+      // Imposer un délai entre les générations pour éviter les augmentations irréalistes
+      // (sauf premier lancement avec forceUpdate)
+      if (!forceUpdate && timeSinceLastGeneration < 60000) { // Au moins 1 minute entre chaque gain
+        console.log("Génération trop rapprochée, skipping...");
+        return false;
+      }
+      
+      // NOUVEAU: Contrôle anti-spam pour éviter les gains trop fréquents
+      if (consecutiveGenerationCount > 5) {
+        // Au-delà de 5 gains consécutifs rapprochés, imposer un délai obligatoire plus long
+        const cooldownPeriod = 180000; // 3 minutes de cooldown
+        
+        if (timeSinceLastGeneration < cooldownPeriod) {
+          console.log(`Trop de générations consécutives, cooldown de ${(cooldownPeriod - timeSinceLastGeneration)/1000}s restant`);
+          return false;
+        } else {
+          // Réinitialiser après un délai suffisant
+          setConsecutiveGenerationCount(0);
+        }
+      }
+      
       // Mettre à jour le timestamp de la dernière génération
-      setLastGenerationTime(Date.now());
+      setLastGenerationTime(now);
       
       // Vérifier les limites quotidiennes avant de générer des revenus
       const limitsCheck = await checkDailyLimits();
@@ -148,17 +152,34 @@ export const useRevenueGeneration = ({
       const { actualGains, limit } = limitsCheck;
       
       // Si on est à la limite, ne pas générer de gains
-      if (actualGains >= limit * 0.99) {
-        console.log(`Limite quotidienne atteinte: ${actualGains}€/${limit}€`);
+      if (actualGains >= limit * 0.95) {
+        console.log(`Limite quotidienne presque atteinte: ${actualGains}€/${limit}€`);
         setLimitReached(true);
         setIsBotActive(false);
         return false;
       }
       
-      // Générer un gain aléatoire (plus petit pour les comptes freemium)
-      const minGain = userData.subscription === 'freemium' ? 0.01 : 0.02;
-      const maxGain = userData.subscription === 'freemium' ? 0.03 : 0.08;
-      const potentialGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
+      // NOUVEAU: Générer un gain beaucoup plus petit et réaliste
+      // Plus le nombre de générations consécutives est élevé, plus le gain est petit
+      const reductionFactor = Math.min(consecutiveGenerationCount * 0.1 + 1, 2);
+      const minGain = (userData.subscription === 'freemium' ? 0.001 : 0.0025) / reductionFactor;
+      const maxGain = (userData.subscription === 'freemium' ? 0.01 : 0.02) / reductionFactor;
+      
+      // Gains très petits et réalistes
+      const potentialGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(3));
+      
+      // NOUVEAU: Contrôle pour éviter les gains cumulés trop importants
+      if (lastGainAmount > 0 && (potentialGain + lastGainAmount) > 0.1) {
+        console.log("Gain cumulé trop important, réduction");
+        // Réduire davantage si le gain cumulé serait trop important
+        const adjustedPotentialGain = Math.min(potentialGain, 0.05 - lastGainAmount);
+        
+        // Si vraiment trop de gains, bloquer temporairement
+        if (adjustedPotentialGain <= 0.002) {
+          console.log("Trop de gains récents, skip pour éviter suspicion");
+          return false;
+        }
+      }
       
       // Vérifier et ajuster le gain pour respecter strictement la limite quotidienne
       const { allowed, adjustedGain } = respectsDailyLimit(
@@ -176,6 +197,10 @@ export const useRevenueGeneration = ({
       
       // Utiliser le gain ajusté (qui peut être égal au gain potentiel si dans les limites)
       const finalGain = adjustedGain;
+      
+      // Mettre à jour le compteur de générations consécutives
+      setConsecutiveGenerationCount(prev => prev + 1);
+      setLastGainAmount(finalGain);
       
       // Animation visuelle en arrière-plan
       const terminalAnimation = createBackgroundTerminalSequence(
@@ -212,12 +237,30 @@ export const useRevenueGeneration = ({
         detail: { amount: finalGain, animate: true } 
       }));
       
+      // Réinitialiser le gain après un délai aléatoire pour permettre des gains ultérieurs
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      timeoutRef.current = setTimeout(() => {
+        setLastGainAmount(0);
+      }, 30000 + Math.random() * 30000); // Entre 30s et 1min
+      
       return true;
     } catch (error) {
       console.error("Erreur lors de la génération de revenus automatiques:", error);
       return false;
     }
-  }, [userData, limitReached, isBotActive, updateBalance, checkDailyLimits]);
+  }, [userData, limitReached, isBotActive, lastGenerationTime, consecutiveGenerationCount, lastGainAmount, updateBalance, checkDailyLimits]);
+  
+  // Nettoyage
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
   
   return {
     generateAutomaticRevenue,
