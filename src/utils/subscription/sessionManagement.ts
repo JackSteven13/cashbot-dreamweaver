@@ -1,90 +1,106 @@
-
 import { SUBSCRIPTION_LIMITS } from './constants';
 
 /**
- * Result of attempting to start a manual session
- */
-export interface SessionStartResult {
-  canStart: boolean;
-  reason?: string;
-}
-
-/**
- * Check if a manual session can be started based on subscription type
+ * Strict session limit implementation
+ * Ensures users can only start sessions if within their daily limit
  */
 export const canStartManualSession = (
   subscription: string,
-  dailySessionCount: number,
-  currentDailyGains: number
-): SessionStartResult => {
-  // Pour tous les abonnements, vérifier la limite de gains journaliers
+  sessionCount: number,
+  todaysGains: number
+): boolean => {
+  // Check if daily limit has been reached
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
-  if (currentDailyGains >= dailyLimit) {
-    return {
-      canStart: false,
-      reason: `Limite quotidienne atteinte (${dailyLimit}€/jour). Revenez demain ou passez à un forfait supérieur.`
-    };
+  // Strict limit check - if already at 95% of the limit, block further sessions
+  if (todaysGains >= dailyLimit * 0.95) {
+    console.log(`Session blocked: daily gains (${todaysGains}) at or above 95% of limit (${dailyLimit})`);
+    return false;
   }
   
-  // Vérifier le nombre de sessions selon l'abonnement
-  const sessionLimits = {
-    freemium: 1,
-    starter: 3,
-    gold: 10,
-    elite: 50
-  };
-  
-  const sessionLimit = sessionLimits[subscription as keyof typeof sessionLimits] || 1;
-  
-  if (dailySessionCount >= sessionLimit) {
-    return {
-      canStart: false,
-      reason: `Vous avez atteint la limite quotidienne de sessions (${subscription}: ${sessionLimit} session${sessionLimit > 1 ? 's' : ''}/jour)`
-    };
+  // For freemium accounts, strictly enforce 1 session per day limit
+  if (subscription === 'freemium' && sessionCount >= 1) {
+    console.log('Session blocked: freemium account already used daily session');
+    return false;
   }
   
-  // Check if there's a rate limit currently active (to prevent spam)
-  const lastSessionTime = localStorage.getItem('lastSessionTimestamp');
+  return true;
+};
+
+/**
+ * Strict daily limit implementation
+ * Ensures all revenue generation respects daily limits
+ */
+export const respectsDailyLimit = (
+  subscription: string,
+  todaysGains: number,
+  potentialGain: number
+): { allowed: boolean; adjustedGain: number } => {
+  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
-  if (lastSessionTime) {
-    const lastTime = parseInt(lastSessionTime, 10);
-    const now = Date.now();
-    const timeDiff = now - lastTime;
-    
-    // If last session was less than 5 minutes ago, prevent new sessions
-    if (timeDiff < 5 * 60 * 1000) {
-      const waitTimeMinutes = Math.ceil((5 * 60 * 1000 - timeDiff) / 60000);
-      return {
-        canStart: false,
-        reason: `Veuillez patienter encore ${waitTimeMinutes} minute${waitTimeMinutes > 1 ? 's' : ''} avant de lancer une nouvelle session`
-      };
+  // If adding the potential gain would exceed the limit
+  if (todaysGains + potentialGain > dailyLimit) {
+    // If already at limit, block the gain entirely
+    if (todaysGains >= dailyLimit) {
+      console.log(`Gain blocked: daily limit of ${dailyLimit}€ already reached (current: ${todaysGains}€)`);
+      return { allowed: false, adjustedGain: 0 };
     }
+    
+    // Otherwise, adjust the gain to reach exactly the limit
+    const adjustedGain = parseFloat((dailyLimit - todaysGains).toFixed(2));
+    console.log(`Gain adjusted from ${potentialGain}€ to ${adjustedGain}€ to respect daily limit`);
+    return { allowed: true, adjustedGain };
   }
   
-  // Pour tous les comptes, vérifier une dernière fois si le solde est près de la limite
-  const remainingLimit = dailyLimit - currentDailyGains;
-  
-  // S'il reste moins de 0,10 € pour atteindre la limite
-  if (remainingLimit < 0.10) {
-    console.log(`Limite presque atteinte: ${currentDailyGains}/${dailyLimit}, reste ${remainingLimit.toFixed(2)}€`);
-    // On permet encore la session mais on avertira l'utilisateur
-  }
-  
-  return { canStart: true };
+  // Gain is within limits
+  return { allowed: true, adjustedGain: potentialGain };
 };
 
 /**
- * Function to subscribe to auth changes (maintained for backward compatibility)
+ * Reset daily counters (sessions, gains) at midnight
  */
-export const subscribeToAuthChanges = () => {
-  console.log("Auth change subscription function called - using updated implementation");
-  return () => {}; // Noop cleanup function
+export const shouldResetDailyCounters = (lastResetTime: number): boolean => {
+  const now = new Date();
+  const lastReset = new Date(lastResetTime);
+  
+  // Reset if last reset was on a different calendar day
+  return lastReset.getDate() !== now.getDate() || 
+         lastReset.getMonth() !== now.getMonth() ||
+         lastReset.getFullYear() !== now.getFullYear();
 };
 
 /**
- * Function to unsubscribe from auth changes (maintained for backward compatibility)
+ * Initialize a new day's tracking
  */
-export const unsubscribeFromAuthChanges = () => {
-  console.log("Auth change unsubscription function called - using updated implementation");
+export const initializeNewDay = (): number => {
+  // Reset daily counters in local storage
+  localStorage.setItem('dailySessionCount', '0');
+  localStorage.setItem('dailyGains', '0');
+  localStorage.setItem('lastResetTime', Date.now().toString());
+  
+  // Dispatch reset event
+  window.dispatchEvent(new CustomEvent('dailyGains:reset'));
+  
+  return Date.now();
+};
+
+/**
+ * Force synchronization with transactions from the database
+ * This ensures our local tracking matches server data
+ */
+export const syncDailyGainsWithTransactions = (todaysTransactions: any[]): number => {
+  // Calculate total gains from today's transactions
+  const totalGains = todaysTransactions.reduce((sum, tx) => {
+    return sum + (tx.gain || 0);
+  }, 0);
+  
+  // Update localStorage
+  localStorage.setItem('dailyGains', totalGains.toString());
+  
+  // Dispatch updated event
+  window.dispatchEvent(new CustomEvent('dailyGains:updated', {
+    detail: { gains: totalGains }
+  }));
+  
+  return totalGains;
 };

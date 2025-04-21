@@ -1,304 +1,237 @@
 
+/**
+ * Centralized balance manager to maintain consistent state
+ * across the application and enforce daily limits
+ */
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
-
-type BalanceWatcherCallback = (newBalance: number) => void;
 
 class BalanceManager {
   private currentBalance: number = 0;
   private dailyGains: number = 0;
-  private lastReset: number = Date.now();
-  private syncInProgress: boolean = false;
-  private watchers: BalanceWatcherCallback[] = [];
-  private highestBalance: number = 0;
+  private lastResetDate: string = '';
+  private watchers: Array<(newBalance: number) => void> = [];
+  private dailyWatchers: Array<(dailyGains: number) => void> = [];
   
   constructor() {
-    this.initBalance();
-    this.checkForDayChange();
-    this.startDailyResetCheck();
+    this.initialize();
   }
   
-  private initBalance(): void {
+  private initialize() {
+    // Load balance from localStorage
     try {
       const storedBalance = localStorage.getItem('currentBalance');
       if (storedBalance) {
         this.currentBalance = parseFloat(storedBalance);
-        // Update highest balance if current is higher
-        this.highestBalance = Math.max(this.currentBalance, this.getHighestBalance());
       }
       
-      const storedDailyGains = localStorage.getItem('dailyGains');
-      if (storedDailyGains) {
-        this.dailyGains = parseFloat(storedDailyGains);
+      // Load daily gains with date validation
+      const storedDate = localStorage.getItem('currentDate');
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      // If date changed, reset daily gains
+      if (storedDate !== today) {
+        console.log(`New day detected: ${today} vs stored ${storedDate}, resetting daily tracking`);
+        this.dailyGains = 0;
+        this.lastResetDate = today;
+        localStorage.setItem('currentDate', today);
+        localStorage.setItem('dailyGains', '0');
+      } else {
+        // Same day, load daily gains
+        const storedDailyGains = localStorage.getItem('dailyGains');
+        if (storedDailyGains) {
+          this.dailyGains = parseFloat(storedDailyGains);
+        }
+        this.lastResetDate = storedDate || today;
       }
       
-      const storedLastReset = localStorage.getItem('lastBalanceReset');
-      if (storedLastReset) {
-        this.lastReset = parseInt(storedLastReset, 10);
-      }
-      
-      console.log("BalanceManager initialized:", {
-        currentBalance: this.currentBalance,
-        dailyGains: this.dailyGains,
-        lastReset: new Date(this.lastReset).toISOString(),
-        highestBalance: this.highestBalance
-      });
+      // Log initial state
+      console.log(`BalanceManager initialized: balance=${this.currentBalance}, dailyGains=${this.dailyGains}, date=${this.lastResetDate}`);
     } catch (e) {
-      console.error("Error initializing balance manager:", e);
-      // Use default values if localStorage access fails
-      this.currentBalance = 0;
-      this.dailyGains = 0;
-      this.lastReset = Date.now();
-      this.highestBalance = 0;
+      console.error("Error initializing BalanceManager:", e);
     }
   }
   
-  private checkForDayChange(): void {
-    const now = new Date();
-    const lastResetDate = new Date(this.lastReset);
-    
-    // Check if day has changed
-    if (
-      now.getDate() !== lastResetDate.getDate() ||
-      now.getMonth() !== lastResetDate.getMonth() ||
-      now.getFullYear() !== lastResetDate.getFullYear()
-    ) {
-      this.resetDailyGains();
-    }
-  }
-  
-  private startDailyResetCheck(): void {
-    // Check for day change every 5 minutes
-    setInterval(() => {
-      this.checkForDayChange();
-    }, 5 * 60 * 1000);
-  }
-  
-  // Méthode rendue publique pour résoudre l'erreur TS2341
-  public resetDailyGains(): void {
-    console.log("Resetting daily gains (new day)");
-    this.dailyGains = 0;
-    this.lastReset = Date.now();
-    
-    try {
-      localStorage.setItem('dailyGains', '0');
-      localStorage.setItem('lastBalanceReset', this.lastReset.toString());
-      
-      // Dispatch event to notify components
-      window.dispatchEvent(new CustomEvent('dailyGains:reset'));
-    } catch (e) {
-      console.error("Error saving reset state:", e);
-    }
-  }
-  
-  public updateBalance(amount: number): void {
-    if (isNaN(amount)) {
-      console.error("Invalid amount provided to updateBalance:", amount);
-      return;
-    }
-    
-    this.currentBalance += amount;
-    
-    // Update highest balance if current is higher
-    if (this.currentBalance > this.highestBalance) {
-      this.highestBalance = this.currentBalance;
-      try {
-        localStorage.setItem('highestBalance', this.highestBalance.toString());
-      } catch (e) {
-        console.error("Error saving highest balance:", e);
-      }
-    }
-    
-    try {
-      localStorage.setItem('currentBalance', this.currentBalance.toString());
-      
-      // Notify watchers
-      this.notifyWatchers();
-      
-      // Dispatch event to notify components
-      window.dispatchEvent(new CustomEvent('balance:local-update', {
-        detail: { balance: this.currentBalance }
-      }));
-    } catch (e) {
-      console.error("Error saving balance:", e);
-    }
-  }
-  
-  public forceBalanceSync(amount: number): void {
-    if (isNaN(amount)) {
-      console.error("Invalid amount provided to forceBalanceSync:", amount);
-      return;
-    }
-    
-    this.currentBalance = amount;
-    
-    // Update highest balance if current is higher
-    if (this.currentBalance > this.highestBalance) {
-      this.highestBalance = this.currentBalance;
-      try {
-        localStorage.setItem('highestBalance', this.highestBalance.toString());
-      } catch (e) {
-        console.error("Error saving highest balance:", e);
-      }
-    }
-    
-    try {
-      localStorage.setItem('currentBalance', this.currentBalance.toString());
-      
-      // Notify watchers
-      this.notifyWatchers();
-      
-      // Dispatch event to notify components
-      window.dispatchEvent(new CustomEvent('balance:local-update', {
-        detail: { balance: this.currentBalance, force: true }
-      }));
-    } catch (e) {
-      console.error("Error saving balance:", e);
-    }
-  }
-  
-  public addDailyGain(amount: number): void {
-    if (isNaN(amount)) {
-      console.error("Invalid amount provided to addDailyGain:", amount);
-      return;
-    }
-    
-    this.checkForDayChange();
-    
-    // Pour TOUS les comptes, strictement appliquer la limite journalière
-    const subscription = localStorage.getItem('userSubscription') || 'freemium';
-    const dailyLimit = this.getDailyLimit(subscription);
-    
-    // Don't allow exceeding daily limit
-    if (this.dailyGains + amount > dailyLimit) {
-      // Ajuster le gain pour ne pas dépasser la limite
-      amount = Math.max(0, dailyLimit - this.dailyGains);
-      console.log(`Daily limit would be exceeded, adjusting gain to ${amount}€`);
-      
-      // Notifier que la limite est atteinte
-      window.dispatchEvent(new CustomEvent('dailyLimit:reached', {
-        detail: { subscription, dailyLimit }
-      }));
-    }
-    
-    // If gain is 0 or negative, don't process it
-    if (amount <= 0) {
-      return;
-    }
-    
-    this.dailyGains += amount;
-    
-    try {
-      localStorage.setItem('dailyGains', this.dailyGains.toString());
-      
-      // Dispatch event to notify components
-      window.dispatchEvent(new CustomEvent('dailyGains:updated', {
-        detail: { dailyGains: this.dailyGains }
-      }));
-    } catch (e) {
-      console.error("Error saving daily gains:", e);
-    }
-  }
-  
-  public getCurrentBalance(): number {
+  // Get current balance
+  getCurrentBalance(): number {
     return this.currentBalance;
   }
   
-  public getDailyGains(): number {
-    this.checkForDayChange();
+  // Get daily gains
+  getDailyGains(): number {
+    this.checkDateReset();
     return this.dailyGains;
   }
   
-  public getDailyLimit(subscription: string): number {
-    return SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  // Get remaining daily limit based on subscription
+  getRemainingDailyLimit(subscription: string): number {
+    this.checkDateReset();
+    const limit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    return Math.max(0, limit - this.dailyGains);
   }
   
-  public async syncWithDatabase(): Promise<boolean> {
-    if (this.syncInProgress) {
-      return false;
+  // Check if daily limit reached
+  isDailyLimitReached(subscription: string): boolean {
+    this.checkDateReset();
+    const limit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    return this.dailyGains >= limit;
+  }
+  
+  // Update balance with a new gain
+  updateBalance(gain: number): number {
+    const newBalance = parseFloat((this.currentBalance + gain).toFixed(2));
+    this.setBalance(newBalance);
+    return this.currentBalance;
+  }
+  
+  // Set balance directly (use carefully)
+  setBalance(newBalance: number): void {
+    if (isNaN(newBalance) || newBalance < 0) {
+      console.error(`Invalid balance: ${newBalance}`);
+      return;
     }
     
-    this.syncInProgress = true;
+    const oldBalance = this.currentBalance;
+    this.currentBalance = parseFloat(newBalance.toFixed(2));
     
-    try {
-      // Note: This is a placeholder for actual database sync
-      // In a real implementation, you would call a function to sync with database
+    // Persist to localStorage
+    localStorage.setItem('currentBalance', this.currentBalance.toString());
+    localStorage.setItem('lastKnownBalance', this.currentBalance.toString());
+    
+    // Notify watchers only if balance changed
+    if (oldBalance !== this.currentBalance) {
+      this.notifyWatchers();
+    }
+  }
+  
+  // Force balance synchronization with server data
+  forceBalanceSync(serverBalance: number): void {
+    if (isNaN(serverBalance) || serverBalance < 0) {
+      console.error(`Invalid server balance: ${serverBalance}`);
+      return;
+    }
+    
+    // Only update if server balance is significantly different
+    if (Math.abs(this.currentBalance - serverBalance) > 0.01) {
+      console.log(`Force syncing balance from ${this.currentBalance} to ${serverBalance}`);
+      this.currentBalance = parseFloat(serverBalance.toFixed(2));
       
-      console.log("Simulating database sync:", {
-        currentBalance: this.currentBalance,
-        dailyGains: this.dailyGains
-      });
+      // Persist to localStorage
+      localStorage.setItem('currentBalance', this.currentBalance.toString());
+      localStorage.setItem('lastKnownBalance', this.currentBalance.toString());
       
-      // Wait a bit to simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      this.syncInProgress = false;
+      this.notifyWatchers();
+    }
+  }
+  
+  // Add to daily gains
+  addDailyGain(gain: number): number {
+    this.checkDateReset();
+    
+    if (gain <= 0) return this.dailyGains;
+    
+    const newDailyGains = parseFloat((this.dailyGains + gain).toFixed(2));
+    this.dailyGains = newDailyGains;
+    
+    // Persist to localStorage
+    localStorage.setItem('dailyGains', this.dailyGains.toString());
+    
+    // Notify watchers
+    this.notifyDailyWatchers();
+    
+    // Dispatch event for other components
+    window.dispatchEvent(new CustomEvent('dailyGains:updated', {
+      detail: { gains: this.dailyGains }
+    }));
+    
+    return this.dailyGains;
+  }
+  
+  // Set daily gains directly (for synchronization)
+  setDailyGains(gains: number): void {
+    if (isNaN(gains) || gains < 0) {
+      console.error(`Invalid daily gains: ${gains}`);
+      return;
+    }
+    
+    this.checkDateReset();
+    this.dailyGains = parseFloat(gains.toFixed(2));
+    
+    // Persist to localStorage
+    localStorage.setItem('dailyGains', this.dailyGains.toString());
+    
+    // Notify watchers
+    this.notifyDailyWatchers();
+  }
+  
+  // Reset daily gains (typically at midnight)
+  resetDailyGains(): void {
+    const today = new Date().toISOString().split('T')[0];
+    this.dailyGains = 0;
+    this.lastResetDate = today;
+    
+    // Persist to localStorage
+    localStorage.setItem('dailyGains', '0');
+    localStorage.setItem('currentDate', today);
+    
+    // Notify watchers
+    this.notifyDailyWatchers();
+    
+    // Dispatch event for other components
+    window.dispatchEvent(new CustomEvent('dailyGains:reset'));
+    
+    console.log(`Daily gains reset for ${today}`);
+  }
+  
+  // Check if date has changed and reset if needed
+  private checkDateReset(): boolean {
+    const today = new Date().toISOString().split('T')[0];
+    if (this.lastResetDate !== today) {
+      console.log(`Date change detected: ${this.lastResetDate} -> ${today}`);
+      this.resetDailyGains();
       return true;
-    } catch (e) {
-      console.error("Error syncing with database:", e);
-      this.syncInProgress = false;
-      return false;
     }
+    return false;
   }
   
-  // Add watcher system for balance updates - Ajout de méthode manquante
-  public addWatcher(callback: BalanceWatcherCallback): () => void {
+  // Add a watcher for balance changes
+  addWatcher(callback: (newBalance: number) => void): () => void {
     this.watchers.push(callback);
-    
-    // Return unsubscribe function
     return () => {
       this.watchers = this.watchers.filter(watcher => watcher !== callback);
     };
   }
   
+  // Add a watcher for daily gains changes
+  addDailyWatcher(callback: (dailyGains: number) => void): () => void {
+    this.dailyWatchers.push(callback);
+    return () => {
+      this.dailyWatchers = this.dailyWatchers.filter(watcher => watcher !== callback);
+    };
+  }
+  
+  // Notify all balance watchers
   private notifyWatchers(): void {
-    this.watchers.forEach(callback => {
+    this.watchers.forEach(watcher => {
       try {
-        callback(this.currentBalance);
+        watcher(this.currentBalance);
       } catch (e) {
-        console.error("Error in balance watcher callback:", e);
+        console.error("Error in balance watcher:", e);
       }
     });
   }
   
-  // Get the highest recorded balance - Ajout de méthode manquante
-  public getHighestBalance(): number {
-    try {
-      const storedHighestBalance = localStorage.getItem('highestBalance');
-      if (storedHighestBalance) {
-        const parsedValue = parseFloat(storedHighestBalance);
-        return isNaN(parsedValue) ? 0 : parsedValue;
+  // Notify all daily gains watchers
+  private notifyDailyWatchers(): void {
+    this.dailyWatchers.forEach(watcher => {
+      try {
+        watcher(this.dailyGains);
+      } catch (e) {
+        console.error("Error in daily gains watcher:", e);
       }
-    } catch (e) {
-      console.error("Error getting highest balance:", e);
-    }
-    return 0;
-  }
-  
-  // Clean up user data when switching users - Ajout de méthode manquante
-  public cleanupUserBalanceData(): void {
-    this.currentBalance = 0;
-    this.dailyGains = 0;
-    this.lastReset = Date.now();
-    this.highestBalance = 0;
-    
-    // Clear localStorage entries
-    try {
-      localStorage.removeItem('currentBalance');
-      localStorage.removeItem('dailyGains');
-      localStorage.removeItem('lastBalanceReset');
-      localStorage.removeItem('highestBalance');
-    } catch (e) {
-      console.error("Error cleaning up user balance data:", e);
-    }
-    
-    // Notify watchers of reset
-    this.notifyWatchers();
-    
-    console.log("Balance data cleaned for user switch");
+    });
   }
 }
 
-// Create a singleton instance
+// Singleton instance
 const balanceManager = new BalanceManager();
-
 export default balanceManager;
