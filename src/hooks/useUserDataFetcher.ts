@@ -27,10 +27,17 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
   const { loadUserProfile, isNewUser, setIsNewUser } = useProfileLoader();
   const { loadUserBalance } = useBalanceLoader(setIsNewUser);
 
+  // Fix type mismatch by using a wrapper function
+  const updateUserDataWrapper = useCallback((newData: Partial<UserData>) => {
+    // Convert UserData to UserFetcherState format
+    const userFetcherData: Partial<UserFetcherState> = { userData: newData };
+    updateUserData(userFetcherData);
+  }, [updateUserData]);
+
   const { fetchUserData, resetDailyCounters } = useUserDataFetching(
     loadUserProfile,
     loadUserBalance,
-    updateUserData,
+    updateUserDataWrapper, // Use the wrapper function instead
     setIsLoading,
     isNewUser
   );

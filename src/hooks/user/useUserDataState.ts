@@ -22,16 +22,25 @@ export const useUserDataState = () => {
   const [dailyLimitProgress, setDailyLimitProgress] = useState<number>(0);
 
   // Function to update user data
-  const updateUserData = useCallback((newData: Partial<UserData>) => {
-    setUserData(prevUserData => {
-      if (!prevUserData) return newData as UserData;
-      return { ...prevUserData, ...newData };
-    });
+  const updateUserData = useCallback((newData: Partial<UserFetcherState>) => {
+    if (newData.userData) {
+      setUserData(prevUserData => {
+        if (!prevUserData) return newData.userData as UserData;
+        return { ...prevUserData, ...newData.userData };
+      });
+    }
+    
+    if (newData.isNewUser !== undefined) setIsNewUser(newData.isNewUser);
+    if (newData.dailySessionCount !== undefined) setDailySessionCount(newData.dailySessionCount);
+    if (newData.showLimitAlert !== undefined) setShowLimitAlert(newData.showLimitAlert);
+    if (newData.isBotActive !== undefined) setIsBotActive(newData.isBotActive);
+    if (newData.dailyLimitProgress !== undefined) setDailyLimitProgress(newData.dailyLimitProgress);
   }, []);
 
   // User actions
   const userActions = {
-    setShowLimitAlert
+    setShowLimitAlert,
+    setIsBotActive
   };
 
   return {
@@ -44,7 +53,8 @@ export const useUserDataState = () => {
     dailyLimitProgress,
     userActions,
     updateUserData,
-    setIsLoading
+    setIsLoading,
+    setIsNewUser
   };
 };
 

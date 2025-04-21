@@ -10,7 +10,7 @@ import { COMMISSION_RATES } from '@/components/dashboard/summary/constants';
 
 interface EnhancedReferral {
   id: string;
-  referred_user_id: string;
+  referred_id: string; // Updated to match the correct property name
   referrer_id: string;
   plan_type: string;
   commission_rate: number;
@@ -44,7 +44,7 @@ const ReferralsPage = () => {
     return userData.referrals.map(referral => ({
       ...referral,
       active: referral.status === 'active',
-      username: `User-${referral.referred_user_id.substring(0, 6)}`,
+      username: `User-${referral.referred_id.substring(0, 6)}`, // Use referred_id here
       joinDate: referral.created_at
     } as EnhancedReferral));
   }, [userData?.referrals]);

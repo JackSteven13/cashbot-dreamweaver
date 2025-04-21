@@ -9,6 +9,7 @@ export const initialUserData: UserData = {
   balance: 0,
   subscription: 'freemium',
   transactions: [],
+  profile: {}, // Add the required profile property
   referrals: [],
   referralLink: '',
 };

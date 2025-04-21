@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import SummaryPanel from './summary/SummaryPanel';
 import DashboardTabs from './metrics/tabs/DashboardTabs';
@@ -5,6 +6,7 @@ import { ReferralLinkDisplay } from './referral';
 import { Card } from '@/components/ui/card';
 import { UserData } from '@/types/userData';
 import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
+import { TrendingUp } from 'lucide-react'; // Add the missing import
 
 interface DashboardContentProps {
   userData: UserData | null;

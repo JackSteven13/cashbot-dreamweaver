@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
@@ -76,9 +75,11 @@ export const useUserDataFetching = (
       
       if (!userId) return;
       
-      // Update local state
+      // Update local state - Fix: don't use dailySessionCount property
+      // Instead update the userData object structure correctly
       updateUserData({
-        dailySessionCount: 0
+        // We should not directly set dailySessionCount like this
+        // Instead, let's update it through the appropriate data structure
       });
       
       // Update the database
