@@ -1,33 +1,30 @@
-
 import React from 'react';
 import SubscriptionPlanCard from '../SubscriptionPlanCard';
 import { SUBSCRIPTION_LABELS, SUBSCRIPTION_PRICES } from '../constants';
 import { SUBSCRIPTION_LIMITS } from '@/components/dashboard/summary/constants';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-// Sample features for each plan
+// Sample features for each plan - UPDATED to match the new daily limits
 const SUBSCRIPTION_FEATURES: Record<string, string[]> = {
   'freemium': [
     'Limite de gains de 0,5€ par jour',
-    '1 session manuelle par jour',
-    '1 session automatique par jour',
+    '1 session par jour',
     'Support par email'
   ],
   'starter': [
     'Limite de gains de 5€ par jour',
-    'Sessions manuelles illimitées',
-    'Sessions automatiques illimitées',
+    '10 sessions par jour',
     'Support prioritaire'
   ],
   'gold': [
-    'Limite de gains de 20€ par jour',
-    'Sessions manuelles et automatiques illimitées',
+    'Limite de gains de 15€ par jour',
+    '30 sessions par jour',
     'Support prioritaire 24/7',
     'Accès à toutes les fonctionnalités'
   ],
   'elite': [
-    'Limite de gains de 50€ par jour',
-    'Accès illimité à toutes les fonctionnalités',
+    'Limite de gains de 25€ par jour',
+    'Sessions illimitées',
     'Support dédié 24/7',
     'Fonctionnalités exclusives'
   ]

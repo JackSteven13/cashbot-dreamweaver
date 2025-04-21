@@ -3,12 +3,12 @@
  * Subscription package daily limits and settings
  */
 
-// Maximum revenue per day based on subscription package
+// Maximum revenue per day based on subscription package - AJUSTÉ POUR GARANTIR UN PROFIT
 export const SUBSCRIPTION_LIMITS = {
-  freemium: 0.5, // €0.50 per day (freemium users)
-  starter: 2.0, // €2.00 per day (starter package)
-  gold: 5.0,   // €5.00 per day (gold package)
-  elite: 15.0  // €15.00 per day (elite package)
+  freemium: 0.5,  // €0.50 par jour (freemium)
+  starter: 5.0,   // €5.00 par jour (starter) - augmenté
+  gold: 15.0,     // €15.00 par jour (gold) - augmenté
+  elite: 25.0     // €25.00 par jour (elite) - augmenté
 };
 
 // Base manual session gains as percentages of daily limits

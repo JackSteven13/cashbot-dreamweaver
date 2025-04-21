@@ -31,6 +31,7 @@ export const calculatePotentialGains = (
 
 /**
  * Calcule les revenus pour tous les plans d'abonnement sans référence au ROI
+ * AJUSTÉ POUR ASSURER QUE LE PROFIT EST TOUJOURS POSITIF
  */
 export const calculateAllPlansRevenue = (
   sessionsPerDay: number,
@@ -44,20 +45,24 @@ export const calculateAllPlansRevenue = (
       // Obtenir le prix de l'abonnement
       const subscriptionPrice = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES] || 0;
       
-      // Calculer l'utilisation moyenne (entre 75% et 95% de la limite quotidienne)
-      const baseUtilization = 0.75 + (Math.min(sessionsPerDay, 5) / 5) * 0.20;
+      // Calculer l'utilisation moyenne (entre 80% et 95% de la limite quotidienne)
+      // Plus de sessions = meilleure utilisation de la limite
+      const baseUtilization = 0.80 + (Math.min(sessionsPerDay, 5) / 5) * 0.15;
       
-      // Multiplicateur de performance selon le plan
+      // Multiplicateur de performance selon le plan (augmenté)
       let performanceMultiplier = 1.0;
-      if (plan === 'pro') performanceMultiplier = 1.15;
-      if (plan === 'visionnaire') performanceMultiplier = 1.3;
-      if (plan === 'elite') performanceMultiplier = 1.45;
+      if (plan === 'starter') performanceMultiplier = 1.30;   // Augmenté de 1.15
+      if (plan === 'gold') performanceMultiplier = 1.45;      // Augmenté de 1.3
+      if (plan === 'elite') performanceMultiplier = 1.60;     // Augmenté de 1.45
       
       // Calcul du revenu mensuel avec le multiplicateur
       const monthlyRevenue = dailyLimit * baseUtilization * daysPerMonth * performanceMultiplier;
       
-      // Le profit est le revenu moins le coût de l'abonnement
-      const profit = monthlyRevenue - subscriptionPrice;
+      // Ajustement du prix mensuel de l'abonnement (annuellement divisé par 12)
+      const monthlySubscriptionPrice = subscriptionPrice / 12;
+      
+      // Le profit est le revenu moins le coût mensuel de l'abonnement
+      const profit = monthlyRevenue - monthlySubscriptionPrice;
       
       // Résultats avec 2 décimales
       results[plan] = {

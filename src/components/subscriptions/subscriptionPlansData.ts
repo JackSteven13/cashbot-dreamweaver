@@ -12,10 +12,11 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
       description: 'Pour les professionnels et entreprises',
       features: [
         'Accès illimité à toutes les fonctionnalités',
+        'Limite quotidienne de 25€',
         'Commission de parrainage de 50%',
         '30% de commission récurrente',
         '10% de commission niveau 2',
-        'Seuil de retrait de 1000€',
+        'Seuil de retrait de 5€',
         'Support dédié 24/7',
         'Fonctionnalités exclusives en avant-première'
       ],
@@ -30,11 +31,12 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
       price: 349,
       description: 'Pour maximiser vos gains',
       features: [
-        'Sessions manuelles et automatiques illimitées',
+        '30 sessions par jour',
+        'Limite quotidienne de 15€',
         'Commission de parrainage de 40%',
         '20% de commission récurrente',
         '5% de commission niveau 2',
-        'Seuil de retrait de 700€',
+        'Seuil de retrait de 10€',
         'Support prioritaire 24/7'
       ],
       limit: SUBSCRIPTION_LIMITS['gold'],
@@ -48,11 +50,11 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
       price: 99,
       description: 'Pour les utilisateurs sérieux',
       features: [
-        'Sessions manuelles illimitées',
-        'Sessions automatiques illimitées',
+        '10 sessions par jour',
+        'Limite quotidienne de 5€',
         'Commission de parrainage de 30%',
         '10% de commission récurrente',
-        'Seuil de retrait de 400€',
+        'Seuil de retrait de 15€',
         'Support prioritaire'
       ],
       limit: SUBSCRIPTION_LIMITS['starter'],
@@ -67,10 +69,10 @@ export const createSubscriptionPlans = (currentSubscription: string): Plan[] => 
       price: 0,
       description: 'Pour débuter et explorer la plateforme',
       features: [
-        '1 session manuelle par jour',
-        '1 session automatique par jour',
+        '1 session par jour',
+        'Limite quotidienne de 0,50€',
         'Commission de parrainage de 20%',
-        'Seuil de retrait de 200€',
+        'Seuil de retrait de 20€',
         'Support par email'
       ],
       limit: SUBSCRIPTION_LIMITS['freemium'],

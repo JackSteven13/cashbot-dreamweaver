@@ -2,17 +2,17 @@
 // Limites de sessions selon le forfait
 export const SESSION_LIMITS = {
   'freemium': 1,      // 1 session par jour
-  'starter': 3,       // 3 sessions par jour
-  'gold': 10,         // 10 sessions par jour  
-  'elite': 50         // 50 sessions par jour
+  'starter': 10,      // 10 sessions par jour (augmenté de 3)
+  'gold': 30,         // 30 sessions par jour (augmenté de 10)  
+  'elite': 60         // 60 sessions par jour (augmenté de 50)
 };
 
-// Limites de revenus journaliers selon le forfait - ALIGNÉES AVEC LES LIMITES GLOBALES
+// Limites de revenus journaliers selon le forfait - AJUSTÉES POUR GARANTIR UN PROFIT
 export const DAILY_REVENUE_LIMITS = {
   'freemium': 0.50,   // 0,50€ par jour
-  'starter': 2.00,    // 2€ par jour
-  'gold': 5.00,       // 5€ par jour
-  'elite': 15.00      // 15€ par jour
+  'starter': 5.00,    // 5€ par jour (augmenté de 2€)
+  'gold': 15.00,      // 15€ par jour (augmenté de 5€)
+  'elite': 25.00      // 25€ par jour (augmenté de 15€)
 };
 
 // Taux de commission pour le parrainage selon l'abonnement
