@@ -44,12 +44,12 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
       
       localStorage.setItem('botActive', 'false');
       
-      console.log("Limite presque atteinte dans SystemProgressBar, bot désactivé");
+      console.log("Limit almost reached in SystemProgressBar, bot disabled");
       
       toast({
         title: "Limite journalière presque atteinte",
         description: `Vous approchez de votre limite journalière de ${limit.toFixed(2)}€. Le bot est maintenant en pause.`,
-        variant: "destructive",
+        variant: "destructive", // Changed from "warning" to "destructive"
         duration: 6000
       });
     }
@@ -64,7 +64,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
         console.log(`SystemProgressBar received bot status update: ${isActive ? 'active' : 'inactive'}`);
         
         if (isActive && limitReached && checkLimit) {
-          console.log("Tentative d'activation du bot avec limite presque atteinte, bloqué");
+          console.log("Attempt to activate bot with limit almost reached, blocked");
           
           window.dispatchEvent(new CustomEvent('bot:force-status', { 
             detail: { active: false, reason: 'limit_reached' } 
@@ -75,7 +75,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
           toast({
             title: "Limite journalière atteinte",
             description: `Vous avez atteint votre limite de gain journalier de ${effectiveLimit.toFixed(2)}€. Revenez demain ou passez à un forfait supérieur.`,
-            variant: "destructive",
+            variant: "destructive", // Changed from "warning" to "destructive"
             duration: 5000
           });
         } else {
@@ -100,7 +100,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
       toast({
         title: "Impossible d'activer l'analyse",
         description: `Vous approchez de votre limite journalière de ${effectiveLimit.toFixed(2)}€. Revenez demain ou passez à un forfait supérieur.`,
-        variant: "destructive",
+        variant: "destructive", // Changed from "warning" to "destructive"
         duration: 5000
       });
       return;

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { UserData } from '@/types/userData';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 import balanceManager from '@/utils/balance/balanceManager';
-import { addTransaction, calculateTodaysGains } from '@/utils/user/transactionUtils';
+import { addTransaction, calculateTodaysGains } from '@/utils/userData/transactionUtils';
 import { respectsDailyLimit } from '@/utils/subscription/sessionManagement';
 
 interface UseAutomaticRevenueProps {
@@ -50,7 +50,7 @@ export const useAutomaticRevenue = ({
       setIsBotActive(false);
       console.log("Bot automatically deactivated: daily limit reached");
       
-      // Enregistrer l'état dans le localStorage
+      // Save state in localStorage
       localStorage.setItem('botActive', 'false');
     }
   }, [userData, isBotActive, isNewUser]);
@@ -60,16 +60,16 @@ export const useAutomaticRevenue = ({
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
       if (typeof isActive === 'boolean') {
-        // Vérifier si la limite est atteinte avant d'activer le bot
+        // Check if limit is reached before activating bot
         if (isActive && limitReached) {
-          console.log("Bot ne peut pas être activé: limite déjà atteinte");
+          console.log("Bot cannot be activated: limit already reached");
           return;
         }
         
         console.log(`Bot status update in useAutomaticRevenue: ${isActive ? 'active' : 'inactive'}`);
         setIsBotActive(isActive);
         
-        // Enregistrer l'état dans le localStorage
+        // Save state in localStorage
         localStorage.setItem('botActive', isActive.toString());
       }
     };
@@ -138,7 +138,7 @@ export const useAutomaticRevenue = ({
       const finalGain = parseFloat(safeGain.toFixed(3));
       
       if (finalGain <= 0.001) {
-        console.log("Gain trop faible, génération abandonnée");
+        console.log("Gain too small, generation aborted");
         return false;
       }
       
@@ -169,16 +169,17 @@ export const useAutomaticRevenue = ({
       }
       
       const now = Date.now();
-      // Limiter les mises à jour de la base de données à une fois toutes les 10 secondes au maximum
+      // Limit database updates to once every 10 seconds at most
       const shouldUpdateDb = forceUpdate || (now - lastDbUpdateTime > 10000);
       
       if (shouldUpdateDb) {
         // Record transaction in database
-        const transactionAdded = await addTransaction(userId, finalGain, report);
+        const transaction = await addTransaction(userId, finalGain, report);
         
-        if (!transactionAdded) {
+        if (!transaction) {
           console.error("Failed to record transaction");
-          return false;
+        } else {
+          console.log("Automatic transaction recorded successfully:", transaction);
         }
         
         // Update database timestamp
@@ -192,12 +193,22 @@ export const useAutomaticRevenue = ({
       balanceManager.updateBalance(finalGain);
       balanceManager.addDailyGain(finalGain);
       
-      // Récupérer le solde actuel depuis le gestionnaire
+      // Get current balance from manager
       const currentBalance = balanceManager.getCurrentBalance();
       
       console.log(`Automatic revenue generated: ${finalGain}€, current balance: ${currentBalance}€`);
       
-      // Trigger balance update animation and force UI update
+      // Dispatch events to update UI
+      
+      // First, trigger automatic revenue event to create transaction record
+      window.dispatchEvent(new CustomEvent('automatic:revenue', { 
+        detail: { 
+          amount: finalGain,
+          timestamp: now
+        } 
+      }));
+      
+      // Trigger balance update animation
       window.dispatchEvent(new CustomEvent('balance:update', { 
         detail: { 
           amount: finalGain, 
@@ -207,7 +218,7 @@ export const useAutomaticRevenue = ({
         } 
       }));
       
-      // Also dispatch a force update event to ensure the UI reflects the new balance
+      // Force UI update to ensure balance is displayed correctly
       window.dispatchEvent(new CustomEvent('balance:force-update', { 
         detail: { 
           newBalance: currentBalance,
@@ -215,6 +226,11 @@ export const useAutomaticRevenue = ({
           animate: true,
           timestamp: now 
         } 
+      }));
+      
+      // Also notify that there's a new transaction to display
+      window.dispatchEvent(new CustomEvent('transactions:refresh', {
+        detail: { timestamp: now }
       }));
       
       return true;

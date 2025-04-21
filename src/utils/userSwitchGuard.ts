@@ -1,59 +1,74 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import balanceManager from "./balance/balanceManager";
+import balanceManager from '@/utils/balance/balanceManager';
 
-/**
- * Clear all local data when a user signs out
- */
-export const cleanupOnSignout = () => {
-  console.log("Cleaning up user data on signout");
-  
-  // Clean up balance manager data
-  balanceManager.cleanupUserBalanceData();
-  
-  // Clean up other localStorage data
-  localStorage.removeItem('lastKnownUsername');
-  localStorage.removeItem('lastKnownBalance');
-  localStorage.removeItem('cachedTransactions');
-  localStorage.removeItem('transactionsLastRefresh');
-  localStorage.removeItem('lastSessionTimestamp');
-  
-  // Reset any active flags
-  localStorage.removeItem('auth_checking');
-  localStorage.removeItem('auth_check_timestamp');
-  localStorage.removeItem('auth_redirecting');
-  localStorage.removeItem('auth_redirect_timestamp');
-  
-  console.log("User data cleanup complete");
-};
-
-/**
- * Set user switch handler to listen for auth state changes
- */
-export const setupUserSwitchHandler = () => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT') {
-      console.log("User signed out, cleaning up data");
-      balanceManager.cleanupUserBalanceData();
+// Detects if the current user has changed from a previous session
+export const detectUserSwitch = async () => {
+  try {
+    // Retrieve previous user ID
+    const previousUserId = localStorage.getItem('lastKnownUserId');
+    
+    // Get current user from Supabase Auth
+    const { data } = await fetch('/api/auth/me').then(res => res.json());
+    const currentUserId = data?.id;
+    
+    // If we have both IDs and they don't match, a switch occurred
+    if (previousUserId && currentUserId && previousUserId !== currentUserId) {
+      console.warn(`User switch detected: ${previousUserId} -> ${currentUserId}`);
       
-      // Clean up other localStorage data
-      localStorage.removeItem('lastKnownUsername');
+      // Reset local cache data
+      localStorage.removeItem('cachedTransactions');
       localStorage.removeItem('lastKnownBalance');
-    } else if (event === 'SIGNED_IN' && session?.user?.id) {
-      console.log(`User signed in, setting user ID: ${session.user.id}`);
-      balanceManager.setUserId(session.user.id);
+      localStorage.removeItem('currentBalance');
+      localStorage.removeItem('dailyGains');
+      
+      // Reset balance manager data
+      if (balanceManager.setDailyGains) {
+        balanceManager.setDailyGains(0);
+      }
+      
+      // Force balance reset in manager
+      if (balanceManager.forceBalanceSync) {
+        balanceManager.forceBalanceSync(0);  
+      }
+      
+      // Update user ID
+      localStorage.setItem('lastKnownUserId', currentUserId);
+      
+      return true;
     }
-  });
-  
-  return subscription;
+    
+    // If we have a current user but no previous user, store it
+    if (currentUserId && !previousUserId) {
+      localStorage.setItem('lastKnownUserId', currentUserId);
+    }
+    
+    return false;
+  } catch (error) {
+    console.error("Error detecting user switch:", error);
+    
+    // Reset balance manager data
+    if (balanceManager.setDailyGains) {
+      balanceManager.setDailyGains(0);
+    }
+    
+    return false;
+  }
 };
 
-/**
- * Reset all user data (for testing/admin purposes)
- */
-export const resetAllUserData = () => {
-  balanceManager.cleanupUserBalanceData();
-  localStorage.clear();
-  sessionStorage.clear();
-  console.log("All user data reset");
+// Clear cached balance data when logging out
+export const clearUserData = () => {
+  localStorage.removeItem('cachedTransactions');
+  localStorage.removeItem('lastKnownBalance');
+  localStorage.removeItem('currentBalance');
+  localStorage.removeItem('dailyGains');
+  localStorage.removeItem('lastKnownUserId');
+  
+  // Reset balance manager
+  if (balanceManager.forceBalanceSync) {
+    balanceManager.forceBalanceSync(0);
+  }
+  
+  if (balanceManager.setDailyGains) {
+    balanceManager.setDailyGains(0);
+  }
 };

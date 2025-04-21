@@ -52,6 +52,10 @@ export const useAutomaticRevenueTransactions = () => {
     try {
       isProcessing.current = true;
       
+      // Format today's date consistently
+      const today = new Date();
+      const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
       // Insert the transaction into the database
       const { data, error } = await supabase
         .from('transactions')
@@ -59,7 +63,8 @@ export const useAutomaticRevenueTransactions = () => {
           user_id: user.id,
           gain: amount,
           report: 'Revenu automatique',
-          date: new Date().toISOString().split('T')[0]
+          date: formattedDate,
+          created_at: today.toISOString() // Include full timestamp
         })
         .select();
       
@@ -70,8 +75,10 @@ export const useAutomaticRevenueTransactions = () => {
         return;
       }
       
+      console.log(`Automatic transaction recorded successfully: ${amount}€`, data);
+      
       // Update last transaction time
-      setLastTransactionTime(new Date());
+      setLastTransactionTime(today);
       
       // Trigger an event to refresh the transactions list
       window.dispatchEvent(new CustomEvent('transactions:refresh', { 
@@ -82,8 +89,6 @@ export const useAutomaticRevenueTransactions = () => {
       window.dispatchEvent(new CustomEvent('balance:update', { 
         detail: { gain: amount, automatic: true }
       }));
-      
-      console.log(`Automatic revenue transaction recorded: ${amount}€`, data);
     } catch (error) {
       console.error("Failed to record automatic transaction:", error);
       // Re-queue the transaction on error
@@ -99,15 +104,18 @@ export const useAutomaticRevenueTransactions = () => {
       if (event instanceof CustomEvent && event.detail) {
         const { amount } = event.detail;
         if (typeof amount === 'number' && amount > 0) {
+          console.log(`Recording automatic revenue transaction: ${amount}€`);
           recordAutomaticTransaction(amount);
         }
       }
     };
     
     window.addEventListener('automatic:revenue', handleAutomaticRevenue as EventListener);
+    window.addEventListener('dashboard:micro-gain', handleAutomaticRevenue as EventListener);
     
     return () => {
       window.removeEventListener('automatic:revenue', handleAutomaticRevenue as EventListener);
+      window.removeEventListener('dashboard:micro-gain', handleAutomaticRevenue as EventListener);
     };
   }, [recordAutomaticTransaction]);
   

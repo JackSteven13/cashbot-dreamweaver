@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useManualSessions } from './sessions/manual/useManualSessions';
 import { toast } from '@/components/ui/use-toast';
@@ -26,44 +25,44 @@ const useDashboardSessions = ({
   const [isBotActive, setBotActive] = useState(botActiveFromHook);
   const persistedBalanceRef = useRef<number | null>(null);
 
-  // Persister le dernier horodatage de session entre les charges de page
+  // Persist the last session timestamp between page loads
   useEffect(() => {
     if (lastSessionTimestamp) {
       localStorage.setItem('lastSessionTimestamp', lastSessionTimestamp.toString());
     }
   }, [lastSessionTimestamp]);
   
-  // S'assurer que le solde est correctement initialisé et persisté
+  // Ensure balance is correctly initialized and persisted
   useEffect(() => {
-    if (userData && userData.balance) {
-      // Initialiser le gestionnaire de solde avec la valeur actuelle
+    if (userData && userData.balance !== undefined) {
+      // Initialize the balance manager with the current value
       balanceManager.forceBalanceSync(userData.balance, userData.id);
       persistedBalanceRef.current = userData.balance;
       
-      // Stocker le solde dans localStorage pour persistance entre les sessions
+      // Store balance in localStorage for persistence between sessions
       localStorage.setItem('currentBalance', userData.balance.toString());
       localStorage.setItem('lastKnownBalance', userData.balance.toString());
     }
   }, [userData]);
   
-  // Restaurer l'état du bot depuis le localStorage et s'assurer qu'il n'est pas actif si la limite est atteinte
+  // Restore bot state from localStorage and ensure it's not active if limit is reached
   useEffect(() => {
-    // Récupérer l'état stocké du bot
+    // Get stored bot state
     const storedBotState = localStorage.getItem('botActive');
     
-    // Vérifier si la limite quotidienne est atteinte
+    // Check if daily limit is reached
     const checkLimitReached = () => {
       if (!userData) return false;
       
       const subscription = userData.subscription || 'freemium';
-      const dailyLimit = 0.5; // Valeur pour freemium
+      const dailyLimit = 0.5; // Value for freemium
       const currentGains = balanceManager.getDailyGains();
       
-      // Considérer la limite atteinte à 95% pour éviter de la dépasser
+      // Consider limit reached at 95% to avoid exceeding it
       return currentGains >= dailyLimit * 0.95;
     };
     
-    // Désactiver le bot si la limite est atteinte
+    // Disable bot if limit is reached
     const limitReached = checkLimitReached();
     if (limitReached) {
       setBotActive(false);
@@ -73,11 +72,11 @@ const useDashboardSessions = ({
         detail: { active: false }
       }));
       
-      console.log("Bot désactivé car limite quotidienne atteinte");
+      console.log("Bot disabled because daily limit reached");
     } 
-    // Sinon, utiliser l'état stocké
+    // Otherwise, use stored state
     else if (storedBotState === 'true' || storedBotState === null) {
-      // Le bot est actif par défaut
+      // Bot is active by default
       setBotActive(true);
       window.dispatchEvent(new CustomEvent('bot:status-change', {
         detail: { active: true }
@@ -90,7 +89,7 @@ const useDashboardSessions = ({
     }
   }, [userData]);
 
-  // Surveiller les changements d'état du bot
+  // Monitor bot status changes
   useEffect(() => {
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
@@ -114,10 +113,10 @@ const useDashboardSessions = ({
   });
 
   const handleStartSession = useCallback(async () => {
-    // Vérifier si la limite quotidienne est atteinte
+    // Check if daily limit is reached
     if (userData) {
       const subscription = userData.subscription || 'freemium';
-      const dailyLimit = 0.5; // Valeur pour freemium
+      const dailyLimit = 0.5; // Value for freemium
       const currentGains = balanceManager.getDailyGains();
       
       if (currentGains >= dailyLimit * 0.95) {
@@ -144,13 +143,13 @@ const useDashboardSessions = ({
     setIsStartingSession(true);
     
     try {
-      // Enregistrer l'horodatage de la session
+      // Record session timestamp
       setLastSessionTimestamp(Date.now());
       
-      // Démarrer la session
+      // Start session
       await manualSessions.startSession();
       
-      // Déclencher une mise à jour immédiate du solde UI
+      // Trigger immediate UI balance update
       const currentBalance = balanceManager.getCurrentBalance();
       window.dispatchEvent(new CustomEvent('balance:force-update', {
         detail: { 
@@ -160,7 +159,7 @@ const useDashboardSessions = ({
         }
       }));
     } catch (error) {
-      console.error("Erreur lors du démarrage de la session:", error);
+      console.error("Error starting session:", error);
       toast({
         title: "Erreur",
         description: "Impossible de démarrer la session.",
@@ -174,7 +173,7 @@ const useDashboardSessions = ({
   const handleWithdrawal = useCallback(async () => {
     if (!userData) return;
     
-    // Vérifiez si le solde est suffisant pour un retrait
+    // Check if balance is sufficient for withdrawal
     const currentBalance = userData.balance || 0;
     if (currentBalance <= 0) {
       toast({
@@ -185,7 +184,7 @@ const useDashboardSessions = ({
       return;
     }
     
-    // Confirmer la demande de retrait
+    // Confirm withdrawal request
     const isConfirmed = window.confirm(
       `Êtes-vous sûr de vouloir retirer ${currentBalance.toFixed(2)}€ de votre compte?`
     );
@@ -193,13 +192,13 @@ const useDashboardSessions = ({
     if (!isConfirmed) return;
     
     try {
-      // Effectuer le retrait (réinitialiser le solde)
+      // Perform withdrawal (reset balance)
       await resetBalance();
       
-      // Réinitialiser le gestionnaire de solde local
-      balanceManager.reset();
+      // Reset local balance manager
+      balanceManager.forceBalanceSync(0);
       
-      // Forcer la mise à jour de l'UI
+      // Force UI update
       window.dispatchEvent(new CustomEvent('balance:force-update', {
         detail: { 
           newBalance: 0,
@@ -214,7 +213,7 @@ const useDashboardSessions = ({
         duration: 5000
       });
     } catch (error) {
-      console.error("Erreur lors de la demande de retrait:", error);
+      console.error("Error during withdrawal request:", error);
       toast({
         title: "Erreur",
         description: "Impossible de traiter votre demande de retrait.",

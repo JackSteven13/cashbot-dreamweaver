@@ -1,38 +1,53 @@
 
-import balanceManager from './balanceManager';
+import { supabase } from "@/integrations/supabase/client";
+import balanceManager from "./balanceManager";
 
 /**
- * Outil pour suivre et persister les gains générés automatiquement
- * Ce fichier est maintenu pour la compatibilité avec le code existant
+ * Reset daily gains to zero at midnight
  */
-
-/**
- * Récupère les gains quotidiens depuis le stockage local
- */
-export const getDailyGainsTracker = (): number => {
-  return balanceManager.getDailyGains();
+export const resetDailyGainsAtMidnight = () => {
+  const now = new Date();
+  
+  // Get last reset date from localStorage
+  const lastResetDate = localStorage.getItem('lastDailyGainsReset');
+  const today = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+  
+  // If last reset was not today, reset daily gains
+  if (lastResetDate !== today) {
+    console.log(`Resetting daily gains (last reset: ${lastResetDate || 'never'}, today: ${today})`);
+    
+    // Reset daily gains in balance manager
+    if (balanceManager.setDailyGains) {
+      balanceManager.setDailyGains(0);
+    }
+    
+    // Store reset date
+    localStorage.setItem('lastDailyGainsReset', today);
+    console.log("Daily gains reset to 0");
+    
+    return true;
+  } else {
+    console.log("Reset already happened today, skipping");
+    return false;
+  }
 };
 
 /**
- * Ajoute un nouveau gain au total quotidien
- * @returns {number} Le nouveau montant total des gains quotidiens
+ * Persists the daily gains to localStorage on unmount
  */
-export const addDailyGainTracker = (gain: number): number => {
-  // Ajouter le gain
-  balanceManager.addDailyGain(gain);
-  // Retourner le nouveau total
-  return balanceManager.getDailyGains();
-};
-
-/**
- * Réinitialise les compteurs quotidiens
- */
-export const resetDailyGains = (): void => {
-  balanceManager.resetDailyGains();
+export const persistDailyGains = () => {
+  try {
+    const currentGains = balanceManager.getDailyGains();
+    localStorage.setItem('dailyGains', currentGains.toString());
+    console.log(`Daily gains (${currentGains}€) persisted to localStorage`);
+    return true;
+  } catch (error) {
+    console.error("Error persisting daily gains:", error);
+    return false;
+  }
 };
 
 export default {
-  getDailyGains: getDailyGainsTracker,
-  addDailyGain: addDailyGainTracker,
-  resetDailyGains
+  resetDailyGainsAtMidnight,
+  persistDailyGains
 };
