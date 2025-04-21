@@ -1,3 +1,4 @@
+
 /**
  * Utilitaires liés aux seuils de retrait selon le niveau d'abonnement
  */
@@ -56,8 +57,13 @@ export const getWithdrawalProgress = (balance: number, subscription: string): nu
  * @returns True si le retrait est autorisé
  */
 export const isWithdrawalAllowed = (subscription: string, referralCount: number): boolean => {
-  // Les comptes freemium doivent avoir au moins un parrainage
+  // NOUVEAU: Les comptes freemium doivent avoir au moins 3 parrainages actifs pour pouvoir retirer
   if (subscription?.toLowerCase() === 'freemium') {
+    return referralCount >= 3;
+  }
+  
+  // Les comptes starter doivent avoir au moins 1 parrainage
+  if (subscription?.toLowerCase() === 'starter') {
     return referralCount >= 1;
   }
   
@@ -75,25 +81,28 @@ export const calculateWithdrawalFee = (registrationDate: Date, subscription: str
   const today = new Date();
   const accountAgeInDays = Math.floor((today.getTime() - registrationDate.getTime()) / (1000 * 60 * 60 * 24));
   
-  // Définir les frais de base par type d'abonnement - ALIGNÉS AVEC LES CONSTANTES GLOBALES
-  let baseFee = 0.05; // 5% par défaut (pour freemium)
+  // AUGMENTATION des frais de base par type d'abonnement pour décourager les retraits précoces
+  let baseFee = 0.10; // 10% par défaut (pour freemium) - AUGMENTÉ
   
   switch (subscription?.toLowerCase()) {
     case 'elite':
-      baseFee = 0.00; // 0% pour Elite
+      baseFee = 0.02; // 2% pour Elite - AUGMENTÉ
       break;
     case 'gold':
-      baseFee = 0.015; // 1.5% pour Gold
+      baseFee = 0.04; // 4% pour Gold - AUGMENTÉ
       break;
     case 'starter':
-      baseFee = 0.03; // 3% pour Starter
+      baseFee = 0.06; // 6% pour Starter - AUGMENTÉ
       break;
     default:
-      baseFee = 0.05; // 5% pour Freemium
+      baseFee = 0.10; // 10% pour Freemium - AUGMENTÉ
   }
   
   // Réduire les frais en fonction de l'ancienneté (max 50% de réduction)
-  const ageDiscount = Math.min(0.5, accountAgeInDays / 365); // 50% max après 1 an
+  // MAIS nécessite BEAUCOUP PLUS de temps - minimum 6 mois pour commencer la réduction
+  const minDaysForDiscount = 180; // 6 mois minimum
+  const effectiveAgeForDiscount = Math.max(0, accountAgeInDays - minDaysForDiscount);
+  const ageDiscount = Math.min(0.5, effectiveAgeForDiscount / 365); // 50% max après 1 an + 6 mois
   
   return Math.max(0.01, baseFee * (1 - ageDiscount)); // Minimum 1%
 };
