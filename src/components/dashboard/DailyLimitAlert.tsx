@@ -7,6 +7,7 @@ import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscript
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLimitChecking } from '@/hooks/sessions/manual/useLimitChecking';
 import { UserData } from '@/types/userData';
+import balanceManager from '@/utils/balance/balanceManager';
 
 interface DailyLimitAlertProps {
   show: boolean;
@@ -28,14 +29,29 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
   useEffect(() => {
     if (!userData) return;
 
-    // Obtenir les gains d'aujourd'hui depuis les transactions
-    const actualTodaysGains = getTodaysGains(userData);
+    // Obtenir les gains d'aujourd'hui depuis le gestionnaire de solde
+    const actualTodaysGains = balanceManager.getDailyGains();
     setTodaysGains(actualTodaysGains);
     
-    // Vérifier si la limite est atteinte
+    // Vérifier si la limite est atteinte (98% pour être préventif)
     const limit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    setIsLimitReached(actualTodaysGains >= limit);
+    setIsLimitReached(actualTodaysGains >= limit * 0.98);
     
+    // Obtenir les gains d'aujourd'hui depuis les transactions (méthode secondaire)
+    const checkTransactionGains = async () => {
+      if (!userData) return;
+      const transactionGains = await getTodaysGains(userData);
+      
+      // Si les transactions montrent plus de gains, utiliser cette valeur
+      if (transactionGains > actualTodaysGains) {
+        console.log(`Mise à jour des gains quotidiens: ${actualTodaysGains}€ -> ${transactionGains}€ (transactions)`);
+        setTodaysGains(transactionGains);
+        balanceManager.setDailyGains(transactionGains);
+        setIsLimitReached(transactionGains >= limit * 0.98);
+      }
+    };
+    
+    checkTransactionGains();
   }, [userData, effectiveSubscription, getTodaysGains]);
   
   // Check if temporary Pro mode is activated
@@ -57,15 +73,15 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
 
   return (
     <Alert 
-      className={`mb-4 md:mb-6 ${isLimitReached ? 'bg-amber-50 border-amber-300' : 'bg-yellow-50 border-yellow-200'}`}
-      variant={isLimitReached ? "destructive" : "warning"} // Utilisez les variants pour la cohérence
+      className={`mb-4 md:mb-6 ${isLimitReached ? 'bg-amber-50 border-amber-300 dark:bg-amber-900/40 dark:border-amber-600' : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-700'}`}
+      variant={isLimitReached ? "destructive" : "warning"}
     >
-      <AlertTitle className={`text-sm md:text-base ${isLimitReached ? 'text-amber-800' : 'text-yellow-800'}`}>
+      <AlertTitle className={`text-sm md:text-base ${isLimitReached ? 'text-amber-800 dark:text-amber-300' : 'text-yellow-800 dark:text-yellow-300'}`}>
         {isLimitReached ? 'Limite journalière atteinte' : 'Limite journalière presque atteinte'}
       </AlertTitle>
       <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 md:gap-4">
         <div className="flex-1">
-          <span className={`text-xs md:text-sm ${isLimitReached ? 'text-amber-700' : 'text-yellow-700'}`}>
+          <span className={`text-xs md:text-sm ${isLimitReached ? 'text-amber-700 dark:text-amber-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
             {isLimitReached 
               ? `Vous avez atteint votre limite de gain journalier de ${effectiveLimit}€ avec votre compte ${effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1)}.
                  Votre solde total est de ${currentBalance.toFixed(2)}€.`
@@ -75,7 +91,7 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
           </span>
           
           {/* Progress bar for visual representation */}
-          <div className="w-full h-1.5 md:h-2 bg-gray-200 rounded-full mt-1.5 md:mt-2 overflow-hidden">
+          <div className="w-full h-1.5 md:h-2 bg-gray-200 dark:bg-gray-700 rounded-full mt-1.5 md:mt-2 overflow-hidden">
             <div 
               className={`h-full ${isLimitReached ? 'bg-amber-500' : isNearLimit ? 'bg-orange-500' : 'bg-yellow-500'}`}
               style={{ width: `${limitPercentage}%` }}

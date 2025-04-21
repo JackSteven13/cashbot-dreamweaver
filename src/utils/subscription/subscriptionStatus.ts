@@ -7,7 +7,7 @@ import { SUBSCRIPTION_LIMITS } from './constants';
 export const getEffectiveSubscription = (subscription: string): string => {
   // For now, we just return the subscription as is
   // In the future, this could check for trial status or other modifiers
-  return subscription;
+  return subscription || 'freemium';
 };
 
 /**
@@ -16,7 +16,7 @@ export const getEffectiveSubscription = (subscription: string): string => {
  */
 export const checkDailyLimit = (dailyGain: number, subscription: string): boolean => {
   const limit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-  return dailyGain >= limit;
+  return dailyGain >= limit * 0.98; // 98% de la limite pour être préventif
 };
 
 /**
@@ -31,7 +31,4 @@ export const shouldResetDailyCounters = (lastResetTime: number): boolean => {
   return lastReset.getDate() !== now.getDate() || 
          lastReset.getMonth() !== now.getMonth() ||
          lastReset.getFullYear() !== now.getFullYear();
-};
-
-// Re-export necessary constants
-export { SUBSCRIPTION_LIMITS };
+}

@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { PlayCircle, Clock, AlertCircle } from 'lucide-react';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { PLANS } from '@/utils/plans';
+import balanceManager from '@/utils/balance/balanceManager';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 
 interface SessionButtonProps {
   onClick: () => void;
@@ -38,10 +40,16 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     new Date().getTime() - new Date(lastSessionTimestamp).getTime() < 5 * 60 * 1000
   ) : false;
 
+  // Vérifier si la limite quotidienne de gains est atteinte
+  const dailyGains = balanceManager.getDailyGains();
+  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  const isLimitReached = dailyGains >= dailyLimit * 0.95; // 95% de la limite pour être préventif
+
   // Determine the tooltip message
   const getTooltipMessage = () => {
     if (!isBotActive) return "Le système est temporairement indisponible";
     if (isLoading) return "Démarrage de la session...";
+    if (isLimitReached) return `Limite de gains quotidiens atteinte (${dailyGains.toFixed(2)}€/${dailyLimit}€)`;
     if (hasReachedLimit) {
       if (isFreemium) return "Limite atteinte: 1 session par jour (freemium)";
       return `Limite quotidienne atteinte (${dailySessionCount}/${maxDailySessions})`;
@@ -63,8 +71,8 @@ const SessionButton: React.FC<SessionButtonProps> = ({
           <div className="w-full">
             <Button
               onClick={handleClick}
-              disabled={disabled || isLoading || hasReachedLimit || isInCooldown || !isBotActive}
-              className={`w-full h-11 ${hasReachedLimit && isFreemium ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
+              disabled={disabled || isLoading || hasReachedLimit || isInCooldown || !isBotActive || isLimitReached}
+              className={`w-full h-11 ${(hasReachedLimit && isFreemium) || isLimitReached ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
               variant="default"
               size="lg"
               data-testid="session-button"
@@ -76,7 +84,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
                 </div>
               ) : (
                 <div className="flex items-center">
-                  {!isBotActive ? (
+                  {!isBotActive || isLimitReached ? (
                     <AlertCircle className="mr-2 h-5 w-5" />
                   ) : hasReachedLimit || isInCooldown ? (
                     <Clock className="mr-2 h-5 w-5" />
@@ -85,8 +93,9 @@ const SessionButton: React.FC<SessionButtonProps> = ({
                   )}
                   <span>
                     {!isBotActive ? "Indisponible" : 
-                     (hasReachedLimit ? (isFreemium ? "Limite (1/jour)" : "Limite atteinte") : 
-                      (isInCooldown ? "En attente" : "Démarrer"))}
+                     (isLimitReached ? "Limite atteinte" :
+                      (hasReachedLimit ? (isFreemium ? "Limite (1/jour)" : "Limite atteinte") : 
+                       (isInCooldown ? "En attente" : "Démarrer")))}
                   </span>
                 </div>
               )}

@@ -1,150 +1,217 @@
 
+/**
+ * Gestionnaire centralisé du solde et des limites quotidiennes
+ * Permet une meilleure synchronisation des états à travers l'application
+ */
+
+interface BalanceWatcher {
+  (newBalance: number): void;
+}
+
 class BalanceManager {
-  private currentBalance: number = 0;
-  private dailyGains: number = 0;
-  private highestBalance: number = 0;
-  private userId: string | null = null;
-  private watchers: ((balance: number) => void)[] = [];
-
+  private currentBalance: number;
+  private dailyGains: number;
+  private lastUpdateTime: number;
+  private watchers: BalanceWatcher[];
+  
   constructor() {
-    this.loadBalanceFromStorage();
-    this.setupEventListeners();
+    // Initialiser avec les valeurs stockées localement ou des valeurs par défaut
+    this.currentBalance = this.getStoredBalance();
+    this.dailyGains = this.getStoredDailyGains();
+    this.lastUpdateTime = Date.now();
+    this.watchers = [];
+    
+    // Vérifier si nous devons réinitialiser les compteurs quotidiens
+    this.checkDailyReset();
   }
-
-  private loadBalanceFromStorage() {
+  
+  /**
+   * Récupérer le solde stocké localement
+   */
+  private getStoredBalance(): number {
     try {
-      const storedBalance = localStorage.getItem('currentBalance');
-      const storedDailyGains = localStorage.getItem('dailyGains');
-      const storedHighestBalance = localStorage.getItem('highestBalance');
-
-      this.currentBalance = storedBalance ? parseFloat(storedBalance) : 0;
-      this.dailyGains = storedDailyGains ? parseFloat(storedDailyGains) : 0;
-      this.highestBalance = storedHighestBalance ? parseFloat(storedHighestBalance) : 0;
-      
-      // If the current balance is higher than the stored highest balance, update it
-      if (this.currentBalance > this.highestBalance) {
-        this.highestBalance = this.currentBalance;
-        localStorage.setItem('highestBalance', this.highestBalance.toString());
-      }
+      const stored = localStorage.getItem('currentBalance');
+      return stored ? parseFloat(stored) : 0;
     } catch (e) {
-      console.error('Error loading balance from storage:', e);
-      this.currentBalance = 0;
+      console.error("Erreur lors de la récupération du solde:", e);
+      return 0;
+    }
+  }
+  
+  /**
+   * Récupérer les gains quotidiens stockés localement
+   */
+  private getStoredDailyGains(): number {
+    try {
+      const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+      const storedDate = localStorage.getItem('dailyGainsDate');
+      
+      // Si la date stockée n'est pas aujourd'hui, réinitialiser
+      if (storedDate !== today) {
+        localStorage.setItem('dailyGainsDate', today);
+        localStorage.setItem('dailyGains', '0');
+        return 0;
+      }
+      
+      const stored = localStorage.getItem('dailyGains');
+      return stored ? parseFloat(stored) : 0;
+    } catch (e) {
+      console.error("Erreur lors de la récupération des gains quotidiens:", e);
+      return 0;
+    }
+  }
+  
+  /**
+   * Vérifier si nous devons réinitialiser les compteurs quotidiens
+   */
+  private checkDailyReset(): void {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const storedDate = localStorage.getItem('dailyGainsDate');
+    
+    if (storedDate !== today) {
+      console.log(`Réinitialisation des gains quotidiens: ${storedDate} -> ${today}`);
+      localStorage.setItem('dailyGainsDate', today);
+      localStorage.setItem('dailyGains', '0');
       this.dailyGains = 0;
-      this.highestBalance = 0;
     }
   }
-
-  private setupEventListeners() {
-    window.addEventListener('balance:update', (e: any) => {
-      const amount = e.detail?.amount || 0;
-      this.updateBalance(amount);
-    });
-
-    window.addEventListener('dailyGains:reset', () => {
-      this.resetDailyGains();
-    });
-
-    window.addEventListener('dailyGains:updated', (e: any) => {
-      const gains = e.detail?.gains || 0;
-      this.setDailyGains(gains);
-    });
-  }
-
-  updateBalance(amount: number) {
-    this.currentBalance += amount;
-    localStorage.setItem('currentBalance', this.currentBalance.toString());
+  
+  /**
+   * Mettre à jour le solde
+   */
+  updateBalance(gain: number): void {
+    this.checkDailyReset();
     
-    // Update highest balance if needed
-    if (this.currentBalance > this.highestBalance) {
-      this.highestBalance = this.currentBalance;
-      localStorage.setItem('highestBalance', this.highestBalance.toString());
+    const newBalance = parseFloat((this.currentBalance + gain).toFixed(2));
+    this.currentBalance = newBalance;
+    
+    try {
+      localStorage.setItem('currentBalance', newBalance.toString());
+      localStorage.setItem('lastBalanceUpdateTime', Date.now().toString());
+    } catch (e) {
+      console.error("Erreur lors de la mise à jour du solde:", e);
     }
     
-    // Notify watchers of balance update
+    // Notifier tous les observateurs
     this.notifyWatchers();
   }
-
-  forceBalanceSync(balance: number) {
-    this.currentBalance = balance;
-    localStorage.setItem('currentBalance', this.currentBalance.toString());
-    
-    // Update highest balance if needed
-    if (this.currentBalance > this.highestBalance) {
-      this.highestBalance = this.currentBalance;
-      localStorage.setItem('highestBalance', this.highestBalance.toString());
+  
+  /**
+   * Force une mise à jour du solde à une valeur spécifique
+   */
+  forceBalanceSync(newBalance: number): void {
+    if (isNaN(newBalance) || newBalance < 0) {
+      console.error("Tentative de synchronisation avec une valeur invalide:", newBalance);
+      return;
     }
     
-    // Notify watchers of balance update
+    this.currentBalance = parseFloat(newBalance.toFixed(2));
+    
+    try {
+      localStorage.setItem('currentBalance', this.currentBalance.toString());
+      localStorage.setItem('lastBalanceUpdateTime', Date.now().toString());
+    } catch (e) {
+      console.error("Erreur lors de la synchronisation forcée du solde:", e);
+    }
+    
+    // Notifier tous les observateurs
     this.notifyWatchers();
   }
-
+  
+  /**
+   * Ajouter un gain quotidien
+   */
+  addDailyGain(gain: number): void {
+    this.checkDailyReset();
+    
+    if (gain <= 0) return;
+    
+    const newDailyGains = parseFloat((this.dailyGains + gain).toFixed(2));
+    this.dailyGains = newDailyGains;
+    
+    try {
+      localStorage.setItem('dailyGains', newDailyGains.toString());
+    } catch (e) {
+      console.error("Erreur lors de l'ajout des gains quotidiens:", e);
+    }
+  }
+  
+  /**
+   * Force une mise à jour des gains quotidiens à une valeur spécifique
+   */
+  setDailyGains(amount: number): void {
+    if (isNaN(amount) || amount < 0) {
+      console.error("Tentative de définition des gains quotidiens avec une valeur invalide:", amount);
+      return;
+    }
+    
+    this.dailyGains = parseFloat(amount.toFixed(2));
+    
+    try {
+      localStorage.setItem('dailyGains', this.dailyGains.toString());
+      localStorage.setItem('dailyGainsDate', new Date().toISOString().split('T')[0]);
+    } catch (e) {
+      console.error("Erreur lors de la définition des gains quotidiens:", e);
+    }
+  }
+  
+  /**
+   * Récupérer le solde actuel
+   */
   getCurrentBalance(): number {
+    this.checkDailyReset();
     return this.currentBalance;
   }
   
-  getHighestBalance(): number {
-    return this.highestBalance;
-  }
-
-  addDailyGain(amount: number) {
-    this.dailyGains += amount;
-    localStorage.setItem('dailyGains', this.dailyGains.toString());
-  }
-
-  setDailyGains(amount: number) {
-    this.dailyGains = amount;
-    localStorage.setItem('dailyGains', this.dailyGains.toString());
-  }
-
+  /**
+   * Récupérer les gains quotidiens
+   */
   getDailyGains(): number {
+    this.checkDailyReset();
     return this.dailyGains;
   }
-
-  resetDailyGains() {
-    this.dailyGains = 0;
-    localStorage.setItem('dailyGains', '0');
-  }
   
-  // User switch/cleanup functions
-  setUserId(id: string) {
-    this.userId = id;
-  }
-  
-  cleanupUserBalanceData() {
-    // Reset all balances and state when user changes
-    this.currentBalance = 0;
-    this.dailyGains = 0;
-    this.highestBalance = 0;
-    this.userId = null;
+  /**
+   * Ajouter un observateur pour être notifié des changements de solde
+   */
+  addWatcher(watcher: BalanceWatcher): () => void {
+    this.watchers.push(watcher);
     
-    // Clear localStorage keys related to balance
-    localStorage.removeItem('currentBalance');
-    localStorage.removeItem('dailyGains');
-    localStorage.removeItem('highestBalance');
-    localStorage.removeItem('lastResetTime');
-    localStorage.removeItem('dailySessionCount');
-    
-    console.log('User balance data cleaned up successfully');
-  }
-  
-  // Add watcher methods for balance changes
-  addWatcher(callback: (balance: number) => void): () => void {
-    this.watchers.push(callback);
+    // Retourner une fonction pour désinscrire l'observateur
     return () => {
-      this.watchers = this.watchers.filter(watcher => watcher !== callback);
+      this.watchers = this.watchers.filter(w => w !== watcher);
     };
   }
   
-  private notifyWatchers() {
-    for (const watcher of this.watchers) {
+  /**
+   * Notifier tous les observateurs d'un changement de solde
+   */
+  private notifyWatchers(): void {
+    this.watchers.forEach(watcher => {
       try {
         watcher(this.currentBalance);
-      } catch (error) {
-        console.error('Error in balance watcher:', error);
+      } catch (e) {
+        console.error("Erreur lors de la notification d'un observateur:", e);
       }
+    });
+  }
+  
+  /**
+   * Réinitialiser les gains quotidiens
+   */
+  resetDailyGains(): void {
+    this.dailyGains = 0;
+    
+    try {
+      localStorage.setItem('dailyGains', '0');
+      localStorage.setItem('dailyGainsDate', new Date().toISOString().split('T')[0]);
+    } catch (e) {
+      console.error("Erreur lors de la réinitialisation des gains quotidiens:", e);
     }
   }
 }
 
+// Exporter une instance unique du gestionnaire
 const balanceManager = new BalanceManager();
 export default balanceManager;

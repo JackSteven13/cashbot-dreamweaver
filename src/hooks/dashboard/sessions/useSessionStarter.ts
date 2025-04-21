@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
@@ -43,7 +44,8 @@ export const useSessionStarter = ({
       setIsStartingSession(true);
 
       const currentDailyGains = balanceManager.getDailyGains();
-
+      
+      // Vérification stricte des limites quotidiennes
       const result: SessionCheckResult = canStartManualSession(
         userData?.subscription || 'freemium',
         sessionCountRef.current,
@@ -57,9 +59,30 @@ export const useSessionStarter = ({
           variant: "destructive"
         });
 
+        // Activer l'alerte de limite atteinte si c'est une limite de gains
+        if (result.reason && result.reason.includes("Limite de gains")) {
+          setShowLimitAlert(true);
+        }
+
         const now = Date.now();
         localStorage.setItem('lastSessionTimestamp', now.toString());
         setLastSessionTimestamp(now);
+        return;
+      }
+
+      // Vérification supplémentaire pour être sûr que nous ne dépassons pas la limite
+      const effectiveSubscription = userData?.subscription || 'freemium';
+      const todayTotalGains = balanceManager.getDailyGains();
+      const potentialGain = calculateManualSessionGain(effectiveSubscription, todayTotalGains, userData?.referrals?.length || 0);
+      
+      // Si le gain potentiel est zéro, c'est que nous sommes à la limite
+      if (potentialGain <= 0) {
+        toast({
+          title: "Limite quotidienne atteinte",
+          description: "Vous avez atteint votre limite de gains journaliers.",
+          variant: "destructive"
+        });
+        setShowLimitAlert(true);
         return;
       }
 
@@ -89,18 +112,26 @@ export const useSessionStarter = ({
 
       terminalSequence.add(`Résultats optimisés! Gain: ${gain.toFixed(2)}€`);
 
+      // Mettre à jour les gains quotidiens dans le gestionnaire de solde
       balanceManager.addDailyGain(gain);
 
       await updateBalance(gain, `Session d'analyse manuelle: +${gain.toFixed(2)}€`);
 
       terminalSequence.complete(gain);
 
+      // Déclencher un événement pour rafraîchir les transactions
       window.dispatchEvent(new CustomEvent('transactions:refresh'));
 
       toast({
         title: "Session complétée",
         description: `Votre session a généré ${gain.toFixed(2)}€`,
       });
+      
+      // Vérifier si nous avons atteint la limite après cette session
+      const updatedDailyGains = balanceManager.getDailyGains();
+      if (updatedDailyGains >= (0.49)) { // Légèrement inférieur à 0.5 pour anticiper
+        setShowLimitAlert(true);
+      }
     } catch (error) {
       console.error('Error starting session:', error);
       toast({

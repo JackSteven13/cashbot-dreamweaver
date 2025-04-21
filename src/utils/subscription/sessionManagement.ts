@@ -103,9 +103,9 @@ export const canStartManualSession = (
     };
   }
   
-  // Check daily gains limit
+  // Check daily gains limit (95% pour être préventif)
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-  if (currentDailyGains >= dailyLimit) {
+  if (currentDailyGains >= dailyLimit * 0.95) {
     return {
       canStart: false,
       reason: `Limite de gains quotidiens atteinte (${currentDailyGains.toFixed(2)}€/${dailyLimit}€)`
