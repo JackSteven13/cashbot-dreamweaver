@@ -1,4 +1,3 @@
-
 /**
  * BalanceManager - Gestionnaire centralisé pour le solde de l'utilisateur
  * Permet de synchroniser l'état du solde entre les différentes parties de l'application
@@ -16,6 +15,7 @@ class BalanceManager {
   private lastUpdateTime: number = 0;
   private persistentBalanceKey = 'persistent_user_balance';
   private dailyGainsKey = 'daily_gains';
+  private highestBalanceKey = 'highest_balance';
   
   constructor() {
     this.init();
@@ -251,6 +251,15 @@ class BalanceManager {
   }
   
   /**
+   * Réinitialise les gains journaliers
+   */
+  resetDailyGains(): void {
+    this.dailyGains = 0;
+    this.persistDailyGains();
+    console.log("Daily gains reset to 0");
+  }
+  
+  /**
    * Force la synchronisation du solde avec une valeur spécifique
    * Utile pour garantir la cohérence entre les différentes parties de l'application
    */
@@ -313,6 +322,97 @@ class BalanceManager {
     
     // Réinitialiser
     this.init();
+  }
+  
+  /**
+   * Récupère le solde le plus élevé jamais enregistré
+   */
+  getHighestBalance(): number {
+    try {
+      const storedHighest = localStorage.getItem(this.highestBalanceKey);
+      if (storedHighest) {
+        const value = parseFloat(storedHighest);
+        if (!isNaN(value)) {
+          return value;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to get highest balance:", e);
+    }
+    return this.currentBalance;
+  }
+  
+  /**
+   * Met à jour le solde le plus élevé si nécessaire
+   */
+  updateHighestBalance(balance: number): void {
+    try {
+      const current = this.getHighestBalance();
+      if (balance > current) {
+        localStorage.setItem(this.highestBalanceKey, balance.toString());
+      }
+    } catch (e) {
+      console.error("Failed to update highest balance:", e);
+    }
+  }
+  
+  /**
+   * Associe un ID utilisateur au gestionnaire de solde
+   */
+  setUserId(userId: string): void {
+    if (userId) {
+      this.userIds.add(userId);
+      console.log(`User ID set: ${userId}`);
+      
+      // Vérifier les soldes spécifiques à l'utilisateur
+      try {
+        const userBalanceKey = `user_balance_${userId}`;
+        const storedBalance = localStorage.getItem(userBalanceKey);
+        
+        if (storedBalance) {
+          const parsedBalance = parseFloat(storedBalance);
+          if (!isNaN(parsedBalance) && parsedBalance > this.currentBalance) {
+            this.updateBalance(parsedBalance);
+            console.log(`Restored balance for user ${userId}: ${parsedBalance}€`);
+          }
+        }
+      } catch (e) {
+        console.error("Error checking user-specific balance:", e);
+      }
+    }
+  }
+  
+  /**
+   * Nettoie toutes les données de solde liées à l'utilisateur
+   */
+  cleanupUserBalanceData(): void {
+    console.log("Cleaning up user balance data");
+    
+    // Nettoyer les données d'utilisateur
+    this.userIds.clear();
+    
+    // Nettoyer le localStorage des clés spécifiques aux utilisateurs
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('user_balance_') || 
+            key.startsWith('last_known_balance_') || 
+            key === 'currentBalance' || 
+            key === 'lastKnownBalance' || 
+            key === this.persistentBalanceKey ||
+            key === this.dailyGainsKey) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch (e) {
+      console.error("Error cleaning localStorage:", e);
+    }
+    
+    // Réinitialiser les valeurs en mémoire
+    this.currentBalance = 0;
+    this.dailyGains = 0;
+    this.lastUpdateTime = 0;
+    
+    console.log("User balance data cleanup complete");
   }
 }
 
