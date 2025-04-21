@@ -12,6 +12,7 @@ class BalanceManager {
   private lastUpdateTime: number = 0;
   private highestBalanceKey = 'highest_balance';
   private dailyGainsKey = 'daily_gains';
+  private currentUserId: string | null = null;
 
   constructor() {
     this.init();
@@ -54,6 +55,38 @@ class BalanceManager {
 
   getDailyGains(): number {
     return this.dailyGains;
+  }
+
+  // Ajout des méthodes manquantes qui ont causé les erreurs
+  addDailyGain(gain: number): void {
+    if (isNaN(gain) || gain <= 0) return;
+    
+    this.dailyGains += gain;
+    localStorage.setItem(this.dailyGainsKey, this.dailyGains.toString());
+  }
+  
+  setDailyGains(gains: number): void {
+    if (isNaN(gains) || gains < 0) return;
+    
+    this.dailyGains = gains;
+    localStorage.setItem(this.dailyGainsKey, gains.toString());
+  }
+  
+  resetDailyGains(): void {
+    this.dailyGains = 0;
+    localStorage.setItem(this.dailyGainsKey, '0');
+  }
+  
+  setUserId(userId: string | null): void {
+    if (!userId) return;
+    
+    this.currentUserId = userId;
+    this.userIds.add(userId);
+  }
+  
+  cleanupUserBalanceData(): void {
+    this.userIds.clear();
+    this.currentUserId = null;
   }
 
   updateBalance(newBalance: number) {

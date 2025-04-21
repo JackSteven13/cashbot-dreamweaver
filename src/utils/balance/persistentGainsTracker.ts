@@ -18,7 +18,7 @@ export const getDailyGainsTracker = (): number => {
  * @returns {number} Le nouveau montant total des gains quotidiens
  */
 export const addDailyGainTracker = (gain: number): number => {
-  // Ajouter le gain et retourner le nouveau total
+  // Ajouter le gain
   balanceManager.addDailyGain(gain);
   // Retourner le nouveau total
   return balanceManager.getDailyGains();
@@ -28,7 +28,6 @@ export const addDailyGainTracker = (gain: number): number => {
  * Réinitialise les compteurs quotidiens
  */
 export const resetDailyGains = (): void => {
-  // Maintenant resetDailyGains est publique, on peut l'appeler directement
   balanceManager.resetDailyGains();
 };
 
