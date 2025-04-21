@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
 import { canStartManualSession, SessionCheckResult } from '@/utils/subscription/sessionManagement';
@@ -31,7 +31,7 @@ export const useSessionStarter = ({
   const sessionCountRef = useRef(dailySessionCount);
 
   // Keep sessionCountRef in sync
-  React.useEffect(() => {
+  useEffect(() => {
     sessionCountRef.current = dailySessionCount;
   }, [dailySessionCount]);
 
