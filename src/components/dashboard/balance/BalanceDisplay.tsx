@@ -20,14 +20,20 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   // Garantir que balance est toujours une valeur numérique valide
   const safeBalance = !isNaN(balance) ? balance : 0;
   
-  // Use a single source of truth for the balance
+  // Use a single source of truth for the balance with fallbacks
   const [displayBalance, setDisplayBalance] = useState<number>(() => {
-    // Récupérer et valider le solde stocké
-    const storedValue = localStorage.getItem('lastKnownBalance');
-    const storedBalance = storedValue ? parseFloat(storedValue) : 0;
+    // Collecter toutes les sources potentielles de solde
+    const sources = [
+      safeBalance,
+      parseFloat(localStorage.getItem('lastKnownBalance') || '0'),
+      parseFloat(localStorage.getItem('currentBalance') || '0'),
+      parseFloat(localStorage.getItem('lastUpdatedBalance') || '0'),
+      parseFloat(sessionStorage.getItem('currentBalance') || '0')
+    ];
     
-    // Utiliser la valeur stockée si elle est valide, sinon utiliser la prop balance (avec vérification)
-    return !isNaN(storedBalance) && storedBalance > 0 ? storedBalance : safeBalance;
+    // Filtrer les valeurs NaN et trouver le maximum
+    const maxBalance = Math.max(...sources.filter(val => !isNaN(val) && val > 0));
+    return maxBalance > 0 ? maxBalance : safeBalance;
   });
   
   const [prevBalance, setPrevBalance] = useState<number>(displayBalance);
@@ -46,60 +52,59 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     formatOptions: { style: 'currency', currency: 'EUR' }
   });
   
-  // Synchroniser avec la balance prop - avec validation
+  // Synchroniser avec la balance prop - avec validation et préservation du solde max
   useEffect(() => {
     const now = Date.now();
     const safeCurrentBalance = isNaN(displayBalance) ? 0 : displayBalance;
     
-    // Seulement mettre à jour si assez de temps s'est écoulé depuis la dernière mise à jour
-    // ou si la différence est significative et positive
-    if (((now - lastUpdateTime.current > updateDebounceTime || 
-        Math.abs(safeBalance - safeCurrentBalance) > 0.15) && 
-        safeBalance > safeCurrentBalance) && !isNaN(safeBalance)) {
+    if (!isNaN(safeBalance) && safeBalance > 0) {
+      // Toujours utiliser la valeur de solde la plus élevée
+      const newBalance = Math.max(safeBalance, safeCurrentBalance);
       
-      console.log(`Updating display balance from ${safeCurrentBalance} to ${safeBalance}`);
-      
-      // ANTI-SPAM: Limiter les mises à jour trop importantes ou trop fréquentes
-      const timeSinceLastGain = now - lastGainTimeRef.current;
-      const gainAmount = safeBalance - safeCurrentBalance;
-      
-      // Si le gain est trop important ou trop fréquent, limiter
-      if (gainAmount > 0.5 && timeSinceLastGain < 60000) {
-        console.log("Gain trop important trop rapidement, ignoré");
-        return;
+      // Si le nouveau solde est plus élevé, mettre à jour
+      if (newBalance > safeCurrentBalance) {
+        console.log(`Updating display balance from ${safeCurrentBalance} to ${newBalance}`);
+        setPrevBalance(safeCurrentBalance);
+        setDisplayBalance(newBalance);
+        setTargetValue(newBalance); // Important pour l'animation
+        setIsAnimating(true);
+        setGainAmount(newBalance - safeCurrentBalance);
+        
+        // Persister le nouveau solde dans toutes les sources
+        localStorage.setItem('currentBalance', newBalance.toString());
+        localStorage.setItem('lastKnownBalance', newBalance.toString());
+        localStorage.setItem('lastUpdatedBalance', newBalance.toString());
+        sessionStorage.setItem('currentBalance', newBalance.toString());
+        
+        // Mettre à jour les compteurs de contrôle
+        lastUpdateTime.current = now;
+        lastGainTimeRef.current = now;
+        consecutiveUpdatesRef.current += 1;
+        
+        // Réinitialiser l'animation après un délai
+        setTimeout(() => {
+          setIsAnimating(false);
+          setGainAmount(null);
+        }, 2000);
+      } else {
+        // Vérifier s'il existe des soldes stockés plus élevés que celui affiché actuellement
+        const storedSources = [
+          parseFloat(localStorage.getItem('lastKnownBalance') || '0'),
+          parseFloat(localStorage.getItem('currentBalance') || '0'),
+          parseFloat(localStorage.getItem('lastUpdatedBalance') || '0'),
+          parseFloat(sessionStorage.getItem('currentBalance') || '0')
+        ];
+        
+        const maxStoredBalance = Math.max(...storedSources.filter(val => !isNaN(val) && val > 0));
+        
+        // Si un solde stocké est significativement plus élevé, l'utiliser
+        if (maxStoredBalance > safeCurrentBalance + 0.1) {
+          console.log(`Using higher stored balance: ${maxStoredBalance}`);
+          setPrevBalance(safeCurrentBalance);
+          setDisplayBalance(maxStoredBalance);
+          setTargetValue(maxStoredBalance);
+        }
       }
-      
-      if (consecutiveUpdatesRef.current > 3 && timeSinceLastGain < 120000) {
-        console.log("Trop de mises à jour consécutives, ignorée");
-        return;
-      }
-      
-      // Mise à jour avec contrôle de fréquence
-      setPrevBalance(safeCurrentBalance);
-      setDisplayBalance(safeBalance);
-      setTargetValue(safeBalance); // Important pour l'animation
-      setIsAnimating(true);
-      setGainAmount(gainAmount);
-      
-      // Enregistrer les valeurs dans le localStorage
-      localStorage.setItem('currentBalance', safeBalance.toString());
-      localStorage.setItem('lastKnownBalance', safeBalance.toString());
-      
-      // Mettre à jour les compteurs de contrôle
-      lastUpdateTime.current = now;
-      lastGainTimeRef.current = now;
-      consecutiveUpdatesRef.current += 1;
-      
-      // Réinitialiser l'animation après un délai
-      setTimeout(() => {
-        setIsAnimating(false);
-        setGainAmount(null);
-      }, 2000);
-      
-      // Réinitialiser le compteur de mises à jour consécutives après un délai
-      setTimeout(() => {
-        consecutiveUpdatesRef.current = 0;
-      }, 60000);
     }
   }, [balance, displayBalance, safeBalance, setTargetValue]);
   

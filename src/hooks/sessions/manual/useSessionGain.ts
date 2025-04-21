@@ -7,6 +7,7 @@ import {
 import { UserData } from '@/types/userData';
 import { useLimitChecking } from './useLimitChecking';
 import { useIsMobile } from '@/hooks/use-mobile';
+import balanceManager from '@/utils/balance/balanceManager';
 
 export const useSessionGain = () => {
   const { checkFinalGainLimit } = useLimitChecking();
@@ -74,13 +75,45 @@ export const useSessionGain = () => {
       return { success: false, finalGain: 0, newBalance: currentBalance };
     }
     
-    // Calculer le nouveau solde (le solde total augmente)
-    const newBalance = currentBalance + finalGain;
+    // S'assurer que le solde actuel est un nombre valide
+    const safeCurrentBalance = isNaN(currentBalance) ? 0 : currentBalance;
     
-    // Persister le nouveau solde dans localStorage pour éviter les pertes lors des rechargements de page
+    // Calculer le nouveau solde (le solde total augmente)
+    const newBalance = safeCurrentBalance + finalGain;
+    
+    // Persister le nouveau solde dans toutes les sources pour éviter les pertes lors des rechargements de page
     try {
+      // Mettre à jour le balance manager (source unique de vérité)
+      balanceManager.forceBalanceSync(newBalance);
+      
+      // Persister dans toutes les sources de stockage
       localStorage.setItem('lastUpdatedBalance', newBalance.toString());
-      localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
+      localStorage.setItem('lastKnownBalance', newBalance.toString());
+      localStorage.setItem('currentBalance', newBalance.toString());
+      sessionStorage.setItem('currentBalance', newBalance.toString());
+      
+      // Mettre à jour le solde le plus élevé si nécessaire
+      if (typeof balanceManager.updateHighestBalance === 'function') {
+        balanceManager.updateHighestBalance(newBalance);
+      }
+      
+      // Déclencher un événement pour informer les autres composants
+      window.dispatchEvent(new CustomEvent('session:completed', {
+        detail: {
+          gain: finalGain,
+          finalBalance: newBalance,
+          timestamp: Date.now()
+        }
+      }));
+      
+      // Déclencher une animation du solde
+      window.dispatchEvent(new CustomEvent('balance:update', {
+        detail: {
+          gain: finalGain,
+          newBalance: newBalance,
+          animate: true
+        }
+      }));
     } catch (e) {
       console.error("Failed to persist balance in local storage:", e);
     }
@@ -104,3 +137,5 @@ export const useSessionGain = () => {
     calculateSessionGain
   };
 };
+
+export default useSessionGain;

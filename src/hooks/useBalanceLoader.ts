@@ -25,11 +25,23 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
         highestLocalBalance = parseFloat(localStorage.getItem('highest_balance') || '0');
       }
       
-      // S'assurer que les valeurs sont des nombres valides
-      const validLocalBalance = isNaN(localBalance) ? 0 : localBalance;
-      const validHighestBalance = isNaN(highestLocalBalance) ? 0 : highestLocalBalance;
+      // Collecter toutes les sources potentielles de solde
+      const sources = [
+        localBalance,
+        highestLocalBalance,
+        parseFloat(localStorage.getItem('currentBalance') || '0'),
+        parseFloat(localStorage.getItem('lastKnownBalance') || '0'),
+        parseFloat(localStorage.getItem('lastUpdatedBalance') || '0'),
+        parseFloat(sessionStorage.getItem('currentBalance') || '0')
+      ];
       
-      console.log(`Solde local avant chargement: ${validLocalBalance}€ (record: ${validHighestBalance}€)`);
+      // Filtrer les valeurs NaN et trouver le maximum
+      const maxLocalBalance = Math.max(...sources.filter(val => !isNaN(val) && val > 0));
+      
+      // S'assurer que nous avons une valeur valide
+      const validLocalBalance = maxLocalBalance > 0 ? maxLocalBalance : 0;
+      
+      console.log(`Solde local avant chargement: ${validLocalBalance}€ (record: ${highestLocalBalance}€)`);
       
       // Fetch balance from user_balances table instead of profiles
       const { data: balanceData, error: balanceError } = await supabase
@@ -68,7 +80,7 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
           : 0;
         
         // Comparer avec le solde local et prendre le plus élevé
-        const effectiveBalance = Math.max(serverBalance, validLocalBalance, validHighestBalance);
+        const effectiveBalance = Math.max(serverBalance, validLocalBalance);
         
         // If balance is zero or very low, might be a new user
         if (effectiveBalance <= 0.1) {
@@ -83,6 +95,12 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
         
         // Synchronize with balance manager, always keeping the highest value
         balanceManager.forceBalanceSync(effectiveBalance, userId);
+        
+        // Persister dans toutes les sources pour éviter les pertes
+        localStorage.setItem('lastKnownBalance', effectiveBalance.toString());
+        localStorage.setItem('currentBalance', effectiveBalance.toString());
+        localStorage.setItem('lastUpdatedBalance', effectiveBalance.toString());
+        sessionStorage.setItem('currentBalance', effectiveBalance.toString());
         
         console.log(`Solde chargé: ${effectiveBalance}€ (serveur: ${serverBalance}€, local: ${validLocalBalance}€)`);
         setIsBalanceLoaded(true);

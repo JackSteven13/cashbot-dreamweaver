@@ -1,6 +1,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
+import balanceManager from '@/utils/balance/balanceManager';
 
 export const useUserDataRefresh = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -42,13 +43,18 @@ export const useUserDataRefresh = () => {
       // Mise à jour immédiate de l'UI avec les données en cache
       const cachedName = localStorage.getItem('lastKnownUsername');
       const cachedSubscription = localStorage.getItem('subscription');
+      const cachedBalance = localStorage.getItem('lastKnownBalance');
+      
+      // Récupérer d'abord le solde local actuel du gestionnaire
+      const currentBalance = balanceManager.getCurrentBalance();
       
       if (cachedName) {
         // Dispatch un événement pour informer l'UI qu'une mise à jour est en cours
         window.dispatchEvent(new CustomEvent('user:refreshing', {
           detail: { 
             username: cachedName,
-            subscription: cachedSubscription 
+            subscription: cachedSubscription,
+            balance: isNaN(currentBalance) ? cachedBalance : currentBalance.toString()
           }
         }));
       }
@@ -75,9 +81,35 @@ export const useUserDataRefresh = () => {
       
       // Update local storage with current data
       localStorage.setItem('subscription', data.subscription);
-      if (data.balance !== undefined) {
-        localStorage.setItem('currentBalance', data.balance.toString());
-        localStorage.setItem('lastKnownBalance', data.balance.toString());
+      
+      // Comparer le solde du serveur avec le solde local et prendre le plus élevé
+      if (data.balance !== undefined && !isNaN(data.balance)) {
+        // Collecter toutes les sources potentielles de solde
+        const sources = [
+          data.balance,
+          currentBalance,
+          parseFloat(localStorage.getItem('currentBalance') || '0'),
+          parseFloat(localStorage.getItem('lastKnownBalance') || '0'),
+          parseFloat(localStorage.getItem('lastUpdatedBalance') || '0'),
+          parseFloat(sessionStorage.getItem('currentBalance') || '0')
+        ];
+        
+        // Filtrer les valeurs NaN et trouver le maximum
+        const maxBalance = Math.max(...sources.filter(val => !isNaN(val) && val > 0));
+        
+        if (maxBalance > 0) {
+          localStorage.setItem('currentBalance', maxBalance.toString());
+          localStorage.setItem('lastKnownBalance', maxBalance.toString());
+          localStorage.setItem('lastUpdatedBalance', maxBalance.toString());
+          sessionStorage.setItem('currentBalance', maxBalance.toString());
+          
+          // Mettre à jour le gestionnaire de solde
+          if (maxBalance > currentBalance || isNaN(currentBalance)) {
+            balanceManager.forceBalanceSync(maxBalance);
+          }
+          
+          console.log(`Data refreshed event received: { balance: ${maxBalance}, subscription: ${data.subscription} }`);
+        }
       }
       
       // Dispatch un événement pour informer l'UI que des données ont été mises à jour

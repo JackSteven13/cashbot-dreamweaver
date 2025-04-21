@@ -30,6 +30,13 @@ const UserBalanceCard = ({
   const safeBalance = isNaN(balance) ? 0 : balance;
   const safeReferralBonus = isNaN(referralBonus) ? 0 : referralBonus;
   
+  // Si balance est défini dans le localStorage, essayer de l'utiliser
+  const locallyStoredBalance = parseFloat(localStorage.getItem('lastKnownBalance') || '0');
+  const effectiveBalance = Math.max(
+    safeBalance,
+    isNaN(locallyStoredBalance) ? 0 : locallyStoredBalance
+  );
+  
   const BalanceDisplay = ({ balance, isNewUser }: { balance: number; isNewUser?: boolean }) => (
     <div className="text-3xl font-semibold tracking-tight">
       {isNewUser ? '0.00' : balance.toFixed(2)}€
@@ -40,7 +47,7 @@ const UserBalanceCard = ({
     showGains ? (
       <div className="flex items-center text-sm font-medium opacity-75 mt-1">
         <Sparkles className="mr-1 h-4 w-4" />
-        Gains: {(safeBalance - safeReferralBonus).toFixed(2)}€ (+{safeReferralBonus.toFixed(2)}€ parrainage)
+        Gains: {(effectiveBalance - safeReferralBonus).toFixed(2)}€ (+{safeReferralBonus.toFixed(2)}€ parrainage)
       </div>
     ) : null
   );
@@ -87,10 +94,10 @@ const UserBalanceCard = ({
       </CardHeader>
       
       <CardContent className="p-4">
-        <BalanceDisplay balance={safeBalance} isNewUser={isNewUser} />
-        <GainsDisplay showGains={!isNewUser && safeBalance > 0} referralBonus={safeReferralBonus} />
+        <BalanceDisplay balance={effectiveBalance} isNewUser={isNewUser} />
+        <GainsDisplay showGains={!isNewUser && effectiveBalance > 0} referralBonus={safeReferralBonus} />
         <ProgressBar 
-          displayBalance={safeBalance} 
+          displayBalance={effectiveBalance} 
           subscription={subscription} 
           withdrawalThreshold={withdrawalThreshold}
         />
