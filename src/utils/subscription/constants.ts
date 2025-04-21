@@ -19,12 +19,12 @@ export const MANUAL_SESSION_GAIN_PERCENTAGES = {
   elite: { min: 0.15, max: 0.30 }     // 15-30% of daily limit per session
 };
 
-// Minimum withdrawal amounts based on subscription
+// Minimum withdrawal amounts based on subscription - AUGMENTÉS POUR AMÉLIORER LA RÉTENTION
 export const WITHDRAWAL_THRESHOLDS = {
-  freemium: 20, // €20 minimum withdrawal (freemium)
-  starter: 15,  // €15 minimum withdrawal (starter)
-  gold: 10,     // €10 minimum withdrawal (gold)
-  elite: 5      // €5 minimum withdrawal (elite)
+  freemium: 200, // €200 minimum withdrawal (augmenté de 20€)
+  starter: 150,  // €150 minimum withdrawal (augmenté de 15€)
+  gold: 100,     // €100 minimum withdrawal (augmenté de 10€)
+  elite: 50      // €50 minimum withdrawal (augmenté de 5€)
 };
 
 // Withdrawal fees based on subscription (percentage)

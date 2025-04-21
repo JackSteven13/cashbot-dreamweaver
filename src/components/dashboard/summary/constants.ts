@@ -39,12 +39,12 @@ export const LEVEL2_COMMISSION_RATES = {
   'elite': 0.10       // 10% de commission niveau 2
 };
 
-// Seuils de retrait selon l'abonnement - ALIGNÉS AVEC LES SEUILS GLOBAUX
+// Seuils de retrait selon l'abonnement - AUGMENTÉS POUR AMÉLIORER LA RÉTENTION
 export const WITHDRAWAL_THRESHOLDS = {
-  'freemium': 20,     // 20€ minimum
-  'starter': 15,      // 15€ minimum
-  'gold': 10,         // 10€ minimum
-  'elite': 5          // 5€ minimum
+  'freemium': 200,     // 200€ minimum (augmenté de 20€)
+  'starter': 150,      // 150€ minimum (augmenté de 15€)
+  'gold': 100,         // 100€ minimum (augmenté de 10€)
+  'elite': 50          // 50€ minimum (augmenté de 5€)
 };
 
 // Export SUBSCRIPTION_LIMITS pour la compatibilité avec d'autres fichiers
