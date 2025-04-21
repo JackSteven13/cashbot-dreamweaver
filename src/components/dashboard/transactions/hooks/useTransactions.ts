@@ -62,6 +62,24 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     };
   }, [initialTransactions, setTransactions, transactionsCacheKey, restoreFromCache]);
   
+  // Refresh transactions when a balance update occurs
+  useEffect(() => {
+    const refreshOnBalanceUpdate = () => {
+      console.log("Transaction refresh triggered by balance update");
+      handleManualRefresh();
+    };
+    
+    window.addEventListener('balance:update', refreshOnBalanceUpdate);
+    window.addEventListener('dashboard:micro-gain', refreshOnBalanceUpdate);
+    window.addEventListener('automatic:revenue', refreshOnBalanceUpdate);
+    
+    return () => {
+      window.removeEventListener('balance:update', refreshOnBalanceUpdate);
+      window.removeEventListener('dashboard:micro-gain', refreshOnBalanceUpdate);
+      window.removeEventListener('automatic:revenue', refreshOnBalanceUpdate);
+    };
+  }, [handleManualRefresh]);
+  
   // Sauvegarde des préférences utilisateur
   useEffect(() => {
     try {
@@ -88,4 +106,3 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     hiddenTransactionsCount
   };
 };
-

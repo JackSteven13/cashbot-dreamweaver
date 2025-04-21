@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Transaction } from "@/types/userData";
 
 /**
- * Fetch user transactions with improved date handling
+ * Fetch user transactions with improved date handling and auto-refresh
  */
 export const fetchUserTransactions = async (userId: string, forceRefresh = false): Promise<Transaction[]> => {
   try {
@@ -13,10 +13,10 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
         const cachedTx = localStorage.getItem('cachedTransactions');
         const lastRefreshTime = localStorage.getItem('transactionsLastRefresh');
         
-        // Use cache only if it exists and is less than 5 minutes old
+        // Use cache only if it exists and is less than 2 minutes old (reduced from 5 minutes)
         if (cachedTx && lastRefreshTime) {
           const cacheAge = Date.now() - parseInt(lastRefreshTime, 10);
-          if (cacheAge < 300000) { // 5 minutes
+          if (cacheAge < 120000) { // 2 minutes
             return JSON.parse(cachedTx);
           }
         }
@@ -89,7 +89,7 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
 };
 
 /**
- * Add a transaction for a user
+ * Add a transaction for a user and trigger refresh events for real-time updates
  */
 export const addTransaction = async (
   userId: string,
@@ -118,9 +118,15 @@ export const addTransaction = async (
     
     // Invalidate transaction cache
     localStorage.removeItem('cachedTransactions');
+    localStorage.removeItem('transactionsLastRefresh');
     
-    // Trigger refresh events
+    // Trigger multiple refresh events to ensure UI updates
     window.dispatchEvent(new CustomEvent('transactions:refresh'));
+    
+    // Also trigger refresh after a short delay to ensure database has propagated changes
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('transactions:refresh'));
+    }, 1000);
     
     console.log(`Transaction added for ${userId}: ${gain}€ - ${report} with date ${isoString}`);
     return true;

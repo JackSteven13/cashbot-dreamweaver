@@ -40,7 +40,10 @@ export const useDashboardSessions = ({
   resetBalance
 }: UseDashboardSessionsProps): UseDashboardSessionsResult => {
   const [isStartingSession, setIsStartingSession] = useState(false);
-  const [lastSessionTimestamp, setLastSessionTimestamp] = useState<number | null>(null);
+  const [lastSessionTimestamp, setLastSessionTimestamp] = useState<number | null>(() => {
+    const stored = localStorage.getItem('lastSessionTimestamp');
+    return stored ? parseInt(stored, 10) : null;
+  });
   const [isBotActive, setIsBotActive] = useState(true);
   
   const sessionInProgressRef = useRef(false);
@@ -75,6 +78,12 @@ export const useDashboardSessions = ({
           description: canStartResult.reason || "Vous ne pouvez pas démarrer de session maintenant.",
           variant: "destructive"
         });
+        
+        // Store the last attempt time even if it failed
+        const now = Date.now();
+        localStorage.setItem('lastSessionTimestamp', now.toString());
+        setLastSessionTimestamp(now);
+        
         return;
       }
       
@@ -107,7 +116,9 @@ export const useDashboardSessions = ({
       const gain = parseFloat((baseGain + randomFactor).toFixed(2));
       
       // Update the session timestamp before incrementing count to prevent double submissions
-      setLastSessionTimestamp(Date.now());
+      const now = Date.now();
+      localStorage.setItem('lastSessionTimestamp', now.toString());
+      setLastSessionTimestamp(now);
       
       // Increment session count
       await incrementSessionCount();
@@ -120,6 +131,9 @@ export const useDashboardSessions = ({
       
       // Complete terminal sequence
       terminalSequence.complete(gain);
+      
+      // Trigger a transaction refresh
+      window.dispatchEvent(new CustomEvent('transactions:refresh'));
       
       toast({
         title: "Session complétée",

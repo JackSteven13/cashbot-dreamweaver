@@ -138,6 +138,9 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         // Mettre à jour le timestamp
         lastUpdateTime.current = now;
         
+        // Trigger a transaction refresh
+        window.dispatchEvent(new CustomEvent('transactions:refresh'));
+        
         // Réinitialiser l'animation après un délai
         if (shouldAnimate) {
           setTimeout(() => {
@@ -179,6 +182,9 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   
   // Déterminer le style premium en fonction de l'abonnement
   const isPremium = subscription !== 'freemium';
+
+  // Fix the responsive display for gain notifications
+  const gainNotificationClasses = "absolute -top-4 md:top-4 right-0 text-sm text-green-500 flex items-center animate-bounce z-20";
   
   return (
     <CardContent className={`p-6 transition-all duration-300 ${isAnimating ? 'bg-gradient-to-r from-blue-900/40 to-indigo-900/30 dark:from-blue-800/40 dark:to-indigo-800/30' : ''}`}>
@@ -186,7 +192,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         <div className={`${isAnimating ? 'bg-blue-700 dark:bg-blue-600' : 'bg-blue-100 dark:bg-blue-900'} p-3 rounded-lg mr-4 transition-colors duration-300`}>
           <Coins className={`h-8 w-8 ${isAnimating ? 'text-yellow-300 animate-bounce' : 'text-blue-600 dark:text-blue-400'}`} />
         </div>
-        <div className="relative">
+        <div className="relative w-full">
           <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
             Solde disponible
             {isPremium && (
@@ -207,7 +213,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
               <>
                 {formattedValue}
                 {isAnimating && gainAmount !== null && (
-                  <span className="absolute -top-4 right-0 text-sm text-green-500 flex items-center animate-bounce">
+                  <span className={gainNotificationClasses}>
                     <ChevronUp className="h-3 w-3 mr-0.5" />
                     +{gainAmount.toFixed(2)}€
                   </span>

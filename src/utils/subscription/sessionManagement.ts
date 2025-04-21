@@ -25,6 +25,24 @@ export const canStartManualSession = (
     };
   }
   
+  // Check if there's a rate limit currently active (to prevent spam)
+  const lastSessionTime = localStorage.getItem('lastSessionTimestamp');
+  
+  if (lastSessionTime) {
+    const lastTime = parseInt(lastSessionTime, 10);
+    const now = Date.now();
+    const timeDiff = now - lastTime;
+    
+    // If last session was less than 5 minutes ago, prevent new sessions
+    if (timeDiff < 5 * 60 * 1000) {
+      const waitTimeMinutes = Math.ceil((5 * 60 * 1000 - timeDiff) / 60000);
+      return {
+        canStart: false,
+        reason: `Veuillez patienter encore ${waitTimeMinutes} minute${waitTimeMinutes > 1 ? 's' : ''} avant de lancer une nouvelle session`
+      };
+    }
+  }
+  
   // For paid subscriptions, allow unlimited manual sessions until daily limit is reached
   return { canStart: true };
 };
