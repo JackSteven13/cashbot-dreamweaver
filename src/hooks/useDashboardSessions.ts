@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { resetUserBalance } from '@/utils/balance/resetBalance';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
-import { canStartManualSession, SessionStartResult } from '@/utils/subscription/sessionManagement';
+import { canStartManualSession, SessionStartResult, SessionCheckResult } from '@/utils/subscription/sessionManagement';
 import { calculateManualSessionGain } from '@/utils/subscription/sessionGain';
 import { simulateActivity } from '@/utils/animations/moneyParticles';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -61,7 +61,7 @@ export const useDashboardSessions = ({
       
       console.log("Attempting to start session with daily gains:", currentDailyGains);
       
-      const result = canStartManualSession(
+      const result: SessionCheckResult = canStartManualSession(
         userData?.subscription || 'freemium',
         sessionCountRef.current,
         currentDailyGains

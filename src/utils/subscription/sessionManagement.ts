@@ -14,6 +14,11 @@ export interface DailyLimitResult {
   adjustedGain: number;
 }
 
+export interface SessionCheckResult {
+  canStart: boolean;
+  reason?: string;
+}
+
 // Function to check if daily limits are respected
 export const respectsDailyLimit = (
   subscription: string,
@@ -80,7 +85,7 @@ export const canStartManualSession = (
   subscription: string,
   dailySessionCount: number,
   currentDailyGains: number
-): boolean => {
+): SessionCheckResult => {
   // Check subscription limit for number of sessions
   let maxSessions = 1;  // Default for freemium
   
@@ -92,16 +97,24 @@ export const canStartManualSession = (
   
   // Check if daily session limit is reached
   if (dailySessionCount >= maxSessions) {
-    return false;
+    return {
+      canStart: false,
+      reason: `Limite de sessions quotidiennes atteinte (${dailySessionCount}/${maxSessions})`
+    };
   }
   
   // Check daily gains limit
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   if (currentDailyGains >= dailyLimit) {
-    return false;
+    return {
+      canStart: false,
+      reason: `Limite de gains quotidiens atteinte (${currentDailyGains.toFixed(2)}€/${dailyLimit}€)`
+    };
   }
   
-  return true;
+  return {
+    canStart: true
+  };
 };
 
 // These functions for backward compatibility
