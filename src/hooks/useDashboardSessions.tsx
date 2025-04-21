@@ -32,10 +32,37 @@ const useDashboardSessions = ({
     }
   }, [lastSessionTimestamp]);
   
-  // Restaurer l'état du bot depuis le localStorage
+  // Restaurer l'état du bot depuis le localStorage et s'assurer qu'il n'est pas actif si la limite est atteinte
   useEffect(() => {
+    // Récupérer l'état stocké du bot
     const storedBotState = localStorage.getItem('botActive');
-    if (storedBotState === 'true' || storedBotState === null) {
+    
+    // Vérifier si la limite quotidienne est atteinte
+    const checkLimitReached = () => {
+      if (!userData) return false;
+      
+      const subscription = userData.subscription || 'freemium';
+      const dailyLimit = 0.5; // Valeur pour freemium
+      const currentGains = balanceManager.getDailyGains();
+      
+      // Considérer la limite atteinte à 95% pour éviter de la dépasser
+      return currentGains >= dailyLimit * 0.95;
+    };
+    
+    // Désactiver le bot si la limite est atteinte
+    const limitReached = checkLimitReached();
+    if (limitReached) {
+      setBotActive(false);
+      localStorage.setItem('botActive', 'false');
+      
+      window.dispatchEvent(new CustomEvent('bot:status-change', {
+        detail: { active: false }
+      }));
+      
+      console.log("Bot désactivé car limite quotidienne atteinte");
+    } 
+    // Sinon, utiliser l'état stocké
+    else if (storedBotState === 'true' || storedBotState === null) {
       // Le bot est actif par défaut
       setBotActive(true);
       window.dispatchEvent(new CustomEvent('bot:status-change', {
@@ -47,7 +74,7 @@ const useDashboardSessions = ({
         detail: { active: false }
       }));
     }
-  }, []);
+  }, [userData]);
 
   // Surveiller les changements d'état du bot
   useEffect(() => {
@@ -73,6 +100,24 @@ const useDashboardSessions = ({
   });
 
   const handleStartSession = useCallback(async () => {
+    // Vérifier si la limite quotidienne est atteinte
+    if (userData) {
+      const subscription = userData.subscription || 'freemium';
+      const dailyLimit = 0.5; // Valeur pour freemium
+      const currentGains = balanceManager.getDailyGains();
+      
+      if (currentGains >= dailyLimit * 0.95) {
+        toast({
+          title: "Limite quotidienne atteinte",
+          description: "Vous avez atteint votre limite quotidienne. Revenez demain ou passez à un forfait supérieur.",
+          variant: "destructive",
+          duration: 4000
+        });
+        setShowLimitAlert(true);
+        return;
+      }
+    }
+    
     if (manualSessions.isSessionRunning) {
       toast({
         title: "Session déjà en cours",
@@ -100,7 +145,7 @@ const useDashboardSessions = ({
     } finally {
       setIsStartingSession(false);
     }
-  }, [manualSessions]);
+  }, [manualSessions, setShowLimitAlert, userData]);
 
   const handleWithdrawal = useCallback(async () => {
     if (!userData) return;

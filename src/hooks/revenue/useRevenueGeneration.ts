@@ -61,8 +61,8 @@ export const useRevenueGeneration = ({
       const percentage = Math.min(100, (actualGains / limit) * 100);
       setDailyLimitProgress(percentage);
       
-      // Vérifier si la limite est atteinte ou presque (99%)
-      const isAtLimit = actualGains >= limit * 0.99;
+      // Vérifier si la limite est atteinte ou presque (95%)
+      const isAtLimit = actualGains >= limit * 0.95;
       
       if (isAtLimit !== limitReached) {
         setLimitReached(isAtLimit);
@@ -71,10 +71,10 @@ export const useRevenueGeneration = ({
           console.log(`Limite quotidienne atteinte: ${actualGains}€/${limit}€, désactivation du bot`);
           setIsBotActive(false);
           
-          if (percentage >= 100) {
+          if (percentage >= 95) {
             toast({
-              title: "Limite quotidienne atteinte",
-              description: `Vous avez atteint votre limite journalière de ${limit}€. Les analyses sont automatiquement suspendues.`,
+              title: "Limite quotidienne presque atteinte",
+              description: `Vous approchez de votre limite journalière de ${limit}€. Les analyses sont automatiquement suspendues.`,
               duration: 5000
             });
           }
@@ -107,7 +107,7 @@ export const useRevenueGeneration = ({
   }, [userData, checkDailyLimits]);
   
   // Fonction principale de génération de revenus avec contrôles de fréquence et de montant
-  const generateAutomaticRevenue = useCallback(async (forceUpdate = false) => {
+  const generateAutomaticRevenue = useCallback(async (forceUpdate = false): Promise<boolean> => {
     if (!userData || limitReached || !isBotActive) {
       return false;
     }
@@ -151,8 +151,8 @@ export const useRevenueGeneration = ({
       
       const { actualGains, limit } = limitsCheck;
       
-      // Si on est à la limite, ne pas générer de gains
-      if (actualGains >= limit * 0.95) {
+      // Si on est à 90% de la limite, ne pas générer de gains
+      if (actualGains >= limit * 0.9) {
         console.log(`Limite quotidienne presque atteinte: ${actualGains}€/${limit}€`);
         setLimitReached(true);
         setIsBotActive(false);
@@ -163,19 +163,19 @@ export const useRevenueGeneration = ({
       // Plus le nombre de générations consécutives est élevé, plus le gain est petit
       const reductionFactor = Math.min(consecutiveGenerationCount * 0.1 + 1, 2);
       const minGain = (userData.subscription === 'freemium' ? 0.001 : 0.0025) / reductionFactor;
-      const maxGain = (userData.subscription === 'freemium' ? 0.01 : 0.02) / reductionFactor;
+      const maxGain = (userData.subscription === 'freemium' ? 0.005 : 0.01) / reductionFactor;
       
       // Gains très petits et réalistes
       const potentialGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(3));
       
       // NOUVEAU: Contrôle pour éviter les gains cumulés trop importants
-      if (lastGainAmount > 0 && (potentialGain + lastGainAmount) > 0.1) {
+      if (lastGainAmount > 0 && (potentialGain + lastGainAmount) > 0.05) {
         console.log("Gain cumulé trop important, réduction");
         // Réduire davantage si le gain cumulé serait trop important
-        const adjustedPotentialGain = Math.min(potentialGain, 0.05 - lastGainAmount);
+        const adjustedPotentialGain = Math.min(potentialGain, 0.03 - lastGainAmount);
         
         // Si vraiment trop de gains, bloquer temporairement
-        if (adjustedPotentialGain <= 0.002) {
+        if (adjustedPotentialGain <= 0.001) {
           console.log("Trop de gains récents, skip pour éviter suspicion");
           return false;
         }
@@ -197,6 +197,14 @@ export const useRevenueGeneration = ({
       
       // Utiliser le gain ajusté (qui peut être égal au gain potentiel si dans les limites)
       const finalGain = adjustedGain;
+      
+      // Vérifier que le gain final ne dépasse pas la limite restante
+      const remainingLimit = limit - actualGains;
+      if (finalGain > remainingLimit * 0.9) {
+        console.log(`Gain ajusté pour respecter la limite restante: ${finalGain}€ -> ${remainingLimit * 0.9}€`);
+        // Ne pas générer de gains trop proches de la limite
+        return false;
+      }
       
       // Mettre à jour le compteur de générations consécutives
       setConsecutiveGenerationCount(prev => prev + 1);

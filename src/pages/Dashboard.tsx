@@ -123,8 +123,18 @@ const Dashboard = () => {
             }
           }
           
-          // Générer un premier revenu automatique
-          generateAutomaticRevenue(true);
+          // Générer un premier revenu automatique sans dépasser la limite
+          if (userData.subscription === 'freemium') {
+            // Pour les comptes freemium, limiter strictement à 0.5€
+            const currentDailyGains = balanceManager.getDailyGains();
+            if (currentDailyGains < 0.45) {
+              // Générer un petit revenu initial si on est loin de la limite
+              generateAutomaticRevenue(true);
+            }
+          } else {
+            // Pour les autres abonnements, appliquer la même logique de vérification
+            generateAutomaticRevenue(true);
+          }
         }, 2000);
       }
     }
@@ -133,6 +143,10 @@ const Dashboard = () => {
   // Génération de revenus moins fréquente 
   useEffect(() => {
     if (userData) {
+      // Vérifier si l'utilisateur est sur un compte freemium
+      const isFreemium = userData.subscription === 'freemium';
+      const dailyLimit = isFreemium ? 0.5 : 5.0;
+      
       // Intervalle pour les mises à jour automatiques avec fréquence réduite
       const revenueInterval = setInterval(() => {
         const now = Date.now();
@@ -142,18 +156,25 @@ const Dashboard = () => {
           console.log("Generating revenue: automatic update");
           setLastProcessTime(now);
           
+          // Vérifier si la limite quotidienne est atteinte
+          const currentDailyGains = balanceManager.getDailyGains();
+          if (currentDailyGains >= dailyLimit * 0.9) {
+            console.log(`Limite quotidienne presque atteinte: ${currentDailyGains}€/${dailyLimit}€, pas de génération auto`);
+            return;
+          }
+          
           // Probabilité réduite de générer un revenu
-          if (Math.random() < 0.25) {
+          if (Math.random() < 0.2) {
             // Générer un nouveau revenu automatique (petit)
             generateAutomaticRevenue();
           }
           
           // Forcer une mise à jour du solde
           window.dispatchEvent(new CustomEvent('balance:force-update', { 
-            detail: { timestamp: now, animate: Math.random() < 0.2 }
+            detail: { timestamp: now, animate: Math.random() < 0.1 }
           }));
         }
-      }, 30000 + Math.random() * 30000); // Entre 30-60 secondes
+      }, 45000 + Math.random() * 30000); // Entre 45-75 secondes
       
       return () => clearInterval(revenueInterval);
     }
@@ -162,27 +183,34 @@ const Dashboard = () => {
   // Vérification moins fréquente
   useEffect(() => {
     if (userData) {
+      const isFreemium = userData.subscription === 'freemium';
+      const dailyLimit = isFreemium ? 0.5 : 5.0;
+      
       const quickInterval = setInterval(() => {
         // Vérifier que le bot est toujours actif
         const botShouldBeActive = true;
         
         if (!isBotActive && botShouldBeActive) {
-          // Réactiver le bot s'il n'est pas actif
-          window.dispatchEvent(new CustomEvent('bot:status-change', {
-            detail: { active: true }
-          }));
-          
-          console.log("Bot réactivé par la vérification");
+          // Vérifier si la limite quotidienne est atteinte avant d'activer le bot
+          const currentDailyGains = balanceManager.getDailyGains();
+          if (currentDailyGains < dailyLimit * 0.9) {
+            // Réactiver le bot s'il n'est pas actif et que la limite n'est pas atteinte
+            window.dispatchEvent(new CustomEvent('bot:status-change', {
+              detail: { active: true }
+            }));
+            
+            console.log("Bot réactivé par la vérification");
+          }
         }
         
         // Déclencher une mise à jour du solde seulement parfois
-        if (Math.random() < 0.3) {
+        if (Math.random() < 0.2) {
           window.dispatchEvent(new CustomEvent('balance:force-update', {
             detail: { timestamp: Date.now(), animate: false }
           }));
         }
         
-      }, 20000); // Vérification toutes les 20 secondes
+      }, 30000); // Vérification toutes les 30 secondes
       
       return () => clearInterval(quickInterval);
     }
@@ -195,24 +223,33 @@ const Dashboard = () => {
         const now = Date.now();
         
         // Vérifier le temps écoulé depuis le dernier traitement
-        if (now - lastProcessTime > 120000) { // Au moins 2 minutes entre les heartbeats
+        if (now - lastProcessTime > 180000) { // Au moins 3 minutes entre les heartbeats
           console.log("Dashboard heartbeat - checking revenue generation");
           
           // Mettre à jour le timestamp du dernier processus
           setLastProcessTime(now);
           
-          // Forcer une mise à jour du solde
-          window.dispatchEvent(new CustomEvent('balance:force-update', { 
-            detail: { timestamp: now, animate: Math.random() < 0.1 }
-          }));
+          // Vérifier si la limite quotidienne est atteinte avant de générer des revenus
+          const isFreemium = userData.subscription === 'freemium';
+          const dailyLimit = isFreemium ? 0.5 : 5.0;
+          const currentDailyGains = balanceManager.getDailyGains();
           
-          // Génération de revenus avec faible probabilité
-          if (Math.random() < 0.3) {
-            generateAutomaticRevenue();
+          if (currentDailyGains < dailyLimit * 0.9) {
+            // Forcer une mise à jour du solde
+            window.dispatchEvent(new CustomEvent('balance:force-update', { 
+              detail: { timestamp: now, animate: false }
+            }));
+            
+            // Génération de revenus avec faible probabilité
+            if (Math.random() < 0.2) {
+              generateAutomaticRevenue();
+            }
+          } else {
+            console.log(`Limite quotidienne presque atteinte: ${currentDailyGains}€/${dailyLimit}€, pas de génération auto`);
           }
         }
       }
-    }, 120000); // Heartbeat toutes les 2 minutes
+    }, 180000); // Heartbeat toutes les 3 minutes
     
     return () => clearInterval(heartbeatInterval);
   }, [userData, generateAutomaticRevenue, lastProcessTime]);
