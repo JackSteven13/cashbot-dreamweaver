@@ -1,4 +1,13 @@
+
 import { SUBSCRIPTION_LIMITS } from './constants';
+
+/**
+ * Interface for session start results
+ */
+export interface SessionStartResult {
+  canStart: boolean;
+  reason?: string;
+}
 
 /**
  * Strict session limit implementation
@@ -8,23 +17,29 @@ export const canStartManualSession = (
   subscription: string,
   sessionCount: number,
   todaysGains: number
-): boolean => {
+): SessionStartResult => {
   // Check if daily limit has been reached
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
   // Strict limit check - if already at 95% of the limit, block further sessions
   if (todaysGains >= dailyLimit * 0.95) {
     console.log(`Session blocked: daily gains (${todaysGains}) at or above 95% of limit (${dailyLimit})`);
-    return false;
+    return { 
+      canStart: false, 
+      reason: `Limite quotidienne de ${dailyLimit}€ atteinte (${todaysGains.toFixed(2)}€)`
+    };
   }
   
   // For freemium accounts, strictly enforce 1 session per day limit
   if (subscription === 'freemium' && sessionCount >= 1) {
     console.log('Session blocked: freemium account already used daily session');
-    return false;
+    return {
+      canStart: false,
+      reason: "Limite de session quotidienne atteinte pour compte freemium"
+    };
   }
   
-  return true;
+  return { canStart: true };
 };
 
 /**
@@ -103,4 +118,14 @@ export const syncDailyGainsWithTransactions = (todaysTransactions: any[]): numbe
   }));
   
   return totalGains;
+};
+
+// These functions will be added to fix the subscription issues in index.ts
+export const subscribeToAuthChanges = () => {
+  console.log("Auth change subscription function called - placeholder");
+  return () => {}; // Noop cleanup function
+};
+
+export const unsubscribeFromAuthChanges = () => {
+  console.log("Auth change unsubscription function called - placeholder");
 };

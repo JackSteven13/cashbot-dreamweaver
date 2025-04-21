@@ -30,3 +30,6 @@ export {
   WITHDRAWAL_THRESHOLDS,
   WITHDRAWAL_FEES
 } from './constants';
+
+// Re-export interfaces
+export type { SessionStartResult } from './sessionManagement';

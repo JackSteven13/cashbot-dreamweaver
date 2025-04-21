@@ -35,14 +35,15 @@ export const getEffectiveSubscription = (subscription: string) => {
 };
 
 /**
- * These functions are placeholders - we don't actually need them anymore,
- * but they're referenced in the imports so we need to provide them
+ * These functions are provided for backward compatibility
  */
 export const subscribeToAuthChanges = () => {
   console.log("Auth change subscription function called - deprecated");
-  return () => {}; // Noop cleanup function
+  return () => {}; // Return noop cleanup function
 };
 
 export const unsubscribeFromAuthChanges = () => {
   console.log("Auth change unsubscription function called - deprecated");
 };
+
+export { shouldResetDailyCounters } from '@/utils/subscription/sessionManagement';

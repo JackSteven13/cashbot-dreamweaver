@@ -161,6 +161,11 @@ export const useManualSessions = ({
       
       const newBalance = balanceManager.getCurrentBalance();
       
+      const userId = userData?.profile?.id || userData?.id;
+      if (!userId) {
+        console.error("Missing user ID for transaction");
+      }
+      
       const sessionReport = `Session manuelle #${dailySessionCount + 1}: ${gain.toFixed(2)}€ générés.`;
       
       await updateBalance(gain, sessionReport, true);
@@ -243,7 +248,6 @@ export const useManualSessions = ({
     canStartSession,
     userData,
     dailySessionCount,
-    activityLevel,
     startAnimation,
     stopAnimation,
     updateBalance,

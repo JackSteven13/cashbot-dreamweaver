@@ -1,6 +1,5 @@
 
-// If the file already exists, let's create an augmentation to it
-// This is a supplementary type definition
+// UserData type definition update
 
 export interface Transaction {
   id?: string;
@@ -41,6 +40,7 @@ export interface PaymentMethod {
 }
 
 export interface UserData {
+  id?: string;            // Added explicit id field
   username: string;
   balance: number;
   subscription: string;

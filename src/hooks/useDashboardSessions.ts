@@ -44,13 +44,11 @@ export const useDashboardSessions = ({
   const withdrawalInProgressRef = useRef(false);
   const sessionCountRef = useRef(dailySessionCount);
   
-  // Update ref when prop changes
   useEffect(() => {
     sessionCountRef.current = dailySessionCount;
   }, [dailySessionCount]);
 
   const handleStartSession = async () => {
-    // Prevent multiple concurrent sessions
     if (sessionInProgressRef.current || isStartingSession) {
       return;
     }
@@ -59,26 +57,23 @@ export const useDashboardSessions = ({
       sessionInProgressRef.current = true;
       setIsStartingSession(true);
       
-      // Récupérer les gains quotidiens actuels depuis le gestionnaire de solde
       const currentDailyGains = balanceManager.getDailyGains();
       
-      console.log("Tentative de démarrage de session avec gains quotidiens:", currentDailyGains);
+      console.log("Attempting to start session with daily gains:", currentDailyGains);
       
-      // Check if user can start a manual session
-      const canStartResult = canStartManualSession(
+      const result = canStartManualSession(
         userData?.subscription || 'freemium',
         sessionCountRef.current,
         currentDailyGains
-      ) as SessionStartResult;
+      );
       
-      if (!canStartResult.canStart) {
+      if (!result.canStart) {
         toast({
           title: "Session impossible",
-          description: canStartResult.reason || "Vous ne pouvez pas démarrer de session maintenant.",
+          description: result.reason || "Vous ne pouvez pas démarrer de session maintenant.",
           variant: "destructive"
         });
         
-        // Store the last attempt time even if it failed
         const now = Date.now();
         localStorage.setItem('lastSessionTimestamp', now.toString());
         setLastSessionTimestamp(now);
@@ -86,16 +81,13 @@ export const useDashboardSessions = ({
         return;
       }
       
-      // Start session animation in terminal
       const terminalSequence = createBackgroundTerminalSequence([
         "Initialisation de la session d'analyse manuelle..."
       ]);
       
-      // Add visual effects
       window.dispatchEvent(new CustomEvent('session:start', { detail: { manual: true } }));
       simulateActivity();
       
-      // Add more terminal messages for realism
       terminalSequence.add("Analyse des données en cours...");
       
       await new Promise(resolve => setTimeout(resolve, 800));
@@ -104,34 +96,26 @@ export const useDashboardSessions = ({
       
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Calculate session gain based on current daily gains
       const gain = calculateManualSessionGain(
         userData?.subscription || 'freemium',
         currentDailyGains,
         userData?.referrals?.length || 0
       );
       
-      // Update the session timestamp before incrementing count to prevent double submissions
       const now = Date.now();
       localStorage.setItem('lastSessionTimestamp', now.toString());
       setLastSessionTimestamp(now);
       
-      // Increment session count
       await incrementSessionCount();
       
-      // Add final terminal message before updating balance
       terminalSequence.add(`Résultats optimisés! Gain: ${gain.toFixed(2)}€`);
       
-      // Update balance in manager
       balanceManager.addDailyGain(gain);
       
-      // Update user balance in database
       await updateBalance(gain, `Session d'analyse manuelle: +${gain.toFixed(2)}€`);
       
-      // Complete terminal sequence
       terminalSequence.complete(gain);
       
-      // Trigger a transaction refresh
       window.dispatchEvent(new CustomEvent('transactions:refresh'));
       
       toast({
@@ -152,7 +136,6 @@ export const useDashboardSessions = ({
   };
 
   const handleWithdrawal = async () => {
-    // Prevent multiple concurrent withdrawals
     if (withdrawalInProgressRef.current) {
       return;
     }
@@ -160,7 +143,6 @@ export const useDashboardSessions = ({
     try {
       withdrawalInProgressRef.current = true;
       
-      // Check if user has enough balance to withdraw
       if (!userData?.balance || userData.balance < 10) {
         toast({
           title: "Retrait impossible",
@@ -170,17 +152,14 @@ export const useDashboardSessions = ({
         return;
       }
       
-      // Confirm withdrawal
       if (!window.confirm(`Êtes-vous sûr de vouloir retirer ${userData.balance.toFixed(2)}€ sur votre compte bancaire?`)) {
         return;
       }
       
-      // Reset the balance in database
       if (userData?.profile?.id) {
         const result = await resetUserBalance(userData.profile.id, userData.balance);
         
         if (result.success) {
-          // Reset local balance after successful withdrawal
           await resetBalance();
           
           toast({
@@ -203,7 +182,6 @@ export const useDashboardSessions = ({
     }
   };
   
-  // Listen for bot status changes
   useEffect(() => {
     const handleBotStatusChange = (event: CustomEvent) => {
       const active = event.detail?.active;

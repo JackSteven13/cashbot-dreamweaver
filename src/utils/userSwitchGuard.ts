@@ -1,61 +1,59 @@
 
-import balanceManager from './balance/balanceManager';
+import { supabase } from "@/integrations/supabase/client";
+import balanceManager from "./balance/balanceManager";
 
 /**
- * Nettoie les données de solde lors du changement d'utilisateur
+ * Clear all local data when a user signs out
  */
-export const cleanUserData = () => {
-  // Nettoyer les données du gestionnaire de solde
+export const cleanupOnSignout = () => {
+  console.log("Cleaning up user data on signout");
+  
+  // Clean up balance manager data
   balanceManager.cleanupUserBalanceData();
   
-  // Nettoyer les clés de localStorage générales
-  const keysToCleanup = [
-    'currentBalance',
-    'lastKnownBalance',
-    'highestBalance',
-    'dailyGains',
-    'userStats',
-    'dailySessionCount',
-    'lastSessionTimestamp',
-    'lastGrowthDate'
-  ];
+  // Clean up other localStorage data
+  localStorage.removeItem('lastKnownUsername');
+  localStorage.removeItem('lastKnownBalance');
+  localStorage.removeItem('cachedTransactions');
+  localStorage.removeItem('transactionsLastRefresh');
+  localStorage.removeItem('lastSessionTimestamp');
   
-  keysToCleanup.forEach(key => {
-    localStorage.removeItem(key);
-  });
+  // Reset any active flags
+  localStorage.removeItem('auth_checking');
+  localStorage.removeItem('auth_check_timestamp');
+  localStorage.removeItem('auth_redirecting');
+  localStorage.removeItem('auth_redirect_timestamp');
   
-  console.log("User data cleaned successfully for user switch");
+  console.log("User data cleanup complete");
 };
 
 /**
- * Nettoyage complet de toutes les données utilisateur (logout)
+ * Set user switch handler to listen for auth state changes
  */
-export const purgeAllUserData = () => {
-  // Nettoyer d'abord les données du gestionnaire de solde
-  balanceManager.cleanupUserBalanceData();
-  
-  // Clés à préserver même après déconnexion
-  const keysToPreserve = [
-    'theme',
-    'language',
-    'first_use_date',
-    'stats_ads_count',
-    'stats_revenue_count'
-  ];
-  
-  // Récupérer toutes les clés du localStorage
-  const allKeys = Object.keys(localStorage);
-  
-  // Filtrer et supprimer toutes les clés liées aux données utilisateur
-  allKeys.forEach(key => {
-    // Ne pas supprimer les clés à préserver
-    if (!keysToPreserve.includes(key)) {
-      localStorage.removeItem(key);
+export const setupUserSwitchHandler = () => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') {
+      console.log("User signed out, cleaning up data");
+      balanceManager.cleanupUserBalanceData();
+      
+      // Clean up other localStorage data
+      localStorage.removeItem('lastKnownUsername');
+      localStorage.removeItem('lastKnownBalance');
+    } else if (event === 'SIGNED_IN' && session?.user?.id) {
+      console.log(`User signed in, setting user ID: ${session.user.id}`);
+      balanceManager.setUserId(session.user.id);
     }
   });
   
-  // Effacer aussi le sessionStorage
+  return subscription;
+};
+
+/**
+ * Reset all user data (for testing/admin purposes)
+ */
+export const resetAllUserData = () => {
+  balanceManager.cleanupUserBalanceData();
+  localStorage.clear();
   sessionStorage.clear();
-  
-  console.log("All user data purged for logout");
+  console.log("All user data reset");
 };
