@@ -1,11 +1,15 @@
 
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 
+type BalanceWatcherCallback = (newBalance: number) => void;
+
 class BalanceManager {
   private currentBalance: number = 0;
   private dailyGains: number = 0;
   private lastReset: number = Date.now();
   private syncInProgress: boolean = false;
+  private watchers: BalanceWatcherCallback[] = [];
+  private highestBalance: number = 0;
   
   constructor() {
     this.initBalance();
@@ -18,6 +22,8 @@ class BalanceManager {
       const storedBalance = localStorage.getItem('currentBalance');
       if (storedBalance) {
         this.currentBalance = parseFloat(storedBalance);
+        // Update highest balance if current is higher
+        this.highestBalance = Math.max(this.currentBalance, this.getHighestBalance());
       }
       
       const storedDailyGains = localStorage.getItem('dailyGains');
@@ -33,7 +39,8 @@ class BalanceManager {
       console.log("BalanceManager initialized:", {
         currentBalance: this.currentBalance,
         dailyGains: this.dailyGains,
-        lastReset: new Date(this.lastReset).toISOString()
+        lastReset: new Date(this.lastReset).toISOString(),
+        highestBalance: this.highestBalance
       });
     } catch (e) {
       console.error("Error initializing balance manager:", e);
@@ -41,6 +48,7 @@ class BalanceManager {
       this.currentBalance = 0;
       this.dailyGains = 0;
       this.lastReset = Date.now();
+      this.highestBalance = 0;
     }
   }
   
@@ -65,7 +73,7 @@ class BalanceManager {
     }, 5 * 60 * 1000);
   }
   
-  private resetDailyGains(): void {
+  public resetDailyGains(): void {
     console.log("Resetting daily gains (new day)");
     this.dailyGains = 0;
     this.lastReset = Date.now();
@@ -89,8 +97,21 @@ class BalanceManager {
     
     this.currentBalance += amount;
     
+    // Update highest balance if current is higher
+    if (this.currentBalance > this.highestBalance) {
+      this.highestBalance = this.currentBalance;
+      try {
+        localStorage.setItem('highestBalance', this.highestBalance.toString());
+      } catch (e) {
+        console.error("Error saving highest balance:", e);
+      }
+    }
+    
     try {
       localStorage.setItem('currentBalance', this.currentBalance.toString());
+      
+      // Notify watchers
+      this.notifyWatchers();
       
       // Dispatch event to notify components
       window.dispatchEvent(new CustomEvent('balance:local-update', {
@@ -109,8 +130,21 @@ class BalanceManager {
     
     this.currentBalance = amount;
     
+    // Update highest balance if current is higher
+    if (this.currentBalance > this.highestBalance) {
+      this.highestBalance = this.currentBalance;
+      try {
+        localStorage.setItem('highestBalance', this.highestBalance.toString());
+      } catch (e) {
+        console.error("Error saving highest balance:", e);
+      }
+    }
+    
     try {
       localStorage.setItem('currentBalance', this.currentBalance.toString());
+      
+      // Notify watchers
+      this.notifyWatchers();
       
       // Dispatch event to notify components
       window.dispatchEvent(new CustomEvent('balance:local-update', {
@@ -197,6 +231,63 @@ class BalanceManager {
       this.syncInProgress = false;
       return false;
     }
+  }
+  
+  // Add watcher system for balance updates
+  public addWatcher(callback: BalanceWatcherCallback): () => void {
+    this.watchers.push(callback);
+    
+    // Return unsubscribe function
+    return () => {
+      this.watchers = this.watchers.filter(watcher => watcher !== callback);
+    };
+  }
+  
+  private notifyWatchers(): void {
+    this.watchers.forEach(callback => {
+      try {
+        callback(this.currentBalance);
+      } catch (e) {
+        console.error("Error in balance watcher callback:", e);
+      }
+    });
+  }
+  
+  // Get the highest recorded balance
+  public getHighestBalance(): number {
+    try {
+      const storedHighestBalance = localStorage.getItem('highestBalance');
+      if (storedHighestBalance) {
+        const parsedValue = parseFloat(storedHighestBalance);
+        return isNaN(parsedValue) ? 0 : parsedValue;
+      }
+    } catch (e) {
+      console.error("Error getting highest balance:", e);
+    }
+    return 0;
+  }
+  
+  // Clean up user data when switching users
+  public cleanupUserBalanceData(): void {
+    this.currentBalance = 0;
+    this.dailyGains = 0;
+    this.lastReset = Date.now();
+    this.highestBalance = 0;
+    
+    // Clear localStorage entries
+    try {
+      localStorage.removeItem('currentBalance');
+      localStorage.removeItem('dailyGains');
+      localStorage.removeItem('lastBalanceReset');
+      localStorage.removeItem('highestBalance');
+    } catch (e) {
+      console.error("Error cleaning up user balance data:", e);
+    }
+    
+    // Notify watchers of reset
+    this.notifyWatchers();
+    
+    console.log("Balance data cleaned for user switch");
   }
 }
 
