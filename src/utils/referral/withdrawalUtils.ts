@@ -3,14 +3,14 @@
  * Utilitaires liés aux seuils de retrait selon le niveau d'abonnement
  */
 
-// Seuils de retrait par type d'abonnement
+// Seuils de retrait par type d'abonnement - ALIGNÉS AVEC LES CONSTANTES GLOBALES
 const WITHDRAWAL_THRESHOLDS = {
-  freemium: 200,
-  starter: 150,
-  gold: 100,
-  elite: 50,
+  freemium: 20,   // Corrigé de 200€ à 20€
+  starter: 15,    // Corrigé de 150€ à 15€
+  gold: 10,       // Corrigé de 100€ à 10€
+  elite: 5,       // Corrigé de 50€ à 5€
   // Fallback
-  default: 200
+  default: 20     // Corrigé de 200€ à 20€
 };
 
 /**
@@ -76,21 +76,21 @@ export const calculateWithdrawalFee = (registrationDate: Date, subscription: str
   const today = new Date();
   const accountAgeInDays = Math.floor((today.getTime() - registrationDate.getTime()) / (1000 * 60 * 60 * 24));
   
-  // Définir les frais de base par type d'abonnement
-  let baseFee = 0.1; // 10% par défaut
+  // Définir les frais de base par type d'abonnement - ALIGNÉS AVEC LES CONSTANTES GLOBALES
+  let baseFee = 0.05; // 5% par défaut (pour freemium)
   
   switch (subscription?.toLowerCase()) {
     case 'elite':
-      baseFee = 0.03; // 3% pour Elite
+      baseFee = 0.00; // 0% pour Elite
       break;
     case 'gold':
-      baseFee = 0.05; // 5% pour Gold
+      baseFee = 0.015; // 1.5% pour Gold
       break;
     case 'starter':
-      baseFee = 0.08; // 8% pour Starter
+      baseFee = 0.03; // 3% pour Starter
       break;
     default:
-      baseFee = 0.1; // 10% pour Freemium
+      baseFee = 0.05; // 5% pour Freemium
   }
   
   // Réduire les frais en fonction de l'ancienneté (max 50% de réduction)

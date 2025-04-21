@@ -17,25 +17,31 @@ export const canStartManualSession = (
   dailySessionCount: number,
   currentDailyGains: number
 ): SessionStartResult => {
-  // Pour freemium, vérifier à la fois la limite de session (1 par jour) et la limite de gains (0,50 €)
-  if (subscription === 'freemium') {
-    // Vérifier les gains quotidiens actuels pour freemium
-    const dailyLimit = SUBSCRIPTION_LIMITS[subscription] || 0.5;
-    
-    if (currentDailyGains >= dailyLimit) {
-      return {
-        canStart: false,
-        reason: `Limite quotidienne atteinte (${dailyLimit}€/jour). Revenez demain ou passez à un forfait supérieur.`
-      };
-    }
-    
-    // Vérifier le nombre de sessions
-    if (dailySessionCount >= 1) {
-      return {
-        canStart: false,
-        reason: "Vous avez atteint la limite quotidienne de sessions (freemium: 1 session/jour)"
-      };
-    }
+  // Pour tous les abonnements, vérifier la limite de gains journaliers
+  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  
+  if (currentDailyGains >= dailyLimit) {
+    return {
+      canStart: false,
+      reason: `Limite quotidienne atteinte (${dailyLimit}€/jour). Revenez demain ou passez à un forfait supérieur.`
+    };
+  }
+  
+  // Vérifier le nombre de sessions selon l'abonnement
+  const sessionLimits = {
+    freemium: 1,
+    starter: 3,
+    gold: 10,
+    elite: 50
+  };
+  
+  const sessionLimit = sessionLimits[subscription as keyof typeof sessionLimits] || 1;
+  
+  if (dailySessionCount >= sessionLimit) {
+    return {
+      canStart: false,
+      reason: `Vous avez atteint la limite quotidienne de sessions (${subscription}: ${sessionLimit} session${sessionLimit > 1 ? 's' : ''}/jour)`
+    };
   }
   
   // Check if there's a rate limit currently active (to prevent spam)
@@ -56,19 +62,15 @@ export const canStartManualSession = (
     }
   }
   
-  // Pour les comptes freemium, vérifier une dernière fois si le solde est près de la limite
-  if (subscription === 'freemium') {
-    const dailyLimit = SUBSCRIPTION_LIMITS[subscription] || 0.5;
-    const remainingLimit = dailyLimit - currentDailyGains;
-    
-    // S'il reste moins de 0,10 € pour atteindre la limite
-    if (remainingLimit < 0.10) {
-      console.log(`Limite presque atteinte: ${currentDailyGains}/${dailyLimit}, reste ${remainingLimit.toFixed(2)}€`);
-      // On permet encore la session mais on avertira l'utilisateur
-    }
+  // Pour tous les comptes, vérifier une dernière fois si le solde est près de la limite
+  const remainingLimit = dailyLimit - currentDailyGains;
+  
+  // S'il reste moins de 0,10 € pour atteindre la limite
+  if (remainingLimit < 0.10) {
+    console.log(`Limite presque atteinte: ${currentDailyGains}/${dailyLimit}, reste ${remainingLimit.toFixed(2)}€`);
+    // On permet encore la session mais on avertira l'utilisateur
   }
   
-  // Pour les abonnements payants, autoriser les sessions jusqu'à la limite quotidienne
   return { canStart: true };
 };
 

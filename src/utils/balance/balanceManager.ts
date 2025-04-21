@@ -73,6 +73,7 @@ class BalanceManager {
     }, 5 * 60 * 1000);
   }
   
+  // Méthode rendue publique pour résoudre l'erreur TS2341
   public resetDailyGains(): void {
     console.log("Resetting daily gains (new day)");
     this.dailyGains = 0;
@@ -163,14 +164,20 @@ class BalanceManager {
     
     this.checkForDayChange();
     
-    // For freemium accounts, strictly enforce the daily limit
+    // Pour TOUS les comptes, strictement appliquer la limite journalière
     const subscription = localStorage.getItem('userSubscription') || 'freemium';
     const dailyLimit = this.getDailyLimit(subscription);
     
     // Don't allow exceeding daily limit
-    if (this.dailyGains + amount > dailyLimit && subscription === 'freemium') {
+    if (this.dailyGains + amount > dailyLimit) {
+      // Ajuster le gain pour ne pas dépasser la limite
       amount = Math.max(0, dailyLimit - this.dailyGains);
       console.log(`Daily limit would be exceeded, adjusting gain to ${amount}€`);
+      
+      // Notifier que la limite est atteinte
+      window.dispatchEvent(new CustomEvent('dailyLimit:reached', {
+        detail: { subscription, dailyLimit }
+      }));
     }
     
     // If gain is 0 or negative, don't process it
@@ -233,7 +240,7 @@ class BalanceManager {
     }
   }
   
-  // Add watcher system for balance updates
+  // Add watcher system for balance updates - Ajout de méthode manquante
   public addWatcher(callback: BalanceWatcherCallback): () => void {
     this.watchers.push(callback);
     
@@ -253,7 +260,7 @@ class BalanceManager {
     });
   }
   
-  // Get the highest recorded balance
+  // Get the highest recorded balance - Ajout de méthode manquante
   public getHighestBalance(): number {
     try {
       const storedHighestBalance = localStorage.getItem('highestBalance');
@@ -267,7 +274,7 @@ class BalanceManager {
     return 0;
   }
   
-  // Clean up user data when switching users
+  // Clean up user data when switching users - Ajout de méthode manquante
   public cleanupUserBalanceData(): void {
     this.currentBalance = 0;
     this.dailyGains = 0;

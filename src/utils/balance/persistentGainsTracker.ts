@@ -28,7 +28,7 @@ export const addDailyGainTracker = (gain: number): number => {
  * Réinitialise les compteurs quotidiens
  */
 export const resetDailyGains = (): void => {
-  // Now resetDailyGains is public so we can call it
+  // Maintenant resetDailyGains est publique, on peut l'appeler directement
   balanceManager.resetDailyGains();
 };
 

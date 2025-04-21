@@ -29,7 +29,12 @@ export const calculateManualSessionGain = (
   // Pour les comptes freemium, génération de gains moins aléatoire et plus basse
   if (subscriptionType === 'freemium') {
     // Pour freemium, gain fixe entre 0,10 € et 0,25 €
-    const baseGain = 0.10 + Math.random() * 0.15;
+    let baseGain = 0.10 + Math.random() * 0.15;
+    
+    // Pour les comptes sans parrainage, réduire encore les gains (ralentissement)
+    if (referralCount === 0) {
+      baseGain *= 0.6; // Réduction de 40% pour encourager le parrainage
+    }
     
     // S'assurer qu'on ne dépasse pas la limite quotidienne
     return Math.min(baseGain, remainingToLimit);
@@ -82,8 +87,15 @@ export const calculateAutoSessionGain = (
     return 0;
   }
   
-  // For freemium accounts, much smaller automatic gains
+  // For freemium accounts, much smaller automatic gains and slower progress
   if (subscriptionType === 'freemium') {
+    // Gain très réduit pour freemium sans parrainages
+    if (referralCount === 0) {
+      // Ralentissement extrême - gains minuscules entre 0,005 € et 0,02 €
+      const tinyGain = Math.min(0.005 + Math.random() * 0.015, remainingToLimit);
+      return parseFloat(tinyGain.toFixed(2));
+    }
+    
     // Si on a déjà généré 90% de la limite
     if (currentDailyGains >= dailyLimit * 0.9) {
       // Gain très minime pour les 10% restants (entre 0,01 € et 0,02 €)
