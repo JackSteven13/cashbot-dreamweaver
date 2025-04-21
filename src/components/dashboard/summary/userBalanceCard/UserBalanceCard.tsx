@@ -6,6 +6,7 @@ import { Sparkles } from 'lucide-react';
 import ProgressBar from './components/ProgressBar';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useAuth } from '@/hooks/useAuth';
 
 interface UserBalanceCardProps {
   balance: number;
@@ -26,12 +27,16 @@ const UserBalanceCard = ({
   referralBonus = 0,
   withdrawalThreshold
 }: UserBalanceCardProps) => {
+  const { user } = useAuth();
+  const userId = user?.id || 'anonymous';
+  
   // Assurer que le solde est toujours un nombre valide
   const safeBalance = isNaN(balance) ? 0 : balance;
   const safeReferralBonus = isNaN(referralBonus) ? 0 : referralBonus;
   
-  // Si balance est défini dans le localStorage, essayer de l'utiliser
-  const locallyStoredBalance = parseFloat(localStorage.getItem('lastKnownBalance') || '0');
+  // Si balance est défini dans le localStorage, essayer de l'utiliser mais avec la clé spécifique à l'utilisateur
+  const localStorageKey = `lastKnownBalance_${userId}`;
+  const locallyStoredBalance = parseFloat(localStorage.getItem(localStorageKey) || '0');
   const effectiveBalance = Math.max(
     safeBalance,
     isNaN(locallyStoredBalance) ? 0 : locallyStoredBalance
@@ -69,7 +74,8 @@ const UserBalanceCard = ({
       }
     };
     
-    const lastActive = localStorage.getItem('lastActive');
+    const lastActiveKey = `lastActive_${userId}`;
+    const lastActive = localStorage.getItem(lastActiveKey);
     const formattedDate = lastActive ? format(new Date(lastActive), 'dd MMMM yyyy', { locale: fr }) : null;
     
     return (

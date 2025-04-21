@@ -21,6 +21,9 @@ export const useSessionGain = () => {
     // Simuler un délai de traitement de session
     await new Promise(resolve => setTimeout(resolve, 2000));
     
+    // S'assurer que nous avons l'ID de l'utilisateur
+    const userId = userData.profile?.id || 'anonymous';
+    
     // Obtenir l'abonnement effectif
     const effectiveSub = userData.subscription || 'freemium';
     
@@ -81,20 +84,28 @@ export const useSessionGain = () => {
     // Calculer le nouveau solde (le solde total augmente)
     const newBalance = safeCurrentBalance + finalGain;
     
+    // Utiliser des clés de stockage spécifiques à l'utilisateur
+    const userSpecificKeys = {
+      lastUpdatedBalance: `lastUpdatedBalance_${userId}`,
+      lastKnownBalance: `lastKnownBalance_${userId}`,
+      currentBalance: `currentBalance_${userId}`,
+      sessionCurrentBalance: `currentBalance_${userId}`
+    };
+    
     // Persister le nouveau solde dans toutes les sources pour éviter les pertes lors des rechargements de page
     try {
       // Mettre à jour le balance manager (source unique de vérité)
-      balanceManager.forceBalanceSync(newBalance);
+      balanceManager.forceBalanceSync(newBalance, userId);
       
-      // Persister dans toutes les sources de stockage
-      localStorage.setItem('lastUpdatedBalance', newBalance.toString());
-      localStorage.setItem('lastKnownBalance', newBalance.toString());
-      localStorage.setItem('currentBalance', newBalance.toString());
-      sessionStorage.setItem('currentBalance', newBalance.toString());
+      // Persister dans toutes les sources de stockage avec des clés spécifiques à l'utilisateur
+      localStorage.setItem(userSpecificKeys.lastUpdatedBalance, newBalance.toString());
+      localStorage.setItem(userSpecificKeys.lastKnownBalance, newBalance.toString());
+      localStorage.setItem(userSpecificKeys.currentBalance, newBalance.toString());
+      sessionStorage.setItem(userSpecificKeys.sessionCurrentBalance, newBalance.toString());
       
       // Mettre à jour le solde le plus élevé si nécessaire
       if (typeof balanceManager.updateHighestBalance === 'function') {
-        balanceManager.updateHighestBalance(newBalance);
+        balanceManager.updateHighestBalance(newBalance, userId);
       }
       
       // Déclencher un événement pour informer les autres composants
@@ -102,7 +113,8 @@ export const useSessionGain = () => {
         detail: {
           gain: finalGain,
           finalBalance: newBalance,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          userId
         }
       }));
       
@@ -111,7 +123,8 @@ export const useSessionGain = () => {
         detail: {
           gain: finalGain,
           newBalance: newBalance,
-          animate: true
+          animate: true,
+          userId
         }
       }));
     } catch (e) {
