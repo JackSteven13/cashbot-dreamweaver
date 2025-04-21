@@ -1,11 +1,11 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { resetUserBalance } from '@/utils/balance/resetBalance';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
-import { canStartManualSession } from '@/utils/subscription/sessionManagement';
-import { MANUAL_SESSION_GAIN_PERCENTAGES } from '@/utils/subscription/constants';
+import { canStartManualSession, SessionStartResult } from '@/utils/subscription/sessionManagement';
+import { calculateManualSessionGain } from '@/utils/subscription/sessionGain';
 import { simulateActivity } from '@/utils/animations/moneyParticles';
+import balanceManager from '@/utils/balance/balanceManager';
 
 interface UseDashboardSessionsProps {
   userData: any;
@@ -23,12 +23,6 @@ interface UseDashboardSessionsResult {
   lastSessionTimestamp: number | null;
   isBotActive: boolean;
   toggleBotActive?: () => void;
-}
-
-// Define the return type for canStartManualSession to match the implementation
-interface SessionStartResult {
-  canStart: boolean;
-  reason?: string;
 }
 
 export const useDashboardSessions = ({
@@ -65,11 +59,16 @@ export const useDashboardSessions = ({
       sessionInProgressRef.current = true;
       setIsStartingSession(true);
       
+      // Récupérer les gains quotidiens actuels depuis le gestionnaire de solde
+      const currentDailyGains = balanceManager.getDailyGains();
+      
+      console.log("Tentative de démarrage de session avec gains quotidiens:", currentDailyGains);
+      
       // Check if user can start a manual session
       const canStartResult = canStartManualSession(
         userData?.subscription || 'freemium',
         sessionCountRef.current,
-        0 // Pass 0 as the current balance (third parameter)
+        currentDailyGains
       ) as SessionStartResult;
       
       if (!canStartResult.canStart) {
@@ -105,15 +104,12 @@ export const useDashboardSessions = ({
       
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Get subscription-based gain percentage
-      const gainPercentageObj = MANUAL_SESSION_GAIN_PERCENTAGES[userData?.subscription as keyof typeof MANUAL_SESSION_GAIN_PERCENTAGES] || 
-        MANUAL_SESSION_GAIN_PERCENTAGES.freemium;
-        
-      // Calculate gain with some variance
-      const baseGain = gainPercentageObj.min + Math.random() * (gainPercentageObj.max - gainPercentageObj.min);
-      const variance = baseGain * 0.2; // 20% variance
-      const randomFactor = Math.random() * variance * 2 - variance; // range: -variance to +variance
-      const gain = parseFloat((baseGain + randomFactor).toFixed(2));
+      // Calculate session gain based on current daily gains
+      const gain = calculateManualSessionGain(
+        userData?.subscription || 'freemium',
+        currentDailyGains,
+        userData?.referrals?.length || 0
+      );
       
       // Update the session timestamp before incrementing count to prevent double submissions
       const now = Date.now();
@@ -126,7 +122,10 @@ export const useDashboardSessions = ({
       // Add final terminal message before updating balance
       terminalSequence.add(`Résultats optimisés! Gain: ${gain.toFixed(2)}€`);
       
-      // Update user balance
+      // Update balance in manager
+      balanceManager.addDailyGain(gain);
+      
+      // Update user balance in database
       await updateBalance(gain, `Session d'analyse manuelle: +${gain.toFixed(2)}€`);
       
       // Complete terminal sequence

@@ -5,6 +5,7 @@ import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAni
 import balanceManager from '@/utils/balance/balanceManager';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import { loadUserStats, saveUserStats } from '@/hooks/stats/utils/storageManager';
+import { calculateAutoSessionGain } from '@/utils/subscription/sessionGain';
 
 export const useAutoSessions = ({
   userData,
@@ -18,7 +19,7 @@ export const useAutoSessions = ({
   // Create a safe userData object with default values
   const safeUserData = userData || { subscription: 'freemium', profile: { id: null }, balance: 0 };
   
-  // State to track bot activity - TOUJOURS ACTIF
+  // State to track bot activity - ACTIF SAUF SI LIMITE ATTEINTE
   const [isBotActive, setIsBotActive] = useState(true);
   const botActiveRef = useRef(true);
   
@@ -65,71 +66,79 @@ export const useAutoSessions = ({
       
       // Calculer le pourcentage atteint pour la limite quotidienne
       const subscription = safeUserData.subscription || 'freemium';
-      const dailyLimit = balanceManager.getDailyLimit(subscription);
+      const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       const percentProgress = Math.min(100, (actualDailyGains / dailyLimit) * 100);
       setDailyLimitProgress(percentProgress);
       
-      // MODIFIÉ - Ne pas désactiver le bot quand la limite est atteinte
-      // Permettre de continuer à générer des revenus même si la limite est atteinte
-      if (actualDailyGains >= dailyLimit) {
+      // IMPORTANT - Désactiver le bot quand la limite est atteinte pour freemium
+      if (subscription === 'freemium' && actualDailyGains >= dailyLimit) {
         setShowLimitAlert(true);
-        console.log("Limite quotidienne atteinte, mais le bot reste actif");
+        setIsBotActive(false);
+        botActiveRef.current = false;
+        console.log("Limite quotidienne atteinte, bot désactivé pour freemium");
+        
+        window.dispatchEvent(new CustomEvent('bot:status-change', {
+          detail: { active: false, reason: 'limit_reached' }
+        }));
       }
     }
   };
   
-  // MODIFIÉ - Automatic session scheduler activé IMMÉDIATEMENT et PLUS FRÉQUEMMENT
+  // Automatic session scheduler - MOINS FRÉQUENT POUR FREEMIUM
   useEffect(() => {
     if (safeUserData?.profile?.id && !isInitialSessionExecuted.current) {
       isInitialSessionExecuted.current = true;
       
-      // Déclencher une première session automatique immédiatement
-      console.log("Immediate auto session generation");
+      // Déclencher une première session automatique avec un léger délai
+      console.log("Scheduling initial auto session generation");
       setTimeout(() => {
         generateAutomaticRevenue(true);
-      }, 1000);
+      }, 2000);
     }
   }, [safeUserData?.profile?.id]);
 
-  // Set up periodic auto session generation - FRÉQUENCE AUGMENTÉE
+  // Set up periodic auto session generation - FRÉQUENCE ADAPTÉE
   useEffect(() => {
     // Skip if user data is not available
     if (!safeUserData?.profile?.id) return;
 
-    // Setup interval for regular automatic sessions - PLUS RAPIDE
+    // Déterminer l'intervalle en fonction de l'abonnement
+    const baseInterval = safeUserData.subscription === 'freemium' ? 30000 : 20000;
+    const randomOffset = Math.random() * 10000;
+    
+    // Setup interval for regular automatic sessions
     const autoSessionInterval = setInterval(() => {
       const now = Date.now();
-      if (now - lastAutoSessionTime.current > 15000) { // 15 secondes minimum
+      if (botActiveRef.current && now - lastAutoSessionTime.current > baseInterval) {
         lastAutoSessionTime.current = now;
         console.log("Generating auto session from primary interval");
         generateAutomaticRevenue();
       }
-    }, 20000 + Math.random() * 10000); // Run every 20-30 seconds
+    }, baseInterval + randomOffset); // Run every 30-40s for freemium, 20-30s for paid plans
     
     return () => {
       clearInterval(autoSessionInterval);
     };
-  }, [safeUserData?.profile?.id]);
+  }, [safeUserData?.profile?.id, safeUserData?.subscription]);
   
-  // NOUVEAU - Intervalle secondaire encore plus rapide
+  // Pour freemium : ne garder que l'intervalle principal
   useEffect(() => {
-    if (!safeUserData?.profile?.id) return;
+    if (!safeUserData?.profile?.id || safeUserData.subscription === 'freemium') return;
     
-    // Second interval for even more frequent checks
+    // Second interval only for paid subscriptions
     const quickInterval = setInterval(() => {
       const now = Date.now();
-      // Petite chance de génération supplémentaire
-      if (now - lastAutoSessionTime.current > 20000 && Math.random() > 0.7) { // 30% de chance
+      if (botActiveRef.current && now - lastAutoSessionTime.current > 20000 && Math.random() > 0.7) {
         lastAutoSessionTime.current = now;
         console.log("Generating auto session from quick interval");
         generateAutomaticRevenue();
       }
-    }, 10000); // Check every 10 seconds
+    }, 15000); // Check every 15 seconds
     
     return () => {
       clearInterval(quickInterval);
     };
-  }, [safeUserData?.profile?.id]);
+  }, [safeUserData?.profile?.id, safeUserData?.subscription]);
   
   // Synchronisez le solde avec la base de données périodiquement
   useEffect(() => {
@@ -149,6 +158,7 @@ export const useAutoSessions = ({
     const handleBotStatusChange = (event: CustomEvent) => {
       const newStatus = event.detail?.active;
       const userId = event.detail?.userId;
+      const reason = event.detail?.reason;
       
       // Only handle events for this user
       if (userId && safeUserData?.profile?.id && userId !== safeUserData.profile.id) {
@@ -156,42 +166,44 @@ export const useAutoSessions = ({
       }
       
       if (typeof newStatus === 'boolean') {
-        // MODIFIÉ - Toujours actif, ignorer les événements de désactivation
-        if (newStatus === false) {
-          console.log("Ignoring bot deactivation attempt - keeping bot active");
-          
-          // Réactiver le bot après un court délai
-          setTimeout(() => {
-            setIsBotActive(true);
-            botActiveRef.current = true;
-            console.log("Bot réactivé automatiquement");
-            
-            window.dispatchEvent(new CustomEvent('bot:status-change', {
-              detail: { active: true, userId: safeUserData?.profile?.id }
-            }));
-            
-            localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'true');
-          }, 5000);
-        } else {
-          // Update local state and reference if activation requested
-          setIsBotActive(true);
-          botActiveRef.current = true;
-          console.log("Bot status updated to active");
-          
-          // Enregistrer l'état du bot dans le localStorage
-          try {
-            localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'true');
-          } catch (e) {
-            console.error("Failed to store bot status in localStorage:", e);
-          }
+        // Si la limite est atteinte pour freemium, ne pas réactiver le bot
+        if (safeUserData.subscription === 'freemium' && reason === 'limit_reached') {
+          console.log("Bot désactivé car limite atteinte pour freemium");
+          setIsBotActive(false);
+          botActiveRef.current = false;
+          return;
+        }
+        
+        // Update local state and reference
+        setIsBotActive(newStatus);
+        botActiveRef.current = newStatus;
+        console.log("Bot status updated:", newStatus ? "active" : "inactive");
+        
+        // Enregistrer l'état du bot dans le localStorage
+        try {
+          localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, newStatus.toString());
+        } catch (e) {
+          console.error("Failed to store bot status in localStorage:", e);
         }
       }
     };
     
-    // MODIFIÉ - Activer par défaut quoi qu'il arrive
-    setIsBotActive(true);
-    botActiveRef.current = true;
-    localStorage.setItem(`botActive_${safeUserData?.profile?.id}`, 'true');
+    // Check if we should disable bot due to daily limit on init
+    const subscription = safeUserData.subscription || 'freemium';
+    if (subscription === 'freemium') {
+      const dailyGains = balanceManager.getDailyGains();
+      const dailyLimit = SUBSCRIPTION_LIMITS[subscription] || 0.5;
+      
+      if (dailyGains >= dailyLimit) {
+        console.log("Initial check: daily limit reached for freemium, disabling bot");
+        setIsBotActive(false);
+        botActiveRef.current = false;
+        setShowLimitAlert(true);
+      } else {
+        setIsBotActive(true);
+        botActiveRef.current = true;
+      }
+    }
     
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('bot:external-status-change' as any, handleBotStatusChange);
@@ -204,32 +216,47 @@ export const useAutoSessions = ({
       window.removeEventListener('dailyGains:updated' as any, updateDailyGains);
       window.removeEventListener('dailyGains:reset' as any, updateDailyGains);
     };
-  }, [safeUserData?.profile?.id]);
+  }, [safeUserData?.profile?.id, safeUserData.subscription, setShowLimitAlert]);
 
   // Function to generate automatic revenue with improved limit checking
   async function generateAutomaticRevenue(isFirst = false): Promise<void> {
-    // MODIFIÉ - Toujours autoriser la génération de revenus
-    console.log("Generating automatic revenue within limits...");
+    // Vérifier si le bot est actif et si on peut générer des revenus
+    if (!botActiveRef.current) {
+      console.log("Skipping automatic revenue generation - bot is inactive");
+      return;
+    }
     
     try {
       const subscription = safeUserData.subscription || 'freemium';
-      const dailyLimit = balanceManager.getDailyLimit(subscription);
+      const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       const userStats = loadUserStats(subscription);
       
-      // Déterminer si on est proche de la limite
-      const isNearLimit = userStats.currentGains >= dailyLimit * 0.9;
+      // Vérifier les gains quotidiens actuels
+      const currentDailyGains = balanceManager.getDailyGains();
       
-      // Calculate a gain amount based on limit status
-      let gain = 0.05;
+      // Pour freemium, si on a déjà atteint la limite, ne rien faire
+      if (subscription === 'freemium' && currentDailyGains >= dailyLimit) {
+        setIsBotActive(false);
+        botActiveRef.current = false;
+        setShowLimitAlert(true);
+        console.log("Limite quotidienne atteinte pour freemium, génération de revenus automatiques annulée");
+        return;
+      }
       
-      if (isNearLimit || userStats.currentGains >= dailyLimit) {
-        // Si proche/au-delà de la limite, gain très faible
-        gain = parseFloat((0.01 + Math.random() * 0.02).toFixed(2));
-      } else {
-        // Gain normal basé sur le niveau d'abonnement
-        const minGain = 0.03;
-        const maxGain = 0.08;
-        gain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(2));
+      // Calculer le gain adapté à la situation
+      const gain = calculateAutoSessionGain(subscription, currentDailyGains, userData?.referrals?.length || 0);
+      
+      // Si aucun gain n'est possible, sortir
+      if (gain <= 0) {
+        console.log("Pas de gain possible, limite atteinte");
+        
+        if (subscription === 'freemium') {
+          setIsBotActive(false);
+          botActiveRef.current = false;
+          setShowLimitAlert(true);
+        }
+        
+        return;
       }
       
       // Proceed with the transaction
@@ -240,7 +267,7 @@ export const useAutoSessions = ({
       terminalAnimation.add("Traitement des données algorithmiques...");
       
       // Short delay to simulate processing
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
       
       terminalAnimation.add(`Analyse complétée. Optimisation des résultats: ${gain.toFixed(2)}€`);
       
@@ -256,6 +283,17 @@ export const useAutoSessions = ({
         sessionCount: userStats.sessionCount + 1
       });
       
+      // Add daily gain to balance manager
+      balanceManager.addDailyGain(gain);
+      
+      // Re-check daily limit after adding gain
+      const newDailyGains = balanceManager.getDailyGains();
+      if (subscription === 'freemium' && newDailyGains >= dailyLimit) {
+        setIsBotActive(false);
+        botActiveRef.current = false;
+        setShowLimitAlert(true);
+      }
+      
       // Trigger animated balance update with a custom event
       window.dispatchEvent(new CustomEvent('balance:update', {
         detail: {
@@ -265,8 +303,9 @@ export const useAutoSessions = ({
         }
       }));
       
-      // Display a notification to confirm automatic generation
-      if (isFirst || Math.random() > 0.8) {
+      // Display a notification to confirm automatic generation (moins souvent pour freemium)
+      const notificationChance = subscription === 'freemium' ? 0.1 : 0.2;
+      if (isFirst || Math.random() > (1 - notificationChance)) {
         toast({
           title: `Gains automatiques +${gain.toFixed(2)}€`,
           description: `L'analyse automatique de contenu vidéo a généré des revenus.`,
@@ -285,7 +324,7 @@ export const useAutoSessions = ({
   return {
     lastAutoSessionTime: new Date(),
     activityLevel: 60,
-    isBotActive: true, // TOUJOURS ACTIF
+    isBotActive,
     dailyLimitProgress,
     generateAutomaticRevenue
   };

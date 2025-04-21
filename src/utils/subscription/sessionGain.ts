@@ -26,6 +26,15 @@ export const calculateManualSessionGain = (
     return 0;
   }
   
+  // Pour les comptes freemium, génération de gains moins aléatoire et plus basse
+  if (subscriptionType === 'freemium') {
+    // Pour freemium, gain fixe entre 0,10 € et 0,25 €
+    const baseGain = 0.10 + Math.random() * 0.15;
+    
+    // S'assurer qu'on ne dépasse pas la limite quotidienne
+    return Math.min(baseGain, remainingToLimit);
+  }
+  
   // Get the percentage range for random gain based on subscription
   const gainPercentages = MANUAL_SESSION_GAIN_PERCENTAGES[subscriptionType as keyof typeof MANUAL_SESSION_GAIN_PERCENTAGES] 
     || MANUAL_SESSION_GAIN_PERCENTAGES.freemium;
@@ -57,7 +66,6 @@ export const calculateAutoSessionGain = (
   currentDailyGains: number,
   referralCount: number = 0
 ): number => {
-  // Auto sessions generate smaller amounts than manual sessions
   // Get the daily limit for the subscription
   const dailyLimit = SUBSCRIPTION_LIMITS[subscriptionType as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
@@ -72,6 +80,19 @@ export const calculateAutoSessionGain = (
   // If already at or above limit, return 0
   if (remainingToLimit <= 0) {
     return 0;
+  }
+  
+  // For freemium accounts, much smaller automatic gains
+  if (subscriptionType === 'freemium') {
+    // Si on a déjà généré 90% de la limite
+    if (currentDailyGains >= dailyLimit * 0.9) {
+      // Gain très minime pour les 10% restants (entre 0,01 € et 0,02 €)
+      return Math.min(0.01 + Math.random() * 0.01, remainingToLimit);
+    }
+    
+    // Sinon, gain plus standard mais petit (entre 0,01 € et 0,05 €)
+    const tinyGain = Math.min(0.01 + Math.random() * 0.04, remainingToLimit);
+    return parseFloat(tinyGain.toFixed(2));
   }
   
   // Auto sessions are 10-30% smaller than manual sessions
@@ -119,4 +140,3 @@ export const announceSessionStart = () => {
 export const announceSessionComplete = () => {
   window.dispatchEvent(new CustomEvent('session:complete'));
 };
-
