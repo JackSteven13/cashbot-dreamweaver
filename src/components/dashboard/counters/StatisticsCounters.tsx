@@ -6,8 +6,11 @@ import { useUserSession } from '@/hooks/useUserSession';
 
 const StatisticsCounters: React.FC = () => {
   const { userData } = useUserSession();
+  const userId = userData?.profile?.id;
+  
   const { adsCount, revenueCount, incrementStats } = usePersistentStats({
-    autoIncrement: true
+    autoIncrement: true,
+    userId
   });
 
   // Incrémenter automatiquement les compteurs à intervalles réguliers

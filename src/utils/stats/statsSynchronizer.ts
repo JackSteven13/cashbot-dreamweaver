@@ -4,7 +4,7 @@ import { getPersistentStats, savePersistentStats } from './persistentStats';
 /**
  * Synchronise les statistiques entre les différents onglets et sessions
  */
-export const initStatsSync = (userId?: string): void => {
+export const initStatsSync = (userId?: string): (() => void) => {
   // Événement pour synchroniser les statistiques lors du chargement initial
   window.dispatchEvent(new CustomEvent('stats:init'));
   

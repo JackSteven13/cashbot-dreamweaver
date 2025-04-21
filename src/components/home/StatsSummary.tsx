@@ -11,7 +11,8 @@ const StatsSummary: React.FC = () => {
   const userId = userData?.profile?.id;
   
   const { adsCount, revenueCount } = usePersistentStats({
-    autoIncrement: true
+    autoIncrement: true,
+    userId
   });
   
   // Initialiser la synchronisation des statistiques

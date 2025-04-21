@@ -11,11 +11,12 @@ interface UsePersistentStatsOptions {
   initialAdsCount?: number;
   initialRevenueCount?: number;
   autoIncrement?: boolean;
+  userId?: string;
 }
 
 export const usePersistentStats = (options: UsePersistentStatsOptions = {}) => {
   const { userData } = useUserSession();
-  const userId = userData?.profile?.id;
+  const userId = options.userId || userData?.profile?.id;
   
   // Récupérer les statistiques persistantes avec l'ID utilisateur
   const initialStats = getPersistentStats(userId);

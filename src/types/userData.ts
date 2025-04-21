@@ -1,57 +1,38 @@
 
-// UserData type definition update
+export interface UserProfile {
+  id?: string;
+  full_name?: string;
+  avatar_url?: string;
+  email?: string;
+  [key: string]: any;
+}
 
 export interface Transaction {
   id?: string;
   date: string;
-  amount?: number;
-  type?: string;
-  report?: string;
   gain?: number;
+  amount?: number;
+  report?: string;
+  type?: string;
 }
 
 export interface Referral {
-  id: string;
-  referred_user_id: string;
-  referrer_id: string;
-  plan_type: string;
-  commission_rate: number;
-  status: string;
-  created_at: string;
-  updated_at?: string;
-  active?: boolean;
-  commission_earned?: number;
-}
-
-export interface UserProfile {
   id?: string;
-  full_name?: string;
-  email?: string;
-  created_at?: string;
-  access_code?: string;
   referrer_id?: string;
-}
-
-export interface PaymentMethod {
-  id: string;
-  type: string;
-  lastFour: string;
-  isDefault?: boolean;
+  referred_id?: string;
+  status?: string;
+  date?: string;
+  commission?: number;
+  email?: string;
 }
 
 export interface UserData {
-  id?: string;            // Added explicit id field
-  username: string;
+  username?: string;
+  email?: string;
   balance: number;
   subscription: string;
-  referrals: Referral[];
-  referralLink: string;
-  email?: string;
   transactions: Transaction[];
-  dailySessionCount?: number;
-  registeredAt?: Date;
-  lastLogin?: Date;
-  isActive?: boolean;
-  profile?: UserProfile;
-  paymentMethods?: PaymentMethod[];
+  profile: UserProfile;
+  referrals: Referral[];
+  referralLink?: string;
 }

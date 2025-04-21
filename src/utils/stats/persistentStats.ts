@@ -1,177 +1,122 @@
 
-import { getUserSpecificKeys } from '../balance/balanceStorage';
+/**
+ * Utilitaire pour gérer les statistiques persistantes (compteurs de publicités et de revenus)
+ */
 
-// Clés pour stocker les statistiques dans le localStorage
-const GLOBAL_STATS_KEYS = {
-  ADS_COUNT: 'global_stats_ads_count',
-  REVENUE_COUNT: 'global_stats_revenue_count',
-  LAST_UPDATE: 'global_stats_last_update',
+interface PersistentStats {
+  adsCount: number;
+  revenueCount: number;
+}
+
+const STORAGE_KEYS = {
+  globalAdsCount: 'global_stats_ads_count',
+  globalRevenueCount: 'global_stats_revenue_count',
+  userAdsCount: (userId: string) => `stats_ads_count_${userId}`,
+  userRevenueCount: (userId: string) => `stats_revenue_count_${userId}`
 };
-
-// Fonction pour obtenir des clés spécifiques à l'utilisateur
-const getUserStatsKeys = (userId: string) => ({
-  adsCount: `stats_ads_count_${userId}`,
-  revenueCount: `stats_revenue_count_${userId}`,
-  lastUpdate: `stats_last_update_${userId}`,
-});
 
 /**
  * Récupère les statistiques persistantes
- * Assure que les valeurs ne diminuent jamais
+ * @param userId Identifiant utilisateur optionnel
+ * @returns Statistiques récupérées
  */
-export const getPersistentStats = (userId?: string): { adsCount: number; revenueCount: number } => {
+export const getPersistentStats = (userId?: string): PersistentStats => {
   try {
-    // Valeurs par défaut avec progression aléatoire
-    const baseAdsCount = 150000;
-    const baseRevenueCount = 120000;
-    
-    // Récupérer les valeurs stockées
-    let adsCount, revenueCount;
-    
+    // Essayer de récupérer les statistiques spécifiques à l'utilisateur si un ID est fourni
     if (userId) {
-      // Utiliser des clés spécifiques à l'utilisateur si disponible
-      const userKeys = getUserStatsKeys(userId);
-      adsCount = parseFloat(localStorage.getItem(userKeys.adsCount) || '0');
-      revenueCount = parseFloat(localStorage.getItem(userKeys.revenueCount) || '0');
-    } else {
-      // Sinon utiliser les clés globales
-      adsCount = parseFloat(localStorage.getItem(GLOBAL_STATS_KEYS.ADS_COUNT) || '0');
-      revenueCount = parseFloat(localStorage.getItem(GLOBAL_STATS_KEYS.REVENUE_COUNT) || '0');
+      const userAdsCount = localStorage.getItem(STORAGE_KEYS.userAdsCount(userId));
+      const userRevenueCount = localStorage.getItem(STORAGE_KEYS.userRevenueCount(userId));
+      
+      if (userAdsCount && userRevenueCount) {
+        return {
+          adsCount: parseFloat(userAdsCount),
+          revenueCount: parseFloat(userRevenueCount)
+        };
+      }
     }
     
-    // Vérifier si les valeurs sont valides
-    const hasStoredValues = 
-      !isNaN(adsCount) && adsCount > 0 && 
-      !isNaN(revenueCount) && revenueCount > 0;
+    // Sinon, récupérer les statistiques globales
+    const globalAdsCount = localStorage.getItem(STORAGE_KEYS.globalAdsCount);
+    const globalRevenueCount = localStorage.getItem(STORAGE_KEYS.globalRevenueCount);
     
-    // Log pour le débogage
-    console.log("Using stored values:", {
-      adsCount,
-      revenueCount,
-      hasStoredValues
-    });
+    return {
+      adsCount: globalAdsCount ? parseFloat(globalAdsCount) : 1000 + Math.floor(Math.random() * 2000),
+      revenueCount: globalRevenueCount ? parseFloat(globalRevenueCount) : 500 + Math.floor(Math.random() * 1000)
+    };
+  } catch (error) {
+    console.error('Erreur lors de la récupération des statistiques:', error);
     
-    if (hasStoredValues) {
-      // Si les valeurs stockées sont valides, les utiliser
-      return {
-        adsCount,
-        revenueCount
-      };
+    // En cas d'erreur, retourner des valeurs par défaut
+    return {
+      adsCount: 1000 + Math.floor(Math.random() * 2000),
+      revenueCount: 500 + Math.floor(Math.random() * 1000)
+    };
+  }
+};
+
+/**
+ * Enregistre les statistiques persistantes
+ * @param adsCount Nombre de publicités
+ * @param revenueCount Montant des revenus
+ * @param userId Identifiant utilisateur optionnel
+ */
+export const savePersistentStats = (adsCount: number, revenueCount: number, userId?: string): void => {
+  try {
+    // Toujours s'assurer que les nouvelles valeurs sont valides et ne sont pas inférieures aux valeurs actuelles
+    const currentStats = getPersistentStats(userId);
+    
+    const safeAdsCount = Math.max(
+      currentStats.adsCount,
+      isNaN(adsCount) ? currentStats.adsCount : adsCount
+    );
+    
+    const safeRevenueCount = Math.max(
+      currentStats.revenueCount,
+      isNaN(revenueCount) ? currentStats.revenueCount : revenueCount
+    );
+    
+    // Enregistrer les statistiques spécifiques à l'utilisateur si un ID est fourni
+    if (userId) {
+      localStorage.setItem(STORAGE_KEYS.userAdsCount(userId), safeAdsCount.toString());
+      localStorage.setItem(STORAGE_KEYS.userRevenueCount(userId), safeRevenueCount.toString());
     }
     
-    // Si aucune valeur valide n'est trouvée, utiliser les valeurs par défaut
-    const newAdsCount = baseAdsCount + Math.floor(Math.random() * 10000);
-    const newRevenueCount = baseRevenueCount + Math.floor(Math.random() * 15000);
+    // Toujours mettre à jour les statistiques globales
+    localStorage.setItem(STORAGE_KEYS.globalAdsCount, safeAdsCount.toString());
+    localStorage.setItem(STORAGE_KEYS.globalRevenueCount, safeRevenueCount.toString());
+  } catch (error) {
+    console.error('Erreur lors de l\'enregistrement des statistiques:', error);
+  }
+};
+
+/**
+ * Incrémente les statistiques persistantes
+ * @param adsIncrement Incrément pour les publicités
+ * @param revenueIncrement Incrément pour les revenus
+ * @param userId Identifiant utilisateur optionnel
+ * @returns Nouvelles statistiques après incrémentation
+ */
+export const incrementPersistentStats = (
+  adsIncrement: number, 
+  revenueIncrement: number, 
+  userId?: string
+): PersistentStats => {
+  try {
+    const currentStats = getPersistentStats(userId);
     
-    console.log("Compteurs initialisés avec des valeurs cohérentes et progressives:", {
-      adsCount: newAdsCount,
-      revenueCount: newRevenueCount
-    });
+    // Calculer les nouvelles valeurs
+    const newAdsCount = currentStats.adsCount + Math.max(0, adsIncrement);
+    const newRevenueCount = currentStats.revenueCount + Math.max(0, revenueIncrement);
     
-    // Persister les nouvelles valeurs
+    // Enregistrer les nouvelles valeurs
     savePersistentStats(newAdsCount, newRevenueCount, userId);
     
     return {
       adsCount: newAdsCount,
       revenueCount: newRevenueCount
     };
-  } catch (e) {
-    console.error("Erreur lors de la récupération des statistiques persistantes:", e);
-    
-    // Valeurs par défaut en cas d'erreur
-    return {
-      adsCount: 150000,
-      revenueCount: 120000
-    };
+  } catch (error) {
+    console.error('Erreur lors de l\'incrémentation des statistiques:', error);
+    return getPersistentStats(userId);
   }
-};
-
-/**
- * Sauvegarde les statistiques dans le stockage local
- * Garantit que les nouvelles valeurs sont toujours supérieures aux précédentes
- */
-export const savePersistentStats = (
-  newAdsCount: number, 
-  newRevenueCount: number,
-  userId?: string
-): void => {
-  try {
-    // Récupérer les valeurs actuelles pour comparaison
-    const currentStats = getPersistentStats(userId);
-    
-    // S'assurer que les nouvelles valeurs sont toujours supérieures aux précédentes
-    const safeAdsCount = Math.max(currentStats.adsCount, newAdsCount);
-    const safeRevenueCount = Math.max(currentStats.revenueCount, newRevenueCount);
-    
-    // Stocker les valeurs avec des clés spécifiques à l'utilisateur si disponible
-    if (userId) {
-      const userKeys = getUserStatsKeys(userId);
-      localStorage.setItem(userKeys.adsCount, safeAdsCount.toString());
-      localStorage.setItem(userKeys.revenueCount, safeRevenueCount.toString());
-      localStorage.setItem(userKeys.lastUpdate, new Date().toISOString());
-    }
-    
-    // Toujours mettre à jour les valeurs globales également
-    localStorage.setItem(GLOBAL_STATS_KEYS.ADS_COUNT, safeAdsCount.toString());
-    localStorage.setItem(GLOBAL_STATS_KEYS.REVENUE_COUNT, safeRevenueCount.toString());
-    localStorage.setItem(GLOBAL_STATS_KEYS.LAST_UPDATE, new Date().toISOString());
-  } catch (e) {
-    console.error("Erreur lors de la sauvegarde des statistiques persistantes:", e);
-  }
-};
-
-/**
- * Incrémente les compteurs de statistiques progressivement
- */
-export const incrementPersistentStats = (
-  adsIncrement: number,
-  revenueIncrement: number,
-  userId?: string
-): { adsCount: number; revenueCount: number } => {
-  const currentStats = getPersistentStats(userId);
-  
-  const newAdsCount = currentStats.adsCount + adsIncrement;
-  const newRevenueCount = currentStats.revenueCount + revenueIncrement;
-  
-  savePersistentStats(newAdsCount, newRevenueCount, userId);
-  
-  return {
-    adsCount: newAdsCount,
-    revenueCount: newRevenueCount
-  };
-};
-
-/**
- * Réinitialise les statistiques pour un utilisateur spécifique
- */
-export const resetUserStats = (userId: string): void => {
-  if (!userId) return;
-  
-  const userKeys = getUserStatsKeys(userId);
-  localStorage.removeItem(userKeys.adsCount);
-  localStorage.removeItem(userKeys.revenueCount);
-  localStorage.removeItem(userKeys.lastUpdate);
-};
-
-/**
- * Synchronise les statistiques entre les sessions
- * Assure que les compteurs ne diminuent jamais
- */
-export const syncPersistentStats = (
-  serverAdsCount: number,
-  serverRevenueCount: number,
-  userId?: string
-): { adsCount: number; revenueCount: number } => {
-  const currentStats = getPersistentStats(userId);
-  
-  // Toujours prendre la valeur la plus élevée
-  const syncedAdsCount = Math.max(currentStats.adsCount, serverAdsCount);
-  const syncedRevenueCount = Math.max(currentStats.revenueCount, serverRevenueCount);
-  
-  savePersistentStats(syncedAdsCount, syncedRevenueCount, userId);
-  
-  return {
-    adsCount: syncedAdsCount,
-    revenueCount: syncedRevenueCount
-  };
 };

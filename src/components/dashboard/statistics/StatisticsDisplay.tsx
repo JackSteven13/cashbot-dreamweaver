@@ -43,10 +43,12 @@ const StatisticCard: React.FC<StatisticsDisplayProps> = ({
 
 const StatisticsDisplay: React.FC = () => {
   const { userData } = useUserSession();
+  const userId = userData?.profile?.id;
   
   // Utiliser notre hook de statistiques persistantes avec incrémentation automatique
   const { adsCount, revenueCount } = usePersistentStats({
-    autoIncrement: true
+    autoIncrement: true,
+    userId
   });
   
   return (
