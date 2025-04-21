@@ -1,10 +1,11 @@
+
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { TrendingUp, Calendar, Clock, ArrowUpRight, ChevronDown } from 'lucide-react';
 import { formatRevenue } from '@/utils/formatters';
 import EliteBadge from '@/components/subscriptions/EliteBadge';
-import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
-import { WITHDRAWAL_THRESHOLDS } from '@/utils/referral/withdrawalUtils';
+import { SUBSCRIPTION_LIMITS, WITHDRAWAL_THRESHOLDS } from '@/utils/subscription/constants';
+import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
 
 interface OverviewTabProps {
   subscription: string;
@@ -27,7 +28,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 }) => {
   const displaySubscription = subscription === "alpha" ? "starter" : subscription;
 
-  const withdrawalThreshold = WITHDRAWAL_THRESHOLDS[displaySubscription as keyof typeof WITHDRAWAL_THRESHOLDS] ?? 200;
+  // Use getWithdrawalThreshold function instead of trying to access WITHDRAWAL_THRESHOLDS directly
+  const withdrawalThreshold = getWithdrawalThreshold(displaySubscription);
 
   const calculateRevenueForDisplay = () => {
     const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;

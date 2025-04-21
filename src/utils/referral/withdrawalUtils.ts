@@ -1,4 +1,3 @@
-
 /**
  * Utilitaires liés aux seuils de retrait selon le niveau d'abonnement
  */
@@ -123,6 +122,10 @@ export const calculateReferralToReachThreshold = (
     amountNeeded,
     estimatedReferrals
   };
+};
+
+export {
+  WITHDRAWAL_THRESHOLDS
 };
 
 export default {
