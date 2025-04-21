@@ -29,8 +29,10 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
 
   // Fix type mismatch by using a wrapper function
   const updateUserDataWrapper = useCallback((newData: Partial<UserData>) => {
-    // Convert UserData to UserFetcherState format
-    const userFetcherData: Partial<UserFetcherState> = { userData: newData };
+    // Convert UserData to UserFetcherState format - use the userData property to wrap it
+    const userFetcherData: Partial<UserFetcherState> = { 
+      userData: newData as UserData // We're casting here since the structure will be merged with existing data
+    };
     updateUserData(userFetcherData);
   }, [updateUserData]);
 

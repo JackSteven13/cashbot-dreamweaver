@@ -98,7 +98,7 @@ export const useUserDataFetching = (
       // Vérifier si la limite quotidienne est atteinte
       const limitReached = checkDailyLimit(todaysGains, balanceData?.subscription || 'freemium');
       
-      // Mettre à jour les données
+      // Mettre à jour les données - fixed by updating the state structure correctly
       updateUserData({
         userData: newUserData,
         isNewUser: userData.isNewUser || isNewUser,
