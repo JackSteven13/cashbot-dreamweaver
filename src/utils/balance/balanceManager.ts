@@ -1,188 +1,358 @@
 
-import { BalanceWatcher } from './types';
-import { persistBalance, getPersistedBalance } from './balanceStorage';
-import { emitBalanceUpdate, emitBalanceSync, emitSignificantChange } from './balanceEvents';
+/**
+ * Gestionnaire centralisé pour le solde de l'utilisateur
+ * Assure une persistance et une cohérence des données entre les composants
+ */
+
+// Types
+type BalanceWatcher = (balance: number) => void;
+type BalanceChangeData = { oldBalance: number; newBalance: number; gain: number };
 
 class BalanceManager {
   private currentBalance: number = 0;
   private dailyGains: number = 0;
+  private lastDayTracked: string = '';
   private watchers: BalanceWatcher[] = [];
-  private userIds: Set<string> = new Set();
+  private lastBalanceChangeData: BalanceChangeData | null = null;
+  private userId: string | null = null;
   private initialized: boolean = false;
-  private lastUpdateTime: number = 0;
-  private highestBalanceKey = 'highest_balance';
-  private dailyGainsKey = 'daily_gains';
-  private currentUserId: string | null = null;
 
   constructor() {
-    this.init();
+    this.initialize();
   }
 
-  private init() {
-    if (this.initialized) return;
-    
+  /**
+   * Initialise le gestionnaire au démarrage avec les données localStorage
+   */
+  private initialize(): void {
     try {
-      const persistedBalance = getPersistedBalance();
-      const storedDailyGains = localStorage.getItem(this.dailyGainsKey);
+      // Récupérer la date d'aujourd'hui au format YYYY-MM-DD
+      const today = new Date().toISOString().split('T')[0];
       
-      if (storedDailyGains) {
-        const gains = parseFloat(storedDailyGains);
-        if (!isNaN(gains)) {
-          this.dailyGains = gains;
+      // Essayer de restaurer les gains journaliers depuis localStorage
+      const storedDailyGains = localStorage.getItem('dailyGains');
+      const storedDayTracked = localStorage.getItem('lastDayTracked');
+      
+      // Si nous sommes un jour différent, réinitialiser les gains journaliers
+      if (storedDayTracked !== today) {
+        this.dailyGains = 0;
+        this.lastDayTracked = today;
+        
+        localStorage.setItem('dailyGains', '0');
+        localStorage.setItem('lastDayTracked', today);
+      } else if (storedDailyGains) {
+        // Sinon restaurer les gains journaliers
+        this.dailyGains = parseFloat(storedDailyGains);
+        this.lastDayTracked = storedDayTracked || today;
+      } else {
+        // Cas par défaut
+        this.dailyGains = 0;
+        this.lastDayTracked = today;
+        
+        localStorage.setItem('dailyGains', '0');
+        localStorage.setItem('lastDayTracked', today);
+      }
+      
+      // Restaurer le solde depuis localStorage (en vérifiant plusieurs sources)
+      const storedBalance = localStorage.getItem('currentBalance') || localStorage.getItem('lastKnownBalance');
+      if (storedBalance) {
+        this.currentBalance = parseFloat(storedBalance);
+      }
+      
+      this.initialized = true;
+      console.log(`BalanceManager initialized: balance=${this.currentBalance}€, dailyGains=${this.dailyGains}€`);
+    } catch (error) {
+      console.error("Error initializing balance manager:", error);
+    }
+  }
+
+  /**
+   * Recharge le solde depuis localStorage (utile après des modifications externes)
+   */
+  public reloadFromStorage(): void {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Vérifier si le jour a changé
+      const storedDayTracked = localStorage.getItem('lastDayTracked');
+      if (storedDayTracked !== today) {
+        // Nouveau jour, réinitialiser les gains journaliers
+        this.dailyGains = 0;
+        this.lastDayTracked = today;
+        localStorage.setItem('dailyGains', '0');
+        localStorage.setItem('lastDayTracked', today);
+      }
+      
+      // Charger le solde depuis localStorage (en vérifiant plusieurs sources)
+      let highestBalance = this.currentBalance;
+      
+      const sources = [
+        localStorage.getItem('currentBalance'),
+        localStorage.getItem('lastKnownBalance'),
+        localStorage.getItem('highestBalance')
+      ];
+      
+      // Utiliser le solde le plus élevé parmi toutes les sources
+      for (const source of sources) {
+        if (source) {
+          try {
+            const parsedValue = parseFloat(source);
+            if (!isNaN(parsedValue) && parsedValue > highestBalance) {
+              highestBalance = parsedValue;
+            }
+          } catch (e) {
+            console.error("Failed to parse stored balance:", e);
+          }
         }
       }
-
-      this.currentBalance = persistedBalance;
-      this.initialized = true;
-      this.lastUpdateTime = Date.now();
       
-      this.persistBalance();
-      this.updateHighestBalance(this.currentBalance);
-      
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('balance:initialized', {
-          detail: { balance: this.currentBalance }
-        }));
-      }, 100);
-    } catch (e) {
-      console.error("Error initializing BalanceManager:", e);
+      // Mettre à jour uniquement si le solde a changé
+      if (highestBalance !== this.currentBalance) {
+        const oldBalance = this.currentBalance;
+        this.currentBalance = highestBalance;
+        
+        // Notifier les watchers
+        this.notifyWatchers();
+        
+        // Sauvegarder le changement
+        this.lastBalanceChangeData = {
+          oldBalance,
+          newBalance: highestBalance,
+          gain: highestBalance - oldBalance
+        };
+        
+        // Assurer la persistance dans localStorage
+        localStorage.setItem('currentBalance', highestBalance.toString());
+        localStorage.setItem('lastKnownBalance', highestBalance.toString());
+      }
+    } catch (error) {
+      console.error("Error reloading balance from storage:", error);
     }
   }
 
-  getCurrentBalance(userId?: string): number {
-    return this.currentBalance;
-  }
-
-  getDailyGains(): number {
-    return this.dailyGains;
-  }
-
-  // Ajout des méthodes manquantes qui ont causé les erreurs
-  addDailyGain(gain: number): void {
-    if (isNaN(gain) || gain <= 0) return;
-    
-    this.dailyGains += gain;
-    localStorage.setItem(this.dailyGainsKey, this.dailyGains.toString());
-  }
-  
-  setDailyGains(gains: number): void {
-    if (isNaN(gains) || gains < 0) return;
-    
-    this.dailyGains = gains;
-    localStorage.setItem(this.dailyGainsKey, gains.toString());
-  }
-  
-  resetDailyGains(): void {
-    this.dailyGains = 0;
-    localStorage.setItem(this.dailyGainsKey, '0');
-  }
-  
-  setUserId(userId: string | null): void {
-    if (!userId) return;
-    
-    this.currentUserId = userId;
-    this.userIds.add(userId);
-  }
-  
-  cleanupUserBalanceData(): void {
-    this.userIds.clear();
-    this.currentUserId = null;
-  }
-
-  updateBalance(newBalance: number) {
-    if (newBalance < 0 || isNaN(newBalance)) {
-      console.warn("Invalid balance update value:", newBalance);
-      return;
-    }
-
-    if (Math.abs(this.currentBalance - newBalance) < 0.01) return;
-
-    this.currentBalance = parseFloat(newBalance.toFixed(2));
-    this.persistBalance();
-    this.watchers.forEach(watcher => watcher(this.currentBalance));
-  }
-
-  forceBalanceSync(balance: number, userId?: string) {
-    if (typeof balance !== 'number' || isNaN(balance) || balance < 0) {
-      console.warn("Invalid balance for force sync:", balance);
-      return;
-    }
-
-    if (userId) {
-      this.userIds.add(userId);
-    }
-
-    if (balance > this.currentBalance) {
-      this.updateBalance(balance);
-      emitBalanceUpdate({ newBalance: this.currentBalance, userId: Array.from(this.userIds)[0] || null });
-    }
-  }
-
-  addWatcher(watcher: BalanceWatcher) {
+  /**
+   * Ajoute un watcher qui sera notifié lors des changements de solde
+   */
+  public addWatcher(watcher: BalanceWatcher): () => void {
     this.watchers.push(watcher);
-    watcher(this.currentBalance);
+    
+    // Appeler immédiatement le watcher avec la valeur actuelle
+    try {
+      watcher(this.currentBalance);
+    } catch (error) {
+      console.error("Error calling balance watcher:", error);
+    }
+    
+    // Retourner une fonction pour se désabonner
     return () => {
       this.watchers = this.watchers.filter(w => w !== watcher);
     };
   }
 
-  getHighestBalance(userId?: string): number {
-    try {
-      const storedHighest = localStorage.getItem(this.highestBalanceKey);
-      return storedHighest ? parseFloat(storedHighest) : this.currentBalance;
-    } catch (e) {
-      return this.currentBalance;
-    }
-  }
-
-  updateHighestBalance(balance: number, userId?: string): void {
-    if (isNaN(balance) || balance < 0) return;
-    
-    const current = this.getHighestBalance();
-    if (balance > current) {
-      localStorage.setItem(this.highestBalanceKey, balance.toString());
-    }
-  }
-
-  checkForSignificantBalanceChange(serverBalance: number, userId?: string): void {
-    if (!serverBalance || isNaN(serverBalance)) return;
-
-    const difference = Math.abs(this.currentBalance - serverBalance);
-    const threshold = 0.5;
-
-    if (difference > threshold) {
-      const highestBalance = Math.max(this.currentBalance, serverBalance);
-      
-      if (highestBalance !== this.currentBalance) {
-        this.updateBalance(highestBalance);
+  /**
+   * Notifie tous les watchers d'un changement de solde
+   */
+  private notifyWatchers(): void {
+    for (const watcher of this.watchers) {
+      try {
+        watcher(this.currentBalance);
+      } catch (error) {
+        console.error("Error notifying balance watcher:", error);
       }
-
-      emitSignificantChange(this.currentBalance, serverBalance, highestBalance);
     }
   }
 
-  private persistBalance() {
-    persistBalance(this.currentBalance, Array.from(this.userIds)[0]);
-    this.lastUpdateTime = Date.now();
-    this.updateHighestBalance(this.currentBalance);
+  /**
+   * Met à jour le solde avec un gain
+   */
+  public updateBalance(gain: number): void {
+    if (isNaN(gain) || gain < 0) {
+      console.error("Invalid gain value:", gain);
+      return;
+    }
+    
+    // Vérifier si le jour a changé
+    const today = new Date().toISOString().split('T')[0];
+    if (this.lastDayTracked !== today) {
+      // Nouveau jour, réinitialiser les gains journaliers
+      this.dailyGains = 0;
+      this.lastDayTracked = today;
+      localStorage.setItem('dailyGains', '0');
+      localStorage.setItem('lastDayTracked', today);
+    }
+    
+    const oldBalance = this.currentBalance;
+    this.currentBalance = parseFloat((this.currentBalance + gain).toFixed(2));
+    
+    // Enregistrer les informations du changement
+    this.lastBalanceChangeData = {
+      oldBalance,
+      newBalance: this.currentBalance,
+      gain
+    };
+    
+    // Assurer la persistance dans localStorage
+    localStorage.setItem('currentBalance', this.currentBalance.toString());
+    localStorage.setItem('lastKnownBalance', this.currentBalance.toString());
+    
+    // Notifier tous les watchers
+    this.notifyWatchers();
   }
 
-  reset() {
+  /**
+   * Force la synchronisation du solde avec une valeur spécifique
+   */
+  public forceBalanceSync(balance: number, userId?: string): void {
+    if (isNaN(balance) || balance < 0) {
+      console.error("Invalid balance value for sync:", balance);
+      return;
+    }
+    
+    if (userId) {
+      this.userId = userId;
+    }
+    
+    if (balance === this.currentBalance) {
+      return; // Pas de changement nécessaire
+    }
+    
+    const oldBalance = this.currentBalance;
+    this.currentBalance = parseFloat(balance.toFixed(2));
+    
+    // Enregistrer les informations du changement
+    this.lastBalanceChangeData = {
+      oldBalance,
+      newBalance: balance,
+      gain: balance - oldBalance
+    };
+    
+    // Assurer la persistance dans localStorage
+    localStorage.setItem('currentBalance', this.currentBalance.toString());
+    localStorage.setItem('lastKnownBalance', this.currentBalance.toString());
+    
+    // Pour les grandes différences positives, enregistrer également comme solde maximal
+    if (balance > oldBalance + 0.1) {
+      localStorage.setItem('highestBalance', this.currentBalance.toString());
+    }
+    
+    // Notifier tous les watchers
+    this.notifyWatchers();
+  }
+
+  /**
+   * Ajoute un gain journalier au compteur
+   */
+  public addDailyGain(gain: number): void {
+    if (isNaN(gain) || gain < 0) {
+      return;
+    }
+    
+    // Vérifier si le jour a changé
+    const today = new Date().toISOString().split('T')[0];
+    if (this.lastDayTracked !== today) {
+      // Nouveau jour, réinitialiser les gains journaliers
+      this.dailyGains = gain;
+      this.lastDayTracked = today;
+    } else {
+      // Même jour, ajouter au compteur
+      this.dailyGains = parseFloat((this.dailyGains + gain).toFixed(2));
+    }
+    
+    // Assurer la persistance dans localStorage
+    localStorage.setItem('dailyGains', this.dailyGains.toString());
+    localStorage.setItem('lastDayTracked', today);
+  }
+
+  /**
+   * Définit explicitement la valeur des gains journaliers
+   */
+  public setDailyGains(gains: number): void {
+    if (isNaN(gains) || gains < 0) {
+      return;
+    }
+    
+    this.dailyGains = parseFloat(gains.toFixed(2));
+    
+    // Assurer la persistance dans localStorage
+    localStorage.setItem('dailyGains', this.dailyGains.toString());
+    localStorage.setItem('lastDayTracked', this.lastDayTracked);
+  }
+
+  /**
+   * Récupère le solde actuel
+   */
+  public getCurrentBalance(): number {
+    // Si non initialisé, essayer de charger depuis localStorage
+    if (!this.initialized) {
+      this.reloadFromStorage();
+    }
+    return this.currentBalance;
+  }
+
+  /**
+   * Récupère les gains journaliers
+   */
+  public getDailyGains(): number {
+    // Vérifier si le jour a changé
+    const today = new Date().toISOString().split('T')[0];
+    if (this.lastDayTracked !== today) {
+      // Nouveau jour, réinitialiser les gains journaliers
+      this.dailyGains = 0;
+      this.lastDayTracked = today;
+      localStorage.setItem('dailyGains', '0');
+      localStorage.setItem('lastDayTracked', today);
+    }
+    
+    return this.dailyGains;
+  }
+
+  /**
+   * Récupère les dernières informations de changement de solde
+   */
+  public getLastBalanceChange(): BalanceChangeData | null {
+    return this.lastBalanceChangeData;
+  }
+
+  /**
+   * Réinitialise le solde et les gains journaliers
+   */
+  public reset(): void {
+    const oldBalance = this.currentBalance;
     this.currentBalance = 0;
     this.dailyGains = 0;
-    this.watchers = [];
-    this.userIds = new Set();
-    this.initialized = false;
-    this.lastUpdateTime = 0;
+    
+    // Enregistrer les informations du changement
+    this.lastBalanceChangeData = {
+      oldBalance,
+      newBalance: 0,
+      gain: -oldBalance
+    };
+    
+    // Assurer la persistance dans localStorage
+    localStorage.setItem('currentBalance', '0');
+    localStorage.setItem('lastKnownBalance', '0');
+    localStorage.setItem('dailyGains', '0');
+    localStorage.setItem('lastDayTracked', this.lastDayTracked);
+    
+    // Notifier tous les watchers
+    this.notifyWatchers();
+  }
 
-    localStorage.removeItem(this.highestBalanceKey);
-    localStorage.removeItem(this.dailyGainsKey);
-    localStorage.removeItem('currentBalance');
-    localStorage.removeItem('lastKnownBalance');
+  /**
+   * Vérifie si l'utilisateur est identifié
+   */
+  public hasUserId(): boolean {
+    return this.userId !== null;
+  }
 
-    this.init();
+  /**
+   * Définit l'ID utilisateur
+   */
+  public setUserId(userId: string): void {
+    this.userId = userId;
   }
 }
 
+// Exporter une instance unique du gestionnaire pour toute l'application
 const balanceManager = new BalanceManager();
 export default balanceManager;

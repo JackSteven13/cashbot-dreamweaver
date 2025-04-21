@@ -19,7 +19,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
   const [displayedBalance, setDisplayedBalance] = useState(() => {
     const managerBalance = balanceManager.getCurrentBalance();
     const safeManagerBalance = isNaN(managerBalance) ? 0 : managerBalance;
-    return safeManagerBalance || safeBalance;
+    return Math.max(safeManagerBalance, safeBalance, 0);
   });
   
   const [isAnimating, setIsAnimating] = useState(false);
@@ -27,7 +27,21 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
   const [gain, setGain] = useState<number | null>(null);
   const balanceRef = useRef<HTMLDivElement>(null);
   const lastUpdateTimeRef = useRef<number>(Date.now());
-  const updateDebounceTime = 15000; // Temps minimum entre deux mises à jour
+  const updateDebounceTime = 2000; // Temps minimum entre deux mises à jour (réduit à 2s)
+
+  // Synchroniser le solde affiché avec celui du prop balance si différent
+  useEffect(() => {
+    if (Math.abs(safeBalance - displayedBalance) > 0.01) {
+      const now = Date.now();
+      // S'assurer que la mise à jour n'est pas trop fréquente
+      if (now - lastUpdateTimeRef.current > 5000) {
+        console.log(`Synchronisation du solde affiché avec le prop balance: ${displayedBalance} -> ${safeBalance}`);
+        setPreviousBalance(displayedBalance);
+        setDisplayedBalance(safeBalance);
+        lastUpdateTimeRef.current = now;
+      }
+    }
+  }, [safeBalance, displayedBalance]);
   
   // S'abonner aux changements dans le gestionnaire de solde
   useEffect(() => {
@@ -39,23 +53,24 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
       }
       
       const now = Date.now();
-      if (now - lastUpdateTimeRef.current < 15000) {
-        console.log("Mise à jour du solde trop fréquente, ignorée");
+      if (now - lastUpdateTimeRef.current < updateDebounceTime) {
+        console.log("Mise à jour du solde trop fréquente, débounce actif");
         return;
       }
       
       lastUpdateTimeRef.current = now;
-      
       const oldBalance = isNaN(displayedBalance) ? 0 : displayedBalance;
       
-      if (Math.abs(newBalance - oldBalance) > 0.1) {
+      if (Math.abs(newBalance - oldBalance) > 0.001) {
+        console.log(`Mise à jour du solde par watcher: ${oldBalance} -> ${newBalance}`);
         setPreviousBalance(oldBalance);
-        const gainAmount = Math.min(0.5, newBalance - oldBalance);
+        const gainAmount = Math.max(0, newBalance - oldBalance);
         if (gainAmount > 0) {
           setGain(gainAmount);
+          setIsAnimating(true);
         }
-        setIsAnimating(true);
-        setDisplayedBalance(oldBalance + gainAmount);
+        setDisplayedBalance(newBalance);
+        
         const animationTimer = setTimeout(() => {
           setIsAnimating(false);
           setGain(null);
@@ -67,44 +82,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
     return unsubscribe;
   }, [displayedBalance]);
   
-  // Mettre à jour si la prop balance change significativement
-  useEffect(() => {
-    const now = Date.now();
-    if (now - lastUpdateTimeRef.current < 30000) {
-      return;
-    }
-    
-    // S'assurer que toutes les valeurs sont des nombres valides
-    const safeDisplayed = isNaN(displayedBalance) ? 0 : displayedBalance;
-    const safeBalanceProp = isNaN(balance) ? 0 : balance;
-    const currentManagerBalance = isNaN(balanceManager.getCurrentBalance()) ? 0 : balanceManager.getCurrentBalance();
-    
-    if (safeBalanceProp > 0 && Math.abs(safeBalanceProp - safeDisplayed) > 0.2) {
-      const gainAmount = Math.min(0.5, safeBalanceProp - safeDisplayed);
-      if (gainAmount > 0) {
-        setPreviousBalance(safeDisplayed);
-        setGain(gainAmount);
-        setIsAnimating(true);
-        setDisplayedBalance(prev => {
-          const safePrev = isNaN(prev) ? 0 : prev;
-          return safePrev + gainAmount;
-        });
-        
-        // Synchroniser avec le gestionnaire de solde si nécessaire
-        if (Math.abs(safeBalanceProp - currentManagerBalance) > 0.2) {
-          balanceManager.forceBalanceSync(safeDisplayed + gainAmount);
-        }
-        
-        const animationTimer = setTimeout(() => {
-          setIsAnimating(false);
-          setGain(null);
-        }, 2500);
-        lastUpdateTimeRef.current = now;
-        return () => clearTimeout(animationTimer);
-      }
-    }
-  }, [balance, displayedBalance]);
-  
+  // Écouter les événements de mise à jour du solde
   useEffect(() => {
     const handleBalanceUpdate = (event: CustomEvent) => {
       const now = Date.now();
@@ -119,16 +97,22 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
       const oldBalanceFromEvent = event.detail?.oldBalance;
       
       if (typeof gain === 'number' && gain > 0) {
-        console.log("Updating balance with gain:", gain);
+        console.log(`Mise à jour du solde avec gain: +${gain}€`);
         
         const oldBalance = oldBalanceFromEvent || displayedBalance;
         const calculatedNewBalance = parseFloat((oldBalance + gain).toFixed(2));
         
+        // Toujours mettre à jour balanceManager pour la persistance
+        balanceManager.updateBalance(gain);
+        balanceManager.forceBalanceSync(calculatedNewBalance);
+        
+        // Mettre à jour l'état local pour l'affichage
         setPreviousBalance(oldBalance);
         setDisplayedBalance(calculatedNewBalance);
         setIsAnimating(shouldAnimate !== false);
         setGain(gain);
         
+        // Persister en localStorage
         localStorage.setItem('currentBalance', calculatedNewBalance.toString());
         localStorage.setItem('lastKnownBalance', calculatedNewBalance.toString());
         
@@ -139,30 +123,29 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
         }
       }
       else if (typeof newBalance === 'number' && newBalance > 0 && 
-          Math.abs(newBalance - displayedBalance) > 0.01) {
-        console.log("Updating balance with new balance:", newBalance);
+          Math.abs(newBalance - displayedBalance) > 0.001) {
+        console.log(`Mise à jour du solde avec nouvelle valeur: ${newBalance}€`);
         
-        const implicitGain = newBalance - displayedBalance;
+        const implicitGain = Math.max(0, newBalance - displayedBalance);
         
-        if (implicitGain < 0) {
-          setDisplayedBalance(newBalance);
-          return;
-        }
+        // Toujours mettre à jour balanceManager
+        balanceManager.forceBalanceSync(newBalance);
         
         setPreviousBalance(displayedBalance);
         setDisplayedBalance(newBalance);
-        setIsAnimating(shouldAnimate !== false);
+        setIsAnimating(shouldAnimate !== false && implicitGain > 0);
         
         if (implicitGain > 0) {
           setGain(implicitGain);
         }
         
+        // Persister en localStorage
         localStorage.setItem('currentBalance', newBalance.toString());
         localStorage.setItem('lastKnownBalance', newBalance.toString());
         
         lastUpdateTimeRef.current = now;
         
-        if (shouldAnimate !== false) {
+        if (shouldAnimate !== false && implicitGain > 0) {
           setTimeout(() => setIsAnimating(false), 2500);
         }
       }

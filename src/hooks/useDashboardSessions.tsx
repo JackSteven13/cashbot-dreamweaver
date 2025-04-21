@@ -24,6 +24,7 @@ const useDashboardSessions = ({
   const [lastSessionTimestamp, setLastSessionTimestamp] = useState<number | null>(Number(localStorage.getItem('lastSessionTimestamp')) || null);
   const { isBotActive: botActiveFromHook } = useBotStatus();
   const [isBotActive, setBotActive] = useState(botActiveFromHook);
+  const persistedBalanceRef = useRef<number | null>(null);
 
   // Persister le dernier horodatage de session entre les charges de page
   useEffect(() => {
@@ -31,6 +32,19 @@ const useDashboardSessions = ({
       localStorage.setItem('lastSessionTimestamp', lastSessionTimestamp.toString());
     }
   }, [lastSessionTimestamp]);
+  
+  // S'assurer que le solde est correctement initialisé et persisté
+  useEffect(() => {
+    if (userData && userData.balance) {
+      // Initialiser le gestionnaire de solde avec la valeur actuelle
+      balanceManager.forceBalanceSync(userData.balance, userData.id);
+      persistedBalanceRef.current = userData.balance;
+      
+      // Stocker le solde dans localStorage pour persistance entre les sessions
+      localStorage.setItem('currentBalance', userData.balance.toString());
+      localStorage.setItem('lastKnownBalance', userData.balance.toString());
+    }
+  }, [userData]);
   
   // Restaurer l'état du bot depuis le localStorage et s'assurer qu'il n'est pas actif si la limite est atteinte
   useEffect(() => {
@@ -135,6 +149,16 @@ const useDashboardSessions = ({
       
       // Démarrer la session
       await manualSessions.startSession();
+      
+      // Déclencher une mise à jour immédiate du solde UI
+      const currentBalance = balanceManager.getCurrentBalance();
+      window.dispatchEvent(new CustomEvent('balance:force-update', {
+        detail: { 
+          newBalance: currentBalance,
+          timestamp: Date.now(), 
+          animate: true 
+        }
+      }));
     } catch (error) {
       console.error("Erreur lors du démarrage de la session:", error);
       toast({
@@ -174,6 +198,15 @@ const useDashboardSessions = ({
       
       // Réinitialiser le gestionnaire de solde local
       balanceManager.reset();
+      
+      // Forcer la mise à jour de l'UI
+      window.dispatchEvent(new CustomEvent('balance:force-update', {
+        detail: { 
+          newBalance: 0,
+          timestamp: Date.now(), 
+          animate: false 
+        }
+      }));
       
       toast({
         title: "Retrait demandé",

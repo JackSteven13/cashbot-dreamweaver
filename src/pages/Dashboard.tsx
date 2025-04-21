@@ -22,11 +22,41 @@ const Dashboard = () => {
   const [isPreloaded, setIsPreloaded] = useState(false);
   const [lastProcessTime, setLastProcessTime] = useState<number>(0);
   const todaysGainsRef = React.useRef<number>(0);
+  const [lastBalanceUpdate, setLastBalanceUpdate] = useState<number>(Date.now());
   
-  // Fonction pour mettre à jour le solde
-  const updateBalance = async (gain: number, report: string) => {
-    console.log(`Updating balance with gain: ${gain}, report: ${report}`);
-    await refreshData();
+  // Fonction pour mettre à jour le solde avec persistance
+  const updateBalance = async (gain: number, report: string, forceUpdate: boolean = false) => {
+    console.log(`Updating balance with gain: ${gain}, report: ${report}, forceUpdate: ${forceUpdate}`);
+    
+    // Mise à jour locale du solde dans le balanceManager
+    const currentBalance = balanceManager.getCurrentBalance();
+    const newBalance = parseFloat((currentBalance + gain).toFixed(2));
+    
+    // Forcer la mise à jour de l'UI via événements
+    window.dispatchEvent(new CustomEvent('balance:update', {
+      detail: { 
+        amount: gain, 
+        currentBalance: newBalance, 
+        animate: true 
+      }
+    }));
+    
+    // Également forcer la mise à jour directe
+    window.dispatchEvent(new CustomEvent('balance:force-update', {
+      detail: { 
+        newBalance: newBalance,
+        gain: gain,
+        timestamp: Date.now() 
+      }
+    }));
+    
+    // Mettre à jour timestamp
+    setLastBalanceUpdate(Date.now());
+    
+    // Rafraîchir les données utilisateur depuis le serveur si demandé
+    if (forceUpdate) {
+      await refreshData();
+    }
   };
 
   // Utilisation du hook useAutomaticRevenue avec activation forcée
@@ -42,16 +72,24 @@ const Dashboard = () => {
   // Utiliser le planificateur de sessions automatiques
   useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
   
-  // Préchargement
+  // Préchargement et initialisation du solde
   useEffect(() => {
-    if (!isPreloaded) {
-      const timer = setTimeout(() => {
-        setIsPreloaded(true);
-      }, 100);
+    if (!isPreloaded && userData && userData.balance) {
+      // Initialiser immédiatement le balanceManager avec le solde de l'utilisateur
+      balanceManager.forceBalanceSync(userData.balance, userData.id || userData.profile?.id);
       
-      return () => clearTimeout(timer);
+      // Déclencher un événement de mise à jour du solde pour mettre à jour l'UI
+      window.dispatchEvent(new CustomEvent('balance:force-update', {
+        detail: { 
+          newBalance: userData.balance,
+          timestamp: Date.now() 
+        }
+      }));
+      
+      // Marquer comme préchargé
+      setIsPreloaded(true);
     }
-  }, [isPreloaded]);
+  }, [userData, isPreloaded]);
   
   // Redirection si non authentifié
   useEffect(() => {
@@ -64,6 +102,27 @@ const Dashboard = () => {
       }, 300);
     }
   }, [user, authLoading, navigate]);
+  
+  // Fonction pour forcer une mise à jour périodique du solde dans l'interface
+  const forceBalanceRefresh = useCallback(() => {
+    if (!userData) return;
+    
+    const currentBalance = balanceManager.getCurrentBalance();
+    if (currentBalance <= 0) return;
+    
+    console.log("Forçage d'une mise à jour du solde sur l'interface:", currentBalance);
+    
+    // Déclencher la mise à jour de l'UI
+    window.dispatchEvent(new CustomEvent('balance:force-update', {
+      detail: { 
+        newBalance: currentBalance,
+        timestamp: Date.now(),
+        userId: userData.id || userData.profile?.id
+      }
+    }));
+    
+    setLastBalanceUpdate(Date.now());
+  }, [userData]);
   
   // Message de bienvenue et initialisation
   useEffect(() => {
@@ -87,172 +146,112 @@ const Dashboard = () => {
       setLastProcessTime(initTimestamp);
 
       if (userData) {
-        console.log("Initiating first automatic revenue on dashboard ready");
+        console.log("Initialisation des revenus automatiques et du solde");
         setTimeout(() => {
-          // Vérifier si c'est un nouvel utilisateur
-          const isNewUser = !userData.balance || userData.balance <= 0;
+          // Pour tous les utilisateurs, initialiser le solde correctement
+          balanceManager.forceBalanceSync(userData.balance || 0, userData.id || userData.profile?.id);
           
-          // Pour les utilisateurs existants, initialiser le solde
-          if (!isNewUser) {
-            balanceManager.forceBalanceSync(userData.balance || 0);
+          // Vérifier s'il faut simuler une progression depuis la dernière connexion
+          const lastVisit = localStorage.getItem('last_visit_date');
+          const now = new Date().toDateString();
+          
+          if (lastVisit && lastVisit !== now) {
+            // Calculer le nombre de jours écoulés
+            const lastVisitDate = new Date(lastVisit);
+            lastVisitDate.setHours(0, 0, 0, 0);
             
-            // Vérifier s'il faut simuler une progression depuis la dernière connexion
-            const lastVisit = localStorage.getItem('last_visit_date');
-            const now = new Date().toDateString();
+            const currentDate = new Date();
+            currentDate.setHours(0, 0, 0, 0);
             
-            if (lastVisit && lastVisit !== now) {
-              // Calculer le nombre de jours écoulés
-              const lastVisitDate = new Date(lastVisit);
-              lastVisitDate.setHours(0, 0, 0, 0);
-              
-              const currentDate = new Date();
-              currentDate.setHours(0, 0, 0, 0);
-              
-              const daysDifference = Math.floor((currentDate.getTime() - lastVisitDate.getTime()) / (1000 * 60 * 60 * 24));
-              
-              if (daysDifference > 0) {
-                // Déclencher plusieurs sessions pour simuler la progression pendant l'absence
-                setTimeout(() => {
-                  toast({
-                    title: "Mise à jour du solde",
-                    description: `Progression pendant votre absence: ${daysDifference} jour(s)`,
-                    duration: 4000
-                  });
-                }, 1500);
-              }
+            const daysDifference = Math.floor((currentDate.getTime() - lastVisitDate.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (daysDifference > 0) {
+              // Déclencher plusieurs sessions pour simuler la progression pendant l'absence
+              setTimeout(() => {
+                generateAutomaticRevenue(true);
+                toast({
+                  title: "Mise à jour de votre solde",
+                  description: `Progression pendant votre absence: +${(Math.random() * 0.1 + 0.05).toFixed(2)}€`,
+                  duration: 4000
+                });
+              }, 2000);
             }
           }
           
-          // Générer un premier revenu automatique sans dépasser la limite
-          if (userData.subscription === 'freemium') {
-            // Pour les comptes freemium, limiter strictement à 0.5€
-            const currentDailyGains = balanceManager.getDailyGains();
-            if (currentDailyGains < 0.45) {
-              // Générer un petit revenu initial si on est loin de la limite
-              generateAutomaticRevenue(true);
-            }
-          } else {
-            // Pour les autres abonnements, appliquer la même logique de vérification
+          // Enregistrer la visite d'aujourd'hui
+          localStorage.setItem('last_visit_date', now);
+          
+          // Générer un premier revenu automatique
+          setTimeout(() => {
             generateAutomaticRevenue(true);
-          }
-        }, 2000);
+          }, 3000);
+        }, 1000);
       }
     }
   }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue]);
 
-  // Génération de revenus moins fréquente 
+  // Mise à jour périodique du solde (toutes les 15 secondes)
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      forceBalanceRefresh();
+    }, 15000);
+    
+    return () => clearInterval(refreshInterval);
+  }, [forceBalanceRefresh]);
+
+  // Génération de revenus périodique
   useEffect(() => {
     if (userData) {
-      // Vérifier si l'utilisateur est sur un compte freemium
-      const isFreemium = userData.subscription === 'freemium';
-      const dailyLimit = isFreemium ? 0.5 : 5.0;
-      
-      // Intervalle pour les mises à jour automatiques avec fréquence réduite
+      // Intervalle pour les mises à jour automatiques
       const revenueInterval = setInterval(() => {
         const now = Date.now();
         
-        // Au moins 30 secondes entre les mises à jour
-        if (now - lastProcessTime > 30000) {
-          console.log("Generating revenue: automatic update");
+        // Attendre au moins 40 secondes entre les générations de gains
+        if (now - lastProcessTime > 40000) {
+          console.log("Génération de revenus automatique périodique");
           setLastProcessTime(now);
           
-          // Vérifier si la limite quotidienne est atteinte
-          const currentDailyGains = balanceManager.getDailyGains();
-          if (currentDailyGains >= dailyLimit * 0.9) {
-            console.log(`Limite quotidienne presque atteinte: ${currentDailyGains}€/${dailyLimit}€, pas de génération auto`);
-            return;
-          }
-          
-          // Probabilité réduite de générer un revenu
-          if (Math.random() < 0.2) {
-            // Générer un nouveau revenu automatique (petit)
-            generateAutomaticRevenue();
-          }
-          
-          // Forcer une mise à jour du solde
-          window.dispatchEvent(new CustomEvent('balance:force-update', { 
-            detail: { timestamp: now, animate: Math.random() < 0.1 }
-          }));
+          // Générer un nouveau revenu automatique
+          generateAutomaticRevenue();
         }
-      }, 45000 + Math.random() * 30000); // Entre 45-75 secondes
+        
+        // Forcer une mise à jour du solde dans l'UI 
+        // (moins fréquemment, seulement si le dernier update est ancien)
+        if (now - lastBalanceUpdate > 20000) { 
+          forceBalanceRefresh();
+        }
+      }, 40000 + Math.random() * 15000); // Entre 40-55 secondes
       
       return () => clearInterval(revenueInterval);
     }
-  }, [userData, generateAutomaticRevenue, lastProcessTime]);
+  }, [userData, generateAutomaticRevenue, lastProcessTime, lastBalanceUpdate, forceBalanceRefresh]);
 
-  // Vérification moins fréquente
-  useEffect(() => {
-    if (userData) {
-      const isFreemium = userData.subscription === 'freemium';
-      const dailyLimit = isFreemium ? 0.5 : 5.0;
-      
-      const quickInterval = setInterval(() => {
-        // Vérifier que le bot est toujours actif
-        const botShouldBeActive = true;
-        
-        if (!isBotActive && botShouldBeActive) {
-          // Vérifier si la limite quotidienne est atteinte avant d'activer le bot
-          const currentDailyGains = balanceManager.getDailyGains();
-          if (currentDailyGains < dailyLimit * 0.9) {
-            // Réactiver le bot s'il n'est pas actif et que la limite n'est pas atteinte
-            window.dispatchEvent(new CustomEvent('bot:status-change', {
-              detail: { active: true }
-            }));
-            
-            console.log("Bot réactivé par la vérification");
-          }
-        }
-        
-        // Déclencher une mise à jour du solde seulement parfois
-        if (Math.random() < 0.2) {
-          window.dispatchEvent(new CustomEvent('balance:force-update', {
-            detail: { timestamp: Date.now(), animate: false }
-          }));
-        }
-        
-      }, 30000); // Vérification toutes les 30 secondes
-      
-      return () => clearInterval(quickInterval);
-    }
-  }, [userData, isBotActive]);
-
-  // Heartbeat moins fréquent
+  // Heartbeat moins fréquent pour forcer la génération de revenus
   useEffect(() => {
     const heartbeatInterval = setInterval(() => {
       if (userData) {
         const now = Date.now();
         
-        // Vérifier le temps écoulé depuis le dernier traitement
-        if (now - lastProcessTime > 180000) { // Au moins 3 minutes entre les heartbeats
-          console.log("Dashboard heartbeat - checking revenue generation");
+        // Au moins 3 minutes entre les heartbeats
+        if (now - lastProcessTime > 180000) {
+          console.log("Dashboard heartbeat - vérification et génération de revenus");
           
           // Mettre à jour le timestamp du dernier processus
           setLastProcessTime(now);
           
-          // Vérifier si la limite quotidienne est atteinte avant de générer des revenus
-          const isFreemium = userData.subscription === 'freemium';
-          const dailyLimit = isFreemium ? 0.5 : 5.0;
-          const currentDailyGains = balanceManager.getDailyGains();
-          
-          if (currentDailyGains < dailyLimit * 0.9) {
-            // Forcer une mise à jour du solde
-            window.dispatchEvent(new CustomEvent('balance:force-update', { 
-              detail: { timestamp: now, animate: false }
-            }));
-            
-            // Génération de revenus avec faible probabilité
-            if (Math.random() < 0.2) {
-              generateAutomaticRevenue();
-            }
-          } else {
-            console.log(`Limite quotidienne presque atteinte: ${currentDailyGains}€/${dailyLimit}€, pas de génération auto`);
+          // Générer un revenu avec une probabilité élevée
+          if (Math.random() < 0.9) {
+            generateAutomaticRevenue();
           }
+          
+          // Forcer la mise à jour de l'UI
+          forceBalanceRefresh();
         }
       }
     }, 180000); // Heartbeat toutes les 3 minutes
     
     return () => clearInterval(heartbeatInterval);
-  }, [userData, generateAutomaticRevenue, lastProcessTime]);
+  }, [userData, generateAutomaticRevenue, lastProcessTime, forceBalanceRefresh]);
   
   if (authLoading || !user) {
     return <DashboardSkeleton username="Chargement..." />;
