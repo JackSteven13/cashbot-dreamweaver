@@ -1,17 +1,17 @@
 
-// Importer et ré-exporter depuis le module de subscription
+// Import from the subscription module
 import { 
-  SUBSCRIPTION_LIMITS, 
-  getEffectiveSubscription as getEffectiveSubscriptionOriginal,
-  checkDailyLimit
+  SUBSCRIPTION_LIMITS as SubscriptionLimits, 
+  getEffectiveSubscription,
+  checkDailyLimit as checkDailyLimitOriginal
 } from './subscription';
 
-// Ré-exporter les fonctions et constantes
-export const SUBSCRIPTION_LIMITS = SUBSCRIPTION_LIMITS;
-export const getEffectiveSubscription = getEffectiveSubscriptionOriginal;
-export const checkDailyLimit = checkDailyLimit;
+// Re-export the imported functions and constants
+export const SUBSCRIPTION_LIMITS = SubscriptionLimits;
+export const checkDailyLimit = checkDailyLimitOriginal;
+export { getEffectiveSubscription };
 
-// Fonctions supplémentaires spécifiques à ce fichier
+// Additional functions specific to this file
 export const getSubscriptionName = (subscriptionCode: string): string => {
   switch (subscriptionCode) {
     case 'freemium':
@@ -39,5 +39,21 @@ export const getMaxSessionsPerDay = (subscription: string): number => {
       return 60;
     default:
       return 1;
+  }
+};
+
+// Add withdrawal threshold utility
+export const getWithdrawalThreshold = (subscription: string): number => {
+  switch (subscription) {
+    case 'freemium':
+      return 300;
+    case 'starter':
+      return 600;
+    case 'gold':
+      return 1200;
+    case 'elite':
+      return 2500;
+    default:
+      return 300;
   }
 };

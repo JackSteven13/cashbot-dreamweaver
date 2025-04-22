@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
 import { getEffectiveSubscription } from '@/utils/subscription';
+import { getWithdrawalThreshold, isWithdrawalAllowed, calculateReferralToReachThreshold } from '@/utils/referral/withdrawalUtils';
+import { toast } from '@/components/ui/use-toast';
 
 interface UseSummaryPanelProps {
   balance: number;
@@ -42,7 +45,7 @@ export const useSummaryPanel = ({
     setDisplayBalance(Math.max(0, balance));
     
     // Calculer les suggestions de parrainage
-    const suggestion = withdrawalUtils.calculateReferralToReachThreshold(subscription, balance);
+    const suggestion = calculateReferralToReachThreshold(subscription, balance);
     setReferralSuggestion(suggestion);
     
     // Mettre à jour le seuil de retrait
@@ -92,7 +95,7 @@ export const useSummaryPanel = ({
       }
       
       // Vérifier si les retraits sont autorisés pour cet abonnement avec ce nombre de parrainages
-      const withdrawalAllowed = withdrawalUtils.isWithdrawalAllowed(subscription, referralCount);
+      const withdrawalAllowed = isWithdrawalAllowed(subscription, referralCount);
       if (!withdrawalAllowed) {
         if (subscription === 'freemium') {
           toast({

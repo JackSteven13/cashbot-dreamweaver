@@ -17,7 +17,19 @@ export const resetDailyGainsAtMidnight = () => {
     console.log(`Resetting daily gains (last reset: ${lastResetDate || 'never'}, today: ${today})`);
     
     // Reset daily gains in balance manager
-    balanceManager.setDailyGains(0);
+    const dailyGains = balanceManager.getDailyGains();
+    if (dailyGains > 0) {
+      // Store the previous value before resetting
+      localStorage.setItem('previousDailyGains', dailyGains.toString());
+      
+      // Manually set dailyGains to 0 in localStorage since balanceManager might not have setDailyGains
+      localStorage.setItem('dailyGains', '0');
+      
+      // Update the manager if possible
+      if (typeof balanceManager.setDailyGains === 'function') {
+        balanceManager.setDailyGains(0);
+      }
+    }
     
     // Reset freemium session limit
     localStorage.removeItem('freemium_daily_limit_reached');

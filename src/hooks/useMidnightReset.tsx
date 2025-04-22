@@ -1,160 +1,114 @@
 
 import { useEffect, useRef } from 'react';
-import { UserData } from '@/types/userData';
+import { resetDailyGainsAtMidnight } from '@/utils/balance/persistentGainsTracker';
 import { shouldResetDailyCounters } from '@/utils/subscription';
-import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import balanceManager from '@/utils/balance/balanceManager';
 
-/**
- * Hook to manage daily reset functionality at midnight
- */
-export const useMidnightReset = (
-  userData: UserData,
-  incrementSessionCount: () => Promise<void>,
-  updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>,
-  setShowLimitAlert: (show: boolean) => void
-) => {
-  const lastResetTimeRef = useRef<number>(Date.now());
-  const resetInProgressRef = useRef<boolean>(false);
-  
-  // Fonction pour mettre à jour la dernière activité de l'utilisateur
-  const updateUserActivity = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) {
-        // Mettre à jour le timestamp de dernière activité dans localStorage
-        localStorage.setItem('lastActive', new Date().toISOString());
-        
-        // Stocker aussi l'ID utilisateur pour éviter la confusion entre comptes
-        localStorage.setItem('lastActiveUserId', session.user.id);
-      }
-    } catch (e) {
-      console.error("Erreur lors de la mise à jour de l'activité utilisateur:", e);
-    }
-  };
-  
-  useEffect(() => {
-    // Mettre à jour l'activité au montage du hook
-    updateUserActivity();
+export const useMidnightReset = () => {
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCheckedRef = useRef<Date>(new Date());
+
+  // Function to reset counters and storage at midnight
+  const resetAtMidnight = () => {
+    console.log('Checking if midnight reset is needed...');
     
-    // Vérifier si nous avons besoin de nettoyer les données locales
-    // pour éviter la contamination entre utilisateurs différents
-    const currentUserId = userData?.profile?.id || null;
-    const storedUserId = localStorage.getItem('lastActiveUserId');
+    // Check if we should reset counters
+    const shouldReset = shouldResetDailyCounters();
     
-    if (currentUserId && storedUserId && currentUserId !== storedUserId) {
-      console.log("Changement d'utilisateur détecté, nettoyage des données locales");
-      // Nettoyer les données spécifiques à l'utilisateur
-      localStorage.removeItem('currentBalance');
-      localStorage.removeItem('lastKnownBalance');
-      localStorage.removeItem('highestBalance');
-      localStorage.removeItem('lastAutoSessionDate');
-      localStorage.removeItem('lastAutoSessionTime');
-      localStorage.removeItem('balanceState');
+    if (shouldReset) {
+      console.log('Midnight detected, resetting counters...');
       
-      // Mettre à jour l'ID utilisateur
-      localStorage.setItem('lastActiveUserId', currentUserId);
-    }
-    
-    const checkForDailyReset = () => {
-      // Check if we should reset based on last reset time
-      if (!resetInProgressRef.current && shouldResetDailyCounters(lastResetTimeRef.current)) {
-        console.log("Daily reset triggered by time check");
-        performDailyReset();
-      }
-    };
-    
-    // Check immediately when the component mounts
-    checkForDailyReset();
-    
-    // Set up an interval to check regularly (every 5 minutes)
-    const intervalId = setInterval(checkForDailyReset, 5 * 60 * 1000);
-    
-    // Specific check at midnight
-    const checkAtMidnight = () => {
-      const now = new Date();
-      const nextMidnight = new Date();
-      nextMidnight.setHours(24, 0, 0, 0);
+      // Reset daily gains
+      resetDailyGainsAtMidnight();
       
-      const timeToMidnight = nextMidnight.getTime() - now.getTime();
+      // Reset session counts and limits
+      localStorage.removeItem('freemium_daily_limit_reached');
+      localStorage.removeItem('last_session_date');
+      localStorage.removeItem('dailySessionCount');
       
-      // Schedule the reset for midnight
-      const midnightTimer = setTimeout(() => {
-        console.log("Daily reset triggered by midnight timer");
-        performDailyReset();
-        
-        // Set up the next day's timer after this one fires
-        checkAtMidnight();
-      }, timeToMidnight);
+      // Update our last checked time
+      lastCheckedRef.current = new Date();
       
-      return midnightTimer;
-    };
-    
-    // Set up the initial midnight check
-    const midnightTimer = checkAtMidnight();
-    
-    return () => {
-      clearInterval(intervalId);
-      clearTimeout(midnightTimer);
-    };
-  }, [userData?.profile?.id]);
-  
-  const performDailyReset = async () => {
-    // Empêcher les réinitialisations multiples
-    if (resetInProgressRef.current) {
-      console.log("Une réinitialisation est déjà en cours, annulation");
-      return;
-    }
-    
-    resetInProgressRef.current = true;
-    
-    try {
-      // Only hide the limit alert if it's currently shown
-      setShowLimitAlert(false);
-      
-      // Reset the daily session count
-      await incrementSessionCount();
-      
-      // Clear the today's gains counter in localStorage
-      const now = new Date();
-      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      localStorage.setItem('lastAutoSessionDate', dateStr);
-      
-      // Réinitialiser le compteur de sessions aujourd'hui
-      localStorage.setItem('todaySessionCount', '0');
-      
-      // Réactiver le bot
-      window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
-        detail: { active: true }
+      // Fire event to update UI components
+      window.dispatchEvent(new CustomEvent('dailyReset:completed', {
+        detail: { timestamp: Date.now() }
       }));
       
-      // Update the last reset time
-      lastResetTimeRef.current = Date.now();
-      localStorage.setItem('lastResetTime', lastResetTimeRef.current.toString());
+      // Log reset
+      console.log('Daily reset completed at', new Date().toISOString());
       
-      // Display a notification about the reset
-      toast({
-        title: "Limite journalière réinitialisée",
-        description: "Vos gains journaliers ont été réinitialisés. Vous pouvez à nouveau générer des revenus aujourd'hui!",
-        action: (
-          <button 
-            onClick={() => window.dispatchEvent(new CustomEvent('dashboard:refresh'))}
-            className="bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded text-xs"
-          >
-            Générer maintenant
-          </button>
-        )
-      });
-      
-      // Dispatch an event to refresh the UI
-      window.dispatchEvent(new CustomEvent('daily-reset:complete'));
-      
-    } catch (error) {
-      console.error("Error during daily reset:", error);
-    } finally {
-      resetInProgressRef.current = false;
+      return true;
     }
+    
+    return false;
   };
 
-  return { performDailyReset };
+  // Setup interval to check for midnight reset
+  useEffect(() => {
+    // Initial check in case the app loads right after midnight
+    resetAtMidnight();
+    
+    // Set interval to check every minute
+    intervalRef.current = setInterval(() => {
+      resetAtMidnight();
+    }, 60000); // Check every minute
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+  
+  // Additional useEffect to handle when device wakes from sleep
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const now = new Date();
+        const lastChecked = lastCheckedRef.current;
+        
+        // If it's been more than 5 minutes since our last check
+        if (now.getTime() - lastChecked.getTime() > 5 * 60 * 1000) {
+          console.log('App resumed from background, checking for reset...');
+          resetAtMidnight();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Function to force a reset (for testing or manual resets)
+  const forceReset = () => {
+    console.log('Forcing daily reset...');
+    
+    // Reset daily gains in the balance manager
+    if (typeof balanceManager.setDailyGains === 'function') {
+      balanceManager.setDailyGains(0);
+    } else {
+      // Fallback
+      localStorage.setItem('dailyGains', '0');
+    }
+    
+    // Reset other storage items
+    localStorage.removeItem('freemium_daily_limit_reached');
+    localStorage.removeItem('last_session_date');
+    localStorage.removeItem('dailySessionCount');
+    localStorage.setItem('lastDailyGainsReset', new Date().toISOString().split('T')[0]);
+    
+    // Fire reset event
+    window.dispatchEvent(new CustomEvent('dailyReset:forced', {
+      detail: { timestamp: Date.now() }
+    }));
+    
+    return true;
+  };
+
+  return { forceReset };
 };
+
+export default useMidnightReset;

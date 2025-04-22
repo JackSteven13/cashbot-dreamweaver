@@ -23,6 +23,7 @@ export const getEffectiveSubscription = (subscription: string) => {
 
 // Export daily limit checking function
 export const checkDailyLimit = (balance: number, subscription: string) => {
+  const { SUBSCRIPTION_LIMITS } = require('./constants');
   const limit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   return balance >= limit;
 };

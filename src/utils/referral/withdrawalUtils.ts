@@ -1,131 +1,48 @@
 
 /**
- * Utilitaires liés aux seuils de retrait selon le niveau d'abonnement
+ * Withdrawal utilities for the referral system
  */
 
-// Seuils de retrait par type d'abonnement - ALIGNÉS AVEC LES CONSTANTES GLOBALES, et SUPERIEURS sur chaque offre
-const WITHDRAWAL_THRESHOLDS = {
-  freemium: 300,   // 300€
-  starter: 600,    // 600€
-  gold: 1200,      // 1200€
-  elite: 2500,     // 2500€
-  // Fallback
-  default: 300     // 300€
-};
-
-/**
- * Obtient le seuil de retrait pour un type d'abonnement donné
- * @param subscription Type d'abonnement
- * @returns Montant minimum pour le retrait
- */
+// Get withdrawal threshold based on subscription
 export const getWithdrawalThreshold = (subscription: string): number => {
-  if (!subscription) return WITHDRAWAL_THRESHOLDS.default;
-  
-  const lowerSub = subscription.toLowerCase();
-  return WITHDRAWAL_THRESHOLDS[lowerSub as keyof typeof WITHDRAWAL_THRESHOLDS] || WITHDRAWAL_THRESHOLDS.default;
+  switch (subscription) {
+    case 'freemium':
+      return 300;
+    case 'starter':
+      return 600;
+    case 'gold':
+      return 1200;
+    case 'elite':
+      return 2500;
+    default:
+      return 300;
+  }
 };
 
-/**
- * Vérifie si un utilisateur peut retirer ses gains
- * @param balance Solde actuel
- * @param subscription Type d'abonnement
- * @returns True si le retrait est possible
- */
-export const canWithdraw = (balance: number, subscription: string): boolean => {
-  const threshold = getWithdrawalThreshold(subscription);
-  return balance >= threshold;
-};
-
-/**
- * Calcule le pourcentage d'avancement vers le seuil de retrait
- * @param balance Solde actuel
- * @param subscription Type d'abonnement
- * @returns Pourcentage d'avancement (0-100)
- */
-export const getWithdrawalProgress = (balance: number, subscription: string): number => {
-  const threshold = getWithdrawalThreshold(subscription);
-  if (!threshold) return 0;
-  
-  const progress = (balance / threshold) * 100;
-  return Math.min(100, Math.max(0, progress));
-};
-
-/**
- * Vérifie si le retrait est autorisé pour le type d'abonnement et le nombre de parrainages
- * @param subscription Type d'abonnement
- * @param referralCount Nombre de parrainages actifs
- * @returns True si le retrait est autorisé
- */
-export const isWithdrawalAllowed = (subscription: string, referralCount: number): boolean => {
-  // NOUVEAU: Les comptes freemium doivent avoir au moins 3 parrainages actifs pour pouvoir retirer
-  if (subscription?.toLowerCase() === 'freemium') {
-    return referralCount >= 3;
+// Check if withdrawal is allowed based on subscription and referral count
+export const isWithdrawalAllowed = (subscription: string, referralCount: number = 0): boolean => {
+  // Freemium users need at least one referral to withdraw
+  if (subscription === 'freemium' && referralCount < 1) {
+    return false;
   }
   
-  // Les comptes starter doivent avoir au moins 1 parrainage
-  if (subscription?.toLowerCase() === 'starter') {
-    return referralCount >= 1;
-  }
-  
-  // Les autres types d'abonnements peuvent toujours retirer
   return true;
 };
 
-/**
- * Calcule les frais de retrait en fonction de l'ancienneté et du type d'abonnement
- * @param registrationDate Date d'inscription
- * @param subscription Type d'abonnement
- * @returns Pourcentage des frais (0-1)
- */
-export const calculateWithdrawalFee = (registrationDate: Date, subscription: string): number => {
-  const today = new Date();
-  const accountAgeInDays = Math.floor((today.getTime() - registrationDate.getTime()) / (1000 * 60 * 60 * 24));
-  
-  // AUGMENTATION des frais de base par type d'abonnement pour décourager les retraits précoces
-  let baseFee = 0.10; // 10% par défaut (pour freemium) - AUGMENTÉ
-  
-  switch (subscription?.toLowerCase()) {
-    case 'elite':
-      baseFee = 0.02; // 2% pour Elite - AUGMENTÉ
-      break;
-    case 'gold':
-      baseFee = 0.04; // 4% pour Gold - AUGMENTÉ
-      break;
-    case 'starter':
-      baseFee = 0.06; // 6% pour Starter - AUGMENTÉ
-      break;
-    default:
-      baseFee = 0.10; // 10% pour Freemium - AUGMENTÉ
-  }
-  
-  // Réduire les frais en fonction de l'ancienneté (max 50% de réduction)
-  // MAIS nécessite BEAUCOUP PLUS de temps - minimum 6 mois pour commencer la réduction
-  const minDaysForDiscount = 180; // 6 mois minimum
-  const effectiveAgeForDiscount = Math.max(0, accountAgeInDays - minDaysForDiscount);
-  const ageDiscount = Math.min(0.5, effectiveAgeForDiscount / 365); // 50% max après 1 an + 6 mois
-  
-  return Math.max(0.01, baseFee * (1 - ageDiscount)); // Minimum 1%
-};
-
-/**
- * Calcule combien de parrainages sont nécessaires pour atteindre le seuil de retrait
- * @param subscription Type d'abonnement
- * @param currentBalance Solde actuel
- * @returns Objet contenant le montant nécessaire et le nombre estimé de parrainages
- */
+// Calculate how many referrals needed to reach withdrawal threshold
 export const calculateReferralToReachThreshold = (
   subscription: string, 
   currentBalance: number
-): { amountNeeded: number; estimatedReferrals: number } | null => {
-  // Si le solde est déjà suffisant, retourner null
+): { amountNeeded: number, estimatedReferrals: number } | null => {
   const threshold = getWithdrawalThreshold(subscription);
-  if (currentBalance >= threshold) return null;
+  
+  if (currentBalance >= threshold) {
+    return null; // Already reached threshold
+  }
   
   const amountNeeded = threshold - currentBalance;
-  
-  // Estimer le nombre de parrainages nécessaires (supposons qu'un parrainage moyen génère 10€)
-  const avgCommissionPerReferral = 10;
-  const estimatedReferrals = Math.ceil(amountNeeded / avgCommissionPerReferral);
+  // Estimate: each referral brings about €50 on average
+  const estimatedReferrals = Math.ceil(amountNeeded / 50);
   
   return {
     amountNeeded,
@@ -133,16 +50,8 @@ export const calculateReferralToReachThreshold = (
   };
 };
 
-// Export the WITHDRAWAL_THRESHOLDS constant
-export { WITHDRAWAL_THRESHOLDS };
-
-// Keep the default export for backward compatibility
 export default {
   getWithdrawalThreshold,
-  canWithdraw,
-  getWithdrawalProgress,
-  WITHDRAWAL_THRESHOLDS,
   isWithdrawalAllowed,
-  calculateWithdrawalFee,
   calculateReferralToReachThreshold
 };
