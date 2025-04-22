@@ -13,6 +13,7 @@ class BalanceManager {
   private dailyGains: number = 0;
   private watchers: BalanceWatcher[] = [];
   private isInitialized: boolean = false;
+  private highestBalance: number = 0;
 
   constructor() {
     this.initFromStorage();
@@ -58,7 +59,31 @@ class BalanceManager {
         }
       }
 
-      console.log(`BalanceManager initialized: balance=${this.balance}, dailyGains=${this.dailyGains}`);
+      // Initialize highest balance
+      if (this.userId) {
+        const storedHighestBalance = localStorage.getItem(`highest_balance_${this.userId}`);
+        if (storedHighestBalance) {
+          const parsedHighestBalance = parseFloat(storedHighestBalance);
+          if (!isNaN(parsedHighestBalance)) {
+            this.highestBalance = parsedHighestBalance;
+          }
+        }
+      } else {
+        const storedHighestBalance = localStorage.getItem('highest_balance');
+        if (storedHighestBalance) {
+          const parsedHighestBalance = parseFloat(storedHighestBalance);
+          if (!isNaN(parsedHighestBalance)) {
+            this.highestBalance = parsedHighestBalance;
+          }
+        }
+      }
+
+      // If highest balance is not set, use current balance as reference
+      if (this.highestBalance === 0 && this.balance > 0) {
+        this.highestBalance = this.balance;
+      }
+
+      console.log(`BalanceManager initialized: balance=${this.balance}, dailyGains=${this.dailyGains}, highestBalance=${this.highestBalance}`);
     } catch (error) {
       console.error("Error initializing balance from storage:", error);
     }
@@ -96,6 +121,7 @@ class BalanceManager {
     const newBalance = parseFloat((this.balance + amount).toFixed(2));
     this.balance = newBalance;
     this.persistBalance();
+    this.updateHighestBalance(newBalance);
     this.notifyWatchers();
     return this.balance;
   }
@@ -110,6 +136,7 @@ class BalanceManager {
 
     this.balance = parseFloat(newBalance.toFixed(2));
     this.persistBalance();
+    this.updateHighestBalance(newBalance);
     this.notifyWatchers();
     return this.balance;
   }
@@ -119,6 +146,39 @@ class BalanceManager {
    */
   getCurrentBalance(): number {
     return this.balance;
+  }
+
+  /**
+   * Get the highest balance ever recorded
+   */
+  getHighestBalance(): number {
+    return this.highestBalance;
+  }
+
+  /**
+   * Update the highest balance if the new balance is higher
+   */
+  updateHighestBalance(balance: number): void {
+    if (balance > this.highestBalance) {
+      this.highestBalance = balance;
+      // Store highest balance with user-specific key if available
+      if (this.userId) {
+        localStorage.setItem(`highest_balance_${this.userId}`, balance.toString());
+      } else {
+        localStorage.setItem('highest_balance', balance.toString());
+      }
+    }
+  }
+
+  /**
+   * Check if the new balance represents a significant change from the stored balance
+   * Returns true if the change is significant (>10% different)
+   */
+  checkForSignificantBalanceChange(newBalance: number): boolean {
+    if (this.balance === 0) return newBalance > 0;
+    
+    const percentDifference = Math.abs((newBalance - this.balance) / this.balance);
+    return percentDifference > 0.1; // More than 10% difference
   }
 
   /**

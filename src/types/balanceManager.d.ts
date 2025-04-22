@@ -14,14 +14,14 @@ export interface BalanceManagerInstance {
   setDailyGains?: (amount: number) => void;
   
   // History tracking
-  getHighestBalance?: () => number;
-  updateHighestBalance?: (balance: number) => void;
+  getHighestBalance: () => number;
+  updateHighestBalance: (balance: number) => void;
   
   // Event subscription
   addWatcher?: (callback: (newBalance: number) => void) => (() => void);
   
   // Advanced features
-  checkForSignificantBalanceChange?: (newBalance: number) => boolean;
+  checkForSignificantBalanceChange: (newBalance: number) => boolean;
 }
 
 /**
