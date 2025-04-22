@@ -15,8 +15,8 @@ export interface UserFetcherActions {
 export type { UserFetcherState };
 
 export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => {
-  const { state, updateUserDataWrapper, setIsLoading, userActions } = useUserDataFetcherState();
-  const { loadUserProfile, loadUserBalance, isNewUser } = useDataLoaders(userActions.setIsNewUser);
+  const { state, updateUserDataWrapper, setIsLoading, userActions, setIsNewUser } = useUserDataFetcherState();
+  const { loadUserProfile, loadUserBalance, isNewUser } = useDataLoaders(setIsNewUser);
 
   const { fetchUserData, resetDailyCounters } = useUserDataFetching(
     loadUserProfile,

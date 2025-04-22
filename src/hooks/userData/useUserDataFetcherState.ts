@@ -5,7 +5,7 @@ import { UserData } from '@/types/userData';
 
 export const useUserDataFetcherState = () => {
   const userDataState = useUserDataState();
-  const { updateUserData, setIsLoading, userActions } = userDataState;
+  const { updateUserData, setIsLoading, userActions, setIsNewUser } = userDataState;
   
   // Modify the updateUserDataWrapper to match the expected signature
   const updateUserDataWrapper = useCallback((newData: Partial<UserData>) => {
@@ -26,6 +26,7 @@ export const useUserDataFetcherState = () => {
     state,
     updateUserDataWrapper,
     setIsLoading,
-    userActions
+    userActions,
+    setIsNewUser  // Expose setIsNewUser directly
   };
 };
