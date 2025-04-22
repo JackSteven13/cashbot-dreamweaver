@@ -4,7 +4,7 @@ import { useUserDataState, UserFetcherState } from './user/useUserDataState';
 import { useUserDataFetching } from './user/useUserDataFetching';
 import { useProfileLoader } from './useProfileLoader';
 import { useBalanceLoader } from './useBalanceLoader';
-import { useDailyReset } from './useDailyReset';
+import { useDailyReset } from './useDailyReset'; // Ensure correct import
 import { UserData } from '@/types/userData';
 
 export interface UserFetcherActions {
@@ -41,9 +41,9 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
     isNewUser
   );
   
-  // Utiliser le hook de réinitialisation quotidienne
-  useDailyReset(resetDailyCounters);
-
+  // Updated to call useDailyReset without arguments
+  useDailyReset();
+  
   // Create the return value with proper structure
   const state: UserFetcherState = {
     userData: userDataState.userData,
