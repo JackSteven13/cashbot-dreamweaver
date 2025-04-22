@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import usePersistentStats from '@/hooks/stats/usePersistentStats';
 import { useUserSession } from '@/hooks/useUserSession';
@@ -12,9 +12,30 @@ const StatisticsCounters: React.FC = () => {
     autoIncrement: true,
     userId
   });
+  
+  // Valeurs locales pour des mises à jour plus fluides et fréquentes
+  const [localAdsCount, setLocalAdsCount] = useState(adsCount);
+  const [localRevenueCount, setLocalRevenueCount] = useState(revenueCount);
+  
+  // Mettre à jour les valeurs locales quand les valeurs persistantes changent
+  useEffect(() => {
+    setLocalAdsCount(adsCount);
+    setLocalRevenueCount(revenueCount);
+  }, [adsCount, revenueCount]);
 
   // Incrémenter automatiquement les compteurs à intervalles réguliers
   useEffect(() => {
+    // Mises à jour très fréquentes (micro-incréments toutes les 5 secondes)
+    const microUpdateInterval = setInterval(() => {
+      // Très petits incréments fréquents
+      const microAdsIncrement = Math.floor(Math.random() * 3) + 1; // 1-3 ads
+      const microRevenueIncrement = Math.random() * 0.03 + 0.01; // 0.01€-0.04€
+      
+      setLocalAdsCount(prev => prev + microAdsIncrement);
+      setLocalRevenueCount(prev => prev + microRevenueIncrement);
+    }, 5000); // Toutes les 5 secondes
+    
+    // Petits incréments fréquents
     const minorUpdateInterval = setInterval(() => {
       // Petits incréments fréquents
       const smallAdsIncrement = Math.floor(Math.random() * 8) + 3;
@@ -23,6 +44,7 @@ const StatisticsCounters: React.FC = () => {
       incrementStats(smallAdsIncrement, smallRevenueIncrement);
     }, 15000); // Toutes les 15 secondes
     
+    // Incréments plus importants moins fréquents
     const majorUpdateInterval = setInterval(() => {
       // Incréments plus importants moins fréquents
       const largerAdsIncrement = Math.floor(Math.random() * 50) + 20;
@@ -32,6 +54,7 @@ const StatisticsCounters: React.FC = () => {
     }, 120000); // Toutes les 2 minutes
 
     return () => {
+      clearInterval(microUpdateInterval);
       clearInterval(minorUpdateInterval);
       clearInterval(majorUpdateInterval);
     };
@@ -42,7 +65,7 @@ const StatisticsCounters: React.FC = () => {
       <div className="bg-blue-900/10 dark:bg-blue-900/20 rounded-lg p-6 text-center">
         <div className="text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 dark:text-blue-300">
           <AnimatedNumber 
-            value={adsCount} 
+            value={localAdsCount} 
             duration={1500} 
             formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} 
           />
@@ -53,7 +76,7 @@ const StatisticsCounters: React.FC = () => {
       <div className="bg-emerald-900/10 dark:bg-emerald-900/20 rounded-lg p-6 text-center">
         <div className="text-3xl md:text-4xl lg:text-5xl font-bold text-emerald-900 dark:text-emerald-300">
           <AnimatedNumber 
-            value={revenueCount} 
+            value={localRevenueCount} 
             duration={1500} 
             formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} 
           />

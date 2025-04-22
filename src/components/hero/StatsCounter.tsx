@@ -117,6 +117,26 @@ const StatsCounter = ({
         revenueCount: Math.max(newMinimumRevenue, consistentStats.revenueCount)
       });
     }
+    
+    // Créer un intervalle pour des mises à jour régulières des compteurs (toutes les 15-20 secondes)
+    const regularUpdateInterval = setInterval(() => {
+      // Incrémenter légèrement les compteurs pour simuler l'activité continue des bots
+      const adsIncrement = Math.floor(Math.random() * 5) + 1; // 1-5 annonces par mise à jour
+      const revenueIncrement = (Math.random() * 0.8 + 0.2) / 10; // 0.02€-0.10€ par mise à jour
+      
+      setDisplayValues(prev => ({
+        adsCount: prev.adsCount + adsIncrement,
+        revenueCount: prev.revenueCount + revenueIncrement
+      }));
+      
+      // Sauvegarder ces valeurs pour qu'elles persistent
+      localStorage.setItem('last_displayed_ads_count', (displayValues.adsCount + adsIncrement).toString());
+      localStorage.setItem('last_displayed_revenue_count', (displayValues.revenueCount + revenueIncrement).toString());
+    }, 15000 + Math.random() * 5000); // Intervalle variable entre 15-20 secondes
+    
+    return () => {
+      clearInterval(regularUpdateInterval);
+    };
   }, []);
 
   // Effet pour mettre à jour les valeurs affichées lors de la réception de nouvelles valeurs
