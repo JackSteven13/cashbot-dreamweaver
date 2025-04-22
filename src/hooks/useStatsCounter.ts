@@ -8,7 +8,8 @@ import {
   incrementDateLinkedStats, 
   saveValues, 
   enforceMinimumStats,
-  getDateConsistentStats
+  getDateConsistentStats,
+  ensureProgressiveValues
 } from './stats/utils/storageManager';
 
 interface UseStatsCounterParams {
@@ -108,246 +109,108 @@ export const useStatsCounter = ({
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [countersInitialized, setCountersInitialized] = useState(false);
   
-  // Initialisation cohérente avec les valeurs minimales dynamiques
+  // S'assurer que les valeurs ne diminuent jamais lors du chargement initial
   useEffect(() => {
-    if (!stableValuesRef.current.initialized) {
-      // Récupérer des valeurs cohérentes basées sur la date
-      const consistentStats = getDateConsistentStats();
-      
-      // Initialiser avec ces valeurs mais s'assurer qu'elles respectent les minimums dynamiques
-      // et qu'elles soient impressionnantes
-      const safeAdsCount = Math.min(Math.max(consistentStats.adsCount, MINIMUM_ADS_COUNT), 150000);
-      const safeRevenueCount = Math.min(Math.max(consistentStats.revenueCount, MINIMUM_REVENUE_COUNT), 120000);
-      
-      setAdsCount(safeAdsCount);
-      setRevenueCount(safeRevenueCount);
-      setDisplayedAdsCount(safeAdsCount);
-      setDisplayedRevenueCount(safeRevenueCount);
-      
-      // Stocker les valeurs de base dans la référence stable
-      stableValuesRef.current.baseValues = {
-        adsCount: safeAdsCount,
-        revenueCount: safeRevenueCount
-      };
-      
-      stableValuesRef.current.initialized = true;
-      setCountersInitialized(true);
-      
-      // S'assurer que les valeurs respectent le minimum
-      enforceMinimumStats(MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT);
-      
-      console.log("Compteurs initialisés avec des valeurs cohérentes et progressives:", {
-        adsCount: safeAdsCount,
-        revenueCount: safeRevenueCount
-      });
-    }
-  }, [MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT, setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
-  
-  // Synchroniser les incréments avec le feed des publicités
-  useEffect(() => {
-    if (!countersInitialized) return;
+    // Assurer la cohérence des valeurs au démarrage
+    ensureProgressiveValues();
     
-    const handleLocationAdded = (event: Event) => {
-      // Limiter les mises à jour (10 secondes minimum entre chaque)
-      const now = Date.now();
-      if (now - stableValuesRef.current.lastLocationUpdateTime < 10000) {
-        return;
-      }
-      stableValuesRef.current.lastLocationUpdateTime = now;
-      
-      // Incrémenter après un délai pour simuler l'analyse
-      setTimeout(() => {
-        // Incréments plus importants
-        const { ADS_COUNT: minAds } = getMinimumValues();
-        const adsIncrement = Math.floor(Math.random() * 15) + 5;
-        const adValue = Math.random() * 1.2 + 0.5;
-        
-        const newAdsCount = adsCount + adsIncrement;
-        const newRevenueCount = revenueCount + adValue;
-        
-        setAdsCount(Math.max(newAdsCount, minAds));
-        setRevenueCount(Math.max(newRevenueCount, MINIMUM_REVENUE_COUNT));
-        
-        // Sauvegarder les valeurs
-        saveValues(Math.max(newAdsCount, minAds), Math.max(newRevenueCount, MINIMUM_REVENUE_COUNT));
-      }, 1000 + Math.random() * 2000);
-    };
+    // Puis obtenir les valeurs synchronisées
+    const consistentStats = getDateConsistentStats();
     
-    window.addEventListener('location:added', handleLocationAdded);
-    return () => window.removeEventListener('location:added', handleLocationAdded);
-  }, [countersInitialized, adsCount, revenueCount, MINIMUM_REVENUE_COUNT]);
-  
-  // Auto-incrémentation
-  useEffect(() => {
-    if (!stableValuesRef.current.initialized) return;
+    // Initialiser avec les valeurs cohérentes
+    setAdsCount(consistentStats.adsCount);
+    setRevenueCount(consistentStats.revenueCount);
+    setDisplayedAdsCount(consistentStats.adsCount);
+    setDisplayedRevenueCount(consistentStats.revenueCount);
     
-    // Vérifie si l'auto-incrément est activé (par défaut: oui)
-    const isAutoIncrementEnabled = localStorage.getItem(STORAGE_KEYS.STATS_AUTO_INCREMENT) !== 'false';
+    // Persister ces valeurs pour garantir qu'elles ne diminuent jamais
+    saveValues(consistentStats.adsCount, consistentStats.revenueCount, false);
     
-    if (!isAutoIncrementEnabled) {
-      console.log("Auto-increment des statistiques désactivé");
-      return;
-    }
+    console.log('Compteurs initialisés avec des valeurs cohérentes et progressives:', consistentStats);
     
-    // Progression avec des intervalles plus courts (10-15 minutes)
-    const autoIncrement = setInterval(() => {
-      // Éviter les mises à jour simultanées
-      if (stableValuesRef.current.syncInProgress) return;
-      stableValuesRef.current.syncInProgress = true;
-      
-      const now = Date.now();
-      const timeSinceLastIncrement = now - stableValuesRef.current.lastAutoIncrementTime;
-      
-      // Incrémenter régulièrement
-      if (timeSinceLastIncrement > 600000) { // 10 minutes entre les incréments
-        stableValuesRef.current.lastAutoIncrementTime = now;
-        
-        // Probabilité d'incrément (30% de chance)
-        if (Math.random() > 0.7) { 
-          // Incréments significatifs
-          const adsIncrease = Math.floor(Math.random() * 10) + 5;
-          const revenueIncrease = Math.random() * 1.0 + 0.5;
-          
-          const newAdsCount = Math.min(adsCount + adsIncrease, 150000);
-          const newRevenueCount = Math.min(revenueCount + revenueIncrease, 120000);
-          
-          // Mettre à jour les compteurs
-          setAdsCount(newAdsCount);
-          setRevenueCount(newRevenueCount);
-          
-          // Simuler une nouvelle entrée dans le feed
-          window.dispatchEvent(new CustomEvent('location:added'));
-          
-          // Sauvegarder les valeurs
-          saveValues(newAdsCount, newRevenueCount);
-        }
-      }
-      
-      stableValuesRef.current.syncInProgress = false;
-    }, 600000 + Math.floor(Math.random() * 300000)); // Entre 10 et 15 minutes
-    
-    return () => clearInterval(autoIncrement);
-  }, [stableValuesRef.current.initialized, adsCount, revenueCount, setAdsCount, setRevenueCount]);
-
-  // Save to session storage on beforeunload for better persistence
-  useEffect(() => {
-    const saveToSession = () => {
-      try {
-        sessionStorage.setItem(STORAGE_KEYS.DISPLAYED_ADS_COUNT, displayedAdsCount.toString());
-        sessionStorage.setItem(STORAGE_KEYS.DISPLAYED_REVENUE_COUNT, displayedRevenueCount.toString());
-        
-        // Sauvegarder aussi dans localStorage pour une persistance maximale
-        saveValues(
-          Math.max(displayedAdsCount, adsCount, MINIMUM_ADS_COUNT), 
-          Math.max(displayedRevenueCount, revenueCount, MINIMUM_REVENUE_COUNT)
-        );
-      } catch (e) {
-        console.error('Error saving counters to sessionStorage', e);
-      }
-    };
-    
-    window.addEventListener('beforeunload', saveToSession);
-    return () => window.removeEventListener('beforeunload', saveToSession);
-  }, [displayedAdsCount, displayedRevenueCount, adsCount, revenueCount, MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT]);
-  
-  // Animation et mises à jour périodiques
-  useEffect(() => {
-    if (!countersInitialized) return;
-    
-    // Animation frame rate optimisé
-    let animationFrameId: number;
-    let lastFrameTime = 0;
-    
-    const updateAnimation = (timestamp: number) => {
-      // Optimiser le framerate (1 frame par seconde)
-      if (timestamp - lastFrameTime > 1000) {
-        lastFrameTime = timestamp;
-        animateCounters();
-      }
-      animationFrameId = requestAnimationFrame(updateAnimation);
-    };
-    
-    // Start animation avec framerate optimisé
-    animationFrameId = requestAnimationFrame(updateAnimation);
-    
-    // Mises à jour périodiques (10-15 minutes)
-    const updateInterval = setInterval(() => {
-      // Éviter les mises à jour simultanées
-      if (stableValuesRef.current.syncInProgress) return;
-      stableValuesRef.current.syncInProgress = true;
-      
-      // Probabilité d'incrément (30% de chance)
-      if (Math.random() > 0.7) {
-        // Incréments significatifs
-        const adsIncrease = Math.floor(Math.random() * 15) + 10;
-        const revenueIncrease = Math.random() * 1.2 + 0.8;
-        
-        setAdsCount(prev => Math.max(prev + adsIncrease, MINIMUM_ADS_COUNT));
-        setRevenueCount(prev => Math.max(prev + revenueIncrease, MINIMUM_REVENUE_COUNT));
-        
-        // Simuler une nouvelle entrée dans le feed
-        window.dispatchEvent(new CustomEvent('location:added'));
-        
-        // Sauvegarder
-        saveValues(
-          Math.max(adsCount + adsIncrease, MINIMUM_ADS_COUNT), 
-          Math.max(revenueCount + revenueIncrease, MINIMUM_REVENUE_COUNT)
-        );
-      }
-      
-      stableValuesRef.current.syncInProgress = false;
-    }, 600000 + Math.floor(Math.random() * 300000)); // 10-15 minutes
-    
-    // Reset at midnight
-    const resetTimeout = scheduleCycleUpdate();
-    
-    return () => {
-      if (resetTimeout) clearTimeout(resetTimeout);
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      clearInterval(updateInterval);
-    };
-  }, [animateCounters, incrementCountersRandomly, scheduleCycleUpdate, countersInitialized, MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT, adsCount, revenueCount]);
-
-  // Synchroniser avec visibilitychange pour progression continue
-  useEffect(() => {
+    // Ajouter un écouteur d'événement pour la visibilité de la page
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && countersInitialized) {
-        // Récupérer les valeurs stockées
-        const consistentStats = getDateConsistentStats();
+      if (document.visibilityState === 'visible') {
+        // Quand la page redevient visible, s'assurer que les valeurs sont bien synchronisées
+        ensureProgressiveValues();
+        const refreshedStats = getDateConsistentStats();
         
-        // Utiliser les valeurs les plus élevées
-        const newAdsCount = Math.max(
-          adsCount, 
-          consistentStats.adsCount,
-          MINIMUM_ADS_COUNT
-        );
-        
-        const newRevenueCount = Math.max(
-          revenueCount, 
-          consistentStats.revenueCount,
-          MINIMUM_REVENUE_COUNT
-        );
-        
-        // Mettre à jour si nécessaire
-        if (newAdsCount > adsCount + 2 || newRevenueCount > revenueCount + 1) {
-          setAdsCount(newAdsCount);
-          setRevenueCount(newRevenueCount);
-          
-          // Transition visuelle progressive
-          setDisplayedAdsCount(prev => Math.max(prev + Math.floor(Math.random() * 8) + 3, newAdsCount));
-          setDisplayedRevenueCount(prev => Math.max(prev + Math.random() * 1.0 + 0.5, newRevenueCount));
-        }
+        setAdsCount(refreshedStats.adsCount);
+        setRevenueCount(refreshedStats.revenueCount);
+        setDisplayedAdsCount(refreshedStats.adsCount);
+        setDisplayedRevenueCount(refreshedStats.revenueCount);
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [countersInitialized, adsCount, revenueCount, MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT]);
+    
+    // Effet de nettoyage
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
+  
+  // Effet pour l'incrémentation périodique avec progression lente mais stable
+  useEffect(() => {
+    // Première incrémentation après un court délai
+    const initialTimeout = setTimeout(() => {
+      const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
+      
+      setAdsCount(newAdsCount);
+      setRevenueCount(newRevenueCount);
+      setDisplayedAdsCount(newAdsCount);
+      setDisplayedRevenueCount(newRevenueCount);
+      
+      stableValuesRef.current.lastAutoIncrementTime = Date.now();
+    }, 5000);
+    
+    // Ensuite, incrémenter régulièrement mais moins fréquemment
+    const incrementInterval = setInterval(() => {
+      const now = Date.now();
+      
+      // Limiter la fréquence des incrémentations
+      if (now - stableValuesRef.current.lastAutoIncrementTime > 120000) { // 2 minutes minimum
+        stableValuesRef.current.lastAutoIncrementTime = now;
+        
+        const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
+        
+        setAdsCount(newAdsCount);
+        setRevenueCount(newRevenueCount);
+        
+        // Animation douce vers les nouvelles valeurs
+        animateCounters(newAdsCount, newRevenueCount);
+        
+        // Sauvegarder pour assurer la persistance
+        localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
+        localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
+      }
+    }, 120000); // Toutes les 2 minutes (moins fréquent que précédemment)
+    
+    // Effet de nettoyage
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(incrementInterval);
+    };
+  }, [animateCounters, setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
+  
+  // Protection supplémentaire pour éviter les baisses de valeurs lors des rerendus
+  useEffect(() => {
+    // Sauvegarder les valeurs actuelles avant la fermeture ou le rafraîchissement
+    const handleBeforeUnload = () => {
+      saveValues(adsCount, revenueCount, false);
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [adsCount, revenueCount]);
 
-  return useMemo(() => ({
-    displayedAdsCount: Math.min(Math.max(MINIMUM_ADS_COUNT, displayedAdsCount), 150000),
-    displayedRevenueCount: Math.min(Math.max(MINIMUM_REVENUE_COUNT, displayedRevenueCount), 120000)
-  }), [displayedAdsCount, displayedRevenueCount, MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT]);
+  return {
+    displayedAdsCount,
+    displayedRevenueCount
+  };
 };
 
 export default useStatsCounter;

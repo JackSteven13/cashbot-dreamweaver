@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
@@ -6,7 +7,8 @@ import {
   loadStoredValues, 
   incrementDateLinkedStats, 
   enforceMinimumStats, 
-  getDateConsistentStats 
+  getDateConsistentStats,
+  ensureProgressiveValues
 } from '@/hooks/stats/utils/storageManager';
 
 interface StatsCounterProps {
@@ -37,6 +39,9 @@ const StatsCounter = ({
   
   // État local pour l'affichage avec initialisation améliorée
   const [displayValues, setDisplayValues] = useState(() => {
+    // S'assurer que les valeurs ne diminuent jamais au démarrage
+    ensureProgressiveValues();
+    
     // Récupérer des valeurs cohérentes et réalistes dès le début
     const consistentStats = getDateConsistentStats();
     return {
@@ -71,8 +76,12 @@ const StatsCounter = ({
     };
   };
   
-  // Initialiser la date de première utilisation si elle n'existe pas encore
+  // S'assurer que les valeurs minimales sont respectées et ne diminuent jamais
   useEffect(() => {
+    // S'assurer que les valeurs ne diminuent jamais au démarrage
+    ensureProgressiveValues();
+    
+    // Initialiser la date de première utilisation si elle n'existe pas encore
     if (!localStorage.getItem('first_use_date')) {
       // Définir une date antérieure pour simuler une utilisation plus longue (30 jours dans le passé)
       const pastDate = new Date();
@@ -101,128 +110,69 @@ const StatsCounter = ({
       });
     }
   }, []);
-  
-  // Synchroniser les valeurs stables avec les valeurs stockées au chargement
+
+  // Effet pour mettre à jour les valeurs affichées lors de la réception de nouvelles valeurs
   useEffect(() => {
-    // Récupérer les valeurs stockées avec progression temporelle intégrée
-    const consistentStats = getDateConsistentStats();
-    const { progressFactor } = calculateProgression();
+    if (displayedAdsCount > displayValues.adsCount) {
+      setDisplayValues(prev => ({
+        ...prev,
+        adsCount: displayedAdsCount
+      }));
+    }
     
-    // Assurer les valeurs minimales pour éviter les fluctuations négatives
-    const lastDisplayedAds = parseInt(localStorage.getItem('last_displayed_ads_count') || '0', 10);
-    const lastDisplayedRevenue = parseFloat(localStorage.getItem('last_displayed_revenue_count') || '0');
-    
-    // Calcul pour obtenir des valeurs plus impressionnantes
-    const baseAds = Math.max(consistentStats.adsCount, lastDisplayedAds || MINIMUM_ADS);
-    const baseRevenue = Math.max(consistentStats.revenueCount, lastDisplayedRevenue || MINIMUM_REVENUE);
-    
-    // Appliquer le facteur de progression pour une croissance continue vers des valeurs impressionnantes
-    const finalAdsCount = Math.floor(baseAds * progressFactor);
-    const finalRevenueCount = baseRevenue * progressFactor;
-    
-    // Stocker dans la référence stable
-    stableValuesRef.current = {
-      adsCount: finalAdsCount,
-      revenueCount: finalRevenueCount,
-      lastUpdate: Date.now(),
-      lastSyncTime: Date.now()
-    };
-    
-    // Mettre à jour l'affichage
-    setDisplayValues({
-      adsCount: finalAdsCount,
-      revenueCount: finalRevenueCount
-    });
-    
-    // Persister pour assurer la cohérence entre les rendus
-    localStorage.setItem('last_displayed_ads_count', finalAdsCount.toString());
-    localStorage.setItem('last_displayed_revenue_count', finalRevenueCount.toString());
-    
-    // S'assurer que les valeurs minimales sont respectées
-    enforceMinimumStats(MINIMUM_ADS * progressFactor, MINIMUM_REVENUE * progressFactor);
-    
-    // Persistance renforcée avec un timestamp
-    localStorage.setItem('stats_last_sync', Date.now().toString());
-  }, []);
+    if (displayedRevenueCount > displayValues.revenueCount) {
+      setDisplayValues(prev => ({
+        ...prev,
+        revenueCount: displayedRevenueCount
+      }));
+    }
+  }, [displayedAdsCount, displayedRevenueCount, displayValues]);
   
-  // Effet d'incrémentation périodique avec progression TRÈS lente
-  useEffect(() => {
-    const incrementInterval = setInterval(() => {
-      // Incrémenter statistiques de façon TRÈS modérée
-      const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
-      
-      setDisplayValues({
-        adsCount: newAdsCount,
-        revenueCount: newRevenueCount
-      });
-      
-      // Sauvegarder les valeurs affichées
-      localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
-      localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
-      
-    }, 120000); // Incrémenter toutes les 2 minutes (beaucoup moins fréquent)
-    
-    return () => clearInterval(incrementInterval);
-  }, []);
-  
-  // Effet pour assurer la progression continue et des chiffres impressionnants
+  // Effet pour gérer la visibilité de la page
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        const now = Date.now();
-        const timeSinceLastUpdate = now - stableValuesRef.current.lastUpdate;
+        // Quand la page redevient visible, s'assurer que les valeurs sont correctes
+        ensureProgressiveValues();
         
-        // Si plus de 2 minutes se sont écoulées, récupérer les statistiques cohérentes
-        if (timeSinceLastUpdate > 2 * 60 * 1000) {
-          const consistentStats = getDateConsistentStats();
-          const { progressFactor } = calculateProgression();
-          
-          // Récupérer également les dernières valeurs affichées
-          const lastDisplayedAds = parseInt(localStorage.getItem('last_displayed_ads_count') || '0', 10);
-          const lastDisplayedRevenue = parseFloat(localStorage.getItem('last_displayed_revenue_count') || '0');
-          
-          // Utiliser le maximum entre toutes les sources et appliquer un facteur de progression
-          const maxAdsCount = Math.max(
-            stableValuesRef.current.adsCount, 
-            consistentStats.adsCount,
-            lastDisplayedAds || 0,
-            MINIMUM_ADS
-          ) * progressFactor;
-          
-          const maxRevenueCount = Math.max(
-            stableValuesRef.current.revenueCount, 
-            consistentStats.revenueCount,
-            lastDisplayedRevenue || 0,
-            MINIMUM_REVENUE
-          ) * progressFactor;
-          
-          // Mettre à jour la référence stable
-          stableValuesRef.current = {
-            ...stableValuesRef.current,
-            adsCount: maxAdsCount,
-            revenueCount: maxRevenueCount,
-            lastUpdate: now
-          };
-          
-          // Mettre à jour l'affichage et persister
-          setDisplayValues({
-            adsCount: maxAdsCount,
-            revenueCount: maxRevenueCount
-          });
-          
-          // Persister pour maintenir la cohérence
-          localStorage.setItem('last_displayed_ads_count', maxAdsCount.toString());
-          localStorage.setItem('last_displayed_revenue_count', maxRevenueCount.toString());
-        }
+        // Récupérer les valeurs cohérentes
+        const consistentStats = getDateConsistentStats();
+        
+        // Utiliser les valeurs maximales pour éviter toute diminution
+        const maxAdsCount = Math.max(displayValues.adsCount, consistentStats.adsCount);
+        const maxRevenueCount = Math.max(displayValues.revenueCount, consistentStats.revenueCount);
+        
+        // Mettre à jour l'affichage et persister
+        setDisplayValues({
+          adsCount: maxAdsCount,
+          revenueCount: maxRevenueCount
+        });
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
     };
-  }, []);
+  }, [displayValues]);
+  
+  // Persister les valeurs avant le déchargement de la page
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Sauvegarder les valeurs actuelles
+      localStorage.setItem('last_displayed_ads_count', displayValues.adsCount.toString());
+      localStorage.setItem('last_displayed_revenue_count', displayValues.revenueCount.toString());
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [displayValues]);
 
   return (
     <div className="grid grid-cols-2 gap-2 w-full max-w-md mx-auto mb-4 md:mb-6">

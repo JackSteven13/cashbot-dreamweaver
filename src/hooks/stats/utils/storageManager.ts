@@ -22,8 +22,19 @@ export const loadStoredValues = () => {
     const storedRevenueCount = localStorage.getItem('stats_revenue_count');
     const storageDate = localStorage.getItem('stats_storage_date');
     
-    let adsCount = storedAdsCount ? parseInt(storedAdsCount) : MINIMUM_ADS_COUNT;
-    let revenueCount = storedRevenueCount ? parseFloat(storedRevenueCount) : MINIMUM_REVENUE_COUNT;
+    // Utiliser les valeurs de sauvegarde si les principales sont manquantes
+    const backupAdsCount = localStorage.getItem('stats_ads_count_backup');
+    const backupRevenueCount = localStorage.getItem('stats_revenue_count_backup');
+    
+    // Obtenir les valeurs effectives à partir de toutes les sources possibles
+    let adsCount = storedAdsCount ? parseInt(storedAdsCount) : 
+                    backupAdsCount ? parseInt(backupAdsCount) : MINIMUM_ADS_COUNT;
+    let revenueCount = storedRevenueCount ? parseFloat(storedRevenueCount) : 
+                        backupRevenueCount ? parseFloat(backupRevenueCount) : MINIMUM_REVENUE_COUNT;
+    
+    // S'assurer que les valeurs sont au moins aux minimums
+    adsCount = Math.max(adsCount, MINIMUM_ADS_COUNT);
+    revenueCount = Math.max(revenueCount, MINIMUM_REVENUE_COUNT);
     
     // Appliquer une progression temporelle TRÈS limitée basée sur le nombre de jours
     if (storageDate) {
@@ -54,9 +65,15 @@ export const loadStoredValues = () => {
       }
     }
     
-    // S'assurer que les valeurs restent crédibles
+    // S'assurer que les valeurs restent crédibles et ne descendent jamais
     adsCount = Math.min(adsCount, MAX_ADS_COUNT);
     revenueCount = Math.min(revenueCount, MAX_REVENUE_COUNT);
+    
+    // Créer des sauvegardes secondaires pour éviter les pertes
+    localStorage.setItem('stats_ads_count_backup', adsCount.toString());
+    localStorage.setItem('stats_revenue_count_backup', revenueCount.toString());
+    localStorage.setItem('last_displayed_ads_count', adsCount.toString());
+    localStorage.setItem('last_displayed_revenue_count', revenueCount.toString());
     
     return {
       adsCount,
@@ -78,12 +95,32 @@ export const loadStoredValues = () => {
  */
 export const saveValues = (adsCount: number, revenueCount: number, skipDateUpdate = false) => {
   try {
-    // Appliquer des limites strictes pour la crédibilité
-    const safeAdsCount = Math.min(Math.max(MINIMUM_ADS_COUNT, adsCount), MAX_ADS_COUNT);
-    const safeRevenueCount = Math.min(Math.max(MINIMUM_REVENUE_COUNT, revenueCount), MAX_REVENUE_COUNT);
+    // Récupérer les valeurs actuelles pour éviter toute régression
+    const currentAdsCount = parseInt(localStorage.getItem('stats_ads_count') || '0');
+    const currentRevenueCount = parseFloat(localStorage.getItem('stats_revenue_count') || '0');
     
+    // N'accepter que des valeurs supérieures aux valeurs existantes
+    const safeAdsCount = Math.max(
+      Math.min(Math.max(MINIMUM_ADS_COUNT, adsCount), MAX_ADS_COUNT),
+      currentAdsCount
+    );
+    
+    const safeRevenueCount = Math.max(
+      Math.min(Math.max(MINIMUM_REVENUE_COUNT, revenueCount), MAX_REVENUE_COUNT),
+      currentRevenueCount
+    );
+    
+    // Stocker dans le stockage principal
     localStorage.setItem('stats_ads_count', safeAdsCount.toString());
     localStorage.setItem('stats_revenue_count', safeRevenueCount.toString());
+    
+    // Stocker des copies de sauvegarde
+    localStorage.setItem('stats_ads_count_backup', safeAdsCount.toString());
+    localStorage.setItem('stats_revenue_count_backup', safeRevenueCount.toString());
+    
+    // Mettre à jour également les dernières valeurs affichées
+    localStorage.setItem('last_displayed_ads_count', safeAdsCount.toString());
+    localStorage.setItem('last_displayed_revenue_count', safeRevenueCount.toString());
     
     if (!skipDateUpdate) {
       localStorage.setItem('stats_storage_date', new Date().toDateString());
@@ -220,5 +257,45 @@ export const saveUserStats = (stats: any) => {
     }));
   } catch (error) {
     console.error('Error saving user stats:', error);
+  }
+};
+
+/**
+ * S'assure que les valeurs ne diminuent jamais
+ */
+export const ensureProgressiveValues = () => {
+  try {
+    // Récupérer toutes les sources possibles
+    const sources = [
+      parseInt(localStorage.getItem('stats_ads_count') || '0'),
+      parseInt(localStorage.getItem('stats_ads_count_backup') || '0'),
+      parseInt(localStorage.getItem('last_displayed_ads_count') || '0'),
+      MINIMUM_ADS_COUNT
+    ];
+    
+    const revenueSources = [
+      parseFloat(localStorage.getItem('stats_revenue_count') || '0'),
+      parseFloat(localStorage.getItem('stats_revenue_count_backup') || '0'),
+      parseFloat(localStorage.getItem('last_displayed_revenue_count') || '0'),
+      MINIMUM_REVENUE_COUNT
+    ];
+    
+    // Filtrer les valeurs NaN et trouver le maximum
+    const maxAds = Math.max(...sources.filter(val => !isNaN(val)));
+    const maxRevenue = Math.max(...revenueSources.filter(val => !isNaN(val)));
+    
+    // S'assurer que toutes les sources sont synchronisées avec la valeur maximale
+    localStorage.setItem('stats_ads_count', maxAds.toString());
+    localStorage.setItem('stats_ads_count_backup', maxAds.toString());
+    localStorage.setItem('last_displayed_ads_count', maxAds.toString());
+    
+    localStorage.setItem('stats_revenue_count', maxRevenue.toString());
+    localStorage.setItem('stats_revenue_count_backup', maxRevenue.toString());
+    localStorage.setItem('last_displayed_revenue_count', maxRevenue.toString());
+    
+    return { maxAds, maxRevenue };
+  } catch (error) {
+    console.error("Erreur lors de la synchronisation des valeurs maximales:", error);
+    return null;
   }
 };
