@@ -10,15 +10,18 @@ interface UsePersistentStatsProps {
   autoIncrement?: boolean;
   userId?: string;
   forceGrowth?: boolean;
+  correlationRatio?: number; // Nouveau paramètre pour la corrélation entre les compteurs
 }
 
 const ADS_COUNT_KEY = 'ads_count';
 const REVENUE_COUNT_KEY = 'revenue_count';
+const LAST_UPDATE_KEY = 'stats_last_update';
 
 const usePersistentStats = ({ 
   autoIncrement = false,
   userId,
-  forceGrowth = false
+  forceGrowth = false,
+  correlationRatio = 0.75 // Valeur par défaut: 0.75€ par publicité analysée en moyenne
 }: UsePersistentStatsProps) => {
   // Initialiser les compteurs avec des valeurs du localStorage ou avec des valeurs calculées
   const initializeCounters = () => {
@@ -32,6 +35,7 @@ const usePersistentStats = ({
       try {
         localStorage.setItem(ADS_COUNT_KEY, adsCount.toString());
         localStorage.setItem(REVENUE_COUNT_KEY, revenueCount.toString());
+        localStorage.setItem(LAST_UPDATE_KEY, Date.now().toString());
       } catch (e) {
         console.error('Erreur lors de la sauvegarde des compteurs:', e);
       }
@@ -47,16 +51,18 @@ const usePersistentStats = ({
     // Si nous avons des valeurs stockées, les utiliser
     if (storedAdsCount && storedRevenueCount) {
       const adsCount = parseInt(storedAdsCount, 10);
-      const revenueCount = parseInt(storedRevenueCount, 10);
+      const revenueCount = parseFloat(storedRevenueCount);
       
       // Ajouter une petite variation pour montrer de l'activité
       const updatedAdsCount = adsCount + Math.floor(Math.random() * 20) + 5;
-      const updatedRevenueCount = revenueCount + Math.floor(Math.random() * 10) + 2;
+      // Assurer que les revenus augmentent proportionnellement aux publicités
+      const updatedRevenueCount = revenueCount + ((updatedAdsCount - adsCount) * correlationRatio * (0.95 + Math.random() * 0.1));
       
       // Mettre à jour le stockage
       try {
         localStorage.setItem(ADS_COUNT_KEY, updatedAdsCount.toString());
         localStorage.setItem(REVENUE_COUNT_KEY, updatedRevenueCount.toString());
+        localStorage.setItem(LAST_UPDATE_KEY, Date.now().toString());
       } catch (e) {
         console.error('Erreur lors de la mise à jour des compteurs:', e);
       }
@@ -77,6 +83,7 @@ const usePersistentStats = ({
     try {
       localStorage.setItem(ADS_COUNT_KEY, defaultAdsCount.toString());
       localStorage.setItem(REVENUE_COUNT_KEY, defaultRevenueCount.toString());
+      localStorage.setItem(LAST_UPDATE_KEY, Date.now().toString());
     } catch (e) {
       console.error('Erreur lors de l\'initialisation des compteurs:', e);
     }
@@ -96,6 +103,11 @@ const usePersistentStats = ({
   
   // Fonction pour incrémenter les compteurs manuellement
   const incrementStats = useCallback((adsIncrement: number, revenueIncrement: number) => {
+    // Si revenueIncrement est fourni, l'utiliser, sinon calculer en fonction du ratio
+    const actualRevenueIncrement = revenueIncrement > 0 ? 
+      revenueIncrement : 
+      adsIncrement * correlationRatio * (0.95 + Math.random() * 0.1);
+    
     setAdsCount(prevAdsCount => {
       const newAdsCount = prevAdsCount + adsIncrement;
       try {
@@ -107,7 +119,7 @@ const usePersistentStats = ({
     });
     
     setRevenueCount(prevRevenueCount => {
-      const newRevenueCount = prevRevenueCount + revenueIncrement;
+      const newRevenueCount = prevRevenueCount + actualRevenueIncrement;
       try {
         localStorage.setItem(REVENUE_COUNT_KEY, newRevenueCount.toString());
       } catch (e) {
@@ -116,9 +128,12 @@ const usePersistentStats = ({
       return newRevenueCount;
     });
     
+    // Mettre à jour la dernière mise à jour
+    localStorage.setItem(LAST_UPDATE_KEY, Date.now().toString());
+    
     // Mettre à jour les données d'évolution stockées
-    updateStoredCounters(adsCount + adsIncrement, revenueCount + revenueIncrement);
-  }, [adsCount, revenueCount]);
+    updateStoredCounters(adsCount + adsIncrement, revenueCount + actualRevenueIncrement);
+  }, [adsCount, revenueCount, correlationRatio]);
   
   // Incrémenter automatiquement les compteurs à intervalles réguliers
   useEffect(() => {
@@ -127,13 +142,14 @@ const usePersistentStats = ({
     // Incrémenter les compteurs périodiquement avec des valeurs réalistes
     const intervalId = setInterval(() => {
       const adsIncrement = Math.floor(Math.random() * 15) + 5; // 5-19
-      const revenueIncrement = Math.floor(Math.random() * 8) + 3; // 3-10
+      // Le revenu est maintenant calculé en fonction des publicités analysées
+      const revenueIncrement = adsIncrement * correlationRatio * (0.95 + Math.random() * 0.1);
       
       incrementStats(adsIncrement, revenueIncrement);
-    }, 25000); // Toutes les 25 secondes
+    }, 15000); // Toutes les 15 secondes
     
     return () => clearInterval(intervalId);
-  }, [autoIncrement, incrementStats]);
+  }, [autoIncrement, incrementStats, correlationRatio]);
   
   return { adsCount, revenueCount, incrementStats };
 };

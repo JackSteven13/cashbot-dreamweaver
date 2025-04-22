@@ -15,6 +15,7 @@ interface StatsEvolutionData {
   growthRate: number;
   dailyAdsIncrease: number;
   dailyRevenueIncrease: number;
+  correlationRatio: number; // Pour maintenir la cohérence entre publicités et revenus
 }
 
 /**
@@ -39,13 +40,18 @@ export const initializeEvolutionData = (): StatsEvolutionData => {
   
   // Valeurs de base avec légère variation aléatoire (±5%)
   const baseVariation = 0.95 + (Math.random() * 0.1);
+  const correlationRatio = 0.75 + (Math.random() * 0.1); // Approximativement 0.75-0.85€ par pub
+  const baseAdsCount = Math.floor(35000 * baseVariation);
+  
   const newData: StatsEvolutionData = {
     lastUpdateTime: now,
-    baseAdsCount: Math.floor(35000 * baseVariation),
-    baseRevenueCount: Math.floor(22000 * baseVariation),
+    baseAdsCount: baseAdsCount,
+    // Calculer revenus en fonction des publicités (avec petit bruit pour plus de réalisme)
+    baseRevenueCount: Math.floor(baseAdsCount * correlationRatio * baseVariation),
     growthRate: 0.008 + (Math.random() * 0.004), // 0.8% à 1.2% par jour
     dailyAdsIncrease: Math.floor(150 + (Math.random() * 100)), // 150-250 par jour
-    dailyRevenueIncrease: Math.floor(80 + (Math.random() * 40)) // 80-120 par jour
+    dailyRevenueIncrease: Math.floor(120 + (Math.random() * 80)), // 120-200 par jour
+    correlationRatio: correlationRatio
   };
   
   // Sauvegarder les données
@@ -75,21 +81,29 @@ export const calculateCurrentCounters = (): { adsCount: number; revenueCount: nu
   
   // Calculer les nouvelles valeurs avec croissance composée
   const compoundFactor = Math.pow(1 + evolutionData.growthRate, daysSinceUpdate);
-  const adsCount = Math.floor(
+  
+  // Calculer d'abord l'augmentation des publicités
+  const newAdsCount = Math.floor(
     evolutionData.baseAdsCount * compoundFactor + 
     evolutionData.dailyAdsIncrease * daysSinceUpdate
   );
-  const revenueCount = Math.floor(
+  
+  // Puis calculer les revenus correspondants (avec ratio + un peu de bruit)
+  const adsIncrease = newAdsCount - evolutionData.baseAdsCount;
+  const directRevenueFromAds = adsIncrease * evolutionData.correlationRatio * (0.98 + Math.random() * 0.04);
+  
+  const newRevenueCount = Math.floor(
     evolutionData.baseRevenueCount * compoundFactor + 
-    evolutionData.dailyRevenueIncrease * daysSinceUpdate
+    evolutionData.dailyRevenueIncrease * daysSinceUpdate +
+    directRevenueFromAds
   );
   
   // Mettre à jour les données d'évolution avec les nouvelles valeurs de base
   const updatedData: StatsEvolutionData = {
     ...evolutionData,
     lastUpdateTime: now,
-    baseAdsCount: adsCount,
-    baseRevenueCount: revenueCount,
+    baseAdsCount: newAdsCount,
+    baseRevenueCount: newRevenueCount,
     // Légère variation du taux de croissance pour plus de réalisme
     growthRate: evolutionData.growthRate * (0.95 + (Math.random() * 0.1))
   };
@@ -97,7 +111,7 @@ export const calculateCurrentCounters = (): { adsCount: number; revenueCount: nu
   // Persister les données mises à jour
   persistEvolutionData(updatedData);
   
-  return { adsCount, revenueCount };
+  return { adsCount: newAdsCount, revenueCount: newRevenueCount };
 };
 
 /**

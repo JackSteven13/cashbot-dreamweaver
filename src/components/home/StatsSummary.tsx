@@ -12,7 +12,8 @@ const StatsSummary: React.FC = () => {
   
   const { adsCount, revenueCount } = usePersistentStats({
     autoIncrement: true,
-    userId
+    userId,
+    correlationRatio: 0.75 // Synchroniser publicités et revenus
   });
   
   // État local pour détecter la première visite du jour

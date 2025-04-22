@@ -11,7 +11,8 @@ const StatisticsCounters: React.FC = () => {
   const { adsCount, revenueCount, incrementStats } = usePersistentStats({
     autoIncrement: true,
     userId,
-    forceGrowth: true // Assurer la croissance entre sessions
+    forceGrowth: true, // Assurer la croissance entre sessions
+    correlationRatio: 0.75 // Assurer que les revenus augmentent proportionnellement aux publicités
   });
   
   // Valeurs locales pour des mises à jour plus fluides et fréquentes
@@ -34,7 +35,9 @@ const StatisticsCounters: React.FC = () => {
     const microUpdateInterval = setInterval(() => {
       // Très petits incréments fréquents
       const microAdsIncrement = Math.floor(Math.random() * 4) + 2; // 2-5 ads
-      const microRevenueIncrement = Math.random() * 0.06 + 0.02; // 0.02€-0.08€
+      // Calculer revenu basé sur les publicités
+      const correlationFactor = 0.75 * (0.95 + Math.random() * 0.1);
+      const microRevenueIncrement = microAdsIncrement * correlationFactor;
       
       setLocalAdsCount(prev => prev + microAdsIncrement);
       setLocalRevenueCount(prev => prev + microRevenueIncrement);
@@ -44,7 +47,9 @@ const StatisticsCounters: React.FC = () => {
     const minorUpdateInterval = setInterval(() => {
       // Petits incréments fréquents
       const smallAdsIncrement = Math.floor(Math.random() * 12) + 5;
-      const smallRevenueIncrement = Math.random() * 0.5 + 0.3;
+      // Calculer le revenu basé sur le nombre de publicités analyées
+      const correlationFactor = 0.75 * (0.98 + Math.random() * 0.04);
+      const smallRevenueIncrement = smallAdsIncrement * correlationFactor;
       
       incrementStats(smallAdsIncrement, smallRevenueIncrement);
     }, 15000); // Toutes les 15 secondes
@@ -53,7 +58,9 @@ const StatisticsCounters: React.FC = () => {
     const majorUpdateInterval = setInterval(() => {
       // Incréments plus importants moins fréquents
       const largerAdsIncrement = Math.floor(Math.random() * 80) + 40;
-      const largerRevenueIncrement = Math.random() * 1.5 + 0.8;
+      // Calculer le revenu basé sur le nombre de publicités
+      const correlationFactor = 0.76 * (0.97 + Math.random() * 0.06);
+      const largerRevenueIncrement = largerAdsIncrement * correlationFactor;
       
       incrementStats(largerAdsIncrement, largerRevenueIncrement);
     }, 90000); // Toutes les 1.5 minutes
