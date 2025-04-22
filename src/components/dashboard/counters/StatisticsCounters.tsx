@@ -10,7 +10,8 @@ const StatisticsCounters: React.FC = () => {
   
   const { adsCount, revenueCount, incrementStats } = usePersistentStats({
     autoIncrement: true,
-    userId
+    userId,
+    forceGrowth: true // Assurer la croissance entre sessions
   });
   
   // Valeurs locales pour des mises à jour plus fluides et fréquentes
@@ -19,8 +20,12 @@ const StatisticsCounters: React.FC = () => {
   
   // Mettre à jour les valeurs locales quand les valeurs persistantes changent
   useEffect(() => {
-    setLocalAdsCount(adsCount);
-    setLocalRevenueCount(revenueCount);
+    if (adsCount > 0) {
+      setLocalAdsCount(adsCount);
+    }
+    if (revenueCount > 0) {
+      setLocalRevenueCount(revenueCount);
+    }
   }, [adsCount, revenueCount]);
 
   // Incrémenter automatiquement les compteurs à intervalles réguliers
@@ -28,18 +33,18 @@ const StatisticsCounters: React.FC = () => {
     // Mises à jour très fréquentes (micro-incréments toutes les 5 secondes)
     const microUpdateInterval = setInterval(() => {
       // Très petits incréments fréquents
-      const microAdsIncrement = Math.floor(Math.random() * 3) + 1; // 1-3 ads
-      const microRevenueIncrement = Math.random() * 0.03 + 0.01; // 0.01€-0.04€
+      const microAdsIncrement = Math.floor(Math.random() * 4) + 2; // 2-5 ads
+      const microRevenueIncrement = Math.random() * 0.06 + 0.02; // 0.02€-0.08€
       
       setLocalAdsCount(prev => prev + microAdsIncrement);
       setLocalRevenueCount(prev => prev + microRevenueIncrement);
     }, 5000); // Toutes les 5 secondes
     
-    // Petits incréments fréquents
+    // Petits incréments fréquents - mise à jour persistante
     const minorUpdateInterval = setInterval(() => {
       // Petits incréments fréquents
-      const smallAdsIncrement = Math.floor(Math.random() * 8) + 3;
-      const smallRevenueIncrement = Math.floor(Math.random() * 5) + 2;
+      const smallAdsIncrement = Math.floor(Math.random() * 12) + 5;
+      const smallRevenueIncrement = Math.random() * 0.5 + 0.3;
       
       incrementStats(smallAdsIncrement, smallRevenueIncrement);
     }, 15000); // Toutes les 15 secondes
@@ -47,11 +52,11 @@ const StatisticsCounters: React.FC = () => {
     // Incréments plus importants moins fréquents
     const majorUpdateInterval = setInterval(() => {
       // Incréments plus importants moins fréquents
-      const largerAdsIncrement = Math.floor(Math.random() * 50) + 20;
-      const largerRevenueIncrement = Math.floor(Math.random() * 40) + 15;
+      const largerAdsIncrement = Math.floor(Math.random() * 80) + 40;
+      const largerRevenueIncrement = Math.random() * 1.5 + 0.8;
       
       incrementStats(largerAdsIncrement, largerRevenueIncrement);
-    }, 120000); // Toutes les 2 minutes
+    }, 90000); // Toutes les 1.5 minutes
 
     return () => {
       clearInterval(microUpdateInterval);

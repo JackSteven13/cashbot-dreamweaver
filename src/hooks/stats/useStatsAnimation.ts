@@ -8,6 +8,41 @@ interface UseStatsAnimationParams {
   setDisplayedRevenueCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
+// Fonction pour générer une croissance basée sur le temps qui s'est écoulé
+const calculateTimeBasedGrowth = () => {
+  // Récupérer la dernière date de génération des statistiques
+  const lastStatsDate = localStorage.getItem('stats_last_generation');
+  const now = new Date();
+  const today = now.toDateString();
+  
+  // Date de référence pour les statistiques si pas de statistiques précédentes
+  const baseDate = new Date('2023-01-01');
+  const daysSinceBase = Math.floor((now.getTime() - baseDate.getTime()) / (1000 * 3600 * 24));
+  
+  // Si c'est la première fois ou si c'est un nouveau jour
+  if (!lastStatsDate || lastStatsDate !== today) {
+    // Enregistrer la nouvelle date
+    localStorage.setItem('stats_last_generation', today);
+    localStorage.setItem('stats_last_sync_date', today);
+    
+    // Si nous avons une date précédente, calculer la croissance basée sur le temps écoulé
+    if (lastStatsDate) {
+      const lastDate = new Date(lastStatsDate);
+      const daysDiff = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
+      
+      // Calculer des taux de croissance journaliers réalistes
+      // Minimum 1% de croissance par jour, maximum 3%
+      return {
+        adsGrowthFactor: 1 + (Math.random() * 0.02 + 0.01) * daysDiff,
+        revenueGrowthFactor: 1 + (Math.random() * 0.02 + 0.01) * daysDiff
+      };
+    }
+  }
+  
+  // Pas de croissance nécessaire
+  return { adsGrowthFactor: 1, revenueGrowthFactor: 1 };
+};
+
 // Calculer un incrément pour une animation plus visible et fréquente
 const calculateCounterIncrement = (targetCount: number, currentCount: number): number => {
   // Différence entre la valeur cible et actuelle
@@ -22,15 +57,15 @@ const calculateCounterIncrement = (targetCount: number, currentCount: number): n
     return 0; // Ne jamais autoriser de baisses
   }
   
-  // Augmenter la probabilité d'incrémenter (50% de chance)
-  const shouldIncrement = Math.random() > 0.5;
+  // Augmenter la probabilité d'incrémenter (70% de chance)
+  const shouldIncrement = Math.random() > 0.3;
   
   // Variation dans la taille des incréments pour un aspect plus naturel
   let incrementSize = 0;
   if (shouldIncrement && difference > 0) {
     // Incréments variables pour un aspect plus naturel
     if (difference > 10) {
-      incrementSize = Math.floor(Math.random() * 3) + 1; // 1-3
+      incrementSize = Math.floor(Math.random() * 5) + 1; // 1-5
     } else {
       incrementSize = 1;
     }
@@ -53,40 +88,74 @@ export const useStatsAnimation = ({
   const maxAdsCount = useRef(0);
   const maxRevenueCount = useRef(0);
   
-  // Compteur pour réduire la fréquence des mises à jour d'animation (mais pas autant qu'avant)
+  // Compteur pour réduire la fréquence des mises à jour d'animation
   const [updateSkipCounter, setUpdateSkipCounter] = useState(0);
   
   // Référence pour l'heure de la dernière mise à jour autorisée
   const lastUpdateTime = useRef<number>(Date.now());
   
-  // Initialiser les valeurs maximales au montage du composant avec une légère variation
+  // Initialiser les valeurs maximales au montage du composant avec croissance basée sur le temps
   useEffect(() => {
-    // Récupérer les valeurs maximales du localStorage
-    const storedMaxAds = localStorage.getItem('max_ads_count');
-    const storedMaxRevenue = localStorage.getItem('max_revenue_count');
-    
-    // Ne réinitialiser les valeurs maximales que si c'est un nouveau jour
+    // Récupérer la date de dernière génération
     const today = new Date().toDateString();
     const lastDate = localStorage.getItem('stats_last_sync_date');
     
-    if (today !== lastDate) {
-      // Nouveau jour, réinitialiser avec légère variation
-      const baseAds = Math.floor(36742 * (0.98 + Math.random() * 0.04)); // ±2%
-      const baseRevenue = Math.floor(23918 * (0.98 + Math.random() * 0.04)); // ±2%
+    // Récupérer les valeurs maximales du localStorage
+    let storedMaxAds = localStorage.getItem('max_ads_count');
+    let storedMaxRevenue = localStorage.getItem('max_revenue_count');
+    
+    // Si c'est un nouveau jour ou pas de valeurs stockées
+    if (today !== lastDate || !storedMaxAds || !storedMaxRevenue) {
+      // Déterminer le facteur de croissance depuis la dernière visite
+      const { adsGrowthFactor, revenueGrowthFactor } = calculateTimeBasedGrowth();
       
+      // Base plus réaliste avec légère variation (croissance constante)
+      // Valeurs de base qui augmentent à chaque jour
+      const baseAdsValue = 36742 + Math.floor(Math.random() * 2000);
+      const baseRevenueValue = 23918 + Math.floor(Math.random() * 500);
+      
+      // Appliquer le facteur de croissance journalier
+      const baseAds = Math.floor(baseAdsValue * adsGrowthFactor);
+      const baseRevenue = Math.floor(baseRevenueValue * revenueGrowthFactor);
+      
+      // Mettre à jour les valeurs maximales
       maxAdsCount.current = baseAds;
       maxRevenueCount.current = baseRevenue;
+      
+      // Stocker les nouvelles valeurs
+      localStorage.setItem('max_ads_count', baseAds.toString());
+      localStorage.setItem('max_revenue_count', baseRevenue.toString());
+      localStorage.setItem('stats_last_sync_date', today);
+      
+      // Mettre à jour les valeurs affichées
+      setDisplayedAdsCount(baseAds);
+      setDisplayedRevenueCount(baseRevenue);
     } else if (storedMaxAds && storedMaxRevenue) {
-      // Même jour, charger les maxima
-      maxAdsCount.current = parseInt(storedMaxAds, 10);
-      maxRevenueCount.current = parseInt(storedMaxRevenue, 10);
+      // Même jour, charger les maxima avec légère croissance
+      const parsedMaxAds = parseInt(storedMaxAds, 10);
+      const parsedMaxRevenue = parseInt(storedMaxRevenue, 10);
+      
+      // Ajouter une légère croissance pour montrer de l'activité même le même jour
+      const updatedAds = parsedMaxAds + Math.floor(Math.random() * 100) + 50;
+      const updatedRevenue = parsedMaxRevenue + Math.floor(Math.random() * 30) + 10;
+      
+      maxAdsCount.current = updatedAds;
+      maxRevenueCount.current = updatedRevenue;
+      
+      // Mettre à jour le stockage
+      localStorage.setItem('max_ads_count', updatedAds.toString());
+      localStorage.setItem('max_revenue_count', updatedRevenue.toString());
+      
+      // Mettre à jour les valeurs affichées
+      setDisplayedAdsCount(updatedAds);
+      setDisplayedRevenueCount(updatedRevenue);
     }
     
     // Ajouter un intervalle pour des mises à jour régulières même sans changement externe
     const regularUpdateInterval = setInterval(() => {
       // Simuler une mise à jour périodique même sans événement externe
-      const minAdsIncrement = Math.floor(Math.random() * 3) + 1;
-      const minRevenueIncrement = (Math.random() * 0.06 + 0.02);
+      const minAdsIncrement = Math.floor(Math.random() * 5) + 2;
+      const minRevenueIncrement = (Math.random() * 0.12 + 0.04);
       
       setDisplayedAdsCount(prev => {
         // S'assurer que la valeur ne diminue jamais
@@ -107,7 +176,7 @@ export const useStatsAnimation = ({
         }
         return newValue;
       });
-    }, 8000 + Math.random() * 4000); // Toutes les 8-12 secondes
+    }, 6000 + Math.random() * 3000); // Toutes les 6-9 secondes
     
     return () => clearInterval(regularUpdateInterval);
   }, [setDisplayedAdsCount, setDisplayedRevenueCount]);
@@ -116,8 +185,8 @@ export const useStatsAnimation = ({
   useEffect(() => {
     const handleLocationAdded = (event: Event) => {
       // Augmenter les compteurs à chaque événement d'annonce
-      const adsIncrement = Math.floor(Math.random() * 5) + 2; // 2-6 ads par événement
-      const revenueIncrement = Math.random() * 0.15 + 0.05; // 0.05€-0.20€ par événement
+      const adsIncrement = Math.floor(Math.random() * 8) + 4; // 4-11 ads par événement
+      const revenueIncrement = Math.random() * 0.25 + 0.08; // 0.08€-0.33€ par événement
       
       setDisplayedAdsCount(prev => {
         const newValue = prev + adsIncrement;
@@ -147,17 +216,17 @@ export const useStatsAnimation = ({
     const now = Date.now();
     const elapsedTime = now - lastUpdateTime.current;
     
-    // Limiter les mises à jour mais pas autant qu'avant (au moins 30 secondes entre chaque)
-    if (elapsedTime < 30000) {
+    // Limiter les mises à jour mais moins restrictif qu'avant (au moins 15 secondes entre chaque)
+    if (elapsedTime < 15000) {
       return { animationActive: false };
     }
     
     // Mettre à jour le temps de la dernière mise à jour avec légère variation
-    lastUpdateTime.current = now - Math.floor(Math.random() * 5000); // Variation de 0-5s
+    lastUpdateTime.current = now - Math.floor(Math.random() * 3000); // Variation de 0-3s
     
-    // Sauter certaines mises à jour mais moins qu'avant (20% de chance de mise à jour)
+    // Réduire le nombre de mises à jour sautées (50% de chances de mise à jour)
     setUpdateSkipCounter(prev => {
-      const shouldSkipFrame = Math.random() > 0.2;
+      const shouldSkipFrame = Math.random() > 0.5;
       
       if (shouldSkipFrame) {
         return prev + 1;
@@ -172,7 +241,7 @@ export const useStatsAnimation = ({
         }
         
         // Incrément variable pour un aspect plus naturel
-        const incrementAmount = Math.floor(Math.random() * 5) + 2; // 2-6
+        const incrementAmount = Math.floor(Math.random() * 8) + 3; // 3-10
         return prevCount + incrementAmount;
       });
 
@@ -184,7 +253,7 @@ export const useStatsAnimation = ({
         }
         
         // Gain réaliste correspondant à plusieurs vidéos
-        const adValue = Math.random() * 0.15 + 0.10; // 0.10€-0.25€
+        const adValue = Math.random() * 0.25 + 0.15; // 0.15€-0.40€
         return prevCount + adValue;
       });
       
@@ -192,7 +261,7 @@ export const useStatsAnimation = ({
     });
 
     return { 
-      animationActive: Math.random() > 0.2 // 80% de chance d'animation active
+      animationActive: Math.random() > 0.1 // 90% de chance d'animation active
     };
   }, [setDisplayedAdsCount, setDisplayedRevenueCount]);
 

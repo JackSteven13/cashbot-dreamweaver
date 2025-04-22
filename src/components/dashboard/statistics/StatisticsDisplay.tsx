@@ -48,7 +48,9 @@ const StatisticsDisplay: React.FC = () => {
   // Utiliser notre hook de statistiques persistantes avec incrémentation automatique
   const { adsCount, revenueCount } = usePersistentStats({
     autoIncrement: true,
-    userId
+    userId,
+    // Ajout d'un paramètre forceGrowth pour assurer l'évolution entre les sessions
+    forceGrowth: true
   });
   
   // État local pour des mises à jour plus fréquentes et fluides
@@ -57,19 +59,23 @@ const StatisticsDisplay: React.FC = () => {
   
   // Synchroniser avec les valeurs persistantes
   useEffect(() => {
-    setLocalAdsCount(adsCount);
-    setLocalRevenueCount(revenueCount);
+    if (adsCount > 0) {
+      setLocalAdsCount(adsCount);
+    }
+    if (revenueCount > 0) {
+      setLocalRevenueCount(revenueCount);
+    }
   }, [adsCount, revenueCount]);
   
   // Ajouter des micro-mises à jour fréquentes
   useEffect(() => {
     const microUpdateInterval = setInterval(() => {
-      const microAdsIncrement = Math.floor(Math.random() * 2) + 1;
-      const microRevenueIncrement = Math.random() * 0.02 + 0.01;
+      const microAdsIncrement = Math.floor(Math.random() * 3) + 2; // 2-4 ads toutes les 5 secondes
+      const microRevenueIncrement = Math.random() * 0.05 + 0.03; // 0.03€-0.08€ toutes les 5 secondes
       
       setLocalAdsCount(prev => prev + microAdsIncrement);
       setLocalRevenueCount(prev => prev + microRevenueIncrement);
-    }, 5000); // Toutes les 5 secondes
+    }, 5000);
     
     return () => clearInterval(microUpdateInterval);
   }, []);
