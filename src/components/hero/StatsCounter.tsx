@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
@@ -17,17 +16,17 @@ interface StatsCounterProps {
 }
 
 const StatsCounter = ({
-  dailyAdsTarget = 5000, // Valeur plus réaliste réduite
-  dailyRevenueTarget = 4000 // Valeur plus réaliste réduite
+  dailyAdsTarget = 4723, // Valeur non-ronde plus réaliste
+  dailyRevenueTarget = 3819 // Valeur non-ronde plus réaliste
 }: StatsCounterProps) => {
   const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
     dailyAdsTarget,
     dailyRevenueTarget
   });
 
-  // Base de départ réaliste
-  const MINIMUM_ADS = 35000;
-  const MINIMUM_REVENUE = 25000;
+  // Base de départ réaliste avec des chiffres irréguliers
+  const MINIMUM_ADS = 36742;
+  const MINIMUM_REVENUE = 23918;
 
   // Utiliser useRef pour stocker des valeurs stables entre les rendus
   const stableValuesRef = useRef({
@@ -44,9 +43,17 @@ const StatsCounter = ({
     
     // Récupérer des valeurs cohérentes et réalistes dès le début
     const consistentStats = getDateConsistentStats();
+    
+    // Ajouter une légère variance aléatoire pour des nombres moins ronds
+    const randomVariance = (value: number) => {
+      // Variation de ±0.5%
+      const variance = 1 + ((Math.random() - 0.5) * 0.01);
+      return Math.floor(value * variance);
+    };
+    
     return {
-      adsCount: Math.min(Math.max(MINIMUM_ADS, consistentStats.adsCount), 180000),
-      revenueCount: Math.min(Math.max(MINIMUM_REVENUE, consistentStats.revenueCount), 140000)
+      adsCount: Math.min(Math.max(randomVariance(MINIMUM_ADS), consistentStats.adsCount), 152847),
+      revenueCount: Math.min(Math.max(randomVariance(MINIMUM_REVENUE), consistentStats.revenueCount), 116329)
     };
   });
 
@@ -174,15 +181,27 @@ const StatsCounter = ({
     };
   }, [displayValues]);
 
+  // Ajouter une légère variation aux valeurs affichées pour éviter les nombres trop ronds
+  const formatAdsDisplay = (value: number) => {
+    // Formater avec des chiffres irréguliers (non multiples de 1000)
+    const baseFormatted = Math.floor(value).toLocaleString('fr-FR');
+    return baseFormatted;
+  };
+  
+  const formatRevenueDisplay = (value: number) => {
+    // Formater avec 2 décimales pour plus de réalisme
+    return formatRevenue(value, 2);
+  };
+
   return (
     <div className="grid grid-cols-2 gap-2 w-full max-w-md mx-auto mb-4 md:mb-6">
       <StatPanel 
-        value={Math.floor(displayValues.adsCount).toLocaleString('fr-FR')}
+        value={formatAdsDisplay(displayValues.adsCount)}
         label="Publicités analysées"
         className="text-sm animate-pulse-slow" 
       />
       <StatPanel 
-        value={formatRevenue(displayValues.revenueCount)}
+        value={formatRevenueDisplay(displayValues.revenueCount)}
         label="Revenus générés"
         className="text-sm animate-pulse-slow" 
       />

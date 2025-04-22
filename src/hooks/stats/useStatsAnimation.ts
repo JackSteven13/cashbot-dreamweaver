@@ -1,4 +1,3 @@
-
 import { useCallback, useState, useRef, useEffect } from 'react';
 
 interface UseStatsAnimationParams {
@@ -22,11 +21,21 @@ const calculateCounterIncrement = (targetCount: number, currentCount: number): n
     return 0; // Ne jamais autoriser de baisses
   }
   
-  // Réduire drastiquement la probabilité d'un incrément (seulement 0.01% de chance)
-  const shouldIncrement = Math.random() > 0.9999;
+  // Ajout d'une variation aléatoire supplémentaire pour des incréments plus naturels
+  const shouldIncrement = Math.random() > 0.9995; // Encore plus rare (0.05% de chance)
   
-  // Aucun mouvement dans 99.99% des cas, sinon +1 maximum
-  return shouldIncrement && difference > 0 ? 1 : 0;
+  // Variation dans la taille des incréments pour un aspect plus naturel
+  let incrementSize = 0;
+  if (shouldIncrement && difference > 0) {
+    // Incréments variables pour un aspect plus naturel
+    if (difference > 10) {
+      incrementSize = Math.floor(Math.random() * 3) + 1; // 1-3
+    } else {
+      incrementSize = 1;
+    }
+  }
+  
+  return incrementSize;
 };
 
 export const useStatsAnimation = ({
@@ -49,7 +58,7 @@ export const useStatsAnimation = ({
   // Référence pour l'heure de la dernière mise à jour autorisée
   const lastUpdateTime = useRef<number>(Date.now());
   
-  // Initialiser les valeurs maximales au montage du composant
+  // Initialiser les valeurs maximales au montage du composant avec une légère variation
   useEffect(() => {
     // Récupérer les valeurs maximales du localStorage
     const storedMaxAds = localStorage.getItem('max_ads_count');
@@ -60,9 +69,12 @@ export const useStatsAnimation = ({
     const lastDate = localStorage.getItem('stats_last_sync_date');
     
     if (today !== lastDate) {
-      // Nouveau jour, réinitialiser
-      maxAdsCount.current = 0;
-      maxRevenueCount.current = 0;
+      // Nouveau jour, réinitialiser avec légère variation
+      const baseAds = Math.floor(36742 * (0.98 + Math.random() * 0.04)); // ±2%
+      const baseRevenue = Math.floor(23918 * (0.98 + Math.random() * 0.04)); // ±2%
+      
+      maxAdsCount.current = baseAds;
+      maxRevenueCount.current = baseRevenue;
     } else if (storedMaxAds && storedMaxRevenue) {
       // Même jour, charger les maxima
       maxAdsCount.current = parseInt(storedMaxAds, 10);
@@ -86,17 +98,17 @@ export const useStatsAnimation = ({
     const now = Date.now();
     const elapsedTime = now - lastUpdateTime.current;
     
-    // Bloquer presque toutes les animations (attendre au moins 5-10 minutes entre chaque)
-    if (elapsedTime < 300000 + Math.random() * 300000) {
+    // Bloquer presque toutes les animations (attendre au moins 8-15 minutes entre chaque)
+    if (elapsedTime < 480000 + Math.random() * 420000) {
       return { animationActive: false }; // Animation pratiquement gelée
     }
     
-    // Mettre à jour le temps de la dernière mise à jour
-    lastUpdateTime.current = now;
+    // Mettre à jour le temps de la dernière mise à jour avec légère variation
+    lastUpdateTime.current = now - Math.floor(Math.random() * 10000); // Variation de 0-10s
     
-    // Sauter la quasi-totalité des updates (99.9%)
+    // Sauter la quasi-totalité des updates (99.95%)
     setUpdateSkipCounter(prev => {
-      const shouldSkipFrame = Math.random() > 0.001; // 0.1% de chance seulement de ne pas sauter
+      const shouldSkipFrame = Math.random() > 0.0005; // 0.05% de chance seulement de ne pas sauter
       
       if (shouldSkipFrame) {
         return prev + 1; // Accumuler les sauts
@@ -106,7 +118,7 @@ export const useStatsAnimation = ({
       const isBurstMode = false;
       
       // Animation complètement bloquée - changement extrêmement rare
-      if (Math.random() > 0.999) { // 0.1% de chance de mise à jour
+      if (Math.random() > 0.998) { // 0.2% de chance de mise à jour
         setDisplayedAdsCount((prevCount) => {
           // Mettre à jour la valeur maximale si nécessaire
           if (prevCount > maxAdsCount.current) {
@@ -114,11 +126,12 @@ export const useStatsAnimation = ({
             localStorage.setItem('max_ads_count', prevCount.toString());
           }
           
-          // Maximum +1 vidéo à la fois, jamais plus
-          return prevCount + 1;
+          // Incrément variable pour un aspect plus naturel et imprévisible
+          const incrementAmount = Math.floor(Math.random() * 2) + 1;
+          return prevCount + incrementAmount;
         });
 
-        // Animer le compteur de revenus avec un gain minuscule
+        // Animer le compteur de revenus avec un gain minuscule et variable
         setDisplayedRevenueCount((prevCount) => {
           // Mettre à jour la valeur maximale si nécessaire
           if (prevCount > maxRevenueCount.current) {
@@ -126,8 +139,8 @@ export const useStatsAnimation = ({
             localStorage.setItem('max_revenue_count', prevCount.toString());
           }
           
-          // Gain très faible correspondant à une seule vidéo
-          const adValue = Math.random() * 0.1 + 0.2; // 0.2€-0.3€
+          // Gain très faible correspondant à une seule vidéo avec variation
+          const adValue = Math.random() * 0.08 + 0.22; // 0.22€-0.30€
           return prevCount + adValue;
         });
       }

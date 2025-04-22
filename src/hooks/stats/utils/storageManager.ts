@@ -1,17 +1,16 @@
-
 /**
  * Utilitaires pour la gestion du stockage des statistiques
  * avec une progression crédible et stable dans le temps
  */
 
 // Valeurs initiales pour des compteurs crédibles mais attrayants
-const MINIMUM_ADS_COUNT = 35000; // Valeur minimale réduite
-const MINIMUM_REVENUE_COUNT = 25000; // Valeur minimale réduite
+const MINIMUM_ADS_COUNT = 36742; // Valeur non-ronde plus crédible
+const MINIMUM_REVENUE_COUNT = 23918; // Valeur non-ronde plus crédible
 const DAILY_PROGRESSIVE_FACTOR = 0.0002; // 0.02% d'augmentation par jour (bien plus lent)
 
-// Plafonds absolus pour garantir la crédibilité
-const MAX_ADS_COUNT = 180000;
-const MAX_REVENUE_COUNT = 140000;
+// Plafonds avec des valeurs irrégulières pour plus de crédibilité
+const MAX_ADS_COUNT = 152847;
+const MAX_REVENUE_COUNT = 116329;
 
 /**
  * Charge les valeurs stockées avec progression temporelle limitée
@@ -40,12 +39,13 @@ export const loadStoredValues = () => {
     if (storageDate) {
       const daysDifference = getDaysDifference(new Date(storageDate), new Date());
       if (daysDifference > 0) {
-        // Progression beaucoup plus lente et plafonnée
+        // Progression beaucoup plus lente et plafonnée avec une légère variation
         const progressFactor = 1 + (DAILY_PROGRESSIVE_FACTOR * Math.min(daysDifference, 10));
         
-        // Limiter l'incrément quotidien à des valeurs très raisonnables
-        const maxDailyAdsIncrease = 200; // ~200 pubs par jour maximum
-        const maxDailyRevenueIncrease = 150; // ~150€ par jour maximum
+        // Limiter l'incrément quotidien à des valeurs très raisonnables avec variation
+        const variationFactor = 0.85 + Math.random() * 0.3; // Entre 0.85 et 1.15
+        const maxDailyAdsIncrease = Math.floor(187 * variationFactor); // ~187 pubs par jour maximum
+        const maxDailyRevenueIncrease = Math.floor(127 * variationFactor); // ~127€ par jour maximum
         
         const newAdsCount = Math.min(
           adsCount + (maxDailyAdsIncrease * Math.min(daysDifference, 3)),
@@ -143,10 +143,10 @@ export const incrementDateLinkedStats = () => {
   const installDate = localStorage.getItem('first_use_date') || new Date().toISOString();
   const daysSinceInstall = getDaysDifference(new Date(installDate), new Date());
   
-  // Incréments TRÈS petits (presque invisibles en temps réel)
-  // Réduire drastiquement les valeurs d'incrément
-  const adsIncrement = Math.min(Math.floor(Math.random() * 2) + 1, 2); 
-  const revenueIncrement = Math.min((Math.random() * 0.01) + 0.01, 0.02);
+  // Incréments TRÈS petits (presque invisibles en temps réel) avec légère variation
+  const variationFactor = 0.9 + Math.random() * 0.2; // Entre 0.9 et 1.1
+  const adsIncrement = Math.max(1, Math.floor(Math.random() * 2 + 1) * variationFactor); 
+  const revenueIncrement = Math.max(0.01, (Math.random() * 0.01 + 0.01) * variationFactor);
   
   const newAdsCount = Math.min(adsCount + adsIncrement, MAX_ADS_COUNT);
   const newRevenueCount = Math.min(revenueCount + revenueIncrement, MAX_REVENUE_COUNT);
@@ -184,16 +184,21 @@ export const getDateConsistentStats = () => {
     localStorage.setItem('first_use_date', pastDate.toISOString());
   }
   
-  // Progression très limitée basée sur le temps écoulé depuis la première utilisation
+  // Progression très limitée basée sur le temps écoulé avec légère variation aléatoire
   const installDate = localStorage.getItem('first_use_date') || new Date().toISOString();
   const daysSinceInstall = getDaysDifference(new Date(installDate), new Date());
   
   // Effet cumulatif très réduit: augmentation très graduelle
-  const ageBonus = Math.min(daysSinceInstall * 0.001, 0.08); // max +8% après 80 jours
+  const randomVariation = 0.9 + Math.random() * 0.2; // Entre 0.9 et 1.1
+  const ageBonus = Math.min(daysSinceInstall * 0.001 * randomVariation, 0.08); 
   
-  // Appliquer des limites strictes
-  const adsCount = Math.min(Math.floor(base.adsCount * (1 + ageBonus)), MAX_ADS_COUNT);
-  const revenueCount = Math.min(base.revenueCount * (1 + ageBonus), MAX_REVENUE_COUNT);
+  // Ajouter une légère variation aléatoire aux valeurs
+  const randomAdsFactor = 1 + (Math.random() * 0.002 - 0.001); // ±0.1%
+  const randomRevenueFactor = 1 + (Math.random() * 0.002 - 0.001); // ±0.1%
+  
+  // Appliquer des limites strictes et variation minime
+  const adsCount = Math.min(Math.floor(base.adsCount * (1 + ageBonus) * randomAdsFactor), MAX_ADS_COUNT);
+  const revenueCount = Math.min(base.revenueCount * (1 + ageBonus) * randomRevenueFactor, MAX_REVENUE_COUNT);
   
   return {
     adsCount,
