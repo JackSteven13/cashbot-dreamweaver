@@ -36,7 +36,7 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
   const { fetchUserData, resetDailyCounters } = useUserDataFetching(
     loadUserProfile,
     loadUserBalance,
-    updateUserDataWrapper, // Use the wrapper function
+    updateUserDataWrapper,
     setIsLoading,
     isNewUser
   );
