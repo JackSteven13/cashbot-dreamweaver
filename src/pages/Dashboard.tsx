@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +23,51 @@ const Dashboard = () => {
   const [lastProcessTime, setLastProcessTime] = useState<number>(0);
   const todaysGainsRef = React.useRef<number>(0);
   const [lastBalanceUpdate, setLastBalanceUpdate] = useState<number>(Date.now());
+  
+  // Move the updateBalance function definition to the top
+  const updateBalance = async (gain: number, report: string, forceUpdate: boolean = false) => {
+    console.log(`Updating balance with gain: ${gain}, report: ${report}, forceUpdate: ${forceUpdate}`);
+    
+    const currentBalance = balanceManager.getCurrentBalance();
+    const newBalance = parseFloat((currentBalance + gain).toFixed(2));
+    
+    window.dispatchEvent(new CustomEvent('balance:update', {
+      detail: { 
+        amount: gain, 
+        currentBalance: newBalance, 
+        animate: true 
+      }
+    }));
+    
+    window.dispatchEvent(new CustomEvent('balance:force-update', {
+      detail: { 
+        newBalance: newBalance,
+        gain: gain,
+        timestamp: Date.now() 
+      }
+    }));
+    
+    setLastBalanceUpdate(Date.now());
+    
+    if (forceUpdate && userData?.subscription === 'freemium') {
+      localStorage.setItem('freemium_daily_limit_reached', 'true');
+      localStorage.setItem('last_session_date', new Date().toDateString());
+    }
+    
+    if (forceUpdate) {
+      await refreshData();
+    }
+  };
+  
+  // Initialize the useAutomaticRevenue hook before using the generateAutomaticRevenue function
+  const { 
+    generateAutomaticRevenue,
+    isBotActive,
+    dailyLimitProgress 
+  } = useAutomaticRevenue({
+    userData,
+    updateBalance
+  });
   
   useEffect(() => {
     if (!isPreloaded && userData && userData.balance) {
@@ -189,49 +235,6 @@ const Dashboard = () => {
       }
     }
   }, [userData]);
-  
-  const updateBalance = async (gain: number, report: string, forceUpdate: boolean = false) => {
-    console.log(`Updating balance with gain: ${gain}, report: ${report}, forceUpdate: ${forceUpdate}`);
-    
-    const currentBalance = balanceManager.getCurrentBalance();
-    const newBalance = parseFloat((currentBalance + gain).toFixed(2));
-    
-    window.dispatchEvent(new CustomEvent('balance:update', {
-      detail: { 
-        amount: gain, 
-        currentBalance: newBalance, 
-        animate: true 
-      }
-    }));
-    
-    window.dispatchEvent(new CustomEvent('balance:force-update', {
-      detail: { 
-        newBalance: newBalance,
-        gain: gain,
-        timestamp: Date.now() 
-      }
-    }));
-    
-    setLastBalanceUpdate(Date.now());
-    
-    if (forceUpdate && userData?.subscription === 'freemium') {
-      localStorage.setItem('freemium_daily_limit_reached', 'true');
-      localStorage.setItem('last_session_date', new Date().toDateString());
-    }
-    
-    if (forceUpdate) {
-      await refreshData();
-    }
-  };
-  
-  const { 
-    generateAutomaticRevenue,
-    isBotActive,
-    dailyLimitProgress 
-  } = useAutomaticRevenue({
-    userData,
-    updateBalance
-  });
   
   useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
   
