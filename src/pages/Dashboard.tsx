@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +14,7 @@ import { useAutoSessionScheduler } from '@/hooks/useAutoSessionScheduler';
 import { useBalanceUpdater } from '@/hooks/useBalanceUpdater';
 import { useBalanceSync } from '@/hooks/useBalanceSync';
 import { usePeriodicUpdates } from '@/hooks/usePeriodicUpdates';
+import balanceManager from '@/utils/balance/balanceManager';
 
 const Dashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
