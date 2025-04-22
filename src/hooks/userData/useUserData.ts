@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 import { UserData, Transaction } from '@/types/userData';
@@ -16,6 +15,9 @@ export const useUserData = () => {
   const [isNewUser, setIsNewUser] = useState(false);
   const { user } = useAuth();
 
+  // Ajout: fonction de "revenu automatique" à chaque connexion
+  const autoRevenuesManagedRef = useRef<boolean>(false);
+
   // Fonction pour rafraîchir les données utilisateur
   const refreshUserData = useCallback(async () => {
     if (!user?.id) {
@@ -24,7 +26,7 @@ export const useUserData = () => {
     }
 
     setIsLoading(true);
-    
+
     try {
       // Récupérer les données de profil
       const { data: profileData, error: profileError } = await supabase
@@ -51,6 +53,30 @@ export const useUserData = () => {
         throw balanceError;
       }
       
+      // 1. On vérifie la dernière connexion utilisateur
+      let lastVisitDate = localStorage.getItem("auto-revenue:last-visit");
+      const todayIso = (new Date()).toISOString();
+      if (!lastVisitDate) {
+        lastVisitDate = todayIso;
+        localStorage.setItem("auto-revenue:last-visit", todayIso);
+      }
+
+      // 2. Appel revenu automatique SI ce n'est pas fait lors de cette session
+      if (!autoRevenuesManagedRef.current && balanceData) {
+        await import("@/utils/balance/autoRevenuePersistence")
+          .then(async (mod) => {
+            await mod.recordMissingAutoRevenues(
+              user.id,
+              lastVisitDate || todayIso,
+              balanceData.subscription || "freemium"
+            );
+          });
+        autoRevenuesManagedRef.current = true;
+      }
+
+      // 3. Mettre à jour la dernière visite (pour prochaine reconnexion)
+      localStorage.setItem("auto-revenue:last-visit", todayIso);
+
       // Récupérer les transactions explicitement
       console.log('Fetching transactions for user:', user.id);
       const transactions = await fetchUserTransactions(user.id);

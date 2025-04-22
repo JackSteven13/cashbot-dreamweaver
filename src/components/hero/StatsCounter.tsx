@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
@@ -134,8 +133,8 @@ const StatsCounter = ({
         revenueCount: displayedRevenueCount
       }));
     }
-  }, [displayedAdsCount, displayedRevenueCount, displayValues]);
-  
+  }, [displayedAdsCount, displayedRevenueCount]);
+
   // Effet pour gérer la visibilité de la page
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -165,8 +164,8 @@ const StatsCounter = ({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
     };
-  }, [displayValues]);
-  
+  }, []);
+
   // Persister les valeurs avant le déchargement de la page
   useEffect(() => {
     const handleBeforeUnload = () => {

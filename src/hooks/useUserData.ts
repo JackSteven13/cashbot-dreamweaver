@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 import { UserData, Transaction } from '@/types/userData';
@@ -107,6 +106,9 @@ export const useUserData = () => {
       setIsLoading(false);
     }
   }, [user]);
+
+  // Ajout: fonction de "revenu automatique" à chaque connexion
+  const autoRevenuesManagedRef = useRef<boolean>(false);
 
   // Charger les données initiales
   useEffect(() => {
