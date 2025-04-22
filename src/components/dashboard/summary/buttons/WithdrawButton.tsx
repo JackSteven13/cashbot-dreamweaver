@@ -60,3 +60,5 @@ export const WithdrawButton: React.FC<WithdrawButtonProps> = ({
     </Button>
   );
 };
+
+export default WithdrawButton;

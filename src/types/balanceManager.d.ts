@@ -6,6 +6,8 @@ export interface BalanceManagerInstance {
   // Core balance methods
   getCurrentBalance: () => number;
   forceBalanceSync: (newBalance: number, userId?: string) => void;
+  updateBalance?: (amount: number) => void;
+  addDailyGain?: (amount: number) => void;
   
   // Daily gains methods
   getDailyGains: () => number;
@@ -31,4 +33,6 @@ export interface ExtendedBalanceManagerInstance extends BalanceManagerInstance {
   updateHighestBalance: (balance: number) => void;
   addWatcher: (callback: (newBalance: number) => void) => (() => void);
   checkForSignificantBalanceChange: (newBalance: number) => boolean;
+  updateBalance: (amount: number) => void;
+  addDailyGain: (amount: number) => void;
 }

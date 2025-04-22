@@ -76,6 +76,45 @@ const createBalanceManager = (): BalanceManagerInstance => {
       });
     },
     
+    // Method to update the balance by adding an amount
+    updateBalance: (amount: number) => {
+      if (isNaN(amount)) return;
+      
+      const newBalance = currentBalance + amount;
+      currentBalance = newBalance;
+      
+      // Update localStorage
+      localStorage.setItem('currentBalance', newBalance.toString());
+      
+      // Update highest balance if needed
+      if (newBalance > highestBalance) {
+        highestBalance = newBalance;
+        localStorage.setItem('highest_balance', highestBalance.toString());
+      }
+      
+      // Notify watchers
+      watchers.forEach(callback => {
+        try {
+          callback(currentBalance);
+        } catch (e) {
+          console.error('Error in balance watcher callback:', e);
+        }
+      });
+    },
+    
+    // Method to add daily gain
+    addDailyGain: (amount: number) => {
+      if (isNaN(amount)) return;
+      
+      dailyGains += amount;
+      localStorage.setItem('dailyGains', dailyGains.toString());
+      
+      // Dispatch event for components that need to react
+      window.dispatchEvent(new CustomEvent('dailyGains:updated', { 
+        detail: { gains: dailyGains } 
+      }));
+    },
+    
     // Daily gains methods
     getDailyGains: () => {
       // First check localStorage for most recent value

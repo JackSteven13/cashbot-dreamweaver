@@ -2,14 +2,14 @@
 // Import from the subscription module
 import { 
   SUBSCRIPTION_LIMITS as SubscriptionLimits, 
-  getEffectiveSubscription,
+  getEffectiveSubscription as getEffectiveSubscriptionOriginal,
   checkDailyLimit as checkDailyLimitOriginal
 } from './subscription';
 
 // Re-export the imported functions and constants
 export const SUBSCRIPTION_LIMITS = SubscriptionLimits;
 export const checkDailyLimit = checkDailyLimitOriginal;
-export { getEffectiveSubscription };
+export const getEffectiveSubscription = getEffectiveSubscriptionOriginal;
 
 // Additional functions specific to this file
 export const getSubscriptionName = (subscriptionCode: string): string => {
