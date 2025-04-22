@@ -1,189 +1,226 @@
 
-import { BalanceManagerInstance } from '@/types/balanceManager';
-
-// Type for balance watcher callbacks
-type BalanceWatcherCallback = (newBalance: number) => void;
-
 /**
- * Balance Manager Implementation
+ * Balance Manager - Singleton to manage user balance state
  */
-const createBalanceManager = (): BalanceManagerInstance => {
-  let currentBalance: number = 0;
-  let dailyGains: number = 0;
-  let highestBalance: number = 0;
-  const watchers: BalanceWatcherCallback[] = [];
 
-  // Initialize values from localStorage
-  const init = () => {
+interface BalanceWatcher {
+  (newBalance: number): void;
+}
+
+class BalanceManager {
+  private balance: number = 0;
+  private userId: string | null = null;
+  private dailyGains: number = 0;
+  private watchers: BalanceWatcher[] = [];
+  private isInitialized: boolean = false;
+
+  constructor() {
+    this.initFromStorage();
+  }
+
+  /**
+   * Initialize balance from localStorage
+   */
+  private initFromStorage(): void {
     try {
-      const storedBalance = localStorage.getItem('currentBalance');
-      if (storedBalance) {
-        currentBalance = parseFloat(storedBalance);
-      }
-
-      const storedDailyGains = localStorage.getItem('dailyGains');
-      if (storedDailyGains) {
-        dailyGains = parseFloat(storedDailyGains);
-      }
-
-      const storedHighestBalance = localStorage.getItem('highest_balance');
-      if (storedHighestBalance) {
-        highestBalance = parseFloat(storedHighestBalance);
-      }
-    } catch (e) {
-      console.error('Error initializing balance manager:', e);
-    }
-  };
-
-  // Initialize on creation
-  init();
-
-  return {
-    // Core balance methods
-    getCurrentBalance: () => {
-      return isNaN(currentBalance) ? 0 : currentBalance;
-    },
-    
-    forceBalanceSync: (newBalance: number, userId?: string) => {
-      if (isNaN(newBalance)) return;
-      
-      currentBalance = newBalance;
-      
-      // Store in localStorage with both general and user-specific keys if provided
-      localStorage.setItem('currentBalance', newBalance.toString());
-      
+      // Try to get user-specific balance first
+      const userId = this.getUserIdFromStorage();
       if (userId) {
-        localStorage.setItem(`currentBalance_${userId}`, newBalance.toString());
-      }
-      
-      // Update highest balance if needed
-      if (newBalance > highestBalance) {
-        highestBalance = newBalance;
-        localStorage.setItem('highest_balance', highestBalance.toString());
-        
-        if (userId) {
-          localStorage.setItem(`highest_balance_${userId}`, highestBalance.toString());
-        }
-      }
-      
-      // Notify watchers
-      watchers.forEach(callback => {
-        try {
-          callback(currentBalance);
-        } catch (e) {
-          console.error('Error in balance watcher callback:', e);
-        }
-      });
-    },
-    
-    // Method to update the balance by adding an amount
-    updateBalance: (amount: number) => {
-      if (isNaN(amount)) return;
-      
-      const newBalance = currentBalance + amount;
-      currentBalance = newBalance;
-      
-      // Update localStorage
-      localStorage.setItem('currentBalance', newBalance.toString());
-      
-      // Update highest balance if needed
-      if (newBalance > highestBalance) {
-        highestBalance = newBalance;
-        localStorage.setItem('highest_balance', highestBalance.toString());
-      }
-      
-      // Notify watchers
-      watchers.forEach(callback => {
-        try {
-          callback(currentBalance);
-        } catch (e) {
-          console.error('Error in balance watcher callback:', e);
-        }
-      });
-    },
-    
-    // Method to add daily gain
-    addDailyGain: (amount: number) => {
-      if (isNaN(amount)) return;
-      
-      dailyGains += amount;
-      localStorage.setItem('dailyGains', dailyGains.toString());
-      
-      // Dispatch event for components that need to react
-      window.dispatchEvent(new CustomEvent('dailyGains:updated', { 
-        detail: { gains: dailyGains } 
-      }));
-    },
-    
-    // Daily gains methods
-    getDailyGains: () => {
-      // First check localStorage for most recent value
-      try {
-        const storedDailyGains = localStorage.getItem('dailyGains');
-        if (storedDailyGains) {
-          const parsedValue = parseFloat(storedDailyGains);
-          if (!isNaN(parsedValue)) {
-            dailyGains = parsedValue;
+        this.userId = userId;
+        const userSpecificBalance = localStorage.getItem(`currentBalance_${userId}`);
+        if (userSpecificBalance) {
+          const parsedBalance = parseFloat(userSpecificBalance);
+          if (!isNaN(parsedBalance)) {
+            this.balance = parsedBalance;
+            this.isInitialized = true;
           }
         }
-      } catch (e) {
-        console.error('Error reading daily gains from localStorage:', e);
       }
-      
-      return isNaN(dailyGains) ? 0 : dailyGains;
-    },
-    
-    setDailyGains: (amount: number) => {
-      if (isNaN(amount)) return;
-      
-      dailyGains = amount;
-      localStorage.setItem('dailyGains', amount.toString());
-      
-      // Dispatch event for components that need to react
-      window.dispatchEvent(new CustomEvent('dailyGains:updated', { 
-        detail: { gains: amount } 
-      }));
-    },
-    
-    // History tracking
-    getHighestBalance: () => {
-      return isNaN(highestBalance) ? 0 : highestBalance;
-    },
-    
-    updateHighestBalance: (balance: number) => {
-      if (isNaN(balance) || balance <= highestBalance) return;
-      
-      highestBalance = balance;
-      localStorage.setItem('highest_balance', balance.toString());
-    },
-    
-    // Event subscription
-    addWatcher: (callback: (newBalance: number) => void) => {
-      watchers.push(callback);
-      
-      // Return function to remove watcher
-      return () => {
-        const index = watchers.indexOf(callback);
-        if (index !== -1) {
-          watchers.splice(index, 1);
+
+      // Fallback to general balance
+      if (!this.isInitialized) {
+        const storedBalance = localStorage.getItem('currentBalance');
+        if (storedBalance) {
+          const parsedBalance = parseFloat(storedBalance);
+          if (!isNaN(parsedBalance)) {
+            this.balance = parsedBalance;
+            this.isInitialized = true;
+          }
         }
-      };
-    },
-    
-    // Advanced features
-    checkForSignificantBalanceChange: (newBalance: number) => {
-      if (isNaN(newBalance)) return false;
-      
-      // Consider a change significant if it's more than 5% or 0.5€
-      const absoluteDifference = Math.abs(newBalance - currentBalance);
-      const percentageDifference = currentBalance > 0 ? absoluteDifference / currentBalance : 1;
-      
-      return absoluteDifference >= 0.5 || percentageDifference >= 0.05;
+      }
+
+      // Initialize daily gains
+      const storedDailyGains = localStorage.getItem('dailyGains');
+      if (storedDailyGains) {
+        const parsedDailyGains = parseFloat(storedDailyGains);
+        if (!isNaN(parsedDailyGains)) {
+          this.dailyGains = parsedDailyGains;
+        }
+      }
+
+      console.log(`BalanceManager initialized: balance=${this.balance}, dailyGains=${this.dailyGains}`);
+    } catch (error) {
+      console.error("Error initializing balance from storage:", error);
     }
-  };
-};
+  }
 
-// Create and export a singleton instance
-const balanceManager = createBalanceManager();
+  /**
+   * Get user ID from any available storage location
+   */
+  private getUserIdFromStorage(): string | null {
+    try {
+      // Try different locations for user ID
+      const userIdLocations = [
+        localStorage.getItem('userId'),
+        localStorage.getItem('user_id'),
+        localStorage.getItem('currentUserId'),
+        localStorage.getItem('auth.userId')
+      ];
 
+      for (const possibleId of userIdLocations) {
+        if (possibleId && possibleId.length > 10) {
+          return possibleId;
+        }
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Update balance in memory and storage
+   */
+  updateBalance(amount: number): number {
+    const newBalance = parseFloat((this.balance + amount).toFixed(2));
+    this.balance = newBalance;
+    this.persistBalance();
+    this.notifyWatchers();
+    return this.balance;
+  }
+
+  /**
+   * Force balance to a specific value and persist it
+   */
+  forceBalanceSync(newBalance: number, userId?: string | null): number {
+    if (userId) {
+      this.userId = userId;
+    }
+
+    this.balance = parseFloat(newBalance.toFixed(2));
+    this.persistBalance();
+    this.notifyWatchers();
+    return this.balance;
+  }
+
+  /**
+   * Get current balance
+   */
+  getCurrentBalance(): number {
+    return this.balance;
+  }
+
+  /**
+   * Add to daily gains
+   */
+  addDailyGain(amount: number): number {
+    this.dailyGains = parseFloat((this.dailyGains + amount).toFixed(2));
+    this.persistDailyGains();
+    return this.dailyGains;
+  }
+
+  /**
+   * Set daily gains to specific value
+   */
+  setDailyGains(amount: number): number {
+    this.dailyGains = parseFloat(amount.toFixed(2));
+    this.persistDailyGains();
+    return this.dailyGains;
+  }
+
+  /**
+   * Get current daily gains
+   */
+  getDailyGains(): number {
+    return this.dailyGains;
+  }
+
+  /**
+   * Reset daily gains to zero
+   */
+  resetDailyGains(): void {
+    this.dailyGains = 0;
+    this.persistDailyGains();
+  }
+
+  /**
+   * Persist balance to localStorage with redundancy
+   */
+  private persistBalance(): void {
+    try {
+      localStorage.setItem('currentBalance', this.balance.toString());
+      localStorage.setItem('lastKnownBalance', this.balance.toString());
+      localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
+      
+      // If we have a user ID, store user-specific balance as well
+      if (this.userId) {
+        localStorage.setItem(`currentBalance_${this.userId}`, this.balance.toString());
+        localStorage.setItem(`lastUpdatedBalance_${this.userId}`, this.balance.toString());
+        // Also store in sessionStorage as another backup
+        try {
+          sessionStorage.setItem(`currentBalance_${this.userId}`, this.balance.toString());
+        } catch (e) {
+          // Session storage might fail in some browsers/contexts
+        }
+      }
+    } catch (error) {
+      console.error("Error persisting balance:", error);
+    }
+  }
+
+  /**
+   * Persist daily gains to localStorage
+   */
+  private persistDailyGains(): void {
+    try {
+      localStorage.setItem('dailyGains', this.dailyGains.toString());
+      
+      // Store user-specific daily gains if we have a userId
+      if (this.userId) {
+        localStorage.setItem(`dailyGains_${this.userId}`, this.dailyGains.toString());
+      }
+    } catch (error) {
+      console.error("Error persisting daily gains:", error);
+    }
+  }
+
+  /**
+   * Add a watcher function to be notified of balance changes
+   */
+  addWatcher(watcher: BalanceWatcher): () => void {
+    this.watchers.push(watcher);
+    return () => {
+      this.watchers = this.watchers.filter(w => w !== watcher);
+    };
+  }
+
+  /**
+   * Notify all watchers of new balance
+   */
+  private notifyWatchers(): void {
+    this.watchers.forEach(watcher => {
+      try {
+        watcher(this.balance);
+      } catch (error) {
+        console.error("Error in balance watcher:", error);
+      }
+    });
+  }
+}
+
+// Create singleton instance
+const balanceManager = new BalanceManager();
+
+// Export singleton
 export default balanceManager;

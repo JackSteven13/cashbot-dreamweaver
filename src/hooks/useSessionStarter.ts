@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
-import { calculateManualSessionGain } from '@/utils/subscription/sessionGain';
 import { simulateActivity } from '@/utils/animations/moneyParticles';
 import balanceManager from '@/utils/balance/balanceManager';
 import { supabase } from '@/integrations/supabase/client';
@@ -131,11 +130,10 @@ export const useSessionStarter = ({
       terminalSequence.add("Optimisation des résultats...");
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const gain = calculateManualSessionGain(
-        userData?.subscription || 'freemium',
-        currentDailyGains,
-        userData?.referrals?.length || 0
-      );
+      // Calculer le gain en fonction du type d'abonnement
+      const gain = userData?.subscription === 'freemium' ? 
+        Math.random() * 0.05 + 0.1 : // Entre 0.1 et 0.15 pour freemium
+        Math.random() * 0.2 + 0.15;  // Entre 0.15 et 0.35 pour les autres
 
       const now = Date.now();
       localStorage.setItem('lastSessionTimestamp', now.toString());
