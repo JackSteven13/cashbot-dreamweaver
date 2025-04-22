@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlayCircle, Clock, AlertCircle } from 'lucide-react';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -28,12 +28,39 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   lastSessionTimestamp,
   isBotActive = true
 }) => {
+  // Pour les comptes freemium, vérifier aussi le localStorage pour la limite journalière
+  const [forceDisabled, setForceDisabled] = useState(false);
+  
+  // Effet pour vérifier si la limite quotidienne a été atteinte pour les comptes freemium
+  useEffect(() => {
+    if (subscription === 'freemium') {
+      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const lastSessionDate = localStorage.getItem('last_session_date');
+      const today = new Date().toDateString();
+      
+      // Si c'est un nouveau jour, réinitialiser la limite
+      if (lastSessionDate !== today) {
+        localStorage.removeItem('freemium_daily_limit_reached');
+        setForceDisabled(false);
+      } else if (limitReached === 'true' || dailySessionCount >= 1) {
+        // Sinon, appliquer la limite stricte pour les comptes freemium
+        setForceDisabled(true);
+      } else {
+        setForceDisabled(false);
+      }
+    } else {
+      setForceDisabled(false);
+    }
+  }, [subscription, dailySessionCount]);
+  
   // Get the max daily sessions based on subscription
   const maxDailySessions = PLANS[subscription]?.dailyLimit || 1;
   
   // Pour les comptes freemium, strictement limité à 1 session
   const isFreemium = subscription === 'freemium';
-  const hasReachedLimit = isFreemium ? dailySessionCount >= 1 : dailySessionCount >= maxDailySessions;
+  const hasReachedLimit = isFreemium ? 
+    (dailySessionCount >= 1 || forceDisabled) : 
+    dailySessionCount >= maxDailySessions;
 
   // Check if bot is in cooldown period
   const isInCooldown = lastSessionTimestamp ? (
@@ -71,8 +98,8 @@ const SessionButton: React.FC<SessionButtonProps> = ({
           <div className="w-full">
             <Button
               onClick={handleClick}
-              disabled={disabled || isLoading || hasReachedLimit || isInCooldown || !isBotActive || isLimitReached}
-              className={`w-full h-11 ${(hasReachedLimit && isFreemium) || isLimitReached ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
+              disabled={disabled || isLoading || hasReachedLimit || isInCooldown || !isBotActive || isLimitReached || forceDisabled}
+              className={`w-full h-11 ${(hasReachedLimit && isFreemium) || isLimitReached || forceDisabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
               variant="default"
               size="lg"
               data-testid="session-button"
@@ -84,7 +111,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
                 </div>
               ) : (
                 <div className="flex items-center">
-                  {!isBotActive || isLimitReached ? (
+                  {!isBotActive || isLimitReached || (isFreemium && forceDisabled) ? (
                     <AlertCircle className="mr-2 h-5 w-5" />
                   ) : hasReachedLimit || isInCooldown ? (
                     <Clock className="mr-2 h-5 w-5" />
@@ -93,9 +120,10 @@ const SessionButton: React.FC<SessionButtonProps> = ({
                   )}
                   <span>
                     {!isBotActive ? "Indisponible" : 
-                     (isLimitReached ? "Limite atteinte" :
-                      (hasReachedLimit ? (isFreemium ? "Limite (1/jour)" : "Limite atteinte") : 
-                       (isInCooldown ? "En attente" : "Démarrer")))}
+                     isLimitReached ? "Limite atteinte" :
+                     (isFreemium && forceDisabled) ? "Limite (1/jour)" :
+                     hasReachedLimit ? (isFreemium ? "Limite (1/jour)" : "Limite atteinte") : 
+                     isInCooldown ? "En attente" : "Démarrer"}
                   </span>
                 </div>
               )}

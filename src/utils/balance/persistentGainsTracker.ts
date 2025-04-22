@@ -21,6 +21,10 @@ export const resetDailyGainsAtMidnight = () => {
       balanceManager.setDailyGains(0);
     }
     
+    // Reset freemium session limit
+    localStorage.removeItem('freemium_daily_limit_reached');
+    localStorage.removeItem('last_session_date');
+    
     // Store reset date
     localStorage.setItem('lastDailyGainsReset', today);
     console.log("Daily gains reset to 0");

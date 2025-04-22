@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
@@ -38,15 +39,30 @@ export const useManualSessions = ({
   const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSessionRef = useRef<number>(0);
 
+  // Vérifier si la limite quotidienne est atteinte pour les comptes freemium
   useEffect(() => {
     if (userData && userData.subscription === 'freemium') {
-      const dailyGains = getDailyGains();
-      const dailyLimit = SUBSCRIPTION_LIMITS['freemium'] || 0.5;
-      
-      if (dailyGains >= dailyLimit || dailySessionCount >= 1) {
+      // Pour les comptes freemium, la limite est STRICTEMENT de 1 session par jour
+      if (dailySessionCount >= 1) {
         setLimitReached(true);
+        
+        // Stocker cette information en local storage pour qu'elle persiste entre les sessions
+        localStorage.setItem('freemium_daily_limit_reached', 'true');
       } else {
-        setLimitReached(false);
+        const storedLimitReached = localStorage.getItem('freemium_daily_limit_reached');
+        
+        // Ne réinitialiser la limite que si c'est un nouveau jour
+        const lastSessionDate = localStorage.getItem('last_session_date');
+        const today = new Date().toDateString();
+        
+        if (lastSessionDate !== today) {
+          setLimitReached(false);
+          localStorage.removeItem('freemium_daily_limit_reached');
+        } else if (storedLimitReached === 'true') {
+          setLimitReached(true);
+        } else {
+          setLimitReached(false);
+        }
       }
     }
   }, [userData, dailySessionCount]);
@@ -64,20 +80,27 @@ export const useManualSessions = ({
       return false;
     }
     
+    // Pour les comptes freemium, vérifier STRICTEMENT la limite de 1 session par jour
     if (userData && userData.subscription === 'freemium') {
-      if (dailySessionCount >= 1 || limitReached) {
+      // Vérifier si la limite journalière a déjà été enregistrée
+      const storedLimitReached = localStorage.getItem('freemium_daily_limit_reached');
+      
+      if (storedLimitReached === 'true' || dailySessionCount >= 1 || limitReached) {
         return false;
       }
       
+      // Vérifier aussi les gains quotidiens pour les comptes freemium
       const currentDailyGains = getDailyGains();
       const dailyLimit = SUBSCRIPTION_LIMITS['freemium'] || 0.5;
       
-      if (currentDailyGains >= dailyLimit) {
+      if (currentDailyGains >= dailyLimit * 0.9) {
         setLimitReached(true);
+        localStorage.setItem('freemium_daily_limit_reached', 'true');
         return false;
       }
     }
     
+    // Pour les autres abonnements, vérifier la limite de gains quotidiens
     if (userData) {
       const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       const todaysGains = balanceManager.getDailyGains();
@@ -123,6 +146,11 @@ export const useManualSessions = ({
       }
       
       if (userData?.subscription === 'freemium') {
+        // Pour les comptes freemium, marquer immédiatement que la limite est atteinte
+        setLimitReached(true);
+        localStorage.setItem('freemium_daily_limit_reached', 'true');
+        localStorage.setItem('last_session_date', new Date().toDateString());
+        
         const currentDailyGains = getDailyGains();
         const dailyLimit = SUBSCRIPTION_LIMITS['freemium'] || 0.5;
         const remainingLimit = dailyLimit - currentDailyGains;
@@ -171,13 +199,6 @@ export const useManualSessions = ({
       await updateBalance(gain, sessionReport, true);
       
       await incrementSessionCount();
-      
-      if (userData?.subscription === 'freemium') {
-        const updatedDailyGains = getDailyGains();
-        if (updatedDailyGains >= (SUBSCRIPTION_LIMITS['freemium'] || 0.5) || dailySessionCount >= 0) {
-          setLimitReached(true);
-        }
-      }
       
       window.dispatchEvent(new CustomEvent('balance:update', {
         detail: {

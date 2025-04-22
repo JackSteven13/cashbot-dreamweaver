@@ -73,6 +73,22 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       return;
     }
     
+    // Vérifier si la limite a été atteinte pour les comptes freemium
+    if (subscription === 'freemium') {
+      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const sessionCount = parseInt(localStorage.getItem('dailySessionCount') || '0');
+      
+      if (limitReached === 'true' || sessionCount >= 1) {
+        toast({
+          title: "Limite quotidienne atteinte",
+          description: "Les comptes freemium sont limités à 1 session par jour.",
+          variant: "destructive",
+          duration: 5000
+        });
+        return;
+      }
+    }
+    
     // Vérifier si la limite a été atteinte
     if (limitReached) {
       toast({
