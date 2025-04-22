@@ -3,9 +3,10 @@ import { useRef, useEffect } from 'react';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import { getDailyGains } from '@/hooks/stats/utils/storageManager';
 import balanceManager from '@/utils/balance/balanceManager';
+import { toast } from '@/components/ui/use-toast';
 
 /**
- * Hook for scheduling automatic sessions with improved persistence
+ * Hook pour la gestion des sessions automatiques avec progression même hors ligne
  */
 export const useAutoSessionScheduler = (
   todaysGainsRef: React.MutableRefObject<number>,
@@ -33,7 +34,7 @@ export const useAutoSessionScheduler = (
     lastCheckedGains: 0
   });
 
-  // Calcul des gains pour les jours d'absence
+  // Calcul AMÉLIORÉ des gains pour les jours d'absence
   useEffect(() => {
     if (!userData) return;
     
@@ -58,73 +59,80 @@ export const useAutoSessionScheduler = (
         if (isConsecutiveVisit) {
           consecutiveVisitDays++;
         } else {
-          // Réinitialiser si la chaîne est brisée
-          consecutiveVisitDays = 1;
+          // Réinitialiser si la chaîne est brisée, mais garder au moins 1
+          consecutiveVisitDays = Math.max(1, consecutiveVisitDays - Math.floor(daysDifference / 2));
         }
         
         // Enregistrer les nouvelles valeurs
         localStorage.setItem('last_visit_date', currentDate);
         localStorage.setItem('consecutive_visit_days', consecutiveVisitDays.toString());
         
-        // Si au moins un jour s'est écoulé et que la limite n'est pas atteinte, calculer les gains pour l'absence
+        // Si au moins un jour s'est écoulé, calculer les gains pour l'absence
         if (daysDifference > 0) {
           // Déterminer la limite quotidienne
           const subscription = userData.subscription || 'freemium';
           const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
           
-          // Gains actuels - IMPORTANT: ne jamais dépasser la limite
-          const currentGains = balanceManager.getDailyGains();
+          // On simule que le bot a travaillé pendant l'absence
+          // Plus l'absence est longue, plus les gains sont importants (avec une limite)
+          // Pour freemium, gain maximum de 40% de la limite par jour d'absence
+          // Pour les autres abonnements, gain maximum de 25% de la limite par jour d'absence
+          const dailyAbsenceMultiplier = subscription === 'freemium' ? 0.4 : 0.25;
           
-          // Ne pas calculer de progression si la limite est déjà atteinte
-          if (currentGains >= dailyLimit * 0.9) {
-            console.log(`Limite presque atteinte (${currentGains}€/${dailyLimit}€), pas de progression pour l'absence`);
-            return;
-          }
-          
-          // Calculer un montant raisonnable par jour d'absence (limité à max 3 jours pour éviter les abus)
-          const daysToCount = Math.min(daysDifference, 3);
-          
-          // Pour freemium, gain maximum de 50% de la limite par jour d'absence
-          // Pour les autres abonnements, gain maximum de 20% de la limite par jour d'absence
-          const dailyAbsenceMultiplier = subscription === 'freemium' ? 0.25 : 0.15;
-          
-          // Calculer le gain total avec une variabilité aléatoire
+          // Calculer le gain total avec une variabilité aléatoire pour chaque jour
           let totalAbsenceGain = 0;
+          const daysToCount = Math.min(daysDifference, 7); // Limiter à 7 jours max
+          
           for (let i = 0; i < daysToCount; i++) {
-            // Ajouter une variabilité aléatoire (80-100% de la valeur cible)
-            const dailyVariability = 0.8 + (Math.random() * 0.2);
-            // Réduire progressivement les gains pour les jours plus éloignés
-            const dayFactor = 1 - (i * 0.2);
+            // Ajouter une variabilité aléatoire (70-100% de la valeur cible)
+            const dailyVariability = 0.7 + (Math.random() * 0.3);
+            
+            // Réduire légèrement le gain pour chaque jour supplémentaire
+            const dayFactor = Math.max(0.7, 1 - (i * 0.05));
             
             const dailyAbsenceGain = dailyLimit * dailyAbsenceMultiplier * dailyVariability * dayFactor;
-            totalAbsenceGain += dailyAbsenceGain;
+            
+            // Arrondir à 2 décimales pour éviter des nombres trop précis
+            const roundedGain = parseFloat(dailyAbsenceGain.toFixed(2));
+            totalAbsenceGain += roundedGain;
+            
+            console.log(`Jour d'absence ${i+1}: gain simulé de ${roundedGain}€`);
           }
           
-          // Vérifier que le gain ne dépasse pas 75% de la limite quotidienne
-          const maxAbsenceGain = dailyLimit * 0.75;
-          totalAbsenceGain = Math.min(totalAbsenceGain, maxAbsenceGain);
-          
-          // S'assurer que le total (currentGains + totalAbsenceGain) ne dépasse pas 90% de la limite
-          const remainingLimit = (dailyLimit * 0.9) - currentGains;
-          totalAbsenceGain = Math.min(totalAbsenceGain, remainingLimit);
-          
-          // Arrondir à 2 décimales
-          totalAbsenceGain = parseFloat(totalAbsenceGain.toFixed(2));
-          
+          // Appliquer les gains accumulés pendant l'absence
           if (totalAbsenceGain > 0) {
-            console.log(`Gains pour ${daysToCount} jour(s) d'absence: ${totalAbsenceGain}€`);
+            console.log(`Gains totaux pour ${daysToCount} jour(s) d'absence: ${totalAbsenceGain.toFixed(2)}€`);
             
-            // Déclencher l'événement pour afficher la notification de progression
-            window.dispatchEvent(new CustomEvent('balance:daily-growth', {
-              detail: {
-                amount: totalAbsenceGain,
-                daysMissed: daysDifference,
-                consecutiveVisitDays: consecutiveVisitDays
-              }
-            }));
-            
-            // Ne pas appliquer les gains automatiquement, juste notifier l'utilisateur
-            persistentDataRef.current.lastCheckedGains = totalAbsenceGain;
+            // Générer des transactions et mettre à jour le solde pour les jours d'absence
+            setTimeout(async () => {
+              // Ajouter un léger délai avant d'afficher la notification
+              toast({
+                title: "Revenus accumulés pendant votre absence",
+                description: `Votre assistant a généré ${totalAbsenceGain.toFixed(2)}€ pendant votre absence de ${daysDifference} jour(s).`,
+                duration: 8000
+              });
+              
+              // Déclencher la mise à jour du solde
+              await generateAutomaticRevenue(true);
+              
+              // Déclencher l'événement pour afficher la notification de progression
+              window.dispatchEvent(new CustomEvent('balance:offline-growth', {
+                detail: {
+                  amount: totalAbsenceGain,
+                  daysMissed: daysDifference,
+                  consecutiveVisitDays: consecutiveVisitDays
+                }
+              }));
+              
+              // Forcer une mise à jour du solde dans l'UI
+              window.dispatchEvent(new CustomEvent('balance:force-update', {
+                detail: {
+                  newBalance: userData?.balance + totalAbsenceGain,
+                  gain: totalAbsenceGain,
+                  animate: true
+                }
+              }));
+            }, 3000);
           }
         }
       } catch (error) {
@@ -140,7 +148,7 @@ export const useAutoSessionScheduler = (
     // Mettre à jour le compteur de jours de visite consécutifs dans la référence
     persistentDataRef.current.consecutiveVisitDays = parseInt(localStorage.getItem('consecutive_visit_days') || '1');
     
-  }, [userData]);
+  }, [userData, generateAutomaticRevenue]);
 
   // Fonction pour gérer les sessions automatiques
   useEffect(() => {
@@ -214,7 +222,7 @@ export const useAutoSessionScheduler = (
     };
   }, [userData, generateAutomaticRevenue, isBotActive]);
 
-  return null; // Ce hook ne renvoie rien, il agit uniquement par effets de bord
+  return null;
 };
 
 export default useAutoSessionScheduler;

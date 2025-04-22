@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';

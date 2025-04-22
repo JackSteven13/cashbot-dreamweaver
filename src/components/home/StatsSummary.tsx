@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Activity, TrendingUp, Star } from 'lucide-react';
 import usePersistentStats from '@/hooks/stats/usePersistentStats';
@@ -15,9 +15,33 @@ const StatsSummary: React.FC = () => {
     userId
   });
   
+  // État local pour détecter la première visite du jour
+  const [isFirstVisitToday, setIsFirstVisitToday] = useState(false);
+  
   // Initialiser la synchronisation des statistiques
   useEffect(() => {
     const cleanup = initStatsSync(userId);
+    
+    // Vérifier si c'est la première visite du jour
+    const lastVisitDate = localStorage.getItem('last_visit_date');
+    const today = new Date().toDateString();
+    
+    if (lastVisitDate !== today) {
+      setIsFirstVisitToday(true);
+      // Ajouter une progression automatique pour les jours d'absence
+      const daysDifference = lastVisitDate 
+        ? Math.floor((new Date(today).getTime() - new Date(lastVisitDate).getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+        
+      if (daysDifference > 0) {
+        console.log(`Premier accès du jour, ${daysDifference} jour(s) d'absence`);
+        // La progression sera gérée par useAutoSessionScheduler
+      }
+      
+      // Mettre à jour la date de dernière visite
+      localStorage.setItem('last_visit_date', today);
+    }
+    
     return cleanup;
   }, [userId]);
   
