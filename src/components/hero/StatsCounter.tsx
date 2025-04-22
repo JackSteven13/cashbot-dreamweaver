@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
@@ -190,7 +191,7 @@ const StatsCounter = ({
   
   const formatRevenueDisplay = (value: number) => {
     // Formater avec 2 décimales pour plus de réalisme
-    return formatRevenue(value, 2);
+    return formatRevenue(value);
   };
 
   return (

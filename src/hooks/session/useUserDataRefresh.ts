@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import balanceManager from '@/utils/balance/balanceManager';
@@ -49,6 +50,7 @@ export const useUserDataRefresh = () => {
       };
       
       const cachedName = localStorage.getItem(userSpecificKeys.username);
+      const cachedSubscription = localStorage.getItem(userSpecificKeys.subscription);
       
       const currentBalance = balanceManager.getCurrentBalance();
       const highestBalance = balanceManager.getHighestBalance();

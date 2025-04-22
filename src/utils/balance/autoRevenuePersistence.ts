@@ -20,7 +20,7 @@ export async function recordMissingAutoRevenues(userId: string, lastVisitISO: st
   const lastDate = new Date(lastVisitISO);
   lastDate.setHours(0, 0, 0, 0);
 
-  // Combien de jours d'absence ?
+  // Combien de jours d'absence ?
   let daysDiff = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000*60*60*24));
 
   if (daysDiff <= 0) return { days: 0, totalGain: 0, transactions: [] };
@@ -45,7 +45,7 @@ export async function recordMissingAutoRevenues(userId: string, lastVisitISO: st
     if (error) continue;
     if (existing && existing.length > 0) continue; // Transaction déjà existante => skip
 
-    // Montant réaliste : autour de 60%-95% de la limite/jour
+    // Montant réaliste : autour de 60%-95% de la limite/jour
     const gain = Math.round(
       ((dailyLimit * (0.6 + Math.random() * 0.35)) + Number.EPSILON) * 100
     ) / 100;
@@ -68,10 +68,22 @@ export async function recordMissingAutoRevenues(userId: string, lastVisitISO: st
     transactions.push(newTx?.[0]);
     totalGain += gain;
 
-    // Met à jour la balance côté DB au fil de l'eau
+    // Met à jour la balance côté DB
+    // Problème: RPC increment_balance n'existe pas, remplaçons par une mise à jour directe
+    const { data: currentBalance, error: balanceError } = await supabase
+      .from("user_balances")
+      .select("balance")
+      .eq("id", userId)
+      .single();
+      
+    if (balanceError) continue;
+    
+    const newBalance = (currentBalance?.balance || 0) + gain;
+    
+    // Mise à jour du solde
     await supabase
       .from("user_balances")
-      .update({ balance: supabase.rpc('increment_balance', { value: gain }) })
+      .update({ balance: newBalance })
       .eq("id", userId);
   }
 
