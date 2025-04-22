@@ -27,25 +27,22 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
   const { loadUserProfile, isNewUser, setIsNewUser } = useProfileLoader();
   const { loadUserBalance } = useBalanceLoader(setIsNewUser);
 
-  // Fix type mismatch by using a wrapper function
+  // Modify the updateUserDataWrapper to match the expected signature
   const updateUserDataWrapper = useCallback((newData: Partial<UserData>) => {
-    // Convert UserData to UserFetcherState format - use the userData property to wrap it
-    const userFetcherData: Partial<UserFetcherState> = { 
-      userData: newData as UserData // We're casting here since the structure will be merged with existing data
-    };
-    updateUserData(userFetcherData);
+    // Convert UserData to UserFetcherState format
+    updateUserData(newData);
   }, [updateUserData]);
 
   const { fetchUserData, resetDailyCounters } = useUserDataFetching(
     loadUserProfile,
     loadUserBalance,
-    updateUserDataWrapper, // Use the wrapper function instead
+    updateUserDataWrapper, // Use the wrapper function
     setIsLoading,
     isNewUser
   );
   
   // Utiliser le hook de réinitialisation quotidienne
-  useDailyReset(resetDailyCounters, userDataState.isLoading);
+  useDailyReset(resetDailyCounters);
 
   // Create the return value with proper structure
   const state: UserFetcherState = {
@@ -66,3 +63,5 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
 
   return [state, actions];
 };
+
+export default useUserDataFetcher;
