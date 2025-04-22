@@ -17,9 +17,7 @@ export const resetDailyGainsAtMidnight = () => {
     console.log(`Resetting daily gains (last reset: ${lastResetDate || 'never'}, today: ${today})`);
     
     // Reset daily gains in balance manager
-    if (balanceManager.setDailyGains) {
-      balanceManager.setDailyGains(0);
-    }
+    balanceManager.setDailyGains(0);
     
     // Reset freemium session limit
     localStorage.removeItem('freemium_daily_limit_reached');

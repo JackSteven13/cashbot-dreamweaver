@@ -77,78 +77,28 @@ export const calculateAutoSessionGain = (
   // Calculate remaining amount to reach the limit
   const remainingToLimit = dailyLimit - currentDailyGains;
   
-  // If almost at limit, return a tiny amount to approach limit without exceeding
-  if (remainingToLimit <= 0.01 && remainingToLimit > 0) {
-    return parseFloat(remainingToLimit.toFixed(2));
-  }
-  
   // If already at or above limit, return 0
   if (remainingToLimit <= 0) {
     return 0;
   }
   
-  // For freemium accounts, much smaller automatic gains and slower progress
-  if (subscriptionType === 'freemium') {
-    // Gain très réduit pour freemium sans parrainages
-    if (referralCount === 0) {
-      // Ralentissement extrême - gains minuscules entre 0,005 € et 0,02 €
-      const tinyGain = Math.min(0.005 + Math.random() * 0.015, remainingToLimit);
-      return parseFloat(tinyGain.toFixed(2));
-    }
-    
-    // Si on a déjà généré 90% de la limite
-    if (currentDailyGains >= dailyLimit * 0.9) {
-      // Gain très minime pour les 10% restants (entre 0,01 € et 0,02 €)
-      return Math.min(0.01 + Math.random() * 0.01, remainingToLimit);
-    }
-    
-    // Sinon, gain plus standard mais petit (entre 0,01 € et 0,05 €)
-    const tinyGain = Math.min(0.01 + Math.random() * 0.04, remainingToLimit);
-    return parseFloat(tinyGain.toFixed(2));
-  }
+  // For automatic sessions, gains should be smaller than manual sessions
+  // Use a smaller percentage of the daily limit
+  const minGain = 0.001;
+  const maxGain = subscriptionType === 'freemium' ? 0.01 : 0.03;
   
-  // Auto sessions are 10-30% smaller than manual sessions
-  const autoDiscountFactor = 0.7 + (Math.random() * 0.2); // 70-90% of manual gain
+  // Calculate a random gain within the range
+  const randomGain = minGain + (Math.random() * (maxGain - minGain));
   
-  // Base percentages for auto sessions (smaller than manual)
-  const baseMin = 0.03;
-  const baseMax = 0.08;
-  
-  // Subscription bonus increases percentage slightly for paid plans
-  let subscriptionBonus = 0;
-  if (subscriptionType === 'starter') subscriptionBonus = 0.02;
-  if (subscriptionType === 'gold') subscriptionBonus = 0.04;
-  if (subscriptionType === 'elite') subscriptionBonus = 0.06;
-  
-  // Calculate final percentage range
-  const minPercentage = baseMin + subscriptionBonus;
-  const maxPercentage = baseMax + subscriptionBonus;
-  
-  // Random percentage within range
-  const randomPercentage = minPercentage + Math.random() * (maxPercentage - minPercentage);
-  
-  // Calculate base gain with randomness and auto discount
-  const baseGain = dailyLimit * randomPercentage * autoDiscountFactor;
-  
-  // Apply a smaller referral bonus for auto sessions (1% per referral up to 10%)
+  // Apply referral bonus (1% per referral up to 10%)
   const referralBonus = Math.min(0.1, (referralCount * 0.01));
-  const gainWithBonus = baseGain * (1 + referralBonus);
   
-  // Make sure we don't exceed the daily limit
-  const finalGain = Math.min(gainWithBonus, remainingToLimit);
+  // Apply the bonus
+  const gainWithBonus = randomGain * (1 + referralBonus);
   
-  // Return amount with 2 decimal places
-  return Number(Math.max(0, finalGain).toFixed(2));
-};
-
-// Add compatibility function that matches the name expected in the imports
-export const calculateSessionGain = calculateManualSessionGain;
-
-// Event helper functions to maintain balance consistency
-export const announceSessionStart = () => {
-  window.dispatchEvent(new CustomEvent('session:start'));
-};
-
-export const announceSessionComplete = () => {
-  window.dispatchEvent(new CustomEvent('session:complete'));
+  // Make sure we don't exceed the remaining amount
+  const finalGain = Math.min(gainWithBonus, remainingToLimit * 0.7);
+  
+  // Return amount with 3 decimal places for smaller increments
+  return Number(Math.max(0, finalGain).toFixed(3));
 };

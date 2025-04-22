@@ -1,5 +1,7 @@
+
 import { useRef, useState, useEffect } from 'react';
-import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscriptionUtils';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
+import { getEffectiveSubscription } from '@/utils/subscription';
 import { createMoneyParticles } from '@/utils/animations';
 
 interface UseActionButtonsProps {

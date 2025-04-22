@@ -1,12 +1,7 @@
-
-import { useState, useEffect, useRef } from 'react';
-import { toast } from '@/components/ui/use-toast';
-import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscriptionUtils';
-import { 
-  getWithdrawalThreshold
-} from '@/utils/referral/withdrawalUtils';
-// Import the needed functions directly from the default export
-import withdrawalUtils from '@/utils/referral/withdrawalUtils';
+import { useState, useEffect } from 'react';
+import { UserData } from '@/types/userData';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscriptionUtils';
+import { getEffectiveSubscription } from '@/utils/subscription';
 
 interface UseSummaryPanelProps {
   balance: number;
