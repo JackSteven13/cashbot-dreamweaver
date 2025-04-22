@@ -150,9 +150,9 @@ export const useStatsCounter = ({
     };
   }, [setAdsCount, setRevenueCount, setDisplayedAdsCount, setDisplayedRevenueCount]);
   
-  // Effet pour l'incrémentation périodique avec progression lente mais stable
+  // Effet pour l'incrémentation périodique avec progression TRÈS lente (réduit considérablement)
   useEffect(() => {
-    // Première incrémentation après un court délai
+    // Première incrémentation après un délai plus long
     const initialTimeout = setTimeout(() => {
       const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
       
@@ -162,29 +162,33 @@ export const useStatsCounter = ({
       setDisplayedRevenueCount(newRevenueCount);
       
       stableValuesRef.current.lastAutoIncrementTime = Date.now();
-    }, 5000);
+    }, 30000); // Attendre 30 secondes avant la première mise à jour
     
-    // Ensuite, incrémenter régulièrement mais moins fréquemment
+    // Ensuite, incrémenter beaucoup moins fréquemment (5 minutes minimum)
     const incrementInterval = setInterval(() => {
       const now = Date.now();
       
-      // Limiter la fréquence des incrémentations
-      if (now - stableValuesRef.current.lastAutoIncrementTime > 120000) { // 2 minutes minimum
-        stableValuesRef.current.lastAutoIncrementTime = now;
-        
-        const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
-        
-        setAdsCount(newAdsCount);
-        setRevenueCount(newRevenueCount);
-        
-        // Animation douce vers les nouvelles valeurs
-        animateCounters(newAdsCount, newRevenueCount);
-        
-        // Sauvegarder pour assurer la persistance
-        localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
-        localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
+      // Limiter fortement la fréquence des incrémentations
+      if (now - stableValuesRef.current.lastAutoIncrementTime > 300000) { // 5 minutes minimum
+        // Ajouter une probabilité pour que l'incrémentation ne se produise pas à chaque intervalle
+        if (Math.random() > 0.4) { // 60% de chance d'incrémenter
+          stableValuesRef.current.lastAutoIncrementTime = now;
+          
+          // Ajuster les valeurs d'incrémentation pour qu'elles soient très faibles
+          const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
+          
+          setAdsCount(newAdsCount);
+          setRevenueCount(newRevenueCount);
+          
+          // Animation douce vers les nouvelles valeurs
+          animateCounters(newAdsCount, newRevenueCount);
+          
+          // Sauvegarder pour assurer la persistance
+          localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
+          localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
+        }
       }
-    }, 120000); // Toutes les 2 minutes (moins fréquent que précédemment)
+    }, 300000); // Vérifier toutes les 5 minutes
     
     // Effet de nettoyage
     return () => {

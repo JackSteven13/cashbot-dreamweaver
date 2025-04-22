@@ -7,7 +7,7 @@
 // Valeurs initiales pour des compteurs crédibles mais attrayants
 const MINIMUM_ADS_COUNT = 35000; // Valeur minimale réduite
 const MINIMUM_REVENUE_COUNT = 25000; // Valeur minimale réduite
-const DAILY_PROGRESSIVE_FACTOR = 0.0005; // 0.05% d'augmentation par jour (bien plus lent)
+const DAILY_PROGRESSIVE_FACTOR = 0.0002; // 0.02% d'augmentation par jour (bien plus lent)
 
 // Plafonds absolus pour garantir la crédibilité
 const MAX_ADS_COUNT = 180000;
@@ -44,8 +44,8 @@ export const loadStoredValues = () => {
         const progressFactor = 1 + (DAILY_PROGRESSIVE_FACTOR * Math.min(daysDifference, 10));
         
         // Limiter l'incrément quotidien à des valeurs très raisonnables
-        const maxDailyAdsIncrease = 600; // ~600 pubs par jour maximum
-        const maxDailyRevenueIncrease = 500; // ~500€ par jour maximum
+        const maxDailyAdsIncrease = 200; // ~200 pubs par jour maximum
+        const maxDailyRevenueIncrease = 150; // ~150€ par jour maximum
         
         const newAdsCount = Math.min(
           adsCount + (maxDailyAdsIncrease * Math.min(daysDifference, 3)),
@@ -134,7 +134,7 @@ export const saveValues = (adsCount: number, revenueCount: number, skipDateUpdat
 };
 
 /**
- * Incrémente les statistiques de façon TRÈS modérée
+ * Incrémente les statistiques de façon EXTRÊMEMENT modérée
  */
 export const incrementDateLinkedStats = () => {
   const { adsCount, revenueCount } = loadStoredValues();
@@ -144,8 +144,9 @@ export const incrementDateLinkedStats = () => {
   const daysSinceInstall = getDaysDifference(new Date(installDate), new Date());
   
   // Incréments TRÈS petits (presque invisibles en temps réel)
-  const adsIncrement = Math.min(Math.floor(Math.random() * 3) + 1, 5); 
-  const revenueIncrement = Math.min((Math.random() * 0.03) + 0.01, 0.05);
+  // Réduire drastiquement les valeurs d'incrément
+  const adsIncrement = Math.min(Math.floor(Math.random() * 2) + 1, 2); 
+  const revenueIncrement = Math.min((Math.random() * 0.01) + 0.01, 0.02);
   
   const newAdsCount = Math.min(adsCount + adsIncrement, MAX_ADS_COUNT);
   const newRevenueCount = Math.min(revenueCount + revenueIncrement, MAX_REVENUE_COUNT);
@@ -188,7 +189,7 @@ export const getDateConsistentStats = () => {
   const daysSinceInstall = getDaysDifference(new Date(installDate), new Date());
   
   // Effet cumulatif très réduit: augmentation très graduelle
-  const ageBonus = Math.min(daysSinceInstall * 0.002, 0.15); // max +15% après 75 jours
+  const ageBonus = Math.min(daysSinceInstall * 0.001, 0.08); // max +8% après 80 jours
   
   // Appliquer des limites strictes
   const adsCount = Math.min(Math.floor(base.adsCount * (1 + ageBonus)), MAX_ADS_COUNT);

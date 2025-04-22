@@ -17,8 +17,8 @@ interface StatsCounterProps {
 }
 
 const StatsCounter = ({
-  dailyAdsTarget = 10000, // Valeur plus réaliste
-  dailyRevenueTarget = 8000 // Valeur plus réaliste
+  dailyAdsTarget = 5000, // Valeur plus réaliste réduite
+  dailyRevenueTarget = 4000 // Valeur plus réaliste réduite
 }: StatsCounterProps) => {
   const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
     dailyAdsTarget,
@@ -68,7 +68,7 @@ const StatsCounter = ({
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     // Calculer un facteur de progression TRÈS limité basé sur l'ancienneté
-    const progressFactor = Math.min(1 + (diffDays * 0.002), 1.25); // Maximum 1.25x après 125 jours
+    const progressFactor = Math.min(1 + (diffDays * 0.001), 1.15); // Maximum 1.15x après 150 jours
     
     return {
       diffDays,
@@ -97,7 +97,7 @@ const StatsCounter = ({
     
     // Si l'application est utilisée depuis plus de 30 jours, augmenter légèrement les valeurs de base
     if (diffDays > 30) {
-      const additionalProgressFactor = 1 + ((diffDays - 30) * 0.001); // Progression TRÈS lente
+      const additionalProgressFactor = 1 + ((diffDays - 30) * 0.0005); // Progression TRÈS lente
       const newMinimumAds = MINIMUM_ADS * additionalProgressFactor;
       const newMinimumRevenue = MINIMUM_REVENUE * additionalProgressFactor;
       

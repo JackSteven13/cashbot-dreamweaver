@@ -22,10 +22,10 @@ const calculateCounterIncrement = (targetCount: number, currentCount: number): n
     return 0; // Ne jamais autoriser de baisses
   }
   
-  // Réduire drastiquement la probabilité d'un incrément (seulement 0.1% de chance)
-  const shouldIncrement = Math.random() > 0.999;
+  // Réduire drastiquement la probabilité d'un incrément (seulement 0.01% de chance)
+  const shouldIncrement = Math.random() > 0.9999;
   
-  // Aucun mouvement dans 99.9% des cas, sinon +1 maximum
+  // Aucun mouvement dans 99.99% des cas, sinon +1 maximum
   return shouldIncrement && difference > 0 ? 1 : 0;
 };
 
@@ -81,22 +81,22 @@ export const useStatsAnimation = ({
     return () => window.removeEventListener('location:added', handleLocationAdded);
   }, []);
   
-  const animateCounters = useCallback(() => {
+  const animateCounters = useCallback((targetAdsCount?: number, targetRevenueCount?: number) => {
     // Calculer le temps écoulé depuis la dernière mise à jour
     const now = Date.now();
     const elapsedTime = now - lastUpdateTime.current;
     
-    // Bloquer presque toutes les animations (attendre au moins 2-5 minutes entre chaque)
-    if (elapsedTime < 120000 + Math.random() * 180000) {
+    // Bloquer presque toutes les animations (attendre au moins 5-10 minutes entre chaque)
+    if (elapsedTime < 300000 + Math.random() * 300000) {
       return { animationActive: false }; // Animation pratiquement gelée
     }
     
     // Mettre à jour le temps de la dernière mise à jour
     lastUpdateTime.current = now;
     
-    // Sauter la quasi-totalité des updates (99.8%)
+    // Sauter la quasi-totalité des updates (99.9%)
     setUpdateSkipCounter(prev => {
-      const shouldSkipFrame = Math.random() > 0.002; // 0.2% de chance seulement de ne pas sauter
+      const shouldSkipFrame = Math.random() > 0.001; // 0.1% de chance seulement de ne pas sauter
       
       if (shouldSkipFrame) {
         return prev + 1; // Accumuler les sauts
@@ -106,7 +106,7 @@ export const useStatsAnimation = ({
       const isBurstMode = false;
       
       // Animation complètement bloquée - changement extrêmement rare
-      if (Math.random() > 0.998) { // 0.2% de chance de mise à jour
+      if (Math.random() > 0.999) { // 0.1% de chance de mise à jour
         setDisplayedAdsCount((prevCount) => {
           // Mettre à jour la valeur maximale si nécessaire
           if (prevCount > maxAdsCount.current) {
@@ -127,7 +127,7 @@ export const useStatsAnimation = ({
           }
           
           // Gain très faible correspondant à une seule vidéo
-          const adValue = Math.random() * 0.2 + 0.2; // 0.2€-0.4€
+          const adValue = Math.random() * 0.1 + 0.2; // 0.2€-0.3€
           return prevCount + adValue;
         });
       }
@@ -137,11 +137,9 @@ export const useStatsAnimation = ({
 
     // Animation presque toujours inactive
     return { 
-      animationActive: Math.random() > 0.95 &&
-                      (Math.abs(adsCount - prevAdsCount) > 5 || 
-                       Math.abs(revenueCount - prevRevenueCount) > 3)
+      animationActive: Math.random() > 0.99
     };
-  }, [adsCount, revenueCount, setDisplayedAdsCount, setDisplayedRevenueCount, prevAdsCount, prevRevenueCount]);
+  }, [setDisplayedAdsCount, setDisplayedRevenueCount]);
 
   return { animateCounters };
 };
