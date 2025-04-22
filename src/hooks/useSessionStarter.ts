@@ -4,6 +4,7 @@ import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAni
 import { calculateManualSessionGain } from '@/utils/subscription/sessionGain';
 import { simulateActivity } from '@/utils/animations/moneyParticles';
 import balanceManager from '@/utils/balance/balanceManager';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface UseSessionStarterProps {
   userData: any;
@@ -28,11 +29,69 @@ export const useSessionStarter = ({
 
   const sessionInProgressRef = useRef(false);
   const sessionCountRef = useRef(dailySessionCount);
+  const userId = userData?.profile?.id || userData?.id;
 
   // Keep sessionCountRef in sync
   useEffect(() => {
     sessionCountRef.current = dailySessionCount;
   }, [dailySessionCount]);
+
+  // Vérifier si le compte freemium a déjà atteint sa limite quotidienne
+  const checkFreemiumLimit = () => {
+    if (userData?.subscription === 'freemium') {
+      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const lastSessionDate = localStorage.getItem('last_session_date');
+      const today = new Date().toDateString();
+      
+      // Si ce n'est pas un nouveau jour et que la limite est déjà atteinte
+      if (lastSessionDate === today && (limitReached === 'true' || sessionCountRef.current >= 1)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Synchroniser le solde avec la base de données après une session
+  const syncBalanceWithDatabase = async (gain: number) => {
+    if (!userId) return;
+    
+    try {
+      const currentBalance = balanceManager.getCurrentBalance();
+      
+      // Récupérer d'abord le solde actuel de la base de données
+      const { data, error } = await supabase
+        .from('user_balances')
+        .select('balance')
+        .eq('id', userId)
+        .single();
+        
+      if (error) {
+        console.error('Erreur lors de la récupération du solde pour synchronisation:', error);
+        return;
+      }
+      
+      // Comparer et utiliser le solde le plus élevé
+      const dbBalance = data.balance || 0;
+      const expectedNewBalance = dbBalance + gain;
+      
+      // Si le solde local est supérieur, mettre à jour la base de données
+      if (currentBalance > expectedNewBalance) {
+        await supabase
+          .from('user_balances')
+          .update({ balance: currentBalance })
+          .eq('id', userId);
+          
+        console.log(`Base de données mise à jour avec le solde local: ${currentBalance}€`);
+      } 
+      // Si le solde calculé est supérieur au solde local, mettre à jour le stockage local
+      else if (expectedNewBalance > currentBalance) {
+        balanceManager.forceBalanceSync(expectedNewBalance, userId);
+        console.log(`Stockage local mis à jour avec le nouveau solde: ${expectedNewBalance}€`);
+      }
+    } catch (err) {
+      console.error('Erreur lors de la synchronisation du solde:', err);
+    }
+  };
 
   const handleStartSession = async () => {
     if (sessionInProgressRef.current || isStartingSession) return;
@@ -44,12 +103,7 @@ export const useSessionStarter = ({
       // Pour les comptes freemium, vérification stricte de la limite
       if (userData?.subscription === 'freemium') {
         // Vérifier d'abord si la limite est déjà atteinte aujourd'hui
-        const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-        const lastSessionDate = localStorage.getItem('last_session_date');
-        const today = new Date().toDateString();
-        
-        // Si ce n'est pas un nouveau jour et que la limite est déjà atteinte
-        if (lastSessionDate === today && (limitReached === 'true' || sessionCountRef.current >= 1)) {
+        if (checkFreemiumLimit()) {
           toast({
             title: "Limite quotidienne atteinte",
             description: "Les comptes freemium sont limités à 1 session par jour.",
@@ -100,12 +154,32 @@ export const useSessionStarter = ({
       // Mettre à jour les gains quotidiens dans le gestionnaire de solde
       balanceManager.addDailyGain(gain);
 
+      // Mettre à jour le solde local
+      const oldBalance = balanceManager.getCurrentBalance();
+      balanceManager.updateBalance(gain);
+      const newBalance = balanceManager.getCurrentBalance();
+
+      // Synchroniser avec la base de données
       await updateBalance(gain, `Session d'analyse manuelle: +${gain.toFixed(2)}€`);
+      
+      // Assurer la cohérence entre le stockage local et la base de données
+      await syncBalanceWithDatabase(gain);
 
       terminalSequence.complete(gain);
 
       // Déclencher un événement pour rafraîchir les transactions
       window.dispatchEvent(new CustomEvent('transactions:refresh'));
+      
+      // Déclencher l'animation de mise à jour du solde
+      window.dispatchEvent(new CustomEvent('balance:update', {
+        detail: {
+          amount: gain,
+          oldBalance: oldBalance,
+          newBalance: newBalance,
+          animate: true,
+          duration: 1500
+        }
+      }));
 
       toast({
         title: "Session complétée",

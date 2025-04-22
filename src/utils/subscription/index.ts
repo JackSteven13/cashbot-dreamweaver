@@ -1,40 +1,14 @@
+// Exports from constants.ts
+export { SUBSCRIPTION_LIMITS } from './constants';
 
-// Export functions related to subscription management
+// Exports from sessionGain.ts
+export { calculateManualSessionGain } from './sessionGain';
+
+// Exports from sessionManagement.ts
 export { 
+  respectsDailyLimit,
   shouldResetDailyCounters,
-  getEffectiveSubscription, 
-  checkDailyLimit
-} from './subscriptionStatus';
-
-export { 
-  canStartManualSession,
-  subscribeToAuthChanges,
-  unsubscribeFromAuthChanges,
-  respectsDailyLimit
+  canStartManualSession
 } from './sessionManagement';
 
-export { 
-  calculateManualSessionGain, 
-  calculateAutoSessionGain,
-  calculateSessionGain
-} from './sessionGain';
-
-export { 
-  calculatePotentialGains,
-  calculateAllPlansRevenue 
-} from './gainCalculation';
-
-// Re-export constants from constants.ts
-export { 
-  SUBSCRIPTION_LIMITS, 
-  MANUAL_SESSION_GAIN_PERCENTAGES,
-  WITHDRAWAL_THRESHOLDS,
-  WITHDRAWAL_FEES
-} from './constants';
-
-// Re-export interfaces
-export type { 
-  SessionStartResult,
-  DailyLimitResult 
-} from './sessionManagement';
-
+// Pour tout autre import/export potentiel

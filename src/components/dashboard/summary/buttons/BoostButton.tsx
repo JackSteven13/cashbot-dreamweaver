@@ -34,20 +34,59 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
   
   // Vérifier si le compte freemium a atteint sa limite quotidienne
   useEffect(() => {
-    if (subscription === 'freemium') {
-      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-      const lastSessionDate = localStorage.getItem('last_session_date');
-      const today = new Date().toDateString();
-      
-      if (lastSessionDate === today && limitReached === 'true') {
-        setIsFreemiumLimited(true);
-      } else {
-        setIsFreemiumLimited(false);
+    const checkFreemiumLimit = () => {
+      if (subscription === 'freemium') {
+        const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+        const lastSessionDate = localStorage.getItem('last_session_date');
+        const today = new Date().toDateString();
+        
+        // Si ce n'est pas un nouveau jour et que la limite est déjà atteinte
+        const isLimited = lastSessionDate === today && limitReached === 'true';
+        setIsFreemiumLimited(isLimited);
+        
+        // Déclencher un événement pour mettre à jour l'interface si la limite a changé
+        if (isLimited !== isFreemiumLimited) {
+          window.dispatchEvent(new CustomEvent('freemium:limit-changed', {
+            detail: { limited: isLimited }
+          }));
+        }
+        
+        return isLimited;
       }
-    } else {
-      setIsFreemiumLimited(false);
-    }
-  }, [subscription]);
+      return false;
+    };
+    
+    checkFreemiumLimit();
+    
+    // Vérifier périodiquement la limite pour les comptes freemium
+    const intervalId = setInterval(checkFreemiumLimit, 5000);
+    
+    // Vérifier aussi à chaque changement de visibilité du document
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkFreemiumLimit();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Écouter l'événement de fin de session pour mettre à jour l'état
+    const handleSessionComplete = () => {
+      if (subscription === 'freemium') {
+        setTimeout(() => {
+          checkFreemiumLimit();
+        }, 500);
+      }
+    };
+    
+    window.addEventListener('session:completed' as any, handleSessionComplete);
+    
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('session:completed' as any, handleSessionComplete);
+    };
+  }, [subscription, isFreemiumLimited]);
   
   // Gérer le clic avec un feedback visuel supplémentaire
   const handleClick = () => {
