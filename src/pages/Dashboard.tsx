@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -9,9 +8,11 @@ import SubscriptionSynchronizer from '@/components/subscriptions/SubscriptionSyn
 import { toast } from '@/components/ui/use-toast';
 import BalanceAnimation from '@/components/dashboard/BalanceAnimation';
 import useAutomaticRevenue from '@/hooks/useAutomaticRevenue';
-import balanceManager from '@/utils/balance/balanceManager';
 import AutoProgressNotification from '@/components/dashboard/AutoProgressNotification';
 import { useAutoSessionScheduler } from '@/hooks/useAutoSessionScheduler';
+import { useBalanceUpdater } from '@/hooks/useBalanceUpdater';
+import { useBalanceSync } from '@/hooks/useBalanceSync';
+import { usePeriodicUpdates } from '@/hooks/usePeriodicUpdates';
 
 const Dashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -22,44 +23,10 @@ const Dashboard = () => {
   const [isPreloaded, setIsPreloaded] = useState(false);
   const [lastProcessTime, setLastProcessTime] = useState<number>(0);
   const todaysGainsRef = React.useRef<number>(0);
-  const [lastBalanceUpdate, setLastBalanceUpdate] = useState<number>(Date.now());
   
-  // Move the updateBalance function definition to the top
-  const updateBalance = async (gain: number, report: string, forceUpdate: boolean = false) => {
-    console.log(`Updating balance with gain: ${gain}, report: ${report}, forceUpdate: ${forceUpdate}`);
-    
-    const currentBalance = balanceManager.getCurrentBalance();
-    const newBalance = parseFloat((currentBalance + gain).toFixed(2));
-    
-    window.dispatchEvent(new CustomEvent('balance:update', {
-      detail: { 
-        amount: gain, 
-        currentBalance: newBalance, 
-        animate: true 
-      }
-    }));
-    
-    window.dispatchEvent(new CustomEvent('balance:force-update', {
-      detail: { 
-        newBalance: newBalance,
-        gain: gain,
-        timestamp: Date.now() 
-      }
-    }));
-    
-    setLastBalanceUpdate(Date.now());
-    
-    if (forceUpdate && userData?.subscription === 'freemium') {
-      localStorage.setItem('freemium_daily_limit_reached', 'true');
-      localStorage.setItem('last_session_date', new Date().toDateString());
-    }
-    
-    if (forceUpdate) {
-      await refreshData();
-    }
-  };
+  const { updateBalance } = useBalanceUpdater();
+  const { lastBalanceUpdate, setLastBalanceUpdate } = useBalanceSync(userData, isPreloaded);
   
-  // Initialize the useAutomaticRevenue hook before using the generateAutomaticRevenue function
   const { 
     generateAutomaticRevenue,
     isBotActive,
@@ -69,34 +36,7 @@ const Dashboard = () => {
     updateBalance
   });
   
-  // Use the autoSessionScheduler after generateAutomaticRevenue is defined
   useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
-  
-  useEffect(() => {
-    if (!isPreloaded && userData && userData.balance) {
-      balanceManager.forceBalanceSync(userData.balance, userData.id || userData.profile?.id);
-      
-      window.dispatchEvent(new CustomEvent('balance:force-update', {
-        detail: { 
-          newBalance: userData.balance,
-          timestamp: Date.now() 
-        }
-      }));
-      
-      setIsPreloaded(true);
-    }
-  }, [userData, isPreloaded]);
-  
-  useEffect(() => {
-    if (!authLoading && !user) {
-      console.log("Not authenticated, redirecting to login");
-      navigate('/login');
-    } else if (!authLoading && user) {
-      setTimeout(() => {
-        setDashboardReady(true);
-      }, 300);
-    }
-  }, [user, authLoading, navigate]);
   
   const forceBalanceRefresh = useCallback(() => {
     if (!userData) return;
@@ -117,7 +57,26 @@ const Dashboard = () => {
     setLastBalanceUpdate(Date.now());
   }, [userData]);
   
-  // Move this effect after generateAutomaticRevenue is defined
+  usePeriodicUpdates(
+    userData,
+    generateAutomaticRevenue,
+    lastProcessTime,
+    setLastProcessTime,
+    lastBalanceUpdate,
+    forceBalanceRefresh
+  );
+  
+  useEffect(() => {
+    if (!authLoading && !user) {
+      console.log("Not authenticated, redirecting to login");
+      navigate('/login');
+    } else if (!authLoading && user) {
+      setTimeout(() => {
+        setDashboardReady(true);
+      }, 300);
+    }
+  }, [user, authLoading, navigate]);
+  
   useEffect(() => {
     if (!isInitializing && username && isFirstLoad) {
       setIsFirstLoad(false);
@@ -180,68 +139,7 @@ const Dashboard = () => {
     
     return () => clearInterval(refreshInterval);
   }, [forceBalanceRefresh]);
-  
-  // Move this effect after generateAutomaticRevenue is defined
-  useEffect(() => {
-    if (userData) {
-      const revenueInterval = setInterval(() => {
-        const now = Date.now();
-        
-        if (now - lastProcessTime > 40000) {
-          console.log("Génération de revenus automatique périodique");
-          setLastProcessTime(now);
-          
-          generateAutomaticRevenue();
-        }
-        
-        if (now - lastBalanceUpdate > 20000) { 
-          forceBalanceRefresh();
-        }
-      }, 40000 + Math.random() * 15000);
-      
-      return () => clearInterval(revenueInterval);
-    }
-  }, [userData, generateAutomaticRevenue, lastProcessTime, lastBalanceUpdate, forceBalanceRefresh]);
-  
-  // Move this effect after generateAutomaticRevenue is defined
-  useEffect(() => {
-    const heartbeatInterval = setInterval(() => {
-      if (userData) {
-        const now = Date.now();
-        
-        if (now - lastProcessTime > 180000) {
-          console.log("Dashboard heartbeat - vérification et génération de revenus");
-          
-          setLastProcessTime(now);
-          
-          if (Math.random() < 0.9) {
-            generateAutomaticRevenue();
-          }
-          
-          forceBalanceRefresh();
-        }
-      }
-    }, 180000);
-    
-    return () => clearInterval(heartbeatInterval);
-  }, [userData, generateAutomaticRevenue, lastProcessTime, forceBalanceRefresh]);
-  
-  useEffect(() => {
-    if (!userData) return;
-    
-    if (userData.subscription === 'freemium') {
-      // Vérifier si c'est un nouveau jour
-      const lastSessionDate = localStorage.getItem('last_session_date');
-      const today = new Date().toDateString();
-      
-      if (lastSessionDate !== today) {
-        // Réinitialiser la limite pour un nouveau jour
-        localStorage.removeItem('freemium_daily_limit_reached');
-        localStorage.removeItem('last_session_date');
-      }
-    }
-  }, [userData]);
-  
+
   if (authLoading || !user) {
     return <DashboardSkeleton username="Chargement..." />;
   }
