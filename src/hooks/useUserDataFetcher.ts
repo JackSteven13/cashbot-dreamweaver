@@ -1,11 +1,10 @@
 
 import { useCallback } from 'react';
-import { useUserDataState, UserFetcherState } from './user/useUserDataState';
+import { UserFetcherState } from './user/useUserDataState';
 import { useUserDataFetching } from './user/useUserDataFetching';
-import { useProfileLoader } from './useProfileLoader';
-import { useBalanceLoader } from './useBalanceLoader';
-import { useDailyReset } from './useDailyReset'; // Ensure correct import
-import { UserData } from '@/types/userData';
+import { useUserDataFetcherState } from './userData/useUserDataFetcherState';
+import { useDataLoaders } from './userData/useDataLoaders';
+import { useDailyReset } from './useDailyReset';
 
 export interface UserFetcherActions {
   fetchUserData: () => Promise<void>;
@@ -16,22 +15,8 @@ export interface UserFetcherActions {
 export type { UserFetcherState };
 
 export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => {
-  // Use the state and actions from useUserDataState
-  const userDataState = useUserDataState();
-  const { 
-    updateUserData, 
-    setIsLoading, 
-    userActions
-  } = userDataState;
-  
-  const { loadUserProfile, isNewUser, setIsNewUser } = useProfileLoader();
-  const { loadUserBalance } = useBalanceLoader(setIsNewUser);
-
-  // Modify the updateUserDataWrapper to match the expected signature
-  const updateUserDataWrapper = useCallback((newData: Partial<UserData>) => {
-    // Convert UserData to UserFetcherState format
-    updateUserData(newData);
-  }, [updateUserData]);
+  const { state, updateUserDataWrapper, setIsLoading, userActions } = useUserDataFetcherState();
+  const { loadUserProfile, loadUserBalance, isNewUser } = useDataLoaders(userActions.setIsNewUser);
 
   const { fetchUserData, resetDailyCounters } = useUserDataFetching(
     loadUserProfile,
@@ -40,20 +25,9 @@ export const useUserDataFetcher = (): [UserFetcherState, UserFetcherActions] => 
     setIsLoading,
     isNewUser
   );
-  
-  // Updated to call useDailyReset without arguments
+
+  // Initialize daily reset
   useDailyReset();
-  
-  // Create the return value with proper structure
-  const state: UserFetcherState = {
-    userData: userDataState.userData,
-    isNewUser: userDataState.isNewUser,
-    dailySessionCount: userDataState.dailySessionCount,
-    showLimitAlert: userDataState.showLimitAlert,
-    isLoading: userDataState.isLoading,
-    isBotActive: userDataState.isBotActive,
-    dailyLimitProgress: userDataState.dailyLimitProgress
-  };
 
   const actions: UserFetcherActions = {
     fetchUserData,
