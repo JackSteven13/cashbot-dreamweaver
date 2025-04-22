@@ -14,6 +14,7 @@ class BalanceManager {
   private watchers: BalanceWatcher[] = [];
   private isInitialized: boolean = false;
   private highestBalance: number = 0;
+  private lastSyncTime: number = 0;
 
   constructor() {
     this.initFromStorage();
@@ -28,17 +29,27 @@ class BalanceManager {
       const userId = this.getUserIdFromStorage();
       if (userId) {
         this.userId = userId;
-        const userSpecificBalance = localStorage.getItem(`currentBalance_${userId}`);
-        if (userSpecificBalance) {
-          const parsedBalance = parseFloat(userSpecificBalance);
-          if (!isNaN(parsedBalance)) {
-            this.balance = parsedBalance;
-            this.isInitialized = true;
-          }
+        
+        // Get all possible balance sources
+        const sources = [
+          parseFloat(localStorage.getItem(`currentBalance_${userId}`) || '0'),
+          parseFloat(localStorage.getItem(`lastKnownBalance_${userId}`) || '0'),
+          parseFloat(localStorage.getItem(`lastUpdatedBalance_${userId}`) || '0'),
+          parseFloat(sessionStorage.getItem(`currentBalance_${userId}`) || '0'),
+          parseFloat(localStorage.getItem('currentBalance') || '0'),
+          parseFloat(localStorage.getItem('lastKnownBalance') || '0')
+        ];
+        
+        // Filter out NaN values and find the maximum
+        const validSources = sources.filter(val => !isNaN(val) && val > 0);
+        if (validSources.length > 0) {
+          this.balance = Math.max(...validSources);
+          this.isInitialized = true;
+          console.log(`Initialized from user-specific storage with balance: ${this.balance}`);
         }
       }
 
-      // Fallback to general balance
+      // Fallback to general balance if not initialized yet
       if (!this.isInitialized) {
         const storedBalance = localStorage.getItem('currentBalance');
         if (storedBalance) {
@@ -46,6 +57,7 @@ class BalanceManager {
           if (!isNaN(parsedBalance)) {
             this.balance = parsedBalance;
             this.isInitialized = true;
+            console.log(`Initialized from general storage with balance: ${this.balance}`);
           }
         }
       }
@@ -81,6 +93,12 @@ class BalanceManager {
       // If highest balance is not set, use current balance as reference
       if (this.highestBalance === 0 && this.balance > 0) {
         this.highestBalance = this.balance;
+      }
+
+      // If the highest balance is greater than the current balance, use that value
+      if (this.highestBalance > this.balance) {
+        this.balance = this.highestBalance;
+        this.persistBalance();
       }
 
       console.log(`BalanceManager initialized: balance=${this.balance}, dailyGains=${this.dailyGains}, highestBalance=${this.highestBalance}`);
@@ -134,10 +152,20 @@ class BalanceManager {
       this.userId = userId;
     }
 
-    this.balance = parseFloat(newBalance.toFixed(2));
-    this.persistBalance();
-    this.updateHighestBalance(newBalance);
-    this.notifyWatchers();
+    // Only update if the new balance is greater than or equal to highest recorded
+    // This prevents balance from decreasing when reloading
+    const safeBalance = parseFloat(newBalance.toFixed(2));
+    
+    // Don't allow balance to decrease unless it's being set to exactly 0
+    if (safeBalance >= this.balance || safeBalance === 0) {
+      this.balance = safeBalance;
+      this.persistBalance();
+      this.updateHighestBalance(safeBalance);
+      this.notifyWatchers();
+    } else {
+      console.log(`Prevented balance decrease from ${this.balance} to ${safeBalance}`);
+    }
+    
     return this.balance;
   }
 
@@ -219,6 +247,9 @@ class BalanceManager {
    */
   private persistBalance(): void {
     try {
+      const now = Date.now();
+      this.lastSyncTime = now;
+      
       localStorage.setItem('currentBalance', this.balance.toString());
       localStorage.setItem('lastKnownBalance', this.balance.toString());
       localStorage.setItem('lastBalanceUpdateTime', new Date().toISOString());
@@ -227,6 +258,7 @@ class BalanceManager {
       if (this.userId) {
         localStorage.setItem(`currentBalance_${this.userId}`, this.balance.toString());
         localStorage.setItem(`lastUpdatedBalance_${this.userId}`, this.balance.toString());
+        localStorage.setItem(`lastBalanceSync_${this.userId}`, now.toString());
         // Also store in sessionStorage as another backup
         try {
           sessionStorage.setItem(`currentBalance_${this.userId}`, this.balance.toString());
@@ -276,6 +308,40 @@ class BalanceManager {
         console.error("Error in balance watcher:", error);
       }
     });
+  }
+  
+  /**
+   * Sync balance with database on login
+   */
+  syncOnAuth(userId: string, serverBalance: number): number {
+    this.userId = userId;
+    
+    // Get all possible balance sources
+    const sources = [
+      this.balance,
+      serverBalance,
+      parseFloat(localStorage.getItem(`currentBalance_${userId}`) || '0'),
+      parseFloat(localStorage.getItem(`lastKnownBalance_${userId}`) || '0'),
+      parseFloat(localStorage.getItem('currentBalance') || '0'),
+      parseFloat(localStorage.getItem('lastKnownBalance') || '0'),
+      this.highestBalance
+    ];
+    
+    // Filter out NaN values and find the maximum
+    const validSources = sources.filter(val => !isNaN(val) && val > 0);
+    const maxBalance = validSources.length > 0 ? Math.max(...validSources) : 0;
+    
+    console.log(`Syncing on auth - Current: ${this.balance}, Server: ${serverBalance}, Max: ${maxBalance}`);
+    
+    // Always use the highest balance value
+    if (maxBalance > 0 && maxBalance !== this.balance) {
+      this.balance = maxBalance;
+      this.persistBalance();
+      this.updateHighestBalance(maxBalance);
+      this.notifyWatchers();
+    }
+    
+    return this.balance;
   }
 }
 

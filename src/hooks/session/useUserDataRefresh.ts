@@ -58,10 +58,13 @@ export const useUserDataRefresh = () => {
       // Mise à jour immédiate de l'UI avec les données en cache
       const cachedName = localStorage.getItem(userSpecificKeys.username);
       const cachedSubscription = localStorage.getItem(userSpecificKeys.subscription);
-      const cachedBalance = localStorage.getItem(userSpecificKeys.balance);
       
       // Récupérer d'abord le solde local actuel du gestionnaire
       const currentBalance = balanceManager.getCurrentBalance();
+      const highestBalance = balanceManager.getHighestBalance();
+      
+      // Utiliser le solde le plus élevé entre le solde courant et le solde record
+      const effectiveLocalBalance = Math.max(currentBalance, highestBalance);
       
       if (cachedName) {
         // Dispatch un événement pour informer l'UI qu'une mise à jour est en cours
@@ -69,7 +72,7 @@ export const useUserDataRefresh = () => {
           detail: { 
             username: cachedName,
             subscription: cachedSubscription,
-            balance: isNaN(currentBalance) ? cachedBalance : currentBalance.toString(),
+            balance: effectiveLocalBalance,
             userId
           }
         }));
@@ -96,7 +99,7 @@ export const useUserDataRefresh = () => {
         // Collecter toutes les sources potentielles de solde
         const sources = [
           data.balance,
-          currentBalance,
+          effectiveLocalBalance,
           parseFloat(localStorage.getItem(`currentBalance_${userId}`) || '0'),
           parseFloat(localStorage.getItem(userSpecificKeys.balance) || '0'),
           parseFloat(localStorage.getItem(`lastUpdatedBalance_${userId}`) || '0'),
@@ -107,17 +110,29 @@ export const useUserDataRefresh = () => {
         const maxBalance = Math.max(...sources.filter(val => !isNaN(val) && val > 0));
         
         if (maxBalance > 0) {
+          // Synchronize with the database if local balance is higher
+          if (maxBalance > data.balance) {
+            try {
+              await supabase
+                .from('user_balances')
+                .update({ balance: maxBalance })
+                .eq('id', userId);
+                
+              console.log(`Updated database balance to match local: ${maxBalance}€`);
+            } catch (err) {
+              console.error("Error updating database balance:", err);
+            }
+          }
+          
           localStorage.setItem(`currentBalance_${userId}`, maxBalance.toString());
           localStorage.setItem(userSpecificKeys.balance, maxBalance.toString());
           localStorage.setItem(`lastUpdatedBalance_${userId}`, maxBalance.toString());
           sessionStorage.setItem(`currentBalance_${userId}`, maxBalance.toString());
           
           // Mettre à jour le gestionnaire de solde
-          if (maxBalance > currentBalance || isNaN(currentBalance)) {
-            balanceManager.forceBalanceSync(maxBalance, userId);
-          }
+          balanceManager.syncOnAuth(userId, data.balance);
           
-          console.log(`Data refreshed event received for ${userId}: { balance: ${maxBalance}, subscription: ${data.subscription} }`);
+          console.log(`Data refreshed for ${userId}: { balance: ${maxBalance}, subscription: ${data.subscription} }`);
         }
       }
       
@@ -125,7 +140,7 @@ export const useUserDataRefresh = () => {
       window.dispatchEvent(new CustomEvent('user:refreshed', {
         detail: { 
           subscription: data.subscription,
-          balance: data.balance,
+          balance: balanceManager.getCurrentBalance(), // Use the balance from manager
           userId
         }
       }));
