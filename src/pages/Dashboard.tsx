@@ -69,6 +69,9 @@ const Dashboard = () => {
     updateBalance
   });
   
+  // Use the autoSessionScheduler after generateAutomaticRevenue is defined
+  useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
+  
   useEffect(() => {
     if (!isPreloaded && userData && userData.balance) {
       balanceManager.forceBalanceSync(userData.balance, userData.id || userData.profile?.id);
@@ -114,6 +117,7 @@ const Dashboard = () => {
     setLastBalanceUpdate(Date.now());
   }, [userData]);
   
+  // Move this effect after generateAutomaticRevenue is defined
   useEffect(() => {
     if (!isInitializing && username && isFirstLoad) {
       setIsFirstLoad(false);
@@ -177,6 +181,7 @@ const Dashboard = () => {
     return () => clearInterval(refreshInterval);
   }, [forceBalanceRefresh]);
   
+  // Move this effect after generateAutomaticRevenue is defined
   useEffect(() => {
     if (userData) {
       const revenueInterval = setInterval(() => {
@@ -198,6 +203,7 @@ const Dashboard = () => {
     }
   }, [userData, generateAutomaticRevenue, lastProcessTime, lastBalanceUpdate, forceBalanceRefresh]);
   
+  // Move this effect after generateAutomaticRevenue is defined
   useEffect(() => {
     const heartbeatInterval = setInterval(() => {
       if (userData) {
@@ -235,8 +241,6 @@ const Dashboard = () => {
       }
     }
   }, [userData]);
-  
-  useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
   
   if (authLoading || !user) {
     return <DashboardSkeleton username="Chargement..." />;
