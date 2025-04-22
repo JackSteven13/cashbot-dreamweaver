@@ -57,13 +57,24 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     // Initialiser avec la prop
     setLocalBotActive(isBotActive);
     
+    // Pour les comptes freemium, vérifier si la limite est déjà atteinte
+    if (subscription === 'freemium') {
+      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const lastSessionDate = localStorage.getItem('last_session_date');
+      const today = new Date().toDateString();
+      
+      if (lastSessionDate === today && limitReached === 'true') {
+        setLimitReached(true);
+      }
+    }
+    
     return () => {
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
       window.removeEventListener('bot:force-status' as any, handleBotStatusChange);
       window.removeEventListener('bot:limit-reached' as any, handleLimitReached);
       window.removeEventListener('dashboard:limit-reached' as any, handleLimitReached);
     };
-  }, [isBotActive]);
+  }, [isBotActive, subscription]);
 
   const handleStartAnalysis = async () => {
     console.log("Début handleStartAnalysis");
@@ -76,9 +87,12 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     // Vérifier si la limite a été atteinte pour les comptes freemium
     if (subscription === 'freemium') {
       const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const lastSessionDate = localStorage.getItem('last_session_date');
+      const today = new Date().toDateString();
       const sessionCount = parseInt(localStorage.getItem('dailySessionCount') || '0');
       
-      if (limitReached === 'true' || sessionCount >= 1) {
+      // Si ce n'est pas un nouveau jour et que la limite est atteinte
+      if (lastSessionDate === today && (limitReached === 'true' || sessionCount >= 1)) {
         toast({
           title: "Limite quotidienne atteinte",
           description: "Les comptes freemium sont limités à 1 session par jour.",
@@ -136,6 +150,22 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   // Déterminer l'état visuel du bouton en fonction des différents états
   const getButtonState = () => {
+    // Pour les comptes freemium, vérifier si la limite quotidienne est atteinte
+    if (subscription === 'freemium') {
+      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const lastSessionDate = localStorage.getItem('last_session_date');
+      const today = new Date().toDateString();
+      
+      if (lastSessionDate === today && limitReached === 'true') {
+        return {
+          text: 'Limite atteinte (1/jour)',
+          disabled: true,
+          animate: false,
+          color: 'bg-red-600'
+        };
+      }
+    }
+    
     if (isStartingSession || isLocallyProcessing) {
       return {
         text: 'Analyse en cours...',

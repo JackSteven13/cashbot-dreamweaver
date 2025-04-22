@@ -30,10 +30,28 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
   const isMobile = useIsMobile();
   const iconSize = isMobile ? 16 : 18;
   const [isClicked, setIsClicked] = useState(false);
+  const [isFreemiumLimited, setIsFreemiumLimited] = useState(false);
+  
+  // Vérifier si le compte freemium a atteint sa limite quotidienne
+  useEffect(() => {
+    if (subscription === 'freemium') {
+      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const lastSessionDate = localStorage.getItem('last_session_date');
+      const today = new Date().toDateString();
+      
+      if (lastSessionDate === today && limitReached === 'true') {
+        setIsFreemiumLimited(true);
+      } else {
+        setIsFreemiumLimited(false);
+      }
+    } else {
+      setIsFreemiumLimited(false);
+    }
+  }, [subscription]);
   
   // Gérer le clic avec un feedback visuel supplémentaire
   const handleClick = () => {
-    if (isButtonDisabled || isStartingSession || limitReached) return;
+    if (isButtonDisabled || isStartingSession || limitReached || isFreemiumLimited) return;
     
     setIsClicked(true);
     
@@ -66,6 +84,13 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
           <span className="processing-dots">Analyse en cours</span>
         </span>
       );
+    } else if (isFreemiumLimited) {
+      return (
+        <span className="flex items-center">
+          <AlertTriangle className="mr-1.5" size={iconSize} />
+          Limite (1/jour)
+        </span>
+      );
     } else if (limitReached) {
       return (
         <span className="flex items-center">
@@ -85,7 +110,9 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
   
   // Déterminer les styles et l'état du bouton
   const getButtonStyles = () => {
-    if (limitReached) {
+    if (isFreemiumLimited) {
+      return "w-full bg-red-600 hover:bg-red-600 text-white cursor-not-allowed shadow-md py-1.5";
+    } else if (limitReached) {
       return "w-full bg-slate-300 hover:bg-slate-300 text-slate-600 cursor-not-allowed shadow-md py-1.5";
     } else if (canStartSession) {
       return `w-full bg-gradient-to-r from-[#3b82f6] to-[#1d4ed8] hover:from-[#2563eb] hover:to-[#1e40af] text-white relative overflow-hidden shadow-md py-1.5 ${animationClass}`;
@@ -98,12 +125,12 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
     <Button 
       ref={buttonRef}
       className={getButtonStyles()}
-      disabled={isButtonDisabled || isStartingSession || limitReached}
+      disabled={isButtonDisabled || isStartingSession || limitReached || isFreemiumLimited}
       onClick={handleClick}
       size={isMobile ? "sm" : "default"}
     >
       {/* Visual indicator of progress towards limit */}
-      {canStartSession && !limitReached && (
+      {canStartSession && !limitReached && !isFreemiumLimited && (
         <div 
           className="absolute bottom-0 left-0 h-1 bg-white/50" 
           style={{ width: `${limitPercentage}%` }}
@@ -114,3 +141,5 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
     </Button>
   );
 };
+
+export default BoostButton;

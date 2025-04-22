@@ -89,6 +89,12 @@ export const shouldResetDailyCounters = (): boolean => {
     
     // It's a new day, update last reset time
     localStorage.setItem('lastResetTime', now.toISOString());
+    
+    // Réinitialiser également le compteur de sessions quotidiennes Freemium
+    localStorage.removeItem('freemium_daily_limit_reached');
+    localStorage.removeItem('last_session_date');
+    console.log("Nouveau jour détecté, réinitialisation des limites quotidiennes");
+    
     return true;
   }
   
@@ -101,6 +107,21 @@ export const canStartManualSession = (
   dailySessionCount: number,
   currentDailyGains: number
 ): SessionCheckResult => {
+  // Vérification spéciale pour les comptes freemium (STRICTEMENT 1 session par jour)
+  if (subscription === 'freemium') {
+    // Vérifier si la limite a déjà été enregistrée dans le localStorage
+    const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+    const lastSessionDate = localStorage.getItem('last_session_date');
+    const today = new Date().toDateString();
+    
+    if (lastSessionDate === today && (limitReached === 'true' || dailySessionCount >= 1)) {
+      return {
+        canStart: false,
+        reason: `Limite quotidienne atteinte pour compte freemium (${dailySessionCount}/1)`
+      };
+    }
+  }
+  
   // Check subscription limit for number of sessions
   let maxSessions = 1;  // Default for freemium
   
@@ -132,14 +153,4 @@ export const canStartManualSession = (
   return {
     canStart: true
   };
-};
-
-// These functions for backward compatibility
-export const subscribeToAuthChanges = () => {
-  console.log("Auth change subscription function called - deprecated");
-  return () => {}; // Return noop cleanup function
-};
-
-export const unsubscribeFromAuthChanges = () => {
-  console.log("Auth change unsubscription function called - deprecated");
 };

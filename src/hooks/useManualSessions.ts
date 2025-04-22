@@ -43,26 +43,20 @@ export const useManualSessions = ({
   useEffect(() => {
     if (userData && userData.subscription === 'freemium') {
       // Pour les comptes freemium, la limite est STRICTEMENT de 1 session par jour
+      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const lastSessionDate = localStorage.getItem('last_session_date');
+      const today = new Date().toDateString();
+      
       if (dailySessionCount >= 1) {
         setLimitReached(true);
-        
-        // Stocker cette information en local storage pour qu'elle persiste entre les sessions
         localStorage.setItem('freemium_daily_limit_reached', 'true');
-      } else {
-        const storedLimitReached = localStorage.getItem('freemium_daily_limit_reached');
-        
-        // Ne réinitialiser la limite que si c'est un nouveau jour
-        const lastSessionDate = localStorage.getItem('last_session_date');
-        const today = new Date().toDateString();
-        
-        if (lastSessionDate !== today) {
-          setLimitReached(false);
-          localStorage.removeItem('freemium_daily_limit_reached');
-        } else if (storedLimitReached === 'true') {
-          setLimitReached(true);
-        } else {
-          setLimitReached(false);
-        }
+        localStorage.setItem('last_session_date', today);
+      } else if (lastSessionDate === today && limitReached === 'true') {
+        setLimitReached(true);
+      } else if (lastSessionDate !== today) {
+        // Si c'est un nouveau jour, réinitialiser la limite
+        setLimitReached(false);
+        localStorage.removeItem('freemium_daily_limit_reached');
       }
     }
   }, [userData, dailySessionCount]);
@@ -83,48 +77,39 @@ export const useManualSessions = ({
     // Pour les comptes freemium, vérifier STRICTEMENT la limite de 1 session par jour
     if (userData && userData.subscription === 'freemium') {
       // Vérifier si la limite journalière a déjà été enregistrée
-      const storedLimitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const lastSessionDate = localStorage.getItem('last_session_date'); 
+      const today = new Date().toDateString();
       
-      if (storedLimitReached === 'true' || dailySessionCount >= 1 || limitReached) {
-        return false;
-      }
-      
-      // Vérifier aussi les gains quotidiens pour les comptes freemium
-      const currentDailyGains = getDailyGains();
-      const dailyLimit = SUBSCRIPTION_LIMITS['freemium'] || 0.5;
-      
-      if (currentDailyGains >= dailyLimit * 0.9) {
-        setLimitReached(true);
-        localStorage.setItem('freemium_daily_limit_reached', 'true');
-        return false;
-      }
-    }
-    
-    // Pour les autres abonnements, vérifier la limite de gains quotidiens
-    if (userData) {
-      const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-      const todaysGains = balanceManager.getDailyGains();
-      
-      if (todaysGains >= dailyLimit) {
+      // Si ce n'est pas un nouveau jour et que la limite est atteinte
+      if (lastSessionDate === today && (limitReached === 'true' || dailySessionCount >= 1)) {
         return false;
       }
     }
     
     return true;
-  }, [isSessionRunning, userData, dailySessionCount, limitReached]);
+  }, [isSessionRunning, userData, dailySessionCount]);
 
   const startSession = useCallback(async () => {
     console.log("useManualSessions: startSession called");
     
     if (!canStartSession()) {
-      toast({
-        title: "Session non disponible",
-        description: userData?.subscription === 'freemium' ? 
-          "Compte Freemium limité à 1 session par jour." : 
-          "Veuillez attendre avant de démarrer une nouvelle session.",
-        duration: 3000
-      });
-      return;
+      if (userData?.subscription === 'freemium') {
+        toast({
+          title: "Limite quotidienne atteinte",
+          description: "Les comptes freemium sont limités à 1 session par jour.",
+          variant: "destructive",
+          duration: 3000
+        });
+        return;
+      } else {
+        toast({
+          title: "Session non disponible",
+          description: "Veuillez attendre avant de démarrer une nouvelle session.",
+          duration: 3000
+        });
+        return;
+      }
     }
     
     try {
@@ -145,31 +130,11 @@ export const useManualSessions = ({
         );
       }
       
+      // Pour les comptes freemium, marquer immédiatement que la limite est atteinte
       if (userData?.subscription === 'freemium') {
-        // Pour les comptes freemium, marquer immédiatement que la limite est atteinte
         setLimitReached(true);
         localStorage.setItem('freemium_daily_limit_reached', 'true');
         localStorage.setItem('last_session_date', new Date().toDateString());
-        
-        const currentDailyGains = getDailyGains();
-        const dailyLimit = SUBSCRIPTION_LIMITS['freemium'] || 0.5;
-        const remainingLimit = dailyLimit - currentDailyGains;
-        
-        gain = Math.min(gain, remainingLimit);
-        
-        if (gain <= 0) {
-          stopAnimation();
-          setIsSessionRunning(false);
-          
-          toast({
-            title: "Limite journalière atteinte",
-            description: "Les comptes freemium sont limités à 0,50€ par jour.",
-            variant: "destructive",
-            duration: 3000
-          });
-          
-          return;
-        }
       }
       
       gain = parseFloat(gain.toFixed(2));
@@ -240,20 +205,6 @@ export const useManualSessions = ({
       
       stopAnimation();
       console.log("Fin de la session manuelle");
-      
-      window.dispatchEvent(new CustomEvent('dashboard:activity', { detail: { level: 'high' } }));
-      
-      for (let i = 0; i < 3; i++) {
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('dashboard:micro-gain', { 
-            detail: { 
-              amount: gain / 3, 
-              timestamp: Date.now(),
-              animate: true 
-            } 
-          }));
-        }, 500 + i * 400);
-      }
       
     } catch (error) {
       console.error("Erreur lors de la session manuelle:", error);
