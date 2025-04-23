@@ -11,4 +11,5 @@ export interface BalanceStorageKeys {
   lastKnownBalance: string;
   lastUpdatedBalance: string;
   sessionCurrentBalance: string;
+  highestBalance: string;
 }
