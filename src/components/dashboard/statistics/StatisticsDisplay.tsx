@@ -31,7 +31,7 @@ const StatisticCard: React.FC<StatisticsDisplayProps> = ({
           <div className="text-blue-600 dark:text-blue-400">{icon}</div>
         </div>
         <div className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-          {prefix}<AnimatedNumber value={value} duration={800} formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} />{suffix}
+          {prefix}<AnimatedNumber value={value} duration={300} formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} />{suffix}
         </div>
         {description && (
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</p>
@@ -45,11 +45,14 @@ const StatisticsDisplay: React.FC = () => {
   const { userData } = useUserSession();
   const userId = userData?.profile?.id;
   
+  // Définir un ratio constant pour la corrélation parfaite
+  const CORRELATION_RATIO = 0.76203;
+  
   const { adsCount, revenueCount, incrementStats } = usePersistentStats({
     autoIncrement: true,
     userId: userId || 'anonymous',
     forceGrowth: true,
-    correlationRatio: 1.0 // Corrélation parfaite entre publicités et revenus
+    correlationRatio: CORRELATION_RATIO // Corrélation parfaite entre publicités et revenus
   });
   
   const [localAdsCount, setLocalAdsCount] = useState(0);
@@ -59,77 +62,39 @@ const StatisticsDisplay: React.FC = () => {
   useEffect(() => {
     if (userId && adsCount > 0) {
       setLocalAdsCount(adsCount);
+      // Forcer la synchronisation des revenus
+      setLocalRevenueCount(adsCount * CORRELATION_RATIO);
     }
-    if (userId && revenueCount > 0) {
-      setLocalRevenueCount(revenueCount);
-    }
-  }, [adsCount, revenueCount, userId]);
+  }, [adsCount, userId, CORRELATION_RATIO]);
   
   // Fonction de mise à jour synchronisée des compteurs avec corrélation parfaite
   const updateBothCounters = useCallback((adsIncrement: number, forceSync = false) => {
-    // Facteur de corrélation légèrement supérieur à 1 pour que les revenus augmentent toujours
-    const correlationFactor = 1.001 + (Math.random() * 0.002); // Entre 1.001 et 1.003
-    
-    // S'assurer que les revenus augmentent TOUJOURS quand les publicités augmentent
-    const revenueIncrement = adsIncrement * correlationFactor;
-    
     const newAdsCount = localAdsCount + adsIncrement;
-    const newRevenueCount = localRevenueCount + revenueIncrement;
+    // Calculer directement le revenu en fonction des publicités
+    const newRevenueCount = newAdsCount * CORRELATION_RATIO;
 
     setLocalAdsCount(newAdsCount);
     setLocalRevenueCount(newRevenueCount);
     
     // Synchroniser avec les stats persistantes
-    if (forceSync || Math.random() > 0.5) { // 50% de chance de synchroniser à chaque mise à jour
-      incrementStats(adsIncrement, revenueIncrement);
+    if (forceSync) {
+      incrementStats(adsIncrement);
     }
-    
-    // Émettre un événement pour synchroniser tous les compteurs de l'application
-    window.dispatchEvent(new CustomEvent('stats:counters:updated', {
-      detail: { 
-        adsCount: newAdsCount, 
-        revenueCount: newRevenueCount 
-      }
-    }));
-  }, [localAdsCount, localRevenueCount, incrementStats]);
+  }, [localAdsCount, incrementStats, CORRELATION_RATIO]);
   
   useEffect(() => {
     if (!userId) return;
     
-    // Micro-incréments plus fréquents avec synchronisation précise
-    const microUpdateInterval = setInterval(() => {
-      // Incréments variés, mais toujours avec une corrélation parfaite
-      const microAdsIncrement = Math.floor(Math.random() * 20) + 15; // 15-34 pubs toutes les 400ms
-      updateBothCounters(microAdsIncrement);
-      
-    }, 300); // Encore plus rapide: toutes les 300ms
-    
-    // Synchronisation forcée toutes les 2 secondes
-    const syncInterval = setInterval(() => {
-      if (userId) {
-        // Synchroniser avec les stats persistantes
-        incrementStats(0, 0);
-      }
-    }, 1500); // Synchroniser plus fréquemment (1.5 secondes)
-    
-    return () => {
-      clearInterval(microUpdateInterval);
-      clearInterval(syncInterval);
-    };
-  }, [userId, updateBothCounters, incrementStats]);
-  
-  // Écouter les événements de synchronisation
-  useEffect(() => {
+    // Gérer les événements de synchronisation
     const handleStatsSync = (event: CustomEvent) => {
       if (event.detail) {
-        const { adsCount: syncedAdsCount, revenueCount: syncedRevenueCount } = event.detail;
+        const { adsCount: syncedAdsCount } = event.detail;
         
         // S'assurer que les valeurs ne diminuent jamais
         if (syncedAdsCount > localAdsCount) {
           setLocalAdsCount(syncedAdsCount);
-        }
-        if (syncedRevenueCount > localRevenueCount) {
-          setLocalRevenueCount(syncedRevenueCount);
+          // Calculer les revenus pour une synchronisation parfaite
+          setLocalRevenueCount(syncedAdsCount * CORRELATION_RATIO);
         }
       }
     };
@@ -137,11 +102,25 @@ const StatisticsDisplay: React.FC = () => {
     window.addEventListener('stats:sync', handleStatsSync as EventListener);
     window.addEventListener('stats:update', handleStatsSync as EventListener);
     
+    // Micro-incréments fréquents
+    const microUpdateInterval = setInterval(() => {
+      const microAdsIncrement = Math.floor(Math.random() * 2) + 1; // 1-2 ads
+      updateBothCounters(microAdsIncrement);
+    }, 2000); // Toutes les 2 secondes
+    
+    // Synchronisation forcée avec persistance
+    const syncInterval = setInterval(() => {
+      const smallAdsIncrement = Math.floor(Math.random() * 3) + 2; // 2-4 ads
+      updateBothCounters(smallAdsIncrement, true);
+    }, 5000); // Toutes les 5 secondes
+    
     return () => {
       window.removeEventListener('stats:sync', handleStatsSync as EventListener);
       window.removeEventListener('stats:update', handleStatsSync as EventListener);
+      clearInterval(microUpdateInterval);
+      clearInterval(syncInterval);
     };
-  }, [localAdsCount, localRevenueCount]);
+  }, [userId, localAdsCount, updateBothCounters, CORRELATION_RATIO]);
   
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

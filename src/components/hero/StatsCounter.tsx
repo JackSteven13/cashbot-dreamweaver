@@ -27,7 +27,7 @@ const StatsCounter = ({
 
   // Base de départ réaliste avec des chiffres irréguliers
   const MINIMUM_ADS = 36742;
-  const MINIMUM_REVENUE = 23918;
+  const MINIMUM_REVENUE = 28000; // Augmenté pour maintenir la corrélation
 
   // Utiliser useRef pour stocker des valeurs stables entre les rendus
   const stableValuesRef = useRef({
@@ -36,6 +36,9 @@ const StatsCounter = ({
     lastUpdate: Date.now(),
     lastSyncTime: Date.now()
   });
+  
+  // Définir un ratio de corrélation constant
+  const CORRELATION_RATIO = 0.76203;
   
   // État local pour l'affichage avec initialisation améliorée
   const [displayValues, setDisplayValues] = useState(() => {
@@ -52,109 +55,28 @@ const StatsCounter = ({
       return Math.floor(value * variance);
     };
     
+    // Toujours calculer les revenus en fonction des pubs pour assurer la corrélation
+    const ads = Math.min(Math.max(randomVariance(MINIMUM_ADS), consistentStats.adsCount), 152847);
+    const revenue = ads * CORRELATION_RATIO;
+    
     return {
-      adsCount: Math.min(Math.max(randomVariance(MINIMUM_ADS), consistentStats.adsCount), 152847),
-      revenueCount: Math.min(Math.max(randomVariance(MINIMUM_REVENUE), consistentStats.revenueCount), 116329)
+      adsCount: ads,
+      revenueCount: revenue
     };
   });
-
-  // Fonction pour simuler une progression très graduelle basée sur l'ancienneté
-  const calculateProgression = () => {
-    // Récupérer ou créer la date d'installation
-    const firstUseDate = localStorage.getItem('first_use_date');
-    if (!firstUseDate) {
-      // Définir une date antérieure pour simuler une utilisation plus longue (30 jours dans le passé - plus crédible)
-      const pastDate = new Date();
-      pastDate.setDate(pastDate.getDate() - 30);
-      localStorage.setItem('first_use_date', pastDate.toISOString());
-    }
-    
-    // Calculer le nombre de jours depuis l'installation
-    const installDate = new Date(localStorage.getItem('first_use_date') || '');
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - installDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    // Calculer un facteur de progression TRÈS limité basé sur l'ancienneté
-    const progressFactor = Math.min(1 + (diffDays * 0.001), 1.15); // Maximum 1.15x après 150 jours
-    
-    return {
-      diffDays,
-      progressFactor
-    };
-  };
-  
-  // S'assurer que les valeurs minimales sont respectées et ne diminuent jamais
-  useEffect(() => {
-    // S'assurer que les valeurs ne diminuent jamais au démarrage
-    ensureProgressiveValues();
-    
-    // Initialiser la date de première utilisation si elle n'existe pas encore
-    if (!localStorage.getItem('first_use_date')) {
-      // Définir une date antérieure pour simuler une utilisation plus longue (30 jours dans le passé)
-      const pastDate = new Date();
-      pastDate.setDate(pastDate.getDate() - 30);
-      localStorage.setItem('first_use_date', pastDate.toISOString());
-    }
-    
-    // S'assurer des valeurs de départ réalistes
-    enforceMinimumStats(MINIMUM_ADS, MINIMUM_REVENUE);
-    
-    // Initialiser la progression
-    const { diffDays, progressFactor } = calculateProgression();
-    
-    // Si l'application est utilisée depuis plus de 30 jours, augmenter légèrement les valeurs de base
-    if (diffDays > 30) {
-      const additionalProgressFactor = 1 + ((diffDays - 30) * 0.0005); // Progression TRÈS lente
-      const newMinimumAds = MINIMUM_ADS * additionalProgressFactor;
-      const newMinimumRevenue = MINIMUM_REVENUE * additionalProgressFactor;
-      
-      enforceMinimumStats(newMinimumAds, newMinimumRevenue);
-      
-      const consistentStats = getDateConsistentStats();
-      setDisplayValues({
-        adsCount: Math.max(newMinimumAds, consistentStats.adsCount),
-        revenueCount: Math.max(newMinimumRevenue, consistentStats.revenueCount)
-      });
-    }
-    
-    // Créer un intervalle pour des mises à jour régulières des compteurs (toutes les 15-20 secondes)
-    const regularUpdateInterval = setInterval(() => {
-      // Incrémenter légèrement les compteurs pour simuler l'activité continue des bots
-      const adsIncrement = Math.floor(Math.random() * 5) + 1; // 1-5 annonces par mise à jour
-      const revenueIncrement = (Math.random() * 0.8 + 0.2) / 10; // 0.02€-0.10€ par mise à jour
-      
-      setDisplayValues(prev => ({
-        adsCount: prev.adsCount + adsIncrement,
-        revenueCount: prev.revenueCount + revenueIncrement
-      }));
-      
-      // Sauvegarder ces valeurs pour qu'elles persistent
-      localStorage.setItem('last_displayed_ads_count', (displayValues.adsCount + adsIncrement).toString());
-      localStorage.setItem('last_displayed_revenue_count', (displayValues.revenueCount + revenueIncrement).toString());
-    }, 15000 + Math.random() * 5000); // Intervalle variable entre 15-20 secondes
-    
-    return () => {
-      clearInterval(regularUpdateInterval);
-    };
-  }, []);
 
   // Effet pour mettre à jour les valeurs affichées lors de la réception de nouvelles valeurs
   useEffect(() => {
     if (displayedAdsCount > displayValues.adsCount) {
-      setDisplayValues(prev => ({
-        ...prev,
-        adsCount: displayedAdsCount
-      }));
+      // Calculer le nouveau revenu en fonction des nouvelles publicités
+      const newRevenue = displayedAdsCount * CORRELATION_RATIO;
+      
+      setDisplayValues({
+        adsCount: displayedAdsCount,
+        revenueCount: newRevenue
+      });
     }
-    
-    if (displayedRevenueCount > displayValues.revenueCount) {
-      setDisplayValues(prev => ({
-        ...prev,
-        revenueCount: displayedRevenueCount
-      }));
-    }
-  }, [displayedAdsCount, displayedRevenueCount]);
+  }, [displayedAdsCount]);
 
   // Effet pour gérer la visibilité de la page
   useEffect(() => {
@@ -168,12 +90,13 @@ const StatsCounter = ({
         
         // Utiliser les valeurs maximales pour éviter toute diminution
         const maxAdsCount = Math.max(displayValues.adsCount, consistentStats.adsCount);
-        const maxRevenueCount = Math.max(displayValues.revenueCount, consistentStats.revenueCount);
+        // Toujours calculer les revenus à partir des publicités
+        const newRevenueCount = maxAdsCount * CORRELATION_RATIO;
         
         // Mettre à jour l'affichage et persister
         setDisplayValues({
           adsCount: maxAdsCount,
-          revenueCount: maxRevenueCount
+          revenueCount: newRevenueCount
         });
       }
     };
@@ -185,14 +108,14 @@ const StatsCounter = ({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
     };
-  }, []);
+  }, [displayValues]);
 
   // Persister les valeurs avant le déchargement de la page
   useEffect(() => {
     const handleBeforeUnload = () => {
-      // Sauvegarder les valeurs actuelles
+      // Sauvegarder les valeurs actuelles avec synchronisation parfaite
       localStorage.setItem('last_displayed_ads_count', displayValues.adsCount.toString());
-      localStorage.setItem('last_displayed_revenue_count', displayValues.revenueCount.toString());
+      localStorage.setItem('last_displayed_revenue_count', (displayValues.adsCount * CORRELATION_RATIO).toString());
     };
     
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -201,6 +124,30 @@ const StatsCounter = ({
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [displayValues]);
+
+  // Créer un intervalle pour des mises à jour régulières avec synchronisation forcée
+  useEffect(() => {
+    const regularUpdateInterval = setInterval(() => {
+      // Incrémenter légèrement les annonces
+      const adsIncrement = Math.floor(Math.random() * 5) + 1; // 1-5 annonces par mise à jour
+      
+      setDisplayValues(prev => {
+        const newAdsCount = prev.adsCount + adsIncrement;
+        // Calculer DIRECTEMENT le revenu en fonction des publicités
+        const newRevenueCount = newAdsCount * CORRELATION_RATIO;
+        
+        return {
+          adsCount: newAdsCount,
+          revenueCount: newRevenueCount
+        };
+      });
+      
+    }, 5000); // Toutes les 5 secondes
+    
+    return () => {
+      clearInterval(regularUpdateInterval);
+    };
+  }, []);
 
   // Ajouter une légère variation aux valeurs affichées pour éviter les nombres trop ronds
   const formatAdsDisplay = (value: number) => {

@@ -9,6 +9,9 @@ export const initStatsSync = (userId?: string): (() => void) => {
   // Événement pour synchroniser les statistiques lors du chargement initial
   window.dispatchEvent(new CustomEvent('stats:init'));
   
+  // Définir le ratio constant pour garantir la synchronisation parfaite
+  const PERFECT_CORRELATION_RATIO = 0.76203;
+  
   // Écouter les événements de stockage depuis d'autres onglets
   const handleStorageChange = (e: StorageEvent) => {
     if (!e.key) return;
@@ -32,14 +35,24 @@ export const initStatsSync = (userId?: string): (() => void) => {
   const syncInterval = setInterval(() => {
     const stats = getPersistentStats(userId);
     
+    // FORCER la parfaite corrélation entre pubs et revenus
+    const correctRevenueCount = stats.adsCount * PERFECT_CORRELATION_RATIO;
+    
+    // Si les revenus ne sont pas en parfaite corrélation, les forcer
+    if (Math.abs(stats.revenueCount - correctRevenueCount) > 0.01) {
+      console.log(`Forçage de la corrélation parfaite. Revenus: ${stats.revenueCount} -> ${correctRevenueCount}`);
+      stats.revenueCount = correctRevenueCount;
+      
+      // Sauvegarder les statistiques corrigées
+      savePersistentStats(stats.adsCount, correctRevenueCount, userId);
+    }
+    
     // Déclencher un événement pour mettre à jour tous les composants
     window.dispatchEvent(new CustomEvent('stats:sync', {
       detail: stats
     }));
     
-    // Forcer la persistance périodiquement pour éviter les désynchronisations
-    savePersistentStats(stats.adsCount, stats.revenueCount, userId);
-  }, 500); // Synchroniser très fréquemment pour une réactivité immédiate
+  }, 200); // Synchroniser très fréquemment pour une réactivité immédiate
   
   // Nettoyer lors de la déconnexion ou du déchargement de la page
   const cleanup = () => {
@@ -55,8 +68,8 @@ export const initStatsSync = (userId?: string): (() => void) => {
 };
 
 /**
- * Charge les statistiques depuis le serveur et les synchronise avec les valeurs locales
- * en garantissant la corrélation entre publicités et revenus
+ * Force la synchronisation des statistiques avec un ratio parfait
+ * entre publicités et revenus
  */
 export const syncStatsWithServer = async (
   serverStats: { adsCount?: number; revenueCount?: number },
@@ -76,31 +89,24 @@ export const syncStatsWithServer = async (
   
   // Toujours prendre la valeur la plus élevée entre locale et serveur
   const syncedAdsCount = Math.max(localStats.adsCount, serverAdsCount);
-  const syncedRevenueCount = Math.max(localStats.revenueCount, serverRevenueCount);
   
-  // Si le ratio publicités/revenus est trop faible, ajuster les revenus pour maintenir la corrélation
-  const expectedRatio = 0.76; // Ratio attendu revenus/publicités
-  const currentRatio = syncedRevenueCount / syncedAdsCount;
+  // TOUJOURS calculer les revenus en fonction des publicités avec un ratio fixe
+  const PERFECT_CORRELATION_RATIO = 0.76203;
+  const syncedRevenueCount = syncedAdsCount * PERFECT_CORRELATION_RATIO;
   
-  // Si le ratio actuel est trop faible, augmenter les revenus pour maintenir la corrélation
-  let finalRevenueCount = syncedRevenueCount;
-  if (currentRatio < expectedRatio) {
-    finalRevenueCount = syncedAdsCount * expectedRatio;
-  }
-  
-  // Persister les valeurs synchronisées et corrélées
-  savePersistentStats(syncedAdsCount, finalRevenueCount, userId);
+  // Persister les valeurs synchronisées et parfaitement corrélées
+  savePersistentStats(syncedAdsCount, syncedRevenueCount, userId);
   
   // Informer les autres composants de la mise à jour
   window.dispatchEvent(new CustomEvent('stats:update', {
     detail: {
       adsCount: syncedAdsCount,
-      revenueCount: finalRevenueCount
+      revenueCount: syncedRevenueCount
     }
   }));
   
   return {
     adsCount: syncedAdsCount,
-    revenueCount: finalRevenueCount
+    revenueCount: syncedRevenueCount
   };
 };
