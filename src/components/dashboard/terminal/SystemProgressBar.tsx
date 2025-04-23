@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 import { toast } from "@/components/ui/use-toast";
+import balanceManager from '@/utils/balance/balanceManager'; // Add this import
 
 interface SystemProgressBarProps {
   displayBalance: number;
