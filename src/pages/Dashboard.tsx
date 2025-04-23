@@ -14,6 +14,7 @@ import { useBalanceSync } from '@/hooks/useBalanceSync';
 import { usePeriodicUpdates } from '@/hooks/usePeriodicUpdates';
 import balanceManager from '@/utils/balance/balanceManager';
 import useUserDataRefresh from '@/hooks/session/useUserDataRefresh';
+import { useAutomaticRevenue } from '@/hooks/useAutomaticRevenue';
 
 const Dashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -40,11 +41,9 @@ const Dashboard = () => {
   
   useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
   
-  // Fonction pour forcer le rafraîchissement du solde
   const forceBalanceRefresh = useCallback(() => {
     if (!userData) return;
     
-    // Associer l'ID utilisateur au gestionnaire de solde
     if (userData.id || userData.profile?.id) {
       const userId = userData.id || userData.profile?.id;
       balanceManager.setUserId(userId);
@@ -93,11 +92,9 @@ const Dashboard = () => {
       console.log("Not authenticated, redirecting to login");
       navigate('/login');
     } else if (!authLoading && user) {
-      // Associer l'ID utilisateur au gestionnaire de solde dès que possible
       if (user.id) {
         balanceManager.setUserId(user.id);
         
-        // Récupérer d'éventuelles données en cache du localStorage
         const cachedBalance = parseFloat(localStorage.getItem(`lastKnownBalance_${user.id}`) || '0');
         if (cachedBalance > 0) {
           console.log(`Balance trouvée en cache pour ${user.id}: ${cachedBalance}€`);
@@ -111,7 +108,6 @@ const Dashboard = () => {
     }
   }, [user, authLoading, navigate]);
   
-  // Synchroniser les données utilisateur au chargement
   useEffect(() => {
     if (!isInitializing && username && isFirstLoad && user?.id) {
       setIsFirstLoad(false);
@@ -133,12 +129,10 @@ const Dashboard = () => {
       if (userData) {
         console.log("Initialisation des revenus automatiques et du solde");
         
-        // Associer l'ID utilisateur au gestionnaire de solde
         if (userData.id || userData.profile?.id) {
           const userId = userData.id || userData.profile?.id;
           balanceManager.setUserId(userId);
           
-          // Vérifier immédiatement s'il y a un solde en base de données
           if (userId) {
             fetchLatestBalance(userId).then(result => {
               if (result && result.balance > 0) {
@@ -150,11 +144,9 @@ const Dashboard = () => {
         }
         
         setTimeout(() => {
-          // Si un solde existe en base de données, le synchroniser
           if (userData.balance !== undefined && userData.balance > 0) {
             balanceManager.forceBalanceSync(userData.balance, userData.id || userData.profile?.id);
           } else {
-            // Sinon, vérifier s'il existe un solde en local
             const localBalance = balanceManager.getCurrentBalance();
             if (localBalance > 0) {
               forceBalanceRefresh();
@@ -187,24 +179,20 @@ const Dashboard = () => {
           
           localStorage.setItem('last_visit_date', now);
           
-          // Générer des revenus automatiques au chargement
           generateAutomaticRevenue(true);
           
-          // Rafraîchir les données utilisateur pour assurer la synchronisation
           refreshUserData();
         }, 1000);
       }
     }
   }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue, forceBalanceRefresh, user, refreshUserData, fetchLatestBalance]);
   
-  // Synchroniser régulièrement le solde avec l'interface
   useEffect(() => {
     const refreshInterval = setInterval(() => {
       forceBalanceRefresh();
     }, 15000);
     
     const handleBeforeUnload = () => {
-      // Sauvegarder le solde en localStorage avant la fermeture
       const currentBalance = balanceManager.getCurrentBalance();
       if (currentBalance > 0 && user?.id) {
         localStorage.setItem(`lastKnownBalance_${user.id}`, currentBalance.toString());
