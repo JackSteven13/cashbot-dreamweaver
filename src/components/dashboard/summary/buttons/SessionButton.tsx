@@ -33,24 +33,35 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   
   // Effet pour vérifier si la limite quotidienne a été atteinte pour les comptes freemium
   useEffect(() => {
-    if (subscription === 'freemium') {
-      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-      const lastSessionDate = localStorage.getItem('last_session_date');
-      const today = new Date().toDateString();
-      
-      // Si c'est un nouveau jour, réinitialiser la limite
-      if (lastSessionDate !== today) {
-        localStorage.removeItem('freemium_daily_limit_reached');
-        setForceDisabled(false);
-      } else if (limitReached === 'true' || dailySessionCount >= 1) {
-        // Sinon, appliquer la limite stricte pour les comptes freemium
-        setForceDisabled(true);
+    const checkFreemiumLimit = () => {
+      if (subscription === 'freemium') {
+        const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+        const lastSessionDate = localStorage.getItem('last_session_date');
+        const today = new Date().toDateString();
+        
+        // Si c'est un nouveau jour, réinitialiser la limite
+        if (lastSessionDate !== today) {
+          localStorage.removeItem('freemium_daily_limit_reached');
+          setForceDisabled(false);
+        } else if (limitReached === 'true' || dailySessionCount >= 1) {
+          // Sinon, appliquer la limite stricte pour les comptes freemium
+          setForceDisabled(true);
+        } else {
+          setForceDisabled(false);
+        }
       } else {
         setForceDisabled(false);
       }
-    } else {
-      setForceDisabled(false);
-    }
+    };
+    
+    checkFreemiumLimit();
+    
+    // Vérifier à chaque changement et périodiquement
+    const intervalId = setInterval(checkFreemiumLimit, 2000);
+    
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [subscription, dailySessionCount]);
   
   // Get the max daily sessions based on subscription
@@ -64,7 +75,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
 
   // Check if bot is in cooldown period
   const isInCooldown = lastSessionTimestamp ? (
-    new Date().getTime() - new Date(lastSessionTimestamp).getTime() < 5 * 60 * 1000
+    new Date().getTime() - new Date(parseInt(lastSessionTimestamp)).getTime() < 5 * 60 * 1000
   ) : false;
 
   // Vérifier si la limite quotidienne de gains est atteinte
@@ -87,6 +98,18 @@ const SessionButton: React.FC<SessionButtonProps> = ({
 
   // Function to handle click with console log for debugging
   const handleClick = () => {
+    // Pour les comptes freemium, vérification STRICTE avant de permettre le clic
+    if (isFreemium && (dailySessionCount >= 1 || forceDisabled)) {
+      console.log("Session button blocked - Freemium limit reached");
+      return;
+    }
+    
+    // Vérification de la limite de gains
+    if (isLimitReached) {
+      console.log("Session button blocked - Daily gain limit reached");
+      return;
+    }
+    
     console.log("Session button clicked, executing onClick handler");
     onClick();
   };

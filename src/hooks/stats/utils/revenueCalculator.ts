@@ -38,8 +38,8 @@ export const synchronizeRevenueWithAds = (adsCount: number): number => {
 export const generateRevenueIncrement = (adsIncrement: number): number => {
   const CORRELATION_RATIO = 0.76203;
   
-  // Ajouter une très légère variation aléatoire autour du ratio parfait
-  const jitterFactor = 1 + (Math.random() - 0.5) * 0.02; // ±1% variation
+  // Réduire encore plus la variation aléatoire pour une parfaite cohérence
+  const jitterFactor = 1 + (Math.random() - 0.5) * 0.01; // ±0.5% variation (réduite)
   
   // Calculer l'incrément de revenu correspondant
   return adsIncrement * CORRELATION_RATIO * jitterFactor;

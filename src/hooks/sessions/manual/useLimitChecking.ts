@@ -18,6 +18,25 @@ export const useLimitChecking = () => {
     // Récupérer la date d'aujourd'hui au format YYYY-MM-DD
     const today = new Date().toISOString().split('T')[0];
     
+    // Pour les comptes freemium, vérification stricte de la limite de session
+    if ((userData.subscription || 'freemium') === 'freemium') {
+      // Vérifier si la limite quotidienne est déjà atteinte dans localStorage
+      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const lastSessionDate = localStorage.getItem('last_session_date');
+      
+      if (lastSessionDate === new Date().toDateString() && 
+         (limitReached === 'true' || dailySessionCount >= 1)) {
+        console.log("Freemium daily session limit already reached");
+        setShowLimitAlert(true);
+        toast({
+          title: "Limite quotidienne atteinte",
+          description: "Votre abonnement Freemium est limité à 1 session manuelle par jour.",
+          variant: "destructive"
+        });
+        return false;
+      }
+    }
+    
     // Calculer les gains d'aujourd'hui pour la vérification des limites (utiliser les transactions)
     const todaysTransactions = (userData.transactions || []).filter(tx => 
       tx.date?.startsWith(today) && tx.gain > 0
@@ -44,16 +63,14 @@ export const useLimitChecking = () => {
     const canStartSessionEffective = effectiveSub !== 'freemium' ? true : 
                                    canStartManualSession(userData.subscription || 'freemium', dailySessionCount, todaysGains);
     
-    if (!canStartSessionEffective) {
+    if (!canStartSessionEffective.canStart) {
       // If freemium account and session limit reached
-      if ((userData.subscription || 'freemium') === 'freemium' && effectiveSub === 'freemium' && dailySessionCount >= 1) {
-        toast({
-          title: "Limite de sessions atteinte",
-          description: "Votre abonnement Freemium est limité à 1 session manuelle par jour. Passez à un forfait supérieur pour plus de sessions.",
-          variant: "destructive"
-        });
-        return false;
-      }
+      toast({
+        title: "Limite atteinte",
+        description: canStartSessionEffective.reason || "Vous ne pouvez pas démarrer une nouvelle session maintenant.",
+        variant: "destructive"
+      });
+      return false;
     }
     
     return true;
