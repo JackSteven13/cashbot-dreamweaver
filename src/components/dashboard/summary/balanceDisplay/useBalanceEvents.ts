@@ -26,9 +26,8 @@ export const useBalanceEvents = ({
           processBalanceUpdate(event);
         }, updateDebounceTime);
         
-        // Store the timeout ID in a mutable object reference
-        const timeoutRef = { current: timeoutId };
-        refs.forceUpdateTimeoutRef = timeoutRef;
+        // Store the timeout ID without directly modifying .current
+        refs.forceUpdateTimeoutRef = { current: timeoutId };
         return;
       }
       
@@ -57,8 +56,9 @@ export const useBalanceEvents = ({
         localStorage.setItem('currentBalance', calculatedNewBalance.toString());
         localStorage.setItem('lastKnownBalance', calculatedNewBalance.toString());
         
-        if (refs.lastUpdateTimeRef.current) {
-          refs.lastUpdateTimeRef.current = currentTime;
+        if (refs.lastUpdateTimeRef) {
+          // Update without modifying .current directly
+          refs.lastUpdateTimeRef = { current: currentTime };
         }
         
         if (shouldAnimate !== false) {
@@ -82,8 +82,9 @@ export const useBalanceEvents = ({
         localStorage.setItem('currentBalance', newBalance.toString());
         localStorage.setItem('lastKnownBalance', newBalance.toString());
         
-        if (refs.lastUpdateTimeRef.current) {
-          refs.lastUpdateTimeRef.current = currentTime;
+        if (refs.lastUpdateTimeRef) {
+          // Update without modifying .current directly
+          refs.lastUpdateTimeRef = { current: currentTime };
         }
         
         if (shouldAnimate !== false && implicitGain > 0) {

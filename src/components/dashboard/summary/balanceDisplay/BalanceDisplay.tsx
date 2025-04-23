@@ -10,18 +10,25 @@ import { useIntervalChecks } from '@/hooks/sessions/useIntervalChecks';
 import BalanceHeader from './BalanceHeader';
 import BalanceAmount from './BalanceAmount';
 
-const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = false }) => {
+const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ 
+  balance, 
+  isLoading = false, 
+  currency, 
+  subscription 
+}) => {
   const safeBalance = isNaN(balance) ? 0 : balance;
   const { state, refs, setters, constants } = useBalanceState(safeBalance);
   
   useEffect(() => {
     if (safeBalance > state.displayedBalance) {
       const now = Date.now();
+      // Update using a new object instead of modifying current directly
       if (now - refs.lastUpdateTimeRef.current > 5000) {
         console.log(`Synchronisation du solde affiché avec le prop balance: ${state.displayedBalance} -> ${safeBalance}`);
         setters.setPreviousBalance(state.displayedBalance);
         setters.setDisplayedBalance(safeBalance);
-        refs.lastUpdateTimeRef.current = now;
+        // Create a new object for the ref
+        refs.lastUpdateTimeRef = { current: now };
         balanceManager.forceBalanceSync(safeBalance);
       }
     }
@@ -55,6 +62,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
             gain={state.gain}
             isAnimating={state.isAnimating}
             balanceRef={refs.balanceRef}
+            currency={currency}
+            subscription={subscription}
           />
         </div>
       </CardContent>

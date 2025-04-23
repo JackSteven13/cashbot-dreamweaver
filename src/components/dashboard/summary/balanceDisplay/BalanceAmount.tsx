@@ -1,53 +1,47 @@
 
 import React from 'react';
-import { cn } from '@/lib/utils';
-import CountUp from 'react-countup';
 
 interface BalanceAmountProps {
-  isLoading: boolean;
+  isLoading?: boolean;
   displayedBalance: number;
   previousBalance: number | null;
   gain: number | null;
   isAnimating: boolean;
   balanceRef: React.RefObject<HTMLDivElement>;
+  currency?: string;
+  subscription?: string;
 }
 
 const BalanceAmount: React.FC<BalanceAmountProps> = ({
-  isLoading,
+  isLoading = false,
   displayedBalance,
   previousBalance,
   gain,
   isAnimating,
-  balanceRef
+  balanceRef,
+  currency = "EUR",
+  subscription
 }) => {
   return (
-    <div ref={balanceRef} className={cn(
-      "text-3xl md:text-4xl font-bold text-slate-900 dark:text-white transition-all duration-300",
-      isAnimating && "text-green-600 dark:text-green-400"
-    )}>
+    <div className="text-center py-4">
       {isLoading ? (
-        <div className="h-10 w-32 bg-slate-200 dark:bg-slate-700 animate-pulse rounded" />
+        <div className="h-10 w-40 bg-gray-200 animate-pulse rounded mx-auto"></div>
       ) : (
-        <>
-          <CountUp
-            start={previousBalance !== null ? previousBalance : displayedBalance - (gain || 0)}
-            end={displayedBalance}
-            delay={0}
-            preserveValue={true}
-            decimals={2}
-            useEasing={true}
-          >
-            {({ countUpRef }) => (
-              <span ref={countUpRef} />
-            )}
-          </CountUp>
-          €
-          {gain && isAnimating && (
-            <span className="floating-number">
-              +{gain.toFixed(2)}€
-            </span>
+        <div ref={balanceRef} className="relative">
+          <p className="text-3xl font-bold">
+            {displayedBalance.toFixed(2)} {currency}
+          </p>
+          {isAnimating && previousBalance !== null && gain !== null && (
+            <div className="absolute -top-4 right-0 text-sm text-green-500 bg-green-100 px-2 py-1 rounded-md animate-bounce">
+              +{gain.toFixed(2)} {currency}
+            </div>
           )}
-        </>
+          {subscription && (
+            <div className="mt-2 text-xs text-gray-500">
+              Plan: {subscription}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

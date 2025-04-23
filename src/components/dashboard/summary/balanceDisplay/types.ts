@@ -2,6 +2,8 @@
 export interface BalanceDisplayProps {
   balance: number;
   isLoading?: boolean;
+  currency?: string;
+  subscription?: string;
 }
 
 export interface BalanceState {
