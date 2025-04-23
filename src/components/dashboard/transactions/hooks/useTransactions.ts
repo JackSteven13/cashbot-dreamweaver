@@ -101,6 +101,11 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
         } catch (e) {
           console.error("Failed to update cached transactions:", e);
         }
+        
+        // Déclencher un événement pour informer les autres composants
+        window.dispatchEvent(new CustomEvent('transactions:updated', {
+          detail: { transactions: formattedTx, timestamp: Date.now() }
+        }));
       }
     } catch (error) {
       console.error("Failed to fetch transactions from database:", error);
@@ -137,6 +142,7 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     window.addEventListener('transactions:refresh', refreshHandler);
     window.addEventListener('balance:update', refreshHandler);
     window.addEventListener('automatic:revenue', refreshHandler);
+    window.addEventListener('transactions:updated', refreshHandler);
     
     // Rafraîchir immédiatement
     fetchTransactionsFromDB();
@@ -151,6 +157,7 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
       window.removeEventListener('transactions:refresh', refreshHandler);
       window.removeEventListener('balance:update', refreshHandler);
       window.removeEventListener('automatic:revenue', refreshHandler);
+      window.removeEventListener('transactions:updated', refreshHandler);
       clearInterval(interval);
     };
   }, [user, fetchTransactionsFromDB]);
@@ -171,6 +178,6 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     handleManualRefresh,
     hiddenTransactionsCount,
     setTransactions, // Exposer cette fonction pour permettre des mises à jour directes
-    fetchTransactionsFromDB
+    fetchTransactionsFromDB // Exposer la fonction pour rafraîchir depuis la base de données
   };
 };

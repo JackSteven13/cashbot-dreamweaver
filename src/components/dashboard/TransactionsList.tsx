@@ -27,7 +27,8 @@ const TransactionsList = memo(({
     refreshKey,
     handleManualRefresh,
     hiddenTransactionsCount,
-    setTransactions
+    setTransactions,
+    fetchTransactionsFromDB
   } = useTransactions(initialTransactions);
   
   const { user } = useAuth();
@@ -93,6 +94,32 @@ const TransactionsList = memo(({
     window.addEventListener('automatic:revenue', handleRealtimeUpdate);
     window.addEventListener('balance:daily-growth', handleRealtimeUpdate);
     window.addEventListener('session:completed', handleRealtimeUpdate);
+    window.addEventListener('transactions:updated', handleRealtimeUpdate);
+    
+    // Configurer un canal Supabase pour les mises à jour en temps réel
+    const setupRealtimeSubscription = async () => {
+      if (!user?.id) return;
+      
+      // S'abonner aux changements dans la table des transactions pour cet utilisateur
+      const channel = supabase
+        .channel('transactions_changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`,
+        }, () => {
+          console.log('Realtime update detected for transactions');
+          fetchLatestTransactions();
+        })
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+    
+    const realtimeCleanup = setupRealtimeSubscription();
     
     // Mise en place d'un rafraîchissement périodique toutes les 30 secondes
     const pollingInterval = setInterval(() => {
@@ -109,9 +136,15 @@ const TransactionsList = memo(({
       window.removeEventListener('automatic:revenue', handleRealtimeUpdate);
       window.removeEventListener('balance:daily-growth', handleRealtimeUpdate);
       window.removeEventListener('session:completed', handleRealtimeUpdate);
+      window.removeEventListener('transactions:updated', handleRealtimeUpdate);
       clearInterval(pollingInterval);
+      
+      // Nettoyer l'abonnement Realtime
+      realtimeCleanup.then(cleanup => {
+        if (cleanup) cleanup();
+      });
     };
-  }, [fetchLatestTransactions]);
+  }, [fetchLatestTransactions, user]);
   
   // Handle manual refresh with direct database fetch
   const onManualRefresh = async () => {
