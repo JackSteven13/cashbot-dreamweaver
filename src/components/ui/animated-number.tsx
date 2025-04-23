@@ -9,7 +9,7 @@ interface AnimatedNumberProps {
 
 export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({ 
   value, 
-  duration = 500, // Durée encore plus réduite pour une réactivité instantanée
+  duration = 400, // Durée encore plus réduite pour une réactivité instantanée
   formatValue = (val) => Math.round(val).toString()
 }) => {
   const [displayValue, setDisplayValue] = useState(value);

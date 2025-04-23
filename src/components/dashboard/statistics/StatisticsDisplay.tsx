@@ -49,7 +49,7 @@ const StatisticsDisplay: React.FC = () => {
     autoIncrement: true,
     userId: userId || 'anonymous',
     forceGrowth: true,
-    correlationRatio: 0.999 // Augmenter à presque 1:1 pour une parfaite synchronisation
+    correlationRatio: 0.999 // Maintenir une parfaite synchronisation
   });
   
   const [localAdsCount, setLocalAdsCount] = useState(0);
@@ -65,9 +65,9 @@ const StatisticsDisplay: React.FC = () => {
     }
   }, [adsCount, revenueCount, userId]);
   
-  // Fonction de mise à jour syncchonisée des compteurs
+  // Fonction de mise à jour synchronisée des compteurs
   const updateBothCounters = useCallback((adsIncrement: number, forceSync = false) => {
-    const correlationFactor = 0.999 + (Math.random() * 0.002); // Entre 0.999 et 1.001
+    const correlationFactor = 1.001 + (Math.random() * 0.002); // Entre 1.001 et 1.003 pour garantir que les revenus augmentent
     const revenueIncrement = adsIncrement * correlationFactor;
     
     const newAdsCount = localAdsCount + adsIncrement;
@@ -99,12 +99,12 @@ const StatisticsDisplay: React.FC = () => {
       const microAdsIncrement = Math.floor(Math.random() * 20) + 15; // 15-34 pubs toutes les 500ms
       updateBothCounters(microAdsIncrement);
       
-    }, 500); // Encore plus rapide: toutes les 500ms
+    }, 400); // Encore plus rapide: toutes les 400ms
     
     // Synchronisation forcée toutes les 2 secondes
     const syncInterval = setInterval(() => {
       if (userId) {
-        // Synchroniser avec les stats persistantes - Fix: remove the third argument
+        // Synchroniser avec les stats persistantes
         incrementStats(0, 0);
       }
     }, 2000);

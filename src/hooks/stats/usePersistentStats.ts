@@ -66,7 +66,7 @@ const loadStats = (userId: string): { adsCount: number; revenueCount: number; la
 };
 
 // Fonction pour calculer la croissance basée sur le temps écoulé
-const calculateGrowth = (lastUpdate: number, forceGrowth: boolean, correlationRatio: number = 0.98) => {
+const calculateGrowth = (lastUpdate: number, forceGrowth: boolean, correlationRatio: number = 1.002) => {
   const now = Date.now();
   const elapsed = (now - lastUpdate) / 1000; // secondes écoulées
   
@@ -80,8 +80,8 @@ const calculateGrowth = (lastUpdate: number, forceGrowth: boolean, correlationRa
   
   const adsGrowth = Math.floor(baseGrowth * randomFactor);
   
-  // Assurer que les revenus augmentent proportionnellement aux annonces (presque 1:1)
-  const revenueGrowth = adsGrowth * correlationRatio * (0.98 + Math.random() * 0.04);
+  // Assurer que les revenus augmentent proportionnellement aux annonces (légèrement plus pour éviter le blocage)
+  const revenueGrowth = adsGrowth * correlationRatio * (1.001 + Math.random() * 0.002);
   
   return { adsGrowth, revenueGrowth };
 };
@@ -92,7 +92,7 @@ const usePersistentStats = ({
   autoIncrement = false,
   userId = '',
   forceGrowth = false,
-  correlationRatio = 0.98
+  correlationRatio = 1.002 // Augmenté pour assurer une croissance des revenus
 }: UsePersistentStatsParams) => {
   // Ne chargez les statistiques que si un userId est fourni
   const initialStats = userId ? loadStats(userId) : { adsCount: initialAdsCount, revenueCount: initialRevenueCount, lastUpdate: Date.now() };
@@ -165,7 +165,7 @@ const usePersistentStats = ({
           return newAdsCount;
         });
       }
-    }, 20000); // Toutes les 20 secondes
+    }, 15000); // Toutes les 15 secondes (accéléré)
     
     return () => clearInterval(autoIncrementInterval);
   }, [autoIncrement, forceGrowth, userId, correlationRatio, revenueCount]);
@@ -189,7 +189,7 @@ const usePersistentStats = ({
     if (minutesAway > 3) { // Si l'utilisateur a été absent plus de 3 minutes
       // Croissance basée sur le temps d'absence
       const adsGrowth = Math.min(minutesAway * 8, 900); // Limiter à 900 unités max
-      const revenueGrowth = adsGrowth * correlationRatio * (0.98 + Math.random() * 0.04);
+      const revenueGrowth = adsGrowth * correlationRatio * (1.001 + Math.random() * 0.002);
       
       setAdsCount(prevAdsCount => prevAdsCount + adsGrowth);
       setRevenueCount(prevRevenueCount => prevRevenueCount + revenueGrowth);
@@ -201,13 +201,13 @@ const usePersistentStats = ({
   }, [userId, correlationRatio]);
   
   // Fonction pour incrémenter manuellement les compteurs
-  const incrementStats = (adsIncrement = 1, revenueIncrement = correlationRatio) => {
+  const incrementStats = (adsIncrement = 1, revenueIncrement?: number) => {
     if (!userId) return;
     
     setAdsCount(prevAdsCount => {
       const newAdsCount = prevAdsCount + adsIncrement;
       // Si pas de revenueIncrement spécifié, utiliser le rapport de corrélation
-      const effectiveRevenueIncrement = revenueIncrement || (adsIncrement * correlationRatio);
+      const effectiveRevenueIncrement = revenueIncrement !== undefined ? revenueIncrement : (adsIncrement * correlationRatio);
       const newRevenueCount = revenueCount + effectiveRevenueIncrement;
       setRevenueCount(newRevenueCount);
       

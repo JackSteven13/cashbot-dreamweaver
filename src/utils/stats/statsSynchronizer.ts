@@ -35,7 +35,7 @@ export const initStatsSync = (userId?: string): (() => void) => {
     window.dispatchEvent(new CustomEvent('stats:sync', {
       detail: stats
     }));
-  }, 1000); // Synchroniser toutes les secondes pour une meilleure réactivité
+  }, 800); // Synchroniser plus fréquemment pour une meilleure réactivité
   
   // Nettoyer lors de la déconnexion ou du déchargement de la page
   const cleanup = () => {

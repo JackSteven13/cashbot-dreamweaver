@@ -29,7 +29,7 @@ const StatisticsCounters: React.FC = () => {
 
   // Fonction de mise à jour synchronisée
   const updateBothCounters = useCallback((adsIncrement: number, forceSync = false) => {
-    const correlationFactor = 0.999 + (Math.random() * 0.002); // Entre 0.999 et 1.001
+    const correlationFactor = 1.001 + (Math.random() * 0.002); // Entre 1.001 et 1.003 pour garantir que les revenus augmentent
     const revenueIncrement = adsIncrement * correlationFactor;
     
     const newAdsCount = localAdsCount + adsIncrement;
@@ -70,7 +70,7 @@ const StatisticsCounters: React.FC = () => {
     const microUpdateInterval = setInterval(() => {
       const microAdsIncrement = Math.floor(Math.random() * 18) + 12; // 12-29 ads
       updateBothCounters(microAdsIncrement);
-    }, 400); // Encore plus rapide: 400ms
+    }, 350); // Encore plus rapide: 350ms
     
     // Incréments persistants plus élevés/fréquents
     const minorUpdateInterval = setInterval(() => {
@@ -81,10 +81,10 @@ const StatisticsCounters: React.FC = () => {
       window.dispatchEvent(new CustomEvent('stats:counters:updated', {
         detail: { 
           adsCount: localAdsCount + smallAdsIncrement, 
-          revenueCount: localRevenueCount + (smallAdsIncrement * 0.999) 
+          revenueCount: localRevenueCount + (smallAdsIncrement * 1.001) // Garantir que les revenus augmentent
         }
       }));
-    }, 2000); // Toutes les 2 secondes
+    }, 1800); // Toutes les 1.8 secondes
 
     return () => {
       window.removeEventListener('stats:counters:updated', handleStatsUpdate as EventListener);
@@ -101,7 +101,7 @@ const StatisticsCounters: React.FC = () => {
         <div className="text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 dark:text-blue-300">
           <AnimatedNumber 
             value={userId ? localAdsCount : 0} 
-            duration={800} 
+            duration={700} 
             formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} 
           />
         </div>
@@ -112,7 +112,7 @@ const StatisticsCounters: React.FC = () => {
         <div className="text-3xl md:text-4xl lg:text-5xl font-bold text-emerald-900 dark:text-emerald-300">
           <AnimatedNumber 
             value={userId ? localRevenueCount : 0} 
-            duration={800} 
+            duration={700} 
             formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} 
           />
           <span className="ml-1">€</span>

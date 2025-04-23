@@ -11,7 +11,7 @@ export const calculateRevenueForLocation = (
   
   // Facteur d'augmentation global pour rendre les revenus BEAUCOUP plus élevés
   // et synchronisés avec le nombre d'annonces
-  const revenueBoostedFactor = 2.0;
+  const revenueBoostedFactor = 2.5; // Augmenté de 2.0 à 2.5
   
   for (let i = 0; i < ads; i++) {
     // Determine ad category based on location distribution
