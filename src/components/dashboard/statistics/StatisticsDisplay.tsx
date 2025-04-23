@@ -45,11 +45,11 @@ const StatisticsDisplay: React.FC = () => {
   const { userData } = useUserSession();
   const userId = userData?.profile?.id;
   
-  const { adsCount, revenueCount } = usePersistentStats({
+  const { adsCount, revenueCount, incrementStats } = usePersistentStats({
     autoIncrement: true,
     userId: userId || 'anonymous',
     forceGrowth: true,
-    correlationRatio: 0.92 // Augmentation significative du ratio pour suivre de plus près les publicités
+    correlationRatio: 0.98 // Augmenté à 0.98 pour une synchronisation quasi 1:1
   });
   
   const [localAdsCount, setLocalAdsCount] = useState(0);
@@ -67,19 +67,28 @@ const StatisticsDisplay: React.FC = () => {
   useEffect(() => {
     if (!userId) return;
     
-    // Micro-incréments beaucoup plus fréquents et plus élevés
+    // Micro-incréments beaucoup plus fréquents
     const microUpdateInterval = setInterval(() => {
-      // Incréments beaucoup plus élevés
-      const microAdsIncrement = Math.floor(Math.random() * 25) + 18; // 18-42 pubs tous les 1.5 secondes
-      const correlationFactor = 0.90 + Math.random() * 0.14; // 0.90-1.04 ratio (presque 1:1)
+      // Incréments beaucoup plus élevés et corrélés
+      const microAdsIncrement = Math.floor(Math.random() * 25) + 18; // 18-42 pubs tous les 1 seconde
+      const correlationFactor = 0.98 + Math.random() * 0.04; // 0.98-1.02 ratio (quasiment 1:1)
       const microRevenueIncrement = microAdsIncrement * correlationFactor;
       
-      setLocalAdsCount(prev => prev + microAdsIncrement);
-      setLocalRevenueCount(prev => prev + microRevenueIncrement);
-    }, 1500); // Beaucoup plus rapide: toutes les 1.5 secondes
+      const newAdsCount = localAdsCount + microAdsIncrement;
+      const newRevenueCount = localRevenueCount + microRevenueIncrement;
+
+      setLocalAdsCount(newAdsCount);
+      setLocalRevenueCount(newRevenueCount);
+      
+      // Synchroniser avec les stats persistantes plus souvent
+      if (Math.random() > 0.7) { // 30% de chance de synchroniser à chaque mise à jour
+        incrementStats(microAdsIncrement, microRevenueIncrement);
+      }
+      
+    }, 1000); // Encore plus rapide: toutes les 1 secondes
     
     return () => clearInterval(microUpdateInterval);
-  }, [userId]);
+  }, [userId, localAdsCount, localRevenueCount, incrementStats]);
   
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

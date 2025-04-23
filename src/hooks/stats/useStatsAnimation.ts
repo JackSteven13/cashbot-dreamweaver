@@ -36,21 +36,16 @@ export const useStatsAnimation = ({
       // Courbe d'animation avec easeOutCubic pour plus de réalisme
       const easeProgress = 1 - Math.pow(1 - progress, 3);
       
-      // Calculer les valeurs intermédiaires avec un facteur de corrélation 
-      // pour garantir que les revenus augmentent proportionnellement aux publicités
+      // Calculer les valeurs intermédiaires avec une corrélation parfaite
       const currentAdsValue = startValueAds + (targetAdsCount - startValueAds) * easeProgress;
       
-      // 2 variantes pour calculer les revenus:
-      // 1. Sur la base d'une animation directe entre les valeurs de départ et de fin
-      const directRevenueValue = startValueRevenue + (targetRevenueCount - startValueRevenue) * easeProgress;
+      // Pour une parfaite synchronisation:
+      // 1. Calculer le delta des publicités
+      const adsDelta = targetAdsCount - startValueAds;
+      const revenueDelta = targetRevenueCount - startValueRevenue;
       
-      // 2. Sur la base de la corrélation avec les publicités (environ 0.75€ par pub en moyenne)
-      const adsDifference = currentAdsValue - startValueAds;
-      const correlationFactor = 0.75 * (0.97 + Math.random() * 0.06); // Légère variation pour réalisme
-      const correlatedRevenue = startValueRevenue + (adsDifference * correlationFactor);
-      
-      // Utiliser une combinaison des deux méthodes pour un équilibre entre cohérence et transition fluide
-      const currentRevenueValue = (directRevenueValue * 0.7) + (correlatedRevenue * 0.3);
+      // 2. Appliquer le même pourcentage de progression au revenu
+      const currentRevenueValue = startValueRevenue + (revenueDelta * easeProgress);
       
       // Mettre à jour les compteurs
       setDisplayedAdsCount(currentAdsValue);

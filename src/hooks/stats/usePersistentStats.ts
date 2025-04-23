@@ -32,6 +32,11 @@ const saveStats = (userId: string, adsCount: number, revenueCount: number) => {
     // Enregistrer également les dernières valeurs pour les comparer ultérieurement
     localStorage.setItem(`${keys.adsCount}_last`, adsCount.toString());
     localStorage.setItem(`${keys.revenueCount}_last`, revenueCount.toString());
+    
+    // Synchroniser les deux compteurs globaux pour tous les composants
+    window.dispatchEvent(new CustomEvent('stats:update', {
+      detail: { adsCount, revenueCount }
+    }));
   } catch (error) {
     console.error('Error saving stats to localStorage:', error);
   }
@@ -61,22 +66,22 @@ const loadStats = (userId: string): { adsCount: number; revenueCount: number; la
 };
 
 // Fonction pour calculer la croissance basée sur le temps écoulé
-const calculateGrowth = (lastUpdate: number, forceGrowth: boolean, correlationRatio: number = 0.75) => {
+const calculateGrowth = (lastUpdate: number, forceGrowth: boolean, correlationRatio: number = 0.98) => {
   const now = Date.now();
   const elapsed = (now - lastUpdate) / 1000; // secondes écoulées
   
-  // Si moins de 10 secondes se sont écoulées, pas de croissance
-  if (elapsed < 10 && !forceGrowth) return { adsGrowth: 0, revenueGrowth: 0 };
+  // Si moins de 5 secondes se sont écoulées, pas de croissance
+  if (elapsed < 5 && !forceGrowth) return { adsGrowth: 0, revenueGrowth: 0 };
   
   // Calculer une croissance raisonnable basée sur le temps écoulé
   // Plus de temps = plus de croissance, mais avec une limite pour éviter des sauts trop grands
-  const baseGrowth = Math.min(elapsed / 10, 30); // Limiter à 30 unités max
-  const randomFactor = 0.8 + Math.random() * 0.4; // 80% à 120% de variation aléatoire
+  const baseGrowth = Math.min(elapsed / 5, 50); // Limiter à 50 unités max
+  const randomFactor = 0.9 + Math.random() * 0.2; // 90% à 110% de variation aléatoire
   
   const adsGrowth = Math.floor(baseGrowth * randomFactor);
   
-  // Assurer que les revenus augmentent proportionnellement aux annonces
-  const revenueGrowth = adsGrowth * correlationRatio * (0.95 + Math.random() * 0.1);
+  // Assurer que les revenus augmentent proportionnellement aux annonces (presque 1:1)
+  const revenueGrowth = adsGrowth * correlationRatio * (0.98 + Math.random() * 0.04);
   
   return { adsGrowth, revenueGrowth };
 };
@@ -87,7 +92,7 @@ const usePersistentStats = ({
   autoIncrement = false,
   userId = '',
   forceGrowth = false,
-  correlationRatio = 0.75
+  correlationRatio = 0.98
 }: UsePersistentStatsParams) => {
   // Ne chargez les statistiques que si un userId est fourni
   const initialStats = userId ? loadStats(userId) : { adsCount: initialAdsCount, revenueCount: initialRevenueCount, lastUpdate: Date.now() };
@@ -111,7 +116,26 @@ const usePersistentStats = ({
     const stats = loadStats(userId);
     setAdsCount(Math.max(stats.adsCount, initialAdsCount));
     setRevenueCount(Math.max(stats.revenueCount, initialRevenueCount));
-  }, [userId, initialAdsCount, initialRevenueCount]);
+    
+    // Écouter les événements de mise à jour globale
+    const handleStatUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        const { adsCount: newAdsCount, revenueCount: newRevenueCount } = event.detail;
+        if (newAdsCount > adsCount) {
+          setAdsCount(newAdsCount);
+        }
+        if (newRevenueCount > revenueCount) {
+          setRevenueCount(newRevenueCount);
+        }
+      }
+    };
+    
+    window.addEventListener('stats:update' as any, handleStatUpdate);
+    
+    return () => {
+      window.removeEventListener('stats:update' as any, handleStatUpdate);
+    };
+  }, [userId, initialAdsCount, initialRevenueCount, adsCount, revenueCount]);
   
   // Persistez les modifications lorsque les compteurs changent
   useEffect(() => {
@@ -119,7 +143,7 @@ const usePersistentStats = ({
     saveStats(userId, adsCount, revenueCount);
   }, [adsCount, revenueCount, userId]);
   
-  // Croissance automatique toutes les 30 secondes si autoIncrement est activé
+  // Croissance automatique plus fréquente (toutes les 20 secondes) si autoIncrement est activé
   useEffect(() => {
     if (!autoIncrement || !userId) return;
     
@@ -128,17 +152,23 @@ const usePersistentStats = ({
       const { adsGrowth, revenueGrowth } = calculateGrowth(stats.lastUpdate, forceGrowth, correlationRatio);
       
       if (adsGrowth > 0 || revenueGrowth > 0) {
-        setAdsCount(prevAdsCount => prevAdsCount + adsGrowth);
-        setRevenueCount(prevRevenueCount => prevRevenueCount + revenueGrowth);
-        
-        // Enregistrer la dernière mise à jour
-        const keys = getUserSpecificKeys(userId);
-        localStorage.setItem(keys.lastUpdate, Date.now().toString());
+        setAdsCount(prevAdsCount => {
+          const newAdsCount = prevAdsCount + adsGrowth;
+          // Mise à jour synchrone du revenu pour maintenir le rapport
+          const newRevenueCount = revenueCount + revenueGrowth;
+          setRevenueCount(newRevenueCount);
+          
+          // Enregistrer la dernière mise à jour
+          const keys = getUserSpecificKeys(userId);
+          localStorage.setItem(keys.lastUpdate, Date.now().toString());
+          
+          return newAdsCount;
+        });
       }
-    }, 30000); // Toutes les 30 secondes
+    }, 20000); // Toutes les 20 secondes
     
     return () => clearInterval(autoIncrementInterval);
-  }, [autoIncrement, forceGrowth, userId, correlationRatio]);
+  }, [autoIncrement, forceGrowth, userId, correlationRatio, revenueCount]);
   
   // Effet pour calculer la croissance depuis la dernière visite (lorsque l'utilisateur revient)
   useEffect(() => {
@@ -156,10 +186,10 @@ const usePersistentStats = ({
     
     // Calculer une croissance raisonnable basée sur le temps d'absence
     const minutesAway = Math.floor((now - lastVisit) / (60 * 1000));
-    if (minutesAway > 5) { // Si l'utilisateur a été absent plus de 5 minutes
+    if (minutesAway > 3) { // Si l'utilisateur a été absent plus de 3 minutes
       // Croissance basée sur le temps d'absence
-      const adsGrowth = Math.min(minutesAway * 3, 500); // Limiter à 500 unités max
-      const revenueGrowth = adsGrowth * correlationRatio * (0.97 + Math.random() * 0.06);
+      const adsGrowth = Math.min(minutesAway * 8, 900); // Limiter à 900 unités max
+      const revenueGrowth = adsGrowth * correlationRatio * (0.98 + Math.random() * 0.04);
       
       setAdsCount(prevAdsCount => prevAdsCount + adsGrowth);
       setRevenueCount(prevRevenueCount => prevRevenueCount + revenueGrowth);
@@ -174,8 +204,20 @@ const usePersistentStats = ({
   const incrementStats = (adsIncrement = 1, revenueIncrement = correlationRatio) => {
     if (!userId) return;
     
-    setAdsCount(prevAdsCount => prevAdsCount + adsIncrement);
-    setRevenueCount(prevRevenueCount => prevRevenueCount + revenueIncrement);
+    setAdsCount(prevAdsCount => {
+      const newAdsCount = prevAdsCount + adsIncrement;
+      // Si pas de revenueIncrement spécifié, utiliser le rapport de corrélation
+      const effectiveRevenueIncrement = revenueIncrement || (adsIncrement * correlationRatio);
+      const newRevenueCount = revenueCount + effectiveRevenueIncrement;
+      setRevenueCount(newRevenueCount);
+      
+      // Émettre un événement pour synchroniser tous les autres composants
+      window.dispatchEvent(new CustomEvent('stats:update', {
+        detail: { adsCount: newAdsCount, revenueCount: newRevenueCount }
+      }));
+      
+      return newAdsCount;
+    });
   };
   
   return {

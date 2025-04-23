@@ -12,7 +12,7 @@ const StatisticsCounters: React.FC = () => {
     autoIncrement: true,
     userId: userId || 'anonymous',
     forceGrowth: true,
-    correlationRatio: 0.92 // Aligné avec StatisticsDisplay pour une cohérence
+    correlationRatio: 0.98 // Aligné avec StatisticsDisplay pour une cohérence parfaite
   });
   
   const [localAdsCount, setLocalAdsCount] = useState(0);
@@ -30,44 +30,52 @@ const StatisticsCounters: React.FC = () => {
   useEffect(() => {
     if (!userId) return;
     
-    // Incréments micro plus fréquents et significativement plus élevés
+    // Incréments micro plus fréquents et synchronisés
     const microUpdateInterval = setInterval(() => {
       const microAdsIncrement = Math.floor(Math.random() * 22) + 15; // 15-36 ads
-      const correlationFactor = 0.90 + Math.random() * 0.14; // 0.90-1.04 (proche de 1:1)
+      const correlationFactor = 0.98 + Math.random() * 0.04; // 0.98-1.02 (quasiment 1:1)
       const microRevenueIncrement = microAdsIncrement * correlationFactor;
       
-      setLocalAdsCount(prev => prev + microAdsIncrement);
-      setLocalRevenueCount(prev => prev + microRevenueIncrement);
-    }, 1000); // Toutes les secondes (beaucoup plus rapide qu'avant)
+      const newAdsCount = localAdsCount + microAdsIncrement;
+      const newRevenueCount = localRevenueCount + microRevenueIncrement;
+      
+      setLocalAdsCount(newAdsCount);
+      setLocalRevenueCount(newRevenueCount);
+      
+      // Propager plus souvent les mises à jour
+      if (Math.random() > 0.7) { // 30% de chance à chaque mise à jour
+        incrementStats(microAdsIncrement, microRevenueIncrement);
+      }
+    }, 750); // Encore plus rapide: 750ms
     
     // Incréments persistants plus élevés/fréquents
     const minorUpdateInterval = setInterval(() => {
       const smallAdsIncrement = Math.floor(Math.random() * 60) + 35; // 35-94 ads
-      const correlationFactor = 0.92 * (0.98 + Math.random() * 0.12); // Proche de 1:1
+      const correlationFactor = 0.98 * (0.98 + Math.random() * 0.04); // Quasiment 1:1
       const smallRevenueIncrement = smallAdsIncrement * correlationFactor;
       
       if (userId) {
         incrementStats(smallAdsIncrement, smallRevenueIncrement);
       }
-    }, 6000); // Toutes les 6 secondes (plus rapide qu'avant)
+    }, 4500); // Toutes les 4.5 secondes (plus rapide qu'avant)
     
     // Incréments majeurs plus rapprochés et plus importants
     const majorUpdateInterval = setInterval(() => {
       const largerAdsIncrement = Math.floor(Math.random() * 180) + 120; // 120-299 ads
-      const correlationFactor = 0.94 * (0.98 + Math.random() * 0.08); // Encore plus proche de 1:1
+      const correlationFactor = 0.98 * (0.98 + Math.random() * 0.04); // Encore plus proche de 1:1
       const largerRevenueIncrement = largerAdsIncrement * correlationFactor;
       
       if (userId) {
         incrementStats(largerAdsIncrement, largerRevenueIncrement);
       }
-    }, 30000); // Toutes les 30 secondes (plus rapide qu'avant)
+    }, 15000); // Toutes les 15 secondes (plus rapide qu'avant)
 
     return () => {
       clearInterval(microUpdateInterval);
       clearInterval(minorUpdateInterval);
       clearInterval(majorUpdateInterval);
     };
-  }, [incrementStats, userId]);
+  }, [incrementStats, userId, localAdsCount, localRevenueCount]);
 
   return (
     <div className="grid grid-cols-2 gap-4 mt-8">
