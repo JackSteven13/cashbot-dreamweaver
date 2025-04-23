@@ -104,8 +104,8 @@ const StatisticsDisplay: React.FC = () => {
     // Synchronisation forcée toutes les 2 secondes
     const syncInterval = setInterval(() => {
       if (userId) {
-        // Synchroniser avec les stats persistantes
-        incrementStats(0, 0, true);
+        // Synchroniser avec les stats persistantes - Fix: remove the third argument
+        incrementStats(0, 0);
       }
     }, 2000);
     
