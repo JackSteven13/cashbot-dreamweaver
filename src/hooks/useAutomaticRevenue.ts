@@ -23,6 +23,7 @@ export const useAutomaticRevenue = ({
   const [lastGainAmount, setLastGainAmount] = useState(0);
   const [consecutiveGenerationCount, setConsecutiveGenerationCount] = useState(0);
   const [lastDbUpdateTime, setLastDbUpdateTime] = useState(0);
+  const [processingUpdate, setProcessingUpdate] = useState(false); // Nouveau: indicateur de traitement en cours
   
   // Calculate daily limit progress percentage
   useEffect(() => {
@@ -83,11 +84,14 @@ export const useAutomaticRevenue = ({
     };
   }, [limitReached]);
   
-  // Automatic revenue generation function with strict limit enforcement
+  // NOUVEAU: Mécanisme de verrouillage pour éviter les mises à jour simultanées  
   const generateAutomaticRevenue = useCallback(async (forceUpdate = false) => {
-    if (!userData || isNewUser || !isBotActive || limitReached) {
+    if (!userData || isNewUser || !isBotActive || limitReached || processingUpdate) {
       return false;
     }
+    
+    // Activer le verrouillage pendant le traitement
+    setProcessingUpdate(true);
     
     try {
       // Get total already earned today from centralized manager
@@ -125,14 +129,15 @@ export const useAutomaticRevenue = ({
         return false;
       }
       
-      // Generate a random gain (smaller for automatic sessions)
+      // NOUVEAU: Générer des gains BEAUCOUP plus petits et cohérents
       const minGain = 0.001;
-      const maxGain = effectiveSub === 'freemium' ? 0.01 : 0.03;
+      const maxGain = effectiveSub === 'freemium' ? 0.005 : 0.01;
       const potentialGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(3));
       
       // Ensure the gain won't exceed the daily limit
       const remainingLimit = (dailyLimit * 0.9) - todaysGains;
-      const safeGain = Math.min(potentialGain, remainingLimit * 0.7);
+      // Encore plus restrictif pour garantir qu'on ne dépasse JAMAIS la limite
+      const safeGain = Math.min(potentialGain, remainingLimit * 0.2);
       
       // Use the smallest gain possible to avoid limit issues
       const finalGain = parseFloat(safeGain.toFixed(3));
@@ -169,17 +174,22 @@ export const useAutomaticRevenue = ({
       }
       
       const now = Date.now();
-      // Limit database updates to once every 10 seconds at most
-      const shouldUpdateDb = forceUpdate || (now - lastDbUpdateTime > 10000);
+      // Limit database updates to once every 30 seconds at most (augmentation du délai)
+      const shouldUpdateDb = forceUpdate || (now - lastDbUpdateTime > 30000);
       
+      // NOUVEAU: Toujours enregistrer la transaction dans la base pour avoir un historique cohérent
       if (shouldUpdateDb) {
-        // Record transaction in database
+        // NOUVEAU: Capturer le solde avant la mise à jour pour comparaison
+        const balanceBefore = balanceManager.getCurrentBalance();
+        
+        // Record transaction in database FIRST
         const transaction = await addTransaction(userId, finalGain, report);
         
-        if (!transaction) {
+        if (!transaction.success) {
           console.error("Failed to record transaction");
+          return false;
         } else {
-          console.log("Automatic transaction recorded successfully:", transaction);
+          console.log("Automatic transaction recorded successfully");
         }
         
         // Update database timestamp
@@ -187,11 +197,20 @@ export const useAutomaticRevenue = ({
         
         // Update balance with generated gain
         await updateBalance(finalGain, report, forceUpdate);
+        
+        // NOUVEAU: Vérifier que le solde a bien augmenté
+        const balanceAfter = balanceManager.getCurrentBalance();
+        if (balanceAfter < balanceBefore) {
+          console.error(`Anomalie détectée: Le solde a diminué de ${balanceBefore}€ à ${balanceAfter}€ après un gain`);
+          
+          // Restaurer le solde précédent dans le gestionnaire centralisé
+          balanceManager.forceBalanceSync(balanceBefore + finalGain);
+        }
+      } else {
+        // Si on ne met pas à jour la base, au moins mettre à jour le gestionnaire local
+        balanceManager.updateBalance(finalGain);
+        balanceManager.addDailyGain(finalGain);
       }
-      
-      // Update balance manager locally (always do this)
-      balanceManager.updateBalance(finalGain);
-      balanceManager.addDailyGain(finalGain);
       
       // Get current balance from manager
       const currentBalance = balanceManager.getCurrentBalance();
@@ -237,8 +256,11 @@ export const useAutomaticRevenue = ({
     } catch (error) {
       console.error("Error generating automatic revenue:", error);
       return false;
+    } finally {
+      // Désactiver le verrouillage une fois terminé
+      setProcessingUpdate(false);
     }
-  }, [userData, isNewUser, isBotActive, limitReached, updateBalance, lastDbUpdateTime]);
+  }, [userData, isNewUser, isBotActive, limitReached, updateBalance, lastDbUpdateTime, processingUpdate]);
   
   return {
     isBotActive,

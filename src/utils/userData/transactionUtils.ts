@@ -1,169 +1,184 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { Transaction } from '@/types/userData';
+import { supabase } from "@/integrations/supabase/client";
+import { Transaction } from "@/types/userData";
 
 /**
- * Fetch transactions for a given user with date handling improvements
+ * Ajoute une transaction avec mécanisme de retry
  */
-export const fetchUserTransactions = async (userId: string, forceRefresh = false): Promise<Transaction[]> => {
+export const addTransaction = async (userId: string, gain: number, report: string) => {
+  // Vérifier les données d'entrée pour éviter les incohérences
+  if (!userId) {
+    console.error("addTransaction: userId manquant");
+    return { success: false };
+  }
+  
+  if (isNaN(gain) || gain <= 0) {
+    console.error(`addTransaction: gain invalide (${gain})`);
+    return { success: false };
+  }
+  
+  // Formater le gain avec au maximum 2 décimales
+  const formattedGain = parseFloat(gain.toFixed(2));
+  const transactionDate = new Date().toISOString().split('T')[0];
+  
+  // Mécanisme de retry
+  const maxRetries = 3;
+  let retryCount = 0;
+  
+  // Ajouter un verrou pour éviter les transactions simultanées
+  const transactionLockKey = `transaction_lock_${userId}`;
+  const transactionLock = sessionStorage.getItem(transactionLockKey);
+  
+  if (transactionLock && Date.now() - parseInt(transactionLock) < 2000) {
+    console.log("Transaction en cours, attente...");
+    // Attendre un peu pour laisser la transaction précédente se terminer
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  
+  // Définir le verrou avec l'horodatage actuel
+  sessionStorage.setItem(transactionLockKey, Date.now().toString());
+  
   try {
-    // Check in cache if forceRefresh isn't requested
-    if (!forceRefresh) {
+    while (retryCount < maxRetries) {
       try {
-        const cachedTx = localStorage.getItem('cachedTransactions');
-        const lastRefreshTime = localStorage.getItem('transactionsLastRefresh');
+        console.log(`Ajout de transaction pour l'utilisateur ${userId} (gain: ${formattedGain}€, tentative: ${retryCount + 1}/${maxRetries})`);
         
-        // Use cache only if it exists and is less than 1 minute old (reduced from 5 minutes)
-        if (cachedTx && lastRefreshTime) {
-          const cacheAge = Date.now() - parseInt(lastRefreshTime, 10);
-          if (cacheAge < 60000) { // 1 minute - reduced to make transactions appear faster
-            return JSON.parse(cachedTx);
+        // Ajouter la transaction en base de données
+        const { error: transactionError } = await supabase
+          .from('transactions')
+          .insert([{
+            user_id: userId,
+            date: transactionDate,
+            gain: formattedGain,
+            report: report
+          }]);
+          
+        if (transactionError) {
+          console.error("Erreur lors de la création de la transaction:", transactionError);
+          retryCount++;
+          
+          if (retryCount >= maxRetries) {
+            return { success: false };
           }
+          
+          // Attendre avant de réessayer avec backoff exponentiel
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 500));
+          continue;
         }
-      } catch (e) {
-        console.warn("Cache access error:", e);
+        
+        // Déclencher un événement pour informer les autres composants
+        window.dispatchEvent(new CustomEvent('transaction:added', {
+          detail: {
+            transaction: {
+              date: transactionDate,
+              gain: formattedGain,
+              report: report
+            }
+          }
+        }));
+        
+        return { 
+          success: true, 
+          transaction: {
+            date: transactionDate,
+            gain: formattedGain,
+            report: report
+          } 
+        };
+      } catch (error) {
+        console.error(`Erreur lors de l'ajout de la transaction (tentative ${retryCount + 1}):`, error);
+        retryCount++;
+        
+        if (retryCount >= maxRetries) {
+          return { success: false };
+        }
+        
+        // Attendre avant de réessayer avec backoff exponentiel
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 500));
       }
     }
+  } finally {
+    // Toujours libérer le verrou une fois terminé
+    sessionStorage.removeItem(transactionLockKey);
+  }
+  
+  return { success: false };
+};
 
+/**
+ * Récupère toutes les transactions d'un utilisateur
+ */
+export const fetchUserTransactions = async (userId: string): Promise<Transaction[]> => {
+  try {
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    
+      .order('date', { ascending: false });
+      
     if (error) {
       console.error("Error fetching transactions:", error);
       return [];
     }
     
-    // Format transactions to adapt to application's required format
-    const formattedTransactions = data.map((tx: any) => {
-      // Normalize date for consistent comparison
-      const txDate = tx.created_at ? new Date(tx.created_at) : new Date(tx.date);
-      
-      // ISO format for consistency
-      const isoDate = txDate.toISOString();
-      
-      return {
-        id: tx.id,
-        date: isoDate,
-        amount: tx.gain,
-        type: tx.type || 'system',
-        report: tx.report || tx.description || 'Transaction',
-        gain: tx.gain, // By convention, positive amounts are gains
-      };
-    });
-    
-    // Update cache
-    try {
-      localStorage.setItem('cachedTransactions', JSON.stringify(formattedTransactions));
-      localStorage.setItem('transactionsLastRefresh', Date.now().toString());
-    } catch (e) {
-      console.warn("Cache write error:", e);
-    }
-    
-    // Debug today's transactions
-    const today = new Date();
-    const todayString = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-    
-    const todayTransactions = formattedTransactions.filter(tx => {
-      try {
-        const txDate = new Date(tx.date);
-        const txDateString = txDate.toISOString().split('T')[0];
-        return txDateString === todayString;
-      } catch (e) {
-        return false;
-      }
-    });
-    
-    console.log(`Transactions retrieved for today (${todayString}): ${todayTransactions.length}/${formattedTransactions.length}`);
-    console.log("Today's transactions:", todayTransactions);
-    
-    return formattedTransactions;
-  } catch (error) {
-    console.error("Error in fetchUserTransactions:", error);
+    return data || [];
+  } catch (err) {
+    console.error("Exception while fetching transactions:", err);
     return [];
   }
 };
 
 /**
- * Add a new transaction for a user with improved date handling
- */
-export const addTransaction = async (
-  userId: string,
-  gain: number,
-  description: string,
-  type: string = 'system'
-) => {
-  try {
-    // Get today's date in consistent format
-    const today = new Date();
-    const isoString = today.toISOString();
-    const dateString = isoString.split('T')[0]; // YYYY-MM-DD
-    
-    // Format gain to 3 decimal places maximum
-    const formattedGain = parseFloat(gain.toFixed(3));
-    
-    console.log(`Adding transaction for ${userId}: ${formattedGain}€ - ${description}`);
-    
-    const { data, error } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: userId,
-        gain: formattedGain,
-        report: description,
-        type,
-        created_at: isoString,
-        date: dateString  // Explicitly set date in YYYY-MM-DD format
-      })
-      .select();
-    
-    if (error) {
-      console.error("Error adding transaction:", error);
-      return null;
-    }
-    
-    console.log("Transaction added successfully:", data);
-    
-    // Invalidate cache
-    localStorage.removeItem('cachedTransactions');
-    
-    // Trigger refresh event
-    window.dispatchEvent(new CustomEvent('transactions:refresh', {
-      detail: { timestamp: Date.now() }
-    }));
-    
-    return data ? data[0] : null;
-  } catch (error) {
-    console.error("Error in addTransaction:", error);
-    return null;
-  }
-};
-
-/**
- * Calculate today's total gains for a user
+ * Calcule les gains totaux d'aujourd'hui pour un utilisateur
  */
 export const calculateTodaysGains = async (userId: string): Promise<number> => {
+  if (!userId) return 0;
+  
   try {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const today = new Date().toISOString().split('T')[0];
     
     const { data, error } = await supabase
       .from('transactions')
       .select('gain')
       .eq('user_id', userId)
       .eq('date', today);
-    
+      
     if (error) {
       console.error("Error calculating today's gains:", error);
       return 0;
     }
     
-    const totalGains = data.reduce((sum, tx) => sum + (tx.gain || 0), 0);
-    console.log(`Today's total gains for ${userId}: ${totalGains}€`);
-    
-    return totalGains;
-  } catch (error) {
-    console.error("Error in calculateTodaysGains:", error);
+    return (data || []).reduce((sum, tx) => sum + (tx.gain || 0), 0);
+  } catch (err) {
+    console.error("Exception while calculating today's gains:", err);
     return 0;
+  }
+};
+
+/**
+ * Récupère les transactions d'aujourd'hui
+ */
+export const fetchTodayTransactions = async (userId: string): Promise<Transaction[]> => {
+  if (!userId) return [];
+  
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', today)
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error("Error fetching today's transactions:", error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (err) {
+    console.error("Exception while fetching today's transactions:", err);
+    return [];
   }
 };
