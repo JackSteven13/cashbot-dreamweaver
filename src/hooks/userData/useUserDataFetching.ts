@@ -1,110 +1,70 @@
-import { useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
-import { UserData } from '@/types/userData';
-import { toast } from '@/components/ui/use-toast';
 
-export const useUserDataFetching = (
-  loadUserProfile: (userId: string, userEmail?: string | null) => Promise<any>,
-  loadUserBalance: (userId: string, isNewUser: boolean) => Promise<any>,
-  updateUserData: (data: Partial<UserData>) => void,
-  setIsLoading: (loading: boolean) => void,
-  isNewUser: boolean
-) => {
-  // Fetch user data
-  const fetchUserData = useCallback(async () => {
-    if (!supabase) return;
+import { useCallback, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { fetchUserProfile } from '@/utils/user/profileUtils';
+import { toast } from '@/components/ui/use-toast';
+import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
+import balanceManager from '@/utils/balance/balanceManager';
+
+export const useUserDataFetching = () => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchUserData = useCallback(async (userId: string) => {
+    if (!userId) {
+      console.error("No user ID provided for fetching data");
+      return null;
+    }
     
     setIsLoading(true);
     
     try {
-      console.log("Fetching user data...");
+      // Fetch user profile
+      const userProfile = await fetchUserProfile(userId);
       
-      const { data } = await supabase.auth.getSession();
-      const session = data?.session;
-      
-      if (!session || !session.user) {
-        console.error("No active session found");
-        setIsLoading(false);
-        return;
+      // Fetch balance from user_balances
+      const { data: balanceData, error: balanceError } = await supabase
+        .from('user_balances')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (balanceError && balanceError.code !== 'PGRST116') {
+        console.error("Error fetching user balance:", balanceError);
+        throw balanceError;
       }
       
-      const userId = session.user.id;
+      // Synchronize with balance manager
+      if (balanceData?.balance) {
+        balanceManager.forceBalanceSync(balanceData.balance);
+      }
       
-      // Load profile data
-      const profileData = await loadUserProfile(userId, session.user.email);
+      // Fetch transactions
+      const transactions = await fetchUserTransactions(userId);
       
-      // Load balance data
-      const balanceData = await loadUserBalance(userId, isNewUser);
+      const userData = {
+        profile: userProfile,
+        balance: balanceData?.balance || 0,
+        subscription: balanceData?.subscription || 'freemium',
+        id: userId,
+        transactions: transactions || [],
+        lastRefreshed: Date.now()
+      };
       
-      // Load transactions (with forced refresh)
-      const transactions = await fetchUserTransactions(userId, true);
-      
-      // Update state with fetched data
-      updateUserData({
-        profile: profileData,
-        ...balanceData,
-        transactions
-      });
-      
-      // Update last fetch timestamp
-      localStorage.setItem('lastUserDataFetch', new Date().toISOString());
-
-      console.log('User data loaded successfully:', { profileData, balanceData, transactions });
+      return userData;
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error("Error in fetchUserData:", error);
       toast({
-        title: 'Erreur',
-        description: 'Impossible de récupérer vos données.',
-        variant: 'destructive'
+        title: "Error",
+        description: "Failed to fetch user data. Please try again later.",
+        variant: "destructive"
       });
+      return null;
     } finally {
       setIsLoading(false);
     }
-  }, [loadUserProfile, loadUserBalance, updateUserData, setIsLoading, isNewUser]);
-  
-  // Reset daily counters
-  const resetDailyCounters = useCallback(async () => {
-    if (!supabase) return;
-    
-    try {
-      console.log('Resetting daily counters');
-      
-      const { data } = await supabase.auth.getSession();
-      const userId = data?.session?.user?.id;
-      
-      if (!userId) return;
-      
-      // Update local state - Fix: don't use dailySessionCount property
-      // Instead update the userData object structure correctly
-      updateUserData({
-        // We should not directly set dailySessionCount like this
-        // Instead, let's update it through the appropriate data structure
-      });
-      
-      // Update the database
-      const { error } = await supabase
-        .from('user_balances')
-        .update({ daily_session_count: 0 })
-        .eq('id', userId);
-      
-      if (error) {
-        console.error('Error resetting daily counters:', error);
-      }
-      
-      // Dispatch event to notify the app that daily counters were reset
-      window.dispatchEvent(new CustomEvent('dailyGains:reset'));
-      
-      return Promise.resolve();
-    } catch (error) {
-      console.error('Error resetting daily counters:', error);
-    }
-  }, [updateUserData]);
-  
-  return {
-    fetchUserData,
-    resetDailyCounters
-  };
+  }, []);
+
+  return { fetchUserData, isLoading };
 };
 
 export default useUserDataFetching;

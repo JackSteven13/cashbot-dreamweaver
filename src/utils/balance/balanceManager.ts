@@ -61,6 +61,35 @@ class BalanceManager {
     }
   }
   
+  // Définir l'ID utilisateur pour ce gestionnaire
+  setUserId(userId: string): void {
+    if (userId && userId !== this.userId) {
+      this.userId = userId;
+      localStorage.setItem('currentUserId', userId);
+      
+      // Recharger les données spécifiques à l'utilisateur si disponibles
+      const userBalanceKey = `currentBalance_${userId}`;
+      const userHighestBalanceKey = `highest_balance_${userId}`;
+      
+      const storedUserBalance = localStorage.getItem(userBalanceKey);
+      const storedUserHighestBalance = localStorage.getItem(userHighestBalanceKey);
+      
+      if (storedUserBalance) {
+        const parsedBalance = parseFloat(storedUserBalance);
+        if (!isNaN(parsedBalance) && parsedBalance > 0) {
+          this.currentBalance = parsedBalance;
+        }
+      }
+      
+      if (storedUserHighestBalance) {
+        const parsedHighest = parseFloat(storedUserHighestBalance);
+        if (!isNaN(parsedHighest) && parsedHighest > 0) {
+          this.highestBalance = parsedHighest;
+        }
+      }
+    }
+  }
+  
   // Vérifier si la journée a changé pour réinitialiser les gains quotidiens
   private checkForDayChange(): void {
     try {
