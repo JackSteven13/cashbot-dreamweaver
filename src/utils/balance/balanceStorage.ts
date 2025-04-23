@@ -30,11 +30,12 @@ export const persistBalance = (balance: number, userId?: string): void => {
     ).toString());
     sessionStorage.setItem(keys.sessionCurrentBalance, balance.toString());
     
-    // Persister également dans les clés globales pour compatibilité
-    localStorage.setItem('currentBalance', balance.toString());
-    localStorage.setItem('lastKnownBalance', balance.toString());
-    localStorage.setItem('lastUpdatedBalance', balance.toString());
-    sessionStorage.setItem('currentBalance', balance.toString());
+    // Ne pas persister dans les clés globales pour éviter les collisions entre utilisateurs
+    // Retirer les anciennes clés globales si elles existent
+    localStorage.removeItem('currentBalance');
+    localStorage.removeItem('lastKnownBalance');
+    localStorage.removeItem('lastUpdatedBalance');
+    sessionStorage.removeItem('currentBalance');
   } catch (e) {
     console.error("Failed to persist balance:", e);
   }
@@ -55,11 +56,8 @@ export const getPersistedBalance = (userId?: string): number => {
       localStorage.getItem(keys.lastKnownBalance),
       localStorage.getItem(keys.lastUpdatedBalance),
       localStorage.getItem(keys.highestBalance),
-      sessionStorage.getItem(keys.sessionCurrentBalance),
-      // Vérifier aussi les clés globales pour compatibilité
-      localStorage.getItem('currentBalance'),
-      localStorage.getItem('lastKnownBalance'),
-      localStorage.getItem('lastUpdatedBalance')
+      sessionStorage.getItem(keys.sessionCurrentBalance)
+      // Ne pas récupérer les clés globales pour éviter les collisions entre utilisateurs
     ];
 
     const validBalances = sources
@@ -107,6 +105,12 @@ export const cleanOtherUserData = (currentUserId: string): void => {
         }
       }
     }
+    
+    // Nettoyer aussi les clés globales
+    localStorage.removeItem('currentBalance');
+    localStorage.removeItem('lastKnownBalance');
+    localStorage.removeItem('lastUpdatedBalance');
+    sessionStorage.removeItem('currentBalance');
   } catch (e) {
     console.error("Erreur lors du nettoyage des données:", e);
   }

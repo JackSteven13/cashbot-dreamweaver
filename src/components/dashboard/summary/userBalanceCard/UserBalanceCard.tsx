@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles } from 'lucide-react';
@@ -34,12 +34,25 @@ const UserBalanceCard = ({
   const safeBalance = isNaN(balance) ? 0 : balance;
   const safeReferralBonus = isNaN(referralBonus) ? 0 : referralBonus;
   
-  // Si balance est défini dans le localStorage, essayer de l'utiliser mais avec la clé spécifique à l'utilisateur
+  // Utiliser une clé spécifique à l'utilisateur pour le stockage local
   const localStorageKey = `lastKnownBalance_${userId}`;
-  const locallyStoredBalance = parseFloat(localStorage.getItem(localStorageKey) || '0');
+  const [locallyStoredBalance, setLocallyStoredBalance] = useState<number>(0);
+  
+  // Charger la valeur du localStorage lors du montage du composant
+  useEffect(() => {
+    try {
+      const storedValue = localStorage.getItem(localStorageKey);
+      const parsedValue = storedValue ? parseFloat(storedValue) : 0;
+      setLocallyStoredBalance(isNaN(parsedValue) ? 0 : parsedValue);
+    } catch (e) {
+      console.error("Erreur lors de la lecture du localStorage:", e);
+    }
+  }, [localStorageKey, userId]); // Se déclenche quand l'utilisateur change
+  
+  // Solde effectif à afficher
   const effectiveBalance = Math.max(
     safeBalance,
-    isNaN(locallyStoredBalance) ? 0 : locallyStoredBalance
+    locallyStoredBalance
   );
   
   const BalanceDisplay = ({ balance, isNewUser }: { balance: number; isNewUser?: boolean }) => (
@@ -74,8 +87,29 @@ const UserBalanceCard = ({
       }
     };
     
+    // Utiliser une clé spécifique à l'utilisateur pour la dernière activité
     const lastActiveKey = `lastActive_${userId}`;
-    const lastActive = localStorage.getItem(lastActiveKey);
+    const [lastActive, setLastActive] = useState<string | null>(null);
+    
+    // Charger la valeur du localStorage lors du montage du composant
+    useEffect(() => {
+      try {
+        const storedValue = localStorage.getItem(lastActiveKey);
+        setLastActive(storedValue);
+      } catch (e) {
+        console.error("Erreur lors de la lecture de la dernière activité:", e);
+      }
+    }, [lastActiveKey, userId]); // Se déclenche quand l'utilisateur change
+    
+    // Mettre à jour la dernière activité lors du montage du composant
+    useEffect(() => {
+      try {
+        localStorage.setItem(lastActiveKey, new Date().toISOString());
+      } catch (e) {
+        console.error("Erreur lors de l'enregistrement de la dernière activité:", e);
+      }
+    }, [lastActiveKey]);
+    
     const formattedDate = lastActive ? format(new Date(lastActive), 'dd MMMM yyyy', { locale: fr }) : null;
     
     return (

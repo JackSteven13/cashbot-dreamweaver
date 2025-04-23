@@ -8,11 +8,14 @@ interface PersistentStats {
   revenueCount: number;
 }
 
+// Clés de stockage qui incluent l'ID utilisateur pour l'isolation des données
 const STORAGE_KEYS = {
   globalAdsCount: 'global_stats_ads_count',
   globalRevenueCount: 'global_stats_revenue_count',
   userAdsCount: (userId: string) => `stats_ads_count_${userId}`,
-  userRevenueCount: (userId: string) => `stats_revenue_count_${userId}`
+  userRevenueCount: (userId: string) => `stats_revenue_count_${userId}`,
+  // Ajouter une clé pour la dernière visite utilisateur pour avoir un comportement différent pour chaque utilisateur
+  lastVisit: (userId: string) => `stats_last_visit_${userId}`
 };
 
 /**
@@ -33,23 +36,54 @@ export const getPersistentStats = (userId?: string): PersistentStats => {
           revenueCount: parseFloat(userRevenueCount)
         };
       }
+      
+      // Si pas de données pour cet utilisateur, initialiser avec des valeurs aléatoires spécifiques
+      // basées sur l'ID utilisateur pour que chaque utilisateur ait ses propres chiffres
+      if (userId) {
+        // Utiliser l'ID pour générer un "seed" qui donne des chiffres cohérents mais différents par utilisateur
+        const charSum = Array.from(userId).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+        const seedValue = (charSum % 1000) + 1000; // Valeur entre 1000 et 2000
+        
+        const baseAds = 1000 + seedValue;
+        const baseRevenue = baseAds * 0.76203; // Maintenir le ratio constant
+        
+        // Sauvegarder ces valeurs pour les prochaines visites
+        localStorage.setItem(STORAGE_KEYS.userAdsCount(userId), baseAds.toString());
+        localStorage.setItem(STORAGE_KEYS.userRevenueCount(userId), baseRevenue.toString());
+        
+        // Enregistrer la première visite
+        localStorage.setItem(STORAGE_KEYS.lastVisit(userId), Date.now().toString());
+        
+        return {
+          adsCount: baseAds,
+          revenueCount: baseRevenue
+        };
+      }
     }
     
     // Sinon, récupérer les statistiques globales
     const globalAdsCount = localStorage.getItem(STORAGE_KEYS.globalAdsCount);
     const globalRevenueCount = localStorage.getItem(STORAGE_KEYS.globalRevenueCount);
     
+    // Utiliser des valeurs aléatoires spécifiques à la session en cours pour les utilisateurs anonymes
+    const sessionSeed = parseInt(sessionStorage.getItem('anonymous_stats_seed') || '0');
+    if (!sessionSeed) {
+      const newSeed = 1000 + Math.floor(Math.random() * 2000);
+      sessionStorage.setItem('anonymous_stats_seed', newSeed.toString());
+    }
+    
     return {
-      adsCount: globalAdsCount ? parseFloat(globalAdsCount) : 1000 + Math.floor(Math.random() * 2000),
-      revenueCount: globalRevenueCount ? parseFloat(globalRevenueCount) : 500 + Math.floor(Math.random() * 1000)
+      adsCount: globalAdsCount ? parseFloat(globalAdsCount) : (sessionSeed || 1000 + Math.floor(Math.random() * 2000)),
+      revenueCount: globalRevenueCount ? parseFloat(globalRevenueCount) : (sessionSeed * 0.76203 || (500 + Math.floor(Math.random() * 1000)))
     };
   } catch (error) {
     console.error('Erreur lors de la récupération des statistiques:', error);
     
     // En cas d'erreur, retourner des valeurs par défaut
+    const fallbackSeed = Math.floor(Math.random() * 1000) + 1000;
     return {
-      adsCount: 1000 + Math.floor(Math.random() * 2000),
-      revenueCount: 500 + Math.floor(Math.random() * 1000)
+      adsCount: fallbackSeed,
+      revenueCount: fallbackSeed * 0.76203
     };
   }
 };
@@ -79,11 +113,19 @@ export const savePersistentStats = (adsCount: number, revenueCount: number, user
     if (userId) {
       localStorage.setItem(STORAGE_KEYS.userAdsCount(userId), safeAdsCount.toString());
       localStorage.setItem(STORAGE_KEYS.userRevenueCount(userId), safeRevenueCount.toString());
+      
+      // Mettre à jour la date de dernière visite
+      localStorage.setItem(STORAGE_KEYS.lastVisit(userId), Date.now().toString());
+    } else {
+      // Pour les utilisateurs anonymes, stocker également dans la session
+      const sessionSeed = parseInt(sessionStorage.getItem('anonymous_stats_seed') || '0');
+      if (!sessionSeed) {
+        sessionStorage.setItem('anonymous_stats_seed', Math.floor(safeAdsCount).toString());
+      }
     }
     
-    // Toujours mettre à jour les statistiques globales
-    localStorage.setItem(STORAGE_KEYS.globalAdsCount, safeAdsCount.toString());
-    localStorage.setItem(STORAGE_KEYS.globalRevenueCount, safeRevenueCount.toString());
+    // Ne pas mettre à jour les statistiques globales pour isoler les données des utilisateurs
+    // Nous n'utiliserons plus les statistiques globales à partir de maintenant
   } catch (error) {
     console.error('Erreur lors de l\'enregistrement des statistiques:', error);
   }

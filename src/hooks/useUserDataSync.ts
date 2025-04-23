@@ -1,130 +1,169 @@
-import { useEffect, useCallback, useRef } from 'react';
+
+import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import balanceManager from '@/utils/balance/balanceManager';
+import { getUserSpecificKeys } from '@/utils/balance/balanceStorage';
 
 export const useUserDataSync = () => {
-  const isMounted = useRef(true);
-  const isInitialized = useRef(false);
-  const syncInProgress = useRef(false);
-  
-  // Improved sync function with better error handling and retries
-  const syncUserData = useCallback(async (force = false): Promise<boolean> => {
-    // Prevent multiple simultaneous syncs
-    if (syncInProgress.current || !isMounted.current) return false;
-    
+  // Fonction améliorée pour synchroniser les données avec une meilleure stabilité
+  const syncUserData = useCallback(async () => {
     try {
-      syncInProgress.current = true;
-      console.log("Synchronizing user data...");
+      console.log("Syncing user data after authentication");
+      
+      // Check if sync is already in progress
+      if (localStorage.getItem('data_syncing') === 'true') {
+        console.log("Data sync already in progress, waiting");
+        await new Promise(resolve => setTimeout(resolve, 600));
+        return true;
+      }
+      
+      localStorage.setItem('data_syncing', 'true');
       
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (!session) {
-        console.log("No active session, aborting sync");
-        syncInProgress.current = false;
+        console.log("No active session, skipping sync");
+        localStorage.removeItem('data_syncing');
         return false;
       }
       
-      // Log session details to help with debugging
-      console.log(`Syncing data for user: ${session.user.email || session.user.id}`);
+      const userId = session.user.id;
       
-      // Get user profile data in parallel with balance data
-      const [profileResult, balanceResult] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle(),
-        supabase.from('user_balances').select('*').eq('id', session.user.id).maybeSingle()
-      ]);
+      // Stocker l'ID utilisateur pour permettre le nettoyage des données d'autres utilisateurs
+      localStorage.setItem('lastKnownUserId', userId);
       
-      // Process profile data
-      if (profileResult.data) {
-        const { full_name, email } = profileResult.data;
-        localStorage.setItem('lastKnownUsername', full_name || (email?.split('@')[0] || 'Utilisateur'));
-        
-        // Dispatch event to notify components
-        window.dispatchEvent(new CustomEvent('username:loaded', { 
-          detail: { username: full_name || (email?.split('@')[0] || 'Utilisateur') }
-        }));
-        
-        console.log("Profile data synced successfully");
-      } else if (profileResult.error) {
-        console.error("Error fetching profile:", profileResult.error);
+      // Use a more reliable approach to wait for session establishment
+      let attempts = 0;
+      const maxAttempts = 5;
+      let syncSuccess = false;
+      
+      while (attempts < maxAttempts && !syncSuccess) {
+        try {
+          // Add progressive delay between attempts
+          if (attempts > 0) {
+            await new Promise(resolve => setTimeout(resolve, 300 * attempts));
+          }
+          
+          // Récupérer les données utilisateur avec une requête parallèle
+          const [userBalanceResult, profileResult] = await Promise.all([
+            supabase.from('user_balances').select('subscription, balance, daily_session_count').eq('id', userId).maybeSingle(),
+            supabase.from('profiles').select('full_name, email').eq('id', userId).maybeSingle()
+          ]);
+          
+          // Obtenir les clés spécifiques à l'utilisateur pour stocker les données
+          const userSpecificKeys = getUserSpecificKeys(userId);
+          
+          // Vérifier les résultats et mettre à jour le localStorage
+          if (!userBalanceResult.error && userBalanceResult.data) {
+            const userData = userBalanceResult.data;
+            
+            // Mettre à jour l'abonnement dans localStorage avec une clé spécifique à l'utilisateur
+            if (userData.subscription) {
+              localStorage.setItem(`subscription_${userId}`, userData.subscription);
+              console.log("Abonnement mis à jour:", userData.subscription);
+            }
+            
+            // Mettre à jour le solde dans localStorage avec une clé spécifique à l'utilisateur
+            if (userData.balance !== undefined) {
+              localStorage.setItem(userSpecificKeys.currentBalance, String(userData.balance));
+              localStorage.setItem(userSpecificKeys.lastKnownBalance, String(userData.balance));
+              
+              // Définir également l'ID utilisateur dans le gestionnaire de solde
+              balanceManager.setUserId(userId);
+              balanceManager.forceBalanceSync(userData.balance, userId);
+              
+              console.log("Solde mis à jour:", userData.balance);
+            }
+            
+            // Mettre à jour le compteur de sessions quotidiennes
+            if (userData.daily_session_count !== undefined) {
+              localStorage.setItem(`dailySessionCount_${userId}`, String(userData.daily_session_count));
+              console.log("Compteur de sessions mis à jour:", userData.daily_session_count);
+            }
+            
+            syncSuccess = true;
+          } else if (userBalanceResult.error) {
+            console.error("Erreur lors de la récupération du solde:", userBalanceResult.error);
+          }
+          
+          // Récupérer et stocker le nom d'utilisateur
+          if (!profileResult.error && profileResult.data && profileResult.data.full_name) {
+            localStorage.setItem(`lastKnownUsername_${userId}`, profileResult.data.full_name);
+            console.log("Nom d'utilisateur mis à jour:", profileResult.data.full_name);
+            syncSuccess = true;
+            
+            // Déclencher un événement pour signaler que le nom est disponible
+            window.dispatchEvent(new CustomEvent('username:loaded', { 
+              detail: { username: profileResult.data.full_name, userId }
+            }));
+          } else if (session.user.user_metadata?.full_name) {
+            // Fallback sur les métadonnées utilisateur
+            localStorage.setItem(`lastKnownUsername_${userId}`, session.user.user_metadata.full_name);
+            console.log("Nom d'utilisateur récupéré des métadonnées:", session.user.user_metadata.full_name);
+            syncSuccess = true;
+            
+            // Déclencher un événement pour signaler que le nom est disponible
+            window.dispatchEvent(new CustomEvent('username:loaded', { 
+              detail: { username: session.user.user_metadata.full_name, userId }
+            }));
+          } else if (profileResult.error) {
+            console.error("Erreur lors de la récupération du profil:", profileResult.error);
+          }
+          
+          if (!syncSuccess) {
+            attempts++;
+            console.log(`Sync attempt ${attempts}/${maxAttempts} incomplete, retrying...`);
+          }
+        } catch (err) {
+          attempts++;
+          console.error(`Sync attempt ${attempts}/${maxAttempts} error:`, err);
+        }
       }
       
-      // Process balance data
-      if (balanceResult.data) {
-        const { balance, subscription, daily_session_count } = balanceResult.data;
+      // Check if a forced refresh was requested
+      const forceRefresh = localStorage.getItem('forceRefreshBalance');
+      if (forceRefresh === 'true') {
+        console.log("Force refresh detected, clearing flag");
+        localStorage.removeItem('forceRefreshBalance');
         
-        localStorage.setItem('currentBalance', String(balance));
-        localStorage.setItem('lastKnownBalance', String(balance));
-        localStorage.setItem('subscription', subscription);
-        localStorage.setItem('dailySessionCount', String(daily_session_count));
-        
-        // Dispatch event to notify components
-        window.dispatchEvent(new CustomEvent('user:refreshed', { 
-          detail: { balance, subscription, daily_session_count }
-        }));
-        
-        console.log("Balance data synced successfully:", { balance, subscription });
-      } else if (balanceResult.error) {
-        console.error("Error fetching balance:", balanceResult.error);
-      }
-      
-      // Fast initialization for UI
-      if (!isInitialized.current) {
-        window.dispatchEvent(new CustomEvent('user:fast-init', { 
+        // Déclencher un événement pour forcer la mise à jour de l'interface
+        window.dispatchEvent(new CustomEvent('balance:force-sync', { 
           detail: { 
-            username: localStorage.getItem('lastKnownUsername'),
-            subscription: localStorage.getItem('subscription'),
-            balance: localStorage.getItem('currentBalance')
+            balance: localStorage.getItem(userSpecificKeys.currentBalance),
+            subscription: localStorage.getItem(`subscription_${userId}`),
+            userId
           }
         }));
-        isInitialized.current = true;
       }
       
-      syncInProgress.current = false;
-      return true;
+      // Si la synchronisation a échoué après plusieurs tentatives
+      if (!syncSuccess && attempts >= maxAttempts) {
+        console.error("La synchronisation a échoué après plusieurs tentatives");
+        
+        // Notifier l'utilisateur en cas d'échec
+        toast({
+          title: "Synchronisation des données",
+          description: "Un problème est survenu lors de la récupération des données. Certaines fonctionnalités pourraient ne pas être disponibles.",
+          variant: "destructive",
+          duration: 5000
+        });
+      }
+      
+      localStorage.removeItem('data_syncing');
+      return syncSuccess;
     } catch (error) {
-      console.error("Error during user data sync:", error);
-      syncInProgress.current = false;
+      console.error("Error syncing user data:", error);
+      localStorage.removeItem('data_syncing');
+      
+      // Déclencher un événement pour informer d'une erreur de synchronisation
+      window.dispatchEvent(new CustomEvent('user:sync-error', { 
+        detail: { error: String(error) }
+      }));
+      
       return false;
     }
   }, []);
-  
-  // Run sync on mount and handle cleanup
-  useEffect(() => {
-    isMounted.current = true;
-    
-    // Initial sync with a short delay to ensure auth is ready
-    const initialSyncTimeout = setTimeout(() => {
-      if (isMounted.current) {
-        syncUserData(true);
-      }
-    }, 300);
-    
-    // Set up regular sync interval for keeping data fresh
-    const syncInterval = setInterval(() => {
-      if (isMounted.current && !syncInProgress.current) {
-        syncUserData();
-      }
-    }, 60000); // Sync every minute
-    
-    // Set up visibility change handler to sync when tab becomes active
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isMounted.current) {
-        syncUserData(true);
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Clean up all listeners and timeouts on unmount
-    return () => {
-      isMounted.current = false;
-      clearTimeout(initialSyncTimeout);
-      clearInterval(syncInterval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [syncUserData]);
-  
-  // Expose sync function so it can be called manually if needed
+
   return { syncUserData };
 };
-
-export default useUserDataSync;

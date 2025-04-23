@@ -46,10 +46,10 @@ const StatisticsDisplay: React.FC = () => {
   const userId = userData?.profile?.id;
   const CORRELATION_RATIO = 0.76203;
 
-  // Utilise le hook habituel, mais on gère MANUELLEMENT la progression locale
+  // S'assurer que nous utilisons l'ID de l'utilisateur pour obtenir des statistiques spécifiques
   const { adsCount: baseAdsCount, revenueCount: baseRevenueCount, incrementStats } = usePersistentStats({
     autoIncrement: false,
-    userId: userId || 'anonymous',
+    userId: userId || 'anonymous', // Clé pour isoler les données par utilisateur
     forceGrowth: true,
     correlationRatio: CORRELATION_RATIO
   });
@@ -58,36 +58,47 @@ const StatisticsDisplay: React.FC = () => {
   const [localAdsCount, setLocalAdsCount] = useState(baseAdsCount);
   const [localRevenueCount, setLocalRevenueCount] = useState(baseRevenueCount);
 
-  // Rafraîchit la base toutes les minutes
+  // Rafraîchit la base lorsque les données de base changent
   useEffect(() => {
-    setLocalAdsCount(baseAdsCount);
-    setLocalRevenueCount(baseRevenueCount);
-  }, [baseAdsCount, baseRevenueCount]);
+    if (userId) {
+      console.log(`StatisticsDisplay: Synchronisation avec userId=${userId}, ads=${baseAdsCount}, revenue=${baseRevenueCount}`);
+      setLocalAdsCount(baseAdsCount);
+      setLocalRevenueCount(baseRevenueCount);
+    }
+  }, [baseAdsCount, baseRevenueCount, userId]);
 
-  // Incréments très rares : toutes les 8-14 secondes ; progression non parfaite, "hésitante"
+  // Progression différente pour chaque utilisateur
   useEffect(() => {
     if (!userId) return;
+    
+    // Générer un taux spécifique à l'utilisateur pour éviter que tous les comptes progressent au même rythme
+    const userSpecificRate = userId ? 
+      (userId.charCodeAt(0) % 6 + 8) * 1000 : // Entre 8 et 14 secondes basé sur l'ID utilisateur
+      10000;
+    
     const updateInterval = setInterval(() => {
       setLocalAdsCount(prev => {
         const adsRand = Math.random();
         let adsIncrement = 0;
         if (adsRand > 0.94) adsIncrement = 2;
         else if (adsRand > 0.80) adsIncrement = 1;
-        // La plupart du temps pas d’évolution
+        // La plupart du temps pas d'évolution
         const nextAds = prev + adsIncrement;
         return nextAds;
       });
+      
       setLocalRevenueCount(prevRev => {
         // Ne fait progresser que si les pubs avancent, mais peut parfois rattraper en bloc
         const revenueRand = Math.random();
         let revInc = 0;
         if (revenueRand > 0.8) {
-          // Décorrélation douce du ratio attendu
-          revInc = (Math.random() * 2 + 0.4) * (CORRELATION_RATIO + ((Math.random() - 0.5) * 0.03));
+          // Décorrélation douce du ratio attendu avec variation basée sur l'ID utilisateur
+          const userVariation = userId ? (userId.charCodeAt(0) % 10) / 200 : 0; // Petite variation par utilisateur
+          revInc = (Math.random() * 2 + 0.4) * (CORRELATION_RATIO + ((Math.random() - 0.5) * 0.03) + userVariation);
         }
         return prevRev + revInc;
       });
-    }, 8000 + Math.floor(Math.random() * 6000)); // 8-14s
+    }, userSpecificRate + Math.floor(Math.random() * 6000)); // Variation supplémentaire dans l'intervalle
 
     return () => clearInterval(updateInterval);
   }, [userId]);
@@ -113,4 +124,3 @@ const StatisticsDisplay: React.FC = () => {
 };
 
 export default StatisticsDisplay;
-

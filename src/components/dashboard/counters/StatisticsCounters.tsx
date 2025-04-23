@@ -9,9 +9,10 @@ const StatisticsCounters: React.FC = () => {
   const userId = userData?.profile?.id;
   const CORRELATION_RATIO = 0.76203;
 
+  // Utiliser l'ID utilisateur pour isoler les statistiques
   const { adsCount: baseAdsCount, revenueCount: baseRevenueCount, incrementStats } = usePersistentStats({
     autoIncrement: false,
-    userId: userId || 'anonymous',
+    userId: userId || 'anonymous', // Utiliser l'ID de l'utilisateur comme clé
     forceGrowth: true,
     correlationRatio: CORRELATION_RATIO
   });
@@ -20,13 +21,24 @@ const StatisticsCounters: React.FC = () => {
   const [localAdsCount, setLocalAdsCount] = useState(baseAdsCount);
   const [localRevenueCount, setLocalRevenueCount] = useState(baseRevenueCount);
 
+  // Synchroniser avec les valeurs de base lorsqu'elles changent
   useEffect(() => {
-    setLocalAdsCount(baseAdsCount);
-    setLocalRevenueCount(baseRevenueCount);
-  }, [baseAdsCount, baseRevenueCount]);
+    if (userId) {
+      console.log(`StatisticsCounters: Synchronisation avec userId=${userId}, ads=${baseAdsCount}, revenue=${baseRevenueCount}`);
+      setLocalAdsCount(baseAdsCount);
+      setLocalRevenueCount(baseRevenueCount);
+    }
+  }, [baseAdsCount, baseRevenueCount, userId]);
 
+  // Progression locale différenciée par utilisateur
   useEffect(() => {
     if (!userId) return;
+    
+    // Utiliser un intervalle unique pour chaque utilisateur
+    const userSpecificRate = userId ? 
+      (userId.charCodeAt(0) % 5 + 8) * 1000 : // Entre 8 et 12 secondes, selon l'ID utilisateur
+      9500;
+    
     const updateInterval = setInterval(() => {
       setLocalAdsCount(prev => {
         let adsIncrement = 0;
@@ -35,14 +47,17 @@ const StatisticsCounters: React.FC = () => {
         else if (adsRand > 0.70) adsIncrement = 1;
         return prev + adsIncrement;
       });
+      
       setLocalRevenueCount(prevRev => {
         let revInc = 0;
         if (Math.random() > 0.82) {
-          revInc = (Math.random() * 1.7 + 0.25) * (CORRELATION_RATIO + ((Math.random() - 0.5) * 0.032));
+          // Variation légère basée sur l'ID utilisateur pour que chaque utilisateur ait un pattern différent
+          const userVariation = userId ? (userId.charCodeAt(0) % 10) / 100 : 0;
+          revInc = (Math.random() * 1.7 + 0.25) * (CORRELATION_RATIO + ((Math.random() - 0.5) * 0.032) + userVariation);
         }
         return prevRev + revInc;
       });
-    }, 9500 + Math.floor(Math.random() * 5000)); // toutes les 9,5s à 14,5s
+    }, userSpecificRate + Math.floor(Math.random() * 5000));
 
     return () => clearInterval(updateInterval);
   }, [userId]);
