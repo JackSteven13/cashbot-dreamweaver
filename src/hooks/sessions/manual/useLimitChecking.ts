@@ -3,7 +3,7 @@ import { toast } from '@/components/ui/use-toast';
 import { UserData } from '@/types/userData';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 import { getEffectiveSubscription } from '@/utils/subscription/subscriptionStatus';
-import { canStartManualSession } from '@/utils/subscription/sessionManagement';
+import { canStartManualSession, SessionCheckResult } from '@/utils/subscription/sessionManagement';
 
 export const useLimitChecking = () => {
   const checkSessionLimit = (
@@ -60,20 +60,34 @@ export const useLimitChecking = () => {
     }
     
     // Check if session can be started using the effective subscription
-    const canStartSessionEffective = effectiveSub !== 'freemium' ? true : 
-                                   canStartManualSession(userData.subscription || 'freemium', dailySessionCount, todaysGains);
+    const sessionCheckResult = canStartManualSession(userData.subscription || 'freemium', dailySessionCount, todaysGains);
     
-    if (!canStartSessionEffective.canStart) {
-      // If freemium account and session limit reached
-      toast({
-        title: "Limite atteinte",
-        description: canStartSessionEffective.reason || "Vous ne pouvez pas démarrer une nouvelle session maintenant.",
-        variant: "destructive"
-      });
-      return false;
+    // Fix: Handle both boolean and SessionCheckResult return types
+    if (typeof sessionCheckResult === 'boolean') {
+      // If it's boolean false, we assume it cannot start but don't have a specific reason
+      if (!sessionCheckResult) {
+        toast({
+          title: "Limite atteinte",
+          description: "Vous ne pouvez pas démarrer une nouvelle session maintenant.",
+          variant: "destructive"
+        });
+        return false;
+      }
+      // If it's true, then we can start
+      return true;
+    } else {
+      // It's a SessionCheckResult object
+      if (!sessionCheckResult.canStart) {
+        // If canStart is false, show reason
+        toast({
+          title: "Limite atteinte",
+          description: sessionCheckResult.reason || "Vous ne pouvez pas démarrer une nouvelle session maintenant.",
+          variant: "destructive"
+        });
+        return false;
+      }
+      return true;
     }
-    
-    return true;
   };
   
   const checkFinalGainLimit = (
