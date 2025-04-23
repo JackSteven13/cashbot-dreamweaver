@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
@@ -17,19 +16,17 @@ interface StatsCounterProps {
 }
 
 const StatsCounter = ({
-  dailyAdsTarget = 4723, // Valeur non-ronde plus réaliste
-  dailyRevenueTarget = 3819 // Valeur non-ronde plus réaliste
+  dailyAdsTarget = 4723,
+  dailyRevenueTarget = 3819
 }: StatsCounterProps) => {
   const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
     dailyAdsTarget,
     dailyRevenueTarget
   });
 
-  // Base de départ réaliste avec des chiffres irréguliers
   const MINIMUM_ADS = 36742;
-  const MINIMUM_REVENUE = 28000; // Augmenté pour maintenir la corrélation
+  const MINIMUM_REVENUE = 28000;
 
-  // Utiliser useRef pour stocker des valeurs stables entre les rendus
   const stableValuesRef = useRef({
     adsCount: MINIMUM_ADS,
     revenueCount: MINIMUM_REVENUE,
@@ -37,40 +34,55 @@ const StatsCounter = ({
     lastSyncTime: Date.now()
   });
   
-  // Définir un ratio de corrélation constant
   const CORRELATION_RATIO = 0.76203;
   
-  // État local pour l'affichage avec initialisation améliorée
   const [displayValues, setDisplayValues] = useState(() => {
-    // S'assurer que les valeurs ne diminuent jamais au démarrage
     ensureProgressiveValues();
-    
-    // Récupérer des valeurs cohérentes et réalistes dès le début
     const consistentStats = getDateConsistentStats();
-    
-    // Ajouter une légère variance aléatoire pour des nombres moins ronds
     const randomVariance = (value: number) => {
-      // Variation de ±0.5%
       const variance = 1 + ((Math.random() - 0.5) * 0.01);
       return Math.floor(value * variance);
     };
-    
-    // Toujours calculer les revenus en fonction des pubs pour assurer la corrélation
     const ads = Math.min(Math.max(randomVariance(MINIMUM_ADS), consistentStats.adsCount), 152847);
     const revenue = ads * CORRELATION_RATIO;
-    
     return {
       adsCount: ads,
       revenueCount: revenue
     };
   });
 
-  // Effet pour mettre à jour les valeurs affichées lors de la réception de nouvelles valeurs
+  useEffect(() => {
+    const regularUpdateInterval = setInterval(() => {
+      setDisplayValues(prev => {
+        const adsRand = Math.random();
+        let adsIncrement = 0;
+        if (adsRand > 0.85) adsIncrement = 2;
+        else if (adsRand > 0.55) adsIncrement = 1;
+        const newAdsCount = prev.adsCount + adsIncrement;
+
+        let newRevenueCount = prev.revenueCount;
+        if (adsIncrement > 0) {
+          const jitterRatio = CORRELATION_RATIO + ((Math.random() - 0.5) * 0.025);
+          const revenueIncrement = adsIncrement * jitterRatio;
+          if (Math.random() > 0.25) {
+            newRevenueCount = prev.revenueCount + revenueIncrement;
+          }
+        }
+        return {
+          adsCount: newAdsCount,
+          revenueCount: Math.floor(newRevenueCount)
+        };
+      });
+    }, 12000 + Math.floor(Math.random() * 5000));
+
+    return () => {
+      clearInterval(regularUpdateInterval);
+    };
+  }, []);
+
   useEffect(() => {
     if (displayedAdsCount > displayValues.adsCount) {
-      // Calculer le nouveau revenu en fonction des nouvelles publicités
       const newRevenue = displayedAdsCount * CORRELATION_RATIO;
-      
       setDisplayValues({
         adsCount: displayedAdsCount,
         revenueCount: newRevenue
@@ -78,22 +90,13 @@ const StatsCounter = ({
     }
   }, [displayedAdsCount]);
 
-  // Effet pour gérer la visibilité de la page
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Quand la page redevient visible, s'assurer que les valeurs sont correctes
         ensureProgressiveValues();
-        
-        // Récupérer les valeurs cohérentes
         const consistentStats = getDateConsistentStats();
-        
-        // Utiliser les valeurs maximales pour éviter toute diminution
         const maxAdsCount = Math.max(displayValues.adsCount, consistentStats.adsCount);
-        // Toujours calculer les revenus à partir des publicités
         const newRevenueCount = maxAdsCount * CORRELATION_RATIO;
-        
-        // Mettre à jour l'affichage et persister
         setDisplayValues({
           adsCount: maxAdsCount,
           revenueCount: newRevenueCount
@@ -110,10 +113,8 @@ const StatsCounter = ({
     };
   }, [displayValues]);
 
-  // Persister les valeurs avant le déchargement de la page
   useEffect(() => {
     const handleBeforeUnload = () => {
-      // Sauvegarder les valeurs actuelles avec synchronisation parfaite
       localStorage.setItem('last_displayed_ads_count', displayValues.adsCount.toString());
       localStorage.setItem('last_displayed_revenue_count', (displayValues.adsCount * CORRELATION_RATIO).toString());
     };
@@ -125,39 +126,12 @@ const StatsCounter = ({
     };
   }, [displayValues]);
 
-  // Créer un intervalle pour des mises à jour régulières avec synchronisation forcée
-  useEffect(() => {
-    const regularUpdateInterval = setInterval(() => {
-      // Incrémenter légèrement les annonces
-      const adsIncrement = Math.floor(Math.random() * 5) + 1; // 1-5 annonces par mise à jour
-      
-      setDisplayValues(prev => {
-        const newAdsCount = prev.adsCount + adsIncrement;
-        // Calculer DIRECTEMENT le revenu en fonction des publicités
-        const newRevenueCount = newAdsCount * CORRELATION_RATIO;
-        
-        return {
-          adsCount: newAdsCount,
-          revenueCount: newRevenueCount
-        };
-      });
-      
-    }, 5000); // Toutes les 5 secondes
-    
-    return () => {
-      clearInterval(regularUpdateInterval);
-    };
-  }, []);
-
-  // Ajouter une légère variation aux valeurs affichées pour éviter les nombres trop ronds
   const formatAdsDisplay = (value: number) => {
-    // Formater avec des chiffres irréguliers (non multiples de 1000)
     const baseFormatted = Math.floor(value).toLocaleString('fr-FR');
     return baseFormatted;
   };
   
   const formatRevenueDisplay = (value: number) => {
-    // Formater avec 2 décimales pour plus de réalisme
     return formatRevenue(value);
   };
 
