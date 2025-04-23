@@ -35,24 +35,28 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
   lastSessionTimestamp,
   isBotActive = true
 }) => {
-  // S'assurer que les nouveaux utilisateurs commencent TOUJOURS avec un solde à 0
-  let displayBalance = isNewUser ? 0 : balance;
+  // STRICT: les nouveaux utilisateurs ont TOUJOURS un solde à 0
+  const displayBalance = isNewUser ? 0 : balance;
+  
+  console.log(`DashboardMetrics: isNewUser=${isNewUser}, balance=${balance}, displayBalance=${displayBalance}`);
   
   // Pour les comptes freemium, limiter l'affichage du solde à la limite quotidienne
-  if (subscription === 'freemium' && !isNewUser) {
-    const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    displayBalance = Math.min(balance, dailyLimit * 20); // Limiter à 20 jours de revenus maximum
-  }
+  const adjustedBalance = isNewUser 
+    ? 0 
+    : (subscription === 'freemium' 
+        ? Math.min(displayBalance, 20) // Limiter à 20€ maximum pour freemium
+        : displayBalance);
   
   // Calculer les gains issus des parrainages
   const referralBonus = isNewUser ? 0 : (referrals?.reduce((total, ref) => total + (ref.commission_earned || 0), 0) || 0);
+  
   // Compter le nombre de parrainages actifs
   const activeReferralCount = isNewUser ? 0 : (referrals?.filter(ref => ref.active !== false)?.length || 0);
   
   return (
     <div className="dashboard-metrics space-y-6">
       <SummaryPanel
-        balance={displayBalance}
+        balance={adjustedBalance}
         referralLink={referralLink}
         isStartingSession={isStartingSession}
         handleStartSession={handleStartSession}

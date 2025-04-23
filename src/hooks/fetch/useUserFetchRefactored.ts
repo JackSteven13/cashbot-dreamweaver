@@ -4,6 +4,7 @@ import { UserData } from '@/types/userData';
 import { useUserDataFetcher } from '../useUserDataFetcher';
 import { useFetchData } from './useFetchData';
 import { ensureZeroBalanceForNewUser } from '@/utils/userDataInitializer';
+import { cleanOtherUserData } from '@/utils/balance/balanceStorage';
 
 export type { UserData };
 
@@ -36,31 +37,40 @@ export const useUserFetchRefactored = (): UserFetchResult => {
 
   // Effect for mounting and initial data fetch
   useEffect(() => {
-    console.log("useUserFetch mounting");
+    console.log("useUserFetch mounting, isNewUser:", isNewUser);
     isMounted.current = true;
     
     if (!initialFetchAttempted.current) {
-      initialFetchAttempted.current = false;
+      initialFetchAttempted.current = true;
       
       // Nettoyer toutes les données statistiques préexistantes au chargement initial pour les nouveaux utilisateurs
       if (isNewUser) {
+        console.log("Nettoyage complet des données localStorage pour nouvel utilisateur");
         try {
-          // Nettoyer spécifiquement les statistiques et les soldes
-          const keysToClean = Object.keys(localStorage).filter(key => 
-            key.startsWith('user_stats_') || 
-            key.startsWith('currentBalance_') || 
-            key.startsWith('lastKnownBalance_')
-          );
-          
-          for (const key of keysToClean) {
-            localStorage.removeItem(key);
+          // Supprimer TOUTES les clés qui pourraient contenir des données d'autres utilisateurs
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (
+              key.startsWith('user_stats_') || 
+              key.startsWith('currentBalance_') || 
+              key.startsWith('lastKnownBalance_') ||
+              key.startsWith('lastUpdatedBalance_') ||
+              key.startsWith('highest_balance_') ||
+              key === 'currentBalance' ||
+              key === 'lastKnownBalance' ||
+              key === 'lastUpdatedBalance'
+            )) {
+              localStorage.removeItem(key);
+            }
           }
           
-          // Réinitialiser les clés génériques aussi
-          localStorage.removeItem('currentBalance');
-          localStorage.removeItem('lastKnownBalance');
-          localStorage.removeItem('lastUpdatedBalance');
-          sessionStorage.removeItem('currentBalance');
+          // Nettoyer également les données de sessionStorage
+          Object.keys(sessionStorage).forEach(key => {
+            if (key.startsWith('currentBalance_') || key === 'currentBalance') {
+              sessionStorage.removeItem(key);
+            }
+          });
+          
         } catch (e) {
           console.error('Error cleaning localStorage during initial mount:', e);
         }
@@ -83,6 +93,15 @@ export const useUserFetchRefactored = (): UserFetchResult => {
       }
     };
   }, [fetchData, isNewUser]);
+
+  // Si nous avons un utilisateur avec un ID, nettoyer les données des autres utilisateurs
+  useEffect(() => {
+    if (fetchedUserData?.profile?.id && !isLoading) {
+      const userId = fetchedUserData.profile.id;
+      console.log("Nettoyage des données pour isoler utilisateur:", userId);
+      cleanOtherUserData(userId);
+    }
+  }, [fetchedUserData?.profile?.id, isLoading]);
 
   // Apply the rule for new users (zero balance)
   const correctedUserData = ensureZeroBalanceForNewUser(isNewUser, fetchedUserData);

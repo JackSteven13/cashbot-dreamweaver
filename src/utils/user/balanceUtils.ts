@@ -51,17 +51,57 @@ export const fetchUserBalance = async (userId: string) => {
               return null;
             }
             
-            console.log("Compte créé via insertion directe avec solde à 0");
+            console.log("NOUVEL UTILISATEUR: Compte créé via insertion directe avec solde à 0");
+            
+            // Nettoyer toutes les données locales pour ce nouvel utilisateur
+            try {
+              // Supprimer toutes les clés de localStorage qui pourraient être liées au solde
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (
+                  key.startsWith('currentBalance') ||
+                  key.startsWith('lastKnownBalance') ||
+                  key.startsWith('lastUpdatedBalance') ||
+                  key.startsWith('highest_balance') ||
+                  key.startsWith('user_stats_')
+                )) {
+                  localStorage.removeItem(key);
+                }
+              }
+            } catch (e) {
+              console.error("Erreur lors du nettoyage des données locales:", e);
+            }
+            
             return { data: directInsert?.[0], isNewUser: true };
           }
           
-          // If array returned, get first element
+          console.log("NOUVEL UTILISATEUR: Compte créé via RPC avec solde à 0");
+          
+          // Array returned, get first element
           const balanceData = Array.isArray(newBalance) ? newBalance[0] : newBalance;
-          console.log("Compte créé via RPC avec solde à 0");
           
           // Double-vérifier que le solde est à 0 pour nouveau compte
           if (balanceData) {
             balanceData.balance = 0;
+            
+            // Nettoyer toutes les données locales pour ce nouvel utilisateur
+            try {
+              // Supprimer toutes les clés de localStorage qui pourraient être liées au solde
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (
+                  key.startsWith('currentBalance') ||
+                  key.startsWith('lastKnownBalance') ||
+                  key.startsWith('lastUpdatedBalance') ||
+                  key.startsWith('highest_balance') ||
+                  key.startsWith('user_stats_')
+                )) {
+                  localStorage.removeItem(key);
+                }
+              }
+            } catch (e) {
+              console.error("Erreur lors du nettoyage des données locales:", e);
+            }
           }
           
           return { data: balanceData, isNewUser: true };
@@ -90,7 +130,27 @@ export const fetchUserBalance = async (userId: string) => {
       const isConfirmedNewUser = !txError && (!transactions || transactions.length === 0);
       
       if (isConfirmedNewUser) {
-        console.log("Utilisateur détecté comme nouveau basé sur l'absence de transactions");
+        console.log("NOUVEL UTILISATEUR: détecté comme nouveau basé sur l'absence de transactions");
+        
+        // Nettoyer toutes les données locales pour ce nouvel utilisateur
+        try {
+          // Supprimer toutes les clés de localStorage qui pourraient être liées au solde
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (
+              key.startsWith('currentBalance') ||
+              key.startsWith('lastKnownBalance') ||
+              key.startsWith('lastUpdatedBalance') ||
+              key.startsWith('highest_balance') ||
+              key.startsWith('user_stats_')
+            )) {
+              localStorage.removeItem(key);
+            }
+          }
+        } catch (e) {
+          console.error("Erreur lors du nettoyage des données locales:", e);
+        }
+        
         return { data: userBalanceData, isNewUser: true };
       }
     }

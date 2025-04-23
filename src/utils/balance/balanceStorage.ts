@@ -5,22 +5,32 @@ export const getUserSpecificKeys = (userId: string): BalanceStorageKeys => ({
   currentBalance: `currentBalance_${userId}`,
   lastKnownBalance: `lastKnownBalance_${userId}`,
   lastUpdatedBalance: `lastUpdatedBalance_${userId}`,
-  sessionCurrentBalance: `currentBalance_${userId}`
+  sessionCurrentBalance: `currentBalance_${userId}`,
+  highestBalance: `highest_balance_${userId}`
 });
 
 export const persistBalance = (balance: number, userId?: string): void => {
   try {
-    if (userId) {
-      const keys = getUserSpecificKeys(userId);
-      Object.values(keys).forEach(key => {
-        localStorage.setItem(key, balance.toString());
-      });
+    if (!userId) {
+      console.error("Impossible de persister le solde sans ID utilisateur");
+      return;
     }
-    // Toujours mettre à jour les clés génériques pour la compatibilité ascendante
-    localStorage.setItem('currentBalance', balance.toString());
-    localStorage.setItem('lastKnownBalance', balance.toString());
-    localStorage.setItem('lastUpdatedBalance', balance.toString());
-    sessionStorage.setItem('currentBalance', balance.toString());
+    
+    console.log(`Persistance du solde ${balance}€ pour utilisateur ${userId}`);
+    
+    const keys = getUserSpecificKeys(userId);
+    
+    // Persister le solde avec des clés spécifiques à l'utilisateur
+    localStorage.setItem(keys.currentBalance, balance.toString());
+    localStorage.setItem(keys.lastKnownBalance, balance.toString());
+    localStorage.setItem(keys.lastUpdatedBalance, balance.toString());
+    sessionStorage.setItem(keys.sessionCurrentBalance, balance.toString());
+    
+    // Supprimer les clés génériques pour éviter la contamination
+    localStorage.removeItem('currentBalance');
+    localStorage.removeItem('lastKnownBalance');
+    localStorage.removeItem('lastUpdatedBalance');
+    sessionStorage.removeItem('currentBalance');
   } catch (e) {
     console.error("Failed to persist balance:", e);
   }
@@ -28,21 +38,67 @@ export const persistBalance = (balance: number, userId?: string): void => {
 
 export const getPersistedBalance = (userId?: string): number => {
   try {
-    const sources = userId 
-      ? Object.values(getUserSpecificKeys(userId)).map(key => localStorage.getItem(key))
-      : [
-          localStorage.getItem('currentBalance'),
-          localStorage.getItem('lastKnownBalance'),
-          localStorage.getItem('lastUpdatedBalance')
-        ];
+    if (!userId) {
+      console.error("Impossible de récupérer le solde sans ID utilisateur");
+      return 0;
+    }
+    
+    const keys = getUserSpecificKeys(userId);
+    
+    // Collecter toutes les sources spécifiques à l'utilisateur
+    const sources = [
+      localStorage.getItem(keys.currentBalance),
+      localStorage.getItem(keys.lastKnownBalance),
+      localStorage.getItem(keys.lastUpdatedBalance),
+      sessionStorage.getItem(keys.sessionCurrentBalance)
+    ];
 
     const validBalances = sources
       .map(val => val ? parseFloat(val) : 0)
       .filter(num => !isNaN(num) && num > 0);
 
-    return validBalances.length > 0 ? Math.max(...validBalances) : 0;
+    // Si on trouve des valeurs valides, utiliser la plus élevée
+    if (validBalances.length > 0) {
+      const maxBalance = Math.max(...validBalances);
+      console.log(`Solde récupéré pour ${userId}: ${maxBalance}€`);
+      return maxBalance;
+    }
+    
+    console.log(`Aucun solde trouvé pour ${userId}, retour à 0€`);
+    return 0;
   } catch (e) {
     console.error("Failed to get persisted balance:", e);
     return 0;
+  }
+};
+
+// Fonction pour nettoyer complètement les données d'un autre utilisateur
+export const cleanOtherUserData = (currentUserId: string): void => {
+  try {
+    console.log("Nettoyage des données d'autres utilisateurs, utilisateur actuel:", currentUserId);
+    
+    // Parcourir toutes les clés de localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      
+      // Détecter les clés spécifiques à un utilisateur
+      if (key.includes('_') && key !== `currentBalance_${currentUserId}` && 
+          key !== `lastKnownBalance_${currentUserId}` &&
+          key !== `lastUpdatedBalance_${currentUserId}` &&
+          key !== `highest_balance_${currentUserId}`) {
+        
+        // Ne supprimer que les clés liées au solde d'autres utilisateurs
+        if (key.startsWith('currentBalance_') || 
+            key.startsWith('lastKnownBalance_') || 
+            key.startsWith('lastUpdatedBalance_') ||
+            key.startsWith('highest_balance_')) {
+          console.log("Suppression clé d'un autre utilisateur:", key);
+          localStorage.removeItem(key);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Erreur lors du nettoyage des données:", e);
   }
 };

@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -13,67 +14,45 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
       setIsBalanceLoading(true);
       console.log("Loading balance for user:", userId);
       
-      // Clés spécifiques à l'utilisateur pour le stockage local
-      const userSpecificKeys = {
-        currentBalance: `currentBalance_${userId}`,
-        lastKnownBalance: `lastKnownBalance_${userId}`,
-        lastUpdatedBalance: `lastUpdatedBalance_${userId}`,
-        highestBalance: `highest_balance_${userId}`,
-        sessionCurrentBalance: `currentBalance_${userId}` // Pour sessionStorage
-      };
-      
-      // Récupérer le solde local avant toute opération réseau
-      const localBalance = balanceManager.getCurrentBalance();
-      let highestLocalBalance = 0;
-      
-      // Vérifier si getHighestBalance existe et l'utiliser
-      if (typeof balanceManager.getHighestBalance === 'function') {
-        highestLocalBalance = balanceManager.getHighestBalance();
-      } else {
-        // Fallback si la méthode n'existe pas
-        highestLocalBalance = parseFloat(localStorage.getItem(userSpecificKeys.highestBalance) || '0');
-      }
-      
-      // Collecter toutes les sources potentielles de solde
-      const sources = [
-        localBalance,
-        highestLocalBalance,
-        parseFloat(localStorage.getItem(userSpecificKeys.currentBalance) || '0'),
-        parseFloat(localStorage.getItem(userSpecificKeys.lastKnownBalance) || '0'),
-        parseFloat(localStorage.getItem(userSpecificKeys.lastUpdatedBalance) || '0'),
-        parseFloat(sessionStorage.getItem(userSpecificKeys.sessionCurrentBalance) || '0')
-      ];
-      
-      // Filtrer les valeurs NaN et trouver le maximum
-      const maxLocalBalance = Math.max(...sources.filter(val => !isNaN(val) && val > 0));
-      
-      // S'assurer que nous avons une valeur valide
-      const validLocalBalance = maxLocalBalance > 0 ? maxLocalBalance : 0;
-      
-      console.log(`Solde local avant chargement pour ${userId}: ${validLocalBalance}€ (record: ${highestLocalBalance}€)`);
-      
-      // Fetch balance from user_balances table instead of profiles
+      // Fetch balance from user_balances table
       const { data: balanceData, error: balanceError } = await supabase
         .from('user_balances')
-        .select('balance')
+        .select('balance, daily_session_count')
         .eq('id', userId)
         .single();
       
       if (balanceError) {
         console.error("Error loading balance:", balanceError);
         
-        // En cas d'erreur, utiliser le solde local s'il existe et est valide
-        if (validLocalBalance > 0) {
-          console.log(`Utilisation du solde local en cas d'erreur pour ${userId}: ${validLocalBalance}€`);
+        if (balanceError.code === 'PGRST116') {
+          // No balance record found - definitely a new user
+          console.log("No balance record found, user is new");
+          setIsNewUser(true);
           setIsBalanceLoaded(true);
           
-          // Informer le système que les données utilisateur sont chargées avec le solde local
-          window.dispatchEvent(new CustomEvent('user:data-loaded', { 
-            detail: { balance: validLocalBalance, source: 'local-fallback', userId }
-          }));
+          // Forcer le solde à 0 pour un nouvel utilisateur
+          balanceManager.forceBalanceSync(0, userId);
+          
+          // Nettoyer toutes les données préexistantes
+          try {
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && (
+                key.startsWith('currentBalance') ||
+                key.startsWith('lastKnownBalance') ||
+                key.startsWith('lastUpdatedBalance') ||
+                key.startsWith('highest_balance') ||
+                key.startsWith('user_stats_')
+              )) {
+                localStorage.removeItem(key);
+              }
+            }
+          } catch (e) {
+            console.error("Erreur lors du nettoyage des données locales:", e);
+          }
           
           return {
-            balance: validLocalBalance,
+            balance: 0,
             loaded: true
           };
         }
@@ -81,87 +60,59 @@ export const useBalanceLoader = (setIsNewUser: (isNew: boolean) => void) => {
         return null;
       }
       
-      // If balance exists, use it
-      if (balanceData && typeof balanceData.balance === 'number') {
+      // If balance exists, check if it's a new user (zero balance and no sessions)
+      if (balanceData) {
         // S'assurer que serverBalance est un nombre valide
         const serverBalance = balanceData.balance !== null && !isNaN(balanceData.balance) 
           ? parseFloat(balanceData.balance.toFixed(2)) 
           : 0;
         
-        // Comparer avec le solde local et prendre le plus élevé
-        const effectiveBalance = Math.max(serverBalance, validLocalBalance);
+        const isUserNew = serverBalance === 0 && balanceData.daily_session_count === 0;
         
-        // If balance is zero or very low, might be a new user
-        if (effectiveBalance <= 0.1) {
-          console.log("User appears to be new (zero or very low balance)");
+        if (isUserNew) {
+          console.log("User appears to be new (zero balance)");
           setIsNewUser(true);
+          
+          // Pour les nouveaux utilisateurs, forcer à 0 et nettoyer toutes les données
+          balanceManager.forceBalanceSync(0, userId);
+          
+          try {
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && (
+                key.startsWith('currentBalance') ||
+                key.startsWith('lastKnownBalance') ||
+                key.startsWith('lastUpdatedBalance') ||
+                key.startsWith('highest_balance') ||
+                key.startsWith('user_stats_')
+              )) {
+                localStorage.removeItem(key);
+              }
+            }
+          } catch (e) {
+            console.error("Erreur lors du nettoyage des données locales:", e);
+          }
+          
         } else {
           setIsNewUser(false);
+          // Utilisateur existant, utiliser son solde du serveur
+          balanceManager.forceBalanceSync(serverBalance, userId);
         }
         
-        // Informer balanceManager du solde du serveur pour comparaison
-        balanceManager.checkForSignificantBalanceChange(serverBalance);
-        
-        // Synchronize with balance manager, always keeping the highest value
-        balanceManager.forceBalanceSync(effectiveBalance, userId);
-        
-        // Persister dans toutes les sources pour éviter les pertes avec des clés spécifiques à l'utilisateur
-        localStorage.setItem(userSpecificKeys.lastKnownBalance, effectiveBalance.toString());
-        localStorage.setItem(userSpecificKeys.currentBalance, effectiveBalance.toString());
-        localStorage.setItem(userSpecificKeys.lastUpdatedBalance, effectiveBalance.toString());
-        sessionStorage.setItem(userSpecificKeys.sessionCurrentBalance, effectiveBalance.toString());
-        
-        console.log(`Solde chargé pour ${userId}: ${effectiveBalance}€ (serveur: ${serverBalance}€, local: ${validLocalBalance}€)`);
+        console.log(`Solde chargé pour ${userId}: ${serverBalance}€ (nouveau: ${isUserNew})`);
         setIsBalanceLoaded(true);
         
-        // Store highest balance seen with clé spécifique à l'utilisateur
-        if (typeof balanceManager.updateHighestBalance === 'function') {
-          balanceManager.updateHighestBalance(effectiveBalance);
-        } else {
-          // Fallback si la méthode n'existe pas
-          localStorage.setItem(userSpecificKeys.highestBalance, effectiveBalance.toString());
-        }
-        
-        // Informer le système que les données utilisateur sont chargées
-        window.dispatchEvent(new CustomEvent('user:data-loaded', { 
-          detail: { 
-            balance: effectiveBalance, 
-            serverBalance, 
-            localBalance: validLocalBalance, 
-            source: 'server',
-            userId 
-          }
-        }));
-        
         return {
-          balance: effectiveBalance,
+          balance: isUserNew ? 0 : serverBalance,
           loaded: true
         };
       } else {
-        console.log("No balance found, user might be new");
-        
-        // Si aucun solde serveur mais un solde local existe et est significatif
-        if (validLocalBalance > 0.5) {
-          console.log(`Utilisation du solde local existant pour ${userId}: ${validLocalBalance}€`);
-          setIsBalanceLoaded(true);
-          setIsNewUser(false);
-          
-          // Informer le système que les données utilisateur sont chargées
-          window.dispatchEvent(new CustomEvent('user:data-loaded', { 
-            detail: { balance: validLocalBalance, source: 'local-only', userId }
-          }));
-          
-          return {
-            balance: validLocalBalance,
-            loaded: true
-          };
-        } else {
-          setIsNewUser(true);
-          return {
-            balance: 0,
-            loaded: false
-          };
-        }
+        console.log("No balance data found, user might be new");
+        setIsNewUser(true);
+        return {
+          balance: 0,
+          loaded: false
+        };
       }
     } catch (error) {
       console.error("Error in loadUserBalance:", error);

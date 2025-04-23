@@ -29,38 +29,38 @@ export const ensureZeroBalanceForNewUser = (isNewUser: boolean, userData: UserDa
     try {
       const userId = userData?.profile?.id || 'anonymous';
       
-      // Nettoyer toutes les données spécifiques à cet utilisateur
-      if (userId && userId !== 'anonymous') {
-        // Nettoyer toutes les clés de localStorage liées aux statistiques pour TOUS les utilisateurs
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (
-            key.startsWith('user_stats_') ||
-            key.startsWith('currentBalance_') ||
-            key.startsWith('lastKnownBalance_') ||
-            key.startsWith('lastUpdatedBalance_')
-          )) {
-            localStorage.removeItem(key);
-          }
+      console.log("NETTOYAGE COMPLET pour nouvel utilisateur:", userId);
+      
+      // NETTOYAGE RADICAL - Supprimer TOUTES les données de solde dans localStorage
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (
+          key.startsWith('user_stats_') ||
+          key.startsWith('currentBalance_') ||
+          key.startsWith('lastKnownBalance_') ||
+          key.startsWith('lastUpdatedBalance_') ||
+          key.startsWith('highest_balance_') ||
+          key === 'currentBalance' ||
+          key === 'lastKnownBalance' ||
+          key === 'lastUpdatedBalance'
+        )) {
+          console.log("Suppression clé:", key);
+          localStorage.removeItem(key);
         }
-        
-        // Nettoyer également les données de session
-        for (const key in sessionStorage) {
-          if (key.startsWith('currentBalance_')) {
-            sessionStorage.removeItem(key);
-          }
+      }
+      
+      // Nettoyer également les données de session
+      for (const key in sessionStorage) {
+        if (key.startsWith('currentBalance_') || key === 'currentBalance') {
+          sessionStorage.removeItem(key);
         }
-        
-        // Réinitialiser les clés génériques aussi pour les nouveaux utilisateurs
-        localStorage.removeItem('currentBalance');
-        localStorage.removeItem('lastKnownBalance');
-        localStorage.removeItem('lastUpdatedBalance');
-        sessionStorage.removeItem('currentBalance');
       }
     } catch (e) {
       console.error('Error cleaning localStorage for new user:', e);
     }
 
+    console.log("Données utilisateur réinitialisées pour nouvel utilisateur");
+    
     return {
       ...userData,
       balance: 0,

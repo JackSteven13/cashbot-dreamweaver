@@ -5,6 +5,7 @@ import useUserDataSync from './useUserDataSync';
 import { toast } from "@/components/ui/use-toast";
 import balanceManager from "@/utils/balance/balanceManager";
 import { UserData } from '@/types/userData';
+import { cleanOtherUserData } from '@/utils/balance/balanceStorage';
 
 export const useInitUserData = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -21,44 +22,46 @@ export const useInitUserData = () => {
       setIsInitializing(true);
       
       try {
-        // Check for cached data first for instant UI update
-        const cachedName = localStorage.getItem('lastKnownUsername');
-        const cachedSubscription = localStorage.getItem('subscription');
-        const cachedBalance = localStorage.getItem('currentBalance');
-        
-        if (cachedName) setUsername(cachedName);
-        if (cachedSubscription) setSubscription(cachedSubscription);
-        if (cachedBalance) setBalance(parseFloat(cachedBalance));
-        
-        // Check if we have an active session
+        // Check for an active session first
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
-          console.log("Active session found, syncing user data...");
+          console.log("Active session found, user ID:", session.user.id);
           const userId = session.user.id;
           
-          // Nettoyer les données d'autres utilisateurs dans localStorage
+          // IMPORTANT: Nettoyer complètement les données d'autres utilisateurs
+          cleanOtherUserData(userId);
+          
+          // Pour les nouveaux utilisateurs, nettoyer également toutes les données génériques
           try {
-            // Supprimer TOUTES les données de solde pour commencer avec un état propre
-            const userSpecificKeyPrefix = `currentBalance_${userId}`;
-            const statsKeyPrefix = `user_stats_${userId}`;
-            
-            // Pour les nouveaux utilisateurs, nettoyer toutes les données statistiques et de solde
-            Object.keys(localStorage).forEach(key => {
-              // Isoler les données en ne gardant que celles spécifiques à cet utilisateur
-              if (
-                (key.startsWith('currentBalance_') && !key.startsWith(userSpecificKeyPrefix)) ||
-                (key.startsWith('lastKnownBalance_') && !key.includes(userId)) ||
-                (key.startsWith('lastUpdatedBalance_') && !key.includes(userId)) ||
-                (key.startsWith('user_stats_') && !key.startsWith(statsKeyPrefix))
-              ) {
-                localStorage.removeItem(key);
-              }
-            });
+            console.log("Nettoyage des données génériques de localStorage");
+            localStorage.removeItem('currentBalance');
+            localStorage.removeItem('lastKnownBalance');
+            localStorage.removeItem('lastUpdatedBalance');
+            sessionStorage.removeItem('currentBalance');
           } catch (e) {
-            console.error('Error cleaning localStorage for user isolation:', e);
+            console.error('Error cleaning generic localStorage keys:', e);
           }
           
+          // Maintenant, on peut essayer de charger les données spécifiques à l'utilisateur
+          const userSpecificKeys = {
+            username: `lastKnownUsername_${userId}`,
+            subscription: `subscription_${userId}`,
+            balance: `lastKnownBalance_${userId}`
+          };
+          
+          const cachedName = localStorage.getItem(userSpecificKeys.username);
+          const cachedSubscription = localStorage.getItem(userSpecificKeys.subscription);
+          const cachedBalance = localStorage.getItem(userSpecificKeys.balance);
+          
+          if (cachedName) setUsername(cachedName);
+          if (cachedSubscription) setSubscription(cachedSubscription);
+          if (cachedBalance) {
+            const parsedBalance = parseFloat(cachedBalance);
+            if (!isNaN(parsedBalance)) setBalance(parsedBalance);
+          }
+          
+          console.log("Syncing user data for:", userId);
           const syncSuccess = await syncUserData(true);
           
           if (!syncSuccess) {
@@ -71,14 +74,6 @@ export const useInitUserData = () => {
               window.dispatchEvent(new CustomEvent('bot:status-change', {
                 detail: { active: true, userId: session.user.id }
               }));
-              
-              // Initialiser le gestionnaire de solde avec l'ID utilisateur
-              if (cachedBalance) {
-                const parsedBalance = parseFloat(cachedBalance);
-                if (!isNaN(parsedBalance)) {
-                  balanceManager.forceBalanceSync(0, userId); // Forcer à 0 pour les nouveaux utilisateurs
-                }
-              }
             }, 1000);
           } else {
             // Activer les agents IA après une synchronisation réussie
@@ -86,8 +81,7 @@ export const useInitUserData = () => {
               detail: { active: true, userId: session.user.id }
             }));
             
-            // Initialiser le gestionnaire de solde avec l'ID utilisateur
-            // Vérifier si c'est un nouvel utilisateur en regardant les données de l'utilisateur
+            // Vérifier si c'est un nouvel utilisateur
             const { data: userBalanceData } = await supabase
               .from('user_balances')
               .select('balance, daily_session_count')
@@ -98,15 +92,8 @@ export const useInitUserData = () => {
                                  (userBalanceData.balance === 0 && userBalanceData.daily_session_count === 0);
             
             if (isLikelyNewUser) {
-              // Réinitialiser complètement les données pour les nouveaux utilisateurs
+              console.log("Utilisateur détecté comme nouveau, réinitialisation du solde");
               balanceManager.forceBalanceSync(0, userId);
-              
-              // Nettoyer également les autres données de statistiques
-              Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('user_stats_')) {
-                  localStorage.removeItem(key);
-                }
-              });
             } else if (cachedBalance) {
               const parsedBalance = parseFloat(cachedBalance);
               if (!isNaN(parsedBalance)) {
@@ -122,12 +109,24 @@ export const useInitUserData = () => {
             const statsKeys = Object.keys(localStorage).filter(key => 
               key.startsWith('user_stats_') || 
               key.startsWith('currentBalance_') || 
-              key.startsWith('lastKnownBalance_')
+              key.startsWith('lastKnownBalance_') ||
+              key.startsWith('lastUpdatedBalance_') ||
+              key.startsWith('highest_balance_') ||
+              key === 'currentBalance' ||
+              key === 'lastKnownBalance' ||
+              key === 'lastUpdatedBalance'
             );
             
             for (const key of statsKeys) {
               localStorage.removeItem(key);
             }
+            
+            // Nettoyer également sessionStorage
+            Object.keys(sessionStorage).forEach(key => {
+              if (key.startsWith('currentBalance_') || key === 'currentBalance') {
+                sessionStorage.removeItem(key);
+              }
+            });
           } catch (e) {
             console.error('Error cleaning localStorage for anonymous user:', e);
           }
@@ -145,10 +144,17 @@ export const useInitUserData = () => {
     
     // Listen for data update events
     const handleUserDataRefreshed = (event: any) => {
-      const { username, subscription, balance, userData } = event.detail;
+      const { username, subscription, balance, userData, isNewUser } = event.detail;
       if (username) setUsername(username);
       if (subscription) setSubscription(subscription);
-      if (balance !== undefined) setBalance(parseFloat(String(balance)));
+      
+      // Si nouvel utilisateur, forcer le solde à 0 quoi qu'il arrive
+      if (isNewUser) {
+        setBalance(0);
+      } else if (balance !== undefined) {
+        setBalance(parseFloat(String(balance)));
+      }
+      
       if (userData) setUserData(userData);
     };
     
