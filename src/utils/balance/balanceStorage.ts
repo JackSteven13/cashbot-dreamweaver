@@ -89,28 +89,42 @@ export const cleanOtherUserData = (currentUserId: string): void => {
       const key = localStorage.key(i);
       if (!key) continue;
       
-      // Détecter les clés spécifiques à un utilisateur
+      // Détecter les clés spécifiques à un utilisateur (y compris les noms d'utilisateurs)
       if (key.includes('_') && key !== `currentBalance_${currentUserId}` && 
           key !== `lastKnownBalance_${currentUserId}` &&
           key !== `lastUpdatedBalance_${currentUserId}` &&
-          key !== `highest_balance_${currentUserId}`) {
+          key !== `highest_balance_${currentUserId}` &&
+          key !== `lastKnownUsername_${currentUserId}` && // Ajout de la clé de nom spécifique
+          key !== `subscription_${currentUserId}`) { // Ajout de la clé d'abonnement
         
-        // Ne supprimer que les clés liées au solde d'autres utilisateurs
+        // Ne supprimer que les clés liées aux données utilisateur d'autres utilisateurs
         if (key.startsWith('currentBalance_') || 
             key.startsWith('lastKnownBalance_') || 
             key.startsWith('lastUpdatedBalance_') ||
-            key.startsWith('highest_balance_')) {
+            key.startsWith('highest_balance_') ||
+            key.startsWith('lastKnownUsername_') ||  // Ajout de la clé de nom
+            key.startsWith('subscription_')) {       // Ajout de la clé d'abonnement
           console.log("Suppression clé d'un autre utilisateur:", key);
           localStorage.removeItem(key);
         }
       }
     }
     
-    // Nettoyer aussi les clés globales
-    localStorage.removeItem('currentBalance');
-    localStorage.removeItem('lastKnownBalance');
-    localStorage.removeItem('lastUpdatedBalance');
-    sessionStorage.removeItem('currentBalance');
+    // Nettoyer aussi les clés globales pour s'assurer qu'il n'y a pas de contamination
+    const globalKeysToClean = [
+      'currentBalance',
+      'lastKnownBalance',
+      'lastUpdatedBalance',
+      'lastKnownUsername', // Ajout explicite
+      'subscription'       // Ajout explicite
+    ];
+    
+    globalKeysToClean.forEach(key => {
+      localStorage.removeItem(key);
+      if (key === 'currentBalance') {
+        sessionStorage.removeItem(key);
+      }
+    });
   } catch (e) {
     console.error("Erreur lors du nettoyage des données:", e);
   }

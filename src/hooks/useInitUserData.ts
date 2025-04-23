@@ -1,5 +1,4 @@
 
-
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useUserDataSync } from './useUserDataSync'; // Changed from default import to named import
@@ -39,7 +38,16 @@ export const useInitUserData = () => {
             localStorage.removeItem('currentBalance');
             localStorage.removeItem('lastKnownBalance');
             localStorage.removeItem('lastUpdatedBalance');
+            localStorage.removeItem('lastKnownUsername'); // Suppression pour éviter la contamination
             sessionStorage.removeItem('currentBalance');
+            
+            // Suppression explicite des noms d'utilisateur précédents
+            Object.keys(localStorage).forEach(key => {
+              if (key.startsWith('lastKnownUsername_') && !key.includes(userId)) {
+                console.log(`Suppression de la clé d'un autre utilisateur: ${key}`);
+                localStorage.removeItem(key);
+              }
+            });
           } catch (e) {
             console.error('Error cleaning generic localStorage keys:', e);
           }
@@ -113,9 +121,11 @@ export const useInitUserData = () => {
               key.startsWith('lastKnownBalance_') ||
               key.startsWith('lastUpdatedBalance_') ||
               key.startsWith('highest_balance_') ||
+              key.startsWith('lastKnownUsername_') || // Ajout pour cibler les noms d'utilisateur
               key === 'currentBalance' ||
               key === 'lastKnownBalance' ||
-              key === 'lastUpdatedBalance'
+              key === 'lastUpdatedBalance' ||
+              key === 'lastKnownUsername' // Ajout pour cibler le nom globalement
             );
             
             for (const key of statsKeys) {

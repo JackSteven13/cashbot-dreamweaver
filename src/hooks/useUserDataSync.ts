@@ -33,6 +33,10 @@ export const useUserDataSync = () => {
       // Stocker l'ID utilisateur pour permettre le nettoyage des données d'autres utilisateurs
       localStorage.setItem('lastKnownUserId', userId);
       
+      // Vider explicitement les anciennes valeurs globales pour éviter la contamination
+      localStorage.removeItem('lastKnownUsername');
+      localStorage.removeItem('subscription');
+      
       // Use a more reliable approach to wait for session establishment
       let attempts = 0;
       const maxAttempts = 5;
@@ -89,6 +93,7 @@ export const useUserDataSync = () => {
           
           // Récupérer et stocker le nom d'utilisateur
           if (!profileResult.error && profileResult.data && profileResult.data.full_name) {
+            // Stocker le nom uniquement avec une clé spécifique à l'utilisateur
             localStorage.setItem(`lastKnownUsername_${userId}`, profileResult.data.full_name);
             console.log("Nom d'utilisateur mis à jour:", profileResult.data.full_name);
             syncSuccess = true;
