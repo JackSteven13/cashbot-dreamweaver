@@ -35,6 +35,25 @@ export const useInitUserData = () => {
         
         if (session) {
           console.log("Active session found, syncing user data...");
+          const userId = session.user.id;
+          
+          // Nettoyer les données d'autres utilisateurs dans localStorage
+          try {
+            const userSpecificKeyPrefix = `currentBalance_${userId}`;
+            Object.keys(localStorage).forEach(key => {
+              // Supprimer les données de solde d'autres utilisateurs
+              if (key.startsWith('currentBalance_') && !key.startsWith(userSpecificKeyPrefix)) {
+                localStorage.removeItem(key);
+              }
+              // Supprimer les anciennes statistiques qui ne correspondent pas à cet utilisateur
+              if (key.startsWith('user_stats_') && !key.startsWith(`user_stats_${userId}`)) {
+                localStorage.removeItem(key);
+              }
+            });
+          } catch (e) {
+            console.error('Error cleaning localStorage for user isolation:', e);
+          }
+          
           const syncSuccess = await syncUserData(true);
           
           if (!syncSuccess) {
@@ -48,11 +67,11 @@ export const useInitUserData = () => {
                 detail: { active: true, userId: session.user.id }
               }));
               
-              // Initialiser le gestionnaire de solde
+              // Initialiser le gestionnaire de solde avec l'ID utilisateur
               if (cachedBalance) {
                 const parsedBalance = parseFloat(cachedBalance);
                 if (!isNaN(parsedBalance)) {
-                  balanceManager.forceBalanceSync(parsedBalance); // Correction: initialize -> forceBalanceSync
+                  balanceManager.forceBalanceSync(parsedBalance, userId);
                 }
               }
             }, 1000);
@@ -62,16 +81,31 @@ export const useInitUserData = () => {
               detail: { active: true, userId: session.user.id }
             }));
             
-            // Initialiser le gestionnaire de solde
+            // Initialiser le gestionnaire de solde avec l'ID utilisateur
             if (cachedBalance) {
               const parsedBalance = parseFloat(cachedBalance);
               if (!isNaN(parsedBalance)) {
-                balanceManager.forceBalanceSync(parsedBalance); // Correction: initialize -> forceBalanceSync
+                balanceManager.forceBalanceSync(parsedBalance, userId);
               }
             }
           }
         } else {
           console.log("No active session found during initialization");
+          
+          // Nettoyer toute donnée résiduelle pour éviter la contamination entre sessions
+          try {
+            const statsKeys = Object.keys(localStorage).filter(key => 
+              key.startsWith('user_stats_') || 
+              key.startsWith('currentBalance_') || 
+              key.startsWith('lastKnownBalance_')
+            );
+            
+            for (const key of statsKeys) {
+              localStorage.removeItem(key);
+            }
+          } catch (e) {
+            console.error('Error cleaning localStorage for anonymous user:', e);
+          }
         }
         
         initializedRef.current = true;

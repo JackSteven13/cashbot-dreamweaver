@@ -45,32 +45,32 @@ const StatisticsDisplay: React.FC = () => {
   const { userData } = useUserSession();
   const userId = userData?.profile?.id;
   
-  // Utiliser notre hook de statistiques persistantes avec synchronisation entre publicités et revenus
+  // S'assurer que l'ID utilisateur est toujours passé au hook
   const { adsCount, revenueCount } = usePersistentStats({
     autoIncrement: true,
-    userId,
-    // Ajout d'un paramètre forceGrowth pour assurer l'évolution entre les sessions
+    userId: userId || 'anonymous', // Utiliser 'anonymous' comme fallback mais ne devrait jamais arriver
     forceGrowth: true,
-    // Assurer la corrélation entre publicités et revenus
     correlationRatio: 0.75
   });
   
   // État local pour des mises à jour plus fréquentes et fluides
-  const [localAdsCount, setLocalAdsCount] = useState(adsCount);
-  const [localRevenueCount, setLocalRevenueCount] = useState(revenueCount);
+  const [localAdsCount, setLocalAdsCount] = useState(0);
+  const [localRevenueCount, setLocalRevenueCount] = useState(0);
   
-  // Synchroniser avec les valeurs persistantes
+  // Synchroniser avec les valeurs persistantes uniquement si l'utilisateur a un ID
   useEffect(() => {
-    if (adsCount > 0) {
+    if (userId && adsCount > 0) {
       setLocalAdsCount(adsCount);
     }
-    if (revenueCount > 0) {
+    if (userId && revenueCount > 0) {
       setLocalRevenueCount(revenueCount);
     }
-  }, [adsCount, revenueCount]);
+  }, [adsCount, revenueCount, userId]);
   
-  // Ajouter des micro-mises à jour fréquentes
+  // Ajouter des micro-mises à jour fréquentes seulement si l'utilisateur est identifié
   useEffect(() => {
+    if (!userId) return; // Ne pas mettre à jour pour les utilisateurs non identifiés
+    
     const microUpdateInterval = setInterval(() => {
       const microAdsIncrement = Math.floor(Math.random() * 3) + 2; // 2-4 ads toutes les 5 secondes
       // Calculer revenu basé sur les publicités avec léger bruit
@@ -82,19 +82,19 @@ const StatisticsDisplay: React.FC = () => {
     }, 5000);
     
     return () => clearInterval(microUpdateInterval);
-  }, []);
+  }, [userId]);
   
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <StatisticCard
         title="Publicités analysées"
-        value={localAdsCount}
+        value={userId ? localAdsCount : 0}
         icon={<Sparkles className="h-5 w-5" />}
         description="Annonces traitées par nos algorithmes"
       />
       <StatisticCard
         title="Revenus générés"
-        value={localRevenueCount}
+        value={userId ? localRevenueCount : 0}
         icon={<TrendingUp className="h-5 w-5" />}
         prefix=""
         suffix=" €"

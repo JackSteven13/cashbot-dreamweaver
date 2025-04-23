@@ -25,6 +25,22 @@ export const ensureZeroBalanceForNewUser = (isNewUser: boolean, userData: UserDa
   
   // Pour les nouveaux utilisateurs, on force le solde à 0 et on supprime toutes les transactions
   if (isNewUser) {
+    // Également nettoyer le localStorage pour éviter la réutilisation des anciennes données
+    try {
+      // Nettoyer toutes les statistiques potentiellement présentes pour cet utilisateur
+      if (userData.profile?.id) {
+        const prefix = `user_stats_${userData.profile.id}`;
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith(prefix)) {
+            localStorage.removeItem(key);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error cleaning localStorage for new user:', e);
+    }
+
     return {
       ...userData,
       balance: 0,
