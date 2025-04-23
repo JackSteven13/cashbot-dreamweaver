@@ -7,7 +7,7 @@ import { getUserSpecificKeys } from '@/utils/balance/balanceStorage';
 
 export const useUserDataSync = () => {
   // Fonction améliorée pour synchroniser les données avec une meilleure stabilité
-  const syncUserData = useCallback(async () => {
+  const syncUserData = useCallback(async (forceRefresh = false) => {
     try {
       console.log("Syncing user data after authentication");
       
@@ -130,7 +130,7 @@ export const useUserDataSync = () => {
         // Déclencher un événement pour forcer la mise à jour de l'interface
         window.dispatchEvent(new CustomEvent('balance:force-sync', { 
           detail: { 
-            balance: localStorage.getItem(userSpecificKeys.currentBalance),
+            balance: localStorage.getItem(getUserSpecificKeys(userId).currentBalance),
             subscription: localStorage.getItem(`subscription_${userId}`),
             userId
           }

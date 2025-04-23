@@ -62,13 +62,13 @@ export const useInitUserData = () => {
           }
           
           console.log("Syncing user data for:", userId);
-          const syncSuccess = await syncUserData(true);
+          const syncSuccess = await syncUserData();
           
           if (!syncSuccess) {
             console.log("Initial sync failed, retrying once...");
             // Wait a bit and retry once
             setTimeout(async () => {
-              await syncUserData(true);
+              await syncUserData();
               
               // Après la synchronisation, activer aussi les agents IA
               window.dispatchEvent(new CustomEvent('bot:status-change', {
@@ -170,7 +170,7 @@ export const useInitUserData = () => {
   // Simplify the refreshData function to return a Promise<boolean>
   const refreshData = async () => {
     try {
-      const success = await syncUserData(true);
+      const success = await syncUserData();
       return success;
     } catch (error) {
       console.error("Error refreshing data:", error);
