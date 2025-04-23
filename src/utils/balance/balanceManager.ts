@@ -54,6 +54,30 @@ class BalanceManager {
   getDailyGains(): number {
     return this.state.dailyGains;
   }
+  
+  // Add the missing setDailyGains method
+  setDailyGains(amount: number): void {
+    if (isNaN(amount)) {
+      console.error("Invalid daily gains amount:", amount);
+      return;
+    }
+    
+    this.state.dailyGains = parseFloat(amount.toFixed(2));
+    localStorage.setItem('dailyGains', this.state.dailyGains.toString());
+    console.log(`Daily gains updated: ${this.state.dailyGains}€`);
+  }
+  
+  // Add the missing addDailyGain method
+  addDailyGain(amount: number): void {
+    if (isNaN(amount)) {
+      console.error("Invalid daily gain amount:", amount);
+      return;
+    }
+    
+    this.state.dailyGains += amount;
+    this.state.dailyGains = parseFloat(this.state.dailyGains.toFixed(2));
+    localStorage.setItem('dailyGains', this.state.dailyGains.toString());
+  }
 
   updateBalance(amount: number): number {
     if (isNaN(amount)) {

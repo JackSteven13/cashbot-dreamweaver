@@ -38,3 +38,49 @@ export const getPersistedBalance = (userId: string | null): number => {
     return 0;
   }
 };
+
+// Add the missing cleanOtherUserData function
+export const cleanOtherUserData = (currentUserId: string | null): void => {
+  try {
+    // Get all localStorage keys
+    const allKeys = Object.keys(localStorage);
+    
+    // Filter keys that belong to other users
+    allKeys.forEach(key => {
+      // Check if this is a user-specific key (contains an ID that's not the current user's)
+      if (key.includes('_') && key.split('_').length > 1) {
+        // Extract the user ID from the key
+        const keyParts = key.split('_');
+        const keyUserId = keyParts[keyParts.length - 1];
+        
+        // If this is a user-specific key and not for the current user, remove it
+        if (keyUserId !== currentUserId && keyUserId.length > 5) {
+          localStorage.removeItem(key);
+        }
+      }
+    });
+    
+    console.log('Cleaned other user data from localStorage');
+  } catch (e) {
+    console.error('Failed to clean other user data:', e);
+  }
+};
+
+// Add the missing getUserSpecificKeys function
+export const getUserSpecificKeys = (userId: string | null): string[] => {
+  if (!userId) return [];
+  
+  try {
+    // Get all localStorage keys
+    const allKeys = Object.keys(localStorage);
+    
+    // Filter keys that belong to the specified user
+    return allKeys.filter(key => 
+      key.endsWith(`_${userId}`) || 
+      key.includes(`_${userId}_`)
+    );
+  } catch (e) {
+    console.error('Failed to get user-specific keys:', e);
+    return [];
+  }
+};
