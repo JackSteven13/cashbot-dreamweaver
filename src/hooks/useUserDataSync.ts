@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import balanceManager from '@/utils/balance/balanceManager';
-import { getUserSpecificKeys } from '@/utils/balance/balanceStorage';
+import { getStorageKeys } from '@/utils/balance/balanceStorage';
 
 export const useUserDataSync = () => {
   // Fonction améliorée pour synchroniser les données avec une meilleure stabilité
@@ -56,7 +56,7 @@ export const useUserDataSync = () => {
           ]);
           
           // Obtenir les clés spécifiques à l'utilisateur pour stocker les données
-          const userSpecificKeys = getUserSpecificKeys(userId);
+          const userKeys = getStorageKeys(userId);
           
           // Vérifier les résultats et mettre à jour le localStorage
           if (!userBalanceResult.error && userBalanceResult.data) {
@@ -70,8 +70,8 @@ export const useUserDataSync = () => {
             
             // Mettre à jour le solde dans localStorage avec une clé spécifique à l'utilisateur
             if (userData.balance !== undefined) {
-              localStorage.setItem(userSpecificKeys.currentBalance, String(userData.balance));
-              localStorage.setItem(userSpecificKeys.lastKnownBalance, String(userData.balance));
+              localStorage.setItem(userKeys.currentBalance, String(userData.balance));
+              localStorage.setItem(userKeys.lastKnownBalance, String(userData.balance));
               
               // Définir également l'ID utilisateur dans le gestionnaire de solde
               balanceManager.setUserId(userId);
@@ -133,9 +133,10 @@ export const useUserDataSync = () => {
         localStorage.removeItem('forceRefreshBalance');
         
         // Déclencher un événement pour forcer la mise à jour de l'interface
+        const userKeys = getStorageKeys(userId);
         window.dispatchEvent(new CustomEvent('balance:force-sync', { 
           detail: { 
-            balance: localStorage.getItem(getUserSpecificKeys(userId).currentBalance),
+            balance: localStorage.getItem(userKeys.currentBalance),
             subscription: localStorage.getItem(`subscription_${userId}`),
             userId
           }
