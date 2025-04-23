@@ -25,7 +25,7 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
   const isMobile = useIsMobile();
   const { getTodaysGains } = useLimitChecking();
   
-  // Calculate today's gains
+  // Améliorer le monitoring des gains quotidiens
   useEffect(() => {
     if (!userData) return;
 
@@ -33,11 +33,27 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
     const actualTodaysGains = balanceManager.getDailyGains();
     setTodaysGains(actualTodaysGains);
     
-    // Vérifier si la limite est atteinte (98% pour être préventif)
+    // Vérifier si la limite est atteinte (95% pour être encore plus strict)
     const limit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    setIsLimitReached(actualTodaysGains >= limit * 0.98);
+    const newIsLimitReached = actualTodaysGains >= limit * 0.95;
     
-    // Obtenir les gains d'aujourd'hui depuis les transactions (méthode secondaire)
+    // Si l'état de la limite a changé, mettre à jour et diffuser l'événement
+    if (newIsLimitReached !== isLimitReached) {
+      setIsLimitReached(newIsLimitReached);
+      
+      // Diffuser l'événement de limite atteinte pour informer les autres composants
+      if (newIsLimitReached) {
+        window.dispatchEvent(new CustomEvent('daily-limit:reached', {
+          detail: {
+            subscription: effectiveSubscription,
+            limit: limit,
+            currentGains: actualTodaysGains
+          }
+        }));
+      }
+    }
+    
+    // Double vérification avec les transactions pour être absolument sûr
     const checkTransactionGains = async () => {
       if (!userData) return;
       const transactionGains = await getTodaysGains(userData);
@@ -47,19 +63,51 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
         console.log(`Mise à jour des gains quotidiens: ${actualTodaysGains}€ -> ${transactionGains}€ (transactions)`);
         setTodaysGains(transactionGains);
         balanceManager.setDailyGains(transactionGains);
-        setIsLimitReached(transactionGains >= limit * 0.98);
+        
+        // Vérifier à nouveau si la limite est atteinte
+        const newLimitStatus = transactionGains >= limit * 0.95;
+        setIsLimitReached(newLimitStatus);
+        
+        // Diffuser l'événement si la limite est maintenant atteinte
+        if (newLimitStatus && !isLimitReached) {
+          window.dispatchEvent(new CustomEvent('daily-limit:reached', {
+            detail: {
+              subscription: effectiveSubscription,
+              limit: limit,
+              currentGains: transactionGains
+            }
+          }));
+        }
       }
     };
     
     checkTransactionGains();
-  }, [userData, effectiveSubscription, getTodaysGains]);
+    
+    // Écouter les événements de mise à jour des gains
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      if (event.detail?.dailyGains) {
+        const updatedGains = event.detail.dailyGains;
+        setTodaysGains(updatedGains);
+        
+        // Vérifier à nouveau si la limite est atteinte
+        const updatedLimitStatus = updatedGains >= limit * 0.95;
+        setIsLimitReached(updatedLimitStatus);
+      }
+    };
+    
+    window.addEventListener('balance:update' as any, handleBalanceUpdate);
+    
+    return () => {
+      window.removeEventListener('balance:update' as any, handleBalanceUpdate);
+    };
+  }, [userData, effectiveSubscription, getTodaysGains, isLimitReached]);
   
-  // Check if temporary Pro mode is activated
+  // Vérifier si le mode Pro temporaire est activé
   useEffect(() => {
     const effectiveSub = getEffectiveSubscription(subscription);
     setEffectiveSubscription(effectiveSub);
     
-    // Update effective limit
+    // Mettre à jour la limite effective
     setEffectiveLimit(SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
   }, [subscription]);
   
@@ -67,7 +115,7 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
     return null;
   }
 
-  // Daily limit calculations - based on TODAY's gains, not total balance
+  // Calculs de limite quotidienne basés sur les gains d'AUJOURD'HUI, pas le solde total
   const limitPercentage = Math.min(100, (todaysGains / effectiveLimit) * 100);
   const isNearLimit = limitPercentage >= 80 && limitPercentage < 100;
 
@@ -84,13 +132,13 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
           <span className={`text-xs md:text-sm ${isLimitReached ? 'text-blue-700 dark:text-blue-400' : 'text-blue-700 dark:text-blue-400'}`}>
             {isLimitReached 
               ? `Félicitations! Vous avez atteint votre objectif quotidien de ${effectiveLimit}€ avec votre compte ${effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1)}.
-                 Votre solde total est de ${currentBalance.toFixed(2)}€.`
+                 Votre solde total est de ${currentBalance.toFixed(2)}€ (Gains aujourd'hui: ${todaysGains.toFixed(2)}€)`
               : `Vous approchez de votre objectif quotidien de ${effectiveLimit}€ avec votre compte ${effectiveSubscription.charAt(0).toUpperCase() + effectiveSubscription.slice(1)}.
-                 Votre solde total est de ${currentBalance.toFixed(2)}€.`
+                 Votre solde total est de ${currentBalance.toFixed(2)}€ (Gains aujourd'hui: ${todaysGains.toFixed(2)}€)`
             }
           </span>
           
-          {/* Progress bar for visual representation with positive colors */}
+          {/* Barre de progression pour la représentation visuelle */}
           <div className="w-full h-1.5 md:h-2 bg-gray-200 dark:bg-gray-700 rounded-full mt-1.5 md:mt-2 overflow-hidden">
             <div 
               className={`h-full ${isLimitReached ? 'bg-green-500' : isNearLimit ? 'bg-blue-500' : 'bg-blue-500'}`}

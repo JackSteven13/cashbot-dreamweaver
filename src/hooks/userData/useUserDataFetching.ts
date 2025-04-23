@@ -35,6 +35,8 @@ export const useUserDataFetching = () => {
       
       // Synchronize with balance manager
       if (balanceData?.balance) {
+        // Set the user ID before syncing the balance
+        balanceManager.setUserId(userId);
         balanceManager.forceBalanceSync(balanceData.balance);
       }
       
