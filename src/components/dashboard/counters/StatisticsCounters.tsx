@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import usePersistentStats from '@/hooks/stats/usePersistentStats';
 import { useUserSession } from '@/hooks/useUserSession';
@@ -12,7 +12,7 @@ const StatisticsCounters: React.FC = () => {
     autoIncrement: true,
     userId: userId || 'anonymous',
     forceGrowth: true,
-    correlationRatio: 0.98 // Aligné avec StatisticsDisplay pour une cohérence parfaite
+    correlationRatio: 0.999 // Synchronisé avec StatisticsDisplay
   });
   
   const [localAdsCount, setLocalAdsCount] = useState(0);
@@ -27,55 +27,73 @@ const StatisticsCounters: React.FC = () => {
     }
   }, [adsCount, revenueCount, userId]);
 
+  // Fonction de mise à jour synchronisée
+  const updateBothCounters = useCallback((adsIncrement: number, forceSync = false) => {
+    const correlationFactor = 0.999 + (Math.random() * 0.002); // Entre 0.999 et 1.001
+    const revenueIncrement = adsIncrement * correlationFactor;
+    
+    const newAdsCount = localAdsCount + adsIncrement;
+    const newRevenueCount = localRevenueCount + revenueIncrement;
+
+    setLocalAdsCount(newAdsCount);
+    setLocalRevenueCount(newRevenueCount);
+    
+    // Synchroniser avec les stats persistantes
+    if (forceSync || Math.random() > 0.5) {
+      incrementStats(adsIncrement, revenueIncrement);
+    }
+  }, [localAdsCount, localRevenueCount, incrementStats]);
+
   useEffect(() => {
     if (!userId) return;
     
-    // Incréments micro plus fréquents et synchronisés
-    const microUpdateInterval = setInterval(() => {
-      const microAdsIncrement = Math.floor(Math.random() * 22) + 15; // 15-36 ads
-      const correlationFactor = 0.98 + Math.random() * 0.04; // 0.98-1.02 (quasiment 1:1)
-      const microRevenueIncrement = microAdsIncrement * correlationFactor;
-      
-      const newAdsCount = localAdsCount + microAdsIncrement;
-      const newRevenueCount = localRevenueCount + microRevenueIncrement;
-      
-      setLocalAdsCount(newAdsCount);
-      setLocalRevenueCount(newRevenueCount);
-      
-      // Propager plus souvent les mises à jour
-      if (Math.random() > 0.7) { // 30% de chance à chaque mise à jour
-        incrementStats(microAdsIncrement, microRevenueIncrement);
+    // Écouter les événements de synchronisation externes
+    const handleStatsUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        const { adsCount: syncedAdsCount, revenueCount: syncedRevenueCount } = event.detail;
+        
+        // S'assurer que les valeurs ne diminuent jamais
+        if (syncedAdsCount > localAdsCount) {
+          setLocalAdsCount(syncedAdsCount);
+        }
+        if (syncedRevenueCount > localRevenueCount) {
+          setLocalRevenueCount(syncedRevenueCount);
+        }
       }
-    }, 750); // Encore plus rapide: 750ms
+    };
+    
+    window.addEventListener('stats:counters:updated', handleStatsUpdate as EventListener);
+    window.addEventListener('stats:sync', handleStatsUpdate as EventListener);
+    window.addEventListener('stats:update', handleStatsUpdate as EventListener);
+    
+    // Micro-incréments très fréquents et parfaitement corrélés
+    const microUpdateInterval = setInterval(() => {
+      const microAdsIncrement = Math.floor(Math.random() * 18) + 12; // 12-29 ads
+      updateBothCounters(microAdsIncrement);
+    }, 400); // Encore plus rapide: 400ms
     
     // Incréments persistants plus élevés/fréquents
     const minorUpdateInterval = setInterval(() => {
-      const smallAdsIncrement = Math.floor(Math.random() * 60) + 35; // 35-94 ads
-      const correlationFactor = 0.98 * (0.98 + Math.random() * 0.04); // Quasiment 1:1
-      const smallRevenueIncrement = smallAdsIncrement * correlationFactor;
+      const smallAdsIncrement = Math.floor(Math.random() * 45) + 30; // 30-74 ads
+      updateBothCounters(smallAdsIncrement, true);
       
-      if (userId) {
-        incrementStats(smallAdsIncrement, smallRevenueIncrement);
-      }
-    }, 4500); // Toutes les 4.5 secondes (plus rapide qu'avant)
-    
-    // Incréments majeurs plus rapprochés et plus importants
-    const majorUpdateInterval = setInterval(() => {
-      const largerAdsIncrement = Math.floor(Math.random() * 180) + 120; // 120-299 ads
-      const correlationFactor = 0.98 * (0.98 + Math.random() * 0.04); // Encore plus proche de 1:1
-      const largerRevenueIncrement = largerAdsIncrement * correlationFactor;
-      
-      if (userId) {
-        incrementStats(largerAdsIncrement, largerRevenueIncrement);
-      }
-    }, 15000); // Toutes les 15 secondes (plus rapide qu'avant)
+      // Synchroniser avec d'autres composants
+      window.dispatchEvent(new CustomEvent('stats:counters:updated', {
+        detail: { 
+          adsCount: localAdsCount + smallAdsIncrement, 
+          revenueCount: localRevenueCount + (smallAdsIncrement * 0.999) 
+        }
+      }));
+    }, 2000); // Toutes les 2 secondes
 
     return () => {
+      window.removeEventListener('stats:counters:updated', handleStatsUpdate as EventListener);
+      window.removeEventListener('stats:sync', handleStatsUpdate as EventListener);
+      window.removeEventListener('stats:update', handleStatsUpdate as EventListener);
       clearInterval(microUpdateInterval);
       clearInterval(minorUpdateInterval);
-      clearInterval(majorUpdateInterval);
     };
-  }, [incrementStats, userId, localAdsCount, localRevenueCount]);
+  }, [userId, localAdsCount, localRevenueCount, updateBothCounters, incrementStats]);
 
   return (
     <div className="grid grid-cols-2 gap-4 mt-8">
@@ -83,7 +101,7 @@ const StatisticsCounters: React.FC = () => {
         <div className="text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 dark:text-blue-300">
           <AnimatedNumber 
             value={userId ? localAdsCount : 0} 
-            duration={1500} 
+            duration={800} 
             formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} 
           />
         </div>
@@ -94,7 +112,7 @@ const StatisticsCounters: React.FC = () => {
         <div className="text-3xl md:text-4xl lg:text-5xl font-bold text-emerald-900 dark:text-emerald-300">
           <AnimatedNumber 
             value={userId ? localRevenueCount : 0} 
-            duration={1500} 
+            duration={800} 
             formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} 
           />
           <span className="ml-1">€</span>

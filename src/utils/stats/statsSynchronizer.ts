@@ -2,7 +2,7 @@
 import { getPersistentStats, savePersistentStats } from './persistentStats';
 
 /**
- * Synchronise les statistiques entre les différents onglets et sessions
+ * Synchronise les statistiques entre les différents composants
  */
 export const initStatsSync = (userId?: string): (() => void) => {
   // Événement pour synchroniser les statistiques lors du chargement initial
@@ -27,7 +27,7 @@ export const initStatsSync = (userId?: string): (() => void) => {
   // Écouter les changements de stockage dans d'autres onglets
   window.addEventListener('storage', handleStorageChange);
   
-  // Synchroniser périodiquement pour s'assurer de la cohérence
+  // Synchroniser les compteurs toutes les secondes
   const syncInterval = setInterval(() => {
     const stats = getPersistentStats(userId);
     
@@ -35,7 +35,7 @@ export const initStatsSync = (userId?: string): (() => void) => {
     window.dispatchEvent(new CustomEvent('stats:sync', {
       detail: stats
     }));
-  }, 60000); // Synchroniser toutes les minutes
+  }, 1000); // Synchroniser toutes les secondes pour une meilleure réactivité
   
   // Nettoyer lors de la déconnexion ou du déchargement de la page
   const cleanup = () => {

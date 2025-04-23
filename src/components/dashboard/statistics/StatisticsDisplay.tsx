@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Sparkles, TrendingUp } from 'lucide-react';
 import { AnimatedNumber } from '@/components/ui/animated-number';
@@ -31,7 +31,7 @@ const StatisticCard: React.FC<StatisticsDisplayProps> = ({
           <div className="text-blue-600 dark:text-blue-400">{icon}</div>
         </div>
         <div className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-          {prefix}<AnimatedNumber value={value} duration={1200} formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} />{suffix}
+          {prefix}<AnimatedNumber value={value} duration={800} formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} />{suffix}
         </div>
         {description && (
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</p>
@@ -49,12 +49,13 @@ const StatisticsDisplay: React.FC = () => {
     autoIncrement: true,
     userId: userId || 'anonymous',
     forceGrowth: true,
-    correlationRatio: 0.98 // Augmenté à 0.98 pour une synchronisation quasi 1:1
+    correlationRatio: 0.999 // Augmenter à presque 1:1 pour une parfaite synchronisation
   });
   
   const [localAdsCount, setLocalAdsCount] = useState(0);
   const [localRevenueCount, setLocalRevenueCount] = useState(0);
   
+  // Synchronisation initiale des données
   useEffect(() => {
     if (userId && adsCount > 0) {
       setLocalAdsCount(adsCount);
@@ -64,31 +65,80 @@ const StatisticsDisplay: React.FC = () => {
     }
   }, [adsCount, revenueCount, userId]);
   
+  // Fonction de mise à jour syncchonisée des compteurs
+  const updateBothCounters = useCallback((adsIncrement: number, forceSync = false) => {
+    const correlationFactor = 0.999 + (Math.random() * 0.002); // Entre 0.999 et 1.001
+    const revenueIncrement = adsIncrement * correlationFactor;
+    
+    const newAdsCount = localAdsCount + adsIncrement;
+    const newRevenueCount = localRevenueCount + revenueIncrement;
+
+    setLocalAdsCount(newAdsCount);
+    setLocalRevenueCount(newRevenueCount);
+    
+    // Synchroniser avec les stats persistantes
+    if (forceSync || Math.random() > 0.5) { // 50% de chance de synchroniser à chaque mise à jour
+      incrementStats(adsIncrement, revenueIncrement);
+    }
+    
+    // Émettre un événement pour synchroniser tous les compteurs de l'application
+    window.dispatchEvent(new CustomEvent('stats:counters:updated', {
+      detail: { 
+        adsCount: newAdsCount, 
+        revenueCount: newRevenueCount 
+      }
+    }));
+  }, [localAdsCount, localRevenueCount, incrementStats]);
+  
   useEffect(() => {
     if (!userId) return;
     
-    // Micro-incréments beaucoup plus fréquents
+    // Micro-incréments plus fréquents
     const microUpdateInterval = setInterval(() => {
-      // Incréments beaucoup plus élevés et corrélés
-      const microAdsIncrement = Math.floor(Math.random() * 25) + 18; // 18-42 pubs tous les 1 seconde
-      const correlationFactor = 0.98 + Math.random() * 0.04; // 0.98-1.02 ratio (quasiment 1:1)
-      const microRevenueIncrement = microAdsIncrement * correlationFactor;
+      // Incréments variés, mais toujours avec une corrélation parfaite
+      const microAdsIncrement = Math.floor(Math.random() * 20) + 15; // 15-34 pubs toutes les 500ms
+      updateBothCounters(microAdsIncrement);
       
-      const newAdsCount = localAdsCount + microAdsIncrement;
-      const newRevenueCount = localRevenueCount + microRevenueIncrement;
-
-      setLocalAdsCount(newAdsCount);
-      setLocalRevenueCount(newRevenueCount);
-      
-      // Synchroniser avec les stats persistantes plus souvent
-      if (Math.random() > 0.7) { // 30% de chance de synchroniser à chaque mise à jour
-        incrementStats(microAdsIncrement, microRevenueIncrement);
-      }
-      
-    }, 1000); // Encore plus rapide: toutes les 1 secondes
+    }, 500); // Encore plus rapide: toutes les 500ms
     
-    return () => clearInterval(microUpdateInterval);
-  }, [userId, localAdsCount, localRevenueCount, incrementStats]);
+    // Synchronisation forcée toutes les 2 secondes
+    const syncInterval = setInterval(() => {
+      if (userId) {
+        // Synchroniser avec les stats persistantes
+        incrementStats(0, 0, true);
+      }
+    }, 2000);
+    
+    return () => {
+      clearInterval(microUpdateInterval);
+      clearInterval(syncInterval);
+    };
+  }, [userId, updateBothCounters, incrementStats]);
+  
+  // Écouter les événements de synchronisation
+  useEffect(() => {
+    const handleStatsSync = (event: CustomEvent) => {
+      if (event.detail) {
+        const { adsCount: syncedAdsCount, revenueCount: syncedRevenueCount } = event.detail;
+        
+        // S'assurer que les valeurs ne diminuent jamais
+        if (syncedAdsCount > localAdsCount) {
+          setLocalAdsCount(syncedAdsCount);
+        }
+        if (syncedRevenueCount > localRevenueCount) {
+          setLocalRevenueCount(syncedRevenueCount);
+        }
+      }
+    };
+    
+    window.addEventListener('stats:sync', handleStatsSync as EventListener);
+    window.addEventListener('stats:update', handleStatsSync as EventListener);
+    
+    return () => {
+      window.removeEventListener('stats:sync', handleStatsSync as EventListener);
+      window.removeEventListener('stats:update', handleStatsSync as EventListener);
+    };
+  }, [localAdsCount, localRevenueCount]);
   
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -9,7 +9,7 @@ interface AnimatedNumberProps {
 
 export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({ 
   value, 
-  duration = 800, // Durée réduite pour plus de réactivité
+  duration = 500, // Durée encore plus réduite pour une réactivité instantanée
   formatValue = (val) => Math.round(val).toString()
 }) => {
   const [displayValue, setDisplayValue] = useState(value);
@@ -19,7 +19,7 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
   useEffect(() => {
     // Skip animation for very small changes to improve performance
     const change = Math.abs(value - previousValue.current);
-    if (change < 0.5) {
+    if (change < 0.1) {
       setDisplayValue(value);
       previousValue.current = value;
       return;
@@ -37,8 +37,8 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
       if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
       
-      // Use easeOutQuad for smoother animation
-      const easedProgress = 1 - Math.pow(1 - progress, 2);
+      // Use easeOutCubic for even smoother animation
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
       const currentValue = startValue + (value - startValue) * easedProgress;
       
       setDisplayValue(currentValue);
@@ -57,7 +57,7 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
         window.cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [value, duration]);
+  }, [value, duration, displayValue]);
 
   return <>{formatValue(displayValue)}</>;
 };

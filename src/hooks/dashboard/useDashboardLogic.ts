@@ -1,7 +1,6 @@
-
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import balanceManager from '@/utils/balance/balanceManager';
 import { toast } from '@/components/ui/use-toast';
 import useInitUserData from '@/hooks/useInitUserData';
@@ -20,7 +19,7 @@ export function useDashboardLogic() {
   const [dashboardReady, setDashboardReady] = useState(false);
   const [isPreloaded, setIsPreloaded] = useState(false);
   const [lastProcessTime, setLastProcessTime] = useState<number>(0);
-  const todaysGainsRef =  useState<number>(0);
+  const todaysGainsRef = useRef<number>(0);
   const { updateBalance } = useBalanceUpdater();
   const { lastBalanceUpdate, setLastBalanceUpdate, fetchLatestBalance } = useBalanceSync(userData, isPreloaded);
   const { refreshUserData } = useUserDataRefresh();
@@ -169,7 +168,6 @@ export function useDashboardLogic() {
     }
   }, [forceBalanceRefresh, user]);
 
-  // Exposer tout ce qui était utilisé dans Dashboard.tsx :
   return {
     user,
     authLoading,
