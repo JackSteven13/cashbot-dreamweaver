@@ -5,6 +5,7 @@ import { Sparkles, TrendingUp } from 'lucide-react';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import usePersistentStats from '@/hooks/stats/usePersistentStats';
 import { useUserSession } from '@/hooks/useUserSession';
+import { synchronizeRevenueWithAds } from '@/hooks/stats/utils/revenueCalculator';
 
 interface StatisticsDisplayProps {
   title: string;
@@ -63,7 +64,10 @@ const StatisticsDisplay: React.FC = () => {
     if (userId) {
       console.log(`StatisticsDisplay: Synchronisation avec userId=${userId}, ads=${baseAdsCount}, revenue=${baseRevenueCount}`);
       setLocalAdsCount(baseAdsCount);
-      setLocalRevenueCount(baseRevenueCount);
+      
+      // IMPORTANT: Toujours recalculer les revenus à partir des pubs pour assurer la cohérence
+      const syncedRevenue = synchronizeRevenueWithAds(baseAdsCount);
+      setLocalRevenueCount(syncedRevenue);
     }
   }, [baseAdsCount, baseRevenueCount, userId]);
 
@@ -73,35 +77,43 @@ const StatisticsDisplay: React.FC = () => {
     
     // Générer un taux spécifique à l'utilisateur pour éviter que tous les comptes progressent au même rythme
     const userSpecificRate = userId ? 
-      (userId.charCodeAt(0) % 6 + 8) * 1000 : // Entre 8 et 14 secondes basé sur l'ID utilisateur
-      10000;
+      (userId.charCodeAt(0) % 6 + 4) * 1000 : // Entre 4 et 10 secondes basé sur l'ID utilisateur - Plus rapide pour être visible
+      8000;
     
     const updateInterval = setInterval(() => {
       setLocalAdsCount(prev => {
         const adsRand = Math.random();
         let adsIncrement = 0;
-        if (adsRand > 0.94) adsIncrement = 2;
-        else if (adsRand > 0.80) adsIncrement = 1;
+        if (adsRand > 0.80) adsIncrement = 2; // Augmenté la probabilité d'incrément
+        else if (adsRand > 0.55) adsIncrement = 1;
         // La plupart du temps pas d'évolution
         const nextAds = prev + adsIncrement;
+        
+        // Si les pubs ont augmenté, mettre à jour les revenus aussi
+        if (adsIncrement > 0) {
+          // IMPORTANT: Recalculer les revenus en fonction des pubs pour maintenir le ratio
+          const nextRevenue = synchronizeRevenueWithAds(nextAds);
+          setLocalRevenueCount(nextRevenue);
+          
+          // Déclencher un événement pour informer les autres composants
+          window.dispatchEvent(new CustomEvent('stats:update', { 
+            detail: { 
+              adsCount: nextAds,
+              revenueCount: nextRevenue,
+              increment: {
+                ads: adsIncrement,
+                revenue: nextRevenue - localRevenueCount
+              }
+            }
+          }));
+        }
+        
         return nextAds;
       });
-      
-      setLocalRevenueCount(prevRev => {
-        // Ne fait progresser que si les pubs avancent, mais peut parfois rattraper en bloc
-        const revenueRand = Math.random();
-        let revInc = 0;
-        if (revenueRand > 0.8) {
-          // Décorrélation douce du ratio attendu avec variation basée sur l'ID utilisateur
-          const userVariation = userId ? (userId.charCodeAt(0) % 10) / 200 : 0; // Petite variation par utilisateur
-          revInc = (Math.random() * 2 + 0.4) * (CORRELATION_RATIO + ((Math.random() - 0.5) * 0.03) + userVariation);
-        }
-        return prevRev + revInc;
-      });
-    }, userSpecificRate + Math.floor(Math.random() * 6000)); // Variation supplémentaire dans l'intervalle
+    }, userSpecificRate + Math.floor(Math.random() * 3000)); // Variation réduite dans l'intervalle pour plus de régularité
 
     return () => clearInterval(updateInterval);
-  }, [userId]);
+  }, [userId, localRevenueCount]);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
