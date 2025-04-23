@@ -49,7 +49,7 @@ const StatisticsDisplay: React.FC = () => {
     autoIncrement: true,
     userId: userId || 'anonymous',
     forceGrowth: true,
-    correlationRatio: 0.78 // Légère augmentation du ratio
+    correlationRatio: 0.92 // Augmentation significative du ratio pour suivre de plus près les publicités
   });
   
   const [localAdsCount, setLocalAdsCount] = useState(0);
@@ -66,15 +66,17 @@ const StatisticsDisplay: React.FC = () => {
   
   useEffect(() => {
     if (!userId) return;
+    
+    // Micro-incréments beaucoup plus fréquents et plus élevés
     const microUpdateInterval = setInterval(() => {
-      // Incréments plus rapides et plus élevés
-      const microAdsIncrement = Math.floor(Math.random() * 16) + 10; // 10-25 pubs toutes les 2.5 secondes
-      const correlationFactor = 0.76 * (0.94 + Math.random() * 0.13); // 0.76-0.86 ratio
+      // Incréments beaucoup plus élevés
+      const microAdsIncrement = Math.floor(Math.random() * 25) + 18; // 18-42 pubs tous les 1.5 secondes
+      const correlationFactor = 0.90 + Math.random() * 0.14; // 0.90-1.04 ratio (presque 1:1)
       const microRevenueIncrement = microAdsIncrement * correlationFactor;
       
       setLocalAdsCount(prev => prev + microAdsIncrement);
       setLocalRevenueCount(prev => prev + microRevenueIncrement);
-    }, 2500); // MAINTENANT toutes les 2,5 secondes (plus rapide)
+    }, 1500); // Beaucoup plus rapide: toutes les 1.5 secondes
     
     return () => clearInterval(microUpdateInterval);
   }, [userId]);

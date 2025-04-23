@@ -9,6 +9,9 @@ export const calculateRevenueForLocation = (
   let totalRevenue = 0;
   const adTypes = Object.entries(location.adTypes);
   
+  // Facteur d'augmentation global pour rendre les revenus plus élevés
+  const revenueBoostedFactor = 1.2;
+  
   for (let i = 0; i < ads; i++) {
     // Determine ad category based on location distribution
     let adType = "standard";
@@ -25,11 +28,15 @@ export const calculateRevenueForLocation = (
     
     // Calculate value based on ad type
     const category = adValueCategories[adType as keyof typeof adValueCategories];
-    const adValue = category.min + Math.random() * (category.max - category.min);
+    
+    // Augmenter les valeurs min et max pour chaque catégorie
+    const boostedMin = category.min * revenueBoostedFactor;
+    const boostedMax = category.max * revenueBoostedFactor;
+    
+    const adValue = boostedMin + Math.random() * (boostedMax - boostedMin);
     
     totalRevenue += adValue;
   }
   
   return totalRevenue;
 };
-

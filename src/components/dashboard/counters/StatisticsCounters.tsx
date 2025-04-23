@@ -12,7 +12,7 @@ const StatisticsCounters: React.FC = () => {
     autoIncrement: true,
     userId: userId || 'anonymous',
     forceGrowth: true,
-    correlationRatio: 0.78
+    correlationRatio: 0.92 // Aligné avec StatisticsDisplay pour une cohérence
   });
   
   const [localAdsCount, setLocalAdsCount] = useState(0);
@@ -30,37 +30,37 @@ const StatisticsCounters: React.FC = () => {
   useEffect(() => {
     if (!userId) return;
     
-    // Incréments micro plus fréquents et plus élevés
+    // Incréments micro plus fréquents et significativement plus élevés
     const microUpdateInterval = setInterval(() => {
-      const microAdsIncrement = Math.floor(Math.random() * 14) + 8; // 8-21 ads
-      const correlationFactor = 0.75 * (0.95 + Math.random() * 0.12);
+      const microAdsIncrement = Math.floor(Math.random() * 22) + 15; // 15-36 ads
+      const correlationFactor = 0.90 + Math.random() * 0.14; // 0.90-1.04 (proche de 1:1)
       const microRevenueIncrement = microAdsIncrement * correlationFactor;
       
       setLocalAdsCount(prev => prev + microAdsIncrement);
       setLocalRevenueCount(prev => prev + microRevenueIncrement);
-    }, 2000); // toutes les 2 secondes
+    }, 1000); // Toutes les secondes (beaucoup plus rapide qu'avant)
     
     // Incréments persistants plus élevés/fréquents
     const minorUpdateInterval = setInterval(() => {
-      const smallAdsIncrement = Math.floor(Math.random() * 32) + 15; // 15-46 ads
-      const correlationFactor = 0.76 * (0.96 + Math.random() * 0.08);
+      const smallAdsIncrement = Math.floor(Math.random() * 60) + 35; // 35-94 ads
+      const correlationFactor = 0.92 * (0.98 + Math.random() * 0.12); // Proche de 1:1
       const smallRevenueIncrement = smallAdsIncrement * correlationFactor;
       
       if (userId) {
         incrementStats(smallAdsIncrement, smallRevenueIncrement);
       }
-    }, 9000); // toutes les 9 secondes
+    }, 6000); // Toutes les 6 secondes (plus rapide qu'avant)
     
-    // Incréments majeurs plus rapprochés
+    // Incréments majeurs plus rapprochés et plus importants
     const majorUpdateInterval = setInterval(() => {
-      const largerAdsIncrement = Math.floor(Math.random() * 110) + 65; // 65-175 ads
-      const correlationFactor = 0.79 * (0.98 + Math.random() * 0.06);
+      const largerAdsIncrement = Math.floor(Math.random() * 180) + 120; // 120-299 ads
+      const correlationFactor = 0.94 * (0.98 + Math.random() * 0.08); // Encore plus proche de 1:1
       const largerRevenueIncrement = largerAdsIncrement * correlationFactor;
       
       if (userId) {
         incrementStats(largerAdsIncrement, largerRevenueIncrement);
       }
-    }, 45000); // toutes les 45 secondes
+    }, 30000); // Toutes les 30 secondes (plus rapide qu'avant)
 
     return () => {
       clearInterval(microUpdateInterval);
