@@ -2,9 +2,13 @@
 import React from 'react';
 import { Coins } from 'lucide-react';
 
-const BalanceHeader = () => {
+export interface BalanceHeaderProps {
+  className?: string;
+}
+
+const BalanceHeader: React.FC<BalanceHeaderProps> = ({ className }) => {
   return (
-    <div className="flex justify-between items-center mb-2">
+    <div className={`flex justify-between items-center mb-2 ${className || ''}`}>
       <h2 className="text-lg font-medium text-slate-700 dark:text-slate-300">
         Votre solde
       </h2>

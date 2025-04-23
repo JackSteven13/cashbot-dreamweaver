@@ -1,26 +1,24 @@
-
 import { useEffect } from 'react';
 import balanceManager from '@/utils/balance/balanceManager';
-import { BalanceEventDetail } from './types';
+import { BalanceEventDetail, BalanceSetters, BalanceRefs } from './types';
 
-export const useBalanceEvents = (
-  displayedBalance: number,
-  setters: {
-    setDisplayedBalance: (value: number) => void;
-    setPreviousBalance: (value: number | null) => void;
-    setIsAnimating: (value: boolean) => void;
-    setGain: (value: number | null) => void;
-  },
-  refs: {
-    lastUpdateTimeRef: React.RefObject<number>;
-    forceUpdateTimeoutRef: React.RefObject<NodeJS.Timeout | null>;
-  },
-  updateDebounceTime: number
-) => {
+interface UseBalanceEventsProps {
+  displayedBalance: number;
+  setters: BalanceSetters;
+  refs: BalanceRefs;
+  updateDebounceTime: number;
+}
+
+export const useBalanceEvents = ({
+  displayedBalance,
+  setters,
+  refs,
+  updateDebounceTime
+}: UseBalanceEventsProps) => {
   useEffect(() => {
     const handleBalanceUpdate = (event: CustomEvent<BalanceEventDetail>) => {
-      const now = Date.now();
-      if (now - refs.lastUpdateTimeRef.current < updateDebounceTime) {
+      const currentTime = Date.now();
+      if (currentTime - (refs.lastUpdateTimeRef.current || 0) < updateDebounceTime) {
         if (refs.forceUpdateTimeoutRef.current) {
           clearTimeout(refs.forceUpdateTimeoutRef.current);
         }
@@ -39,6 +37,7 @@ export const useBalanceEvents = (
       const gain = event.detail?.gain || event.detail?.amount;
       const shouldAnimate = event.detail?.animate === true;
       const oldBalanceFromEvent = event.detail?.oldBalance;
+      const currentTime = Date.now();
       
       if (typeof gain === 'number' && gain > 0) {
         const oldBalance = oldBalanceFromEvent !== undefined ? oldBalanceFromEvent : displayedBalance;
@@ -55,7 +54,9 @@ export const useBalanceEvents = (
         localStorage.setItem('currentBalance', calculatedNewBalance.toString());
         localStorage.setItem('lastKnownBalance', calculatedNewBalance.toString());
         
-        refs.lastUpdateTimeRef.current = now;
+        if (refs.lastUpdateTimeRef.current) {
+          refs.lastUpdateTimeRef.current = currentTime;
+        }
         
         if (shouldAnimate !== false) {
           setTimeout(() => setters.setIsAnimating(false), 2500);
@@ -78,7 +79,9 @@ export const useBalanceEvents = (
         localStorage.setItem('currentBalance', newBalance.toString());
         localStorage.setItem('lastKnownBalance', newBalance.toString());
         
-        refs.lastUpdateTimeRef.current = now;
+        if (refs.lastUpdateTimeRef.current) {
+          refs.lastUpdateTimeRef.current = currentTime;
+        }
         
         if (shouldAnimate !== false && implicitGain > 0) {
           setTimeout(() => setters.setIsAnimating(false), 2500);

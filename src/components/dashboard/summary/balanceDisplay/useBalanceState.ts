@@ -1,9 +1,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import balanceManager from '@/utils/balance/balanceManager';
-import { BalanceState } from './types';
+import { UseBalanceStateResult } from './types';
 
-export const useBalanceState = (initialBalance: number) => {
+export const useBalanceState = (initialBalance: number): UseBalanceStateResult => {
   const [displayedBalance, setDisplayedBalance] = useState(() => {
     const managerBalance = balanceManager.getCurrentBalance();
     const safeManagerBalance = isNaN(managerBalance) ? 0 : managerBalance;
@@ -16,8 +16,8 @@ export const useBalanceState = (initialBalance: number) => {
   
   const balanceRef = useRef<HTMLDivElement>(null);
   const lastUpdateTimeRef = useRef<number>(Date.now());
-  const updateDebounceTime = 2000;
   const forceUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const updateDebounceTime = 2000;
 
   return {
     state: {
