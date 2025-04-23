@@ -3,6 +3,7 @@ import { getPersistentStats, savePersistentStats } from './persistentStats';
 
 /**
  * Synchronise les statistiques entre les différents composants
+ * avec un focus sur la parfaite synchronisation des revenus
  */
 export const initStatsSync = (userId?: string): (() => void) => {
   // Événement pour synchroniser les statistiques lors du chargement initial
@@ -27,7 +28,7 @@ export const initStatsSync = (userId?: string): (() => void) => {
   // Écouter les changements de stockage dans d'autres onglets
   window.addEventListener('storage', handleStorageChange);
   
-  // Synchroniser les compteurs toutes les secondes
+  // Synchroniser les compteurs très fréquemment avec forte corrélation
   const syncInterval = setInterval(() => {
     const stats = getPersistentStats(userId);
     
@@ -35,7 +36,10 @@ export const initStatsSync = (userId?: string): (() => void) => {
     window.dispatchEvent(new CustomEvent('stats:sync', {
       detail: stats
     }));
-  }, 800); // Synchroniser plus fréquemment pour une meilleure réactivité
+    
+    // Forcer la persistance périodiquement pour éviter les désynchronisations
+    savePersistentStats(stats.adsCount, stats.revenueCount, userId);
+  }, 500); // Synchroniser très fréquemment pour une réactivité immédiate
   
   // Nettoyer lors de la déconnexion ou du déchargement de la page
   const cleanup = () => {
@@ -52,6 +56,7 @@ export const initStatsSync = (userId?: string): (() => void) => {
 
 /**
  * Charge les statistiques depuis le serveur et les synchronise avec les valeurs locales
+ * en garantissant la corrélation entre publicités et revenus
  */
 export const syncStatsWithServer = async (
   serverStats: { adsCount?: number; revenueCount?: number },
@@ -73,19 +78,29 @@ export const syncStatsWithServer = async (
   const syncedAdsCount = Math.max(localStats.adsCount, serverAdsCount);
   const syncedRevenueCount = Math.max(localStats.revenueCount, serverRevenueCount);
   
-  // Persister les valeurs synchronisées
-  savePersistentStats(syncedAdsCount, syncedRevenueCount, userId);
+  // Si le ratio publicités/revenus est trop faible, ajuster les revenus pour maintenir la corrélation
+  const expectedRatio = 0.76; // Ratio attendu revenus/publicités
+  const currentRatio = syncedRevenueCount / syncedAdsCount;
+  
+  // Si le ratio actuel est trop faible, augmenter les revenus pour maintenir la corrélation
+  let finalRevenueCount = syncedRevenueCount;
+  if (currentRatio < expectedRatio) {
+    finalRevenueCount = syncedAdsCount * expectedRatio;
+  }
+  
+  // Persister les valeurs synchronisées et corrélées
+  savePersistentStats(syncedAdsCount, finalRevenueCount, userId);
   
   // Informer les autres composants de la mise à jour
   window.dispatchEvent(new CustomEvent('stats:update', {
     detail: {
       adsCount: syncedAdsCount,
-      revenueCount: syncedRevenueCount
+      revenueCount: finalRevenueCount
     }
   }));
   
   return {
     adsCount: syncedAdsCount,
-    revenueCount: syncedRevenueCount
+    revenueCount: finalRevenueCount
   };
 };

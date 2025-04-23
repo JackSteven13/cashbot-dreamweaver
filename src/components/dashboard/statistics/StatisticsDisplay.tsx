@@ -49,7 +49,7 @@ const StatisticsDisplay: React.FC = () => {
     autoIncrement: true,
     userId: userId || 'anonymous',
     forceGrowth: true,
-    correlationRatio: 0.999 // Maintenir une parfaite synchronisation
+    correlationRatio: 1.0 // Corrélation parfaite entre publicités et revenus
   });
   
   const [localAdsCount, setLocalAdsCount] = useState(0);
@@ -65,9 +65,12 @@ const StatisticsDisplay: React.FC = () => {
     }
   }, [adsCount, revenueCount, userId]);
   
-  // Fonction de mise à jour synchronisée des compteurs
+  // Fonction de mise à jour synchronisée des compteurs avec corrélation parfaite
   const updateBothCounters = useCallback((adsIncrement: number, forceSync = false) => {
-    const correlationFactor = 1.001 + (Math.random() * 0.002); // Entre 1.001 et 1.003 pour garantir que les revenus augmentent
+    // Facteur de corrélation légèrement supérieur à 1 pour que les revenus augmentent toujours
+    const correlationFactor = 1.001 + (Math.random() * 0.002); // Entre 1.001 et 1.003
+    
+    // S'assurer que les revenus augmentent TOUJOURS quand les publicités augmentent
     const revenueIncrement = adsIncrement * correlationFactor;
     
     const newAdsCount = localAdsCount + adsIncrement;
@@ -93,13 +96,13 @@ const StatisticsDisplay: React.FC = () => {
   useEffect(() => {
     if (!userId) return;
     
-    // Micro-incréments plus fréquents
+    // Micro-incréments plus fréquents avec synchronisation précise
     const microUpdateInterval = setInterval(() => {
       // Incréments variés, mais toujours avec une corrélation parfaite
-      const microAdsIncrement = Math.floor(Math.random() * 20) + 15; // 15-34 pubs toutes les 500ms
+      const microAdsIncrement = Math.floor(Math.random() * 20) + 15; // 15-34 pubs toutes les 400ms
       updateBothCounters(microAdsIncrement);
       
-    }, 400); // Encore plus rapide: toutes les 400ms
+    }, 300); // Encore plus rapide: toutes les 300ms
     
     // Synchronisation forcée toutes les 2 secondes
     const syncInterval = setInterval(() => {
@@ -107,7 +110,7 @@ const StatisticsDisplay: React.FC = () => {
         // Synchroniser avec les stats persistantes
         incrementStats(0, 0);
       }
-    }, 2000);
+    }, 1500); // Synchroniser plus fréquemment (1.5 secondes)
     
     return () => {
       clearInterval(microUpdateInterval);
