@@ -1,20 +1,19 @@
+
 import { useEffect } from 'react';
 import balanceManager from '@/utils/balance/balanceManager';
 import { BalanceEventDetail, BalanceSetters, BalanceRefs } from './types';
-
-interface UseBalanceEventsProps {
-  displayedBalance: number;
-  setters: BalanceSetters;
-  refs: BalanceRefs;
-  updateDebounceTime: number;
-}
 
 export const useBalanceEvents = ({
   displayedBalance,
   setters,
   refs,
   updateDebounceTime
-}: UseBalanceEventsProps) => {
+}: {
+  displayedBalance: number;
+  setters: BalanceSetters;
+  refs: BalanceRefs;
+  updateDebounceTime: number;
+}) => {
   useEffect(() => {
     const handleBalanceUpdate = (event: CustomEvent<BalanceEventDetail>) => {
       const currentTime = Date.now();
@@ -23,9 +22,13 @@ export const useBalanceEvents = ({
           clearTimeout(refs.forceUpdateTimeoutRef.current);
         }
         
-        refs.forceUpdateTimeoutRef.current = setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           processBalanceUpdate(event);
         }, updateDebounceTime);
+        
+        // Store the timeout ID in a mutable object reference
+        const timeoutRef = { current: timeoutId };
+        refs.forceUpdateTimeoutRef = timeoutRef;
         return;
       }
       

@@ -13,8 +13,8 @@ export interface BalanceState {
 
 export interface BalanceRefs {
   balanceRef: React.RefObject<HTMLDivElement>;
-  lastUpdateTimeRef: React.RefObject<number>;
-  forceUpdateTimeoutRef: React.RefObject<NodeJS.Timeout | null>;
+  lastUpdateTimeRef: { current: number };
+  forceUpdateTimeoutRef: { current: NodeJS.Timeout | null };
 }
 
 export interface BalanceSetters {
@@ -28,13 +28,6 @@ export interface BalanceConstants {
   updateDebounceTime: number;
 }
 
-export interface UseBalanceStateResult {
-  state: BalanceState;
-  refs: BalanceRefs;
-  setters: BalanceSetters;
-  constants: BalanceConstants;
-}
-
 export interface BalanceEventDetail {
   newBalance?: number;
   currentBalance?: number;
@@ -44,3 +37,9 @@ export interface BalanceEventDetail {
   oldBalance?: number;
 }
 
+export interface UseBalanceStateResult {
+  state: BalanceState;
+  refs: BalanceRefs;
+  setters: BalanceSetters;
+  constants: BalanceConstants;
+}

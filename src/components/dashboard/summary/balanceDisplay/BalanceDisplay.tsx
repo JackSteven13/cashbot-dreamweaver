@@ -6,12 +6,12 @@ import balanceManager from '@/utils/balance/balanceManager';
 import { BalanceDisplayProps } from './types';
 import { useBalanceState } from './useBalanceState';
 import { useBalanceEvents } from './useBalanceEvents';
+import { useIntervalChecks } from '@/hooks/sessions/useIntervalChecks';
 import BalanceHeader from './BalanceHeader';
 import BalanceAmount from './BalanceAmount';
 
 const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = false }) => {
   const safeBalance = isNaN(balance) ? 0 : balance;
-  
   const { state, refs, setters, constants } = useBalanceState(safeBalance);
   
   useEffect(() => {
@@ -26,26 +26,19 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
       }
     }
   }, [safeBalance, state.displayedBalance]);
-  
-  useBalanceEvents(
-    state.displayedBalance,
+
+  useBalanceEvents({
+    displayedBalance: state.displayedBalance,
     setters,
     refs,
-    constants.updateDebounceTime
-  );
-  
-  useEffect(() => {
-    const checkBalanceInterval = setInterval(() => {
-      const managerBalance = balanceManager.getCurrentBalance();
-      if (!isNaN(managerBalance) && Math.abs(managerBalance - state.displayedBalance) > 0.01) {
-        console.log(`Correction du solde affiché: ${state.displayedBalance} → ${managerBalance}`);
-        setters.setPreviousBalance(state.displayedBalance);
-        setters.setDisplayedBalance(managerBalance);
-      }
-    }, 5000);
-    
-    return () => clearInterval(checkBalanceInterval);
-  }, [state.displayedBalance]);
+    updateDebounceTime: constants.updateDebounceTime
+  });
+
+  useIntervalChecks({
+    displayedBalance: state.displayedBalance,
+    setDisplayedBalance: setters.setDisplayedBalance,
+    setPreviousBalance: setters.setPreviousBalance
+  });
   
   return (
     <Card className={cn(
