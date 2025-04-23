@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Coins } from 'lucide-react';
@@ -234,7 +233,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = fa
                 <CountUp
                   start={previousBalance !== null ? previousBalance : displayedBalance - (gain || 0)}
                   end={displayedBalance}
-                  duration={1.5}
+                  delay={0}
+                  preserveValue={true}
                   decimals={2}
                   suffix="€"
                   useEasing={true}
