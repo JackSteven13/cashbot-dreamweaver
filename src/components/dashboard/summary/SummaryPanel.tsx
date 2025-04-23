@@ -1,6 +1,5 @@
-
 import React, { memo } from 'react';
-import BalanceDisplay from '@/components/dashboard/balance/BalanceDisplay';
+import BalanceDisplay from './balanceDisplay/BalanceDisplay';
 import SessionButton from './buttons/SessionButton';
 import WithdrawalButton from './buttons/WithdrawalButton';
 import ReferralButton from './buttons/ReferralButton';

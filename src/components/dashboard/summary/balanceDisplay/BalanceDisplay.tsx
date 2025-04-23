@@ -1,0 +1,72 @@
+
+import React, { useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import balanceManager from '@/utils/balance/balanceManager';
+import { BalanceDisplayProps } from './types';
+import { useBalanceState } from './useBalanceState';
+import { useBalanceEvents } from './useBalanceEvents';
+import BalanceHeader from './BalanceHeader';
+import BalanceAmount from './BalanceAmount';
+
+const BalanceDisplay: React.FC<BalanceDisplayProps> = ({ balance, isLoading = false }) => {
+  const safeBalance = isNaN(balance) ? 0 : balance;
+  
+  const { state, refs, setters, constants } = useBalanceState(safeBalance);
+  
+  useEffect(() => {
+    if (safeBalance > state.displayedBalance) {
+      const now = Date.now();
+      if (now - refs.lastUpdateTimeRef.current > 5000) {
+        console.log(`Synchronisation du solde affiché avec le prop balance: ${state.displayedBalance} -> ${safeBalance}`);
+        setters.setPreviousBalance(state.displayedBalance);
+        setters.setDisplayedBalance(safeBalance);
+        refs.lastUpdateTimeRef.current = now;
+        balanceManager.forceBalanceSync(safeBalance);
+      }
+    }
+  }, [safeBalance, state.displayedBalance]);
+  
+  useBalanceEvents(
+    state.displayedBalance,
+    setters,
+    refs,
+    constants.updateDebounceTime
+  );
+  
+  useEffect(() => {
+    const checkBalanceInterval = setInterval(() => {
+      const managerBalance = balanceManager.getCurrentBalance();
+      if (!isNaN(managerBalance) && Math.abs(managerBalance - state.displayedBalance) > 0.01) {
+        console.log(`Correction du solde affiché: ${state.displayedBalance} → ${managerBalance}`);
+        setters.setPreviousBalance(state.displayedBalance);
+        setters.setDisplayedBalance(managerBalance);
+      }
+    }, 5000);
+    
+    return () => clearInterval(checkBalanceInterval);
+  }, [state.displayedBalance]);
+  
+  return (
+    <Card className={cn(
+      "balance-display hover:shadow-md transition-all duration-300",
+      state.isAnimating && "pulse-animation"
+    )}>
+      <CardContent className="p-6 flex flex-col">
+        <BalanceHeader />
+        <div className="relative">
+          <BalanceAmount
+            isLoading={isLoading}
+            displayedBalance={state.displayedBalance}
+            previousBalance={state.previousBalance}
+            gain={state.gain}
+            isAnimating={state.isAnimating}
+            balanceRef={refs.balanceRef}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default BalanceDisplay;
