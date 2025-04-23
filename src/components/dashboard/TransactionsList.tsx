@@ -1,10 +1,12 @@
 
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useEffect, useState, useCallback } from 'react';
 import { useTransactions } from './transactions/hooks/useTransactions';
 import { Transaction } from '@/types/userData';
 import { TransactionListItem, TransactionEmptyState, TransactionListActions, TransactionFooter } from './transactions';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface TransactionsListProps {
   transactions: Transaction[];
@@ -24,32 +26,65 @@ const TransactionsList = memo(({
     displayedTransactions,
     refreshKey,
     handleManualRefresh,
-    hiddenTransactionsCount
+    hiddenTransactionsCount,
+    setTransactions
   } = useTransactions(initialTransactions);
   
+  const { user } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   
-  // Setup real-time update listeners with more frequent checks
-  useEffect(() => {
-    const handleRealtimeUpdate = () => {
+  // Fonction pour récupérer les transactions directement depuis la base de données
+  const fetchLatestTransactions = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
       setIsRefreshing(true);
-      // Short delay to simulate fetching
-      setTimeout(() => {
-        handleManualRefresh()
-          .then(() => {
-            setIsRefreshing(false);
-            setLastUpdated(new Date());
-            toast({
-              title: "Transactions mises à jour",
-              description: "Nouvelles transactions synchronisées en temps réel",
-              duration: 2000,
-            });
-          })
-          .catch(() => {
-            setIsRefreshing(false);
-          });
-      }, 500);
+      
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching transactions:", error);
+        return;
+      }
+      
+      if (data && Array.isArray(data)) {
+        // Formater les transactions pour correspondre au format attendu
+        const formattedTransactions = data.map((tx: any) => ({
+          id: tx.id,
+          date: tx.created_at || tx.date,
+          amount: tx.gain,
+          gain: tx.gain,
+          report: tx.report,
+          type: tx.type || 'system'
+        }));
+        
+        // Mettre à jour les transactions dans le hook
+        setTransactions(formattedTransactions);
+        
+        // Déclencher un événement pour informer les autres composants
+        window.dispatchEvent(new CustomEvent('transactions:updated', {
+          detail: { transactions: formattedTransactions }
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error);
+    } finally {
+      setIsRefreshing(false);
+      setLastUpdated(new Date());
+    }
+  }, [user, setTransactions]);
+  
+  // Mettre en place la réception des événements et le polling pour les mises à jour des transactions
+  useEffect(() => {
+    // Fonction pour gérer les événements de mise à jour
+    const handleRealtimeUpdate = () => {
+      console.log("Transaction update event received - fetching latest transactions");
+      fetchLatestTransactions();
     };
     
     // Écouter plus d'événements pour s'assurer que les transactions sont à jour
@@ -57,53 +92,38 @@ const TransactionsList = memo(({
     window.addEventListener('balance:update', handleRealtimeUpdate);
     window.addEventListener('automatic:revenue', handleRealtimeUpdate);
     window.addEventListener('balance:daily-growth', handleRealtimeUpdate);
+    window.addEventListener('session:completed', handleRealtimeUpdate);
     
-    // Rafraîchir automatiquement toutes les 2 minutes
-    const autoRefresh = setInterval(() => {
-      handleManualRefresh()
-        .then(() => {
-          setLastUpdated(new Date());
-          console.log("Transactions auto-refreshed");
-        })
-        .catch(() => {
-          console.error("Failed to auto-refresh transactions");
-        });
-    }, 120000); // 2 minutes
+    // Mise en place d'un rafraîchissement périodique toutes les 30 secondes
+    const pollingInterval = setInterval(() => {
+      console.log("Polling for transaction updates");
+      fetchLatestTransactions();
+    }, 30000);
+    
+    // Rafraîchissement initial des transactions
+    fetchLatestTransactions();
     
     return () => {
       window.removeEventListener('transactions:refresh', handleRealtimeUpdate);
       window.removeEventListener('balance:update', handleRealtimeUpdate);
       window.removeEventListener('automatic:revenue', handleRealtimeUpdate);
       window.removeEventListener('balance:daily-growth', handleRealtimeUpdate);
-      clearInterval(autoRefresh);
+      window.removeEventListener('session:completed', handleRealtimeUpdate);
+      clearInterval(pollingInterval);
     };
-  }, [handleManualRefresh]);
+  }, [fetchLatestTransactions]);
   
-  // Refresh transactions on first load
-  useEffect(() => {
-    // Premier rafraîchissement après 5 secondes pour laisser le temps aux données de se charger
-    const initialRefreshTimeout = setTimeout(() => {
-      handleManualRefresh()
-        .then(() => {
-          setLastUpdated(new Date());
-          console.log("Initial transaction refresh complete");
-        })
-        .catch((error) => {
-          console.error("Failed to refresh transactions:", error);
-        });
-    }, 5000);
-    
-    return () => {
-      clearTimeout(initialRefreshTimeout);
-    };
-  }, [handleManualRefresh]);
-  
-  // Handle manual refresh
+  // Handle manual refresh with direct database fetch
   const onManualRefresh = async () => {
     setIsRefreshing(true);
-    await handleManualRefresh();
+    await fetchLatestTransactions();
     setIsRefreshing(false);
-    setLastUpdated(new Date());
+    
+    toast({
+      title: "Historique mis à jour",
+      description: "Les transactions ont été synchronisées avec succès",
+      duration: 2000,
+    });
   };
   
   return (

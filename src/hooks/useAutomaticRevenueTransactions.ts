@@ -80,7 +80,7 @@ export const useAutomaticRevenueTransactions = () => {
       // Update last transaction time
       setLastTransactionTime(today);
       
-      // Trigger an event to refresh the transactions list
+      // Trigger multiple events to ensure proper synchronization
       window.dispatchEvent(new CustomEvent('transactions:refresh', { 
         detail: { timestamp: Date.now() }
       }));
@@ -89,6 +89,18 @@ export const useAutomaticRevenueTransactions = () => {
       window.dispatchEvent(new CustomEvent('balance:update', { 
         detail: { gain: amount, automatic: true }
       }));
+      
+      // Nouvelle notification pour informer que les transactions ont été mises à jour
+      window.dispatchEvent(new CustomEvent('transactions:updated', { 
+        detail: { gain: amount, timestamp: Date.now() }
+      }));
+      
+      // Délai court avant de mettre à jour les transactions pour laisser le temps à la base de données de se mettre à jour
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('transactions:refresh', { 
+          detail: { timestamp: Date.now() + 100 }
+        }));
+      }, 300);
     } catch (error) {
       console.error("Failed to record automatic transaction:", error);
       // Re-queue the transaction on error
