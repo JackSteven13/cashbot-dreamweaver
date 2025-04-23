@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -150,7 +149,35 @@ export const useBalanceUpdater = () => {
     }
   };
 
-  return { lastUpdateTime, forceBalanceUpdate };
+  // Adding updateBalance function to keep compatibility with useDashboardLogic
+  const updateBalance = async (gain: number, report: string, forceUpdate: boolean = false) => {
+    if (!user) return;
+    
+    try {
+      // Use the balanceManager to update the balance locally
+      balanceManager.updateBalance(gain);
+      
+      // Trigger an event to notify components about the balance change
+      window.dispatchEvent(new CustomEvent('balance:update', {
+        detail: { 
+          amount: gain,
+          timestamp: Date.now(),
+          userId: user.id
+        }
+      }));
+      
+      setLastUpdateTime(Date.now());
+      
+      // If forceUpdate is true, also update from the database
+      if (forceUpdate) {
+        await forceBalanceUpdate();
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du solde:', error);
+    }
+  };
+
+  return { lastUpdateTime, forceBalanceUpdate, updateBalance };
 };
 
 export default useBalanceUpdater;

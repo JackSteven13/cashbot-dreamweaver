@@ -1,3 +1,4 @@
+
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -20,7 +21,7 @@ export function useDashboardLogic() {
   const [isPreloaded, setIsPreloaded] = useState(false);
   const [lastProcessTime, setLastProcessTime] = useState<number>(0);
   const todaysGainsRef = useRef<number>(0);
-  const { updateBalance } = useBalanceUpdater();
+  const { updateBalance, lastUpdateTime, forceBalanceUpdate } = useBalanceUpdater();
   const { lastBalanceUpdate, setLastBalanceUpdate, fetchLatestBalance } = useBalanceSync(userData, isPreloaded);
   const { refreshUserData } = useUserDataRefresh();
   const {
