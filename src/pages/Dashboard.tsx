@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +7,6 @@ import useInitUserData from '@/hooks/useInitUserData';
 import SubscriptionSynchronizer from '@/components/subscriptions/SubscriptionSynchronizer';
 import { toast } from '@/components/ui/use-toast';
 import BalanceAnimation from '@/components/dashboard/BalanceAnimation';
-import useAutomaticRevenue from '@/hooks/useAutomaticRevenue';
 import AutoProgressNotification from '@/components/dashboard/AutoProgressNotification';
 import { useAutoSessionScheduler } from '@/hooks/useAutoSessionScheduler';
 import { useBalanceUpdater } from '@/hooks/useBalanceUpdater';
@@ -28,7 +26,7 @@ const Dashboard = () => {
   const todaysGainsRef = React.useRef<number>(0);
   
   const { updateBalance } = useBalanceUpdater();
-  const { lastBalanceUpdate, setLastBalanceUpdate } = useBalanceSync(userData, isPreloaded);
+  const { lastBalanceUpdate, setLastBalanceUpdate, fetchLatestBalance } = useBalanceSync(userData, isPreloaded);
   const { refreshUserData } = useUserDataRefresh();
   
   const { 
@@ -53,7 +51,20 @@ const Dashboard = () => {
     }
     
     const currentBalance = balanceManager.getCurrentBalance();
-    if (currentBalance <= 0) return;
+    if (currentBalance <= 0) {
+      console.log("Tentative de récupération du solde depuis le backend");
+      if (userData?.id) {
+        fetchLatestBalance(userData.id)
+          .then(result => {
+            if (result && result.balance > 0) {
+              console.log("Solde récupéré depuis le backend:", result.balance);
+              balanceManager.forceBalanceSync(result.balance, userData.id);
+              setLastBalanceUpdate(Date.now());
+            }
+          });
+      }
+      return;
+    }
     
     console.log("Forçage d'une mise à jour du solde sur l'interface:", currentBalance);
     
@@ -66,7 +77,7 @@ const Dashboard = () => {
     }));
     
     setLastBalanceUpdate(Date.now());
-  }, [userData]);
+  }, [userData, fetchLatestBalance, setLastBalanceUpdate]);
   
   usePeriodicUpdates(
     userData,
@@ -85,6 +96,13 @@ const Dashboard = () => {
       // Associer l'ID utilisateur au gestionnaire de solde dès que possible
       if (user.id) {
         balanceManager.setUserId(user.id);
+        
+        // Récupérer d'éventuelles données en cache du localStorage
+        const cachedBalance = parseFloat(localStorage.getItem(`lastKnownBalance_${user.id}`) || '0');
+        if (cachedBalance > 0) {
+          console.log(`Balance trouvée en cache pour ${user.id}: ${cachedBalance}€`);
+          balanceManager.forceBalanceSync(cachedBalance, user.id);
+        }
       }
       
       setTimeout(() => {
@@ -117,7 +135,18 @@ const Dashboard = () => {
         
         // Associer l'ID utilisateur au gestionnaire de solde
         if (userData.id || userData.profile?.id) {
-          balanceManager.setUserId(userData.id || userData.profile?.id);
+          const userId = userData.id || userData.profile?.id;
+          balanceManager.setUserId(userId);
+          
+          // Vérifier immédiatement s'il y a un solde en base de données
+          if (userId) {
+            fetchLatestBalance(userId).then(result => {
+              if (result && result.balance > 0) {
+                balanceManager.forceBalanceSync(result.balance, userId);
+                console.log(`Solde initial récupéré depuis la BD: ${result.balance}€`);
+              }
+            });
+          }
         }
         
         setTimeout(() => {
@@ -166,7 +195,7 @@ const Dashboard = () => {
         }, 1000);
       }
     }
-  }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue, forceBalanceRefresh, user, refreshUserData]);
+  }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue, forceBalanceRefresh, user, refreshUserData, fetchLatestBalance]);
   
   // Synchroniser régulièrement le solde avec l'interface
   useEffect(() => {
@@ -174,8 +203,22 @@ const Dashboard = () => {
       forceBalanceRefresh();
     }, 15000);
     
-    return () => clearInterval(refreshInterval);
-  }, [forceBalanceRefresh]);
+    const handleBeforeUnload = () => {
+      // Sauvegarder le solde en localStorage avant la fermeture
+      const currentBalance = balanceManager.getCurrentBalance();
+      if (currentBalance > 0 && user?.id) {
+        localStorage.setItem(`lastKnownBalance_${user.id}`, currentBalance.toString());
+        localStorage.setItem(`currentBalance_${user.id}`, currentBalance.toString());
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      clearInterval(refreshInterval);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+  }, [forceBalanceRefresh, user]);
 
   if (authLoading || !user) {
     return <DashboardSkeleton username="Chargement..." />;

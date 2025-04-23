@@ -1,4 +1,3 @@
-
 import { getPersistedBalance, persistBalance } from './balanceStorage';
 import { BalanceWatcher } from './types';
 
@@ -41,6 +40,9 @@ class BalanceManager {
       if (userBalance > 0) {
         this.currentBalance = userBalance;
         console.log(`BalanceManager: solde chargé pour ${userId}: ${userBalance}€`);
+        
+        // Notifier les watchers immédiatement du changement de solde
+        this.notifyWatchers(this.currentBalance);
       }
       
       // Récupérer le solde maximum pour cet utilisateur
@@ -49,6 +51,9 @@ class BalanceManager {
       if (!isNaN(storedHighestBalance) && storedHighestBalance > 0) {
         this.highestBalance = storedHighestBalance;
       }
+      
+      // Assurer la persistance immédiate
+      persistBalance(this.currentBalance, userId);
     }
   }
 
@@ -190,6 +195,11 @@ class BalanceManager {
     
     // Notifier les watchers
     this.notifyWatchers(this.currentBalance);
+    
+    // Synchroniser avec les autres sources de stockage pour plus de fiabilité
+    localStorage.setItem('currentBalance', this.currentBalance.toString());
+    localStorage.setItem('lastKnownBalance', this.currentBalance.toString());
+    sessionStorage.setItem('currentBalance', this.currentBalance.toString());
   }
   
   /**
