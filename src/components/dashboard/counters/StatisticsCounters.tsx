@@ -10,16 +10,14 @@ const StatisticsCounters: React.FC = () => {
   
   const { adsCount, revenueCount, incrementStats } = usePersistentStats({
     autoIncrement: true,
-    userId: userId || 'anonymous', // Utiliser 'anonymous' comme fallback
-    forceGrowth: true, // Assurer la croissance entre sessions
-    correlationRatio: 0.75 // Assurer que les revenus augmentent proportionnellement aux publicités
+    userId: userId || 'anonymous',
+    forceGrowth: true,
+    correlationRatio: 0.78
   });
   
-  // Valeurs locales pour des mises à jour plus fluides et fréquentes
   const [localAdsCount, setLocalAdsCount] = useState(0);
   const [localRevenueCount, setLocalRevenueCount] = useState(0);
   
-  // Mettre à jour les valeurs locales quand les valeurs persistantes changent
   useEffect(() => {
     if (userId && adsCount > 0) {
       setLocalAdsCount(adsCount);
@@ -29,47 +27,40 @@ const StatisticsCounters: React.FC = () => {
     }
   }, [adsCount, revenueCount, userId]);
 
-  // Incrémenter automatiquement les compteurs à intervalles réguliers
   useEffect(() => {
-    if (!userId) return; // Ne pas mettre à jour pour les utilisateurs non authentifiés
+    if (!userId) return;
     
-    // Mises à jour très fréquentes (micro-incréments toutes les 5 secondes)
+    // Incréments micro plus fréquents et plus élevés
     const microUpdateInterval = setInterval(() => {
-      // Très petits incréments fréquents
-      const microAdsIncrement = Math.floor(Math.random() * 4) + 2; // 2-5 ads
-      // Calculer revenu basé sur les publicités
-      const correlationFactor = 0.75 * (0.95 + Math.random() * 0.1);
+      const microAdsIncrement = Math.floor(Math.random() * 14) + 8; // 8-21 ads
+      const correlationFactor = 0.75 * (0.95 + Math.random() * 0.12);
       const microRevenueIncrement = microAdsIncrement * correlationFactor;
       
       setLocalAdsCount(prev => prev + microAdsIncrement);
       setLocalRevenueCount(prev => prev + microRevenueIncrement);
-    }, 5000); // Toutes les 5 secondes
+    }, 2000); // toutes les 2 secondes
     
-    // Petits incréments fréquents - mise à jour persistante
+    // Incréments persistants plus élevés/fréquents
     const minorUpdateInterval = setInterval(() => {
-      // Petits incréments fréquents
-      const smallAdsIncrement = Math.floor(Math.random() * 12) + 5;
-      // Calculer le revenu basé sur le nombre de publicités analyées
-      const correlationFactor = 0.75 * (0.98 + Math.random() * 0.04);
+      const smallAdsIncrement = Math.floor(Math.random() * 32) + 15; // 15-46 ads
+      const correlationFactor = 0.76 * (0.96 + Math.random() * 0.08);
       const smallRevenueIncrement = smallAdsIncrement * correlationFactor;
       
       if (userId) {
         incrementStats(smallAdsIncrement, smallRevenueIncrement);
       }
-    }, 15000); // Toutes les 15 secondes
+    }, 9000); // toutes les 9 secondes
     
-    // Incréments plus importants moins fréquents
+    // Incréments majeurs plus rapprochés
     const majorUpdateInterval = setInterval(() => {
-      // Incréments plus importants moins fréquents
-      const largerAdsIncrement = Math.floor(Math.random() * 80) + 40;
-      // Calculer le revenu basé sur le nombre de publicités
-      const correlationFactor = 0.76 * (0.97 + Math.random() * 0.06);
+      const largerAdsIncrement = Math.floor(Math.random() * 110) + 65; // 65-175 ads
+      const correlationFactor = 0.79 * (0.98 + Math.random() * 0.06);
       const largerRevenueIncrement = largerAdsIncrement * correlationFactor;
       
       if (userId) {
         incrementStats(largerAdsIncrement, largerRevenueIncrement);
       }
-    }, 90000); // Toutes les 1.5 minutes
+    }, 45000); // toutes les 45 secondes
 
     return () => {
       clearInterval(microUpdateInterval);

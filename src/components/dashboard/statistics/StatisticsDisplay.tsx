@@ -45,19 +45,16 @@ const StatisticsDisplay: React.FC = () => {
   const { userData } = useUserSession();
   const userId = userData?.profile?.id;
   
-  // S'assurer que l'ID utilisateur est toujours passé au hook
   const { adsCount, revenueCount } = usePersistentStats({
     autoIncrement: true,
-    userId: userId || 'anonymous', // Utiliser 'anonymous' comme fallback mais ne devrait jamais arriver
+    userId: userId || 'anonymous',
     forceGrowth: true,
-    correlationRatio: 0.75
+    correlationRatio: 0.78 // Légère augmentation du ratio
   });
   
-  // État local pour des mises à jour plus fréquentes et fluides
   const [localAdsCount, setLocalAdsCount] = useState(0);
   const [localRevenueCount, setLocalRevenueCount] = useState(0);
   
-  // Synchroniser avec les valeurs persistantes uniquement si l'utilisateur a un ID
   useEffect(() => {
     if (userId && adsCount > 0) {
       setLocalAdsCount(adsCount);
@@ -67,19 +64,17 @@ const StatisticsDisplay: React.FC = () => {
     }
   }, [adsCount, revenueCount, userId]);
   
-  // Ajouter des micro-mises à jour fréquentes seulement si l'utilisateur est identifié
   useEffect(() => {
-    if (!userId) return; // Ne pas mettre à jour pour les utilisateurs non identifiés
-    
+    if (!userId) return;
     const microUpdateInterval = setInterval(() => {
-      const microAdsIncrement = Math.floor(Math.random() * 3) + 2; // 2-4 ads toutes les 5 secondes
-      // Calculer revenu basé sur les publicités avec léger bruit
-      const correlationFactor = 0.75 * (0.95 + Math.random() * 0.1);
+      // Incréments plus rapides et plus élevés
+      const microAdsIncrement = Math.floor(Math.random() * 16) + 10; // 10-25 pubs toutes les 2.5 secondes
+      const correlationFactor = 0.76 * (0.94 + Math.random() * 0.13); // 0.76-0.86 ratio
       const microRevenueIncrement = microAdsIncrement * correlationFactor;
       
       setLocalAdsCount(prev => prev + microAdsIncrement);
       setLocalRevenueCount(prev => prev + microRevenueIncrement);
-    }, 5000);
+    }, 2500); // MAINTENANT toutes les 2,5 secondes (plus rapide)
     
     return () => clearInterval(microUpdateInterval);
   }, [userId]);
