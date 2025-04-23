@@ -1,7 +1,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import useUserDataSync from './useUserDataSync';
+import { useUserDataSync } from './useUserDataSync'; // Changed from default import to named import
 import { toast } from "@/components/ui/use-toast";
 import balanceManager from "@/utils/balance/balanceManager";
 import { UserData } from '@/types/userData';

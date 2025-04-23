@@ -167,3 +167,6 @@ export const useUserDataSync = () => {
 
   return { syncUserData };
 };
+
+// Also export as default for backward compatibility
+export default useUserDataSync;
