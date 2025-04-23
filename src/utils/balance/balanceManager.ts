@@ -83,157 +83,146 @@ class BalanceManager {
       }
     }
     
-    // Persister le solde
-    if (this.userId) {
-      persistBalance(this.currentBalance, this.userId);
-    } else {
-      localStorage.setItem('currentBalance', this.currentBalance.toString());
-      localStorage.setItem('lastKnownBalance', this.currentBalance.toString());
-      localStorage.setItem('lastUpdatedBalance', this.currentBalance.toString());
-      sessionStorage.setItem('currentBalance', this.currentBalance.toString());
-    }
+    // Persister le solde dans le localStorage
+    persistBalance(this.currentBalance, this.userId);
     
-    console.log(`Solde mis à jour: ${oldBalance}€ + ${amount}€ = ${this.currentBalance}€ (Gains quotidiens: ${this.dailyGains}€)`);
-    
-    // Notifier tous les observateurs
-    this.notifyWatchers();
+    // Notifier les watchers
+    this.notifyWatchers(this.currentBalance);
     
     return this.currentBalance;
   }
   
   /**
-   * Forcer la synchronisation du solde avec une valeur spécifique
+   * Ajouter un gain quotidien (sans modifier le solde)
    */
-  forceBalanceSync(balance: number, userId?: string): void {
-    if (isNaN(balance)) {
-      console.error("Tentative de synchronisation forcée avec une valeur non numérique:", balance);
+  addDailyGain(amount: number): void {
+    if (isNaN(amount) || amount <= 0) {
+      console.error("Tentative d'ajout d'un gain quotidien invalide:", amount);
       return;
     }
     
-    console.log(`Synchronisation forcée du solde à ${balance}€`);
+    this.dailyGains += amount;
+    this.dailyGains = parseFloat(this.dailyGains.toFixed(2));
+    localStorage.setItem('dailyGains', this.dailyGains.toString());
     
-    this.currentBalance = balance;
-    
-    // Mettre à jour le solde maximum si nécessaire
+    console.log(`Gains quotidiens mis à jour: ${this.dailyGains}€`);
+  }
+  
+  /**
+   * Obtenir le solde actuel
+   */
+  getCurrentBalance(): number {
+    return this.currentBalance;
+  }
+  
+  /**
+   * Obtenir le solde maximum atteint
+   */
+  getHighestBalance(): number {
+    return this.highestBalance;
+  }
+  
+  /**
+   * Mettre à jour explicitement le solde maximum
+   */
+  updateHighestBalance(balance: number): void {
     if (balance > this.highestBalance) {
       this.highestBalance = balance;
       localStorage.setItem('highest_balance', this.highestBalance.toString());
-      if (userId || this.userId) {
-        localStorage.setItem(`highest_balance_${userId || this.userId}`, this.highestBalance.toString());
+      
+      if (this.userId) {
+        localStorage.setItem(`highest_balance_${this.userId}`, this.highestBalance.toString());
       }
     }
-    
-    // Persister le solde
-    if (userId) {
-      this.userId = userId;
-      persistBalance(balance, userId);
-    } else if (this.userId) {
-      persistBalance(balance, this.userId);
-    } else {
-      localStorage.setItem('currentBalance', balance.toString());
-      localStorage.setItem('lastKnownBalance', balance.toString());
-      localStorage.setItem('lastUpdatedBalance', balance.toString());
-      sessionStorage.setItem('currentBalance', balance.toString());
-    }
-    
-    // Notifier tous les observateurs
-    this.notifyWatchers();
   }
-
+  
   /**
-   * Récupérer le solde actuel
-   */
-  getCurrentBalance(): number {
-    // Si nous avons un ID utilisateur, vérifier s'il y a une valeur plus récente
-    if (this.userId) {
-      const persistedBalance = getPersistedBalance(this.userId);
-      if (persistedBalance > this.currentBalance) {
-        console.log(`Mise à jour du solde depuis le stockage: ${this.currentBalance}€ -> ${persistedBalance}€`);
-        this.currentBalance = persistedBalance;
-        this.notifyWatchers();
-      }
-    }
-    
-    return this.currentBalance;
-  }
-
-  /**
-   * Récupérer les gains quotidiens
+   * Obtenir les gains quotidiens
    */
   getDailyGains(): number {
     return this.dailyGains;
   }
-
+  
   /**
-   * Définir les gains quotidiens
+   * Définir explicitement les gains quotidiens
    */
-  setDailyGains(gains: number): void {
-    if (isNaN(gains)) {
-      console.error("Tentative de définition des gains quotidiens avec une valeur non numérique:", gains);
+  setDailyGains(amount: number): void {
+    if (isNaN(amount) || amount < 0) {
+      console.error("Tentative de définir des gains quotidiens invalides:", amount);
       return;
     }
     
-    this.dailyGains = gains;
-    localStorage.setItem('dailyGains', gains.toString());
+    this.dailyGains = parseFloat(amount.toFixed(2));
+    localStorage.setItem('dailyGains', this.dailyGains.toString());
+    
+    console.log(`Gains quotidiens définis à: ${this.dailyGains}€`);
   }
-
+  
   /**
-   * Récupérer le solde maximum atteint
+   * Forcer la synchronisation du solde
    */
-  getHighestBalance(): number {
-    // Si nous avons un ID utilisateur, vérifier le stockage spécifique
-    if (this.userId) {
-      const storedHighest = parseFloat(localStorage.getItem(`highest_balance_${this.userId}`) || '0');
-      if (!isNaN(storedHighest) && storedHighest > this.highestBalance) {
-        this.highestBalance = storedHighest;
-      }
+  forceBalanceSync(newBalance: number, userId?: string): void {
+    if (userId) {
+      this.setUserId(userId);
     }
     
-    return this.highestBalance;
-  }
-
-  /**
-   * Mettre à jour le solde maximum
-   */
-  updateHighestBalance(balance: number): void {
-    if (isNaN(balance)) {
-      console.error("Tentative de mise à jour du solde maximum avec une valeur non numérique:", balance);
+    if (isNaN(newBalance)) {
+      console.error("Tentative de synchronisation du solde avec une valeur non numérique:", newBalance);
       return;
     }
     
-    if (balance > this.highestBalance) {
-      this.highestBalance = balance;
-      localStorage.setItem('highest_balance', balance.toString());
+    console.log(`Synchronisation forcée du solde: ${this.currentBalance}€ -> ${newBalance}€`);
+    
+    this.currentBalance = parseFloat(newBalance.toFixed(2));
+    
+    // Mettre à jour le solde maximum si nécessaire
+    if (this.currentBalance > this.highestBalance) {
+      this.highestBalance = this.currentBalance;
+      localStorage.setItem('highest_balance', this.highestBalance.toString());
       
       if (this.userId) {
-        localStorage.setItem(`highest_balance_${this.userId}`, balance.toString());
+        localStorage.setItem(`highest_balance_${this.userId}`, this.highestBalance.toString());
       }
     }
+    
+    // Persister le solde dans le localStorage
+    persistBalance(this.currentBalance, this.userId);
+    
+    // Notifier les watchers
+    this.notifyWatchers(this.currentBalance);
   }
-
+  
   /**
-   * Ajouter un observateur pour être notifié des changements de solde
+   * Ajouter un watcher pour les changements de solde
    */
-  addWatcher(callback: BalanceWatcher): () => void {
+  addWatcher(callback: (newBalance: number) => void): () => void {
     this.watchers.push(callback);
     
-    // Retourner une fonction pour supprimer l'observateur
+    // Retourner une fonction pour supprimer le watcher
     return () => {
       this.watchers = this.watchers.filter(watcher => watcher !== callback);
     };
   }
-
+  
   /**
-   * Notifier tous les observateurs d'un changement de solde
+   * Notifier tous les watchers d'un changement de solde
    */
-  private notifyWatchers(): void {
-    for (const watcher of this.watchers) {
+  private notifyWatchers(newBalance: number): void {
+    this.watchers.forEach(watcher => {
       try {
-        watcher(this.currentBalance);
-      } catch (error) {
-        console.error("Erreur lors de la notification d'un observateur:", error);
+        watcher(newBalance);
+      } catch (e) {
+        console.error("Erreur lors de la notification d'un watcher:", e);
       }
-    }
+    });
+  }
+  
+  /**
+   * Vérifier si un changement de solde est significatif (pour les animations)
+   */
+  checkForSignificantBalanceChange(newBalance: number): boolean {
+    const difference = Math.abs(newBalance - this.currentBalance);
+    return difference > 0.01;
   }
 }
 
