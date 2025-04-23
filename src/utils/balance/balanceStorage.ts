@@ -16,6 +16,7 @@ export const persistBalance = (balance: number, userId?: string): void => {
         localStorage.setItem(key, balance.toString());
       });
     }
+    // Toujours mettre à jour les clés génériques pour la compatibilité ascendante
     localStorage.setItem('currentBalance', balance.toString());
     localStorage.setItem('lastKnownBalance', balance.toString());
     localStorage.setItem('lastUpdatedBalance', balance.toString());

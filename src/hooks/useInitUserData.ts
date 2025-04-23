@@ -39,14 +39,19 @@ export const useInitUserData = () => {
           
           // Nettoyer les données d'autres utilisateurs dans localStorage
           try {
+            // Supprimer TOUTES les données de solde pour commencer avec un état propre
             const userSpecificKeyPrefix = `currentBalance_${userId}`;
+            const statsKeyPrefix = `user_stats_${userId}`;
+            
+            // Pour les nouveaux utilisateurs, nettoyer toutes les données statistiques et de solde
             Object.keys(localStorage).forEach(key => {
-              // Supprimer les données de solde d'autres utilisateurs
-              if (key.startsWith('currentBalance_') && !key.startsWith(userSpecificKeyPrefix)) {
-                localStorage.removeItem(key);
-              }
-              // Supprimer les anciennes statistiques qui ne correspondent pas à cet utilisateur
-              if (key.startsWith('user_stats_') && !key.startsWith(`user_stats_${userId}`)) {
+              // Isoler les données en ne gardant que celles spécifiques à cet utilisateur
+              if (
+                (key.startsWith('currentBalance_') && !key.startsWith(userSpecificKeyPrefix)) ||
+                (key.startsWith('lastKnownBalance_') && !key.includes(userId)) ||
+                (key.startsWith('lastUpdatedBalance_') && !key.includes(userId)) ||
+                (key.startsWith('user_stats_') && !key.startsWith(statsKeyPrefix))
+              ) {
                 localStorage.removeItem(key);
               }
             });
@@ -71,7 +76,7 @@ export const useInitUserData = () => {
               if (cachedBalance) {
                 const parsedBalance = parseFloat(cachedBalance);
                 if (!isNaN(parsedBalance)) {
-                  balanceManager.forceBalanceSync(parsedBalance, userId);
+                  balanceManager.forceBalanceSync(0, userId); // Forcer à 0 pour les nouveaux utilisateurs
                 }
               }
             }, 1000);
@@ -82,7 +87,27 @@ export const useInitUserData = () => {
             }));
             
             // Initialiser le gestionnaire de solde avec l'ID utilisateur
-            if (cachedBalance) {
+            // Vérifier si c'est un nouvel utilisateur en regardant les données de l'utilisateur
+            const { data: userBalanceData } = await supabase
+              .from('user_balances')
+              .select('balance, daily_session_count')
+              .eq('id', userId)
+              .single();
+            
+            const isLikelyNewUser = !userBalanceData || 
+                                 (userBalanceData.balance === 0 && userBalanceData.daily_session_count === 0);
+            
+            if (isLikelyNewUser) {
+              // Réinitialiser complètement les données pour les nouveaux utilisateurs
+              balanceManager.forceBalanceSync(0, userId);
+              
+              // Nettoyer également les autres données de statistiques
+              Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('user_stats_')) {
+                  localStorage.removeItem(key);
+                }
+              });
+            } else if (cachedBalance) {
               const parsedBalance = parseFloat(cachedBalance);
               if (!isNaN(parsedBalance)) {
                 balanceManager.forceBalanceSync(parsedBalance, userId);

@@ -25,17 +25,37 @@ export const ensureZeroBalanceForNewUser = (isNewUser: boolean, userData: UserDa
   
   // Pour les nouveaux utilisateurs, on force le solde à 0 et on supprime toutes les transactions
   if (isNewUser) {
-    // Également nettoyer le localStorage pour éviter la réutilisation des anciennes données
+    // Nettoyer le localStorage pour éviter la réutilisation des anciennes données
     try {
-      // Nettoyer toutes les statistiques potentiellement présentes pour cet utilisateur
-      if (userData.profile?.id) {
-        const prefix = `user_stats_${userData.profile.id}`;
+      const userId = userData?.profile?.id || 'anonymous';
+      
+      // Nettoyer toutes les données spécifiques à cet utilisateur
+      if (userId && userId !== 'anonymous') {
+        // Nettoyer toutes les clés de localStorage liées aux statistiques pour TOUS les utilisateurs
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
-          if (key && key.startsWith(prefix)) {
+          if (key && (
+            key.startsWith('user_stats_') ||
+            key.startsWith('currentBalance_') ||
+            key.startsWith('lastKnownBalance_') ||
+            key.startsWith('lastUpdatedBalance_')
+          )) {
             localStorage.removeItem(key);
           }
         }
+        
+        // Nettoyer également les données de session
+        for (const key in sessionStorage) {
+          if (key.startsWith('currentBalance_')) {
+            sessionStorage.removeItem(key);
+          }
+        }
+        
+        // Réinitialiser les clés génériques aussi pour les nouveaux utilisateurs
+        localStorage.removeItem('currentBalance');
+        localStorage.removeItem('lastKnownBalance');
+        localStorage.removeItem('lastUpdatedBalance');
+        sessionStorage.removeItem('currentBalance');
       }
     } catch (e) {
       console.error('Error cleaning localStorage for new user:', e);

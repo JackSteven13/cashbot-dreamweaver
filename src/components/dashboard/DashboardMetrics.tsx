@@ -35,7 +35,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
   lastSessionTimestamp,
   isBotActive = true
 }) => {
-  // S'assurer que les nouveaux utilisateurs commencent toujours avec un solde à 0
+  // S'assurer que les nouveaux utilisateurs commencent TOUJOURS avec un solde à 0
   let displayBalance = isNewUser ? 0 : balance;
   
   // Pour les comptes freemium, limiter l'affichage du solde à la limite quotidienne

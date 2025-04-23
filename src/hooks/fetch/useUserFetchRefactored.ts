@@ -42,6 +42,30 @@ export const useUserFetchRefactored = (): UserFetchResult => {
     if (!initialFetchAttempted.current) {
       initialFetchAttempted.current = false;
       
+      // Nettoyer toutes les données statistiques préexistantes au chargement initial pour les nouveaux utilisateurs
+      if (isNewUser) {
+        try {
+          // Nettoyer spécifiquement les statistiques et les soldes
+          const keysToClean = Object.keys(localStorage).filter(key => 
+            key.startsWith('user_stats_') || 
+            key.startsWith('currentBalance_') || 
+            key.startsWith('lastKnownBalance_')
+          );
+          
+          for (const key of keysToClean) {
+            localStorage.removeItem(key);
+          }
+          
+          // Réinitialiser les clés génériques aussi
+          localStorage.removeItem('currentBalance');
+          localStorage.removeItem('lastKnownBalance');
+          localStorage.removeItem('lastUpdatedBalance');
+          sessionStorage.removeItem('currentBalance');
+        } catch (e) {
+          console.error('Error cleaning localStorage during initial mount:', e);
+        }
+      }
+      
       // Use longer delay to avoid initialization conflicts
       initialFetchDelayRef.current = setTimeout(() => {
         if (isMounted.current) {
@@ -58,7 +82,7 @@ export const useUserFetchRefactored = (): UserFetchResult => {
         clearTimeout(initialFetchDelayRef.current);
       }
     };
-  }, [fetchData]);
+  }, [fetchData, isNewUser]);
 
   // Apply the rule for new users (zero balance)
   const correctedUserData = ensureZeroBalanceForNewUser(isNewUser, fetchedUserData);
