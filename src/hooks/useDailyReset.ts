@@ -1,56 +1,150 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { shouldResetDailyCounters } from '@/utils/subscription';
 import balanceManager from '@/utils/balance/balanceManager';
+import { toast } from '@/components/ui/use-toast';
 
 export const useDailyReset = () => {
-  useEffect(() => {
-    const checkAndResetDaily = () => {
-      // Check if daily reset is needed
-      const shouldReset = shouldResetDailyCounters();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCheckedRef = useRef<Date>(new Date());
+  const midnightTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Function to reset counters and storage at midnight
+  const resetAtMidnight = () => {
+    console.log('Checking if midnight reset is needed...');
+    
+    // Check if we should reset counters
+    const shouldReset = shouldResetDailyCounters();
+    
+    if (shouldReset) {
+      console.log('Midnight detected, resetting counters...');
       
-      if (shouldReset) {
-        console.log("Daily reset triggered");
-        
-        // Reset daily gains
-        if (typeof balanceManager.setDailyGains === 'function') {
-          balanceManager.setDailyGains(0);
-        } else {
-          // Fallback: directly set localStorage
-          localStorage.setItem('dailyGains', '0');
-        }
-        
-        // Reset session limits
-        localStorage.removeItem('freemium_daily_limit_reached');
-        localStorage.removeItem('last_session_date');
-        localStorage.removeItem('dailySessionCount');
-        
-        // Dispatch event to notify components
-        window.dispatchEvent(new CustomEvent('dailyReset:completed', {
-          detail: { timestamp: new Date().toISOString() }
-        }));
-        
-        return true;
+      // Reset daily gains to zero
+      if (typeof balanceManager.setDailyGains === 'function') {
+        balanceManager.setDailyGains(0);
+      } else {
+        // Fallback: directly set localStorage
+        localStorage.setItem('dailyGains', '0');
       }
       
-      return false;
-    };
+      // Reset session counts and limits
+      localStorage.removeItem('freemium_daily_limit_reached');
+      localStorage.removeItem('last_session_date');
+      localStorage.removeItem('dailySessionCount');
+      
+      // Update last reset date
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      localStorage.setItem('lastDailyGainsReset', today);
+      
+      // Fire event to update UI components
+      window.dispatchEvent(new CustomEvent('dailyReset:completed', {
+        detail: { timestamp: Date.now() }
+      }));
+      
+      // Log reset
+      console.log('Daily reset completed at', new Date().toISOString());
+
+      // Show a notification to inform the user
+      toast({
+        title: "Compteurs quotidiens réinitialisés",
+        description: "Une nouvelle journée commence! Vos limites quotidiennes ont été réinitialisées.",
+        duration: 5000
+      });
+      
+      return true;
+    }
     
-    // Check immediately when component mounts
-    checkAndResetDaily();
+    return false;
+  };
+
+  // Setup timer to check for midnight reset and schedule next day
+  const setupMidnightTimer = () => {
+    // Clear any existing timer
+    if (midnightTimerRef.current) {
+      clearTimeout(midnightTimerRef.current);
+    }
     
-    // Set up interval to check periodically
-    const intervalId = setInterval(checkAndResetDaily, 60000); // Check every minute
+    // Calculate time until next midnight
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    
+    const timeToMidnight = tomorrow.getTime() - now.getTime();
+    console.log(`Next midnight reset in ${Math.floor(timeToMidnight / 60000)} minutes`);
+    
+    // Set timer for next midnight
+    midnightTimerRef.current = setTimeout(() => {
+      resetAtMidnight();
+      // Setup the timer for the next day
+      setupMidnightTimer();
+    }, timeToMidnight);
+  };
+
+  // Setup interval to check for midnight reset
+  useEffect(() => {
+    // Initial check in case the app loads right after midnight
+    resetAtMidnight();
+    
+    // Set interval to check every minute
+    intervalRef.current = setInterval(() => {
+      resetAtMidnight();
+    }, 60000); // Check every minute
+    
+    // Setup the precise midnight timer
+    setupMidnightTimer();
     
     return () => {
-      clearInterval(intervalId);
+      // Clean up both timers
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (midnightTimerRef.current) {
+        clearTimeout(midnightTimerRef.current);
+      }
     };
   }, []);
   
-  const forceReset = () => {
-    console.log("Forcing daily reset");
+  // Additional useEffect to handle when device wakes from sleep
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const now = new Date();
+        const lastChecked = lastCheckedRef.current;
+        
+        // If it's been more than 5 minutes since our last check
+        if (now.getTime() - lastChecked.getTime() > 5 * 60 * 1000) {
+          console.log('App resumed from background, checking for reset...');
+          resetAtMidnight();
+          // Update the last checked time
+          lastCheckedRef.current = now;
+          // Reset the midnight timer to be accurate
+          setupMidnightTimer();
+        }
+      }
+    };
     
-    // Reset daily gains
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Listen for app wake from sleep/standby
+    window.addEventListener('online', () => {
+      console.log('Network connection restored, checking for reset...');
+      resetAtMidnight();
+      // Update the timer
+      setupMidnightTimer();
+    });
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', () => {});
+    };
+  }, []);
+
+  // Function to force a reset (for testing or manual resets)
+  const forceReset = () => {
+    console.log('Forcing daily reset...');
+    
+    // Reset daily gains in the balance manager
     if (typeof balanceManager.setDailyGains === 'function') {
       balanceManager.setDailyGains(0);
     } else {
@@ -58,21 +152,27 @@ export const useDailyReset = () => {
       localStorage.setItem('dailyGains', '0');
     }
     
-    // Reset session limits
+    // Reset other storage items
     localStorage.removeItem('freemium_daily_limit_reached');
     localStorage.removeItem('last_session_date');
     localStorage.removeItem('dailySessionCount');
+    localStorage.setItem('lastDailyGainsReset', new Date().toISOString().split('T')[0]);
     
-    // Update last reset date
-    localStorage.setItem('lastResetTime', new Date().toISOString());
-    
-    // Dispatch event
+    // Fire reset event
     window.dispatchEvent(new CustomEvent('dailyReset:forced', {
-      detail: { timestamp: new Date().toISOString() }
+      detail: { timestamp: Date.now() }
     }));
+    
+    toast({
+      title: "Réinitialisation forcée",
+      description: "Les compteurs quotidiens ont été réinitialisés manuellement.",
+      duration: 3000
+    });
     
     return true;
   };
-  
-  return { forceReset };
+
+  return { forceReset, resetAtMidnight };
 };
+
+export default useDailyReset;

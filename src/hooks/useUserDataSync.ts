@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import balanceManager from '@/utils/balance/balanceManager';
-import { getStorageKeys } from '@/utils/balance/balanceStorage';
+import { getStorageKeys, cleanOtherUserData } from '@/utils/balance/balanceStorage';
 
 export const useUserDataSync = () => {
   // Fonction améliorée pour synchroniser les données avec une meilleure stabilité
@@ -32,6 +32,9 @@ export const useUserDataSync = () => {
       
       // Stocker l'ID utilisateur pour permettre le nettoyage des données d'autres utilisateurs
       localStorage.setItem('lastKnownUserId', userId);
+      
+      // Nettoyer les données d'autres utilisateurs
+      cleanOtherUserData(userId);
       
       // Vider explicitement les anciennes valeurs globales pour éviter la contamination
       localStorage.removeItem('lastKnownUsername');
@@ -127,8 +130,8 @@ export const useUserDataSync = () => {
       }
       
       // Check if a forced refresh was requested
-      const forceRefresh = localStorage.getItem('forceRefreshBalance');
-      if (forceRefresh === 'true') {
+      const forceRefreshFlag = localStorage.getItem('forceRefreshBalance');
+      if (forceRefreshFlag === 'true' || forceRefresh) {
         console.log("Force refresh detected, clearing flag");
         localStorage.removeItem('forceRefreshBalance');
         

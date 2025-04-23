@@ -1,150 +1,208 @@
-
-import { BalanceManagerState, BalanceWatcher } from './types';
-import { getPersistedBalance, persistBalance } from './balanceStorage';
-import { BalanceEventManager } from './balanceEvents';
+// Utility for managing user balance across the app
+import { persistBalance, getPersistedBalance } from './balanceStorage';
 
 class BalanceManager {
-  private state: BalanceManagerState;
-  private eventManager: BalanceEventManager;
-
+  private currentBalance: number = 0;
+  private dailyGains: number = 0;
+  private highestBalance: number = 0;
+  private userId: string | null = null;
+  private watchers: Array<(newBalance: number) => void> = [];
+  
   constructor() {
-    this.state = {
-      currentBalance: 0,
-      highestBalance: 0,
-      dailyGains: 0,
-      userId: null
-    };
-    this.eventManager = new BalanceEventManager();
-    this.initializeFromStorage();
-  }
-
-  private initializeFromStorage(): void {
-    const storedBalance = getPersistedBalance(this.state.userId);
-    this.state.currentBalance = storedBalance;
+    // Initialize with persisted balance
+    this.currentBalance = getPersistedBalance(this.userId);
     
-    const storedHighest = parseFloat(localStorage.getItem('highest_balance') || '0');
-    this.state.highestBalance = !isNaN(storedHighest) ? storedHighest : 0;
-    
-    const storedDailyGains = parseFloat(localStorage.getItem('dailyGains') || '0');
-    this.state.dailyGains = !isNaN(storedDailyGains) ? storedDailyGains : 0;
-    
-    console.log(`Balance Manager initialized: balance=${this.state.currentBalance}, daily gains=${this.state.dailyGains}`);
-  }
-
-  setUserId(userId: string): void {
-    if (userId !== this.state.userId) {
-      this.state.userId = userId;
-      const userBalance = getPersistedBalance(userId);
-      if (userBalance > 0) {
-        this.state.currentBalance = userBalance;
-        this.eventManager.notifyWatchers(userBalance);
+    // Try to get daily gains from localStorage
+    try {
+      const storedDailyGains = localStorage.getItem(this.userId ? `dailyGains_${this.userId}` : 'dailyGains');
+      if (storedDailyGains !== null) {
+        this.dailyGains = parseFloat(storedDailyGains);
       }
-      persistBalance(this.state.currentBalance, userId);
+    } catch (e) {
+      console.error('Failed to load daily gains:', e);
+    }
+    
+    // Try to get highest balance from localStorage
+    try {
+      const storedHighestBalance = localStorage.getItem(this.userId ? `highest_balance_${this.userId}` : 'highest_balance');
+      if (storedHighestBalance !== null) {
+        this.highestBalance = parseFloat(storedHighestBalance);
+      }
+    } catch (e) {
+      console.error('Failed to load highest balance:', e);
+    }
+    
+    console.log(`BalanceManager initialized with balance: ${this.currentBalance}, daily gains: ${this.dailyGains}`);
+  }
+  
+  setUserId(userId: string | null): void {
+    if (this.userId !== userId) {
+      this.userId = userId;
+      // Reload balance for this user
+      this.currentBalance = getPersistedBalance(userId);
+      
+      // Reload daily gains
+      try {
+        const storedDailyGains = localStorage.getItem(userId ? `dailyGains_${userId}` : 'dailyGains');
+        if (storedDailyGains !== null) {
+          this.dailyGains = parseFloat(storedDailyGains);
+        } else {
+          this.dailyGains = 0;
+        }
+      } catch (e) {
+        console.error('Failed to load daily gains:', e);
+        this.dailyGains = 0;
+      }
+      
+      console.log(`User ID set to ${userId}, balance: ${this.currentBalance}, daily gains: ${this.dailyGains}`);
     }
   }
 
   getCurrentBalance(): number {
-    return this.state.currentBalance;
-  }
-
-  getHighestBalance(): number {
-    return this.state.highestBalance;
-  }
-
-  getDailyGains(): number {
-    return this.state.dailyGains;
-  }
-  
-  // Add the missing setDailyGains method
-  setDailyGains(amount: number): void {
-    if (isNaN(amount)) {
-      console.error("Invalid daily gains amount:", amount);
-      return;
+    // If we have a valid cached balance, return it
+    if (!isNaN(this.currentBalance)) {
+      return this.currentBalance;
     }
     
-    this.state.dailyGains = parseFloat(amount.toFixed(2));
-    localStorage.setItem('dailyGains', this.state.dailyGains.toString());
-    console.log(`Daily gains updated: ${this.state.dailyGains}€`);
+    // Otherwise check local storage
+    const persistedBalance = getPersistedBalance(this.userId);
+    this.currentBalance = persistedBalance;
+    return persistedBalance;
   }
   
-  // Add the missing addDailyGain method
-  addDailyGain(amount: number): void {
-    if (isNaN(amount)) {
-      console.error("Invalid daily gain amount:", amount);
-      return;
-    }
-    
-    this.state.dailyGains += amount;
-    this.state.dailyGains = parseFloat(this.state.dailyGains.toFixed(2));
-    localStorage.setItem('dailyGains', this.state.dailyGains.toString());
-  }
-
   updateBalance(amount: number): number {
     if (isNaN(amount)) {
-      console.error("Invalid balance update amount:", amount);
-      return this.state.currentBalance;
+      console.error('Invalid amount provided to updateBalance:', amount);
+      return this.currentBalance;
     }
     
-    this.state.currentBalance += amount;
-    this.state.currentBalance = parseFloat(this.state.currentBalance.toFixed(2));
+    const oldBalance = this.currentBalance;
+    this.currentBalance += amount;
     
-    if (amount > 0) {
-      this.state.dailyGains += amount;
-      this.state.dailyGains = parseFloat(this.state.dailyGains.toFixed(2));
-      localStorage.setItem('dailyGains', this.state.dailyGains.toString());
-    }
+    // Persist the updated balance
+    persistBalance(this.currentBalance, this.userId);
     
-    if (this.state.currentBalance > this.state.highestBalance) {
-      this.updateHighestBalance(this.state.currentBalance);
-    }
+    // Update highest balance if needed
+    this.updateHighestBalance(this.currentBalance);
     
-    persistBalance(this.state.currentBalance, this.state.userId);
-    this.eventManager.notifyWatchers(this.state.currentBalance);
+    // Notify watchers
+    this.notifyWatchers();
     
-    return this.state.currentBalance;
+    console.log(`Balance updated: ${oldBalance} -> ${this.currentBalance} (${amount > 0 ? '+' : ''}${amount})`);
+    
+    return this.currentBalance;
   }
-
-  forceBalanceSync(newBalance: number, userId?: string): void {
-    if (userId) {
+  
+  forceBalanceSync(newBalance: number, userId: string | null = null): void {
+    if (userId !== null && userId !== this.userId) {
       this.setUserId(userId);
     }
     
     if (isNaN(newBalance)) {
-      console.error("Invalid balance for sync:", newBalance);
+      console.error('Invalid balance provided to forceBalanceSync:', newBalance);
       return;
     }
     
-    this.state.currentBalance = parseFloat(newBalance.toFixed(2));
+    const oldBalance = this.currentBalance;
+    this.currentBalance = newBalance;
     
-    if (this.state.currentBalance > this.state.highestBalance) {
-      this.updateHighestBalance(this.state.currentBalance);
+    // Persist the balance
+    persistBalance(this.currentBalance, this.userId);
+    
+    // Update highest balance if needed
+    this.updateHighestBalance(this.currentBalance);
+    
+    // Notify watchers if there's a change
+    if (oldBalance !== newBalance) {
+      console.log(`Balance force synced: ${oldBalance} -> ${newBalance}`);
+      this.notifyWatchers();
+    }
+  }
+  
+  // Daily gains tracking
+  getDailyGains(): number {
+    return this.dailyGains;
+  }
+  
+  setDailyGains(amount: number): void {
+    if (isNaN(amount)) {
+      console.error('Invalid amount provided to setDailyGains:', amount);
+      return;
     }
     
-    persistBalance(this.state.currentBalance, this.state.userId);
-    this.eventManager.notifyWatchers(this.state.currentBalance);
-    this.eventManager.dispatchBalanceUpdate(this.state.currentBalance, this.state.userId);
+    this.dailyGains = amount;
+    
+    // Persist in localStorage
+    try {
+      localStorage.setItem(this.userId ? `dailyGains_${this.userId}` : 'dailyGains', amount.toString());
+      console.log(`Daily gains set to ${amount}`);
+    } catch (e) {
+      console.error('Failed to store daily gains:', e);
+    }
   }
-
+  
+  addDailyGain(amount: number): void {
+    if (isNaN(amount)) {
+      console.error('Invalid amount provided to addDailyGain:', amount);
+      return;
+    }
+    
+    this.dailyGains += amount;
+    
+    // Persist in localStorage
+    try {
+      localStorage.setItem(this.userId ? `dailyGains_${this.userId}` : 'dailyGains', this.dailyGains.toString());
+      console.log(`Daily gains increased by ${amount} to ${this.dailyGains}`);
+    } catch (e) {
+      console.error('Failed to store daily gains:', e);
+    }
+  }
+  
+  // Highest balance tracking
+  getHighestBalance(): number {
+    return this.highestBalance;
+  }
+  
   updateHighestBalance(balance: number): void {
-    if (balance > this.state.highestBalance) {
-      this.state.highestBalance = balance;
-      localStorage.setItem('highest_balance', this.state.highestBalance.toString());
+    if (balance > this.highestBalance) {
+      this.highestBalance = balance;
       
-      if (this.state.userId) {
-        localStorage.setItem(`highest_balance_${this.state.userId}`, this.state.highestBalance.toString());
+      // Persist in localStorage
+      try {
+        localStorage.setItem(this.userId ? `highest_balance_${this.userId}` : 'highest_balance', balance.toString());
+      } catch (e) {
+        console.error('Failed to store highest balance:', e);
       }
     }
   }
-
-  addWatcher(callback: BalanceWatcher): () => void {
-    return this.eventManager.addWatcher(callback);
+  
+  // Watch for changes
+  addWatcher(callback: (newBalance: number) => void): () => void {
+    this.watchers.push(callback);
+    return () => {
+      this.watchers = this.watchers.filter(watcher => watcher !== callback);
+    };
   }
-
+  
+  // Check for significant balance change
   checkForSignificantBalanceChange(newBalance: number): boolean {
-    return Math.abs(newBalance - this.state.currentBalance) > 0.01;
+    // Significant is defined as more than 1% difference
+    const threshold = Math.max(this.currentBalance * 0.01, 0.01);
+    return Math.abs(newBalance - this.currentBalance) > threshold;
+  }
+  
+  private notifyWatchers(): void {
+    this.watchers.forEach(callback => {
+      try {
+        callback(this.currentBalance);
+      } catch (e) {
+        console.error('Error in balance watcher callback:', e);
+      }
+    });
   }
 }
 
-// Export singleton instance
+// Create a singleton instance
 const balanceManager = new BalanceManager();
+
 export default balanceManager;
