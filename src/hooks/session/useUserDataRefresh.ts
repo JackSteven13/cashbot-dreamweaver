@@ -43,6 +43,10 @@ export const useUserDataRefresh = () => {
       }
       
       const userId = session.user.id;
+      
+      // Associer l'ID utilisateur au gestionnaire de solde
+      balanceManager.setUserId(userId);
+      
       const userSpecificKeys = {
         username: `lastKnownUsername_${userId}`,
         subscription: `subscription_${userId}`,
@@ -89,6 +93,7 @@ export const useUserDataRefresh = () => {
           parseFloat(localStorage.getItem(`currentBalance_${userId}`) || '0'),
           parseFloat(localStorage.getItem(userSpecificKeys.balance) || '0'),
           parseFloat(localStorage.getItem(`lastUpdatedBalance_${userId}`) || '0'),
+          parseFloat(localStorage.getItem(`highest_balance_${userId}`) || '0'),
           parseFloat(sessionStorage.getItem(`currentBalance_${userId}`) || '0')
         ];
         
@@ -108,10 +113,15 @@ export const useUserDataRefresh = () => {
             }
           }
           
+          // Mettre à jour toutes les sources de stockage
           localStorage.setItem(`currentBalance_${userId}`, maxBalance.toString());
           localStorage.setItem(userSpecificKeys.balance, maxBalance.toString());
           localStorage.setItem(`lastUpdatedBalance_${userId}`, maxBalance.toString());
+          localStorage.setItem(`highest_balance_${userId}`, maxBalance.toString());
           sessionStorage.setItem(`currentBalance_${userId}`, maxBalance.toString());
+          
+          // Forcer la synchronisation du solde avec le gestionnaire
+          balanceManager.forceBalanceSync(maxBalance, userId);
         }
       }
       

@@ -24,13 +24,17 @@ export const persistBalance = (balance: number, userId?: string): void => {
     localStorage.setItem(keys.currentBalance, balance.toString());
     localStorage.setItem(keys.lastKnownBalance, balance.toString());
     localStorage.setItem(keys.lastUpdatedBalance, balance.toString());
+    localStorage.setItem(keys.highestBalance, Math.max(
+      parseFloat(localStorage.getItem(keys.highestBalance) || '0'),
+      balance
+    ).toString());
     sessionStorage.setItem(keys.sessionCurrentBalance, balance.toString());
     
-    // Supprimer les clés génériques pour éviter la contamination
-    localStorage.removeItem('currentBalance');
-    localStorage.removeItem('lastKnownBalance');
-    localStorage.removeItem('lastUpdatedBalance');
-    sessionStorage.removeItem('currentBalance');
+    // Persister également dans les clés globales pour compatibilité
+    localStorage.setItem('currentBalance', balance.toString());
+    localStorage.setItem('lastKnownBalance', balance.toString());
+    localStorage.setItem('lastUpdatedBalance', balance.toString());
+    sessionStorage.setItem('currentBalance', balance.toString());
   } catch (e) {
     console.error("Failed to persist balance:", e);
   }
@@ -50,7 +54,12 @@ export const getPersistedBalance = (userId?: string): number => {
       localStorage.getItem(keys.currentBalance),
       localStorage.getItem(keys.lastKnownBalance),
       localStorage.getItem(keys.lastUpdatedBalance),
-      sessionStorage.getItem(keys.sessionCurrentBalance)
+      localStorage.getItem(keys.highestBalance),
+      sessionStorage.getItem(keys.sessionCurrentBalance),
+      // Vérifier aussi les clés globales pour compatibilité
+      localStorage.getItem('currentBalance'),
+      localStorage.getItem('lastKnownBalance'),
+      localStorage.getItem('lastUpdatedBalance')
     ];
 
     const validBalances = sources

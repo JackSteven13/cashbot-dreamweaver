@@ -15,6 +15,7 @@ import { useBalanceUpdater } from '@/hooks/useBalanceUpdater';
 import { useBalanceSync } from '@/hooks/useBalanceSync';
 import { usePeriodicUpdates } from '@/hooks/usePeriodicUpdates';
 import balanceManager from '@/utils/balance/balanceManager';
+import useUserDataRefresh from '@/hooks/session/useUserDataRefresh';
 
 const Dashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -28,6 +29,7 @@ const Dashboard = () => {
   
   const { updateBalance } = useBalanceUpdater();
   const { lastBalanceUpdate, setLastBalanceUpdate } = useBalanceSync(userData, isPreloaded);
+  const { refreshUserData } = useUserDataRefresh();
   
   const { 
     generateAutomaticRevenue,
@@ -40,8 +42,15 @@ const Dashboard = () => {
   
   useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
   
+  // Fonction pour forcer le rafraîchissement du solde
   const forceBalanceRefresh = useCallback(() => {
     if (!userData) return;
+    
+    // Associer l'ID utilisateur au gestionnaire de solde
+    if (userData.id || userData.profile?.id) {
+      const userId = userData.id || userData.profile?.id;
+      balanceManager.setUserId(userId);
+    }
     
     const currentBalance = balanceManager.getCurrentBalance();
     if (currentBalance <= 0) return;
@@ -73,14 +82,20 @@ const Dashboard = () => {
       console.log("Not authenticated, redirecting to login");
       navigate('/login');
     } else if (!authLoading && user) {
+      // Associer l'ID utilisateur au gestionnaire de solde dès que possible
+      if (user.id) {
+        balanceManager.setUserId(user.id);
+      }
+      
       setTimeout(() => {
         setDashboardReady(true);
       }, 300);
     }
   }, [user, authLoading, navigate]);
   
+  // Synchroniser les données utilisateur au chargement
   useEffect(() => {
-    if (!isInitializing && username && isFirstLoad) {
+    if (!isInitializing && username && isFirstLoad && user?.id) {
       setIsFirstLoad(false);
       toast({
         title: `Bienvenue, ${username}!`,
@@ -99,8 +114,23 @@ const Dashboard = () => {
 
       if (userData) {
         console.log("Initialisation des revenus automatiques et du solde");
+        
+        // Associer l'ID utilisateur au gestionnaire de solde
+        if (userData.id || userData.profile?.id) {
+          balanceManager.setUserId(userData.id || userData.profile?.id);
+        }
+        
         setTimeout(() => {
-          balanceManager.forceBalanceSync(userData.balance || 0, userData.id || userData.profile?.id);
+          // Si un solde existe en base de données, le synchroniser
+          if (userData.balance !== undefined && userData.balance > 0) {
+            balanceManager.forceBalanceSync(userData.balance, userData.id || userData.profile?.id);
+          } else {
+            // Sinon, vérifier s'il existe un solde en local
+            const localBalance = balanceManager.getCurrentBalance();
+            if (localBalance > 0) {
+              forceBalanceRefresh();
+            }
+          }
           
           const lastVisit = localStorage.getItem('last_visit_date');
           const now = new Date().toDateString();
@@ -128,12 +158,17 @@ const Dashboard = () => {
           
           localStorage.setItem('last_visit_date', now);
           
+          // Générer des revenus automatiques au chargement
           generateAutomaticRevenue(true);
+          
+          // Rafraîchir les données utilisateur pour assurer la synchronisation
+          refreshUserData();
         }, 1000);
       }
     }
-  }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue]);
+  }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue, forceBalanceRefresh, user, refreshUserData]);
   
+  // Synchroniser régulièrement le solde avec l'interface
   useEffect(() => {
     const refreshInterval = setInterval(() => {
       forceBalanceRefresh();
