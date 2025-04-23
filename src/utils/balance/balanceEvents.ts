@@ -1,20 +1,33 @@
 
-import { BalanceEvent } from './types';
+import { BalanceWatcher } from './types';
 
-export const emitBalanceUpdate = (detail: BalanceEvent) => {
-  window.dispatchEvent(new CustomEvent('balance:force-update', { detail }));
-};
+export class BalanceEventManager {
+  private watchers: BalanceWatcher[] = [];
 
-export const emitBalanceSync = (detail: BalanceEvent) => {
-  window.dispatchEvent(new CustomEvent('balance:sync-response', { detail }));
-};
+  addWatcher(callback: BalanceWatcher): () => void {
+    this.watchers.push(callback);
+    return () => {
+      this.watchers = this.watchers.filter(watcher => watcher !== callback);
+    };
+  }
 
-export const emitSignificantChange = (
-  localBalance: number,
-  serverBalance: number,
-  resolvedBalance: number
-) => {
-  window.dispatchEvent(new CustomEvent('balance:significant-change', {
-    detail: { localBalance, serverBalance, resolvedBalance }
-  }));
-};
+  notifyWatchers(newBalance: number): void {
+    this.watchers.forEach(watcher => {
+      try {
+        watcher(newBalance);
+      } catch (e) {
+        console.error("Error notifying balance watcher:", e);
+      }
+    });
+  }
+
+  dispatchBalanceUpdate(newBalance: number, userId: string | null): void {
+    window.dispatchEvent(new CustomEvent('balance:update', {
+      detail: {
+        newBalance,
+        userId,
+        timestamp: Date.now()
+      }
+    }));
+  }
+}

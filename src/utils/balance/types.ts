@@ -1,15 +1,16 @@
 
 export type BalanceWatcher = (newBalance: number) => void;
 
-export interface BalanceEvent {
-  newBalance: number;
+export interface BalanceManagerState {
+  currentBalance: number;
+  highestBalance: number;
+  dailyGains: number;
   userId: string | null;
 }
 
-export interface BalanceStorageKeys {
+export interface StorageKeys {
   currentBalance: string;
   lastKnownBalance: string;
-  lastUpdatedBalance: string;
-  sessionCurrentBalance: string;
   highestBalance: string;
+  dailyGains: string;
 }
