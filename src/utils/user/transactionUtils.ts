@@ -11,20 +11,20 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
     // Always force refresh if explicitly requested
     if (forceRefresh) {
       console.log("Forced refresh of transactions requested");
-      localStorage.removeItem('cachedTransactions');
-      localStorage.removeItem('transactionsLastRefresh');
+      localStorage.removeItem(`cachedTransactions_${userId}`);
+      localStorage.removeItem(`transactionsLastRefresh_${userId}`);
     }
 
-    // Check cache if forceRefresh isn't requested - but with a very short cache lifetime (10 seconds)
+    // Check cache if forceRefresh isn't requested - with user-specific cache
     if (!forceRefresh) {
       try {
-        const cachedTx = localStorage.getItem('cachedTransactions');
-        const lastRefreshTime = localStorage.getItem('transactionsLastRefresh');
+        const cachedTx = localStorage.getItem(`cachedTransactions_${userId}`);
+        const lastRefreshTime = localStorage.getItem(`transactionsLastRefresh_${userId}`);
         
-        // Use cache only if it exists and is less than 10 seconds old (reduced for better responsiveness)
+        // Use cache only if it exists and is less than 5 seconds old
         if (cachedTx && lastRefreshTime) {
           const cacheAge = Date.now() - parseInt(lastRefreshTime, 10);
-          if (cacheAge < 10000) { // 10 seconds - much shorter for better responsiveness
+          if (cacheAge < 5000) { // 5 seconds - short for better responsiveness
             return JSON.parse(cachedTx);
           }
         }
@@ -32,19 +32,12 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
         console.warn("Cache access error:", e);
       }
     }
-
-    // Add a timestamp to prevent caching by the Supabase client
-    const timestamp = new Date().getTime();
     
     const { data: transactionsData, error: transactionsError } = await supabase
       .from('transactions')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .then(result => {
-        console.log("Raw transactions from DB:", result.data?.length || 0);
-        return result;
-      });
+      .order('created_at', { ascending: false });
       
     if (transactionsError) {
       console.error("Error fetching transactions:", transactionsError);
@@ -56,7 +49,7 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
       return [];
     }
     
-    console.log(`${transactionsData.length} transactions retrieved from database`);
+    console.log(`${transactionsData.length} transactions retrieved from database for user ${userId}`);
     
     // Map database transactions to our Transaction interface with proper date handling
     const transactions = (transactionsData || []).map(t => {
@@ -77,10 +70,10 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
       };
     });
     
-    // Update cache for future requests - but with a very short lifetime
+    // Update cache for future requests - user specific cache
     try {
-      localStorage.setItem('cachedTransactions', JSON.stringify(transactions));
-      localStorage.setItem('transactionsLastRefresh', Date.now().toString());
+      localStorage.setItem(`cachedTransactions_${userId}`, JSON.stringify(transactions));
+      localStorage.setItem(`transactionsLastRefresh_${userId}`, Date.now().toString());
     } catch (e) {
       console.warn("Cache write error:", e);
     }
@@ -102,6 +95,30 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
     // Update balance manager with today's gains
     balanceManager.setDailyGains(todayGains);
     
+    // Calculate total balance from all transactions to ensure consistency
+    const totalBalance = transactions.reduce((sum, tx) => sum + (tx.gain || 0), 0);
+    console.log(`Total balance from all transactions: ${totalBalance.toFixed(2)}€`);
+    
+    // Force balance sync if there's a significant discrepancy
+    const currentBalance = balanceManager.getCurrentBalance();
+    if (Math.abs(totalBalance - currentBalance) > 0.1) {
+      console.log(`Balance discrepancy detected: Manager=${currentBalance.toFixed(2)}€, Transactions=${totalBalance.toFixed(2)}€`);
+      
+      // Always use the highest value to prevent user frustration
+      if (totalBalance > currentBalance) {
+        console.log(`Updating balance to match transactions total: ${currentBalance.toFixed(2)}€ -> ${totalBalance.toFixed(2)}€`);
+        balanceManager.forceBalanceSync(totalBalance);
+        
+        // Trigger UI update
+        window.dispatchEvent(new CustomEvent('balance:force-update', {
+          detail: {
+            newBalance: totalBalance,
+            source: 'transactions-total'
+          }
+        }));
+      }
+    }
+    
     return transactions;
   } catch (error) {
     console.error("Error in fetchUserTransactions:", error);
@@ -111,13 +128,13 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
 
 /**
  * Add a transaction for a user and trigger refresh events for real-time updates
- * Now ensures strict adherence to daily limits and proper transaction recording
+ * Ensures strict adherence to daily limits and proper transaction recording
  */
 export const addTransaction = async (
   userId: string,
   gain: number, 
   report: string
-): Promise<boolean> => {
+): Promise<{success: boolean, transaction: any | null}> => {
   try {
     // Use current date (today) for all new transactions
     const today = new Date();
@@ -126,11 +143,14 @@ export const addTransaction = async (
     
     console.log(`Adding transaction: ${gain}€ - ${report} for user ${userId}`);
     
+    // Format gain to 2 decimal places for consistency
+    const formattedGain = parseFloat(gain.toFixed(2));
+    
     const { error, data } = await supabase
       .from('transactions')
       .insert({
         user_id: userId,
-        gain: gain,
+        gain: formattedGain,
         report: report,
         created_at: isoString,
         date: dateString
@@ -139,41 +159,44 @@ export const addTransaction = async (
       
     if (error) {
       console.error("Error adding transaction:", error);
-      return false;
+      return { success: false, transaction: null };
     }
     
     console.log("Transaction added successfully:", data);
     
     // Immediately invalidate transaction cache to ensure fresh data
-    localStorage.removeItem('cachedTransactions');
-    localStorage.removeItem('transactionsLastRefresh');
+    localStorage.removeItem(`cachedTransactions_${userId}`);
+    localStorage.removeItem(`transactionsLastRefresh_${userId}`);
     
     // Trigger multiple refresh events to ensure UI updates
     window.dispatchEvent(new CustomEvent('transactions:refresh', {
-      detail: { timestamp: Date.now(), forceRefresh: true }
+      detail: { timestamp: Date.now(), forceRefresh: true, userId }
     }));
     
     // Update balance manager daily gains
-    balanceManager.addDailyGain(gain);
+    balanceManager.addDailyGain(formattedGain);
     
     // Also trigger refresh after a short delay to ensure database has propagated changes
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('transactions:refresh', {
-        detail: { timestamp: Date.now(), forceRefresh: true }
+        detail: { timestamp: Date.now(), forceRefresh: true, userId }
       }));
     }, 500);
     
-    console.log(`Transaction recorded: ${gain}€ - ${report} with date ${dateString}`);
-    return true;
+    console.log(`Transaction recorded: ${formattedGain}€ - ${report} with date ${dateString}`);
+    
+    return { 
+      success: true, 
+      transaction: data ? data[0] : { date: dateString, gain: formattedGain, report } 
+    };
   } catch (error) {
     console.error("Error adding transaction:", error);
-    return false;
+    return { success: false, transaction: null };
   }
 };
 
 /**
- * Get today's transactions for a user
- * Used for checking daily limits
+ * Get today's transactions for a user - critical for enforcing daily limits
  */
 export const getTodaysTransactions = async (userId: string): Promise<Transaction[]> => {
   try {
@@ -183,8 +206,7 @@ export const getTodaysTransactions = async (userId: string): Promise<Transaction
       .from('transactions')
       .select('*')
       .eq('user_id', userId)
-      .gte('date', today)
-      .lt('date', new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0]);
+      .eq('date', today);
       
     if (error) {
       console.error("Error fetching today's transactions:", error);
@@ -206,10 +228,16 @@ export const getTodaysTransactions = async (userId: string): Promise<Transaction
 };
 
 /**
- * Calculate today's total gains from transactions
- * Critical for enforcing daily limits
+ * Calculate today's total gains - critical for enforcing daily limits
  */
 export const calculateTodaysGains = async (userId: string): Promise<number> => {
-  const todaysTransactions = await getTodaysTransactions(userId);
-  return todaysTransactions.reduce((sum, tx) => sum + (tx.gain || 0), 0);
+  try {
+    const todaysTransactions = await getTodaysTransactions(userId);
+    const total = todaysTransactions.reduce((sum, tx) => sum + (tx.gain || 0), 0);
+    console.log(`Today's total gains for ${userId}: ${total}€`);
+    return total;
+  } catch (error) {
+    console.error("Error calculating today's gains:", error);
+    return 0;
+  }
 };

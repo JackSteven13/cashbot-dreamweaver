@@ -8,6 +8,7 @@ import { UserData } from '@/types/userData';
 import { useLimitChecking } from './useLimitChecking';
 import { useIsMobile } from '@/hooks/use-mobile';
 import balanceManager from '@/utils/balance/balanceManager';
+import { addTransaction } from '@/utils/user/transactionUtils';
 
 export const useSessionGain = () => {
   const { checkFinalGainLimit } = useLimitChecking();
@@ -83,6 +84,24 @@ export const useSessionGain = () => {
     
     // Calculer le nouveau solde (le solde total augmente)
     const newBalance = safeCurrentBalance + finalGain;
+    
+    // CRITICAL: Record the transaction in the database FIRST
+    // This ensures the transaction history is always accurate even if later steps fail
+    const transactionResult = await addTransaction(
+      userId,
+      finalGain,
+      `Session manuelle: +${finalGain.toFixed(2)}€`
+    );
+    
+    if (!transactionResult.success) {
+      console.error("Failed to record transaction, aborting balance update");
+      toast({
+        title: "Erreur",
+        description: "Impossible d'enregistrer la transaction. Veuillez réessayer.",
+        variant: "destructive"
+      });
+      return { success: false, finalGain: 0, newBalance: currentBalance };
+    }
     
     // Utiliser des clés de stockage spécifiques à l'utilisateur
     const userSpecificKeys = {

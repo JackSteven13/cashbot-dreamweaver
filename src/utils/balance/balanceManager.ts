@@ -1,3 +1,4 @@
+
 // Utility for managing user balance across the app
 import { persistBalance, getPersistedBalance } from './balanceStorage';
 
@@ -7,6 +8,7 @@ class BalanceManager {
   private highestBalance: number = 0;
   private userId: string | null = null;
   private watchers: Array<(newBalance: number) => void> = [];
+  private lastSyncTimestamp: number = 0;
   
   constructor() {
     // Initialize with persisted balance
@@ -33,6 +35,18 @@ class BalanceManager {
     }
     
     console.log(`BalanceManager initialized with balance: ${this.currentBalance}, daily gains: ${this.dailyGains}`);
+    
+    // Setup event listener for database sync events
+    window.addEventListener('db:balance-updated', ((event: CustomEvent) => {
+      if (event.detail && typeof event.detail.newBalance === 'number') {
+        // Only update if the DB value is higher or if it's a forced update
+        const dbBalance = event.detail.newBalance;
+        if (dbBalance > this.currentBalance || event.detail.force) {
+          console.log(`Updating balance from DB sync: ${this.currentBalance} -> ${dbBalance}`);
+          this.forceBalanceSync(dbBalance);
+        }
+      }
+    }) as EventListener);
   }
   
   setUserId(userId: string | null): void {
@@ -88,6 +102,9 @@ class BalanceManager {
     // Notify watchers
     this.notifyWatchers();
     
+    // Set the last sync timestamp
+    this.lastSyncTimestamp = Date.now();
+    
     console.log(`Balance updated: ${oldBalance} -> ${this.currentBalance} (${amount > 0 ? '+' : ''}${amount})`);
     
     return this.currentBalance;
@@ -104,18 +121,27 @@ class BalanceManager {
     }
     
     const oldBalance = this.currentBalance;
-    this.currentBalance = newBalance;
     
-    // Persist the balance
-    persistBalance(this.currentBalance, this.userId);
-    
-    // Update highest balance if needed
-    this.updateHighestBalance(this.currentBalance);
-    
-    // Notify watchers if there's a change
-    if (oldBalance !== newBalance) {
-      console.log(`Balance force synced: ${oldBalance} -> ${newBalance}`);
-      this.notifyWatchers();
+    // Only update if the new balance is greater or we haven't synced recently (prevent flickering)
+    if (newBalance > oldBalance || Date.now() - this.lastSyncTimestamp > 5000) {
+      this.currentBalance = newBalance;
+      
+      // Persist the balance locally
+      persistBalance(this.currentBalance, this.userId);
+      
+      // Update highest balance if needed
+      this.updateHighestBalance(this.currentBalance);
+      
+      // Notify watchers if there's a change
+      if (oldBalance !== newBalance) {
+        console.log(`Balance force synced: ${oldBalance} -> ${newBalance}`);
+        this.notifyWatchers();
+      }
+      
+      // Update last sync timestamp
+      this.lastSyncTimestamp = Date.now();
+    } else {
+      console.log(`Ignoring DB sync with lower balance: DB=${newBalance}, Local=${oldBalance}`);
     }
   }
   

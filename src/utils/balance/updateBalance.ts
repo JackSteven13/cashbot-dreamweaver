@@ -88,6 +88,11 @@ export const updateUserBalance = async (
         if (typeof dbReturnedBalance === 'number' && !isNaN(dbReturnedBalance)) {
           // Forcer la synchronisation avec la valeur de la base
           balanceManager.forceBalanceSync(dbReturnedBalance);
+          
+          // Dispatch an event to notify all components of the database update
+          window.dispatchEvent(new CustomEvent('db:balance-updated', {
+            detail: { newBalance: dbReturnedBalance }
+          }));
         } else {
           // Sinon, mettre à jour avec la valeur calculée localement
           balanceManager.updateBalance(positiveGain);

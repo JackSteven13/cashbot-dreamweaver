@@ -1,37 +1,156 @@
 
-import { useCallback } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuth } from './useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import balanceManager from '@/utils/balance/balanceManager';
+import { toast } from '@/components/ui/use-toast';
 
+/**
+ * Hook pour synchroniser et mettre à jour le solde en temps réel
+ * Assure que le solde est toujours à jour avec la base de données
+ */
 export const useBalanceUpdater = () => {
-  const updateBalance = useCallback(async (gain: number, report: string, forceUpdate: boolean = false) => {
-    console.log(`Updating balance with gain: ${gain}, report: ${report}, forceUpdate: ${forceUpdate}`);
-    
-    const currentBalance = balanceManager.getCurrentBalance();
-    const newBalance = parseFloat((currentBalance + gain).toFixed(2));
-    
-    window.dispatchEvent(new CustomEvent('balance:update', {
-      detail: { 
-        amount: gain, 
-        currentBalance: newBalance, 
-        animate: true 
-      }
-    }));
-    
-    window.dispatchEvent(new CustomEvent('balance:force-update', {
-      detail: { 
-        newBalance: newBalance,
-        gain: gain,
-        timestamp: Date.now() 
-      }
-    }));
-    
-    if (forceUpdate && localStorage.getItem('subscription') === 'freemium') {
-      localStorage.setItem('freemium_daily_limit_reached', 'true');
-      localStorage.setItem('last_session_date', new Date().toDateString());
-    }
-    
-    return Promise.resolve();
-  }, []);
+  const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
+  const { user } = useAuth();
 
-  return { updateBalance };
+  // Synchroniser le solde avec la base de données
+  useEffect(() => {
+    if (!user) return;
+
+    const userId = user.id;
+    balanceManager.setUserId(userId);
+    
+    // Fonction pour synchroniser le solde
+    const syncBalance = async () => {
+      try {
+        // Récupérer le solde depuis la base de données
+        const { data, error } = await supabase
+          .from('user_balances')
+          .select('balance, updated_at')
+          .eq('id', userId)
+          .single();
+          
+        if (error) {
+          console.error('Erreur lors de la récupération du solde:', error);
+          return;
+        }
+        
+        if (!data) return;
+        
+        const dbBalance = data.balance || 0;
+        const localBalance = balanceManager.getCurrentBalance();
+        
+        // Comparer les soldes et utiliser le plus récent/élevé
+        if (dbBalance > localBalance) {
+          console.log(`Mise à jour du solde depuis la DB: ${localBalance} -> ${dbBalance}`);
+          balanceManager.forceBalanceSync(dbBalance, userId);
+          
+          // Déclencher une mise à jour de l'interface
+          window.dispatchEvent(new CustomEvent('balance:force-update', {
+            detail: {
+              newBalance: dbBalance,
+              timestamp: Date.now()
+            }
+          }));
+          
+          setLastUpdateTime(Date.now());
+        } else if (localBalance > dbBalance) {
+          // Si le solde local est supérieur, mettre à jour la base de données
+          console.log(`Mise à jour de la DB avec le solde local: ${dbBalance} -> ${localBalance}`);
+          
+          await supabase
+            .from('user_balances')
+            .update({ 
+              balance: localBalance,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la synchronisation du solde:', error);
+      }
+    };
+
+    // Synchroniser immédiatement au chargement
+    syncBalance();
+    
+    // Configurer un intervalle pour synchroniser périodiquement
+    const intervalId = setInterval(syncBalance, 60000); // Toutes les minutes
+    
+    // Configurer des écouteurs d'événements pour les mises à jour
+    const handleBalanceUpdate = () => {
+      setLastUpdateTime(Date.now());
+    };
+    
+    // Écouter les changements de visibilité (quand l'utilisateur revient sur l'app)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncBalance();
+      }
+    };
+    
+    window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
+    window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Nettoyer
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
+      window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user]);
+
+  // Fonction pour forcer une mise à jour du solde
+  const forceBalanceUpdate = async () => {
+    if (!user) return;
+    
+    try {
+      // Récupérer le solde depuis la base de données
+      const { data, error } = await supabase
+        .from('user_balances')
+        .select('balance')
+        .eq('id', user.id)
+        .single();
+        
+      if (error) {
+        console.error('Erreur lors de la récupération du solde:', error);
+        return;
+      }
+      
+      if (data && typeof data.balance === 'number') {
+        balanceManager.forceBalanceSync(data.balance, user.id);
+        
+        // Déclencher une mise à jour de l'interface
+        window.dispatchEvent(new CustomEvent('balance:force-update', {
+          detail: {
+            newBalance: data.balance,
+            timestamp: Date.now(),
+            forceUpdate: true
+          }
+        }));
+        
+        setLastUpdateTime(Date.now());
+        
+        toast({
+          title: "Solde mis à jour",
+          description: "Votre solde a été actualisé avec succès.",
+          duration: 3000
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour forcée du solde:', error);
+      
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour votre solde.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  return { lastUpdateTime, forceBalanceUpdate };
 };
+
+export default useBalanceUpdater;
