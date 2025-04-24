@@ -1,4 +1,3 @@
-
 import React, { memo, useEffect, useState, useCallback } from 'react';
 import { useTransactions } from './transactions/hooks/useTransactions';
 import { Transaction } from '@/types/userData';
@@ -170,16 +169,26 @@ const TransactionsList = memo(({
         showAllTransactions={showAllTransactions}
         setShowAllTransactions={setShowAllTransactions}
         validTransactionsCount={validTransactions.length}
-        onManualRefresh={() => {
+        onManualRefresh={async () => {
           setIsRefreshing(true);
-          fetchLatestTransactions().then(() => {
+          try {
+            await fetchTransactionsFromDB();
             toast({
               title: "Historique mis à jour",
               description: "Les transactions ont été synchronisées avec succès",
               duration: 2000,
             });
+          } catch (error) {
+            console.error("Error refreshing transactions:", error);
+            toast({
+              title: "Erreur",
+              description: "Impossible de synchroniser les transactions",
+              variant: "destructive",
+              duration: 2000,
+            });
+          } finally {
             setIsRefreshing(false);
-          });
+          }
         }}
       />
       

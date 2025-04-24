@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useUserDataSync } from './useUserDataSync'; // Changed from default import to named import
@@ -71,13 +70,13 @@ export const useInitUserData = () => {
           }
           
           console.log("Syncing user data for:", userId);
-          const syncSuccess = await syncUserData();
+          const syncSuccess = await syncUserData(userId);
           
           if (!syncSuccess) {
             console.log("Initial sync failed, retrying once...");
             // Wait a bit and retry once
             setTimeout(async () => {
-              await syncUserData();
+              await syncUserData(userId);
               
               // Après la synchronisation, activer aussi les agents IA
               window.dispatchEvent(new CustomEvent('bot:status-change', {
@@ -181,7 +180,15 @@ export const useInitUserData = () => {
   // Simplify the refreshData function to return a Promise<boolean>
   const refreshData = async () => {
     try {
-      const success = await syncUserData();
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      
+      if (!userId) {
+        console.error("No user ID found, cannot refresh data");
+        return false;
+      }
+      
+      const success = await syncUserData(userId);
       return success;
     } catch (error) {
       console.error("Error refreshing data:", error);
