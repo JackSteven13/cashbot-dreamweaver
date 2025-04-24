@@ -8,7 +8,7 @@ export { default as DashboardMain } from './DashboardMain';
 export { default as DashboardSkeleton } from './DashboardSkeleton';
 export { default as DailyLimitAlert } from './DailyLimitAlert';
 export { default as Sidebar } from './Sidebar';
-export { default as SystemProgressBar } from './SystemProgressBar';
+export { SystemProgressBar } from './SystemProgressBar';
 export { default as TransactionsList } from './TransactionsList';
 export { default as UserBalanceCard } from './summary/userBalanceCard';
 export { default as UserDataStateTracker } from './UserDataStateTracker';
