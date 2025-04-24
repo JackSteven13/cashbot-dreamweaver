@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from './DashboardLayout';
@@ -6,6 +5,7 @@ import DashboardContent from './DashboardContent';
 import DashboardSkeleton from './DashboardSkeleton';
 import UserDataStateTracker from './UserDataStateTracker';
 import TerminalOverlay from './terminal/TerminalOverlay';
+import SyncStatusIndicator from './SyncStatusIndicator';
 import useDashboardSessions from '@/hooks/useDashboardSessions';
 import useTerminalAnalysis from '@/hooks/useTerminalAnalysis';
 import { toast } from '@/components/ui/use-toast';
@@ -189,7 +189,6 @@ const DashboardContainer = () => {
     ? terminalLines.map(line => (typeof line === 'string' ? { text: line, type: 'info' } : line))
     : [];
 
-  // Convert lastSessionTimestamp from number to string for the DashboardContent component
   const lastSessionTimestampStr = lastSessionTimestamp ? lastSessionTimestamp.toString() : '';
 
   return (
@@ -227,6 +226,8 @@ const DashboardContainer = () => {
         onDataRefreshed={handleDataRefreshed}
         onSyncError={() => setIsLoading(false)}
       />
+      
+      <SyncStatusIndicator />
     </>
   );
 };

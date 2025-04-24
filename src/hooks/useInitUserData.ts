@@ -5,6 +5,7 @@ import { UserData } from '@/types/userData';
 import { useInitialDataLoad } from './dashboard/initialization/useInitialDataLoad';
 import { useDashboardEvents } from './dashboard/initialization/useDashboardEvents';
 import { useDataRefresh } from './dashboard/initialization/useDataRefresh';
+import { toast } from "@/components/ui/use-toast";
 
 export const useInitUserData = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -14,6 +15,7 @@ export const useInitUserData = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isNewUser, setIsNewUser] = useState(false);
   const initializedRef = useRef(false);
+  const syncAttemptsRef = useRef(0);
 
   const { isInitializing: isDataInitializing, initializeData } = useInitialDataLoad();
   const refreshData = useDataRefresh();
@@ -23,10 +25,36 @@ export const useInitUserData = () => {
 
   useEffect(() => {
     const initialize = async () => {
+      if (initializedRef.current) return;
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        await initializeData(session.user.id);
+        console.log("Session active trouvée, initialisation des données pour:", session.user.id);
+        try {
+          await initializeData(session.user.id);
+          
+          // Force une première synchronisation après l'initialisation
+          setTimeout(() => {
+            refreshData().then(success => {
+              if (!success && syncAttemptsRef.current < 2) {
+                syncAttemptsRef.current++;
+                console.log(`Nouvelle tentative de synchronisation (${syncAttemptsRef.current}/2)`);
+                
+                // Réessayer après un délai
+                setTimeout(() => refreshData(), 1500);
+              }
+            });
+          }, 500);
+        } catch (error) {
+          console.error("Erreur lors de l'initialisation des données:", error);
+          toast({
+            title: "Erreur d'initialisation",
+            description: "Impossible de charger vos données. Veuillez rafraîchir la page.",
+            variant: "destructive",
+            duration: 5000,
+          });
+        }
       } else {
         console.log("No active session found during initialization");
         
@@ -63,7 +91,7 @@ export const useInitUserData = () => {
     };
     
     initialize();
-  }, [initializeData]);
+  }, [initializeData, refreshData]);
 
   return {
     isInitializing: isInitializing || isDataInitializing,

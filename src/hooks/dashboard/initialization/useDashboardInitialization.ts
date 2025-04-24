@@ -22,9 +22,9 @@ export const useDashboardInitialization = () => {
   const navigate = useNavigate();
   
   // Hooks d'authentification avec protection contre les montages/démontages
-  const { checkAuth } = useAuthCheck({ mountedRef });
-  const { setupAuthListener } = useAuthStateListener({ mountedRef, navigate });
-  const { syncUserData } = useUserDataSync({ mountedRef });
+  const { checkAuth } = useAuthCheck();
+  const { setupAuthListener } = useAuthStateListener();
+  const { syncUserData } = useUserDataSync();
   
   // Normaliser les nettoyages pour éviter les fuites de mémoire
   const addCleanupFunction = useCallback((cleanup: () => void) => {

@@ -16,7 +16,22 @@ export const useDataRefresh = () => {
         return false;
       }
       
+      console.log("Forçage de la synchronisation des données utilisateur", userId);
+      
+      // Déclencher un événement de rafraîchissement pour l'interface
+      window.dispatchEvent(new CustomEvent('data:refreshing', {
+        detail: { userId, timestamp: Date.now() }
+      }));
+      
       const success = await syncUserData();
+      
+      if (success) {
+        // Notification d'une synchronisation réussie
+        window.dispatchEvent(new CustomEvent('data:refreshed', {
+          detail: { userId, timestamp: Date.now() }
+        }));
+      }
+      
       return success;
     } catch (error) {
       console.error("Error refreshing data:", error);
@@ -26,3 +41,5 @@ export const useDataRefresh = () => {
 
   return refreshData;
 };
+
+export default useDataRefresh;
