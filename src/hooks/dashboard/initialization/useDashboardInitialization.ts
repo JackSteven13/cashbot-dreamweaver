@@ -22,7 +22,7 @@ export const useDashboardInitialization = () => {
   const navigate = useNavigate();
   
   // Pass the mountedRef to the hooks that require it
-  const { checkAuth } = useAuthCheck();
+  const { checkAuth } = useAuthCheck({ mountedRef });
   const { setupAuthListener } = useAuthStateListener({ mountedRef });
   const { syncUserData } = useUserDataSync({ mountedRef });
   

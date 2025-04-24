@@ -167,3 +167,5 @@ export const useAuthCheck = ({ mountedRef }: UseAuthCheckParams) => {
 
   return { checkAuth };
 };
+
+export default useAuthCheck;
