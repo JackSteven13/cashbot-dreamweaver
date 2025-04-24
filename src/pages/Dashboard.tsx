@@ -28,16 +28,33 @@ const Dashboard = () => {
     }
   }, [user, isInitializing, refreshData]);
 
+  // Ajouter cette classe CSS pour éviter le tremblement lors du défilement
+  useEffect(() => {
+    document.body.classList.add('overflow-y-scroll');
+    
+    return () => {
+      document.body.classList.remove('overflow-y-scroll');
+    };
+  }, []);
+
   if (authLoading || !user) {
-    return <DashboardSkeleton username="Chargement..." />;
+    return (
+      <div className="min-h-screen">
+        <DashboardSkeleton username="Chargement..." />
+      </div>
+    );
   }
 
   if (isInitializing && isFirstLoad) {
-    return <DashboardSkeleton username={username || "Chargement..."} />;
+    return (
+      <div className="min-h-screen">
+        <DashboardSkeleton username={username || "Chargement..."} />
+      </div>
+    );
   }
 
   return (
-    <>
+    <div className="min-h-screen">
       <DashboardMain
         dashboardReady={dashboardReady}
         username={username}
@@ -45,7 +62,7 @@ const Dashboard = () => {
       />
       {/* Add the invisible component that handles background updates */}
       <DailyBalanceUpdater />
-    </>
+    </div>
   );
 };
 

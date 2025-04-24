@@ -31,11 +31,11 @@ export const useSessionState = (
         if (subscription === 'freemium' && actualSessionCount >= 1) {
           console.log("DB check: Freemium limit reached", actualSessionCount);
           setForceDisabled(true);
-          localStorage.setItem('freemium_daily_limit_reached', 'true');
-          localStorage.setItem('last_session_date', new Date().toDateString());
+          localStorage.setItem(`freemium_daily_limit_reached_${userId}`, 'true');
+          localStorage.setItem(`last_session_date_${userId}`, new Date().toDateString());
           
           if (actualSessionCount > dailySessionCount) {
-            localStorage.setItem('dailySessionCount', String(actualSessionCount));
+            localStorage.setItem(`dailySessionCount_${userId}`, String(actualSessionCount));
           }
         }
       }
@@ -51,12 +51,12 @@ export const useSessionState = (
   useEffect(() => {
     const checkFreemiumLimit = () => {
       if (subscription === 'freemium') {
-        const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-        const lastSessionDate = localStorage.getItem('last_session_date');
+        const limitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`);
+        const lastSessionDate = localStorage.getItem(`last_session_date_${userId}`);
         const today = new Date().toDateString();
         
         if (lastSessionDate !== today) {
-          localStorage.removeItem('freemium_daily_limit_reached');
+          localStorage.removeItem(`freemium_daily_limit_reached_${userId}`);
           setForceDisabled(false);
         } else if (limitReached === 'true' || dailySessionCount >= 1) {
           setForceDisabled(true);

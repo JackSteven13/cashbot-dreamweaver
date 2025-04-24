@@ -1,71 +1,93 @@
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { Transaction } from '@/types/userData';
 
 /**
- * Hook pour gérer l'affichage des transactions
+ * Hook pour gérer l'affichage des transactions avec une meilleure gestion du rafraîchissement
  */
 export const useTransactionDisplay = (
   transactions: Transaction[],
   showAllTransactions: boolean
 ) => {
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Ecouter les événements de rafraîchissement des transactions
+  useEffect(() => {
+    const handleTransactionRefresh = (event: CustomEvent) => {
+      console.log("Transaction refresh event detected");
+      setRefreshTrigger(prev => prev + 1);
+    };
+    
+    window.addEventListener('transactions:refresh', handleTransactionRefresh as EventListener);
+    window.addEventListener('balance:update', handleTransactionRefresh as EventListener);
+    window.addEventListener('session:completed', handleTransactionRefresh as EventListener);
+    
+    // Déclencher un rafraîchissement toutes les 15 secondes
+    const interval = setInterval(() => {
+      setRefreshTrigger(prev => prev + 1);
+    }, 15000);
+    
+    return () => {
+      window.removeEventListener('transactions:refresh', handleTransactionRefresh as EventListener);
+      window.removeEventListener('balance:update', handleTransactionRefresh as EventListener);
+      window.removeEventListener('session:completed', handleTransactionRefresh as EventListener);
+      clearInterval(interval);
+    };
+  }, []);
+  
   // Memoize les résultats pour éviter les re-rendus inutiles
-  const { validTransactions, displayedTransactions, hiddenTransactionsCount, todayTransactions } = useMemo(() => {
+  const { validTransactions, displayedTransactions, hiddenTransactionsCount } = useMemo(() => {
+    // Assurer que le tableau est bien défini
+    if (!Array.isArray(transactions)) {
+      console.error("Transactions is not an array:", transactions);
+      return {
+        validTransactions: [],
+        displayedTransactions: [],
+        hiddenTransactionsCount: 0
+      };
+    }
+    
     // Ne traiter que les transactions valides
-    const validTx = Array.isArray(transactions) ? 
-      transactions.filter(tx => tx && (
-        // Vérifier que tx.gain ou tx.amount est un nombre valide
-        (typeof tx.gain === 'number' || typeof tx.amount === 'number') && 
-        // Vérifier que tx.date existe
-        tx.date
-      )) : [];
+    const validTx = transactions.filter(tx => tx && (
+      // Vérifier que tx.gain ou tx.amount est un nombre valide
+      (typeof tx.gain === 'number' || typeof tx.amount === 'number') && 
+      // Vérifier que tx.date existe
+      tx.date
+    ));
     
-    // Journaliser pour le débogage
-    console.log(`Transactions valides: ${validTx.length}/${transactions?.length || 0}`);
-    
-    // Déterminer les transactions à afficher
-    const displayedTx = showAllTransactions ? validTx : validTx.slice(0, 5);
-    
-    // Calculer combien de transactions sont masquées
-    const hiddenCount = validTx.length > 5 && !showAllTransactions ? 
-      validTx.length - 5 : 0;
-    
-    // Identifier les transactions d'aujourd'hui
-    const today = new Date();
-    const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    
-    const todayTx = validTx.filter(tx => {
-      try {
-        if (!tx.date) return false;
-        
-        // Convertir en date et comparer seulement l'année, le mois et le jour
-        const txDate = new Date(tx.date);
-        return (
-          txDate.getFullYear() === today.getFullYear() &&
-          txDate.getMonth() === today.getMonth() &&
-          txDate.getDate() === today.getDate()
-        );
-      } catch (e) {
-        console.error("Erreur lors de la comparaison de date:", e, tx.date);
-        return false;
-      }
+    // Trier les transactions par date, les plus récentes en premier
+    const sortedTx = [...validTx].sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateB - dateA; // Ordre décroissant (plus récent d'abord)
     });
     
-    console.log(`Transactions d'aujourd'hui: ${todayTx.length}`, todayTx);
+    // Vérifier si la date du jour est présente
+    const today = new Date().toISOString().split('T')[0];
+    const hasToday = sortedTx.some(tx => tx.date.startsWith(today));
+    
+    // Journaliser pour le débogage
+    console.log(`Transactions valides après tri: ${sortedTx.length}/${transactions?.length || 0}, Transactions du jour: ${hasToday ? 'Oui' : 'Non'}`);
+    
+    // Déterminer les transactions à afficher
+    const displayedTx = showAllTransactions ? sortedTx : sortedTx.slice(0, 5);
+    
+    // Calculer combien de transactions sont masquées
+    const hiddenCount = sortedTx.length > 5 && !showAllTransactions ? 
+      sortedTx.length - 5 : 0;
     
     return {
-      validTransactions: validTx,
+      validTransactions: sortedTx,
       displayedTransactions: displayedTx,
-      hiddenTransactionsCount: hiddenCount,
-      todayTransactions: todayTx
+      hiddenTransactionsCount: hiddenCount
     };
-  }, [transactions, showAllTransactions]);
+  }, [transactions, showAllTransactions, refreshTrigger]);
   
   return {
     validTransactions,
     displayedTransactions,
     hiddenTransactionsCount,
-    todayTransactions
+    refreshTrigger
   };
 };
 

@@ -69,7 +69,7 @@ const TransactionsList = memo(({
         
         // Déclencher un événement pour informer les autres composants
         window.dispatchEvent(new CustomEvent('transactions:updated', {
-          detail: { transactions: formattedTransactions }
+          detail: { transactions: formattedTransactions, userId: user.id }
         }));
       }
     } catch (error) {
@@ -82,19 +82,27 @@ const TransactionsList = memo(({
   
   // Mettre en place la réception des événements et le polling pour les mises à jour des transactions
   useEffect(() => {
+    if (!user?.id) return;
+    
     // Fonction pour gérer les événements de mise à jour
-    const handleRealtimeUpdate = () => {
+    const handleRealtimeUpdate = (event: CustomEvent) => {
+      // Vérifier si l'événement est destiné à cet utilisateur
+      const eventUserId = event.detail?.userId;
+      if (eventUserId && eventUserId !== user.id) {
+        return; // Ignorer les événements d'autres utilisateurs
+      }
+      
       console.log("Transaction update event received - fetching latest transactions");
       fetchLatestTransactions();
     };
     
     // Écouter plus d'événements pour s'assurer que les transactions sont à jour
-    window.addEventListener('transactions:refresh', handleRealtimeUpdate);
-    window.addEventListener('balance:update', handleRealtimeUpdate);
-    window.addEventListener('automatic:revenue', handleRealtimeUpdate);
-    window.addEventListener('balance:daily-growth', handleRealtimeUpdate);
-    window.addEventListener('session:completed', handleRealtimeUpdate);
-    window.addEventListener('transactions:updated', handleRealtimeUpdate);
+    window.addEventListener('transactions:refresh', handleRealtimeUpdate as EventListener);
+    window.addEventListener('balance:update', handleRealtimeUpdate as EventListener);
+    window.addEventListener('automatic:revenue', handleRealtimeUpdate as EventListener);
+    window.addEventListener('balance:daily-growth', handleRealtimeUpdate as EventListener);
+    window.addEventListener('session:completed', handleRealtimeUpdate as EventListener);
+    window.addEventListener('transactions:updated', handleRealtimeUpdate as EventListener);
     
     // Configurer un canal Supabase pour les mises à jour en temps réel
     const setupRealtimeSubscription = async () => {
@@ -121,22 +129,21 @@ const TransactionsList = memo(({
     
     const realtimeCleanup = setupRealtimeSubscription();
     
-    // Mise en place d'un rafraîchissement périodique toutes les 30 secondes
-    const pollingInterval = setInterval(() => {
-      console.log("Polling for transaction updates");
-      fetchLatestTransactions();
-    }, 30000);
-    
     // Rafraîchissement initial des transactions
     fetchLatestTransactions();
     
+    // Mise en place d'un rafraîchissement périodique toutes les 30 secondes
+    const pollingInterval = setInterval(() => {
+      fetchLatestTransactions();
+    }, 30000);
+    
     return () => {
-      window.removeEventListener('transactions:refresh', handleRealtimeUpdate);
-      window.removeEventListener('balance:update', handleRealtimeUpdate);
-      window.removeEventListener('automatic:revenue', handleRealtimeUpdate);
-      window.removeEventListener('balance:daily-growth', handleRealtimeUpdate);
-      window.removeEventListener('session:completed', handleRealtimeUpdate);
-      window.removeEventListener('transactions:updated', handleRealtimeUpdate);
+      window.removeEventListener('transactions:refresh', handleRealtimeUpdate as EventListener);
+      window.removeEventListener('balance:update', handleRealtimeUpdate as EventListener);
+      window.removeEventListener('automatic:revenue', handleRealtimeUpdate as EventListener);
+      window.removeEventListener('balance:daily-growth', handleRealtimeUpdate as EventListener);
+      window.removeEventListener('session:completed', handleRealtimeUpdate as EventListener);
+      window.removeEventListener('transactions:updated', handleRealtimeUpdate as EventListener);
       clearInterval(pollingInterval);
       
       // Nettoyer l'abonnement Realtime
@@ -146,21 +153,9 @@ const TransactionsList = memo(({
     };
   }, [fetchLatestTransactions, user]);
   
-  // Handle manual refresh with direct database fetch
-  const onManualRefresh = async () => {
-    setIsRefreshing(true);
-    await fetchLatestTransactions();
-    setIsRefreshing(false);
-    
-    toast({
-      title: "Historique mis à jour",
-      description: "Les transactions ont été synchronisées avec succès",
-      duration: 2000,
-    });
-  };
-  
+  // Pour résoudre le problème de tremblement, ajouter une hauteur minimale fixe
   return (
-    <div className="mb-8" key={refreshKey}>
+    <div className="mb-8 min-h-[400px]" key={refreshKey}>
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-lg font-medium">Historique des transactions</h3>
         {isRefreshing && (
@@ -175,7 +170,17 @@ const TransactionsList = memo(({
         showAllTransactions={showAllTransactions}
         setShowAllTransactions={setShowAllTransactions}
         validTransactionsCount={validTransactions.length}
-        onManualRefresh={onManualRefresh}
+        onManualRefresh={() => {
+          setIsRefreshing(true);
+          fetchLatestTransactions().then(() => {
+            toast({
+              title: "Historique mis à jour",
+              description: "Les transactions ont été synchronisées avec succès",
+              duration: 2000,
+            });
+            setIsRefreshing(false);
+          });
+        }}
       />
       
       {displayedTransactions.length > 0 ? (
