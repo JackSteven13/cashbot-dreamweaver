@@ -155,13 +155,16 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     if (isFreemium && userId) {
       const today = new Date().toISOString().split('T')[0];
       
-      supabase
-        .from('transactions')
-        .select('id')
-        .eq('user_id', userId)
-        .like('created_at', `${today}%`)
-        .like('report', '%Session%')
-        .then(({ data, error }) => {
+      // Start by wrapping the Promise call in an async function to properly handle it
+      const checkDBAndProcess = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('transactions')
+            .select('id')
+            .eq('user_id', userId)
+            .like('created_at', `${today}%`)
+            .like('report', '%Session%');
+          
           if (!error && data) {
             if (data.length >= 1) {
               // Déjà 1+ session aujourd'hui, interdire strictement
@@ -182,12 +185,15 @@ const SessionButton: React.FC<SessionButtonProps> = ({
           
           // Poursuivre avec le contrôle de limite normal
           performNormalCheck();
-        })
-        .catch((err) => {
+        } catch (err) {
           console.error("Error checking database:", err);
           // En cas d'erreur, appliquer le contrôle normal
           performNormalCheck();
-        });
+        }
+      };
+      
+      // Execute the async function
+      checkDBAndProcess();
     } else {
       // Pour les autres abonnements, procéder normalement
       performNormalCheck();
