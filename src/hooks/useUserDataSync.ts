@@ -3,15 +3,9 @@ import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
-interface UseUserDataSyncParams {
-  mountedRef: React.RefObject<boolean>;
-}
-
-export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
+export const useUserDataSync = () => {
   // Function to synchronize data with better stability
   const syncUserData = useCallback(async () => {
-    if (!mountedRef.current) return false;
-    
     try {
       console.log("Syncing user data after authentication");
       
@@ -39,7 +33,7 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
       const maxAttempts = 5; // Augmenté pour plus de fiabilité
       let syncSuccess = false;
       
-      while (attempts < maxAttempts && !syncSuccess && mountedRef.current) {
+      while (attempts < maxAttempts && !syncSuccess) {
         try {
           // Add progressive delay between attempts
           if (attempts > 0) {
@@ -118,14 +112,12 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
         console.error("La synchronisation a échoué après plusieurs tentatives");
         
         // Notifier l'utilisateur en cas d'échec
-        if (mountedRef.current) {
-          toast({
-            title: "Synchronisation des données",
-            description: "Un problème est survenu lors de la récupération des données. Certaines fonctionnalités pourraient ne pas être disponibles.",
-            variant: "destructive",
-            duration: 5000
-          });
-        }
+        toast({
+          title: "Synchronisation des données",
+          description: "Un problème est survenu lors de la récupération des données. Certaines fonctionnalités pourraient ne pas être disponibles.",
+          variant: "destructive",
+          duration: 5000
+        });
       }
       
       localStorage.removeItem('data_syncing');
@@ -141,7 +133,9 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
       
       return false;
     }
-  }, [mountedRef]);
+  }, []);
 
   return { syncUserData };
 };
+
+export default useUserDataSync;
