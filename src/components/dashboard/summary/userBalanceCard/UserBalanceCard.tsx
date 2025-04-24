@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SystemProgressBar } from '@/components/dashboard/SystemProgressBar';
-import { ActionButtons } from './components/ActionButtons';
-import { UserBalanceDisplay } from './components/UserBalanceDisplay';
+import ActionButtons from './components/ActionButtons';
+import UserBalanceDisplay from './components/UserBalanceDisplay';
 import { Circle, CircleDollarSign } from 'lucide-react';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 import balanceManager from '@/utils/balance/balanceManager';

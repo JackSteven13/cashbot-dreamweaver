@@ -183,7 +183,8 @@ const SessionButton: React.FC<SessionButtonProps> = ({
           // Poursuivre avec le contrôle de limite normal
           performNormalCheck();
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error("Error checking database:", err);
           // En cas d'erreur, appliquer le contrôle normal
           performNormalCheck();
         });
