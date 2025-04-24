@@ -36,7 +36,7 @@ export const useAutomaticRevenueTransactions = () => {
     };
   }, []);
   
-  // Vérifier si le gain respecte la limite quotidienne
+  // Vérifier si le gain respecte la limite quotidienne de façon stricte
   const respectsDailyLimit = useCallback(async (userId: string, subscription: string, potentialGain: number): Promise<{allowed: boolean, adjustedGain: number}> => {
     // Récupérer la limite quotidienne basée sur l'abonnement
     const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
@@ -44,7 +44,7 @@ export const useAutomaticRevenueTransactions = () => {
     // Obtenir la date d'aujourd'hui au format YYYY-MM-DD
     const today = new Date().toISOString().split('T')[0];
     
-    // Récupérer les transactions d'aujourd'hui depuis la base de données
+    // Récupérer les transactions d'aujourd'hui depuis la base de données pour vérification stricte
     const { data: todaysTransactions } = await supabase
       .from('transactions')
       .select('gain')
@@ -54,16 +54,32 @@ export const useAutomaticRevenueTransactions = () => {
     // Calculer les gains totaux d'aujourd'hui
     const todaysGains = (todaysTransactions || []).reduce((sum, tx) => sum + (tx.gain || 0), 0);
     
-    console.log(`Vérification limite journalière: ${todaysGains}€/${dailyLimit}€, gain potentiel: ${potentialGain}€`);
+    console.log(`Vérification limite journalière: ${todaysGains.toFixed(3)}€/${dailyLimit}€, gain potentiel: ${potentialGain.toFixed(3)}€`);
     
-    // Si déjà au maximum, ne pas autoriser plus de gains
-    if (todaysGains >= dailyLimit) {
+    // STRICT: Si déjà à 98% du maximum, ne pas autoriser plus de gains du tout
+    if (todaysGains >= dailyLimit * 0.98) {
+      console.log(`LIMITE STRICTE ATTEINTE: ${todaysGains.toFixed(3)}€/${dailyLimit}€`);
+      // Déclencher un événement pour informer les autres composants
+      window.dispatchEvent(new CustomEvent('daily-limit:reached', { 
+        detail: { subscription, limit: dailyLimit, currentGains: todaysGains }
+      }));
+      
+      // Mettre à jour les gains quotidiens dans le gestionnaire local
+      balanceManager.setDailyGains(todaysGains);
+      
       return { allowed: false, adjustedGain: 0 };
     }
     
-    // Si le gain dépasse la limite, l'ajuster
+    // Si le gain dépasse la limite, l'ajuster strictement
     if (todaysGains + potentialGain > dailyLimit) {
-      const adjustedGain = Math.max(0, dailyLimit - todaysGains);
+      const adjustedGain = Math.max(0, Math.min(dailyLimit - todaysGains, dailyLimit * 0.05));
+      
+      // Si l'ajustement est insignifiant (<1 centime), ne pas autoriser le gain
+      if (adjustedGain < 0.01) {
+        return { allowed: false, adjustedGain: 0 };
+      }
+      
+      console.log(`Gain ajusté: ${potentialGain.toFixed(3)}€ -> ${adjustedGain.toFixed(3)}€`);
       return { allowed: true, adjustedGain: Number(adjustedGain.toFixed(3)) };
     }
     
@@ -103,13 +119,19 @@ export const useAutomaticRevenueTransactions = () => {
       
       const subscription = userData?.subscription || 'freemium';
       
-      // Vérifier si le gain respecte la limite quotidienne
+      // STRICT: Vérifier si le gain respecte la limite quotidienne avec DB query
       const { allowed, adjustedGain } = await respectsDailyLimit(user.id, subscription, amount);
       
       // Si le gain n'est pas autorisé ou est ajusté à zéro, ne pas créer de transaction
       if (!allowed || adjustedGain <= 0) {
         console.log(`Gain automatique refusé: limite journalière atteinte pour ${subscription}`);
         isProcessing.current = false;
+        
+        // Déclencher un événement pour indiquer que la limite est atteinte
+        window.dispatchEvent(new CustomEvent('bot:limit-reached', { 
+          detail: { subscription, timestamp: Date.now() }
+        }));
+        
         return;
       }
       
