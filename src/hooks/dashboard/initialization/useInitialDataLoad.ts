@@ -8,7 +8,8 @@ import { useUserDataSync } from './useUserDataSync';
 export const useInitialDataLoad = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const initializedRef = useRef(false);
-  const { syncUserData } = useUserDataSync();
+  const mountedRef = useRef(true);
+  const { syncUserData } = useUserDataSync({ mountedRef });
 
   const initializeData = async (userId: string) => {
     if (initializedRef.current) return;
