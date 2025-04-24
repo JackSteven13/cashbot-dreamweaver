@@ -40,6 +40,11 @@ const SyncStatusIndicator = () => {
     window.addEventListener('data:refreshed', handleRefreshed);
     window.addEventListener('user:sync-error', handleSyncError);
     
+    // Initial check to show the indicator if a sync is already in progress
+    if (localStorage.getItem('data_syncing') === 'true') {
+      handleRefreshing();
+    }
+    
     // Nettoyer les événements au démontage
     return () => {
       window.removeEventListener('data:refreshing', handleRefreshing);

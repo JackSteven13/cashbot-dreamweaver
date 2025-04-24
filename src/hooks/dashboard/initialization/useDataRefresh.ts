@@ -1,10 +1,11 @@
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useUserDataSync } from './useUserDataSync';
 
 export const useDataRefresh = () => {
-  const { syncUserData } = useUserDataSync();
+  const mountedRef = useRef(true);
+  const { syncUserData } = useUserDataSync({ mountedRef });
   
   const refreshData = useCallback(async () => {
     try {

@@ -21,10 +21,10 @@ export const useDashboardInitialization = () => {
   
   const navigate = useNavigate();
   
-  // Hooks d'authentification avec protection contre les montages/démontages
+  // Pass the mountedRef to the hooks that require it
   const { checkAuth } = useAuthCheck();
-  const { setupAuthListener } = useAuthStateListener();
-  const { syncUserData } = useUserDataSync();
+  const { setupAuthListener } = useAuthStateListener({ mountedRef });
+  const { syncUserData } = useUserDataSync({ mountedRef });
   
   // Normaliser les nettoyages pour éviter les fuites de mémoire
   const addCleanupFunction = useCallback((cleanup: () => void) => {
