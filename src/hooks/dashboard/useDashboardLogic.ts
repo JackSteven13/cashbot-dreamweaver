@@ -22,7 +22,7 @@ export const useDashboardLogic = () => {
     refreshData
   } = useInitUserData();
 
-  // Improved data sync mechanism to ensure data is loaded when dashboard mounts
+  // Force immediate data synchronization when dashboard mounts
   useEffect(() => {
     let mounted = true;
 
@@ -42,6 +42,11 @@ export const useDashboardLogic = () => {
           }
         } catch (error) {
           console.error('Error syncing dashboard data:', error);
+          toast({
+            title: "Erreur de synchronisation",
+            description: "Impossible de synchroniser les données. Veuillez rafraîchir la page.",
+            variant: "destructive"
+          });
         }
       }
     };

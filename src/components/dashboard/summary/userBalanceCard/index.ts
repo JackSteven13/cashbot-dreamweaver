@@ -1,3 +1,3 @@
 
-export { default } from './UserBalanceCard';
-export * from './components';
+import UserBalanceCard from './UserBalanceCard';
+export default UserBalanceCard;

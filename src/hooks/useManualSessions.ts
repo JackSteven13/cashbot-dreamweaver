@@ -1,6 +1,5 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
 import { calculateSessionGain } from '@/utils/sessions/sessionCalculator';
 import { useBotStatus } from '@/hooks/useBotStatus';
@@ -19,7 +18,7 @@ const getDailyGains = (): number => {
 };
 
 interface ManualSessionHookProps {
-  userData: UserData | null;
+  userData: any;
   dailySessionCount: number;
   incrementSessionCount: () => Promise<void>;
   updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>;
@@ -32,7 +31,7 @@ export const useManualSessions = ({
   updateBalance
 }: ManualSessionHookProps) => {
   const [isSessionRunning, setIsSessionRunning] = useState(false);
-  const { isBotActive, activityLevel } = useBotStatus();
+  const { isBotActive } = useBotStatus();
   const { startAnimation, stopAnimation } = useSessionAnimations();
   const [limitReached, setLimitReached] = useState(false);
   
@@ -169,8 +168,6 @@ export const useManualSessions = ({
       
       gain = parseFloat(gain.toFixed(2));
       
-      console.log(`Gain calculé: ${gain}€`);
-      
       // Pour les comptes freemium, marquer immédiatement que la limite est atteinte
       if (userData.subscription === 'freemium') {
         setLimitReached(true);
@@ -212,22 +209,10 @@ export const useManualSessions = ({
         }
       }));
       
-      // Assurer que tout le monde est informé de la mise à jour
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('balance:force-update', {
-          detail: {
-            amount: gain,
-            currentBalance: newBalance,
-            oldBalance: oldBalance,
-            newBalance: newBalance,
-            animate: true
-          }
-        }));
-      }, 100);
-      
+      // Show session completed toast
       toast({
-        title: "Session terminée",
-        description: `Vous avez gagné ${gain.toFixed(2)}€`,
+        title: "Session complétée",
+        description: `Votre session a généré ${gain.toFixed(2)}€`,
         duration: 3000
       });
       
