@@ -28,7 +28,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (shouldResetDailyCounters()) {
       console.log("[DAILY RESET] Resetting daily counters from Dashboard component");
-      balanceManager.resetDailyGains();
+      balanceManager.setDailyGains(0); // Using setDailyGains instead of resetDailyGains
     }
   }, []);
   
@@ -72,7 +72,7 @@ const Dashboard = () => {
           toast({
             title: "Limite presque atteinte",
             description: `Vous approchez de votre limite quotidienne de ${dailyLimit}€ (${Math.round(percentage)}%).`,
-            variant: "warning",
+            variant: "destructive",
             duration: 5000
           });
         }

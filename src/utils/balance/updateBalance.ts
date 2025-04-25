@@ -94,7 +94,7 @@ export const updateUserBalance = async (
       toast({
         title: "Limite quotidienne proche",
         description: `Votre gain a été ajusté à ${adjustedGain.toFixed(2)}€ pour respecter votre limite quotidienne.`,
-        variant: "warning",
+        variant: "destructive",
         duration: 4000
       });
     }

@@ -84,7 +84,7 @@ export const useLimitChecking = () => {
         toast({
           title: "Limite journalière presque atteinte",
           description: `Vous approchez de votre limite quotidienne de ${dailyLimit}€.`,
-          variant: "warning",
+          variant: "destructive",
           duration: 4000
         });
       }

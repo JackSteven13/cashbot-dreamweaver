@@ -1,27 +1,43 @@
 
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
 interface BalanceAmountProps {
+  balance: number;
   isLoading?: boolean;
-  displayedBalance: number;
-  previousBalance: number | null;
-  gain: number | null;
-  isAnimating: boolean;
-  balanceRef: React.RefObject<HTMLDivElement>;
   currency?: string;
   subscription?: string;
 }
 
 const BalanceAmount: React.FC<BalanceAmountProps> = ({
+  balance,
   isLoading = false,
-  displayedBalance,
-  previousBalance,
-  gain,
-  isAnimating,
-  balanceRef,
   currency = "EUR",
   subscription
 }) => {
+  const [displayedBalance, setDisplayedBalance] = useState(balance);
+  const [previousBalance, setPreviousBalance] = useState<number | null>(null);
+  const [gain, setGain] = useState<number | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const balanceRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (balance !== displayedBalance && !isLoading) {
+      // If there's an increase in balance, animate it
+      if (balance > displayedBalance) {
+        setPreviousBalance(displayedBalance);
+        setGain(balance - displayedBalance);
+        setIsAnimating(true);
+        
+        // End animation after some time
+        const timer = setTimeout(() => {
+          setIsAnimating(false);
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
+      setDisplayedBalance(balance);
+    }
+  }, [balance, displayedBalance, isLoading]);
+
   return (
     <div className="text-center py-4">
       {isLoading ? (

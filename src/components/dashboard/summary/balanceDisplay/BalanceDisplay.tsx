@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { BalanceHeader } from './BalanceHeader';
-import { BalanceAmount } from './BalanceAmount';
+import BalanceHeader from './BalanceHeader';
+import BalanceAmount from './BalanceAmount';
 import { Card } from '@/components/ui/card';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 import { getEffectiveSubscription } from '@/utils/auth/subscriptionUtils';
