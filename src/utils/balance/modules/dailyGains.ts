@@ -5,6 +5,8 @@ export class DailyGainsManager {
   private dailyGains: number = 0;
   private userId: string | null = null;
   private lastResetDate: string = '';
+  private lastUpdateTime: number = 0;
+  private processingUpdate: boolean = false;
   
   constructor(userId: string | null = null) {
     this.userId = userId;
@@ -58,12 +60,39 @@ export class DailyGainsManager {
       return;
     }
     
-    this.checkForDayChange(); // Check for day change before setting
+    // Rate limiting: prevent multiple rapid updates
+    if (this.processingUpdate) {
+      console.log('Another daily gain update is in progress, skipping...');
+      return;
+    }
     
-    this.dailyGains = amount;
-    const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
-    persistToLocalStorage(storageKey, amount.toString());
-    console.log(`Daily gains set to ${amount}`);
+    // Minimum interval between updates (200ms)
+    const now = Date.now();
+    if (now - this.lastUpdateTime < 200) {
+      console.log('Daily gains updated too quickly, throttling...');
+      return;
+    }
+    
+    this.processingUpdate = true;
+    
+    try {
+      this.checkForDayChange(); // Check for day change before setting
+      
+      // Validate the amount to ensure it's not negative or unreasonably large
+      const validAmount = Math.max(0, Math.min(amount, 1000)); // Sanity cap at 1000
+      
+      // Round to 2 decimal places to avoid floating point issues
+      const roundedAmount = Math.round(validAmount * 100) / 100;
+      
+      this.dailyGains = roundedAmount;
+      const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
+      persistToLocalStorage(storageKey, roundedAmount.toString());
+      console.log(`Daily gains set to ${roundedAmount}`);
+      
+      this.lastUpdateTime = now;
+    } finally {
+      this.processingUpdate = false;
+    }
   }
   
   addDailyGain(amount: number): void {
@@ -72,12 +101,43 @@ export class DailyGainsManager {
       return;
     }
     
-    this.checkForDayChange(); // Check for day change before adding
+    // Rate limiting: prevent multiple rapid updates
+    if (this.processingUpdate) {
+      console.log('Another daily gain update is in progress, skipping...');
+      return;
+    }
     
-    this.dailyGains += amount;
-    const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
-    persistToLocalStorage(storageKey, this.dailyGains.toString());
-    console.log(`Daily gains increased by ${amount} to ${this.dailyGains}`);
+    // Minimum interval between updates (200ms)
+    const now = Date.now();
+    if (now - this.lastUpdateTime < 200) {
+      console.log('Daily gains updated too quickly, throttling...');
+      return;
+    }
+    
+    this.processingUpdate = true;
+    
+    try {
+      this.checkForDayChange(); // Check for day change before adding
+      
+      // Validate the amount to ensure it's reasonable
+      if (amount <= 0 || amount > 1.0) { // Cap single additions at 1.0
+        console.log(`Suspicious gain amount: ${amount}, applying restrictions`);
+        amount = Math.min(Math.max(0.001, amount), 0.05);
+      }
+      
+      // Round to 4 decimal places to avoid floating point issues
+      const previousGains = this.dailyGains;
+      this.dailyGains += amount;
+      this.dailyGains = Math.round(this.dailyGains * 10000) / 10000;
+      
+      const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
+      persistToLocalStorage(storageKey, this.dailyGains.toString());
+      console.log(`Daily gains increased by ${amount} to ${this.dailyGains} (from ${previousGains})`);
+      
+      this.lastUpdateTime = now;
+    } finally {
+      this.processingUpdate = false;
+    }
   }
   
   resetDailyGains(): void {
@@ -100,6 +160,7 @@ export class DailyGainsManager {
     if (this.userId !== userId) {
       this.userId = userId;
       this.loadDailyGains();
+      this.checkForDayChange();
     }
   }
 }

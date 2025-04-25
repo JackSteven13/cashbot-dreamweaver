@@ -8,6 +8,9 @@ class BalanceManager {
   private highestBalance: number = 0;
   private userId: string | null = null;
   private lastSyncTimestamp: number = 0;
+  private updatingBalance: boolean = false;
+  private updateQueue: number[] = [];
+  private pendingTimeout: NodeJS.Timeout | null = null;
   
   private dailyGainsManager: DailyGainsManager;
   private balanceWatcher: BalanceWatcher;
@@ -37,11 +40,65 @@ class BalanceManager {
       if (event.detail && typeof event.detail.newBalance === 'number') {
         const dbBalance = event.detail.newBalance;
         if (dbBalance > this.currentBalance || event.detail.force) {
-          console.log(`Updating balance from DB sync: ${this.currentBalance} -> ${dbBalance}`);
+          console.log(`Updating balance from DB sync: ${this.currentBalance.toFixed(2)} -> ${dbBalance.toFixed(2)}`);
           this.forceBalanceSync(dbBalance);
+        } else {
+          console.log(`Ignoring DB sync with lower balance: DB=${dbBalance.toFixed(2)}, Local=${this.currentBalance.toFixed(2)}`);
         }
       }
     }) as EventListener);
+    
+    // Listen for balance reset events
+    window.addEventListener('balance:reset', () => {
+      console.log('Balance reset event received');
+      this.resetUpdateQueue();
+    });
+    
+    // Listen for browser visibility changes
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        // Flush any pending updates before page becomes hidden
+        this.flushUpdateQueue();
+      } else {
+        // Page is visible again, check if we need to reset the queue
+        this.resetUpdateQueue();
+      }
+    });
+  }
+  
+  private resetUpdateQueue(): void {
+    this.updateQueue = [];
+    if (this.pendingTimeout) {
+      clearTimeout(this.pendingTimeout);
+      this.pendingTimeout = null;
+    }
+    this.updatingBalance = false;
+  }
+  
+  private flushUpdateQueue(): void {
+    if (this.updateQueue.length === 0) return;
+    
+    const totalUpdate = this.updateQueue.reduce((sum, amount) => sum + amount, 0);
+    if (totalUpdate !== 0) {
+      this.processBalanceUpdate(totalUpdate);
+    }
+    
+    this.resetUpdateQueue();
+  }
+  
+  private processBalanceUpdate(amount: number): void {
+    // Apply the actual balance change
+    const oldBalance = this.currentBalance;
+    
+    // Round to 2 decimal places to avoid floating point errors
+    this.currentBalance = Math.round((this.currentBalance + amount) * 100) / 100;
+    
+    persistBalance(this.currentBalance, this.userId);
+    this.updateHighestBalance(this.currentBalance);
+    this.balanceWatcher.notifyWatchers(this.currentBalance);
+    this.lastSyncTimestamp = Date.now();
+    
+    console.log(`Balance updated: ${oldBalance.toFixed(2)} -> ${this.currentBalance.toFixed(2)} (${amount > 0 ? '+' : ''}${amount.toFixed(4)})`);
   }
   
   // Core balance methods
@@ -61,15 +118,42 @@ class BalanceManager {
       return this.currentBalance;
     }
     
-    const oldBalance = this.currentBalance;
-    this.currentBalance += amount;
+    if (amount === 0) {
+      return this.currentBalance;
+    }
     
-    persistBalance(this.currentBalance, this.userId);
-    this.updateHighestBalance(this.currentBalance);
-    this.balanceWatcher.notifyWatchers(this.currentBalance);
-    this.lastSyncTimestamp = Date.now();
+    // Round amount to 4 decimal places for consistency
+    const roundedAmount = Math.round(amount * 10000) / 10000;
     
-    console.log(`Balance updated: ${oldBalance} -> ${this.currentBalance} (${amount > 0 ? '+' : ''}${amount})`);
+    if (this.updatingBalance) {
+      // Queue the update to avoid race conditions
+      this.updateQueue.push(roundedAmount);
+      
+      // Set a timeout to flush the queue if no more updates come in
+      if (this.pendingTimeout) {
+        clearTimeout(this.pendingTimeout);
+      }
+      
+      this.pendingTimeout = setTimeout(() => {
+        this.flushUpdateQueue();
+      }, 200);
+      
+      return this.currentBalance;
+    }
+    
+    this.updatingBalance = true;
+    
+    try {
+      this.processBalanceUpdate(roundedAmount);
+    } finally {
+      this.updatingBalance = false;
+      
+      // Process any queued updates
+      if (this.updateQueue.length > 0) {
+        setTimeout(() => this.flushUpdateQueue(), 50);
+      }
+    }
+    
     return this.currentBalance;
   }
   
@@ -83,21 +167,27 @@ class BalanceManager {
       return;
     }
     
+    // Reset any pending updates when forcing a sync
+    this.resetUpdateQueue();
+    
     const oldBalance = this.currentBalance;
     
+    // Always use the higher precision value from the two sources
     if (newBalance > oldBalance || Date.now() - this.lastSyncTimestamp > 5000) {
-      this.currentBalance = newBalance;
+      // Round to 2 decimal places for consistent display
+      const roundedBalance = Math.round(newBalance * 100) / 100;
+      this.currentBalance = roundedBalance;
       persistBalance(this.currentBalance, this.userId);
       this.updateHighestBalance(this.currentBalance);
       
-      if (oldBalance !== newBalance) {
-        console.log(`Balance force synced: ${oldBalance} -> ${newBalance}`);
+      if (oldBalance !== roundedBalance) {
+        console.log(`Balance force synced: ${oldBalance.toFixed(2)} -> ${roundedBalance.toFixed(2)}`);
         this.balanceWatcher.notifyWatchers(this.currentBalance);
       }
       
       this.lastSyncTimestamp = Date.now();
     } else {
-      console.log(`Ignoring DB sync with lower balance: DB=${newBalance}, Local=${oldBalance}`);
+      console.log(`Ignoring DB sync with lower balance: DB=${newBalance.toFixed(2)}, Local=${oldBalance.toFixed(2)}`);
     }
   }
   
@@ -107,6 +197,9 @@ class BalanceManager {
       this.userId = userId;
       this.currentBalance = getPersistedBalance(userId);
       this.dailyGainsManager.setUserId(userId);
+      
+      // Reset update queue when changing users
+      this.resetUpdateQueue();
     }
   }
   
@@ -141,6 +234,19 @@ class BalanceManager {
   checkForSignificantBalanceChange(newBalance: number): boolean {
     const threshold = Math.max(this.currentBalance * 0.01, 0.01);
     return Math.abs(newBalance - this.currentBalance) > threshold;
+  }
+  
+  // Debug function to get balance state
+  getDebugInfo(): object {
+    return {
+      currentBalance: this.currentBalance,
+      highestBalance: this.highestBalance,
+      userId: this.userId,
+      lastSyncTimestamp: this.lastSyncTimestamp,
+      updatingBalance: this.updatingBalance,
+      queuedUpdates: this.updateQueue.length,
+      dailyGains: this.getDailyGains()
+    };
   }
 }
 

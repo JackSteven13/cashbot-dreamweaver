@@ -1,44 +1,98 @@
 
-import { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useUserData } from '@/hooks/useUserData';
 import balanceManager from '@/utils/balance/balanceManager';
-import { shouldResetDailyCounters } from '@/utils/subscription/sessionManagement';
 
 /**
- * Composant invisible qui gère la synchronisation des limitations quotidiennes
- * Il s'exécute une fois au chargement du tableau de bord
+ * Invisible component that helps manage periodic balance updates,
+ * synchronize balance across the app, and maintain consistency
  */
-const DailyBalanceUpdater = () => {
-  // Vérifier et réinitialiser les compteurs quotidiens si nécessaire
+const DailyBalanceUpdater: React.FC = () => {
+  const { userData } = useUserData();
+  const userId = userData?.profile?.id;
+  const lastBalanceUpdate = useRef<number>(Date.now());
+  const lastValues = useRef<{
+    balance: number,
+    dailyGains: number
+  }>({
+    balance: 0,
+    dailyGains: 0
+  });
+  
+  // Initialize with current values
   useEffect(() => {
-    const resetIfNeeded = () => {
-      // Vérifier s'il faut réinitialiser les compteurs quotidiens
-      if (shouldResetDailyCounters()) {
-        console.log("Nouveau jour détecté, réinitialisation des gains quotidiens");
+    if (userId) {
+      lastValues.current = {
+        balance: balanceManager.getCurrentBalance(),
+        dailyGains: balanceManager.getDailyGains()
+      };
+    }
+  }, [userId]);
+  
+  // Monitor for inconsistent changes
+  useEffect(() => {
+    if (!userId) return;
+    
+    const checkBalanceConsistency = () => {
+      const currentBalance = balanceManager.getCurrentBalance();
+      const currentDailyGains = balanceManager.getDailyGains();
+      const now = Date.now();
+      
+      // Check if balance changed in an unexpected way
+      if (Math.abs(currentBalance - lastValues.current.balance) > 0.05 && 
+          now - lastBalanceUpdate.current < 500) {
+        console.warn(
+          `Detected potentially inconsistent balance change: ` +
+          `${lastValues.current.balance.toFixed(2)} -> ${currentBalance.toFixed(2)}`
+        );
         
-        // Réinitialiser les gains quotidiens
-        balanceManager.resetDailyGains();
-        
-        // Déclencher un événement pour informer le reste de l'application
-        window.dispatchEvent(new CustomEvent('dailyGains:reset'));
-        
-        // Également remettre à zéro le compteur de sessions quotidiennes
-        localStorage.removeItem('freemium_daily_limit_reached');
-        localStorage.removeItem('last_session_date');
-        localStorage.removeItem('dailySessionCount');
+        // Stabilize the value by using a smoothed transition
+        const smoothedBalance = (lastValues.current.balance * 0.7) + (currentBalance * 0.3);
+        balanceManager.forceBalanceSync(smoothedBalance);
+      } else {
+        lastValues.current.balance = currentBalance;
       }
+      
+      // Check for inconsistent daily gains
+      if (Math.abs(currentDailyGains - lastValues.current.dailyGains) > 0.1 && 
+          now - lastBalanceUpdate.current < 500) {
+        console.warn(
+          `Detected potentially inconsistent daily gains change: ` +
+          `${lastValues.current.dailyGains.toFixed(2)} -> ${currentDailyGains.toFixed(2)}`
+        );
+        
+        // Stabilize using smoothed transition
+        const smoothedGains = (lastValues.current.dailyGains * 0.7) + (currentDailyGains * 0.3);
+        balanceManager.setDailyGains(smoothedGains);
+      } else {
+        lastValues.current.dailyGains = currentDailyGains;
+      }
+      
+      lastBalanceUpdate.current = now;
     };
     
-    // Exécuter immédiatement
-    resetIfNeeded();
+    // Check every second for inconsistencies
+    const intervalId = setInterval(checkBalanceConsistency, 1000);
     
-    // Vérifier périodiquement (toutes les 5 minutes)
-    const checkInterval = setInterval(resetIfNeeded, 5 * 60 * 1000);
+    // Cleanup
+    return () => clearInterval(intervalId);
+  }, [userId]);
+  
+  // Listen for balance:update events to track when balances are explicitly updated
+  useEffect(() => {
+    const handleBalanceUpdate = () => {
+      lastBalanceUpdate.current = Date.now();
+      lastValues.current.balance = balanceManager.getCurrentBalance();
+      lastValues.current.dailyGains = balanceManager.getDailyGains();
+    };
     
-    return () => clearInterval(checkInterval);
+    window.addEventListener('balance:update', handleBalanceUpdate);
+    return () => {
+      window.removeEventListener('balance:update', handleBalanceUpdate);
+    };
   }, []);
   
-  // Ce composant ne rend rien, il exécute juste du code
-  return null;
+  return null; // This component doesn't render anything
 };
 
 export default DailyBalanceUpdater;
