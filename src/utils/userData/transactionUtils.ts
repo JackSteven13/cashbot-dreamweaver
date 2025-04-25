@@ -25,6 +25,8 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
       }
     }
 
+    console.log(`Fetching transactions for user ${userId}, force refresh: ${forceRefresh}`);
+
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
@@ -36,10 +38,19 @@ export const fetchUserTransactions = async (userId: string, forceRefresh = false
       return [];
     }
     
+    console.log("Raw transaction data:", data);
+    
     // Format transactions to adapt to application's required format
     const formattedTransactions = data.map((tx: any) => {
       // Normalize date for consistent comparison
-      const txDate = tx.created_at ? new Date(tx.created_at) : new Date(tx.date);
+      let txDate;
+      if (tx.created_at) {
+        txDate = new Date(tx.created_at);
+      } else if (tx.date) {
+        txDate = new Date(tx.date);
+      } else {
+        txDate = new Date(); // Fallback to current date if no date field exists
+      }
       
       // ISO format for consistency
       const isoDate = txDate.toISOString();
@@ -125,12 +136,17 @@ export const addTransaction = async (
     
     console.log("Transaction added successfully:", data);
     
-    // Invalidate cache
+    // Invalidate cache to force refresh
     localStorage.removeItem('cachedTransactions');
+    localStorage.removeItem('transactionsLastRefresh');
     
-    // Trigger refresh event
+    // Trigger refresh events
     window.dispatchEvent(new CustomEvent('transactions:refresh', {
       detail: { timestamp: Date.now() }
+    }));
+    
+    window.dispatchEvent(new CustomEvent('balance:update', {
+      detail: { gain: formattedGain, automatic: true }
     }));
     
     return data ? data[0] : null;

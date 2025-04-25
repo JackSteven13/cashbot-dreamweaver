@@ -1,10 +1,12 @@
 
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useEffect, useState, useCallback } from 'react';
 import { useTransactions } from './transactions/hooks/useTransactions';
 import { Transaction } from '@/types/userData';
 import { TransactionListItem, TransactionEmptyState, TransactionListActions, TransactionFooter } from './transactions';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 
 interface TransactionsListProps {
   transactions: Transaction[];
@@ -29,6 +31,14 @@ const TransactionsList = memo(({
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const { user } = useAuth();
+  
+  // Force refresh on mount to get latest transactions
+  useEffect(() => {
+    if (user?.id) {
+      onManualRefresh();
+    }
+  }, [user?.id]);
   
   // Setup real-time update listeners with more frequent checks
   useEffect(() => {
@@ -49,7 +59,7 @@ const TransactionsList = memo(({
           .catch(() => {
             setIsRefreshing(false);
           });
-      }, 500);
+      }, 300);
     };
     
     // Écouter plus d'événements pour s'assurer que les transactions sont à jour
@@ -58,17 +68,20 @@ const TransactionsList = memo(({
     window.addEventListener('automatic:revenue', handleRealtimeUpdate);
     window.addEventListener('balance:daily-growth', handleRealtimeUpdate);
     
-    // Rafraîchir automatiquement toutes les 2 minutes
+    // Rafraîchir automatiquement toutes les 60 secondes
     const autoRefresh = setInterval(() => {
-      handleManualRefresh()
-        .then(() => {
-          setLastUpdated(new Date());
-          console.log("Transactions auto-refreshed");
-        })
-        .catch(() => {
-          console.error("Failed to auto-refresh transactions");
-        });
-    }, 120000); // 2 minutes
+      if (user?.id) {
+        // Use a direct fetch rather than state update to avoid UI flicker
+        fetchUserTransactions(user.id, true)
+          .then(() => {
+            setLastUpdated(new Date());
+            console.log("Transactions auto-refreshed silently");
+          })
+          .catch(() => {
+            console.error("Failed to auto-refresh transactions");
+          });
+      }
+    }, 60000); // 60 seconds
     
     return () => {
       window.removeEventListener('transactions:refresh', handleRealtimeUpdate);
@@ -77,34 +90,33 @@ const TransactionsList = memo(({
       window.removeEventListener('balance:daily-growth', handleRealtimeUpdate);
       clearInterval(autoRefresh);
     };
-  }, [handleManualRefresh]);
-  
-  // Refresh transactions on first load
-  useEffect(() => {
-    // Premier rafraîchissement après 5 secondes pour laisser le temps aux données de se charger
-    const initialRefreshTimeout = setTimeout(() => {
-      handleManualRefresh()
-        .then(() => {
-          setLastUpdated(new Date());
-          console.log("Initial transaction refresh complete");
-        })
-        .catch((error) => {
-          console.error("Failed to refresh transactions:", error);
-        });
-    }, 5000);
-    
-    return () => {
-      clearTimeout(initialRefreshTimeout);
-    };
-  }, [handleManualRefresh]);
+  }, [handleManualRefresh, user?.id]);
   
   // Handle manual refresh
-  const onManualRefresh = async () => {
+  const onManualRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    
     setIsRefreshing(true);
-    await handleManualRefresh();
-    setIsRefreshing(false);
-    setLastUpdated(new Date());
-  };
+    try {
+      await handleManualRefresh();
+      setLastUpdated(new Date());
+      toast({
+        title: "Transactions actualisées",
+        description: "Les dernières transactions ont été chargées",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error("Error refreshing transactions:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de rafraîchir les transactions",
+        variant: "destructive",
+        duration: 3000,
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [handleManualRefresh, isRefreshing]);
   
   return (
     <div className="mb-8" key={refreshKey}>

@@ -1,10 +1,12 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Transaction } from '@/types/userData';
 import { useTransactionsState } from './useTransactionsState';
 import { useTransactionsStorage } from './useTransactionsStorage';
 import { useTransactionsRefresh } from './useTransactionsRefresh';
 import { useTransactionDisplay } from './useTransactionDisplay';
+import { useAuth } from '@/hooks/useAuth';
+import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 
 export const useTransactions = (initialTransactions: Transaction[]) => {
   // Utiliser les hooks spécifiques pour chaque fonctionnalité
@@ -17,6 +19,9 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     setRefreshKey
   } = useTransactionsState();
   
+  // Récupérer l'utilisateur
+  const { user } = useAuth();
+  
   // Utiliser le hook de stockage
   const { 
     transactionsCacheKey, 
@@ -26,7 +31,7 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
   
   // Utiliser le hook pour le rafraîchissement des transactions
   const { 
-    handleManualRefresh, 
+    handleManualRefresh: baseHandleManualRefresh, 
     isMountedRef,
     throttleTimerRef
   } = useTransactionsRefresh(transactions, setTransactions, refreshKey, setRefreshKey);
@@ -62,11 +67,43 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     };
   }, [initialTransactions, setTransactions, transactionsCacheKey, restoreFromCache]);
   
+  // Version améliorée de handleManualRefresh qui force le refresh depuis la BD
+  const handleManualRefresh = useCallback(async () => {
+    if (!user?.id) {
+      console.warn("Cannot refresh transactions: no user ID");
+      return;
+    }
+    
+    try {
+      // Force un refresh en ignorant le cache
+      const freshTransactions = await fetchUserTransactions(user.id, true);
+      
+      if (Array.isArray(freshTransactions)) {
+        setTransactions(freshTransactions);
+        setRefreshKey(Date.now());
+        
+        // Mettre à jour le cache avec les nouvelles transactions
+        localStorage.setItem(transactionsCacheKey.current, JSON.stringify(freshTransactions));
+        localStorage.setItem('transactionsLastRefresh', Date.now().toString());
+        
+        console.log(`Refreshed ${freshTransactions.length} transactions from DB`);
+        
+        // Déclencher des événements pour informer les autres composants
+        window.dispatchEvent(new CustomEvent('transactions:updated', {
+          detail: { timestamp: Date.now() }
+        }));
+      }
+    } catch (error) {
+      console.error("Error in handleManualRefresh:", error);
+      throw error;
+    }
+  }, [user?.id, setTransactions, setRefreshKey, transactionsCacheKey]);
+  
   // Refresh transactions when a balance update occurs
   useEffect(() => {
     const refreshOnBalanceUpdate = () => {
       console.log("Transaction refresh triggered by balance update");
-      handleManualRefresh();
+      handleManualRefresh().catch(console.error);
     };
     
     window.addEventListener('balance:update', refreshOnBalanceUpdate);
