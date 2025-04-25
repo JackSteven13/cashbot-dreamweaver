@@ -39,7 +39,8 @@ export const isLimitReached = (
   currentAmount: number,
   dailyLimit: number
 ): boolean => {
-  return currentAmount >= dailyLimit;
+  // Utiliser une marge de sécurité de 1%
+  return currentAmount >= (dailyLimit * 0.99);
 };
 
 /**
@@ -50,4 +51,77 @@ export const calculateRemainingAmount = (
   dailyLimit: number
 ): number => {
   return Math.max(dailyLimit - currentAmount, 0);
+};
+
+/**
+ * Calcule le niveau d'avertissement basé sur le pourcentage d'utilisation
+ */
+export const calculateLimitWarningLevel = (
+  percentage: number,
+  dailyLimit: number,
+  currentGains: number
+): {
+  level: 'none' | 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+} => {
+  const remaining = calculateRemainingAmount(currentGains, dailyLimit);
+  
+  if (percentage >= 99) {
+    return {
+      level: 'critical',
+      message: `Limite atteinte! Revenez demain ou passez à un forfait supérieur.`
+    };
+  } else if (percentage >= 90) {
+    return {
+      level: 'high',
+      message: `Vous avez presque atteint votre limite quotidienne. Il vous reste ${formatPrice(remaining)}.`
+    };
+  } else if (percentage >= 75) {
+    return {
+      level: 'medium',
+      message: `Vous approchez de votre limite quotidienne. Il vous reste ${formatPrice(remaining)}.`
+    };
+  } else if (percentage >= 50) {
+    return {
+      level: 'low',
+      message: `Vous avez utilisé la moitié de votre limite quotidienne. Il reste ${formatPrice(remaining)}.`
+    };
+  }
+  
+  return {
+    level: 'none',
+    message: ''
+  };
+};
+
+/**
+ * Détermine si les sessions manuelles doivent être désactivées
+ */
+export const shouldDisableSessions = (
+  percentage: number,
+  subscription: string
+): boolean => {
+  // Pour les comptes freemium, désactiver dès 95%
+  if (subscription === 'freemium') {
+    return percentage >= 95;
+  }
+  
+  // Pour les autres abonnements, désactiver à 99%
+  return percentage >= 99;
+};
+
+/**
+ * Détermine si le bot automatique doit être désactivé
+ */
+export const shouldDisableBot = (
+  percentage: number,
+  subscription: string
+): boolean => {
+  // Pour les comptes freemium, désactiver dès 85%
+  if (subscription === 'freemium') {
+    return percentage >= 85;
+  }
+  
+  // Pour les autres abonnements, désactiver à 90%
+  return percentage >= 90;
 };
