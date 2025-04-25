@@ -3,9 +3,9 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
-  LayoutDashboard,
-  ChartBar,
+  Home,
   Settings,
+  BarChart,
   HelpCircle,
   LogOut,
   ChevronRight,
@@ -28,8 +28,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   const isMobile = useIsMobile();
 
   const navItems = [
-    { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard, path: '/dashboard' },
-    { id: 'analytics', label: 'Statistiques', icon: ChartBar, path: '/analytics' },
+    { id: 'dashboard', label: 'Tableau de bord', icon: Home, path: '/dashboard' },
+    { id: 'analytics', label: 'Statistiques', icon: BarChart, path: '/analytics' },
     { id: 'settings', label: 'Paramètres', icon: Settings, path: '/settings' },
     { id: 'help', label: 'Aide', icon: HelpCircle, path: '/help' },
   ];
@@ -37,11 +37,14 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div className="hidden md:flex flex-col bg-gray-900 text-gray-100 w-64 p-3 h-full">
       <div className="space-y-3">
-        {isMobile && (
-          <button className="p-2">
-            <ChevronRight size={24} />
-          </button>
-        )}
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">Xavier</h2>
+          {isMobile && (
+            <button className="p-2">
+              <ChevronRight size={24} />
+            </button>
+          )}
+        </div>
         <div className="flex flex-col space-y-1">
           {navItems.map((item) => (
             <Link

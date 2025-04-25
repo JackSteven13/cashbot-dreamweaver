@@ -36,11 +36,6 @@ export const addTransaction = async (userId: string, gain: number, report: strin
         continue;
       }
       
-      // Déclencher un événement pour informer que la transaction a été ajoutée
-      window.dispatchEvent(new CustomEvent('transactions:refresh', { 
-        detail: { userId, gain: formattedGain, report }
-      }));
-      
       return { 
         success: true, 
         transaction: {
@@ -64,4 +59,3 @@ export const addTransaction = async (userId: string, gain: number, report: strin
   
   return { success: false };
 };
-

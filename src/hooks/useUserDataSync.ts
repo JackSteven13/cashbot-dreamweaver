@@ -2,10 +2,12 @@
 import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import balanceManager from '@/utils/balance/balanceManager';
+import { getStorageKeys, cleanOtherUserData } from '@/utils/balance/balanceStorage';
 
 export const useUserDataSync = () => {
-  // Function to synchronize data with better stability
-  const syncUserData = useCallback(async () => {
+  // Fonction améliorée pour synchroniser les données avec une meilleure stabilité
+  const syncUserData = useCallback(async (forceRefresh = false) => {
     try {
       console.log("Syncing user data after authentication");
       
@@ -28,9 +30,19 @@ export const useUserDataSync = () => {
       
       const userId = session.user.id;
       
+      // Stocker l'ID utilisateur pour permettre le nettoyage des données d'autres utilisateurs
+      localStorage.setItem('lastKnownUserId', userId);
+      
+      // Nettoyer les données d'autres utilisateurs
+      cleanOtherUserData(userId);
+      
+      // Vider explicitement les anciennes valeurs globales pour éviter la contamination
+      localStorage.removeItem('lastKnownUsername');
+      localStorage.removeItem('subscription');
+      
       // Use a more reliable approach to wait for session establishment
       let attempts = 0;
-      const maxAttempts = 5; // Augmenté pour plus de fiabilité
+      const maxAttempts = 5;
       let syncSuccess = false;
       
       while (attempts < maxAttempts && !syncSuccess) {
@@ -46,19 +58,28 @@ export const useUserDataSync = () => {
             supabase.from('profiles').select('full_name, email').eq('id', userId).maybeSingle()
           ]);
           
+          // Obtenir les clés spécifiques à l'utilisateur pour stocker les données
+          const userKeys = getStorageKeys(userId);
+          
           // Vérifier les résultats et mettre à jour le localStorage
           if (!userBalanceResult.error && userBalanceResult.data) {
             const userData = userBalanceResult.data;
-            // Mettre à jour l'abonnement dans localStorage
+            
+            // Mettre à jour l'abonnement dans localStorage avec une clé spécifique à l'utilisateur
             if (userData.subscription) {
               localStorage.setItem(`subscription_${userId}`, userData.subscription);
               console.log("Abonnement mis à jour:", userData.subscription);
             }
             
-            // Mettre à jour le solde dans localStorage
+            // Mettre à jour le solde dans localStorage avec une clé spécifique à l'utilisateur
             if (userData.balance !== undefined) {
-              localStorage.setItem(`currentBalance_${userId}`, String(userData.balance));
-              localStorage.setItem(`lastKnownBalance_${userId}`, String(userData.balance));
+              localStorage.setItem(userKeys.currentBalance, String(userData.balance));
+              localStorage.setItem(userKeys.lastKnownBalance, String(userData.balance));
+              
+              // Définir également l'ID utilisateur dans le gestionnaire de solde
+              balanceManager.setUserId(userId);
+              balanceManager.forceBalanceSync(userData.balance, userId);
+              
               console.log("Solde mis à jour:", userData.balance);
             }
             
@@ -75,6 +96,7 @@ export const useUserDataSync = () => {
           
           // Récupérer et stocker le nom d'utilisateur
           if (!profileResult.error && profileResult.data && profileResult.data.full_name) {
+            // Stocker le nom uniquement avec une clé spécifique à l'utilisateur
             localStorage.setItem(`lastKnownUsername_${userId}`, profileResult.data.full_name);
             console.log("Nom d'utilisateur mis à jour:", profileResult.data.full_name);
             syncSuccess = true;
@@ -105,6 +127,23 @@ export const useUserDataSync = () => {
           attempts++;
           console.error(`Sync attempt ${attempts}/${maxAttempts} error:`, err);
         }
+      }
+      
+      // Check if a forced refresh was requested
+      const forceRefreshFlag = localStorage.getItem('forceRefreshBalance');
+      if (forceRefreshFlag === 'true' || forceRefresh) {
+        console.log("Force refresh detected, clearing flag");
+        localStorage.removeItem('forceRefreshBalance');
+        
+        // Déclencher un événement pour forcer la mise à jour de l'interface
+        const userKeys = getStorageKeys(userId);
+        window.dispatchEvent(new CustomEvent('balance:force-sync', { 
+          detail: { 
+            balance: localStorage.getItem(userKeys.currentBalance),
+            subscription: localStorage.getItem(`subscription_${userId}`),
+            userId
+          }
+        }));
       }
       
       // Si la synchronisation a échoué après plusieurs tentatives
@@ -138,4 +177,5 @@ export const useUserDataSync = () => {
   return { syncUserData };
 };
 
+// Also export as default for backward compatibility
 export default useUserDataSync;

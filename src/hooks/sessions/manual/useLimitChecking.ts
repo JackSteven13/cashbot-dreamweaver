@@ -3,7 +3,7 @@ import { toast } from '@/components/ui/use-toast';
 import { UserData } from '@/types/userData';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 import { getEffectiveSubscription } from '@/utils/subscription/subscriptionStatus';
-import { canStartManualSession, SessionCheckResult } from '@/utils/subscription/sessionManagement';
+import { canStartManualSession } from '@/utils/subscription/sessionManagement';
 
 export const useLimitChecking = () => {
   const checkSessionLimit = (
@@ -17,25 +17,6 @@ export const useLimitChecking = () => {
     
     // Récupérer la date d'aujourd'hui au format YYYY-MM-DD
     const today = new Date().toISOString().split('T')[0];
-    
-    // Pour les comptes freemium, vérification stricte de la limite de session
-    if ((userData.subscription || 'freemium') === 'freemium') {
-      // Vérifier si la limite quotidienne est déjà atteinte dans localStorage
-      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-      const lastSessionDate = localStorage.getItem('last_session_date');
-      
-      if (lastSessionDate === new Date().toDateString() && 
-         (limitReached === 'true' || dailySessionCount >= 1)) {
-        console.log("Freemium daily session limit already reached");
-        setShowLimitAlert(true);
-        toast({
-          title: "Limite quotidienne atteinte",
-          description: "Votre abonnement Freemium est limité à 1 session manuelle par jour.",
-          variant: "destructive"
-        });
-        return false;
-      }
-    }
     
     // Calculer les gains d'aujourd'hui pour la vérification des limites (utiliser les transactions)
     const todaysTransactions = (userData.transactions || []).filter(tx => 
@@ -60,34 +41,22 @@ export const useLimitChecking = () => {
     }
     
     // Check if session can be started using the effective subscription
-    const sessionCheckResult = canStartManualSession(userData.subscription || 'freemium', dailySessionCount, todaysGains);
+    const canStartSessionEffective = effectiveSub !== 'freemium' ? true : 
+                                   canStartManualSession(userData.subscription || 'freemium', dailySessionCount, todaysGains);
     
-    // Fix: Handle both boolean and SessionCheckResult return types
-    if (typeof sessionCheckResult === 'boolean') {
-      // If it's boolean false, we assume it cannot start but don't have a specific reason
-      if (!sessionCheckResult) {
+    if (!canStartSessionEffective) {
+      // If freemium account and session limit reached
+      if ((userData.subscription || 'freemium') === 'freemium' && effectiveSub === 'freemium' && dailySessionCount >= 1) {
         toast({
-          title: "Limite atteinte",
-          description: "Vous ne pouvez pas démarrer une nouvelle session maintenant.",
+          title: "Limite de sessions atteinte",
+          description: "Votre abonnement Freemium est limité à 1 session manuelle par jour. Passez à un forfait supérieur pour plus de sessions.",
           variant: "destructive"
         });
         return false;
       }
-      // If it's true, then we can start
-      return true;
-    } else {
-      // It's a SessionCheckResult object
-      if (!sessionCheckResult.canStart) {
-        // If canStart is false, show reason
-        toast({
-          title: "Limite atteinte",
-          description: sessionCheckResult.reason || "Vous ne pouvez pas démarrer une nouvelle session maintenant.",
-          variant: "destructive"
-        });
-        return false;
-      }
-      return true;
     }
+    
+    return true;
   };
   
   const checkFinalGainLimit = (

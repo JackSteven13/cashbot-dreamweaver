@@ -1,118 +1,150 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
-import { Sparkles, Lock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Sparkles } from 'lucide-react';
+import ProgressBar from './components/ProgressBar';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { useAuth } from '@/hooks/useAuth';
 
 interface UserBalanceCardProps {
   balance: number;
-  subscription?: string;
-  isStartingSession?: boolean;
-  onStartSession?: () => void;
-  onWithdrawal?: () => void;
-  dailySessionCount?: number;
-  lastSessionTimestamp?: string;
   isNewUser?: boolean;
-  canStartSession?: boolean;
-  isBotActive?: boolean;
-  userId?: string;
+  subscription?: string;
+  dailyLimit?: number;
+  referralCount?: number;
+  referralBonus?: number;
+  withdrawalThreshold?: number;
 }
 
 const UserBalanceCard = ({
   balance = 0,
-  subscription = 'freemium',
-  isStartingSession = false,
-  onStartSession,
-  onWithdrawal,
-  dailySessionCount = 0,
-  lastSessionTimestamp,
   isNewUser = false,
-  canStartSession = true,
-  isBotActive = true,
-  userId
+  subscription = 'freemium',
+  dailyLimit = 0.5,
+  referralCount = 0,
+  referralBonus = 0,
+  withdrawalThreshold
 }: UserBalanceCardProps) => {
-  const { toast } = useToast();
-  const [displayBalance, setDisplayBalance] = useState(balance);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const { user } = useAuth();
+  const userId = user?.id || 'anonymous';
   
+  // Assurer que le solde est toujours un nombre valide
+  const safeBalance = isNaN(balance) ? 0 : balance;
+  const safeReferralBonus = isNaN(referralBonus) ? 0 : referralBonus;
+  
+  // Utiliser une clé spécifique à l'utilisateur pour le stockage local
+  const localStorageKey = `lastKnownBalance_${userId}`;
+  const [locallyStoredBalance, setLocallyStoredBalance] = useState<number>(0);
+  
+  // Charger la valeur du localStorage lors du montage du composant
   useEffect(() => {
-    if (balance !== displayBalance) {
-      setIsAnimating(true);
-      setDisplayBalance(balance);
-      
-      const timer = setTimeout(() => {
-        setIsAnimating(false);
-      }, 1500);
-      
-      return () => clearTimeout(timer);
+    try {
+      const storedValue = localStorage.getItem(localStorageKey);
+      const parsedValue = storedValue ? parseFloat(storedValue) : 0;
+      setLocallyStoredBalance(isNaN(parsedValue) ? 0 : parsedValue);
+    } catch (e) {
+      console.error("Erreur lors de la lecture du localStorage:", e);
     }
-  }, [balance, displayBalance]);
+  }, [localStorageKey, userId]); // Se déclenche quand l'utilisateur change
   
-  const handleSessionStart = () => {
-    if (onStartSession) onStartSession();
-  };
+  // Solde effectif à afficher
+  const effectiveBalance = Math.max(
+    safeBalance,
+    locallyStoredBalance
+  );
   
-  const handleWithdrawal = () => {
-    if (onWithdrawal) onWithdrawal();
-  };
-
-  return (
-    <div className="space-y-4">
-      <Card className="overflow-hidden bg-blue-900 dark:bg-[#0f172a] border-0 shadow-lg">
-        <CardContent className="p-6 text-white">
-          <div className="flex items-center mb-6">
-            <Sparkles className="h-6 w-6 text-blue-300 mr-2" />
-            <h3 className="text-xl font-semibold text-white">Votre solde</h3>
-          </div>
-          
-          <div className="mb-6">
-            <p className="text-sm text-gray-300 mb-1">Solde</p>
-            <p className={`text-4xl font-bold mb-2 ${isAnimating ? 'text-green-400' : 'text-white'}`}>
-              {displayBalance.toFixed(2)} EUR
-            </p>
-            <p className="text-sm text-gray-300">Plan: {subscription}</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Button 
-              onClick={handleSessionStart}
-              disabled={isStartingSession || !canStartSession || !isBotActive}
-              className="bg-red-600 hover:bg-red-700 text-white w-full"
-            >
-              {isStartingSession ? 'En cours...' : 'Limite (1/jour)'}
-            </Button>
-            
-            <Button
-              onClick={handleWithdrawal}
-              disabled={balance < 20}
-              className="bg-blue-600 hover:bg-blue-700 text-white w-full"
-            >
-              {balance < 20 ? (
-                <div className="flex items-center">
-                  <Lock className="mr-2 h-4 w-4" />
-                  Retirer
-                </div>
-              ) : 'Retirer'}
-            </Button>
-            
-            <Button
-              onClick={() => {
-                navigator.clipboard.writeText(`${window.location.origin}/?ref=${userId}`);
-                toast({ 
-                  title: "Lien copié",
-                  description: "Le lien de parrainage a été copié dans le presse-papiers."
-                });
-              }}
-              className="bg-purple-600 hover:bg-purple-700 text-white w-full"
-            >
-              Programme d'affiliation
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+  const BalanceDisplay = ({ balance, isNewUser }: { balance: number; isNewUser?: boolean }) => (
+    <div className="text-3xl font-semibold tracking-tight">
+      {isNewUser ? '0.00' : balance.toFixed(2)}€
     </div>
+  );
+  
+  const GainsDisplay = ({ showGains, referralBonus }: { showGains: boolean; referralBonus?: number }) => (
+    showGains ? (
+      <div className="flex items-center text-sm font-medium opacity-75 mt-1">
+        <Sparkles className="mr-1 h-4 w-4" />
+        Gains: {(effectiveBalance - safeReferralBonus).toFixed(2)}€ (+{safeReferralBonus.toFixed(2)}€ parrainage)
+      </div>
+    ) : null
+  );
+  
+  const ReferralInfo = ({ referralCount }: { referralCount: number }) => (
+    <div className="text-xs opacity-60 mt-2">
+      {referralCount} filleul{referralCount !== 1 ? 's' : ''} actif{referralCount !== 1 ? 's' : ''}
+    </div>
+  );
+  
+  const SubscriptionInfo = ({ subscription }: { subscription: string }) => {
+    const getSubscriptionLabel = (sub: string) => {
+      switch (sub) {
+        case 'freemium': return 'Gratuit';
+        case 'starter': return 'Starter';
+        case 'gold': return 'Gold';
+        case 'elite': return 'Elite';
+        default: return 'Inconnu';
+      }
+    };
+    
+    // Utiliser une clé spécifique à l'utilisateur pour la dernière activité
+    const lastActiveKey = `lastActive_${userId}`;
+    const [lastActive, setLastActive] = useState<string | null>(null);
+    
+    // Charger la valeur du localStorage lors du montage du composant
+    useEffect(() => {
+      try {
+        const storedValue = localStorage.getItem(lastActiveKey);
+        setLastActive(storedValue);
+      } catch (e) {
+        console.error("Erreur lors de la lecture de la dernière activité:", e);
+      }
+    }, [lastActiveKey, userId]); // Se déclenche quand l'utilisateur change
+    
+    // Mettre à jour la dernière activité lors du montage du composant
+    useEffect(() => {
+      try {
+        localStorage.setItem(lastActiveKey, new Date().toISOString());
+      } catch (e) {
+        console.error("Erreur lors de l'enregistrement de la dernière activité:", e);
+      }
+    }, [lastActiveKey]);
+    
+    const formattedDate = lastActive ? format(new Date(lastActive), 'dd MMMM yyyy', { locale: fr }) : null;
+    
+    return (
+      <div className="flex items-center justify-between text-xs opacity-60 mt-2">
+        <span>Abonnement: {getSubscriptionLabel(subscription)}</span>
+        {formattedDate && <span>Dernière activité: {formattedDate}</span>}
+      </div>
+    );
+  };
+  
+  return (
+    <Card className="bg-[#121723] text-white border-none overflow-hidden relative">
+      <CardHeader className="px-4 pt-4 pb-0">
+        <CardTitle className="text-base">
+          Solde disponible
+          {isNewUser && (
+            <Badge variant="secondary" className="ml-2">
+              Nouveau
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      
+      <CardContent className="p-4">
+        <BalanceDisplay balance={effectiveBalance} isNewUser={isNewUser} />
+        <GainsDisplay showGains={!isNewUser && effectiveBalance > 0} referralBonus={safeReferralBonus} />
+        <ProgressBar 
+          displayBalance={effectiveBalance} 
+          subscription={subscription} 
+          withdrawalThreshold={withdrawalThreshold}
+        />
+        <ReferralInfo referralCount={referralCount} />
+        <SubscriptionInfo subscription={subscription} />
+      </CardContent>
+    </Card>
   );
 };
 

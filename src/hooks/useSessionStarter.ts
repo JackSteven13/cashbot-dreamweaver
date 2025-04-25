@@ -4,7 +4,6 @@ import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAni
 import { simulateActivity } from '@/utils/animations/moneyParticles';
 import balanceManager from '@/utils/balance/balanceManager';
 import { supabase } from '@/integrations/supabase/client';
-import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 
 export interface UseSessionStarterProps {
   userData: any;
@@ -30,93 +29,24 @@ export const useSessionStarter = ({
   const sessionInProgressRef = useRef(false);
   const sessionCountRef = useRef(dailySessionCount);
   const userId = userData?.profile?.id || userData?.id;
-  const [isStrictVerifying, setIsStrictVerifying] = useState(false);
 
   // Keep sessionCountRef in sync
   useEffect(() => {
     sessionCountRef.current = dailySessionCount;
   }, [dailySessionCount]);
 
-  // Vérifier strictement dans la base de données si la limite freemium a déjà été atteinte
-  const checkFreemiumLimitFromDB = async (): Promise<boolean> => {
-    if (!userId) return false;
-    
-    try {
-      setIsStrictVerifying(true);
+  // Vérifier si le compte freemium a déjà atteint sa limite quotidienne
+  const checkFreemiumLimit = () => {
+    if (userData?.subscription === 'freemium') {
+      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const lastSessionDate = localStorage.getItem('last_session_date');
+      const today = new Date().toDateString();
       
-      // Obtenir la date d'aujourd'hui au format YYYY-MM-DD
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Vérifier dans la base de données les sessions manuelles d'aujourd'hui
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('id')
-        .eq('user_id', userId)
-        .like('date', `${today}%`)
-        .like('report', '%Session%');
-        
-      if (!error && data) {
-        // Si au moins 1 session a déjà été faite aujourd'hui
-        const hasReachedLimit = data.length >= 1;
-        
-        if (hasReachedLimit) {
-          // Marquer que la limite a été atteinte dans le stockage local
-          localStorage.setItem('freemium_daily_limit_reached', 'true');
-          localStorage.setItem('last_session_date', new Date().toDateString());
-          
-          console.log("DB check: Freemium limit reached (DB sessions found:", data.length, ")");
-        }
-        
-        return hasReachedLimit;
+      // Si ce n'est pas un nouveau jour et que la limite est déjà atteinte
+      if (lastSessionDate === today && (limitReached === 'true' || sessionCountRef.current >= 1)) {
+        return true;
       }
-    } catch (err) {
-      console.error("Error checking Freemium DB limit:", err);
-    } finally {
-      setIsStrictVerifying(false);
     }
-    
-    return false;
-  };
-
-  // Vérifier strictement dans la base de données si la limite quotidienne de gains est atteinte
-  const checkDailyGainsFromDB = async (): Promise<boolean> => {
-    if (!userId) return false;
-    
-    try {
-      // Obtenir la date d'aujourd'hui au format YYYY-MM-DD
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Récupérer tous les gains d'aujourd'hui depuis la base de données
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('gain')
-        .eq('user_id', userId)
-        .like('date', `${today}%`);
-      
-      if (!error && data) {
-        // Calculer les gains totaux d'aujourd'hui
-        const todaysGains = data.reduce((sum, tx) => sum + (tx.gain || 0), 0);
-        
-        // Récupérer la limite quotidienne basée sur l'abonnement
-        const subscription = userData?.subscription || 'freemium';
-        const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-        
-        // Mettre à jour le gestionnaire de solde local avec les données de la DB
-        balanceManager.setDailyGains(todaysGains);
-        
-        // Si déjà à 95% de la limite, considérer que la limite est atteinte
-        const isLimitReached = todaysGains >= dailyLimit * 0.95;
-        
-        if (isLimitReached) {
-          console.log(`DB check: Daily limit reached (${todaysGains.toFixed(2)}€/${dailyLimit}€)`);
-        }
-        
-        return isLimitReached;
-      }
-    } catch (err) {
-      console.error("Error checking daily gains limit:", err);
-    }
-    
     return false;
   };
 
@@ -163,14 +93,7 @@ export const useSessionStarter = ({
   };
 
   const handleStartSession = async () => {
-    if (sessionInProgressRef.current || isStartingSession || isStrictVerifying) {
-      toast({
-        title: "Session en cours", 
-        description: "Veuillez patienter jusqu'à la fin de la session en cours",
-        duration: 3000
-      });
-      return;
-    }
+    if (sessionInProgressRef.current || isStartingSession) return;
 
     try {
       sessionInProgressRef.current = true;
@@ -178,28 +101,8 @@ export const useSessionStarter = ({
 
       // Pour les comptes freemium, vérification stricte de la limite
       if (userData?.subscription === 'freemium') {
-        // Vérifier d'abord avec les données du localStorage
-        const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-        const lastSessionDate = localStorage.getItem('last_session_date');
-        const today = new Date().toDateString();
-        
-        // Si la limite est déjà marquée comme atteinte pour aujourd'hui
-        if (lastSessionDate === today && (limitReached === 'true' || sessionCountRef.current >= 1)) {
-          toast({
-            title: "Limite quotidienne atteinte",
-            description: "Les comptes freemium sont limités à 1 session par jour.",
-            variant: "destructive"
-          });
-          
-          setShowLimitAlert(true);
-          sessionInProgressRef.current = false;
-          setIsStartingSession(false);
-          return;
-        }
-        
-        // Vérification supplémentaire en base de données (critique pour freemium)
-        const dbLimitReached = await checkFreemiumLimitFromDB();
-        if (dbLimitReached) {
+        // Vérifier d'abord si la limite est déjà atteinte aujourd'hui
+        if (checkFreemiumLimit()) {
           toast({
             title: "Limite quotidienne atteinte",
             description: "Les comptes freemium sont limités à 1 session par jour.",
@@ -213,20 +116,7 @@ export const useSessionStarter = ({
         }
       }
 
-      // Vérification stricte de la limite de gains quotidiens via DB
-      const gainsLimitReached = await checkDailyGainsFromDB();
-      if (gainsLimitReached) {
-        toast({
-          title: "Limite quotidienne de gains atteinte",
-          description: "Vous avez atteint votre limite de gains journaliers.",
-          variant: "destructive"
-        });
-        
-        setShowLimitAlert(true);
-        sessionInProgressRef.current = false;
-        setIsStartingSession(false);
-        return;
-      }
+      const currentDailyGains = balanceManager.getDailyGains();
       
       const terminalSequence = createBackgroundTerminalSequence([
         "Initialisation de la session d'analyse manuelle..."
@@ -240,34 +130,10 @@ export const useSessionStarter = ({
       terminalSequence.add("Optimisation des résultats...");
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Récupérer les gains quotidiens actuels depuis le gestionnaire
-      const currentDailyGains = balanceManager.getDailyGains();
-      
-      // Calculer le gain en fonction du type d'abonnement et de la limite restante
-      const dailyLimit = SUBSCRIPTION_LIMITS[userData?.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-      const remainingGainAllowance = Math.max(0, dailyLimit - currentDailyGains);
-      
-      // Gain de base selon l'abonnement
-      const baseGain = userData?.subscription === 'freemium' ? 
-          Math.random() * 0.05 + 0.1 : // Entre 0.1 et 0.15 pour freemium
-          Math.random() * 0.2 + 0.15;  // Entre 0.15 et 0.35 pour les autres
-          
-      // S'assurer strictement que le gain ne dépasse pas la limite
-      const gain = Math.min(baseGain, remainingGainAllowance * 0.9); // 90% max pour avoir une marge
-
-      // Si le gain est trop petit (<1 centime), ne pas continuer
-      if (gain < 0.01) {
-        toast({
-          title: "Limite journalière atteinte",
-          description: "Vous avez atteint votre limite de gains quotidiens.",
-          variant: "destructive"
-        });
-        
-        setShowLimitAlert(true);
-        sessionInProgressRef.current = false;
-        setIsStartingSession(false);
-        return;
-      }
+      // Calculer le gain en fonction du type d'abonnement
+      const gain = userData?.subscription === 'freemium' ? 
+        Math.random() * 0.05 + 0.1 : // Entre 0.1 et 0.15 pour freemium
+        Math.random() * 0.2 + 0.15;  // Entre 0.15 et 0.35 pour les autres
 
       const now = Date.now();
       localStorage.setItem('lastSessionTimestamp', now.toString());
@@ -300,12 +166,17 @@ export const useSessionStarter = ({
       terminalSequence.complete(gain);
 
       // Déclencher un événement pour rafraîchir les transactions
-      window.dispatchEvent(new CustomEvent('transactions:refresh', {
-        detail: { timestamp: Date.now() }
-      }));
+      window.dispatchEvent(new CustomEvent('transactions:refresh'));
       
-      window.dispatchEvent(new CustomEvent('transactions:updated', {
-        detail: { gain, timestamp: Date.now() }
+      // Déclencher l'animation de mise à jour du solde
+      window.dispatchEvent(new CustomEvent('balance:update', {
+        detail: {
+          amount: gain,
+          oldBalance: oldBalance,
+          newBalance: newBalance,
+          animate: true,
+          duration: 1500
+        }
       }));
 
       toast({
@@ -313,9 +184,8 @@ export const useSessionStarter = ({
         description: `Votre session a généré ${gain.toFixed(2)}€`,
       });
       
-      // Vérifier si nous sommes proches de la limite après cette session
-      const updatedDailyGains = balanceManager.getDailyGains();
-      if (updatedDailyGains >= dailyLimit * 0.85) {
+      // Pour les comptes freemium, toujours montrer l'alerte de limite après la première session
+      if (userData?.subscription === 'freemium') {
         setShowLimitAlert(true);
       }
     } catch (error) {
@@ -333,3 +203,5 @@ export const useSessionStarter = ({
 
   return { isStartingSession, handleStartSession, lastSessionTimestamp };
 };
+
+export default useSessionStarter;

@@ -2,6 +2,7 @@
 import React from 'react';
 import SummaryPanel from './summary/SummaryPanel';
 import TransactionsPanel from './transactions/TransactionsPanel';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
 interface DashboardMetricsProps {
   balance: number;
@@ -36,6 +37,8 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
 }) => {
   // STRICT: les nouveaux utilisateurs ont TOUJOURS un solde à 0
   const displayBalance = isNewUser ? 0 : balance;
+  
+  console.log(`DashboardMetrics: isNewUser=${isNewUser}, balance=${balance}, displayBalance=${displayBalance}`);
   
   // Pour les comptes freemium, limiter l'affichage du solde à la limite quotidienne
   const adjustedBalance = isNewUser 
@@ -73,7 +76,6 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
         transactions={transactions}
         isLoading={transactions.length === 0}
         isNewUser={isNewUser}
-        subscription={subscription}
       />
     </div>
   );

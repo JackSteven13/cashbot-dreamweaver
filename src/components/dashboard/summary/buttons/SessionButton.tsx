@@ -1,14 +1,11 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { PlayCircle, Clock, AlertCircle } from 'lucide-react';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { PLANS } from '@/utils/plans';
 import balanceManager from '@/utils/balance/balanceManager';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
-import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { SessionButtonContent } from './session/SessionButtonContent';
-import { SessionTooltip } from './session/SessionTooltip';
-import { useSessionState } from './session/useSessionState';
 
 interface SessionButtonProps {
   onClick: () => void;
@@ -19,7 +16,6 @@ interface SessionButtonProps {
   canStart?: boolean;
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
-  userId?: string;
 }
 
 const SessionButton: React.FC<SessionButtonProps> = ({
@@ -30,29 +26,53 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   dailySessionCount = 0,
   canStart = true,
   lastSessionTimestamp,
-  isBotActive = true,
-  userId
+  isBotActive = true
 }) => {
-  const { forceDisabled, isValidating } = useSessionState(
-    userId,
-    subscription,
-    dailySessionCount
-  );
-
+  // Pour les comptes freemium, vérifier aussi le localStorage pour la limite journalière
+  const [forceDisabled, setForceDisabled] = useState(false);
+  
+  // Effet pour vérifier si la limite quotidienne a été atteinte pour les comptes freemium
+  useEffect(() => {
+    if (subscription === 'freemium') {
+      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const lastSessionDate = localStorage.getItem('last_session_date');
+      const today = new Date().toDateString();
+      
+      // Si c'est un nouveau jour, réinitialiser la limite
+      if (lastSessionDate !== today) {
+        localStorage.removeItem('freemium_daily_limit_reached');
+        setForceDisabled(false);
+      } else if (limitReached === 'true' || dailySessionCount >= 1) {
+        // Sinon, appliquer la limite stricte pour les comptes freemium
+        setForceDisabled(true);
+      } else {
+        setForceDisabled(false);
+      }
+    } else {
+      setForceDisabled(false);
+    }
+  }, [subscription, dailySessionCount]);
+  
+  // Get the max daily sessions based on subscription
   const maxDailySessions = PLANS[subscription]?.dailyLimit || 1;
+  
+  // Pour les comptes freemium, strictement limité à 1 session
   const isFreemium = subscription === 'freemium';
   const hasReachedLimit = isFreemium ? 
     (dailySessionCount >= 1 || forceDisabled) : 
     dailySessionCount >= maxDailySessions;
 
+  // Check if bot is in cooldown period
   const isInCooldown = lastSessionTimestamp ? (
-    new Date().getTime() - new Date(parseInt(lastSessionTimestamp)).getTime() < 5 * 60 * 1000
+    new Date().getTime() - new Date(lastSessionTimestamp).getTime() < 5 * 60 * 1000
   ) : false;
 
+  // Vérifier si la limite quotidienne de gains est atteinte
   const dailyGains = balanceManager.getDailyGains();
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-  const isLimitReached = dailyGains >= dailyLimit * 0.95;
+  const isLimitReached = dailyGains >= dailyLimit * 0.95; // 95% de la limite pour être préventif
 
+  // Determine the tooltip message
   const getTooltipMessage = () => {
     if (!isBotActive) return "Le système est temporairement indisponible";
     if (isLoading) return "Démarrage de la session...";
@@ -65,93 +85,56 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     return "Démarrer une nouvelle session d'analyse";
   };
 
-  const handleClick = async () => {
-    if (isFreemium && userId) {
-      const today = new Date().toISOString().split('T')[0];
-      
-      try {
-        const { data, error } = await supabase
-          .from('transactions')
-          .select('id')
-          .eq('user_id', userId)
-          .like('created_at', `${today}%`)
-          .like('report', '%Session%');
-        
-        if (!error && data && data.length >= 1) {
-          localStorage.setItem('freemium_daily_limit_reached', 'true');
-          localStorage.setItem('last_session_date', new Date().toDateString());
-          
-          toast({
-            title: "Limite quotidienne atteinte",
-            description: "Les comptes freemium sont limités à 1 session par jour.",
-            variant: "destructive",
-            duration: 5000
-          });
-          
-          return;
-        }
-        
-        performNormalCheck();
-      } catch (err) {
-        console.error("Error checking database:", err);
-        performNormalCheck();
-      }
-    } else {
-      performNormalCheck();
-    }
-  };
-
-  const performNormalCheck = () => {
-    if (isFreemium && (dailySessionCount >= 1 || forceDisabled)) {
-      console.log("Session button blocked - Freemium limit reached");
-      toast({
-        title: "Limite quotidienne atteinte",
-        description: "Les comptes freemium sont limités à 1 session par jour.",
-        variant: "destructive",
-        duration: 5000
-      });
-      return;
-    }
-    
-    if (isLimitReached) {
-      console.log("Session button blocked - Daily gain limit reached");
-      toast({
-        title: "Limite journalière atteinte",
-        description: `Vous avez atteint votre limite de gain journalier de ${dailyLimit}€.`,
-        variant: "destructive",
-        duration: 5000
-      });
-      return;
-    }
-    
+  // Function to handle click with console log for debugging
+  const handleClick = () => {
     console.log("Session button clicked, executing onClick handler");
     onClick();
   };
 
   return (
-    <SessionTooltip tooltipMessage={getTooltipMessage()}>
-      <div className="w-full">
-        <Button
-          onClick={handleClick}
-          disabled={disabled || isLoading || hasReachedLimit || isInCooldown || !isBotActive || isLimitReached || forceDisabled || isValidating}
-          className={`w-full h-11 ${(hasReachedLimit && isFreemium) || isLimitReached || forceDisabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
-          variant="default"
-          size="lg"
-          data-testid="session-button"
-        >
-          <SessionButtonContent
-            isLoading={isLoading}
-            isValidating={isValidating}
-            isBotActive={isBotActive}
-            isLimitReached={isLimitReached}
-            isFreemium={isFreemium}
-            forceDisabled={forceDisabled}
-            hasReachedLimit={hasReachedLimit}
-            isInCooldown={isInCooldown}
-          />
-        </Button>
-      </div>
-    </SessionTooltip>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="w-full">
+            <Button
+              onClick={handleClick}
+              disabled={disabled || isLoading || hasReachedLimit || isInCooldown || !isBotActive || isLimitReached || forceDisabled}
+              className={`w-full h-11 ${(hasReachedLimit && isFreemium) || isLimitReached || forceDisabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
+              variant="default"
+              size="lg"
+              data-testid="session-button"
+            >
+              {isLoading ? (
+                <div className="flex items-center">
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                  <span>Démarrage...</span>
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  {!isBotActive || isLimitReached || (isFreemium && forceDisabled) ? (
+                    <AlertCircle className="mr-2 h-5 w-5" />
+                  ) : hasReachedLimit || isInCooldown ? (
+                    <Clock className="mr-2 h-5 w-5" />
+                  ) : (
+                    <PlayCircle className="mr-2 h-5 w-5" />
+                  )}
+                  <span>
+                    {!isBotActive ? "Indisponible" : 
+                     isLimitReached ? "Limite atteinte" :
+                     (isFreemium && forceDisabled) ? "Limite (1/jour)" :
+                     hasReachedLimit ? (isFreemium ? "Limite (1/jour)" : "Limite atteinte") : 
+                     isInCooldown ? "En attente" : "Démarrer"}
+                  </span>
+                </div>
+              )}
+            </Button>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{getTooltipMessage()}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 

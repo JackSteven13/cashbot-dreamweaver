@@ -1,5 +1,6 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { UserData } from '@/types/userData';
 import { toast } from '@/components/ui/use-toast';
 import { calculateSessionGain } from '@/utils/sessions/sessionCalculator';
 import { useBotStatus } from '@/hooks/useBotStatus';
@@ -18,7 +19,7 @@ const getDailyGains = (): number => {
 };
 
 interface ManualSessionHookProps {
-  userData: any;
+  userData: UserData | null;
   dailySessionCount: number;
   incrementSessionCount: () => Promise<void>;
   updateBalance: (gain: number, report: string, forceUpdate?: boolean) => Promise<void>;
@@ -31,7 +32,7 @@ export const useManualSessions = ({
   updateBalance
 }: ManualSessionHookProps) => {
   const [isSessionRunning, setIsSessionRunning] = useState(false);
-  const { isBotActive } = useBotStatus();
+  const { isBotActive, activityLevel } = useBotStatus();
   const { startAnimation, stopAnimation } = useSessionAnimations();
   const [limitReached, setLimitReached] = useState(false);
   
@@ -86,44 +87,29 @@ export const useManualSessions = ({
       }
     }
     
-    // Vérifier si la limite quotidienne de gains est atteinte
-    const dailyLimit = userData?.subscription === 'freemium' ? 0.5 : 
-                     userData?.subscription === 'starter' ? 5 : 
-                     userData?.subscription === 'gold' ? 15 : 25;
-                     
-    const currentDailyGains = getDailyGains();
-    
-    return currentDailyGains < dailyLimit * 0.95;
+    return true;
   }, [isSessionRunning, userData, dailySessionCount]);
 
   const startSession = useCallback(async () => {
     console.log("useManualSessions: startSession called");
     
-    if (!userData) {
-      toast({
-        title: "Session non disponible",
-        description: "Données utilisateur non disponibles.",
-        duration: 3000
-      });
-      return;
-    }
-    
     if (!canStartSession()) {
-      if (userData.subscription === 'freemium') {
+      if (userData?.subscription === 'freemium') {
         toast({
           title: "Limite quotidienne atteinte",
           description: "Les comptes freemium sont limités à 1 session par jour.",
           variant: "destructive",
           duration: 3000
         });
+        return;
       } else {
         toast({
           title: "Session non disponible",
           description: "Veuillez attendre avant de démarrer une nouvelle session.",
           duration: 3000
         });
+        return;
       }
-      return;
     }
     
     try {
@@ -133,47 +119,27 @@ export const useManualSessions = ({
       
       startAnimation();
       
-      const currentDailyGains = getDailyGains();
-      const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-      
-      // Vérification stricte que la limite n'est pas atteinte
-      if (currentDailyGains >= dailyLimit * 0.95) {
-        toast({
-          title: "Limite journalière presque atteinte",
-          description: `Vous avez déjà généré ${currentDailyGains.toFixed(2)}€ aujourd'hui, proche de la limite de ${dailyLimit}€.`,
-          variant: "destructive",
-          duration: 5000
-        });
-        setIsSessionRunning(false);
-        stopAnimation();
-        return;
-      }
-      
       const simulationTime = Math.random() * 1500 + 1500;
       
-      // Pour les comptes freemium, limiter strictement le gain
       let gain = 0;
-      if (userData.subscription === 'freemium') {
-        // Calculer le montant restant avant d'atteindre la limite
-        const remainingAmount = dailyLimit - currentDailyGains;
-        // Limiter le gain pour ne pas dépasser la limite
-        gain = Math.min(Math.random() * 0.05 + 0.1, remainingAmount);
-      } else {
+      if (userData) {
         gain = calculateSessionGain(
           userData.subscription, 
-          currentDailyGains,
+          balanceManager.getDailyGains(),
           userData.referrals?.length || 0
         );
       }
       
-      gain = parseFloat(gain.toFixed(2));
-      
       // Pour les comptes freemium, marquer immédiatement que la limite est atteinte
-      if (userData.subscription === 'freemium') {
+      if (userData?.subscription === 'freemium') {
         setLimitReached(true);
         localStorage.setItem('freemium_daily_limit_reached', 'true');
         localStorage.setItem('last_session_date', new Date().toDateString());
       }
+      
+      gain = parseFloat(gain.toFixed(2));
+      
+      console.log(`Gain calculé: ${gain}€`);
       
       await new Promise(resolve => {
         sessionTimeoutRef.current = setTimeout(resolve, simulationTime);
@@ -209,10 +175,31 @@ export const useManualSessions = ({
         }
       }));
       
-      // Show session completed toast
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('balance:force-update', {
+          detail: {
+            amount: gain,
+            currentBalance: newBalance,
+            oldBalance: oldBalance,
+            newBalance: newBalance,
+            animate: true
+          }
+        }));
+      }, 100);
+      
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('balance:animation', {
+          detail: {
+            amount: gain,
+            oldBalance: oldBalance,
+            newBalance: newBalance
+          }
+        }));
+      }, 200);
+      
       toast({
-        title: "Session complétée",
-        description: `Votre session a généré ${gain.toFixed(2)}€`,
+        title: "Session terminée",
+        description: `Vous avez gagné ${gain.toFixed(2)}€`,
         duration: 3000
       });
       

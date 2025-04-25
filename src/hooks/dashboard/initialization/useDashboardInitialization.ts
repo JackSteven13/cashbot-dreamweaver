@@ -21,9 +21,9 @@ export const useDashboardInitialization = () => {
   
   const navigate = useNavigate();
   
-  // Pass the mountedRef to the hooks that require it
+  // Hooks d'authentification avec protection contre les montages/démontages
   const { checkAuth } = useAuthCheck({ mountedRef });
-  const { setupAuthListener } = useAuthStateListener({ mountedRef });
+  const { setupAuthListener } = useAuthStateListener({ mountedRef, navigate });
   const { syncUserData } = useUserDataSync({ mountedRef });
   
   // Normaliser les nettoyages pour éviter les fuites de mémoire
@@ -58,7 +58,7 @@ export const useDashboardInitialization = () => {
     }
   }, []);
   
-  // Fonction d'initialisation principale optimisée avec synchronisation forcée
+  // Fonction d'initialisation principale optimisée pour des chargements plus rapides
   const initializeDashboard = useCallback(async () => {
     // Vérifier si l'initialisation est déjà en cours
     if (initializing.current || !mountedRef.current) return;
@@ -84,22 +84,17 @@ export const useDashboardInitialization = () => {
         // Etape 3: Afficher les données en cache immédiatement
         setIsReady(true);
         
-        // Etape 4: Synchroniser les données complètes immédiatement
-        const syncSuccess = await syncUserData();
-        
-        if (mountedRef.current && syncSuccess) {
-          // Notification discrète de la synchronisation réussie
-          toast({
-            title: "Données synchronisées",
-            description: "Vos données ont été mises à jour",
-            duration: 1500,
-          });
-          
-          // Forcer une actualisation des transactions
-          window.dispatchEvent(new CustomEvent('transactions:refresh', {
-            detail: { force: true }
-          }));
-        }
+        // Etape 4: Synchroniser les données complètes en arrière-plan
+        syncUserData().then(success => {
+          if (mountedRef.current && success) {
+            // Notification discrète de la synchronisation réussie
+            toast({
+              title: "Données synchronisées",
+              description: "Vos données ont été mises à jour en arrière-plan",
+              duration: 2000,
+            });
+          }
+        });
         
         // Déclencher un événement pour notifier les composants que l'initialisation est terminée
         window.dispatchEvent(new CustomEvent('dashboard:initialized', {
@@ -140,12 +135,12 @@ export const useDashboardInitialization = () => {
       }
     }, 50);
     
-    // Démarrer l'initialisation complète immédiatement
+    // Démarrer l'initialisation complète peu après (300ms)
     initTimeoutRef.current = setTimeout(() => {
       if (mountedRef.current && !initializing.current) {
         initializeDashboard();
       }
-    }, 100); // Réduit à 100ms pour une synchronisation plus rapide
+    }, 300);
     
     return () => {
       console.log("Démontage du hook useDashboardInitialization");
