@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import balanceManager from '@/utils/balance/balanceManager';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 import { getEffectiveSubscription } from '@/utils/auth/subscriptionUtils';
+import { toast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface BalanceState {
   dailyGains: number;
@@ -22,6 +24,51 @@ export const useBalanceEvents = (subscription: string, balance: number = 0) => {
     effectiveSubscription: subscription,
     dailyLimit: 0
   });
+
+  // Récupérer le vrai solde depuis la base de données
+  useEffect(() => {
+    const fetchActualBalance = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+
+        const { data, error } = await supabase
+          .from('user_balances')
+          .select('balance')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (error) {
+          console.error('Erreur récupération solde:', error);
+          return;
+        }
+
+        if (data && data.balance > 0 && balance <= 0) {
+          console.log(`Solde incorrect détecté: Local=${balance}, DB=${data.balance}`);
+          // Force la mise à jour du gestionnaire de solde
+          balanceManager.forceBalanceSync(data.balance, session.user.id);
+          
+          // Déclenche un événement pour forcer l'interface à se mettre à jour
+          window.dispatchEvent(new CustomEvent('balance:force-update', {
+            detail: {
+              newBalance: data.balance,
+              userId: session.user.id
+            }
+          }));
+          
+          toast({
+            title: "Solde restauré",
+            description: `Votre solde a été restauré à ${data.balance.toFixed(2)}€`,
+            variant: "default"
+          });
+        }
+      } catch (err) {
+        console.error('Erreur lors de la vérification du solde:', err);
+      }
+    };
+    
+    fetchActualBalance();
+  }, [balance]);
 
   // Mettre à jour l'état en fonction des nouvelles données
   const updateBalanceState = () => {
@@ -110,6 +157,14 @@ export const useBalanceEvents = (subscription: string, balance: number = 0) => {
     window.addEventListener('daily:gains:update', handleDailyGainsUpdate);
     window.addEventListener('db:balance-updated', handleBalanceUpdate);
     
+    // Écouter l'événement de restauration de solde
+    const handleForceUpdate = (event: CustomEvent) => {
+      if (event.detail && event.detail.newBalance) {
+        updateBalanceState();
+      }
+    };
+    window.addEventListener('balance:force-update', handleForceUpdate as EventListener);
+    
     // Actualiser périodiquement
     const intervalId = setInterval(updateBalanceState, 30000);
     
@@ -117,6 +172,7 @@ export const useBalanceEvents = (subscription: string, balance: number = 0) => {
       window.removeEventListener('balance:update', handleBalanceUpdate);
       window.removeEventListener('daily:gains:update', handleDailyGainsUpdate);
       window.removeEventListener('db:balance-updated', handleBalanceUpdate);
+      window.removeEventListener('balance:force-update', handleForceUpdate as EventListener);
       clearInterval(intervalId);
     };
   }, [subscription, balance]);

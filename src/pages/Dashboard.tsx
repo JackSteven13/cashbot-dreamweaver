@@ -9,6 +9,7 @@ import balanceManager from '@/utils/balance/balanceManager';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
 import { getEffectiveSubscription } from '@/utils/auth/subscriptionUtils';
 import { shouldResetDailyCounters } from '@/utils/subscription/sessionManagement';
+import { supabase } from '@/integrations/supabase/client';
 
 const Dashboard = () => {
   const {
@@ -31,6 +32,59 @@ const Dashboard = () => {
       balanceManager.setDailyGains(0); // Using setDailyGains instead of resetDailyGains
     }
   }, []);
+  
+  // Vérifier la cohérence du solde au chargement
+  useEffect(() => {
+    const verifyBalance = async () => {
+      if (!user || !userData) return;
+      
+      try {
+        // Si le solde local est zéro, vérifier dans la base de données
+        if (userData.balance <= 0) {
+          const { data, error } = await supabase
+            .from('user_balances')
+            .select('balance')
+            .eq('id', user.id)
+            .single();
+            
+          if (error) {
+            console.error("Erreur vérification solde:", error);
+            return;
+          }
+          
+          if (data && data.balance > 0) {
+            console.log(`Incohérence détectée: Local=${userData.balance}, DB=${data.balance}`);
+            
+            // Force la mise à jour du gestionnaire de solde
+            balanceManager.forceBalanceSync(data.balance, user.id);
+            
+            // Déclenche un événement pour forcer l'interface à se mettre à jour
+            window.dispatchEvent(new CustomEvent('balance:force-update', {
+              detail: {
+                newBalance: data.balance,
+                userId: user.id
+              }
+            }));
+            
+            // Force un rafraîchissement des données
+            setTimeout(() => {
+              refreshData();
+            }, 500);
+            
+            toast({
+              title: "Solde restauré",
+              description: `Votre solde a été restauré à ${data.balance.toFixed(2)}€`,
+              variant: "default"
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Erreur vérification solde:", err);
+      }
+    };
+    
+    verifyBalance();
+  }, [user, userData, toast, refreshData]);
   
   // Vérifier les limites au chargement
   useEffect(() => {

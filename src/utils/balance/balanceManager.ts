@@ -1,6 +1,6 @@
-
 // Utility for managing user balance across the app
 import { persistBalance, getPersistedBalance } from './balanceStorage';
+import { supabase } from '@/integrations/supabase/client';
 
 class BalanceManager {
   private currentBalance: number = 0;
@@ -9,6 +9,7 @@ class BalanceManager {
   private userId: string | null = null;
   private watchers: Array<(newBalance: number) => void> = [];
   private lastSyncTimestamp: number = 0;
+  private recoveryMode: boolean = false;
   
   constructor() {
     // Initialize with persisted balance
@@ -47,6 +48,15 @@ class BalanceManager {
         }
       }
     }) as EventListener);
+    
+    // Setup event listener for balance force updates
+    window.addEventListener('balance:force-update', ((event: CustomEvent) => {
+      if (event.detail && typeof event.detail.newBalance === 'number') {
+        const newBalance = event.detail.newBalance;
+        console.log(`Force updating balance: ${this.currentBalance} -> ${newBalance}`);
+        this.forceBalanceSync(newBalance, event.detail.userId || this.userId);
+      }
+    }) as EventListener);
   }
   
   setUserId(userId: string | null): void {
@@ -74,14 +84,58 @@ class BalanceManager {
 
   getCurrentBalance(): number {
     // If we have a valid cached balance, return it
-    if (!isNaN(this.currentBalance)) {
+    if (!isNaN(this.currentBalance) && this.currentBalance > 0) {
       return this.currentBalance;
     }
     
     // Otherwise check local storage
     const persistedBalance = getPersistedBalance(this.userId);
+    
+    // If persisted balance is zero or invalid but we have a user ID, try to recover from DB
+    if ((persistedBalance <= 0 || isNaN(persistedBalance)) && this.userId && !this.recoveryMode) {
+      this.recoverBalanceFromDatabase(this.userId);
+    }
+    
     this.currentBalance = persistedBalance;
     return persistedBalance;
+  }
+  
+  // Nouvelle méthode pour récupérer le solde depuis la base de données
+  async recoverBalanceFromDatabase(userId: string): Promise<void> {
+    // Éviter les appels récursifs infinis
+    if (this.recoveryMode) return;
+    
+    this.recoveryMode = true;
+    try {
+      console.log("Tentative de récupération du solde depuis la base de données");
+      const { data, error } = await supabase
+        .from('user_balances')
+        .select('balance')
+        .eq('id', userId)
+        .single();
+        
+      if (error) {
+        console.error("Erreur récupération solde:", error);
+        return;
+      }
+      
+      if (data && data.balance > 0) {
+        console.log(`Solde récupéré depuis la DB: ${data.balance}€`);
+        this.forceBalanceSync(data.balance, userId);
+        
+        // Déclencher un événement pour mettre à jour l'interface
+        window.dispatchEvent(new CustomEvent('balance:force-update', {
+          detail: {
+            newBalance: data.balance,
+            userId
+          }
+        }));
+      }
+    } catch (err) {
+      console.error("Erreur récupération solde:", err);
+    } finally {
+      this.recoveryMode = false;
+    }
   }
   
   updateBalance(amount: number): number {
