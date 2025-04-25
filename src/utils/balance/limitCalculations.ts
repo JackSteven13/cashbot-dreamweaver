@@ -2,6 +2,20 @@
 import { SUBSCRIPTION_LIMITS } from '../subscription/constants';
 
 /**
+ * Format a price value to EUR currency
+ * @param value Number to format as currency
+ * @returns Formatted string with Euro currency symbol
+ */
+export const formatPrice = (value: number): string => {
+  return new Intl.NumberFormat('fr-FR', { 
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+};
+
+/**
  * Calculate the warning level based on daily limit percentage
  */
 export const calculateLimitWarningLevel = (
@@ -47,3 +61,4 @@ export const getDailyLimit = (subscription: string): number => {
   const effectiveSubscription = subscription || 'freemium';
   return SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
 };
+
