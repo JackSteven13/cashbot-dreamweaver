@@ -1,64 +1,53 @@
 
-import { SUBSCRIPTION_LIMITS } from '../subscription/constants';
-
 /**
- * Format a price value to EUR currency
- * @param value Number to format as currency
- * @returns Formatted string with Euro currency symbol
+ * Formatage d'un montant en euros
  */
-export const formatPrice = (value: number): string => {
-  return new Intl.NumberFormat('fr-FR', { 
+export const formatPrice = (amount: number): string => {
+  return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR',
-    minimumFractionDigits: 2,
+    minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2
-  }).format(value);
+  }).format(amount);
 };
 
 /**
- * Calculate the warning level based on daily limit percentage
+ * Calcule le pourcentage d'utilisation de la limite quotidienne
  */
-export const calculateLimitWarningLevel = (
-  percentage: number, 
-  dailyLimit: number, 
-  dailyGains: number
-): { 
-  level: 'none' | 'low' | 'medium' | 'high' | 'critical', 
-  message: string 
-} => {
-  if (percentage >= 99) {
-    return {
-      level: 'critical',
-      message: `Limite atteinte: ${dailyGains.toFixed(2)}€/${dailyLimit}€`
-    };
-  } else if (percentage >= 90) {
-    return {
-      level: 'high',
-      message: `Limite presque atteinte: ${dailyGains.toFixed(2)}€/${dailyLimit}€`
-    };
-  } else if (percentage >= 75) {
-    return {
-      level: 'medium',
-      message: `Attention: vous approchez de votre limite quotidienne`
-    };
-  } else if (percentage >= 50) {
-    return {
-      level: 'low',
-      message: `Vous avez utilisé la moitié de votre limite`
-    };
-  }
-  
-  return {
-    level: 'none',
-    message: ''
-  };
+export const calculateUsagePercentage = (
+  currentAmount: number,
+  dailyLimit: number
+): number => {
+  if (dailyLimit <= 0) return 0;
+  const percentage = (currentAmount / dailyLimit) * 100;
+  return Math.min(Math.max(percentage, 0), 100); // Clamp entre 0 et 100
 };
 
 /**
- * Get the daily limit for a subscription
+ * Détermine la couleur en fonction de l'utilisation
  */
-export const getDailyLimit = (subscription: string): number => {
-  const effectiveSubscription = subscription || 'freemium';
-  return SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+export const getUsageColor = (percentage: number): string => {
+  if (percentage >= 90) return 'text-red-500';
+  if (percentage >= 75) return 'text-yellow-500';
+  return 'text-green-500';
 };
 
+/**
+ * Vérifie si l'utilisateur a atteint sa limite quotidienne
+ */
+export const isLimitReached = (
+  currentAmount: number,
+  dailyLimit: number
+): boolean => {
+  return currentAmount >= dailyLimit;
+};
+
+/**
+ * Calcule le montant restant pour atteindre la limite
+ */
+export const calculateRemainingAmount = (
+  currentAmount: number,
+  dailyLimit: number
+): number => {
+  return Math.max(dailyLimit - currentAmount, 0);
+};

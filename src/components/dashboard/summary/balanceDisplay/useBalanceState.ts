@@ -1,59 +1,44 @@
 
-import { useEffect, useState } from 'react';
-import { useBalanceEvents, BalanceState } from './useBalanceEvents';
-import { calculateLimitWarningLevel } from '@/utils/balance/limitCalculations';
+import { useState, useRef, useEffect } from 'react';
+import balanceManager from '@/utils/balance/balanceManager';
+import { UseBalanceStateResult } from './types';
 
-export interface BalanceDisplayData extends BalanceState {
-  warningLevel: 'none' | 'low' | 'medium' | 'high' | 'critical';
-  warningMessage: string;
-  shouldDisableBot: boolean;
-  shouldDisableSessions: boolean;
-}
-
-export const useBalanceState = (balance: number, subscription: string): BalanceDisplayData => {
-  const balanceState = useBalanceEvents(subscription);
-  const [warningData, setWarningData] = useState<{
-    level: 'none' | 'low' | 'medium' | 'high' | 'critical';
-    message: string;
-    disableBot: boolean;
-    disableSessions: boolean;
-  }>({
-    level: 'none',
-    message: '',
-    disableBot: false,
-    disableSessions: false
+export const useBalanceState = (initialBalance: number): UseBalanceStateResult => {
+  const [displayedBalance, setDisplayedBalance] = useState(() => {
+    const managerBalance = balanceManager.getCurrentBalance();
+    const safeManagerBalance = isNaN(managerBalance) ? 0 : managerBalance;
+    return Math.max(safeManagerBalance, initialBalance, 0);
   });
-
-  useEffect(() => {
-    // Calculer le niveau d'avertissement basé sur le pourcentage
-    const warningInfo = calculateLimitWarningLevel(
-      balanceState.limitPercentage,
-      balanceState.dailyLimit,
-      balanceState.dailyGains
-    );
-    
-    setWarningData({
-      level: warningInfo.level,
-      message: warningInfo.message,
-      disableBot: balanceState.limitPercentage >= 90,
-      disableSessions: balanceState.limitPercentage >= 97
-    });
-    
-    // Si le niveau d'alerte est élevé ou critique, désactiver les fonctionnalités automatiquement
-    if (warningInfo.level === 'high' || warningInfo.level === 'critical') {
-      window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
-        detail: { active: false, reason: 'limit_approaching' } 
-      }));
-      
-      localStorage.setItem('botActive', 'false');
-    }
-  }, [balanceState]);
+  
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [previousBalance, setPreviousBalance] = useState<number | null>(null);
+  const [gain, setGain] = useState<number | null>(null);
+  
+  const balanceRef = useRef<HTMLDivElement>(null);
+  const lastUpdateTimeRef = useRef<number>(Date.now());
+  const forceUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const updateDebounceTime = 2000;
 
   return {
-    ...balanceState,
-    warningLevel: warningData.level,
-    warningMessage: warningData.message,
-    shouldDisableBot: warningData.disableBot,
-    shouldDisableSessions: warningData.disableSessions
+    state: {
+      displayedBalance,
+      isAnimating,
+      previousBalance,
+      gain
+    },
+    refs: {
+      balanceRef,
+      lastUpdateTimeRef,
+      forceUpdateTimeoutRef
+    },
+    setters: {
+      setDisplayedBalance,
+      setIsAnimating,
+      setPreviousBalance,
+      setGain
+    },
+    constants: {
+      updateDebounceTime
+    }
   };
 };

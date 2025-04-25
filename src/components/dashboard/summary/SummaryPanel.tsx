@@ -1,4 +1,3 @@
-
 import React, { memo } from 'react';
 import BalanceDisplay from './balanceDisplay/BalanceDisplay';
 import SessionButton from './buttons/SessionButton';
@@ -56,6 +55,7 @@ const SummaryPanel: React.FC<SummaryPanelProps> = memo(({
           
           <BalanceDisplay 
             balance={balance} 
+            currency="EUR" 
             isLoading={false} 
             subscription={subscription}
           />
