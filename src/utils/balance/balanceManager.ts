@@ -1,4 +1,3 @@
-
 // Utility for managing user balance across the app
 import { persistBalance, getPersistedBalance } from './balanceStorage';
 
@@ -225,6 +224,19 @@ class BalanceManager {
         console.error('Error in balance watcher callback:', e);
       }
     });
+  }
+  
+  // New method to reset daily gains
+  resetDailyGains(): void {
+    this.dailyGains = 0;
+    
+    // Persist in localStorage
+    try {
+      localStorage.setItem(this.userId ? `dailyGains_${this.userId}` : 'dailyGains', '0');
+      console.log('Daily gains reset to 0');
+    } catch (e) {
+      console.error('Failed to reset daily gains:', e);
+    }
   }
 }
 

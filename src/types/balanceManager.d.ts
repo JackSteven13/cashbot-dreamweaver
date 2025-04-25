@@ -12,6 +12,7 @@ export interface BalanceManagerInstance {
   getDailyGains: () => number;
   setDailyGains: (amount: number) => void;
   addDailyGain: (amount: number) => void;
+  resetDailyGains: () => void; // Added missing method
   
   // History tracking
   getHighestBalance: () => number;
