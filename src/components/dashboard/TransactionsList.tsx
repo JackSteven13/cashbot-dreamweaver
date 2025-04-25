@@ -1,3 +1,4 @@
+
 import React, { memo, useEffect, useState, useCallback } from 'react';
 import { useTransactions } from './transactions/hooks/useTransactions';
 import { Transaction } from '@/types/userData';
@@ -103,6 +104,9 @@ const TransactionsList = memo(({
     window.addEventListener('session:completed', handleRealtimeUpdate as EventListener);
     window.addEventListener('transactions:updated', handleRealtimeUpdate as EventListener);
     
+    // Synchroniser immédiatement au montage
+    fetchLatestTransactions();
+    
     // Configurer un canal Supabase pour les mises à jour en temps réel
     const setupRealtimeSubscription = async () => {
       if (!user?.id) return;
@@ -127,9 +131,6 @@ const TransactionsList = memo(({
     };
     
     const realtimeCleanup = setupRealtimeSubscription();
-    
-    // Rafraîchissement initial des transactions
-    fetchLatestTransactions();
     
     // Mise en place d'un rafraîchissement périodique toutes les 30 secondes
     const pollingInterval = setInterval(() => {
@@ -160,7 +161,7 @@ const TransactionsList = memo(({
         {isRefreshing && (
           <div className="flex items-center text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-            Synchronisation...
+            Mise à jour...
           </div>
         )}
       </div>
@@ -214,7 +215,7 @@ const TransactionsList = memo(({
       />
       
       <div className="text-xs text-muted-foreground mt-2 text-right">
-        Dernière mise à jour: {lastUpdated.toLocaleTimeString()}
+        Mise à jour: {lastUpdated.toLocaleTimeString()}
       </div>
     </div>
   );

@@ -18,10 +18,10 @@ const SyncStatusIndicator = () => {
       setSyncing(false);
       setMessage("Données synchronisées");
       
-      // Masquer après 2 secondes
+      // Masquer après 1.5 secondes
       setTimeout(() => {
         setShowIndicator(false);
-      }, 2000);
+      }, 1500);
     };
     
     const handleSyncError = (event: any) => {
@@ -57,7 +57,7 @@ const SyncStatusIndicator = () => {
   if (!showIndicator) return null;
   
   return (
-    <div className={`fixed bottom-4 right-4 bg-slate-800 text-white py-2 px-4 rounded-md shadow-lg flex items-center gap-2 transition-opacity duration-300 ${showIndicator ? 'opacity-100' : 'opacity-0'}`}>
+    <div className="fixed bottom-4 right-4 bg-slate-800 text-white py-2 px-4 rounded-md shadow-lg flex items-center gap-2 transition-opacity duration-300 opacity-90">
       {syncing ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : null}
