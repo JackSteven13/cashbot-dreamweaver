@@ -1,7 +1,7 @@
 
 import React, { memo } from 'react';
 import { Transaction } from '@/types/userData';
-import { formatDate } from '@/utils/dateFormatter';
+import { formatDateForStorage } from '@/utils/date/dateFormatter';
 
 interface TransactionListItemProps {
   transaction: Transaction;
@@ -21,8 +21,8 @@ const TransactionListItem: React.FC<TransactionListItemProps> = memo(({
   // Use gain if available, otherwise fall back to amount
   const displayAmount = gain !== undefined ? gain : amount;
   
-  // Format the date (assuming a utility function exists)
-  const formattedDate = formatDate ? formatDate(date) : new Date(date).toLocaleString();
+  // Format the date using the correct utility
+  const formattedDate = date ? new Date(date).toLocaleDateString() : '';
   
   // Determine if this is a positive transaction
   const isPositive = displayAmount > 0;

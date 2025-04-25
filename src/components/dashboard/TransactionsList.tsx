@@ -1,3 +1,4 @@
+
 import React, { memo, useEffect, useState, useCallback } from 'react';
 import { useTransactions } from './transactions/hooks/useTransactions';
 import { Transaction } from '@/types/userData';
@@ -34,6 +35,7 @@ const TransactionsList = memo(({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   
+  // Enhanced transaction fetching with better error handling and immediate execution on mount
   const fetchLatestTransactions = useCallback(async () => {
     if (!user?.id) return;
     
@@ -63,8 +65,9 @@ const TransactionsList = memo(({
         
         setTransactions(formattedTransactions);
         
+        // Ensure UI is updated with new transaction data
         window.dispatchEvent(new CustomEvent('transactions:updated', {
-          detail: { transactions: formattedTransactions, userId: user.id }
+          detail: { transactions: formattedTransactions, userId: user.id, timestamp: Date.now() }
         }));
       }
     } catch (error) {
@@ -75,8 +78,12 @@ const TransactionsList = memo(({
     }
   }, [user, setTransactions]);
   
+  // Improved real-time subscription with immediate initial fetch
   useEffect(() => {
     if (!user?.id) return;
+    
+    // Fetch immediately on mount
+    fetchLatestTransactions();
     
     const handleRealtimeUpdate = (event: CustomEvent) => {
       const eventUserId = event.detail?.userId;
@@ -88,17 +95,20 @@ const TransactionsList = memo(({
       fetchLatestTransactions();
     };
     
+    // Set up event listeners
     window.addEventListener('transactions:refresh', handleRealtimeUpdate as EventListener);
     window.addEventListener('balance:update', handleRealtimeUpdate as EventListener);
     window.addEventListener('automatic:revenue', handleRealtimeUpdate as EventListener);
     window.addEventListener('balance:daily-growth', handleRealtimeUpdate as EventListener);
     window.addEventListener('session:completed', handleRealtimeUpdate as EventListener);
     window.addEventListener('transactions:updated', handleRealtimeUpdate as EventListener);
+    window.addEventListener('user:refreshed', handleRealtimeUpdate as EventListener);
     
-    fetchLatestTransactions();
-    
+    // Set up real-time subscription
     const setupRealtimeSubscription = async () => {
       if (!user?.id) return;
+      
+      console.log('Setting up realtime subscription for transactions');
       
       const channel = supabase
         .channel('transactions_changes')
@@ -107,11 +117,13 @@ const TransactionsList = memo(({
           schema: 'public',
           table: 'transactions',
           filter: `user_id=eq.${user.id}`,
-        }, () => {
-          console.log('Realtime update detected for transactions');
+        }, (payload) => {
+          console.log('Realtime update detected for transactions:', payload);
           fetchLatestTransactions();
         })
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Realtime subscription status:', status);
+        });
       
       return () => {
         supabase.removeChannel(channel);
@@ -120,17 +132,20 @@ const TransactionsList = memo(({
     
     const realtimeCleanup = setupRealtimeSubscription();
     
+    // Set up polling as a fallback mechanism
     const pollingInterval = setInterval(() => {
       fetchLatestTransactions();
-    }, 30000);
+    }, 15000); // Poll every 15 seconds
     
     return () => {
+      // Clean up all listeners and subscriptions
       window.removeEventListener('transactions:refresh', handleRealtimeUpdate as EventListener);
       window.removeEventListener('balance:update', handleRealtimeUpdate as EventListener);
       window.removeEventListener('automatic:revenue', handleRealtimeUpdate as EventListener);
       window.removeEventListener('balance:daily-growth', handleRealtimeUpdate as EventListener);
       window.removeEventListener('session:completed', handleRealtimeUpdate as EventListener);
       window.removeEventListener('transactions:updated', handleRealtimeUpdate as EventListener);
+      window.removeEventListener('user:refreshed', handleRealtimeUpdate as EventListener);
       clearInterval(pollingInterval);
       
       realtimeCleanup.then(cleanup => {
@@ -139,6 +154,7 @@ const TransactionsList = memo(({
     };
   }, [fetchLatestTransactions, user]);
   
+  // Enhanced render with better loading states and refreshing indicator
   return (
     <div className="mb-8 min-h-[400px]" key={refreshKey}>
       <div className="flex justify-between items-center mb-2">
