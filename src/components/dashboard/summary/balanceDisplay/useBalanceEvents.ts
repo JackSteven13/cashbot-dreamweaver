@@ -13,7 +13,7 @@ export interface BalanceState {
   dailyLimit: number;
 }
 
-export const useBalanceEvents = (subscription: string) => {
+export const useBalanceEvents = (subscription: string, balance: number = 0) => {
   const [balanceState, setBalanceState] = useState<BalanceState>({
     dailyGains: 0,
     limitPercentage: 0,
@@ -26,6 +26,25 @@ export const useBalanceEvents = (subscription: string) => {
   // Mettre à jour l'état en fonction des nouvelles données
   const updateBalanceState = () => {
     const effectiveSub = getEffectiveSubscription(subscription);
+    
+    // Reset daily gains if balance is zero
+    if (balance <= 0) {
+      balanceManager.setDailyGains(0);
+      localStorage.removeItem('dailyGains');
+      localStorage.removeItem('dailyLimitReached');
+      
+      setBalanceState({
+        dailyGains: 0,
+        limitPercentage: 0,
+        isLimitReached: false,
+        isNearLimit: false,
+        effectiveSubscription: effectiveSub,
+        dailyLimit: SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5
+      });
+      
+      return;
+    }
+    
     const todaysGains = balanceManager.getDailyGains();
     const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     const percentage = Math.min(100, (todaysGains / dailyLimit) * 100);
@@ -49,6 +68,13 @@ export const useBalanceEvents = (subscription: string) => {
     };
     
     const handleDailyGainsUpdate = (event: CustomEvent) => {
+      // Reset daily gains if balance is zero
+      if (balance <= 0) {
+        balanceManager.setDailyGains(0);
+        updateBalanceState();
+        return;
+      }
+      
       updateBalanceState();
       
       // Vérifier si la limite est atteinte et déclencher l'événement correspondant
@@ -93,7 +119,7 @@ export const useBalanceEvents = (subscription: string) => {
       window.removeEventListener('db:balance-updated', handleBalanceUpdate);
       clearInterval(intervalId);
     };
-  }, [subscription]);
+  }, [subscription, balance]);
 
   return balanceState;
 };

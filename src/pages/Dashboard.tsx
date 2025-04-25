@@ -38,6 +38,15 @@ const Dashboard = () => {
       const effectiveSub = getEffectiveSubscription(userData.subscription || 'freemium');
       const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
+      // Reset daily gains if balance is zero to fix inconsistency
+      if (userData.balance <= 0) {
+        balanceManager.setDailyGains(0);
+        localStorage.removeItem('dailyGains');
+        localStorage.removeItem('dailyLimitReached');
+        console.log("Balance is zero, resetting daily gains tracking at dashboard load");
+        return;
+      }
+      
       // Récupérer les transactions du jour pour vérifier les gains
       const today = new Date().toISOString().split('T')[0];
       const todaysTransactions = (userData.transactions || []).filter(tx => 

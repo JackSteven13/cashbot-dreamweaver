@@ -28,6 +28,17 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const [isLimitReached, setIsLimitReached] = useState(false);
   const [isNearLimit, setIsNearLimit] = useState(false);
 
+  // Reset daily gains if balance is 0 to fix the inconsistency
+  useEffect(() => {
+    if (balance <= 0) {
+      // Reset daily gains if balance is zero
+      balanceManager.setDailyGains(0);
+      localStorage.removeItem('dailyGains');
+      localStorage.removeItem('dailyLimitReached');
+      console.log("Balance is zero, resetting daily gains tracking");
+    }
+  }, [balance]);
+
   // Mettre à jour les états basés sur les limites
   useEffect(() => {
     // Récupérer l'abonnement effectif (tenant compte des périodes d'essai, etc.)
@@ -41,8 +52,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     // Récupérer la limite quotidienne basée sur l'abonnement
     const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
-    // Calculer le pourcentage d'utilisation de la limite quotidienne
-    const percentage = Math.min(100, (todaysGains / dailyLimit) * 100);
+    // Calculate percentage but ensure it's 0 if balance is 0
+    const percentage = balance <= 0 ? 0 : Math.min(100, (todaysGains / dailyLimit) * 100);
     setLimitPercentage(percentage);
     
     // Vérifier si la limite est atteinte ou presque atteinte
@@ -51,6 +62,16 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     
     // Actualiser périodiquement
     const intervalId = setInterval(() => {
+      // Don't allow tracking daily gains if balance is 0
+      if (balance <= 0) {
+        balanceManager.setDailyGains(0);
+        setDailyGains(0);
+        setLimitPercentage(0);
+        setIsLimitReached(false);
+        setIsNearLimit(false);
+        return;
+      }
+      
       const updatedGains = balanceManager.getDailyGains();
       setDailyGains(updatedGains);
       const updatedPercentage = Math.min(100, (updatedGains / dailyLimit) * 100);
@@ -65,6 +86,16 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   // Écouter les événements de mise à jour de solde
   useEffect(() => {
     const handleBalanceUpdate = () => {
+      // If balance is 0, reset daily gains
+      if (balance <= 0) {
+        balanceManager.setDailyGains(0);
+        setDailyGains(0);
+        setLimitPercentage(0);
+        setIsLimitReached(false);
+        setIsNearLimit(false);
+        return;
+      }
+      
       const updatedGains = balanceManager.getDailyGains();
       setDailyGains(updatedGains);
       
@@ -83,13 +114,13 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       window.removeEventListener('balance:update', handleBalanceUpdate);
       window.removeEventListener('daily:gains:update', handleBalanceUpdate);
     };
-  }, [effectiveSubscription]);
+  }, [effectiveSubscription, balance]);
 
   const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
 
   return (
     <div className="space-y-4">
-      {isLimitReached && (
+      {isLimitReached && balance > 0 && (
         <BalanceAlertBanner 
           type="limit-reached" 
           dailyLimit={dailyLimit} 
@@ -97,7 +128,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         />
       )}
       
-      {!isLimitReached && isNearLimit && (
+      {!isLimitReached && isNearLimit && balance > 0 && (
         <BalanceAlertBanner 
           type="near-limit" 
           dailyLimit={dailyLimit} 
@@ -111,7 +142,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           <BalanceHeader />
           <BalanceAmount 
             balance={balance} 
-            isLoading={isLoading} 
+            isLoading={isLoading}
+            currency="EUR"
           />
           
           <div className="text-sm text-gray-400 mb-2 mt-4">
@@ -124,7 +156,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           </div>
           
           <Progress 
-            value={limitPercentage} 
+            value={balance > 0 ? limitPercentage : 0} 
             className="h-2 bg-slate-700"
             aria-label="Progression de la limite quotidienne"
           >
@@ -136,7 +168,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                     ? 'bg-yellow-500' 
                     : 'bg-green-500'
               }`}
-              style={{ width: `${limitPercentage}%` }}
+              style={{ width: `${balance > 0 ? limitPercentage : 0}%` }}
             />
           </Progress>
           
