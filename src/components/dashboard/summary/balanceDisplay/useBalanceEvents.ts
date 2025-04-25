@@ -24,6 +24,7 @@ export const useBalanceEvents = (subscription: string, balance: number = 0) => {
     effectiveSubscription: subscription,
     dailyLimit: 0
   });
+  const [recoveryAttempted, setRecoveryAttempted] = useState(false);
 
   // Récupérer le vrai solde depuis la base de données
   useEffect(() => {
@@ -32,6 +33,9 @@ export const useBalanceEvents = (subscription: string, balance: number = 0) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return;
 
+        // Ne pas exécuter la récupération automatique plus d'une fois par session utilisateur
+        if (recoveryAttempted) return;
+        
         const { data, error } = await supabase
           .from('user_balances')
           .select('balance')
@@ -43,8 +47,10 @@ export const useBalanceEvents = (subscription: string, balance: number = 0) => {
           return;
         }
 
-        if (data && data.balance > 0 && balance <= 0) {
+        // Vérifier si le solde en base de données est plus grand que le solde local
+        if (data && data.balance > 0 && (balance <= 0 || data.balance > balance)) {
           console.log(`Solde incorrect détecté: Local=${balance}, DB=${data.balance}`);
+          
           // Force la mise à jour du gestionnaire de solde
           balanceManager.forceBalanceSync(data.balance, session.user.id);
           
@@ -61,6 +67,59 @@ export const useBalanceEvents = (subscription: string, balance: number = 0) => {
             description: `Votre solde a été restauré à ${data.balance.toFixed(2)}€`,
             variant: "default"
           });
+          
+          setRecoveryAttempted(true);
+        } 
+        // Vérifier si le solde local est zéro alors que le solde précédemment était positif
+        else if (balance <= 0 && !recoveryAttempted) {
+          console.log("Solde local à zéro, vérification des transactions récentes");
+          
+          // Récupérer les transactions récentes
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          
+          const { data: txData, error: txError } = await supabase
+            .from('transactions')
+            .select('gain')
+            .eq('user_id', session.user.id)
+            .gte('created_at', sevenDaysAgo.toISOString())
+            .order('created_at', { ascending: false });
+            
+          if (!txError && txData && txData.length > 0) {
+            // Calculer le solde potentiel
+            const calculatedBalance = txData.reduce((sum, tx) => sum + (tx.gain || 0), 0);
+            
+            if (calculatedBalance > 0) {
+              console.log(`Solde reconstitué à partir des transactions: ${calculatedBalance}€`);
+              
+              // Mettre à jour le solde dans la base de données
+              const { error: updateError } = await supabase
+                .from('user_balances')
+                .update({ balance: calculatedBalance })
+                .eq('id', session.user.id);
+                
+              if (!updateError) {
+                // Force la mise à jour du gestionnaire de solde
+                balanceManager.forceBalanceSync(calculatedBalance, session.user.id);
+                
+                // Déclenche un événement pour forcer l'interface à se mettre à jour
+                window.dispatchEvent(new CustomEvent('balance:force-update', {
+                  detail: {
+                    newBalance: calculatedBalance,
+                    userId: session.user.id
+                  }
+                }));
+                
+                toast({
+                  title: "Solde reconstitué",
+                  description: `Votre solde de ${calculatedBalance.toFixed(2)}€ a été reconstitué à partir de vos transactions récentes.`,
+                  variant: "default"
+                });
+              }
+            }
+          }
+          
+          setRecoveryAttempted(true);
         }
       } catch (err) {
         console.error('Erreur lors de la vérification du solde:', err);
@@ -68,7 +127,12 @@ export const useBalanceEvents = (subscription: string, balance: number = 0) => {
     };
     
     fetchActualBalance();
-  }, [balance]);
+    
+    // Configurer une vérification périodique toutes les 2 minutes
+    const intervalId = setInterval(fetchActualBalance, 120000);
+    
+    return () => clearInterval(intervalId);
+  }, [balance, recoveryAttempted]);
 
   // Mettre à jour l'état en fonction des nouvelles données
   const updateBalanceState = () => {
