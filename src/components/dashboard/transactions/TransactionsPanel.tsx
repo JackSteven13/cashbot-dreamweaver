@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,13 +15,15 @@ interface TransactionsPanelProps {
   isLoading?: boolean;
   isNewUser?: boolean;
   title?: string;
+  subscription?: string;
 }
 
 const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
   transactions = [],
   isLoading = false,
   isNewUser = false,
-  title = "Transactions récentes"
+  title = "Transactions récentes",
+  subscription = 'freemium'
 }) => {
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(() => Date.now());
@@ -31,7 +32,6 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
   const { user } = useAuth();
   const [localTransactions, setLocalTransactions] = useState<any[]>(transactions);
 
-  // Fonction pour récupérer les dernières transactions depuis la base de données
   const fetchLatestTransactions = useCallback(async () => {
     if (!user?.id) return;
     
@@ -70,16 +70,14 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
     }
   }, [user]);
 
-  // Rafraîchir périodiquement les transactions
   useEffect(() => {
     const interval = setInterval(() => {
       fetchLatestTransactions();
-    }, 20000); // Rafraîchir toutes les 20 secondes
+    }, 20000);
     
     return () => clearInterval(interval);
   }, [fetchLatestTransactions]);
   
-  // Configurer la synchronisation en temps réel avec Supabase
   useEffect(() => {
     if (!user?.id) return;
     
@@ -104,21 +102,18 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
     };
   }, [user, fetchLatestTransactions]);
   
-  // Écouter les événements de rafraîchissement
   useEffect(() => {
     const handleRefresh = () => {
       console.log("Transaction refresh event received in TransactionsPanel");
       fetchLatestTransactions();
     };
     
-    // Écouter plus d'événements pour assurer la synchronisation des transactions
     window.addEventListener('transactions:refresh', handleRefresh);
     window.addEventListener('balance:update', handleRefresh);
     window.addEventListener('transactions:updated', handleRefresh);
     window.addEventListener('automatic:revenue', handleRefresh);
     window.addEventListener('session:completed', handleRefresh);
     
-    // Exécuter un rafraîchissement initial
     fetchLatestTransactions();
     
     return () => {
@@ -173,7 +168,6 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
     );
   }
 
-  // Utiliser les transactions locales qui sont maintenues à jour
   const displayTransactions = localTransactions.length > 0 ? localTransactions : transactions;
 
   return (
@@ -205,6 +199,7 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
                 transaction={transaction}
                 refreshKey={refreshKey}
                 index={index}
+                subscription={subscription}
               />
             ))}
           </div>

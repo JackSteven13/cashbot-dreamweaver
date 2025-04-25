@@ -1,73 +1,55 @@
 
 import React, { memo } from 'react';
-import SessionCard from '@/components/SessionCard';
 import { Transaction } from '@/types/userData';
-import { useSessionCountdown } from '@/hooks/useSessionCountdown';
+import { formatDate } from '@/utils/dateFormatter';
 
 interface TransactionListItemProps {
   transaction: Transaction;
-  refreshKey: number;
-  index: number;
+  refreshKey?: number;
+  index?: number;
   subscription?: string;
 }
 
-const TransactionListItem = memo(({ 
+const TransactionListItem: React.FC<TransactionListItemProps> = memo(({ 
   transaction, 
   refreshKey, 
-  index,
+  index = 0,
   subscription = 'freemium'
-}: TransactionListItemProps) => {
-  // Use session countdown hook to display countdown for freemium users
-  const { timeRemaining, isCountingDown } = useSessionCountdown(
-    1, // We assume this transaction counts as a session
-    subscription,
-    transaction.date
-  );
+}) => {
+  const { date, gain = 0, report = '', amount = 0, type = 'system' } = transaction;
   
-  // Vérifier si la transaction est du jour même
-  const isToday = () => {
-    try {
-      if (!transaction.date) return false;
-      
-      // Format the dates as YYYY-MM-DD for proper comparison
-      const txDate = new Date(transaction.date);
-      const today = new Date();
-      
-      // Compare only year, month, day
-      return (
-        txDate.getFullYear() === today.getFullYear() &&
-        txDate.getMonth() === today.getMonth() &&
-        txDate.getDate() === today.getDate()
-      );
-    } catch (e) {
-      console.error("Error checking if transaction is from today:", e, transaction.date);
-      return false;
-    }
-  };
+  // Use gain if available, otherwise fall back to amount
+  const displayAmount = gain !== undefined ? gain : amount;
   
-  const isTodayTx = isToday();
+  // Format the date (assuming a utility function exists)
+  const formattedDate = formatDate ? formatDate(date) : new Date(date).toLocaleString();
+  
+  // Determine if this is a positive transaction
+  const isPositive = displayAmount > 0;
   
   return (
-    <div className={`transaction-item ${isTodayTx ? 'today-transaction' : ''}`} data-index={index}>
-      <SessionCard 
-        key={`${transaction.id || ''}-${refreshKey}`}
-        date={transaction.date}
-        gain={transaction.gain || transaction.amount || 0}
-        report={transaction.report || transaction.type || ''}
-        isToday={isTodayTx}
-      />
-      
-      {/* Show countdown if this is the most recent transaction for freemium users */}
-      {index === 0 && isCountingDown && (
-        <div className="mt-1 text-xs text-right text-slate-500">
-          <span>Prochaine session disponible dans: {timeRemaining}</span>
-        </div>
-      )}
+    <div 
+      className="flex items-center justify-between py-3 px-4 rounded-lg border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
+      style={{
+        animationDelay: `${index * 100}ms`,
+        animationFillMode: 'both',
+        animationName: 'fadeInUp',
+        animationDuration: '400ms'
+      }}
+    >
+      <div className="flex flex-col">
+        <span className="font-medium text-sm">
+          {report || (type === 'system' ? 'Gain automatique' : type)}
+        </span>
+        <span className="text-xs text-gray-500">{formattedDate}</span>
+      </div>
+      <div className={`font-bold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+        {isPositive ? '+' : ''}{displayAmount.toFixed(2)}€
+      </div>
     </div>
   );
 });
 
-// Set display name for debugging
 TransactionListItem.displayName = 'TransactionListItem';
 
 export default TransactionListItem;

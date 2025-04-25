@@ -1,4 +1,3 @@
-
 import React, { memo, useEffect, useState, useCallback } from 'react';
 import { useTransactions } from './transactions/hooks/useTransactions';
 import { Transaction } from '@/types/userData';
@@ -35,7 +34,6 @@ const TransactionsList = memo(({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   
-  // Fonction pour récupérer les transactions directement depuis la base de données
   const fetchLatestTransactions = useCallback(async () => {
     if (!user?.id) return;
     
@@ -54,7 +52,6 @@ const TransactionsList = memo(({
       }
       
       if (data && Array.isArray(data)) {
-        // Formater les transactions pour correspondre au format attendu
         const formattedTransactions = data.map((tx: any) => ({
           id: tx.id,
           date: tx.created_at || tx.date,
@@ -64,10 +61,8 @@ const TransactionsList = memo(({
           type: tx.type || 'system'
         }));
         
-        // Mettre à jour les transactions dans le hook
         setTransactions(formattedTransactions);
         
-        // Déclencher un événement pour informer les autres composants
         window.dispatchEvent(new CustomEvent('transactions:updated', {
           detail: { transactions: formattedTransactions, userId: user.id }
         }));
@@ -80,23 +75,19 @@ const TransactionsList = memo(({
     }
   }, [user, setTransactions]);
   
-  // Mettre en place la réception des événements et le polling pour les mises à jour des transactions
   useEffect(() => {
     if (!user?.id) return;
     
-    // Fonction pour gérer les événements de mise à jour
     const handleRealtimeUpdate = (event: CustomEvent) => {
-      // Vérifier si l'événement est destiné à cet utilisateur
       const eventUserId = event.detail?.userId;
       if (eventUserId && eventUserId !== user.id) {
-        return; // Ignorer les événements d'autres utilisateurs
+        return;
       }
       
       console.log("Transaction update event received - fetching latest transactions");
       fetchLatestTransactions();
     };
     
-    // Écouter plus d'événements pour s'assurer que les transactions sont à jour
     window.addEventListener('transactions:refresh', handleRealtimeUpdate as EventListener);
     window.addEventListener('balance:update', handleRealtimeUpdate as EventListener);
     window.addEventListener('automatic:revenue', handleRealtimeUpdate as EventListener);
@@ -104,14 +95,11 @@ const TransactionsList = memo(({
     window.addEventListener('session:completed', handleRealtimeUpdate as EventListener);
     window.addEventListener('transactions:updated', handleRealtimeUpdate as EventListener);
     
-    // Synchroniser immédiatement au montage
     fetchLatestTransactions();
     
-    // Configurer un canal Supabase pour les mises à jour en temps réel
     const setupRealtimeSubscription = async () => {
       if (!user?.id) return;
       
-      // S'abonner aux changements dans la table des transactions pour cet utilisateur
       const channel = supabase
         .channel('transactions_changes')
         .on('postgres_changes', {
@@ -132,7 +120,6 @@ const TransactionsList = memo(({
     
     const realtimeCleanup = setupRealtimeSubscription();
     
-    // Mise en place d'un rafraîchissement périodique toutes les 30 secondes
     const pollingInterval = setInterval(() => {
       fetchLatestTransactions();
     }, 30000);
@@ -146,14 +133,12 @@ const TransactionsList = memo(({
       window.removeEventListener('transactions:updated', handleRealtimeUpdate as EventListener);
       clearInterval(pollingInterval);
       
-      // Nettoyer l'abonnement Realtime
       realtimeCleanup.then(cleanup => {
         if (cleanup) cleanup();
       });
     };
   }, [fetchLatestTransactions, user]);
   
-  // Pour résoudre le problème de tremblement, ajouter une hauteur minimale fixe
   return (
     <div className="mb-8 min-h-[400px]" key={refreshKey}>
       <div className="flex justify-between items-center mb-2">
@@ -221,7 +206,6 @@ const TransactionsList = memo(({
   );
 });
 
-// Set display name for debugging
 TransactionsList.displayName = 'TransactionsList';
 
 export default TransactionsList;
