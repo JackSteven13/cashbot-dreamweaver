@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { useUserData } from '@/hooks/useUserData';
 import balanceManager from '@/utils/balance/balanceManager';
