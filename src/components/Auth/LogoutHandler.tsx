@@ -1,6 +1,6 @@
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanOtherUserData } from '@/utils/balance/balanceStorage';
 import { clearUserData } from '@/utils/userSwitchGuard';
@@ -9,7 +9,7 @@ import { clearUserData } from '@/utils/userSwitchGuard';
  * Composant invisible qui gère la déconnexion et le nettoyage des données
  */
 const LogoutHandler = () => {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Écouter les événements de déconnexion
@@ -22,7 +22,7 @@ const LogoutHandler = () => {
         await supabase.auth.signOut();
         
         // Rediriger vers la page d'accueil
-        router.push('/');
+        navigate('/');
       } catch (error) {
         console.error('Error during logout:', error);
       }
@@ -57,7 +57,7 @@ const LogoutHandler = () => {
     return () => {
       window.removeEventListener('user:logout', handleLogout as any);
     };
-  }, [router]);
+  }, [navigate]);
 
   return null;
 };
