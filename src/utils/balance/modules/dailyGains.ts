@@ -9,6 +9,8 @@ export class DailyGainsManager {
   private processingUpdate: boolean = false;
   private updateQueue: {amount: number}[] = [];
   private isProcessingQueue: boolean = false;
+  private lastKnownConsistentGains: number = 0;
+  private readonly updateInterval: number = 200; // 200ms between updates
   
   constructor(userId: string | null = null) {
     this.userId = userId;
@@ -17,13 +19,36 @@ export class DailyGainsManager {
     
     // Setup queue processor
     this.setupQueueProcessor();
+    
+    // Initial consistency check
+    this.performConsistencyCheck();
+    
+    // Schedule periodic consistency checks
+    setInterval(() => this.performConsistencyCheck(), 30000); // Every 30 seconds
+  }
+  
+  private performConsistencyCheck(): void {
+    // Verify that daily gains haven't gone negative
+    if (this.dailyGains < 0) {
+      console.warn(`Detected negative daily gains: ${this.dailyGains}. Resetting to last known consistent value.`);
+      this.dailyGains = Math.max(0, this.lastKnownConsistentGains);
+      this.persistGainsToStorage();
+    }
+    
+    // If daily gains seem abnormally high for a freemium account, cap it
+    const maxExpectedDailyGain = 0.5; // Maximum expected for freemium
+    if (this.dailyGains > maxExpectedDailyGain * 1.5) {
+      console.warn(`Abnormally high daily gains detected: ${this.dailyGains}. Capping at ${maxExpectedDailyGain}.`);
+      this.dailyGains = maxExpectedDailyGain;
+      this.persistGainsToStorage();
+    }
   }
   
   private setupQueueProcessor() {
     // Process queued updates every 200ms
     setInterval(() => {
       this.processUpdateQueue();
-    }, 200);
+    }, this.updateInterval);
   }
   
   private async processUpdateQueue() {
@@ -57,19 +82,38 @@ export class DailyGainsManager {
     try {
       this.checkForDayChange(); // Check for day change
       
+      // Get current value before updating
+      const beforeUpdate = this.dailyGains;
+      
       // Apply the update
       this.dailyGains += amount;
       
       // Round to 2 decimal places to avoid floating point issues
       this.dailyGains = Math.round(this.dailyGains * 100) / 100;
       
-      const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
-      persistToLocalStorage(storageKey, this.dailyGains.toString());
+      // Ensure we never go negative
+      if (this.dailyGains < 0) {
+        console.warn(`Prevented negative daily gains: ${this.dailyGains}. Using 0 instead.`);
+        this.dailyGains = 0;
+      }
+      
+      // If update looks valid, update last known consistent value
+      if (this.dailyGains >= beforeUpdate || amount < 0) {
+        this.lastKnownConsistentGains = this.dailyGains;
+      }
+      
+      // Save to storage with specific user key
+      this.persistGainsToStorage();
       
       this.lastUpdateTime = Date.now();
     } catch (e) {
       console.error('Error processing daily gains update:', e);
     }
+  }
+  
+  private persistGainsToStorage(): void {
+    const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
+    persistToLocalStorage(storageKey, this.dailyGains.toString());
   }
   
   private loadDailyGains(): void {
@@ -78,11 +122,15 @@ export class DailyGainsManager {
       const storedDailyGains = getFromLocalStorage(storageKey, '0');
       if (storedDailyGains !== null) {
         this.dailyGains = parseFloat(storedDailyGains);
+        // Initialize the last known consistent value
+        this.lastKnownConsistentGains = this.dailyGains;
       }
       
       // Also load the last reset date
       const lastResetKey = this.userId ? `lastResetDate_${this.userId}` : 'lastResetDate';
       this.lastResetDate = getFromLocalStorage(lastResetKey, this.getCurrentDateString());
+      
+      console.log(`Loaded daily gains: ${this.dailyGains.toFixed(2)} for date ${this.lastResetDate}`);
     } catch (e) {
       console.error('Failed to load daily gains:', e);
     }
@@ -118,18 +166,21 @@ export class DailyGainsManager {
       return;
     }
     
+    // Prevent negative values
+    const validAmount = Math.max(0, amount);
+    
     // Rate limiting: prevent multiple rapid updates
     if (this.processingUpdate) {
       console.log('Another daily gain update is in progress, queueing...');
-      this.queueUpdate(amount - this.dailyGains); // Queue the difference
+      this.queueUpdate(validAmount - this.dailyGains); // Queue the difference
       return;
     }
     
     // Minimum interval between updates (200ms)
     const now = Date.now();
-    if (now - this.lastUpdateTime < 200) {
+    if (now - this.lastUpdateTime < this.updateInterval) {
       console.log('Daily gains updated too quickly, queueing...');
-      this.queueUpdate(amount - this.dailyGains); // Queue the difference
+      this.queueUpdate(validAmount - this.dailyGains); // Queue the difference
       return;
     }
     
@@ -139,14 +190,21 @@ export class DailyGainsManager {
       this.checkForDayChange(); // Check for day change before setting
       
       // Validate the amount to ensure it's not negative or unreasonably large
-      const validAmount = Math.max(0, Math.min(amount, 1000)); // Sanity cap at 1000
+      const safeAmount = Math.max(0, Math.min(validAmount, 1000)); // Sanity cap at 1000
       
       // Round to 2 decimal places to avoid floating point issues
-      const roundedAmount = Math.round(validAmount * 100) / 100;
+      const roundedAmount = Math.round(safeAmount * 100) / 100;
+      
+      // Track the last valid value
+      if (roundedAmount >= 0) {
+        this.lastKnownConsistentGains = roundedAmount;
+      }
       
       this.dailyGains = roundedAmount;
-      const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
-      persistToLocalStorage(storageKey, roundedAmount.toString());
+      
+      // Save to storage
+      this.persistGainsToStorage();
+      
       console.log(`Daily gains set to ${roundedAmount}`);
       
       this.lastUpdateTime = now;
@@ -161,6 +219,12 @@ export class DailyGainsManager {
       return;
     }
     
+    // Reject negative values - daily gains should only increase
+    if (amount <= 0) {
+      console.warn(`Attempted to add non-positive gain: ${amount}. Ignoring.`);
+      return;
+    }
+    
     // Rate limiting: prevent multiple rapid updates
     if (this.processingUpdate) {
       console.log('Another daily gain update is in progress, queueing...');
@@ -168,9 +232,9 @@ export class DailyGainsManager {
       return;
     }
     
-    // Minimum interval between updates (200ms)
+    // Minimum interval between updates
     const now = Date.now();
-    if (now - this.lastUpdateTime < 200) {
+    if (now - this.lastUpdateTime < this.updateInterval) {
       console.log('Daily gains updated too quickly, queueing...');
       this.queueUpdate(amount);
       return;
@@ -192,9 +256,13 @@ export class DailyGainsManager {
       this.dailyGains += amount;
       this.dailyGains = Math.round(this.dailyGains * 10000) / 10000;
       
-      const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
-      persistToLocalStorage(storageKey, this.dailyGains.toString());
-      console.log(`Daily gains increased by ${amount} to ${this.dailyGains} (from ${previousGains})`);
+      // Update storage
+      this.persistGainsToStorage();
+      
+      console.log(`Daily gains increased by ${amount.toFixed(4)} to ${this.dailyGains.toFixed(4)} (from ${previousGains.toFixed(4)})`);
+      
+      // Update last consistent value
+      this.lastKnownConsistentGains = this.dailyGains;
       
       this.lastUpdateTime = now;
     } finally {
@@ -209,8 +277,11 @@ export class DailyGainsManager {
   
   resetDailyGains(): void {
     this.dailyGains = 0;
-    const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
-    persistToLocalStorage(storageKey, '0');
+    this.lastKnownConsistentGains = 0;
+    
+    // Update storage
+    this.persistGainsToStorage();
+    
     console.log('Daily gains reset to 0');
     
     // Clear the update queue on reset
