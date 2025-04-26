@@ -30,28 +30,38 @@ export const useAutomaticRevenue = ({
       return;
     }
     
-    const effectiveSub = getEffectiveSubscription(userData.subscription);
-    const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    
-    // Get daily gains from centralized manager
-    const dailyGains = balanceManager.getDailyGains();
-    
-    // Calculate percentage of daily limit
-    const percentage = Math.min(100, (dailyGains / limit) * 100);
-    setDailyLimitProgress(percentage);
-    
-    // Check if limit is reached (90% of limit for early prevention)
-    const isLimitReached = dailyGains >= limit * 0.9;
-    setLimitReached(isLimitReached);
-    
-    // If percentage reaches 90%, automatically deactivate bot
-    if (isLimitReached && isBotActive) {
-      setIsBotActive(false);
-      console.log("Bot automatically deactivated: daily limit reached");
+    const updateLimitProgress = async () => {
+      const effectiveSub = getEffectiveSubscription(userData.subscription);
+      const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
-      // Enregistrer l'état dans le localStorage
-      localStorage.setItem('botActive', 'false');
-    }
+      // Get daily gains from database to ensure accuracy
+      const userId = userData.profile?.id || userData.id;
+      if (!userId) return;
+      
+      const actualGains = await calculateTodaysGains(userId);
+      
+      // Update local tracking to match database
+      balanceManager.setDailyGains(actualGains);
+      
+      // Calculate percentage of daily limit
+      const percentage = Math.min(100, (actualGains / limit) * 100);
+      setDailyLimitProgress(percentage);
+      
+      // Check if limit is reached (90% of limit for early prevention)
+      const isLimitReached = actualGains >= limit * 0.9;
+      setLimitReached(isLimitReached);
+      
+      // If percentage reaches 90%, automatically deactivate bot
+      if (isLimitReached && isBotActive) {
+        setIsBotActive(false);
+        console.log("Bot automatically deactivated: daily limit reached");
+        
+        // Save state in localStorage
+        localStorage.setItem('botActive', 'false');
+      }
+    };
+    
+    updateLimitProgress();
   }, [userData, isBotActive, isNewUser]);
   
   // Listen for external events that modify bot state
@@ -59,16 +69,16 @@ export const useAutomaticRevenue = ({
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
       if (typeof isActive === 'boolean') {
-        // Vérifier si la limite est atteinte avant d'activer le bot
+        // Check if limit is reached before activating bot
         if (isActive && limitReached) {
-          console.log("Bot ne peut pas être activé: limite déjà atteinte");
+          console.log("Bot cannot be activated: limit already reached");
           return;
         }
         
         console.log(`Bot status update in useAutomaticRevenue: ${isActive ? 'active' : 'inactive'}`);
         setIsBotActive(isActive);
         
-        // Enregistrer l'état dans le localStorage
+        // Save state in localStorage
         localStorage.setItem('botActive', isActive.toString());
       }
     };
@@ -89,27 +99,17 @@ export const useAutomaticRevenue = ({
     }
     
     try {
-      // Get total already earned today from centralized manager
-      let todaysGains = balanceManager.getDailyGains();
-      
-      // Additional verification with database transactions
-      if (!forceUpdate) {
-        // Safe access to userData.profile?.id with fallback
-        const userId = userData.profile?.id || userData.id;
-        if (!userId) {
-          console.error("Cannot generate revenue: missing user ID");
-          return false;
-        }
-        
-        const actualGains = await calculateTodaysGains(userId);
-        
-        // If actual gains are higher than our local tracking, update our local tracking
-        if (actualGains > todaysGains) {
-          console.log(`Updating daily gains: ${todaysGains}€ -> ${actualGains}€ (based on DB transactions)`);
-          todaysGains = actualGains;
-          balanceManager.setDailyGains(actualGains);
-        }
+      // Get total already earned today from database for accuracy
+      const userId = userData.profile?.id || userData.id;
+      if (!userId) {
+        console.error("Cannot generate revenue: missing user ID");
+        return false;
       }
+      
+      const todaysGains = await calculateTodaysGains(userId);
+      
+      // Update local tracking to match database
+      balanceManager.setDailyGains(todaysGains);
       
       // Determine daily limit based on subscription
       const effectiveSub = getEffectiveSubscription(userData.subscription);
@@ -160,17 +160,10 @@ export const useAutomaticRevenue = ({
       const dayCount = Math.floor((Date.now() - new Date('2023-01-01').getTime()) / (1000 * 3600 * 24));
       const report = `Analyse automatique de contenu (jour ${dayCount})`;
       
-      // Safe access to userData.profile?.id with fallback
-      const userId = userData.profile?.id || userData.id;
-      if (!userId) {
-        console.error("Cannot record transaction: missing user ID");
-        return false;
-      }
-      
       // Record transaction in database
       const transactionAdded = await addTransaction(userId, finalGain, report);
       
-      if (!transactionAdded) {
+      if (!transactionAdded.success) {
         console.error("Failed to record transaction");
         return false;
       }
@@ -186,8 +179,30 @@ export const useAutomaticRevenue = ({
       
       // Trigger balance update animation
       window.dispatchEvent(new CustomEvent('balance:update', { 
-        detail: { amount: finalGain, animate: true } 
+        detail: { amount: finalGain, animate: true, userId, timestamp: Date.now() } 
       }));
+      
+      // Force a balance update to ensure UI is updated
+      window.dispatchEvent(new CustomEvent('balance:force-update', { 
+        detail: { 
+          newBalance: balanceManager.getCurrentBalance(), 
+          timestamp: Date.now(),
+          userId,
+          animate: true
+        } 
+      }));
+      
+      // Monitor for errors - ensure proper update
+      setTimeout(() => {
+        const currentBalance = balanceManager.getCurrentBalance();
+        const localStorageBalance = parseFloat(localStorage.getItem(`currentBalance_${userId}`) || '0');
+        
+        if (Math.abs(currentBalance - localStorageBalance) > 0.01) {
+          console.log(`Balance inconsistency detected. Manager: ${currentBalance}, Storage: ${localStorageBalance}`);
+          balanceManager.forceBalanceSync(Math.max(currentBalance, localStorageBalance), userId);
+          localStorage.setItem(`currentBalance_${userId}`, balanceManager.getCurrentBalance().toString());
+        }
+      }, 2000);
       
       return true;
     } catch (error) {

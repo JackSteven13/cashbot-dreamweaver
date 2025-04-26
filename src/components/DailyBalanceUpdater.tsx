@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useUserData } from '@/hooks/useUserData';
 import balanceManager from '@/utils/balance/balanceManager';
 import { repairInconsistentData } from '@/utils/balance/storage/localStorageUtils';
@@ -15,6 +15,8 @@ import { useBalanceEvents } from '@/hooks/balance/useBalanceEvents';
 const DailyBalanceUpdater: React.FC = () => {
   const { userData } = useUserData();
   const userId = userData?.profile?.id;
+  const initialSyncDone = useRef(false);
+  const lastUpdateTime = useRef<number>(Date.now());
 
   const { syncWithDatabase } = useBalanceSynchronization(userData);
   const { checkBalanceStability } = useBalanceStability(userData);
@@ -22,7 +24,7 @@ const DailyBalanceUpdater: React.FC = () => {
   
   // Initialize balance values and stabilize for 10 seconds after page load
   useEffect(() => {
-    if (userData?.balance) {
+    if (userData?.balance && !initialSyncDone.current) {
       const currentBalance = parseFloat(userData.balance.toString());
       if (!isNaN(currentBalance)) {
         const balanceString = currentBalance.toString();
@@ -42,15 +44,20 @@ const DailyBalanceUpdater: React.FC = () => {
         
         balanceManager.forceBalanceSync(currentBalance, userId);
         stableBalance.setBalance(currentBalance);
+        
+        initialSyncDone.current = true;
+        console.log("Initial balance sync complete:", currentBalance);
       }
     }
     
     const stabilizationPeriod = setTimeout(() => {
       console.log("Balance stabilization period ended");
+      // Force a sync with database after stabilization
+      syncWithDatabase();
     }, 10000);
     
     return () => clearTimeout(stabilizationPeriod);
-  }, [userData, userId]);
+  }, [userData, userId, syncWithDatabase]);
   
   // Periodically check and repair balance inconsistencies
   useEffect(() => {
@@ -62,10 +69,37 @@ const DailyBalanceUpdater: React.FC = () => {
       }
       
       checkBalanceStability();
-    }, 30000);
+      
+      // More frequent sync with database to ensure balance is updated
+      const now = Date.now();
+      if (now - lastUpdateTime.current > 20000) { // Every 20 seconds
+        syncWithDatabase();
+        lastUpdateTime.current = now;
+      }
+    }, 15000); // Shorter interval for more frequent checks
     
     return () => clearInterval(checkInterval);
-  }, [userId, checkBalanceStability]);
+  }, [userId, checkBalanceStability, syncWithDatabase]);
+  
+  // Listen for balance update events and trigger synchronization
+  useEffect(() => {
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      const amount = event.detail?.amount;
+      
+      if (amount && amount > 0) {
+        // When balance increases, schedule a sync with the database
+        setTimeout(() => {
+          syncWithDatabase();
+        }, 2000);
+      }
+    };
+    
+    window.addEventListener('balance:update' as any, handleBalanceUpdate);
+    
+    return () => {
+      window.removeEventListener('balance:update' as any, handleBalanceUpdate);
+    };
+  }, [syncWithDatabase]);
 
   return null;
 };
