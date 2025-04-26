@@ -2,8 +2,8 @@
 import { useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import balanceManager from '@/utils/balance/balanceManager';
-import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 const SYNC_INTERVAL = 30000; // 30 seconds
 const TOLERANCE = 0.01; // €0.01 tolerance
@@ -37,7 +37,7 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       const localBalance = balanceManager.getCurrentBalance();
 
       const saveBalanceToStorage = (balance: number) => {
-        const balanceString = balance.toString();
+        const balanceString = balance.toString(); // Convert to string explicitly
         
         if (userId) {
           localStorage.setItem(`highest_balance_${userId}`, balanceString);
