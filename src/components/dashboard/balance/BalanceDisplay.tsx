@@ -24,6 +24,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const [gainAmount, setGainAmount] = useState<number>(0);
   const [showGain, setShowGain] = useState<boolean>(false);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastEventTimeRef = useRef<number>(Date.now());
 
   // Synchronize with balanceManager and prop balance, prioritizing highest value
   useEffect(() => {
@@ -31,10 +32,26 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       // Get current balance from manager (most reliable source)
       const currentBalance = balanceManager.getCurrentBalance();
       
-      // Only update if the manager balance is higher
+      // Only update if the manager balance is higher or prop balance is higher
       if (currentBalance > displayBalance) {
+        console.log(`Updating displayed balance from manager: ${displayBalance} -> ${currentBalance}`);
         setDisplayBalance(currentBalance);
+        // Check if we should show animation (only if it's been >1s since last event)
+        const now = Date.now();
+        if (now - lastEventTimeRef.current > 1000) {
+          const gain = currentBalance - displayBalance;
+          if (gain > 0) {
+            setGainAmount(gain);
+            setShowGain(true);
+            setIsAnimating(true);
+            setTimeout(() => {
+              setIsAnimating(false);
+              setShowGain(false);
+            }, 2000);
+          }
+        }
       } else if (balance > displayBalance) {
+        console.log(`Updating displayed balance from prop: ${displayBalance} -> ${balance}`);
         setDisplayBalance(balance);
         // Also update manager to ensure consistency
         balanceManager.forceBalanceSync(balance);
@@ -44,8 +61,8 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     // Initial sync
     synchronizeBalance();
     
-    // Periodic sync
-    refreshIntervalRef.current = setInterval(synchronizeBalance, 5000);
+    // More frequent sync for better reactivity
+    refreshIntervalRef.current = setInterval(synchronizeBalance, 2000);
     
     return () => {
       if (refreshIntervalRef.current) {
@@ -61,6 +78,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       setShowGain(true);
       setIsAnimating(true);
       setDisplayBalance(balance);
+      lastEventTimeRef.current = Date.now();
       
       const timer = setTimeout(() => {
         setIsAnimating(false);
@@ -71,14 +89,17 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     }
   }, [balance, displayBalance]);
   
-  // Listen for balance update events
+  // Listen for balance update events with improved handling
   useEffect(() => {
     const handleBalanceUpdate = (event: CustomEvent) => {
       const detail = event.detail;
       const amount = detail?.amount;
       const newBalance = detail?.newBalance || detail?.currentBalance;
       
+      lastEventTimeRef.current = Date.now();
+      
       if (amount && amount > 0) {
+        console.log(`Balance event received: +${amount} (total: ${newBalance || displayBalance + amount})`);
         setGainAmount(amount);
         setShowGain(true);
         setIsAnimating(true);
@@ -104,8 +125,14 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       const newBalance = detail?.newBalance;
       const animate = detail?.animate;
       const gain = detail?.gain;
+      const forceRefresh = detail?.forceRefresh;
+      
+      lastEventTimeRef.current = Date.now();
       
       if (typeof newBalance === 'number' && newBalance > 0) {
+        console.log(`Force update balance event: ${newBalance}€${gain ? ` (+${gain})` : ''}, animate: ${animate}, force: ${forceRefresh}`);
+        
+        // If we have a gain and animation is requested, show the animation
         if (animate && gain) {
           setGainAmount(gain);
           setShowGain(true);
@@ -119,17 +146,26 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
           
           return () => clearTimeout(timer);
         } else {
+          // Even without animation, always update the displayed balance
           setDisplayBalance(newBalance);
+        }
+        
+        // If forceRefresh is true, also update the balanceManager
+        if (forceRefresh) {
+          balanceManager.forceBalanceSync(newBalance);
         }
       }
     };
     
+    // Listen for all balance-related events
     window.addEventListener('balance:update' as any, handleBalanceUpdate);
     window.addEventListener('balance:force-update' as any, handleForceUpdate);
+    window.addEventListener('dashboard:micro-gain' as any, handleBalanceUpdate);
     
     return () => {
       window.removeEventListener('balance:update' as any, handleBalanceUpdate);
       window.removeEventListener('balance:force-update' as any, handleForceUpdate);
+      window.removeEventListener('dashboard:micro-gain' as any, handleBalanceUpdate);
     };
   }, []);
 

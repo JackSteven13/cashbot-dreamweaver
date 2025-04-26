@@ -37,7 +37,8 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       const localBalance = balanceManager.getCurrentBalance();
 
       const saveBalanceToStorage = (balance: number) => {
-        const balanceString = Number(balance.toFixed(2)).toString();
+        // Fix TS2345 error: Convert number to string explicitly
+        const balanceString = balance.toFixed(2);
         
         const storageKey = (key: string) => userId ? `${key}_${userId}` : key;
         

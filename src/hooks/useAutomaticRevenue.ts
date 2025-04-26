@@ -5,6 +5,7 @@ import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscript
 import balanceManager from '@/utils/balance/balanceManager';
 import { addTransaction, calculateTodaysGains } from '@/utils/userData/transactionUtils';
 import { respectsDailyLimit } from '@/utils/subscription/sessionManagement';
+import { toast } from '@/components/ui/use-toast';
 
 interface UseAutomaticRevenueProps {
   userData: UserData | null;
@@ -186,7 +187,7 @@ export const useAutomaticRevenue = ({
         setLastDbUpdateTime(now);
         
         // Update balance with generated gain
-        await updateBalance(finalGain, report, forceUpdate);
+        await updateBalance(finalGain, report, true); // Set forceUpdate to true to ensure UI updates
       }
       
       // Update balance manager locally (always do this)
@@ -198,7 +199,7 @@ export const useAutomaticRevenue = ({
       
       console.log(`Automatic revenue generated: ${finalGain}€, current balance: ${currentBalance}€`);
       
-      // Dispatch events to update UI
+      // Dispatch events to update UI - IMPORTANT: Make sure all needed events are triggered
       
       // First, trigger automatic revenue event to create transaction record
       window.dispatchEvent(new CustomEvent('automatic:revenue', { 
@@ -208,13 +209,14 @@ export const useAutomaticRevenue = ({
         } 
       }));
       
-      // Trigger balance update animation
+      // Trigger balance update animation - Make sure we're passing the correct values
       window.dispatchEvent(new CustomEvent('balance:update', { 
         detail: { 
           amount: finalGain, 
           currentBalance: currentBalance,
           animate: true,
-          timestamp: now
+          timestamp: now,
+          userId: userId // Make sure userId is included
         } 
       }));
       
@@ -224,9 +226,20 @@ export const useAutomaticRevenue = ({
           newBalance: currentBalance,
           gain: finalGain,
           animate: true,
-          timestamp: now 
+          timestamp: now,
+          userId: userId, // Make sure userId is included
+          forceRefresh: true // Add this flag to force a UI refresh
         } 
       }));
+      
+      // Display a toast notification occasionally to show automatic gains
+      if (Math.random() > 0.7) { // Show toast ~30% of the time
+        toast({
+          title: `Gain automatique: +${finalGain.toFixed(2)}€`,
+          description: `L'analyse automatique a généré ${finalGain.toFixed(2)}€`,
+          duration: 3000,
+        });
+      }
       
       // Also notify that there's a new transaction to display
       window.dispatchEvent(new CustomEvent('transactions:refresh', {
