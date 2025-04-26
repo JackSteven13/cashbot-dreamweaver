@@ -291,7 +291,7 @@ const DailyBalanceUpdater: React.FC = () => {
     }
   };
   
-  // Sync with database and ensure data consistency
+  // Update the sync with database method to ensure string conversion
   const syncWithDatabase = async () => {
     if (!userId) return;
     
@@ -320,12 +320,25 @@ const DailyBalanceUpdater: React.FC = () => {
       const dbBalance = parseFloat(data.balance);
       const localBalance = balanceManager.getCurrentBalance();
       
-      // Update highest observed if db balance is higher
+      // Ensure explicit string conversion for localStorage
+      const saveBalanceToStorage = (balance: number) => {
+        if (userId) {
+          localStorage.setItem(`highest_balance_${userId}`, balance.toString());
+          localStorage.setItem(`currentBalance_${userId}`, balance.toString());
+          localStorage.setItem(`lastKnownBalance_${userId}`, balance.toString());
+          localStorage.setItem(`lastUpdatedBalance_${userId}`, balance.toString());
+        } else {
+          localStorage.setItem('highest_balance', balance.toString());
+          localStorage.setItem('currentBalance', balance.toString());
+          localStorage.setItem('lastKnownBalance', balance.toString());
+          localStorage.setItem('lastUpdatedBalance', balance.toString());
+        }
+      };
+
+      // Update highest observed balance with explicit string conversion
       if (!isNaN(dbBalance) && dbBalance > highestObservedBalance.current) {
         highestObservedBalance.current = dbBalance;
-        
-        // Use user-specific key for storage
-        localStorage.setItem(`highest_balance_${userId}`, dbBalance.toString());
+        saveBalanceToStorage(dbBalance);
       }
       
       // If local balance is higher than db, update database
