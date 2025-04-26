@@ -1,3 +1,4 @@
+
 import { persistToLocalStorage, getFromLocalStorage, atomicUpdate } from '../storage/localStorageUtils';
 
 export class DailyGainsManager {
@@ -13,9 +14,13 @@ export class DailyGainsManager {
   private dailyGainsSnapshot: number = 0;
   private stableGainsHistory: number[] = [];
   private lastPersistTime: number = 0;
+  private highestObservedGain: number = 0;  // Nouvelle propriété pour traquer le gain le plus élevé observé
+  private lockKey: string = '';  // Clé pour le verrouillage
+  private persistenceRetries: number = 0;  // Compteur de tentatives de persistance
   
   constructor(userId: string | null = null) {
     this.userId = userId;
+    this.lockKey = this.userId ? `dailyGains_lock_${this.userId}` : 'dailyGains_lock';
     this.loadDailyGains();
     this.checkForDayChange();
     
@@ -26,69 +31,110 @@ export class DailyGainsManager {
     this.performConsistencyCheck();
     
     // Schedule periodic consistency checks
-    setInterval(() => this.performConsistencyCheck(), 30000); // Every 30 seconds
+    setInterval(() => this.performConsistencyCheck(), 15000); // Every 15 seconds
     
     // Create a stable history of valid values
     this.stableGainsHistory.push(this.dailyGains);
     
     // Snapshot current value for detecting anomalies
     this.dailyGainsSnapshot = this.dailyGains;
+    this.highestObservedGain = this.dailyGains;
     
     // Create a stability check interval
-    setInterval(() => this.ensureStability(), 60000); // Every minute
+    setInterval(() => this.ensureStability(), 30000); // Every 30 seconds
+    
+    // Recovery check on window focus
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', () => {
+        this.checkAndRecoverFromBackup();
+        this.performConsistencyCheck();
+      });
+    }
   }
   
   private ensureStability(): void {
-    // If current value is significantly different from historical values without reason
-    if (this.dailyGains < this.dailyGainsSnapshot - 0.1) {
-      console.warn(`Detected unexpected decrease in daily gains: ${this.dailyGains} < ${this.dailyGainsSnapshot}. Restoring.`);
-      // Restore to the last snapshot if we detect an unexpected decrease
-      this.dailyGains = this.dailyGainsSnapshot;
-      this.persistGainsToStorage();
-    } else {
-      // Only update snapshot when values look valid (stable or increasing)
-      this.dailyGainsSnapshot = Math.max(this.dailyGainsSnapshot, this.dailyGains);
-    }
-    
-    // Update stable history to track consistent values
-    if (this.dailyGains >= 0) {
-      this.stableGainsHistory.push(this.dailyGains);
-      // Keep history at a reasonable size
-      if (this.stableGainsHistory.length > 10) {
-        this.stableGainsHistory.shift();
+    try {
+      // Si la valeur actuelle est significativement inférieure au max observé sans raison valide
+      if (this.dailyGains < this.highestObservedGain - 0.01) {
+        console.warn(`Correcting unexpected decrease in daily gains: ${this.dailyGains} < ${this.highestObservedGain}. Restoring to highest observed value.`);
+        // Restaurer à la valeur maximale observée si on détecte une baisse inexpliquée
+        this.dailyGains = this.highestObservedGain;
+        this.persistGainsToStorage();
+        
+        // Notifier l'interface utilisateur de la correction
+        try {
+          window.dispatchEvent(new CustomEvent('dailyGains:corrected', {
+            detail: { 
+              correctedValue: this.highestObservedGain,
+              previousValue: this.dailyGains, 
+              reason: 'unexpected_decrease' 
+            }
+          }));
+        } catch (e) {
+          console.error('Failed to dispatch correction event:', e);
+        }
+      } 
+      // Si la valeur est valide et supérieure au max observé, mettre à jour le max
+      else if (this.dailyGains > this.highestObservedGain) {
+        this.highestObservedGain = this.dailyGains;
+        // Mettre à jour le snapshot aussi
+        this.dailyGainsSnapshot = this.dailyGains;
       }
+      
+      // Maintenir un historique des valeurs stables pour référence
+      if (this.dailyGains >= 0) {
+        this.stableGainsHistory.push(this.dailyGains);
+        // Limiter la taille de l'historique
+        if (this.stableGainsHistory.length > 10) {
+          this.stableGainsHistory.shift();
+        }
+      }
+    } catch (e) {
+      console.error('Error ensuring stability:', e);
     }
   }
   
   private performConsistencyCheck(): void {
-    // Verify that daily gains haven't gone negative
-    if (this.dailyGains < 0) {
-      console.warn(`Detected negative daily gains: ${this.dailyGains}. Resetting to last known consistent value.`);
-      this.dailyGains = Math.max(0, this.lastKnownConsistentGains);
-      this.persistGainsToStorage();
-    }
-    
-    // If we have a sudden drop of more than 10% from previous values
-    const averageHistory = this.getAverageFromHistory();
-    if (this.stableGainsHistory.length >= 3 && this.dailyGains < averageHistory * 0.9) {
-      console.warn(`Detected abnormal drop in daily gains from ${averageHistory} to ${this.dailyGains}. Restoring.`);
-      this.dailyGains = Math.max(this.dailyGains, averageHistory);
-      this.persistGainsToStorage();
-    }
-    
-    // If daily gains seem abnormally high for a freemium account, cap it
-    const maxExpectedDailyGain = 0.5; // Maximum expected for freemium
-    if (this.dailyGains > maxExpectedDailyGain * 1.5) {
-      console.warn(`Abnormally high daily gains detected: ${this.dailyGains}. Capping at ${maxExpectedDailyGain}.`);
-      this.dailyGains = maxExpectedDailyGain;
-      this.persistGainsToStorage();
+    try {
+      // Vérifier que les gains quotidiens ne sont pas négatifs
+      if (this.dailyGains < 0) {
+        console.warn(`Detected negative daily gains: ${this.dailyGains}. Resetting to last known consistent value.`);
+        this.dailyGains = Math.max(0, this.lastKnownConsistentGains, this.highestObservedGain);
+        this.persistGainsToStorage();
+      }
+      
+      // Si nous détectons une baisse soudaine de plus de 1% par rapport aux valeurs précédentes
+      const averageHistory = this.getAverageFromHistory();
+      if (this.stableGainsHistory.length >= 3 && this.dailyGains < averageHistory * 0.99) {
+        console.warn(`Detected abnormal drop in daily gains from ${averageHistory} to ${this.dailyGains}. Restoring.`);
+        this.dailyGains = Math.max(this.dailyGains, averageHistory, this.highestObservedGain);
+        this.persistGainsToStorage();
+      }
+      
+      // Si les gains quotidiens semblent anormalement élevés pour un compte freemium, les plafonner
+      const maxExpectedDailyGain = 0.5; // Maximum prévu pour freemium
+      if (this.dailyGains > maxExpectedDailyGain * 2) {  // Plus de flexibilité sur le plafond
+        console.warn(`Abnormally high daily gains detected: ${this.dailyGains}. Capping at ${maxExpectedDailyGain * 2}.`);
+        this.dailyGains = maxExpectedDailyGain * 2;
+        this.persistGainsToStorage();
+      }
+      
+      // Synchroniser avec la valeur stockée pour détecter toute désynchronisation
+      this.checkAndRecoverFromBackup();
+    } catch (e) {
+      console.error('Error during consistency check:', e);
     }
   }
   
   private getAverageFromHistory(): number {
-    if (this.stableGainsHistory.length === 0) return 0;
-    const sum = this.stableGainsHistory.reduce((acc, val) => acc + val, 0);
-    return sum / this.stableGainsHistory.length;
+    try {
+      if (this.stableGainsHistory.length === 0) return 0;
+      const sum = this.stableGainsHistory.reduce((acc, val) => acc + val, 0);
+      return sum / this.stableGainsHistory.length;
+    } catch (e) {
+      console.error('Error calculating average from history:', e);
+      return 0;
+    }
   }
   
   private setupQueueProcessor() {
@@ -115,6 +161,8 @@ export class DailyGainsManager {
         // Process the update directly
         await this.processUpdate(update.amount);
       }
+    } catch (e) {
+      console.error('Error processing update queue:', e);
     } finally {
       this.isProcessingQueue = false;
       
@@ -129,6 +177,12 @@ export class DailyGainsManager {
   }
   
   private async processUpdate(amount: number) {
+    if (!this.acquireLock()) {
+      console.log('Lock acquisition failed, queuing update');
+      this.queueUpdate(amount);
+      return;
+    }
+    
     try {
       this.checkForDayChange(); // Check for day change
       
@@ -157,6 +211,12 @@ export class DailyGainsManager {
           if (this.stableGainsHistory.length > 10) {
             this.stableGainsHistory.shift();
           }
+          
+          // Update max observed
+          if (this.dailyGains > this.highestObservedGain) {
+            this.highestObservedGain = this.dailyGains;
+          }
+          
           this.dailyGainsSnapshot = Math.max(this.dailyGainsSnapshot, this.dailyGains);
         }
       }
@@ -171,24 +231,65 @@ export class DailyGainsManager {
       this.lastUpdateTime = Date.now();
     } catch (e) {
       console.error('Error processing daily gains update:', e);
+    } finally {
+      this.releaseLock();
     }
   }
   
-  private persistGainsToStorage(): void {
-    const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
-    persistToLocalStorage(storageKey, this.dailyGains.toString());
-    
-    // Also persist a backup copy with timestamp for recovery
+  // Nouveaux mécanismes de verrouillage pour éviter les conflits de mise à jour
+  private acquireLock(): boolean {
     try {
+      const lockTimestamp = localStorage.getItem(this.lockKey);
+      const now = Date.now();
+      
+      // Si aucun verrou ou verrou expiré (> 3 secondes)
+      if (!lockTimestamp || (now - parseInt(lockTimestamp, 10)) > 3000) {
+        localStorage.setItem(this.lockKey, now.toString());
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      console.error('Error acquiring lock:', e);
+      return true; // En cas d'erreur, on procède quand même pour éviter un blocage
+    }
+  }
+  
+  private releaseLock(): void {
+    try {
+      localStorage.removeItem(this.lockKey);
+    } catch (e) {
+      console.error('Error releasing lock:', e);
+    }
+  }
+  
+  // Amélioration de la persistance avec gestion des erreurs
+  private persistGainsToStorage(): void {
+    try {
+      const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
+      
+      // Utiliser une persistance atomique pour éviter les données partielles
+      if (!atomicUpdate(storageKey, this.dailyGains.toString()) && this.persistenceRetries < 3) {
+        console.warn(`Failed to persist daily gains, retrying (${this.persistenceRetries + 1}/3)`);
+        this.persistenceRetries++;
+        setTimeout(() => this.persistGainsToStorage(), 200);
+        return;
+      }
+      
+      this.persistenceRetries = 0;
+      
+      // Sauvegarder une copie de secours avec horodatage pour récupération
       const backupKey = this.userId ? `dailyGains_backup_${this.userId}` : 'dailyGains_backup';
       const backupValue = JSON.stringify({
         value: this.dailyGains,
+        highestObserved: this.highestObservedGain,
         timestamp: Date.now(),
-        history: this.stableGainsHistory.slice(-3) // Keep last 3 values in backup
+        history: this.stableGainsHistory.slice(-3) // Conserver les 3 dernières valeurs
       });
+      
       localStorage.setItem(backupKey, backupValue);
     } catch (e) {
-      console.error('Failed to persist backup daily gains:', e);
+      console.error('Failed to persist daily gains:', e);
     }
   }
   
@@ -197,46 +298,71 @@ export class DailyGainsManager {
       const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
       const storedDailyGains = getFromLocalStorage(storageKey, '0');
       
-      // Try to load main value first
+      // Essayer de charger la valeur principale d'abord
       if (storedDailyGains !== null) {
-        this.dailyGains = parseFloat(storedDailyGains);
+        const parsedValue = parseFloat(storedDailyGains);
+        this.dailyGains = isNaN(parsedValue) ? 0 : parsedValue;
       }
       
-      // Try to load from backup if available
-      try {
-        const backupKey = this.userId ? `dailyGains_backup_${this.userId}` : 'dailyGains_backup';
-        const backupValue = localStorage.getItem(backupKey);
-        
-        if (backupValue) {
-          const backup = JSON.parse(backupValue);
-          
-          // Only use backup if it has a valid structure and main value is suspicious
-          if (backup && typeof backup.value === 'number' && 
-              (isNaN(this.dailyGains) || this.dailyGains < 0 || backup.value > this.dailyGains)) {
-            console.log(`Restoring daily gains from backup: ${this.dailyGains} -> ${backup.value}`);
-            this.dailyGains = backup.value;
-            
-            // Restore history if available
-            if (Array.isArray(backup.history)) {
-              this.stableGainsHistory = [...backup.history];
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Failed to load backup daily gains:', e);
-      }
+      // Tenter de charger depuis la sauvegarde
+      this.checkAndRecoverFromBackup();
       
-      // Initialize the last known consistent value
+      // Initialiser la dernière valeur cohérente connue
       this.lastKnownConsistentGains = this.dailyGains;
       this.dailyGainsSnapshot = this.dailyGains;
+      this.highestObservedGain = this.dailyGains;
       
-      // Also load the last reset date
+      // Charger la date de dernière réinitialisation
       const lastResetKey = this.userId ? `lastResetDate_${this.userId}` : 'lastResetDate';
       this.lastResetDate = getFromLocalStorage(lastResetKey, this.getCurrentDateString());
       
       console.log(`Loaded daily gains: ${this.dailyGains.toFixed(2)} for date ${this.lastResetDate}`);
     } catch (e) {
       console.error('Failed to load daily gains:', e);
+    }
+  }
+  
+  private checkAndRecoverFromBackup(): void {
+    try {
+      const backupKey = this.userId ? `dailyGains_backup_${this.userId}` : 'dailyGains_backup';
+      const backupValue = localStorage.getItem(backupKey);
+      
+      if (backupValue) {
+        const backup = JSON.parse(backupValue);
+        
+        // Utiliser la sauvegarde si elle a une structure valide et si la valeur principale est suspecte
+        if (backup && typeof backup.value === 'number' && 
+            (isNaN(this.dailyGains) || this.dailyGains < 0 || backup.value > this.dailyGains)) {
+          console.log(`Restoring daily gains from backup: ${this.dailyGains} -> ${backup.value}`);
+          this.dailyGains = backup.value;
+          
+          // Restaurer aussi la valeur maximale observée
+          if (typeof backup.highestObserved === 'number' && backup.highestObserved > this.highestObservedGain) {
+            this.highestObservedGain = backup.highestObserved;
+          }
+          
+          // Restaurer l'historique si disponible
+          if (Array.isArray(backup.history) && backup.history.length > 0) {
+            // Fusionner l'historique existant avec celui de la sauvegarde
+            const combinedHistory = [...this.stableGainsHistory];
+            for (const val of backup.history) {
+              if (!combinedHistory.includes(val)) {
+                combinedHistory.push(val);
+              }
+            }
+            
+            // Trier l'historique et conserver les 10 valeurs les plus récentes/élevées
+            combinedHistory.sort((a, b) => b - a);
+            this.stableGainsHistory = combinedHistory.slice(0, 10);
+          }
+          
+          // Synchroniser les autres valeurs de référence
+          this.lastKnownConsistentGains = Math.max(this.lastKnownConsistentGains, this.dailyGains);
+          this.dailyGainsSnapshot = Math.max(this.dailyGainsSnapshot, this.dailyGains);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to recover from backup:', e);
     }
   }
   
@@ -251,7 +377,7 @@ export class DailyGainsManager {
       console.log(`Day change detected: ${this.lastResetDate} -> ${currentDate}. Resetting daily gains.`);
       this.resetDailyGains();
       
-      // Update the last reset date
+      // Mettre à jour la date de dernière réinitialisation
       const lastResetKey = this.userId ? `lastResetDate_${this.userId}` : 'lastResetDate';
       persistToLocalStorage(lastResetKey, currentDate);
       this.lastResetDate = currentDate;
@@ -259,13 +385,17 @@ export class DailyGainsManager {
   }
   
   getDailyGains(): number {
-    // Always check for day change when getting daily gains
+    // Toujours vérifier le changement de jour lors de l'obtention des gains quotidiens
     this.checkForDayChange();
     
-    // Perform a quick consistency check
+    // Effectuer une vérification rapide de cohérence
     if (this.dailyGains < 0) {
       console.warn(`Negative daily gains detected during get: ${this.dailyGains}. Resetting to 0.`);
       this.dailyGains = 0;
+      this.persistGainsToStorage();
+    } else if (this.dailyGains < this.highestObservedGain) {
+      console.warn(`Daily gains below highest observed: ${this.dailyGains} < ${this.highestObservedGain}. Restoring.`);
+      this.dailyGains = this.highestObservedGain;
       this.persistGainsToStorage();
     }
     
@@ -278,55 +408,69 @@ export class DailyGainsManager {
       return;
     }
     
-    // Prevent negative values
+    // Prévenir les valeurs négatives
     const validAmount = Math.max(0, amount);
     
-    // Rate limiting: prevent multiple rapid updates
+    // Limitation de débit : empêcher les mises à jour multiples rapides
     if (this.processingUpdate) {
       console.log('Another daily gain update is in progress, queueing...');
-      this.queueUpdate(validAmount - this.dailyGains); // Queue the difference
+      this.queueUpdate(validAmount - this.dailyGains); // Mettre en file d'attente la différence
       return;
     }
     
-    // Minimum interval between updates (200ms)
+    // Intervalle minimum entre les mises à jour (200ms)
     const now = Date.now();
     if (now - this.lastUpdateTime < this.updateInterval) {
       console.log('Daily gains updated too quickly, queueing...');
-      this.queueUpdate(validAmount - this.dailyGains); // Queue the difference
+      this.queueUpdate(validAmount - this.dailyGains); // Mettre en file d'attente la différence
+      return;
+    }
+    
+    if (!this.acquireLock()) {
+      console.log('Lock acquisition failed in setDailyGains, queueing update');
+      this.queueUpdate(validAmount - this.dailyGains);
       return;
     }
     
     this.processingUpdate = true;
     
     try {
-      this.checkForDayChange(); // Check for day change before setting
+      this.checkForDayChange(); // Vérifier le changement de jour avant la mise à jour
       
-      // Validate the amount to ensure it's not negative or unreasonably large
-      const safeAmount = Math.max(0, Math.min(validAmount, 1000)); // Sanity cap at 1000
+      // Valider le montant pour s'assurer qu'il n'est pas négatif ou déraisonnablement grand
+      const safeAmount = Math.max(0, Math.min(validAmount, 1000)); // Plafond de sécurité à 1000
       
-      // Round to 2 decimal places to avoid floating point issues
+      // Arrondir à 2 décimales pour éviter les problèmes de virgule flottante
       const roundedAmount = Math.round(safeAmount * 100) / 100;
       
-      // Track the last valid value
+      // Suivre la dernière valeur valide
       if (roundedAmount >= 0) {
         this.lastKnownConsistentGains = roundedAmount;
       }
       
-      this.dailyGains = roundedAmount;
+      // Ne pas permettre une valeur inférieure au maximum observé
+      if (roundedAmount >= this.highestObservedGain) {
+        this.dailyGains = roundedAmount;
+        this.highestObservedGain = roundedAmount;
+      } else {
+        console.warn(`Attempted to set daily gains to ${roundedAmount}, which is below the highest observed value ${this.highestObservedGain}. Using highest value.`);
+        this.dailyGains = this.highestObservedGain;
+      }
       
-      // Update snapshot only if the new value is greater (to prevent unexpected drops)
+      // Mettre à jour le snapshot uniquement si la nouvelle valeur est supérieure
       if (roundedAmount > this.dailyGainsSnapshot) {
         this.dailyGainsSnapshot = roundedAmount;
       }
       
-      // Save to storage
+      // Sauvegarder dans le stockage
       this.persistGainsToStorage();
       
-      console.log(`Daily gains set to ${roundedAmount}`);
+      console.log(`Daily gains set to ${this.dailyGains}`);
       
       this.lastUpdateTime = now;
     } finally {
       this.processingUpdate = false;
+      this.releaseLock();
     }
   }
   
@@ -336,20 +480,20 @@ export class DailyGainsManager {
       return;
     }
     
-    // Reject negative values - daily gains should only increase
+    // Rejeter les valeurs négatives - les gains quotidiens ne devraient qu'augmenter
     if (amount <= 0) {
       console.warn(`Attempted to add non-positive gain: ${amount}. Ignoring.`);
       return;
     }
     
-    // Rate limiting: prevent multiple rapid updates
+    // Limitation de débit : empêcher les mises à jour multiples rapides
     if (this.processingUpdate) {
       console.log('Another daily gain update is in progress, queueing...');
       this.queueUpdate(amount);
       return;
     }
     
-    // Minimum interval between updates
+    // Intervalle minimum entre les mises à jour
     const now = Date.now();
     if (now - this.lastUpdateTime < this.updateInterval) {
       console.log('Daily gains updated too quickly, queueing...');
@@ -357,44 +501,56 @@ export class DailyGainsManager {
       return;
     }
     
+    if (!this.acquireLock()) {
+      console.log('Lock acquisition failed in addDailyGain, queueing update');
+      this.queueUpdate(amount);
+      return;
+    }
+    
     this.processingUpdate = true;
     
     try {
-      this.checkForDayChange(); // Check for day change before adding
+      this.checkForDayChange(); // Vérifier le changement de jour avant l'ajout
       
-      // Validate the amount to ensure it's reasonable
-      if (amount <= 0 || amount > 1.0) { // Cap single additions at 1.0
+      // Valider le montant pour s'assurer qu'il est raisonnable
+      if (amount <= 0 || amount > 1.0) { // Limiter les ajouts individuels à 1.0
         console.log(`Suspicious gain amount: ${amount}, applying restrictions`);
         amount = Math.min(Math.max(0.001, amount), 0.05);
       }
       
-      // Round to 4 decimal places to avoid floating point errors
+      // Arrondir à 4 décimales pour éviter les erreurs de virgule flottante
       const previousGains = this.dailyGains;
       this.dailyGains += amount;
       this.dailyGains = Math.round(this.dailyGains * 10000) / 10000;
       
-      // Update storage
+      // Mettre à jour le stockage
       this.persistGainsToStorage();
       
       console.log(`Daily gains increased by ${amount.toFixed(4)} to ${this.dailyGains.toFixed(4)} (from ${previousGains.toFixed(4)})`);
       
-      // Update last consistent value and history
+      // Mettre à jour la dernière valeur cohérente et l'historique
       this.lastKnownConsistentGains = this.dailyGains;
       this.stableGainsHistory.push(this.dailyGains);
       if (this.stableGainsHistory.length > 10) {
         this.stableGainsHistory.shift();
       }
       
-      // Update snapshot for stability monitoring
+      // Mettre à jour les valeurs maximales
+      if (this.dailyGains > this.highestObservedGain) {
+        this.highestObservedGain = this.dailyGains;
+      }
+      
+      // Mettre à jour le snapshot pour la surveillance de stabilité
       this.dailyGainsSnapshot = Math.max(this.dailyGainsSnapshot, this.dailyGains);
       
       this.lastUpdateTime = now;
     } finally {
       this.processingUpdate = false;
+      this.releaseLock();
     }
   }
   
-  // Add to update queue for batched processing
+  // Ajouter à la file d'attente des mises à jour pour un traitement par lots
   private queueUpdate(amount: number): void {
     this.updateQueue.push({ 
       amount,
@@ -403,38 +559,51 @@ export class DailyGainsManager {
   }
   
   resetDailyGains(): void {
-    this.dailyGains = 0;
-    this.lastKnownConsistentGains = 0;
-    this.dailyGainsSnapshot = 0;
-    this.stableGainsHistory = [0];
+    if (!this.acquireLock()) {
+      console.log('Lock acquisition failed in resetDailyGains, retrying in 100ms');
+      setTimeout(() => this.resetDailyGains(), 100);
+      return;
+    }
     
-    // Update storage
-    this.persistGainsToStorage();
-    
-    console.log('Daily gains reset to 0');
-    
-    // Clear the update queue on reset
-    this.updateQueue = [];
-    
-    // Dispatch an event to notify the rest of the application
     try {
-      window.dispatchEvent(new CustomEvent('dailyGains:reset', {
-        detail: { userId: this.userId, timestamp: new Date().toISOString() }
-      }));
-    } catch (e) {
-      console.error('Failed to dispatch dailyGains:reset event:', e);
+      this.dailyGains = 0;
+      this.lastKnownConsistentGains = 0;
+      this.dailyGainsSnapshot = 0;
+      this.highestObservedGain = 0;
+      this.stableGainsHistory = [0];
+      
+      // Mettre à jour le stockage
+      this.persistGainsToStorage();
+      
+      console.log('Daily gains reset to 0');
+      
+      // Vider la file d'attente des mises à jour lors de la réinitialisation
+      this.updateQueue = [];
+      
+      // Déclencher un événement pour notifier le reste de l'application
+      try {
+        window.dispatchEvent(new CustomEvent('dailyGains:reset', {
+          detail: { userId: this.userId, timestamp: new Date().toISOString() }
+        }));
+      } catch (e) {
+        console.error('Failed to dispatch dailyGains:reset event:', e);
+      }
+    } finally {
+      this.releaseLock();
     }
   }
   
   setUserId(userId: string | null): void {
     if (this.userId !== userId) {
       this.userId = userId;
+      this.lockKey = this.userId ? `dailyGains_lock_${this.userId}` : 'dailyGains_lock';
       this.loadDailyGains();
       this.checkForDayChange();
       
-      // Reset history and snapshot when changing users
+      // Réinitialiser l'historique et le snapshot lors du changement d'utilisateurs
       this.stableGainsHistory = [this.dailyGains];
       this.dailyGainsSnapshot = this.dailyGains;
+      this.highestObservedGain = this.dailyGains;
     }
   }
 }
