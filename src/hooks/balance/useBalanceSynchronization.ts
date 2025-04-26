@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -37,19 +36,24 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       const localBalance = balanceManager.getCurrentBalance();
 
       const saveBalanceToStorage = (balance: number) => {
-        // Explicitly convert balance to string with two decimal places
-        const balanceString = balance.toFixed(2);
+        const balanceString = Number(balance.toFixed(2)).toString();
         
-        if (userId) {
-          localStorage.setItem(`highest_balance_${userId}`, balanceString);
-          localStorage.setItem(`currentBalance_${userId}`, balanceString);
-          localStorage.setItem(`lastKnownBalance_${userId}`, balanceString);
-          localStorage.setItem(`lastUpdatedBalance_${userId}`, balanceString);
-        } else {
-          localStorage.setItem('highest_balance', balanceString);
-          localStorage.setItem('currentBalance', balanceString);
-          localStorage.setItem('lastKnownBalance', balanceString);
-          localStorage.setItem('lastUpdatedBalance', balanceString);
+        const storageKey = (key: string) => userId ? `${key}_${userId}` : key;
+        
+        try {
+          localStorage.setItem(storageKey('currentBalance'), balanceString);
+          localStorage.setItem(storageKey('lastKnownBalance'), balanceString);
+          localStorage.setItem(storageKey('highest_balance'), balanceString);
+          localStorage.setItem(storageKey('lastUpdatedBalance'), balanceString);
+          
+          sessionStorage.setItem(storageKey('currentBalance'), balanceString);
+        } catch (error) {
+          console.error('Erreur lors de l'enregistrement du solde:', error);
+          toast({
+            title: "Erreur de synchronisation",
+            description: "Impossible de sauvegarder le solde local.",
+            variant: "destructive"
+          });
         }
       };
 
@@ -71,7 +75,7 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
             newBalance: dbBalance,
             timestamp: Date.now(),
             userId,
-            animate: true // Ajouter animation pour montrer le changement
+            animate: true
           }
         }));
       }
@@ -81,7 +85,6 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
   };
 
   useEffect(() => {
-    // Initial sync when component mounts
     syncWithDatabase();
     
     const checkInterval = setInterval(() => {
@@ -92,9 +95,7 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       }
     }, SYNC_INTERVAL);
     
-    // Listen for balance update events to trigger sync
     const handleBalanceUpdate = () => {
-      // Reset the counter to force a sync sooner
       syncCounter.current = 2;
     };
     
