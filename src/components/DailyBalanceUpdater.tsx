@@ -201,11 +201,11 @@ const DailyBalanceUpdater: React.FC = () => {
           
           balanceManager.forceBalanceSync(referenceBalance);
           
-          // Update all localStorage values to be consistent
-          localStorage.setItem('currentBalance', referenceBalance.toString()); // Fixed: Convert to string
-          localStorage.setItem('lastKnownBalance', referenceBalance.toString()); // Fixed: Convert to string
-          localStorage.setItem('lastUpdatedBalance', referenceBalance.toString()); // Fixed: Convert to string
-          localStorage.setItem('highest_balance', referenceBalance.toString()); // Fixed: Convert to string
+          // Update all localStorage values to be consistent - FIX: Convert all numbers to strings
+          localStorage.setItem('currentBalance', referenceBalance.toString());
+          localStorage.setItem('lastKnownBalance', referenceBalance.toString());
+          localStorage.setItem('lastUpdatedBalance', referenceBalance.toString());
+          localStorage.setItem('highest_balance', referenceBalance.toString());
           
           // Update stable balance system
           stableBalance.setBalance(referenceBalance);
@@ -230,7 +230,7 @@ const DailyBalanceUpdater: React.FC = () => {
               description: "La stabilité de votre solde a été assurée.",
               duration: 3000
             });
-            localStorage.setItem('lastBalanceToastTime', now.toString()); // Fixed: Convert to string
+            localStorage.setItem('lastBalanceToastTime', now.toString());
           }
         }
       } 
@@ -238,7 +238,7 @@ const DailyBalanceUpdater: React.FC = () => {
       else if (currentBalance > referenceBalance) {
         highestObservedBalance.current = currentBalance;
         stableBalanceRef.current = currentBalance;
-        localStorage.setItem('highest_balance', currentBalance.toString()); // Fixed: Convert to string
+        localStorage.setItem('highest_balance', currentBalance.toString());
         
         // Also update stable balance system
         stableBalance.setBalance(currentBalance);
@@ -280,7 +280,7 @@ const DailyBalanceUpdater: React.FC = () => {
       // Update highest observed if db balance is higher
       if (!isNaN(dbBalance) && dbBalance > highestObservedBalance.current) {
         highestObservedBalance.current = dbBalance;
-        localStorage.setItem('highest_balance', dbBalance.toString()); // Fixed: Convert to string
+        localStorage.setItem('highest_balance', dbBalance.toString());
       }
       
       // If local balance is higher than db, update database
@@ -306,11 +306,11 @@ const DailyBalanceUpdater: React.FC = () => {
         // Update stable balance system
         stableBalance.setBalance(dbBalance);
         
-        // Update all localStorage values
-        localStorage.setItem('currentBalance', dbBalance.toString()); // Fixed: Convert to string
-        localStorage.setItem('lastKnownBalance', dbBalance.toString()); // Fixed: Convert to string
-        localStorage.setItem('lastUpdatedBalance', dbBalance.toString()); // Fixed: Convert to string
-        localStorage.setItem('highest_balance', dbBalance.toString()); // Fixed: Convert to string
+        // Update all localStorage values - FIX: Ensure everything is converted to string
+        localStorage.setItem('currentBalance', dbBalance.toString());
+        localStorage.setItem('lastKnownBalance', dbBalance.toString());
+        localStorage.setItem('lastUpdatedBalance', dbBalance.toString());
+        localStorage.setItem('highest_balance', dbBalance.toString());
         
         // Update references
         stableBalanceRef.current = dbBalance;
