@@ -322,16 +322,18 @@ const DailyBalanceUpdater: React.FC = () => {
       
       // Ensure explicit string conversion for localStorage
       const saveBalanceToStorage = (balance: number) => {
+        const balanceString = balance.toString();
+        
         if (userId) {
-          localStorage.setItem(`highest_balance_${userId}`, balance.toString());
-          localStorage.setItem(`currentBalance_${userId}`, balance.toString());
-          localStorage.setItem(`lastKnownBalance_${userId}`, balance.toString());
-          localStorage.setItem(`lastUpdatedBalance_${userId}`, balance.toString());
+          localStorage.setItem(`highest_balance_${userId}`, balanceString);
+          localStorage.setItem(`currentBalance_${userId}`, balanceString);
+          localStorage.setItem(`lastKnownBalance_${userId}`, balanceString);
+          localStorage.setItem(`lastUpdatedBalance_${userId}`, balanceString);
         } else {
-          localStorage.setItem('highest_balance', balance.toString());
-          localStorage.setItem('currentBalance', balance.toString());
-          localStorage.setItem('lastKnownBalance', balance.toString());
-          localStorage.setItem('lastUpdatedBalance', balance.toString());
+          localStorage.setItem('highest_balance', balanceString);
+          localStorage.setItem('currentBalance', balanceString);
+          localStorage.setItem('lastKnownBalance', balanceString);
+          localStorage.setItem('lastUpdatedBalance', balanceString);
         }
       };
 
