@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { CardContent } from '@/components/ui/card';
 import { BalanceIndicators } from './components/BalanceIndicators';
@@ -89,85 +88,54 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     }
   }, [balance, displayBalance]);
   
-  // Listen for balance update events with improved handling
+  // Listen for balance update events with improved handling for automatic revenue
   useEffect(() => {
-    const handleBalanceUpdate = (event: CustomEvent) => {
+    // Generic handler that works for all balance-related events
+    const handleBalanceEvent = (event: CustomEvent) => {
       const detail = event.detail;
-      const amount = detail?.amount;
+      const amount = detail?.amount || detail?.gain;
       const newBalance = detail?.newBalance || detail?.currentBalance;
-      
-      lastEventTimeRef.current = Date.now();
-      
-      if (amount && amount > 0) {
-        console.log(`Balance event received: +${amount} (total: ${newBalance || displayBalance + amount})`);
-        setGainAmount(amount);
-        setShowGain(true);
-        setIsAnimating(true);
-        
-        // Ensure we always use the latest balance
-        if (typeof newBalance === 'number' && newBalance > 0) {
-          setDisplayBalance(newBalance);
-        } else {
-          setDisplayBalance(prev => prev + amount);
-        }
-        
-        const timer = setTimeout(() => {
-          setIsAnimating(false);
-          setShowGain(false);
-        }, 2000);
-        
-        return () => clearTimeout(timer);
-      }
-    };
-    
-    const handleForceUpdate = (event: CustomEvent) => {
-      const detail = event.detail;
-      const newBalance = detail?.newBalance;
-      const animate = detail?.animate;
-      const gain = detail?.gain;
-      const forceRefresh = detail?.forceRefresh;
+      const shouldAnimate = detail?.animate !== false;
       
       lastEventTimeRef.current = Date.now();
       
       if (typeof newBalance === 'number' && newBalance > 0) {
-        console.log(`Force update balance event: ${newBalance}€${gain ? ` (+${gain})` : ''}, animate: ${animate}, force: ${forceRefresh}`);
+        console.log(`Balance event received: ${amount ? `+${amount}` : ''} (new balance: ${newBalance})`);
         
-        // If we have a gain and animation is requested, show the animation
-        if (animate && gain) {
-          setGainAmount(gain);
+        // Calculate the gain amount if it exists
+        const gainAmount = amount > 0 ? amount : (newBalance > displayBalance ? newBalance - displayBalance : 0);
+        
+        // Only show animation if there's an actual gain and animation flag is true
+        if (gainAmount > 0 && shouldAnimate) {
+          setGainAmount(gainAmount);
           setShowGain(true);
           setIsAnimating(true);
-          setDisplayBalance(newBalance);
           
-          const timer = setTimeout(() => {
+          setTimeout(() => {
             setIsAnimating(false);
             setShowGain(false);
           }, 2000);
-          
-          return () => clearTimeout(timer);
-        } else {
-          // Even without animation, always update the displayed balance
-          setDisplayBalance(newBalance);
         }
         
-        // If forceRefresh is true, also update the balanceManager
-        if (forceRefresh) {
-          balanceManager.forceBalanceSync(newBalance);
-        }
+        // Always update the displayed balance to keep UI consistent
+        setDisplayBalance(newBalance);
       }
     };
     
-    // Listen for all balance-related events
-    window.addEventListener('balance:update' as any, handleBalanceUpdate);
-    window.addEventListener('balance:force-update' as any, handleForceUpdate);
-    window.addEventListener('dashboard:micro-gain' as any, handleBalanceUpdate);
+    // Register event listeners for all balance-related events
+    window.addEventListener('balance:update', handleBalanceEvent as EventListener);
+    window.addEventListener('balance:force-update', handleBalanceEvent as EventListener);
+    window.addEventListener('automatic:revenue', handleBalanceEvent as EventListener);
+    window.addEventListener('dashboard:micro-gain', handleBalanceEvent as EventListener);
     
+    // Cleanup
     return () => {
-      window.removeEventListener('balance:update' as any, handleBalanceUpdate);
-      window.removeEventListener('balance:force-update' as any, handleForceUpdate);
-      window.removeEventListener('dashboard:micro-gain' as any, handleBalanceUpdate);
+      window.removeEventListener('balance:update', handleBalanceEvent as EventListener);
+      window.removeEventListener('balance:force-update', handleBalanceEvent as EventListener);
+      window.removeEventListener('automatic:revenue', handleBalanceEvent as EventListener);
+      window.removeEventListener('dashboard:micro-gain', handleBalanceEvent as EventListener);
     };
-  }, []);
+  }, [displayBalance]);
 
   return (
     <CardContent className={`p-6 transition-all duration-300 ${

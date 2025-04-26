@@ -37,8 +37,8 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       const localBalance = balanceManager.getCurrentBalance();
 
       const saveBalanceToStorage = (balance: number) => {
-        // Explicitly convert to fixed decimal string
-        const balanceString = balance.toFixed(2);
+        // Convert number to string explicitly before storing
+        const balanceString = balance.toFixed(2).toString();
         
         const storageKey = (key: string) => userId ? `${key}_${userId}` : key;
         
@@ -101,11 +101,14 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       syncCounter.current = 2;
     };
     
+    // Listen to both standard updates and automatic bot updates
     window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
+    window.addEventListener('automatic:revenue', handleBalanceUpdate as EventListener);
     
     return () => {
       clearInterval(checkInterval);
       window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
+      window.removeEventListener('automatic:revenue', handleBalanceUpdate as EventListener);
     };
   }, [userId]);
 
