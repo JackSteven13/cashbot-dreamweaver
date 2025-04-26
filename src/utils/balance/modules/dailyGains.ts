@@ -1,5 +1,5 @@
 
-import { persistToLocalStorage, getFromLocalStorage } from '../storage/localStorageUtils';
+import { persistToLocalStorage, getFromLocalStorage, atomicUpdate } from '../storage/localStorageUtils';
 
 export class DailyGainsManager {
   private dailyGains: number = 0;
@@ -7,11 +7,69 @@ export class DailyGainsManager {
   private lastResetDate: string = '';
   private lastUpdateTime: number = 0;
   private processingUpdate: boolean = false;
+  private updateQueue: {amount: number}[] = [];
+  private isProcessingQueue: boolean = false;
   
   constructor(userId: string | null = null) {
     this.userId = userId;
     this.loadDailyGains();
     this.checkForDayChange();
+    
+    // Setup queue processor
+    this.setupQueueProcessor();
+  }
+  
+  private setupQueueProcessor() {
+    // Process queued updates every 200ms
+    setInterval(() => {
+      this.processUpdateQueue();
+    }, 200);
+  }
+  
+  private async processUpdateQueue() {
+    if (this.isProcessingQueue || this.updateQueue.length === 0) {
+      return;
+    }
+    
+    try {
+      this.isProcessingQueue = true;
+      
+      // Take the first update from the queue
+      const update = this.updateQueue.shift();
+      if (update) {
+        // Process the update directly
+        await this.processUpdate(update.amount);
+      }
+    } finally {
+      this.isProcessingQueue = false;
+      
+      // If there are more updates in the queue, process them on next interval
+      if (this.updateQueue.length > 0) {
+        // Add short delay between processing items
+        setTimeout(() => {
+          this.processUpdateQueue();
+        }, 50);
+      }
+    }
+  }
+  
+  private async processUpdate(amount: number) {
+    try {
+      this.checkForDayChange(); // Check for day change
+      
+      // Apply the update
+      this.dailyGains += amount;
+      
+      // Round to 2 decimal places to avoid floating point issues
+      this.dailyGains = Math.round(this.dailyGains * 100) / 100;
+      
+      const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
+      persistToLocalStorage(storageKey, this.dailyGains.toString());
+      
+      this.lastUpdateTime = Date.now();
+    } catch (e) {
+      console.error('Error processing daily gains update:', e);
+    }
   }
   
   private loadDailyGains(): void {
@@ -62,14 +120,16 @@ export class DailyGainsManager {
     
     // Rate limiting: prevent multiple rapid updates
     if (this.processingUpdate) {
-      console.log('Another daily gain update is in progress, skipping...');
+      console.log('Another daily gain update is in progress, queueing...');
+      this.queueUpdate(amount - this.dailyGains); // Queue the difference
       return;
     }
     
     // Minimum interval between updates (200ms)
     const now = Date.now();
     if (now - this.lastUpdateTime < 200) {
-      console.log('Daily gains updated too quickly, throttling...');
+      console.log('Daily gains updated too quickly, queueing...');
+      this.queueUpdate(amount - this.dailyGains); // Queue the difference
       return;
     }
     
@@ -103,14 +163,16 @@ export class DailyGainsManager {
     
     // Rate limiting: prevent multiple rapid updates
     if (this.processingUpdate) {
-      console.log('Another daily gain update is in progress, skipping...');
+      console.log('Another daily gain update is in progress, queueing...');
+      this.queueUpdate(amount);
       return;
     }
     
     // Minimum interval between updates (200ms)
     const now = Date.now();
     if (now - this.lastUpdateTime < 200) {
-      console.log('Daily gains updated too quickly, throttling...');
+      console.log('Daily gains updated too quickly, queueing...');
+      this.queueUpdate(amount);
       return;
     }
     
@@ -140,11 +202,19 @@ export class DailyGainsManager {
     }
   }
   
+  // Add to update queue for batched processing
+  private queueUpdate(amount: number): void {
+    this.updateQueue.push({ amount });
+  }
+  
   resetDailyGains(): void {
     this.dailyGains = 0;
     const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
     persistToLocalStorage(storageKey, '0');
     console.log('Daily gains reset to 0');
+    
+    // Clear the update queue on reset
+    this.updateQueue = [];
     
     // Dispatch an event to notify the rest of the application
     try {
