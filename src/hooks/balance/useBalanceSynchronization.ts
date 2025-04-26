@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -36,7 +37,7 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       const localBalance = balanceManager.getCurrentBalance();
 
       const saveBalanceToStorage = (balance: number) => {
-        // Explicitly convert balance to string with fixed precision
+        // Convert balance to string with fixed precision before saving to localStorage
         const balanceString = balance.toFixed(2);
         
         if (userId) {
@@ -53,6 +54,7 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       };
 
       if (localBalance > dbBalance) {
+        console.log(`Sync: Local balance (${localBalance}) is higher than DB balance (${dbBalance}). Updating DB.`);
         await supabase
           .from('user_balances')
           .update({ balance: localBalance })
@@ -60,6 +62,7 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
           
         saveBalanceToStorage(localBalance);
       } else if (dbBalance > localBalance && (dbBalance - localBalance) > TOLERANCE) {
+        console.log(`Sync: DB balance (${dbBalance}) is higher than local balance (${localBalance}). Updating local.`);
         balanceManager.forceBalanceSync(dbBalance, userId);
         saveBalanceToStorage(dbBalance);
         
@@ -67,7 +70,8 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
           detail: {
             newBalance: dbBalance,
             timestamp: Date.now(),
-            userId
+            userId,
+            animate: true // Ajouter animation pour montrer le changement
           }
         }));
       }
@@ -77,6 +81,9 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
   };
 
   useEffect(() => {
+    // Initial sync when component mounts
+    syncWithDatabase();
+    
     const checkInterval = setInterval(() => {
       syncCounter.current += 1;
       if (syncCounter.current >= 3) {
@@ -85,7 +92,18 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       }
     }, SYNC_INTERVAL);
     
-    return () => clearInterval(checkInterval);
+    // Listen for balance update events to trigger sync
+    const handleBalanceUpdate = () => {
+      // Reset the counter to force a sync sooner
+      syncCounter.current = 2;
+    };
+    
+    window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
+    
+    return () => {
+      clearInterval(checkInterval);
+      window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
+    };
   }, [userId]);
 
   return { syncWithDatabase };

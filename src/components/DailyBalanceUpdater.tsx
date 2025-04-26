@@ -17,6 +17,7 @@ const DailyBalanceUpdater: React.FC = () => {
   const userId = userData?.profile?.id;
   const initialSyncDone = useRef(false);
   const lastUpdateTime = useRef<number>(Date.now());
+  const forceUpdateCounter = useRef<number>(0);
 
   const { syncWithDatabase } = useBalanceSynchronization(userData);
   const { checkBalanceStability } = useBalanceStability(userData);
@@ -27,7 +28,7 @@ const DailyBalanceUpdater: React.FC = () => {
     if (userData?.balance && !initialSyncDone.current) {
       const currentBalance = parseFloat(userData.balance.toString());
       if (!isNaN(currentBalance)) {
-        const balanceString = currentBalance.toString();
+        const balanceString = currentBalance.toFixed(2);
         
         // Store all relevant balance values consistently
         if (userId) {
@@ -75,6 +76,26 @@ const DailyBalanceUpdater: React.FC = () => {
       if (now - lastUpdateTime.current > 20000) { // Every 20 seconds
         syncWithDatabase();
         lastUpdateTime.current = now;
+        
+        // Forcer une mise à jour de l'interface toutes les 5 vérifications
+        forceUpdateCounter.current += 1;
+        if (forceUpdateCounter.current >= 5) {
+          forceUpdateCounter.current = 0;
+          
+          // Obtenir la dernière valeur du balance manager
+          const currentBalance = balanceManager.getCurrentBalance();
+          
+          // Forcer une mise à jour de l'UI
+          window.dispatchEvent(new CustomEvent('balance:force-update', {
+            detail: { 
+              newBalance: currentBalance,
+              animate: false,
+              forceRefresh: true,
+              timestamp: now,
+              userId
+            }
+          }));
+        }
       }
     }, 15000); // Shorter interval for more frequent checks
     

@@ -62,6 +62,11 @@ export const useAutomaticRevenue = ({
     };
     
     updateLimitProgress();
+    
+    // Check limit progress periodically
+    const checkInterval = setInterval(updateLimitProgress, 60000); // Every minute
+    
+    return () => clearInterval(checkInterval);
   }, [userData, isBotActive, isNewUser]);
   
   // Listen for external events that modify bot state
@@ -82,6 +87,12 @@ export const useAutomaticRevenue = ({
         localStorage.setItem('botActive', isActive.toString());
       }
     };
+    
+    // Check if bot was previously active
+    const previouslyActive = localStorage.getItem('botActive') === 'true';
+    if (previouslyActive && !limitReached) {
+      setIsBotActive(true);
+    }
     
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('bot:external-status-change' as any, handleBotStatusChange);
@@ -168,29 +179,41 @@ export const useAutomaticRevenue = ({
         return false;
       }
       
+      console.log(`Automatic revenue generated: ${finalGain}€`);
+      
       // Update balance with generated gain
-      await updateBalance(finalGain, report, forceUpdate);
+      await updateBalance(finalGain, report, true);
       
       // Update balance manager
       balanceManager.updateBalance(finalGain);
       balanceManager.addDailyGain(finalGain);
       
-      console.log(`Automatic revenue generated: ${finalGain}€`);
+      // Get the current balance after update
+      const updatedBalance = balanceManager.getCurrentBalance();
       
-      // Trigger balance update animation
+      // Trigger balance update animation and UI refresh
       window.dispatchEvent(new CustomEvent('balance:update', { 
-        detail: { amount: finalGain, animate: true, userId, timestamp: Date.now() } 
+        detail: { 
+          amount: finalGain, 
+          animate: true, 
+          userId, 
+          timestamp: Date.now(),
+          currentBalance: updatedBalance
+        } 
       }));
       
       // Force a balance update to ensure UI is updated
-      window.dispatchEvent(new CustomEvent('balance:force-update', { 
-        detail: { 
-          newBalance: balanceManager.getCurrentBalance(), 
-          timestamp: Date.now(),
-          userId,
-          animate: true
-        } 
-      }));
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('balance:force-update', { 
+          detail: { 
+            newBalance: updatedBalance, 
+            timestamp: Date.now(),
+            userId,
+            animate: true,
+            gain: finalGain
+          } 
+        }));
+      }, 300);
       
       // Monitor for errors - ensure proper update
       setTimeout(() => {
@@ -199,8 +222,20 @@ export const useAutomaticRevenue = ({
         
         if (Math.abs(currentBalance - localStorageBalance) > 0.01) {
           console.log(`Balance inconsistency detected. Manager: ${currentBalance}, Storage: ${localStorageBalance}`);
-          balanceManager.forceBalanceSync(Math.max(currentBalance, localStorageBalance), userId);
-          localStorage.setItem(`currentBalance_${userId}`, balanceManager.getCurrentBalance().toString());
+          const maxBalance = Math.max(currentBalance, localStorageBalance);
+          balanceManager.forceBalanceSync(maxBalance, userId);
+          localStorage.setItem(`currentBalance_${userId}`, maxBalance.toFixed(2));
+          
+          // Forcer une mise à jour UI
+          window.dispatchEvent(new CustomEvent('balance:force-update', { 
+            detail: { 
+              newBalance: maxBalance, 
+              timestamp: Date.now(),
+              userId,
+              animate: false,
+              forceRefresh: true
+            } 
+          }));
         }
       }, 2000);
       
