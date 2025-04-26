@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { useUserData } from '@/hooks/useUserData';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -31,8 +32,9 @@ const DailyBalanceUpdater: React.FC = () => {
         highestObservedBalance.current = currentBalance;
       }
       
-      // Also check localStorage for highest values
-      const storedHighest = localStorage.getItem('highest_balance');
+      // Also check localStorage for highest values - with user-specific keys
+      const userKey = userId ? `highest_balance_${userId}` : 'highest_balance';
+      const storedHighest = localStorage.getItem(userKey);
       if (storedHighest) {
         const storedValue = parseFloat(storedHighest);
         if (!isNaN(storedValue) && storedValue > highestObservedBalance.current) {
@@ -40,13 +42,17 @@ const DailyBalanceUpdater: React.FC = () => {
         }
       }
       
-      // Store highest value back to localStorage (FIX: Convert to string)
-      localStorage.setItem('highest_balance', highestObservedBalance.current.toString());
+      // Store highest value back to localStorage with user-specific key
+      if (userId) {
+        localStorage.setItem(`highest_balance_${userId}`, highestObservedBalance.current.toString());
+      } else {
+        localStorage.setItem('highest_balance', highestObservedBalance.current.toString());
+      }
       
       // Also initialize stableBalanceRef as the starting point
       stableBalanceRef.current = highestObservedBalance.current;
     }
-  }, [userData]);
+  }, [userData, userId]);
   
   // Stabilize balance value for 10 seconds after page load
   useEffect(() => {
@@ -56,14 +62,21 @@ const DailyBalanceUpdater: React.FC = () => {
       if (!isNaN(currentBalance)) {
         lastVerifiedBalance.current = currentBalance;
         
-        // Store all relevant balance values to the same consistent value
-        localStorage.setItem('currentBalance', currentBalance.toString());
-        localStorage.setItem('lastKnownBalance', currentBalance.toString());
-        localStorage.setItem('lastUpdatedBalance', currentBalance.toString());
-        localStorage.setItem('highest_balance', currentBalance.toString());
+        // Store all relevant balance values to the same consistent value using user-specific keys
+        if (userId) {
+          localStorage.setItem(`currentBalance_${userId}`, currentBalance.toString());
+          localStorage.setItem(`lastKnownBalance_${userId}`, currentBalance.toString());
+          localStorage.setItem(`lastUpdatedBalance_${userId}`, currentBalance.toString());
+          localStorage.setItem(`highest_balance_${userId}`, currentBalance.toString());
+        } else {
+          localStorage.setItem('currentBalance', currentBalance.toString());
+          localStorage.setItem('lastKnownBalance', currentBalance.toString());
+          localStorage.setItem('lastUpdatedBalance', currentBalance.toString());
+          localStorage.setItem('highest_balance', currentBalance.toString());
+        }
         
         // Force consistent balance across the app
-        balanceManager.forceBalanceSync(currentBalance);
+        balanceManager.forceBalanceSync(currentBalance, userId);
         
         // Also update stable balance system
         stableBalance.setBalance(currentBalance);
@@ -78,13 +91,17 @@ const DailyBalanceUpdater: React.FC = () => {
     }, 10000);
     
     return () => clearTimeout(stabilizationPeriod);
-  }, []);
+  }, [userData, userId]);
   
   // Periodically check and repair balance inconsistencies
   useEffect(() => {
     const checkInterval = setInterval(() => {
       // Force repair every minute
-      repairInconsistentData();
+      if (userId) {
+        repairInconsistentData(userId);
+      } else {
+        repairInconsistentData();
+      }
       
       // Check for balance stability
       checkBalanceStability();
@@ -98,7 +115,7 @@ const DailyBalanceUpdater: React.FC = () => {
     }, 30000); // Every 30 seconds
     
     return () => clearInterval(checkInterval);
-  }, []);
+  }, [userId]);
   
   // Set up protection against unexpected balance decreases
   useEffect(() => {
@@ -111,7 +128,13 @@ const DailyBalanceUpdater: React.FC = () => {
         const newBalance = (userData?.balance || 0) + amount;
         if (newBalance > highestObservedBalance.current) {
           highestObservedBalance.current = newBalance;
-          localStorage.setItem('highest_balance', newBalance.toString());
+          
+          // Use user-specific key for storage
+          if (userId) {
+            localStorage.setItem(`highest_balance_${userId}`, newBalance.toString());
+          } else {
+            localStorage.setItem('highest_balance', newBalance.toString());
+          }
         }
       }
     };
@@ -124,7 +147,13 @@ const DailyBalanceUpdater: React.FC = () => {
         // Update highest observed balance
         if (newBalance > highestObservedBalance.current) {
           highestObservedBalance.current = newBalance;
-          localStorage.setItem('highest_balance', newBalance.toString());
+          
+          // Use user-specific key for storage
+          if (userId) {
+            localStorage.setItem(`highest_balance_${userId}`, newBalance.toString());
+          } else {
+            localStorage.setItem('highest_balance', newBalance.toString());
+          }
         }
         
         // Record this as a stable balance point
@@ -150,7 +179,8 @@ const DailyBalanceUpdater: React.FC = () => {
                   detail: {
                     newBalance: highestObservedBalance.current,
                     timestamp: Date.now(),
-                    protected: true
+                    protected: true,
+                    userId: userId
                   }
                 }));
               }, 100);
@@ -168,7 +198,7 @@ const DailyBalanceUpdater: React.FC = () => {
       window.removeEventListener('balance:update' as any, handleBalanceUpdate);
       window.removeEventListener('balance:force-update' as any, handleBalanceForceUpdate);
     };
-  }, [userData]);
+  }, [userData, userId]);
   
   // Function to check if balance is stable
   const checkBalanceStability = () => {
@@ -198,13 +228,21 @@ const DailyBalanceUpdater: React.FC = () => {
         if (referenceBalance - currentBalance > TOLERANCE) {
           console.log(`Restoring balance to reference: ${currentBalance}€ → ${referenceBalance}€`);
           
-          balanceManager.forceBalanceSync(referenceBalance);
+          // Update balance with user-specific context
+          balanceManager.forceBalanceSync(referenceBalance, userId);
           
-          // Update all localStorage values to be consistent - FIX: Convert all numbers to strings
-          localStorage.setItem('currentBalance', referenceBalance.toString());
-          localStorage.setItem('lastKnownBalance', referenceBalance.toString());
-          localStorage.setItem('lastUpdatedBalance', referenceBalance.toString());
-          localStorage.setItem('highest_balance', referenceBalance.toString());
+          // Update all localStorage values to be consistent with user-specific keys
+          if (userId) {
+            localStorage.setItem(`currentBalance_${userId}`, referenceBalance.toString());
+            localStorage.setItem(`lastKnownBalance_${userId}`, referenceBalance.toString());
+            localStorage.setItem(`lastUpdatedBalance_${userId}`, referenceBalance.toString());
+            localStorage.setItem(`highest_balance_${userId}`, referenceBalance.toString());
+          } else {
+            localStorage.setItem('currentBalance', referenceBalance.toString());
+            localStorage.setItem('lastKnownBalance', referenceBalance.toString());
+            localStorage.setItem('lastUpdatedBalance', referenceBalance.toString());
+            localStorage.setItem('highest_balance', referenceBalance.toString());
+          }
           
           // Update stable balance system
           stableBalance.setBalance(referenceBalance);
@@ -213,12 +251,13 @@ const DailyBalanceUpdater: React.FC = () => {
             detail: {
               newBalance: referenceBalance,
               timestamp: Date.now(),
-              protected: true
+              protected: true,
+              userId: userId
             }
           }));
           
           // Also run repair routine
-          repairInconsistentData();
+          repairInconsistentData(userId);
           
           // Show toast to user (but not too often)
           const lastToastTime = parseInt(localStorage.getItem('lastBalanceToastTime') || '0');
@@ -237,7 +276,13 @@ const DailyBalanceUpdater: React.FC = () => {
       else if (currentBalance > referenceBalance) {
         highestObservedBalance.current = currentBalance;
         stableBalanceRef.current = currentBalance;
-        localStorage.setItem('highest_balance', currentBalance.toString());
+        
+        // Use user-specific key for storage
+        if (userId) {
+          localStorage.setItem(`highest_balance_${userId}`, currentBalance.toString());
+        } else {
+          localStorage.setItem('highest_balance', currentBalance.toString());
+        }
         
         // Also update stable balance system
         stableBalance.setBalance(currentBalance);
@@ -279,7 +324,9 @@ const DailyBalanceUpdater: React.FC = () => {
       // Update highest observed if db balance is higher
       if (!isNaN(dbBalance) && dbBalance > highestObservedBalance.current) {
         highestObservedBalance.current = dbBalance;
-        localStorage.setItem('highest_balance', dbBalance.toString());
+        
+        // Use user-specific key for storage
+        localStorage.setItem(`highest_balance_${userId}`, dbBalance.toString());
       }
       
       // If local balance is higher than db, update database
@@ -299,17 +346,17 @@ const DailyBalanceUpdater: React.FC = () => {
       else if (dbBalance > localBalance && (dbBalance - localBalance) > TOLERANCE) {
         console.log(`Updating local balance from database: ${localBalance} → ${dbBalance}`);
         
-        // Force update the local balance
-        balanceManager.forceBalanceSync(dbBalance);
+        // Force update the local balance with user context
+        balanceManager.forceBalanceSync(dbBalance, userId);
         
         // Update stable balance system
         stableBalance.setBalance(dbBalance);
         
-        // Update all localStorage values - FIX: Ensure everything is converted to string
-        localStorage.setItem('currentBalance', dbBalance.toString());
-        localStorage.setItem('lastKnownBalance', dbBalance.toString());
-        localStorage.setItem('lastUpdatedBalance', dbBalance.toString());
-        localStorage.setItem('highest_balance', dbBalance.toString());
+        // Update all localStorage values with user-specific keys
+        localStorage.setItem(`currentBalance_${userId}`, dbBalance.toString());
+        localStorage.setItem(`lastKnownBalance_${userId}`, dbBalance.toString());
+        localStorage.setItem(`lastUpdatedBalance_${userId}`, dbBalance.toString());
+        localStorage.setItem(`highest_balance_${userId}`, dbBalance.toString());
         
         // Update references
         stableBalanceRef.current = dbBalance;
@@ -318,7 +365,8 @@ const DailyBalanceUpdater: React.FC = () => {
         window.dispatchEvent(new CustomEvent('balance:force-update', {
           detail: {
             newBalance: dbBalance,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            userId: userId
           }
         }));
       }

@@ -1,256 +1,223 @@
 
-import { persistBalance, getPersistedBalance } from './balanceStorage';
-import { DailyGainsManager } from './modules/dailyGains';
-import { BalanceWatcher } from './modules/balanceWatcher';
+import { getStorageKeys, persistBalance, getPersistedBalance } from './balanceStorage';
 
+/**
+ * Gestionnaire centralisé du solde utilisateur pour assurer la cohérence
+ * entre les différentes parties de l'application
+ */
 class BalanceManager {
   private currentBalance: number = 0;
+  private dailyGains: number = 0;
   private highestBalance: number = 0;
   private userId: string | null = null;
-  private lastSyncTimestamp: number = 0;
-  private updatingBalance: boolean = false;
-  private updateQueue: number[] = [];
-  private pendingTimeout: NodeJS.Timeout | null = null;
-  
-  private dailyGainsManager: DailyGainsManager;
-  private balanceWatcher: BalanceWatcher;
   
   constructor() {
-    this.dailyGainsManager = new DailyGainsManager();
-    this.balanceWatcher = new BalanceWatcher();
-    
-    // Initialize with persisted balance
-    this.currentBalance = getPersistedBalance(this.userId);
-    
-    // Try to get highest balance from localStorage
     try {
-      const storedHighestBalance = localStorage.getItem(this.userId ? `highest_balance_${this.userId}` : 'highest_balance');
-      if (storedHighestBalance !== null) {
+      // Récupérer l'ID utilisateur depuis localStorage si disponible
+      this.userId = localStorage.getItem('lastKnownUserId');
+      
+      // Initialiser avec les valeurs stockées
+      this.initFromStorage();
+    } catch (e) {
+      console.error('Error initializing BalanceManager:', e);
+    }
+  }
+  
+  /**
+   * Initialiser les valeurs depuis le stockage local
+   */
+  private initFromStorage(): void {
+    try {
+      // Utiliser des clés spécifiques à l'utilisateur si disponible
+      const storedBalance = getPersistedBalance(this.userId);
+      this.currentBalance = storedBalance;
+      
+      // Récupérer les gains journaliers
+      const keys = getStorageKeys(this.userId);
+      
+      const storedDailyGains = localStorage.getItem(keys.dailyGains);
+      if (storedDailyGains) {
+        this.dailyGains = parseFloat(storedDailyGains);
+      }
+      
+      // Récupérer le solde le plus élevé
+      const storedHighestBalance = localStorage.getItem(keys.highestBalance);
+      if (storedHighestBalance) {
         this.highestBalance = parseFloat(storedHighestBalance);
+      } else {
+        this.highestBalance = this.currentBalance;
       }
     } catch (e) {
-      console.error('Failed to load highest balance:', e);
+      console.error('Error initializing from storage:', e);
     }
-    
-    this.setupEventListeners();
   }
   
-  private setupEventListeners(): void {
-    window.addEventListener('db:balance-updated', ((event: CustomEvent) => {
-      if (event.detail && typeof event.detail.newBalance === 'number') {
-        const dbBalance = event.detail.newBalance;
-        if (dbBalance > this.currentBalance || event.detail.force) {
-          console.log(`Updating balance from DB sync: ${this.currentBalance.toFixed(2)} -> ${dbBalance.toFixed(2)}`);
-          this.forceBalanceSync(dbBalance);
-        } else {
-          console.log(`Ignoring DB sync with lower balance: DB=${dbBalance.toFixed(2)}, Local=${this.currentBalance.toFixed(2)}`);
-        }
-      }
-    }) as EventListener);
-    
-    // Listen for balance reset events
-    window.addEventListener('balance:reset', () => {
-      console.log('Balance reset event received');
-      this.resetUpdateQueue();
-    });
-    
-    // Listen for browser visibility changes
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') {
-        // Flush any pending updates before page becomes hidden
-        this.flushUpdateQueue();
+  /**
+   * Définir l'ID utilisateur actuel
+   */
+  public setUserId(userId: string | null): void {
+    if (this.userId !== userId) {
+      console.log(`Changing user ID: ${this.userId || 'none'} → ${userId || 'none'}`);
+      this.userId = userId;
+      
+      // Sauvegarder l'ID utilisateur actuel
+      if (userId) {
+        localStorage.setItem('lastKnownUserId', userId);
       } else {
-        // Page is visible again, check if we need to reset the queue
-        this.resetUpdateQueue();
-      }
-    });
-  }
-  
-  private resetUpdateQueue(): void {
-    this.updateQueue = [];
-    if (this.pendingTimeout) {
-      clearTimeout(this.pendingTimeout);
-      this.pendingTimeout = null;
-    }
-    this.updatingBalance = false;
-  }
-  
-  private flushUpdateQueue(): void {
-    if (this.updateQueue.length === 0) return;
-    
-    const totalUpdate = this.updateQueue.reduce((sum, amount) => sum + amount, 0);
-    if (totalUpdate !== 0) {
-      this.processBalanceUpdate(totalUpdate);
-    }
-    
-    this.resetUpdateQueue();
-  }
-  
-  private processBalanceUpdate(amount: number): void {
-    // Apply the actual balance change
-    const oldBalance = this.currentBalance;
-    
-    // Round to 2 decimal places to avoid floating point errors
-    this.currentBalance = Math.round((this.currentBalance + amount) * 100) / 100;
-    
-    persistBalance(this.currentBalance, this.userId);
-    this.updateHighestBalance(this.currentBalance);
-    this.balanceWatcher.notifyWatchers(this.currentBalance);
-    this.lastSyncTimestamp = Date.now();
-    
-    console.log(`Balance updated: ${oldBalance.toFixed(2)} -> ${this.currentBalance.toFixed(2)} (${amount > 0 ? '+' : ''}${amount.toFixed(4)})`);
-  }
-  
-  // Core balance methods
-  getCurrentBalance(): number {
-    if (!isNaN(this.currentBalance)) {
-      return this.currentBalance;
-    }
-    
-    const persistedBalance = getPersistedBalance(this.userId);
-    this.currentBalance = persistedBalance;
-    return persistedBalance;
-  }
-  
-  updateBalance(amount: number): number {
-    if (isNaN(amount)) {
-      console.error('Invalid amount provided to updateBalance:', amount);
-      return this.currentBalance;
-    }
-    
-    if (amount === 0) {
-      return this.currentBalance;
-    }
-    
-    // Round amount to 4 decimal places for consistency
-    const roundedAmount = Math.round(amount * 10000) / 10000;
-    
-    if (this.updatingBalance) {
-      // Queue the update to avoid race conditions
-      this.updateQueue.push(roundedAmount);
-      
-      // Set a timeout to flush the queue if no more updates come in
-      if (this.pendingTimeout) {
-        clearTimeout(this.pendingTimeout);
+        localStorage.removeItem('lastKnownUserId');
       }
       
-      this.pendingTimeout = setTimeout(() => {
-        this.flushUpdateQueue();
-      }, 200);
-      
-      return this.currentBalance;
+      // Réinitialiser le gestionnaire avec les valeurs spécifiques à cet utilisateur
+      this.initFromStorage();
     }
-    
-    this.updatingBalance = true;
-    
-    try {
-      this.processBalanceUpdate(roundedAmount);
-    } finally {
-      this.updatingBalance = false;
-      
-      // Process any queued updates
-      if (this.updateQueue.length > 0) {
-        setTimeout(() => this.flushUpdateQueue(), 50);
-      }
-    }
-    
+  }
+  
+  /**
+   * Obtenir l'ID utilisateur actuel
+   */
+  public getUserId(): string | null {
+    return this.userId;
+  }
+  
+  /**
+   * Obtenir le solde actuel
+   */
+  public getCurrentBalance(): number {
     return this.currentBalance;
   }
   
-  forceBalanceSync(newBalance: number, userId: string | null = null): void {
-    if (userId !== null && userId !== this.userId) {
-      this.setUserId(userId);
-    }
-    
-    if (isNaN(newBalance)) {
-      console.error('Invalid balance provided to forceBalanceSync:', newBalance);
-      return;
-    }
-    
-    // Reset any pending updates when forcing a sync
-    this.resetUpdateQueue();
-    
-    const oldBalance = this.currentBalance;
-    
-    // Always use the higher precision value from the two sources
-    if (newBalance > oldBalance || Date.now() - this.lastSyncTimestamp > 5000) {
-      // Round to 2 decimal places for consistent display
-      const roundedBalance = Math.round(newBalance * 100) / 100;
-      this.currentBalance = roundedBalance;
-      persistBalance(this.currentBalance, this.userId);
-      this.updateHighestBalance(this.currentBalance);
-      
-      if (oldBalance !== roundedBalance) {
-        console.log(`Balance force synced: ${oldBalance.toFixed(2)} -> ${roundedBalance.toFixed(2)}`);
-        this.balanceWatcher.notifyWatchers(this.currentBalance);
-      }
-      
-      this.lastSyncTimestamp = Date.now();
-    } else {
-      console.log(`Ignoring DB sync with lower balance: DB=${newBalance.toFixed(2)}, Local=${oldBalance.toFixed(2)}`);
-    }
-  }
-  
-  // User management
-  setUserId(userId: string | null): void {
-    if (this.userId !== userId) {
-      this.userId = userId;
-      this.currentBalance = getPersistedBalance(userId);
-      this.dailyGainsManager.setUserId(userId);
-      
-      // Reset update queue when changing users
-      this.resetUpdateQueue();
-    }
-  }
-  
-  // Daily gains methods - delegate to dailyGainsManager
-  getDailyGains = (): number => this.dailyGainsManager.getDailyGains();
-  setDailyGains = (amount: number): void => this.dailyGainsManager.setDailyGains(amount);
-  addDailyGain = (amount: number): void => this.dailyGainsManager.addDailyGain(amount);
-  resetDailyGains = (): void => this.dailyGainsManager.resetDailyGains();
-  
-  // History tracking
-  getHighestBalance(): number {
+  /**
+   * Obtenir le solde le plus élevé
+   */
+  public getHighestBalance(): number {
     return this.highestBalance;
   }
   
-  updateHighestBalance(balance: number): void {
-    if (balance > this.highestBalance) {
-      this.highestBalance = balance;
-      try {
-        localStorage.setItem(this.userId ? `highest_balance_${this.userId}` : 'highest_balance', balance.toString());
-      } catch (e) {
-        console.error('Failed to store highest balance:', e);
+  /**
+   * Mettre à jour le solde
+   */
+  public updateBalance(amount: number, userId?: string | null): void {
+    try {
+      // Utiliser l'ID fourni ou l'ID stocké
+      const effectiveUserId = userId || this.userId;
+      
+      // Si l'ID change, mettre à jour l'ID interne
+      if (userId && userId !== this.userId) {
+        this.setUserId(userId);
       }
+      
+      // Ajouter au solde actuel
+      const newBalance = this.currentBalance + amount;
+      this.currentBalance = newBalance;
+      
+      // Mettre à jour le solde le plus élevé si nécessaire
+      if (newBalance > this.highestBalance) {
+        this.highestBalance = newBalance;
+        
+        // Stocker le solde le plus élevé
+        const keys = getStorageKeys(effectiveUserId);
+        localStorage.setItem(keys.highestBalance, newBalance.toString());
+      }
+      
+      // Mettre à jour les gains journaliers
+      this.dailyGains += amount;
+      
+      // Persister les modifications
+      persistBalance(newBalance, effectiveUserId);
+      
+      // Stocker les gains journaliers
+      const keys = getStorageKeys(effectiveUserId);
+      localStorage.setItem(keys.dailyGains, this.dailyGains.toString());
+      
+      // Déclencher un événement pour notifier les autres composants
+      window.dispatchEvent(new CustomEvent('balance:update', { 
+        detail: { 
+          amount,
+          newBalance,
+          timestamp: Date.now(),
+          userId: effectiveUserId
+        } 
+      }));
+      
+      console.log(`Balance updated: +${amount}€ = ${newBalance}€ (User: ${effectiveUserId || 'none'})`);
+    } catch (e) {
+      console.error('Error updating balance:', e);
     }
   }
   
-  // Event subscription
-  addWatcher(callback: (newBalance: number) => void): () => void {
-    return this.balanceWatcher.addWatcher(callback);
+  /**
+   * Forcer la synchronisation du solde avec une valeur spécifique
+   */
+  public forceBalanceSync(newBalance: number, userId?: string | null): void {
+    try {
+      // Utiliser l'ID fourni ou l'ID stocké
+      const effectiveUserId = userId || this.userId;
+      
+      // Si l'ID change, mettre à jour l'ID interne
+      if (userId && userId !== this.userId) {
+        this.setUserId(userId);
+      }
+      
+      console.log(`Balance force synced: ${this.currentBalance} -> ${newBalance} (User: ${effectiveUserId || 'none'})`);
+      
+      // Mettre à jour le solde actuel
+      this.currentBalance = newBalance;
+      
+      // Mettre à jour le solde le plus élevé si nécessaire
+      if (newBalance > this.highestBalance) {
+        this.highestBalance = newBalance;
+        
+        // Stocker le solde le plus élevé
+        const keys = getStorageKeys(effectiveUserId);
+        localStorage.setItem(keys.highestBalance, newBalance.toString());
+      }
+      
+      // Persister les modifications
+      persistBalance(newBalance, effectiveUserId);
+      
+      // Déclencher un événement pour notifier les autres composants
+      window.dispatchEvent(new CustomEvent('balance:force-update', { 
+        detail: { 
+          newBalance,
+          timestamp: Date.now(),
+          userId: effectiveUserId
+        } 
+      }));
+    } catch (e) {
+      console.error('Error force syncing balance:', e);
+    }
   }
   
-  // Advanced features
-  checkForSignificantBalanceChange(newBalance: number): boolean {
-    const threshold = Math.max(this.currentBalance * 0.01, 0.01);
-    return Math.abs(newBalance - this.currentBalance) > threshold;
+  /**
+   * Définir les gains journaliers
+   */
+  public setDailyGains(amount: number): void {
+    this.dailyGains = amount;
+    
+    // Stocker les gains journaliers
+    const keys = getStorageKeys(this.userId);
+    localStorage.setItem(keys.dailyGains, amount.toString());
   }
   
-  // Debug function to get balance state
-  getDebugInfo(): object {
-    return {
-      currentBalance: this.currentBalance,
-      highestBalance: this.highestBalance,
-      userId: this.userId,
-      lastSyncTimestamp: this.lastSyncTimestamp,
-      updatingBalance: this.updatingBalance,
-      queuedUpdates: this.updateQueue.length,
-      dailyGains: this.getDailyGains()
-    };
+  /**
+   * Obtenir les gains journaliers
+   */
+  public getDailyGains(): number {
+    return this.dailyGains;
+  }
+  
+  /**
+   * Réinitialiser les gains journaliers
+   */
+  public resetDailyGains(): void {
+    this.dailyGains = 0;
+    
+    // Stocker les gains journaliers
+    const keys = getStorageKeys(this.userId);
+    localStorage.setItem(keys.dailyGains, '0');
   }
 }
 
-// Create a singleton instance
+// Exporter une instance unique
 const balanceManager = new BalanceManager();
-
 export default balanceManager;

@@ -39,22 +39,23 @@ export const getPersistedBalance = (userId: string | null): number => {
   }
 };
 
-// Add the missing cleanOtherUserData function
+// Fonction pour nettoyer les données d'autres utilisateurs
 export const cleanOtherUserData = (currentUserId: string | null): void => {
   try {
-    // Get all localStorage keys
+    // Récupérer toutes les clés du localStorage
     const allKeys = Object.keys(localStorage);
     
-    // Filter keys that belong to other users
+    // Filtrer les clés qui appartiennent à d'autres utilisateurs
     allKeys.forEach(key => {
-      // Check if this is a user-specific key (contains an ID that's not the current user's)
+      // Vérifier si c'est une clé spécifique à un utilisateur (contient un ID qui n'est pas celui de l'utilisateur actuel)
       if (key.includes('_') && key.split('_').length > 1) {
-        // Extract the user ID from the key
+        // Extraire l'ID utilisateur de la clé
         const keyParts = key.split('_');
         const keyUserId = keyParts[keyParts.length - 1];
         
-        // If this is a user-specific key and not for the current user, remove it
+        // Si cette clé est spécifique à un utilisateur et pas pour l'utilisateur actuel, la supprimer
         if (keyUserId !== currentUserId && keyUserId.length > 5) {
+          console.log(`Removing data from other user: ${key}`);
           localStorage.removeItem(key);
         }
       }
@@ -66,15 +67,15 @@ export const cleanOtherUserData = (currentUserId: string | null): void => {
   }
 };
 
-// Add the missing getUserSpecificKeys function
+// Fonction pour obtenir toutes les clés spécifiques à un utilisateur
 export const getUserSpecificKeys = (userId: string | null): string[] => {
   if (!userId) return [];
   
   try {
-    // Get all localStorage keys
+    // Récupérer toutes les clés du localStorage
     const allKeys = Object.keys(localStorage);
     
-    // Filter keys that belong to the specified user
+    // Filtrer les clés qui appartiennent à l'utilisateur spécifié
     return allKeys.filter(key => 
       key.endsWith(`_${userId}`) || 
       key.includes(`_${userId}_`)

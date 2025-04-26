@@ -1,242 +1,148 @@
 
 /**
- * Utility to manage balance stability across the application
- * This is a central utility to prevent balance fluctuations
+ * Système de gestion du solde stable qui maintient une valeur cohérente
+ * et permet aux composants de s'abonner aux modifications
  */
 
-type BalanceListener = (balance: number) => void;
+type BalanceListener = (newBalance: number) => void;
 
-class StableBalanceManager {
-  private stableBalance: number = 0;
-  private highestBalance: number = 0;
+class StableBalance {
+  private balance: number = 0;
   private listeners: BalanceListener[] = [];
-  private lastUpdateTime: number = 0;
-  private isInitialized: boolean = false;
-  private syncInProgress: boolean = false;
-  private lastSyncedBalance: number = 0;
-  private syncQueue: number[] = [];
-  private updateDebounceTime: number = 500; // Minimum time between updates
+  private userId: string | null = null;
   
   constructor() {
-    // Initialize with values from localStorage
     this.initialize();
-    
-    // Listen for window focus to check if balance needs restoration
-    if (typeof window !== 'undefined') {
-      window.addEventListener('focus', this.checkAndRestoreBalance);
-    }
   }
-  
-  private initialize() {
-    try {
-      // Try to get highest known balance from localStorage
-      const storedHighest = localStorage.getItem('highest_balance');
-      if (storedHighest) {
-        const parsed = parseFloat(storedHighest);
-        if (!isNaN(parsed) && parsed > 0) {
-          this.highestBalance = parsed;
-        }
-      }
-      
-      // Try to get current balance from localStorage
-      const storedCurrent = localStorage.getItem('currentBalance');
-      if (storedCurrent) {
-        const parsed = parseFloat(storedCurrent);
-        if (!isNaN(parsed) && parsed > 0) {
-          this.stableBalance = parsed;
-          this.lastSyncedBalance = parsed;
-        }
-      }
-      
-      // Safety - ensure stable balance is at least equal to highest balance
-      if (this.highestBalance > this.stableBalance) {
-        this.stableBalance = this.highestBalance;
-      }
-      
-      // Add event listeners for balance updates
-      if (typeof window !== 'undefined') {
-        window.addEventListener('balance:update', this.handleBalanceUpdate as EventListener);
-        window.addEventListener('balance:force-update', this.handleForceUpdate as EventListener);
-      }
-      
-      this.isInitialized = true;
-      console.log(`StableBalanceManager initialized with balance: ${this.stableBalance.toFixed(2)}`);
-    } catch (err) {
-      console.error('Error initializing StableBalanceManager:', err);
-    }
-  }
-  
-  private handleBalanceUpdate = (event: CustomEvent) => {
-    const detail = event.detail;
-    if (!detail) return;
-    
-    const amount = detail.amount;
-    if (typeof amount === 'number' && amount > 0) {
-      const newBalance = this.stableBalance + amount;
-      this.updateBalance(newBalance);
-    }
-  }
-  
-  private handleForceUpdate = (event: CustomEvent) => {
-    const detail = event.detail;
-    if (!detail) return;
-    
-    const newBalance = detail.newBalance;
-    if (typeof newBalance === 'number' && newBalance > 0) {
-      // Only allow increases or very small decreases (within 1%)
-      if (newBalance >= this.stableBalance || 
-          (this.stableBalance - newBalance) / this.stableBalance < 0.01) {
-        this.updateBalance(newBalance);
-      } else {
-        console.warn(`Prevented balance decrease: ${this.stableBalance.toFixed(2)} → ${newBalance.toFixed(2)}`);
-      }
-    }
-  }
-  
-  private updateBalance(newBalance: number) {
-    // Prevent rapid updates
-    const now = Date.now();
-    if (now - this.lastUpdateTime < this.updateDebounceTime) {
-      // Queue the update
-      this.syncQueue.push(newBalance);
-      
-      // Start processing the queue if not already in progress
-      if (!this.syncInProgress) {
-        this.syncInProgress = true;
-        setTimeout(() => this.processUpdateQueue(), this.updateDebounceTime);
-      }
-      return;
-    }
-    
-    // Prevent NaN or negative values
-    if (isNaN(newBalance) || newBalance < 0) {
-      console.warn(`Invalid balance value: ${newBalance}, keeping ${this.stableBalance}`);
-      return;
-    }
-    
-    // Update highest observed balance if needed
-    if (newBalance > this.highestBalance) {
-      this.highestBalance = newBalance;
-      localStorage.setItem('highest_balance', newBalance.toString());
-    }
-    
-    // Update the stable balance
-    this.stableBalance = newBalance;
-    this.lastSyncedBalance = newBalance;
-    
-    // Save to localStorage with all possible keys for redundancy
-    localStorage.setItem('currentBalance', newBalance.toString());
-    localStorage.setItem('lastKnownBalance', newBalance.toString());
-    localStorage.setItem('lastUpdatedBalance', newBalance.toString());
-    
-    // Update timestamp
-    this.lastUpdateTime = now;
-    
-    // Notify all listeners
-    this.notifyListeners();
-    
-    console.log(`StableBalance updated to ${newBalance.toFixed(2)}`);
-  }
-  
-  private processUpdateQueue() {
-    if (this.syncQueue.length === 0) {
-      this.syncInProgress = false;
-      return;
-    }
-    
-    // Find the highest value in the queue
-    const maxBalance = Math.max(...this.syncQueue);
-    
-    // Clear the queue
-    this.syncQueue = [];
-    
-    // Update with the highest value
-    this.updateBalance(maxBalance);
-    
-    // Check if there are more updates after this one
-    setTimeout(() => {
-      if (this.syncQueue.length > 0) {
-        this.processUpdateQueue();
-      } else {
-        this.syncInProgress = false;
-      }
-    }, this.updateDebounceTime);
-  }
-  
-  private notifyListeners() {
-    for (const listener of this.listeners) {
-      try {
-        listener(this.stableBalance);
-      } catch (err) {
-        console.error('Error in balance listener:', err);
-      }
-    }
-  }
-  
-  private checkAndRestoreBalance = () => {
-    // If the balance has decreased since last sync, restore it
-    const currentLocalBalance = parseFloat(localStorage.getItem('currentBalance') || '0');
-    if (currentLocalBalance < this.lastSyncedBalance) {
-      console.log(`Restoring balance after focus: ${currentLocalBalance} → ${this.lastSyncedBalance}`);
-      this.updateBalance(this.lastSyncedBalance);
-    }
-  }
-  
-  // Public API
   
   /**
-   * Get the current stable balance
+   * Initialiser le solde depuis localStorage
+   */
+  private initialize(): void {
+    try {
+      // Récupérer l'ID utilisateur actuel
+      this.userId = localStorage.getItem('lastKnownUserId');
+      
+      // Utiliser une clé spécifique à l'utilisateur si disponible
+      const storageKey = this.userId ? `stableBalance_${this.userId}` : 'stableBalance';
+      const storedBalance = localStorage.getItem(storageKey);
+      
+      // Récupérer également d'autres sources potentielles
+      const currentBalanceKey = this.userId ? `currentBalance_${this.userId}` : 'currentBalance';
+      const lastKnownBalanceKey = this.userId ? `lastKnownBalance_${this.userId}` : 'lastKnownBalance';
+      const highestBalanceKey = this.userId ? `highest_balance_${this.userId}` : 'highest_balance';
+      
+      const currentBalance = localStorage.getItem(currentBalanceKey);
+      const lastKnownBalance = localStorage.getItem(lastKnownBalanceKey);
+      const highestBalance = localStorage.getItem(highestBalanceKey);
+      
+      // Collecter toutes les sources et trouver le maximum
+      const sources = [
+        storedBalance ? parseFloat(storedBalance) : 0,
+        currentBalance ? parseFloat(currentBalance) : 0,
+        lastKnownBalance ? parseFloat(lastKnownBalance) : 0,
+        highestBalance ? parseFloat(highestBalance) : 0
+      ];
+      
+      // Filtrer les valeurs valides
+      const validSources = sources.filter(value => !isNaN(value) && value > 0);
+      
+      // Utiliser la valeur maximale ou 0 si aucune valeur valide
+      this.balance = validSources.length > 0 ? Math.max(...validSources) : 0;
+      
+      // Stocker la valeur initiale
+      this.persistBalance();
+    } catch (e) {
+      console.error('Error initializing stable balance:', e);
+    }
+  }
+  
+  /**
+   * Persister le solde dans localStorage
+   */
+  private persistBalance(): void {
+    try {
+      // Utiliser une clé spécifique à l'utilisateur si disponible
+      const storageKey = this.userId ? `stableBalance_${this.userId}` : 'stableBalance';
+      localStorage.setItem(storageKey, this.balance.toString());
+    } catch (e) {
+      console.error('Error persisting stable balance:', e);
+    }
+  }
+  
+  /**
+   * Définir l'ID utilisateur
+   */
+  public setUserId(userId: string | null): void {
+    if (this.userId !== userId) {
+      console.log(`Stable balance: changing user ID from ${this.userId || 'none'} to ${userId || 'none'}`);
+      this.userId = userId;
+      
+      // Réinitialiser avec les valeurs de cet utilisateur
+      this.initialize();
+    }
+  }
+  
+  /**
+   * Obtenir le solde actuel
    */
   public getBalance(): number {
-    // Always return the highest value between stable balance and highest balance
-    return Math.max(this.stableBalance, this.highestBalance);
+    return this.balance;
   }
   
   /**
-   * Forcibly set the balance to a specific value
-   * Only allows increases, never decreases
+   * Définir le solde et notifier les abonnés
    */
-  public setBalance(newBalance: number): boolean {
-    // Only allow increases
-    if (newBalance >= this.stableBalance) {
-      this.updateBalance(newBalance);
-      return true;
+  public setBalance(newBalance: number): void {
+    try {
+      // Vérifier si la valeur est valide
+      if (typeof newBalance !== 'number' || isNaN(newBalance)) {
+        console.error(`Invalid balance value: ${newBalance}`);
+        return;
+      }
+      
+      // Ne mettre à jour que si la valeur a changé
+      if (newBalance !== this.balance) {
+        console.log(`Stable balance updated: ${this.balance} -> ${newBalance} (User: ${this.userId || 'none'})`);
+        this.balance = newBalance;
+        
+        // Persister la nouvelle valeur
+        this.persistBalance();
+        
+        // Notifier tous les abonnés
+        this.notifyListeners();
+      }
+    } catch (e) {
+      console.error('Error setting stable balance:', e);
     }
-    return false;
   }
   
   /**
-   * Add an amount to the current balance
+   * Ajouter un écouteur pour les modifications de solde
    */
-  public addToBalance(amount: number): number {
-    if (amount <= 0) return this.stableBalance;
+  public addListener(listener: BalanceListener): () => void {
+    this.listeners.push(listener);
     
-    const newBalance = this.stableBalance + amount;
-    this.updateBalance(newBalance);
-    return newBalance;
-  }
-  
-  /**
-   * Register a listener for balance changes
-   */
-  public addListener(callback: BalanceListener): () => void {
-    this.listeners.push(callback);
-    
-    // Return function to remove this listener
+    // Retourner une fonction pour désabonner
     return () => {
-      this.listeners = this.listeners.filter(listener => listener !== callback);
+      this.listeners = this.listeners.filter(l => l !== listener);
     };
   }
   
   /**
-   * Get the highest recorded balance
+   * Notifier tous les abonnés du nouveau solde
    */
-  public getHighestBalance(): number {
-    return this.highestBalance;
+  private notifyListeners(): void {
+    this.listeners.forEach(listener => {
+      try {
+        listener(this.balance);
+      } catch (e) {
+        console.error('Error notifying balance listener:', e);
+      }
+    });
   }
 }
 
-// Create singleton instance
-const stableBalance = new StableBalanceManager();
-
+// Exporter une instance unique
+const stableBalance = new StableBalance();
 export default stableBalance;
