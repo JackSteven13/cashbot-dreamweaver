@@ -2,6 +2,92 @@
 import balanceManager from '@/utils/balance/balanceManager';
 
 /**
+ * Utilities for managing data in localStorage with proper user data isolation
+ */
+
+/**
+ * Persist a value to localStorage with optional user-specific key
+ */
+export const persistToLocalStorage = (baseKey: string, value: any, userId?: string | null): void => {
+  try {
+    // Create user-specific key if userId is provided
+    const key = userId ? `${baseKey}_${userId}` : baseKey;
+    
+    // Convert value to string if necessary
+    const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    
+    localStorage.setItem(key, stringValue);
+  } catch (e) {
+    console.error(`Error persisting to localStorage (${baseKey}):`, e);
+  }
+};
+
+/**
+ * Get a value from localStorage with optional user-specific key
+ */
+export const getFromLocalStorage = <T>(baseKey: string, userId?: string | null, defaultValue?: T): T | null => {
+  try {
+    // Create user-specific key if userId is provided
+    const key = userId ? `${baseKey}_${userId}` : baseKey;
+    
+    const value = localStorage.getItem(key);
+    
+    // Return default value if no value was found
+    if (value === null) {
+      return defaultValue !== undefined ? defaultValue : null;
+    }
+    
+    // Try to parse as JSON if it looks like JSON
+    if (value.startsWith('{') || value.startsWith('[')) {
+      try {
+        return JSON.parse(value) as T;
+      } catch {
+        // If parsing fails, return the raw string
+        return value as unknown as T;
+      }
+    }
+    
+    // For numbers
+    if (!isNaN(Number(value))) {
+      return Number(value) as unknown as T;
+    }
+    
+    // For booleans
+    if (value === 'true') return true as unknown as T;
+    if (value === 'false') return false as unknown as T;
+    
+    // Return as string
+    return value as unknown as T;
+  } catch (e) {
+    console.error(`Error getting from localStorage (${baseKey}):`, e);
+    return defaultValue !== undefined ? defaultValue : null;
+  }
+};
+
+/**
+ * Update a value atomically, ensuring it's properly synchronized
+ */
+export const atomicUpdate = (
+  baseKey: string, 
+  updateFn: (currentValue: any) => any, 
+  userId?: string | null, 
+  defaultValue?: any
+): void => {
+  try {
+    // Get the current value
+    const currentValue = getFromLocalStorage(baseKey, userId, defaultValue);
+    
+    // Apply the update function
+    const newValue = updateFn(currentValue);
+    
+    // Store the new value
+    persistToLocalStorage(baseKey, newValue, userId);
+  } catch (e) {
+    console.error(`Error performing atomic update on localStorage (${baseKey}):`, e);
+  }
+};
+
+/**
  * Répare les incohérences dans les données de solde stockées localement
  * en synchronisant toutes les sources avec la valeur la plus élevée
  */

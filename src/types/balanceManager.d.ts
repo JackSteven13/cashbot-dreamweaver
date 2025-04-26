@@ -5,14 +5,14 @@
 export interface BalanceManagerInstance {
   // Core balance methods
   getCurrentBalance: () => number;
-  forceBalanceSync: (newBalance: number, userId?: string) => void;
-  updateBalance: (amount: number) => number;
+  forceBalanceSync: (newBalance: number, userId?: string | null) => void;
+  updateBalance: (amount: number, userId?: string | null) => void;
   
   // Daily gains methods
   getDailyGains: () => number;
   setDailyGains: (amount: number) => void;
   addDailyGain: (amount: number) => void;
-  resetDailyGains: () => void; // Added missing method
+  resetDailyGains: () => void;
   
   // History tracking
   getHighestBalance: () => number;
@@ -25,5 +25,6 @@ export interface BalanceManagerInstance {
   checkForSignificantBalanceChange: (newBalance: number) => boolean;
   
   // User management
-  setUserId: (userId: string) => void;
+  setUserId: (userId: string | null) => void;
+  getUserId: () => string | null;
 }

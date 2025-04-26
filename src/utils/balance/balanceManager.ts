@@ -1,5 +1,6 @@
 
 import { getStorageKeys, persistBalance, getPersistedBalance } from './balanceStorage';
+import { BalanceWatcher } from './types';
 
 /**
  * Gestionnaire centralisé du solde utilisateur pour assurer la cohérence
@@ -10,6 +11,7 @@ class BalanceManager {
   private dailyGains: number = 0;
   private highestBalance: number = 0;
   private userId: string | null = null;
+  private watchers: BalanceWatcher[] = [];
   
   constructor() {
     try {
@@ -94,6 +96,19 @@ class BalanceManager {
   }
   
   /**
+   * Mettre à jour le solde le plus élevé
+   */
+  public updateHighestBalance(balance: number): void {
+    if (balance > this.highestBalance) {
+      this.highestBalance = balance;
+      
+      // Stocker le solde le plus élevé
+      const keys = getStorageKeys(this.userId);
+      localStorage.setItem(keys.highestBalance, balance.toString());
+    }
+  }
+  
+  /**
    * Mettre à jour le solde
    */
   public updateBalance(amount: number, userId?: string | null): void {
@@ -111,23 +126,13 @@ class BalanceManager {
       this.currentBalance = newBalance;
       
       // Mettre à jour le solde le plus élevé si nécessaire
-      if (newBalance > this.highestBalance) {
-        this.highestBalance = newBalance;
-        
-        // Stocker le solde le plus élevé
-        const keys = getStorageKeys(effectiveUserId);
-        localStorage.setItem(keys.highestBalance, newBalance.toString());
-      }
+      this.updateHighestBalance(newBalance);
       
       // Mettre à jour les gains journaliers
-      this.dailyGains += amount;
+      this.addDailyGain(amount);
       
       // Persister les modifications
       persistBalance(newBalance, effectiveUserId);
-      
-      // Stocker les gains journaliers
-      const keys = getStorageKeys(effectiveUserId);
-      localStorage.setItem(keys.dailyGains, this.dailyGains.toString());
       
       // Déclencher un événement pour notifier les autres composants
       window.dispatchEvent(new CustomEvent('balance:update', { 
@@ -138,6 +143,9 @@ class BalanceManager {
           userId: effectiveUserId
         } 
       }));
+      
+      // Notifier les observateurs
+      this.notifyWatchers(newBalance);
       
       console.log(`Balance updated: +${amount}€ = ${newBalance}€ (User: ${effectiveUserId || 'none'})`);
     } catch (e) {
@@ -164,16 +172,13 @@ class BalanceManager {
       this.currentBalance = newBalance;
       
       // Mettre à jour le solde le plus élevé si nécessaire
-      if (newBalance > this.highestBalance) {
-        this.highestBalance = newBalance;
-        
-        // Stocker le solde le plus élevé
-        const keys = getStorageKeys(effectiveUserId);
-        localStorage.setItem(keys.highestBalance, newBalance.toString());
-      }
+      this.updateHighestBalance(newBalance);
       
       // Persister les modifications
       persistBalance(newBalance, effectiveUserId);
+      
+      // Notifier les observateurs
+      this.notifyWatchers(newBalance);
       
       // Déclencher un événement pour notifier les autres composants
       window.dispatchEvent(new CustomEvent('balance:force-update', { 
@@ -189,6 +194,29 @@ class BalanceManager {
   }
   
   /**
+   * Ajouter un observateur pour les modifications de solde
+   */
+  public addWatcher(callback: (newBalance: number) => void): () => void {
+    this.watchers.push(callback);
+    return () => {
+      this.watchers = this.watchers.filter(watcher => watcher !== callback);
+    };
+  }
+  
+  /**
+   * Notifier les observateurs d'un changement de solde
+   */
+  private notifyWatchers(newBalance: number): void {
+    this.watchers.forEach(watcher => {
+      try {
+        watcher(newBalance);
+      } catch (e) {
+        console.error('Error notifying watcher:', e);
+      }
+    });
+  }
+  
+  /**
    * Définir les gains journaliers
    */
   public setDailyGains(amount: number): void {
@@ -197,6 +225,17 @@ class BalanceManager {
     // Stocker les gains journaliers
     const keys = getStorageKeys(this.userId);
     localStorage.setItem(keys.dailyGains, amount.toString());
+  }
+  
+  /**
+   * Ajouter aux gains journaliers
+   */
+  public addDailyGain(amount: number): void {
+    this.dailyGains += amount;
+    
+    // Stocker les gains journaliers
+    const keys = getStorageKeys(this.userId);
+    localStorage.setItem(keys.dailyGains, this.dailyGains.toString());
   }
   
   /**
@@ -215,6 +254,15 @@ class BalanceManager {
     // Stocker les gains journaliers
     const keys = getStorageKeys(this.userId);
     localStorage.setItem(keys.dailyGains, '0');
+  }
+  
+  /**
+   * Vérifier s'il y a un changement significatif de solde
+   */
+  public checkForSignificantBalanceChange(newBalance: number): boolean {
+    const difference = Math.abs(newBalance - this.currentBalance);
+    const threshold = Math.max(0.01, this.currentBalance * 0.01);
+    return difference > threshold;
   }
 }
 
