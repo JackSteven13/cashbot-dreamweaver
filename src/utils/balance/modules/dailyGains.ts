@@ -1,4 +1,3 @@
-
 import { persistToLocalStorage, getFromLocalStorage, atomicUpdate } from '../storage/localStorageUtils';
 
 export class DailyGainsManager {
@@ -7,10 +6,13 @@ export class DailyGainsManager {
   private lastResetDate: string = '';
   private lastUpdateTime: number = 0;
   private processingUpdate: boolean = false;
-  private updateQueue: {amount: number}[] = [];
+  private updateQueue: {amount: number, timestamp: number}[] = [];
   private isProcessingQueue: boolean = false;
   private lastKnownConsistentGains: number = 0;
   private readonly updateInterval: number = 200; // 200ms between updates
+  private dailyGainsSnapshot: number = 0;
+  private stableGainsHistory: number[] = [];
+  private lastPersistTime: number = 0;
   
   constructor(userId: string | null = null) {
     this.userId = userId;
@@ -25,6 +27,37 @@ export class DailyGainsManager {
     
     // Schedule periodic consistency checks
     setInterval(() => this.performConsistencyCheck(), 30000); // Every 30 seconds
+    
+    // Create a stable history of valid values
+    this.stableGainsHistory.push(this.dailyGains);
+    
+    // Snapshot current value for detecting anomalies
+    this.dailyGainsSnapshot = this.dailyGains;
+    
+    // Create a stability check interval
+    setInterval(() => this.ensureStability(), 60000); // Every minute
+  }
+  
+  private ensureStability(): void {
+    // If current value is significantly different from historical values without reason
+    if (this.dailyGains < this.dailyGainsSnapshot - 0.1) {
+      console.warn(`Detected unexpected decrease in daily gains: ${this.dailyGains} < ${this.dailyGainsSnapshot}. Restoring.`);
+      // Restore to the last snapshot if we detect an unexpected decrease
+      this.dailyGains = this.dailyGainsSnapshot;
+      this.persistGainsToStorage();
+    } else {
+      // Only update snapshot when values look valid (stable or increasing)
+      this.dailyGainsSnapshot = Math.max(this.dailyGainsSnapshot, this.dailyGains);
+    }
+    
+    // Update stable history to track consistent values
+    if (this.dailyGains >= 0) {
+      this.stableGainsHistory.push(this.dailyGains);
+      // Keep history at a reasonable size
+      if (this.stableGainsHistory.length > 10) {
+        this.stableGainsHistory.shift();
+      }
+    }
   }
   
   private performConsistencyCheck(): void {
@@ -35,6 +68,14 @@ export class DailyGainsManager {
       this.persistGainsToStorage();
     }
     
+    // If we have a sudden drop of more than 10% from previous values
+    const averageHistory = this.getAverageFromHistory();
+    if (this.stableGainsHistory.length >= 3 && this.dailyGains < averageHistory * 0.9) {
+      console.warn(`Detected abnormal drop in daily gains from ${averageHistory} to ${this.dailyGains}. Restoring.`);
+      this.dailyGains = Math.max(this.dailyGains, averageHistory);
+      this.persistGainsToStorage();
+    }
+    
     // If daily gains seem abnormally high for a freemium account, cap it
     const maxExpectedDailyGain = 0.5; // Maximum expected for freemium
     if (this.dailyGains > maxExpectedDailyGain * 1.5) {
@@ -42,6 +83,12 @@ export class DailyGainsManager {
       this.dailyGains = maxExpectedDailyGain;
       this.persistGainsToStorage();
     }
+  }
+  
+  private getAverageFromHistory(): number {
+    if (this.stableGainsHistory.length === 0) return 0;
+    const sum = this.stableGainsHistory.reduce((acc, val) => acc + val, 0);
+    return sum / this.stableGainsHistory.length;
   }
   
   private setupQueueProcessor() {
@@ -58,6 +105,9 @@ export class DailyGainsManager {
     
     try {
       this.isProcessingQueue = true;
+      
+      // Sort updates by timestamp to process them in order
+      this.updateQueue.sort((a, b) => a.timestamp - b.timestamp);
       
       // Take the first update from the queue
       const update = this.updateQueue.shift();
@@ -100,10 +150,23 @@ export class DailyGainsManager {
       // If update looks valid, update last known consistent value
       if (this.dailyGains >= beforeUpdate || amount < 0) {
         this.lastKnownConsistentGains = this.dailyGains;
+        
+        // Add to history when we have a valid increase
+        if (this.dailyGains > beforeUpdate) {
+          this.stableGainsHistory.push(this.dailyGains);
+          if (this.stableGainsHistory.length > 10) {
+            this.stableGainsHistory.shift();
+          }
+          this.dailyGainsSnapshot = Math.max(this.dailyGainsSnapshot, this.dailyGains);
+        }
       }
       
-      // Save to storage with specific user key
-      this.persistGainsToStorage();
+      // Save to storage, but not too frequently
+      const now = Date.now();
+      if (now - this.lastPersistTime > 500) { // At most every 500ms to avoid excessive writes
+        this.persistGainsToStorage();
+        this.lastPersistTime = now;
+      }
       
       this.lastUpdateTime = Date.now();
     } catch (e) {
@@ -114,17 +177,58 @@ export class DailyGainsManager {
   private persistGainsToStorage(): void {
     const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
     persistToLocalStorage(storageKey, this.dailyGains.toString());
+    
+    // Also persist a backup copy with timestamp for recovery
+    try {
+      const backupKey = this.userId ? `dailyGains_backup_${this.userId}` : 'dailyGains_backup';
+      const backupValue = JSON.stringify({
+        value: this.dailyGains,
+        timestamp: Date.now(),
+        history: this.stableGainsHistory.slice(-3) // Keep last 3 values in backup
+      });
+      localStorage.setItem(backupKey, backupValue);
+    } catch (e) {
+      console.error('Failed to persist backup daily gains:', e);
+    }
   }
   
   private loadDailyGains(): void {
     try {
       const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
       const storedDailyGains = getFromLocalStorage(storageKey, '0');
+      
+      // Try to load main value first
       if (storedDailyGains !== null) {
         this.dailyGains = parseFloat(storedDailyGains);
-        // Initialize the last known consistent value
-        this.lastKnownConsistentGains = this.dailyGains;
       }
+      
+      // Try to load from backup if available
+      try {
+        const backupKey = this.userId ? `dailyGains_backup_${this.userId}` : 'dailyGains_backup';
+        const backupValue = localStorage.getItem(backupKey);
+        
+        if (backupValue) {
+          const backup = JSON.parse(backupValue);
+          
+          // Only use backup if it has a valid structure and main value is suspicious
+          if (backup && typeof backup.value === 'number' && 
+              (isNaN(this.dailyGains) || this.dailyGains < 0 || backup.value > this.dailyGains)) {
+            console.log(`Restoring daily gains from backup: ${this.dailyGains} -> ${backup.value}`);
+            this.dailyGains = backup.value;
+            
+            // Restore history if available
+            if (Array.isArray(backup.history)) {
+              this.stableGainsHistory = [...backup.history];
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load backup daily gains:', e);
+      }
+      
+      // Initialize the last known consistent value
+      this.lastKnownConsistentGains = this.dailyGains;
+      this.dailyGainsSnapshot = this.dailyGains;
       
       // Also load the last reset date
       const lastResetKey = this.userId ? `lastResetDate_${this.userId}` : 'lastResetDate';
@@ -157,6 +261,14 @@ export class DailyGainsManager {
   getDailyGains(): number {
     // Always check for day change when getting daily gains
     this.checkForDayChange();
+    
+    // Perform a quick consistency check
+    if (this.dailyGains < 0) {
+      console.warn(`Negative daily gains detected during get: ${this.dailyGains}. Resetting to 0.`);
+      this.dailyGains = 0;
+      this.persistGainsToStorage();
+    }
+    
     return this.dailyGains;
   }
   
@@ -201,6 +313,11 @@ export class DailyGainsManager {
       }
       
       this.dailyGains = roundedAmount;
+      
+      // Update snapshot only if the new value is greater (to prevent unexpected drops)
+      if (roundedAmount > this.dailyGainsSnapshot) {
+        this.dailyGainsSnapshot = roundedAmount;
+      }
       
       // Save to storage
       this.persistGainsToStorage();
@@ -251,7 +368,7 @@ export class DailyGainsManager {
         amount = Math.min(Math.max(0.001, amount), 0.05);
       }
       
-      // Round to 4 decimal places to avoid floating point issues
+      // Round to 4 decimal places to avoid floating point errors
       const previousGains = this.dailyGains;
       this.dailyGains += amount;
       this.dailyGains = Math.round(this.dailyGains * 10000) / 10000;
@@ -261,8 +378,15 @@ export class DailyGainsManager {
       
       console.log(`Daily gains increased by ${amount.toFixed(4)} to ${this.dailyGains.toFixed(4)} (from ${previousGains.toFixed(4)})`);
       
-      // Update last consistent value
+      // Update last consistent value and history
       this.lastKnownConsistentGains = this.dailyGains;
+      this.stableGainsHistory.push(this.dailyGains);
+      if (this.stableGainsHistory.length > 10) {
+        this.stableGainsHistory.shift();
+      }
+      
+      // Update snapshot for stability monitoring
+      this.dailyGainsSnapshot = Math.max(this.dailyGainsSnapshot, this.dailyGains);
       
       this.lastUpdateTime = now;
     } finally {
@@ -272,12 +396,17 @@ export class DailyGainsManager {
   
   // Add to update queue for batched processing
   private queueUpdate(amount: number): void {
-    this.updateQueue.push({ amount });
+    this.updateQueue.push({ 
+      amount,
+      timestamp: Date.now()
+    });
   }
   
   resetDailyGains(): void {
     this.dailyGains = 0;
     this.lastKnownConsistentGains = 0;
+    this.dailyGainsSnapshot = 0;
+    this.stableGainsHistory = [0];
     
     // Update storage
     this.persistGainsToStorage();
@@ -302,6 +431,10 @@ export class DailyGainsManager {
       this.userId = userId;
       this.loadDailyGains();
       this.checkForDayChange();
+      
+      // Reset history and snapshot when changing users
+      this.stableGainsHistory = [this.dailyGains];
+      this.dailyGainsSnapshot = this.dailyGains;
     }
   }
 }
