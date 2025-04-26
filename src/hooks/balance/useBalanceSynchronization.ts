@@ -37,7 +37,8 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       const localBalance = balanceManager.getCurrentBalance();
 
       const saveBalanceToStorage = (balance: number) => {
-        const balanceString = balance.toString(); // Convert to string explicitly
+        // Explicitly convert balance to string with fixed precision
+        const balanceString = balance.toFixed(2);
         
         if (userId) {
           localStorage.setItem(`highest_balance_${userId}`, balanceString);
