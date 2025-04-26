@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -48,7 +49,7 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
           
           sessionStorage.setItem(storageKey('currentBalance'), balanceString);
         } catch (error) {
-          console.error('Erreur lors de l'enregistrement du solde:', error);
+          console.error("Erreur lors de l'enregistrement du solde:", error);
           toast({
             title: "Erreur de synchronisation",
             description: "Impossible de sauvegarder le solde local.",
