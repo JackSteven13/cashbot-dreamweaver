@@ -128,7 +128,7 @@ const DailyBalanceUpdater: React.FC = () => {
         if (newBalance > highestObservedBalance.current) {
           highestObservedBalance.current = newBalance;
           
-          // Use user-specific key for storage
+          // Use user-specific key for storage and explicitly convert to string
           if (userId) {
             localStorage.setItem(`highest_balance_${userId}`, newBalance.toString());
           } else {
