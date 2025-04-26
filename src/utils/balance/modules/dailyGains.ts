@@ -1,4 +1,3 @@
-
 import { persistToLocalStorage, getFromLocalStorage, atomicUpdate } from '../storage/localStorageUtils';
 
 export class DailyGainsManager {
@@ -269,7 +268,13 @@ export class DailyGainsManager {
       const storageKey = this.userId ? `dailyGains_${this.userId}` : 'dailyGains';
       
       // Utiliser une persistance atomique pour éviter les données partielles
-      if (!atomicUpdate(storageKey, this.dailyGains.toString()) && this.persistenceRetries < 3) {
+      // Fix the atomicUpdate call by providing a function instead of a string
+      const updateResult = atomicUpdate(storageKey, (currentValue: string) => {
+        return this.dailyGains.toString();
+      });
+      
+      // Check the result and retry if needed
+      if (!updateResult && this.persistenceRetries < 3) {
         console.warn(`Failed to persist daily gains, retrying (${this.persistenceRetries + 1}/3)`);
         this.persistenceRetries++;
         setTimeout(() => this.persistGainsToStorage(), 200);

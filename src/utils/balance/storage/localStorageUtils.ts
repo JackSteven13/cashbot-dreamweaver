@@ -204,8 +204,12 @@ export const createStorageResetter = (): void => {
 /**
  * Atomic update of a localStorage value - ensures we read the most current value
  * before updating it, preventing lost updates due to race conditions
+ * 
+ * @param key - The localStorage key to update
+ * @param updateFn - Function that takes the current value and returns the new value
+ * @returns boolean - Whether the update was successful
  */
-export const atomicUpdate = (key: string, updateFn: (currentValue: string) => string): void => {
+export const atomicUpdate = (key: string, updateFn: (currentValue: string) => string): boolean => {
   try {
     // Get the most current value (bypass cache for crucial operations)
     const directValue = localStorage.getItem(key);
@@ -223,7 +227,7 @@ export const atomicUpdate = (key: string, updateFn: (currentValue: string) => st
       const numValue = parseFloat(newValue);
       if (isNaN(numValue) || numValue < 0) {
         console.error(`Atomic update would result in invalid value for ${key}: ${newValue}`);
-        return;
+        return false;
       }
       
       // Check for suspicious changes
@@ -236,8 +240,10 @@ export const atomicUpdate = (key: string, updateFn: (currentValue: string) => st
     
     // Store the new value
     persistToLocalStorage(key, newValue);
+    return true;
   } catch (e) {
     console.error(`Failed to perform atomic update for key ${key}:`, e);
+    return false;
   }
 };
 
