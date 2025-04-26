@@ -1,9 +1,21 @@
+
 // Cache for localStorage values to reduce reads
 const storageCache = new Map<string, string>();
 
 // Lock mechanism to prevent race conditions
 const writeLocks = new Set<string>();
 const writeQueue = new Map<string, string>();
+
+// Balance history to prevent unexpected decreases
+const balanceHistory = new Map<string, number[]>();
+const MAX_HISTORY_LENGTH = 10;
+
+// Global maximum observed balance
+let globalMaxBalance = -1;
+let lastSavedBalance = -1;
+
+// Debug mode for troubleshooting balance issues
+const DEBUG_BALANCE = true;
 
 // Prevent negative values from being stored
 const preventNegativeValues = (key: string, value: string): string => {
@@ -24,6 +36,63 @@ const preventNegativeValues = (key: string, value: string): string => {
     }
   }
   return value;
+};
+
+// Track highest observed balance to prevent decreases
+const trackBalanceHistory = (key: string, value: string): void => {
+  if (key.includes('balance')) {
+    try {
+      const numValue = parseFloat(value);
+      
+      if (!isNaN(numValue) && numValue >= 0) {
+        // Initialize history array if needed
+        if (!balanceHistory.has(key)) {
+          balanceHistory.set(key, []);
+        }
+        
+        const history = balanceHistory.get(key) as number[];
+        
+        // Add to history and maintain max length
+        history.push(numValue);
+        if (history.length > MAX_HISTORY_LENGTH) {
+          history.shift(); // Remove oldest value
+        }
+        
+        // Update global maximum if this is higher
+        if (numValue > globalMaxBalance) {
+          globalMaxBalance = numValue;
+          if (DEBUG_BALANCE) {
+            console.log(`New highest balance observed: ${globalMaxBalance.toFixed(2)}`);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error tracking balance history:', e);
+    }
+  }
+};
+
+// Get highest stable balance from history
+const getHighestStableBalance = (key: string): number => {
+  if (!balanceHistory.has(key)) {
+    return -1;
+  }
+  
+  const history = balanceHistory.get(key) as number[];
+  
+  if (history.length === 0) {
+    return -1;
+  }
+  
+  // Sort and get values
+  const sortedHistory = [...history].sort((a, b) => b - a);
+  
+  // If we have enough history, use second highest value for stability
+  if (sortedHistory.length >= 3) {
+    return sortedHistory[1]; // Second highest is more stable than absolute max
+  }
+  
+  return sortedHistory[0]; // Otherwise use highest
 };
 
 /**
@@ -48,32 +117,63 @@ export const persistToLocalStorage = (key: string, value: string): void => {
     // Get previous value for comparison
     const previousValue = storageCache.get(key);
     
-    // Check for suspicious changes (significant drops in balance)
+    // Special handling for balance values to prevent fluctuation
     if (key.includes('balance') && previousValue) {
       const prevNum = parseFloat(previousValue);
       const newNum = parseFloat(safeValue);
       
-      // If balance is dropping by more than 1%, log a warning and verify
-      if (!isNaN(prevNum) && !isNaN(newNum) && newNum < prevNum && 
-          (prevNum - newNum) / prevNum > 0.01) {
-        console.warn(
-          `Suspicious balance decrease detected: ${prevNum.toFixed(2)} -> ${newNum.toFixed(2)}. ` +
-          `Decrease of ${(prevNum - newNum).toFixed(2)}`
-        );
+      // Track history regardless of what happens next
+      trackBalanceHistory(key, safeValue);
+      
+      // Get the highest stable balance for this key
+      const highestStableBalance = getHighestStableBalance(key);
+      
+      // If we're trying to decrease the balance unexpectedly
+      if (!isNaN(prevNum) && !isNaN(newNum) && newNum < prevNum) {
+        // This is a significant decrease that doesn't match a known transaction
+        const lastTransactionTime = parseInt(localStorage.getItem('lastTransactionTime') || '0');
+        const now = Date.now();
+        const recentTransaction = now - lastTransactionTime < 5000;
         
-        // If the drop is very significant (more than 5%) without a corresponding transaction,
-        // reject the update to prevent data corruption
-        if ((prevNum - newNum) / prevNum > 0.05) {
-          const lastTransactionTime = parseInt(localStorage.getItem('lastTransactionTime') || '0');
-          const now = Date.now();
-          
-          // Only reject if there wasn't a recent transaction
-          if (now - lastTransactionTime > 5000) {
-            console.error(`Blocking suspicious balance decrease: ${prevNum.toFixed(2)} -> ${newNum.toFixed(2)}`);
-            // Release the lock and return without updating
-            writeLocks.delete(key);
-            return;
+        // Handle balance decrease
+        if (!recentTransaction) {
+          if (DEBUG_BALANCE) {
+            console.warn(`Blocking unexpected balance decrease: ${prevNum.toFixed(2)} → ${newNum.toFixed(2)}`);
           }
+          
+          // Enforce previous higher balance - NEVER let the balance drop unexpectedly
+          // Release the lock and return without updating
+          writeLocks.delete(key);
+          
+          // Calculate a restored value: use either global max, stable history, or previous value
+          const restoredValue = Math.max(
+            globalMaxBalance >= 0 ? globalMaxBalance : 0,
+            highestStableBalance >= 0 ? highestStableBalance : 0,
+            prevNum
+          ).toString();
+          
+          if (DEBUG_BALANCE) {
+            console.log(`Balance protection activated. Restored to: ${restoredValue}`);
+          }
+          
+          // Force update the cache with the restored value and persist it
+          storageCache.set(key, restoredValue);
+          localStorage.setItem(key, restoredValue);
+          
+          // Create an emergency backup
+          localStorage.setItem(`${key}_protected`, restoredValue);
+          
+          // Trigger a balance refresh event
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('balance:force-protect', {
+              detail: {
+                restoredValue: parseFloat(restoredValue),
+                attemptedValue: newNum
+              }
+            }));
+          }, 100);
+          
+          return;
         }
       }
     }
@@ -81,23 +181,53 @@ export const persistToLocalStorage = (key: string, value: string): void => {
     // Update cache first
     storageCache.set(key, safeValue);
     
-    // Then persist to localStorage
-    localStorage.setItem(key, safeValue);
+    // For crucial values like balance, use a try-catch with retry
+    if (key.includes('balance')) {
+      try {
+        // Then persist to localStorage
+        localStorage.setItem(key, safeValue);
+        
+        // Create backup copies for critical values
+        localStorage.setItem(`${key}_backup`, safeValue);
+        localStorage.setItem(`${key}_backup2`, safeValue); // Second backup
+        
+        // For balance values, update lastSavedBalance
+        const numValue = parseFloat(safeValue);
+        if (!isNaN(numValue)) {
+          lastSavedBalance = numValue;
+          
+          // If this is the highest balance we've seen, save it separately
+          if (numValue > parseFloat(localStorage.getItem('highest_balance') || '0')) {
+            localStorage.setItem('highest_balance', safeValue);
+          }
+        }
+        
+      } catch (e) {
+        console.error(`Failed localStorage write for ${key}, retrying:`, e);
+        // Retry once
+        setTimeout(() => {
+          try {
+            localStorage.setItem(key, safeValue);
+            localStorage.setItem(`${key}_backup`, safeValue);
+          } catch (retryError) {
+            console.error('Second attempt failed:', retryError);
+          }
+        }, 100);
+      }
+    } else {
+      // For non-critical values, persist without retry
+      localStorage.setItem(key, safeValue);
+    }
     
     // Log only significant value changes
     if ((key.includes('balance') || key.includes('dailyGains')) && typeof safeValue === 'string') {
-      // Convert to number and format consistently to avoid spurious logs
+      // Convert to number and format consistently
       const formattedValue = parseFloat(safeValue).toFixed(2);
       if (!previousValue || Math.abs(parseFloat(previousValue) - parseFloat(safeValue)) > 0.001) {
-        console.log(`Stored to localStorage: ${key}=${formattedValue}`);
+        if (DEBUG_BALANCE) {
+          console.log(`Stored to localStorage: ${key}=${formattedValue}`);
+        }
       }
-    }
-    
-    // Create backup copies for critical values to prevent data loss
-    if (key.includes('balance') || key.includes('dailyGains')) {
-      const backupKey = `${key}_backup`;
-      localStorage.setItem(backupKey, safeValue);
-      storageCache.set(backupKey, safeValue);
     }
     
     // Process any queued writes after a short delay
@@ -137,26 +267,95 @@ export const getFromLocalStorage = (key: string, defaultValue: string = '0'): st
     // If not in cache, try localStorage
     let value = localStorage.getItem(key);
     
-    // If value is null or invalid, check backup
+    // If value is null or invalid, check all possible backups
     if (value === null || value === 'null' || value === 'undefined' || value === 'NaN') {
+      // Check primary backup
       const backupKey = `${key}_backup`;
       const backupValue = localStorage.getItem(backupKey);
       
       if (backupValue !== null && backupValue !== 'null' && 
           backupValue !== 'undefined' && backupValue !== 'NaN') {
-        console.log(`Recovered ${key} from backup: ${backupValue}`);
+        if (DEBUG_BALANCE) {
+          console.log(`Recovered ${key} from primary backup: ${backupValue}`);
+        }
         value = backupValue;
+      } else {
+        // Check secondary backup
+        const backupKey2 = `${key}_backup2`;
+        const backupValue2 = localStorage.getItem(backupKey2);
+        
+        if (backupValue2 !== null && backupValue2 !== 'null' && 
+            backupValue2 !== 'undefined' && backupValue2 !== 'NaN') {
+          if (DEBUG_BALANCE) {
+            console.log(`Recovered ${key} from secondary backup: ${backupValue2}`);
+          }
+          value = backupValue2;
+        } else {
+          // Check protected backup (from prevented decreases)
+          const protectedKey = `${key}_protected`;
+          const protectedValue = localStorage.getItem(protectedKey);
+          
+          if (protectedValue !== null) {
+            if (DEBUG_BALANCE) {
+              console.log(`Recovered ${key} from protected backup: ${protectedValue}`);
+            }
+            value = protectedValue;
+          } else {
+            // Check global highest balance for last resort balance recovery
+            if (key.includes('balance') && globalMaxBalance > 0) {
+              if (DEBUG_BALANCE) {
+                console.log(`Recovered ${key} from global maximum: ${globalMaxBalance}`);
+              }
+              value = globalMaxBalance.toString();
+            }
+          }
+        }
       }
     }
     
-    // For balance values, ensure they're not negative
+    // For balance values, ensure they're not negative and are consistent
     if ((key.includes('balance') || key.includes('dailyGains')) && value !== null) {
       try {
         const numValue = parseFloat(value);
+        
+        // Recovery if the value is invalid
         if (isNaN(numValue) || numValue < 0) {
-          console.warn(`Found invalid/negative value for ${key}: ${value}, using default`);
-          value = defaultValue;
+          if (DEBUG_BALANCE) {
+            console.warn(`Found invalid/negative value for ${key}: ${value}, using default`);
+          }
+          
+          // Try to recover from highest known balance for balance keys
+          if (key.includes('balance')) {
+            const highestBalance = localStorage.getItem('highest_balance');
+            if (highestBalance !== null) {
+              const highestNum = parseFloat(highestBalance);
+              if (!isNaN(highestNum) && highestNum > 0) {
+                if (DEBUG_BALANCE) {
+                  console.log(`Recovered from highest_balance: ${highestNum}`);
+                }
+                value = highestBalance;
+              } else {
+                value = defaultValue;
+              }
+            } else {
+              value = defaultValue;
+            }
+          } else {
+            value = defaultValue;
+          }
         }
+        
+        // For balance keys, check if global max is higher and use that instead
+        if (key.includes('balance') && globalMaxBalance > 0) {
+          const currentValue = parseFloat(value);
+          if (currentValue < globalMaxBalance) {
+            if (DEBUG_BALANCE) {
+              console.log(`Using global maximum (${globalMaxBalance}) instead of ${currentValue}`);
+            }
+            value = globalMaxBalance.toString();
+          }
+        }
+        
       } catch (e) {
         value = defaultValue;
       }
@@ -165,6 +364,11 @@ export const getFromLocalStorage = (key: string, defaultValue: string = '0'): st
     // Update cache with the fetched value or default
     const result = value !== null ? value : defaultValue;
     storageCache.set(key, result);
+    
+    // Track balance history for this value if applicable
+    if ((key.includes('balance') || key.includes('dailyGains'))) {
+      trackBalanceHistory(key, result);
+    }
     
     return result;
   } catch (e) {
@@ -277,7 +481,9 @@ export const initializeStorageCache = (userId: string | null = null): void => {
       if ((key.includes('balance') || key.includes('dailyGains')) && value !== null) {
         const numValue = parseFloat(value);
         if (isNaN(numValue) || numValue < 0) {
-          console.warn(`Found invalid value during initialization for ${key}: ${value}`);
+          if (DEBUG_BALANCE) {
+            console.warn(`Found invalid value during initialization for ${key}: ${value}`);
+          }
           
           // Try backup
           const backupKey = `${key}_backup`;
@@ -286,7 +492,9 @@ export const initializeStorageCache = (userId: string | null = null): void => {
           if (backupValue !== null) {
             const backupNum = parseFloat(backupValue);
             if (!isNaN(backupNum) && backupNum >= 0) {
-              console.log(`Recovered ${key} from backup during initialization: ${backupValue}`);
+              if (DEBUG_BALANCE) {
+                console.log(`Recovered ${key} from backup during initialization: ${backupValue}`);
+              }
               value = backupValue;
             } else {
               value = '0';
@@ -303,13 +511,20 @@ export const initializeStorageCache = (userId: string | null = null): void => {
         if (key.includes('balance') || key.includes('dailyGains')) {
           localStorage.setItem(`${key}_backup`, value);
         }
+        
+        // For balance values, track in history and update global maximum
+        if (key.includes('balance')) {
+          trackBalanceHistory(key, value);
+        }
       }
     } catch (e) {
       console.error(`Failed to preload ${key}:`, e);
     }
   }
   
-  console.log('Storage cache initialized with validated values');
+  if (DEBUG_BALANCE) {
+    console.log('Storage cache initialized with validated values');
+  }
 };
 
 // Export function to repair inconsistent data
@@ -321,59 +536,97 @@ export const repairInconsistentData = (): void => {
     const balanceKeys = [
       'currentBalance',
       'lastKnownBalance',
+      'highest_balance',
       userId ? `currentBalance_${userId}` : null,
-      userId ? `lastKnownBalance_${userId}` : null
+      userId ? `lastKnownBalance_${userId}` : null,
+      userId ? `highest_balance_${userId}` : null
     ].filter(Boolean) as string[];
     
     const balanceValues: number[] = [];
+    const keyToValueMap = new Map<string, number>();
     
+    // First pass: collect all valid values
     for (const key of balanceKeys) {
-      const value = localStorage.getItem(key);
-      if (value !== null) {
-        const numValue = parseFloat(value);
-        if (!isNaN(numValue) && numValue >= 0) {
-          balanceValues.push(numValue);
-        }
-      }
+      // Check all possible sources for each key
+      const sources = [
+        localStorage.getItem(key),
+        localStorage.getItem(`${key}_backup`),
+        localStorage.getItem(`${key}_backup2`),
+        localStorage.getItem(`${key}_protected`)
+      ];
       
-      // Also check backups
-      const backupKey = `${key}_backup`;
-      const backupValue = localStorage.getItem(backupKey);
-      if (backupValue !== null) {
-        const numValue = parseFloat(backupValue);
-        if (!isNaN(numValue) && numValue >= 0) {
-          balanceValues.push(numValue);
+      for (const value of sources) {
+        if (value !== null) {
+          const numValue = parseFloat(value);
+          if (!isNaN(numValue) && numValue >= 0) {
+            balanceValues.push(numValue);
+            // Store the highest valid value found for each key
+            const currentMax = keyToValueMap.get(key) || 0;
+            if (numValue > currentMax) {
+              keyToValueMap.set(key, numValue);
+            }
+          }
         }
       }
     }
     
     if (balanceValues.length > 0) {
-      // Use the most consistent value (median or maximum)
-      balanceValues.sort((a, b) => a - b);
-      let consistentBalance: number;
+      // Find the highest consistent value
+      balanceValues.sort((a, b) => b - a); // Sort in descending order
       
-      // If we have multiple values, use the median for stability
-      if (balanceValues.length > 2) {
-        const mid = Math.floor(balanceValues.length / 2);
-        consistentBalance = balanceValues[mid];
-      } else {
-        // Otherwise, use the maximum to ensure we don't lose funds
-        consistentBalance = Math.max(...balanceValues);
+      // Use the maximum value to ensure users never lose balance
+      const consistentBalance = balanceValues[0];
+      
+      if (DEBUG_BALANCE) {
+        console.log(`Repairing inconsistent balance data to ${consistentBalance.toFixed(2)}`);
       }
+      
+      // Update global tracking
+      globalMaxBalance = consistentBalance;
       
       // Update all balance values to the consistent value
       for (const key of balanceKeys) {
         persistToLocalStorage(key, consistentBalance.toString());
       }
       
-      console.log(`Repaired inconsistent balance data to ${consistentBalance.toFixed(2)}`);
+      // Store as highest balance
+      localStorage.setItem('highest_balance', consistentBalance.toString());
+      
+      // Trigger a balance update event
+      window.dispatchEvent(new CustomEvent('balance:repaired', {
+        detail: {
+          newBalance: consistentBalance,
+          timestamp: Date.now()
+        }
+      }));
     }
   } catch (e) {
     console.error('Failed to repair inconsistent data:', e);
   }
 };
 
+// Setup listeners for balance protection events
+export const setupBalanceProtectionListeners = (): void => {
+  window.addEventListener('balance:update', (event: any) => {
+    const detail = event.detail;
+    if (detail && typeof detail.amount === 'number') {
+      // When a balance update occurs, ensure we update global tracking
+      const currentBalance = parseFloat(getFromLocalStorage('currentBalance'));
+      const newBalance = currentBalance + detail.amount;
+      
+      if (newBalance > globalMaxBalance) {
+        globalMaxBalance = newBalance;
+        if (DEBUG_BALANCE) {
+          console.log(`Updated global maximum balance to: ${globalMaxBalance.toFixed(2)}`);
+        }
+      }
+    }
+  });
+};
+
 // Run initialization and setup
 createStorageResetter();
 initializeStorageCache();
 repairInconsistentData();
+setupBalanceProtectionListeners();
+
