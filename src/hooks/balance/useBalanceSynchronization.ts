@@ -37,7 +37,7 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       const localBalance = balanceManager.getCurrentBalance();
 
       const saveBalanceToStorage = (balance: number) => {
-        // Convert balance to string with fixed precision before saving to localStorage
+        // Explicitly convert balance to string with two decimal places
         const balanceString = balance.toFixed(2);
         
         if (userId) {
