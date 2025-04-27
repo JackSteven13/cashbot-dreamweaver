@@ -5,14 +5,34 @@ import { loadStoredValues, saveValues } from './storageOperations';
 const lastIncrementTimeRef = { value: 0 };
 const MIN_INCREMENT_INTERVAL = 15000; // 15 seconds minimum between increments
 
+// Cache previous results to avoid recalculating on quick subsequent calls
+const cachedResults = {
+  timestamp: 0,
+  adsCount: 0,
+  revenueCount: 0
+};
+
 export const incrementDateLinkedStats = () => {
-  // Prevent multiple calls in short succession with stronger throttling
+  // Check cache first if recent enough
   const now = Date.now();
+  if (now - cachedResults.timestamp < MIN_INCREMENT_INTERVAL) {
+    return {
+      newAdsCount: cachedResults.adsCount,
+      newRevenueCount: cachedResults.revenueCount
+    };
+  }
   
-  // If called too soon, return current values without making changes
+  // Prevent multiple calls in short succession with stronger throttling
+  // If called too soon, return cached values without making changes
   if (now - lastIncrementTimeRef.value < MIN_INCREMENT_INTERVAL) {
     console.log("Throttling stats increment - too soon since last update");
     const storedValues = loadStoredValues();
+    
+    // Update cache
+    cachedResults.timestamp = now;
+    cachedResults.adsCount = storedValues.adsCount;
+    cachedResults.revenueCount = storedValues.revenueCount;
+    
     return {
       newAdsCount: storedValues.adsCount,
       newRevenueCount: storedValues.revenueCount
@@ -31,8 +51,20 @@ export const incrementDateLinkedStats = () => {
   const newAdsCount = Math.min(storedValues.adsCount + adsIncrement, 152847); // Respect max value
   const newRevenueCount = Math.min(storedValues.revenueCount + revenueIncrement, 116329); // Respect max value
   
-  // Save the new values
-  saveValues(newAdsCount, newRevenueCount);
+  // Save the new values - throttled to prevent excessive writes
+  if (now - cachedResults.timestamp > 10000) {
+    saveValues(newAdsCount, newRevenueCount);
+    
+    // Update cache
+    cachedResults.timestamp = now;
+    cachedResults.adsCount = newAdsCount;
+    cachedResults.revenueCount = newRevenueCount;
+  } else {
+    // Just update cache without writing to storage
+    cachedResults.timestamp = now;
+    cachedResults.adsCount = newAdsCount;
+    cachedResults.revenueCount = newRevenueCount;
+  }
   
   return {
     newAdsCount,

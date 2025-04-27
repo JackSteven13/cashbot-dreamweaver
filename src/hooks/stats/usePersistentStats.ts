@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT } from './utils/valueInitializer';
 import { getDateConsistentStats, ensureProgressiveValues } from './utils/valueSynchronizer';
 
@@ -15,33 +15,70 @@ interface StatsValues {
   revenueCount: number;
 }
 
+// Cache to prevent recalculating for the same parameters
+const statsCache: Record<string, {
+  values: StatsValues,
+  timestamp: number
+}> = {};
+
 export const usePersistentStats = ({
   autoIncrement = true,
   userId = 'global',
   forceGrowth = false,
   correlationRatio = 0.76203
 }: UsePersistentStatsParams = {}): StatsValues => {
+  // Create a stable cache key
+  const cacheKey = useMemo(() => 
+    `${userId}:${autoIncrement ? '1' : '0'}:${forceGrowth ? '1' : '0'}:${correlationRatio}`,
+  [userId, autoIncrement, forceGrowth, correlationRatio]);
+
   // Utiliser des références pour éviter les rendus inutiles
   const statsRef = useRef<StatsValues>({
     adsCount: MINIMUM_ADS_COUNT,
     revenueCount: MINIMUM_REVENUE_COUNT
   });
   
-  // Initialiser l'état avec les valeurs stockées
-  const [stats, setStats] = useState<StatsValues>(() => {
+  // Use caching to avoid redundant calculations
+  const getInitialStats = () => {
+    const now = Date.now();
+    const cachedStats = statsCache[cacheKey];
+    
+    // Return cached values if recent enough
+    if (cachedStats && now - cachedStats.timestamp < 5000) {
+      return cachedStats.values;
+    }
+    
     // Forcer la progression des valeurs si nécessaire
     const initialStats = forceGrowth 
       ? ensureProgressiveValues() 
       : getDateConsistentStats();
     
+    // Cache the result
+    statsCache[cacheKey] = {
+      values: initialStats,
+      timestamp: now
+    };
+    
+    return initialStats;
+  };
+  
+  // Initialiser l'état avec les valeurs stockées
+  const [stats, setStats] = useState<StatsValues>(() => {
+    const initialStats = getInitialStats();
     // Mettre à jour la référence
     statsRef.current = initialStats;
-    
     return initialStats;
   });
   
+  // Use ref to track if event listeners are set up
+  const listenersSetupRef = useRef(false);
+  
   // Mettre à jour les statistiques à partir des événements du DOM
   useEffect(() => {
+    // Avoid setting up listeners multiple times
+    if (listenersSetupRef.current) return;
+    listenersSetupRef.current = true;
+    
     // Fonction pour mettre à jour les statistiques
     const handleStatsUpdate = (event: CustomEvent) => {
       if (event.detail && typeof event.detail === 'object') {
@@ -56,6 +93,12 @@ export const usePersistentStats = ({
           // Mettre à jour la référence
           statsRef.current = newStats;
           
+          // Update the cache
+          statsCache[cacheKey] = {
+            values: newStats,
+            timestamp: Date.now()
+          };
+          
           return newStats;
         });
       }
@@ -68,8 +111,9 @@ export const usePersistentStats = ({
     return () => {
       window.removeEventListener('stats:update', handleStatsUpdate as EventListener);
       window.removeEventListener('stats:sync', handleStatsUpdate as EventListener);
+      listenersSetupRef.current = false;
     };
-  }, []);
+  }, [cacheKey]);
   
   return stats;
 };

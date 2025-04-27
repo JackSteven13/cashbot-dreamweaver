@@ -11,10 +11,13 @@ const lastEnsureResultRef = {
   }
 };
 
+// Throttle for localStorage operations
+const MIN_STORAGE_INTERVAL = 10000; // 10 seconds
+
 export const ensureProgressiveValues = () => {
   // Limit how often we perform this operation to prevent loops
   const now = Date.now();
-  if (now - lastEnsureTimeRef.value < 10000) { // Throttling to 10 seconds
+  if (now - lastEnsureTimeRef.value < MIN_STORAGE_INTERVAL) { // Throttling to 10 seconds
     return lastEnsureResultRef.value;
   }
   
@@ -25,7 +28,12 @@ export const ensureProgressiveValues = () => {
   if (!storedValues.hasStoredValues || 
       storedValues.adsCount < MINIMUM_ADS_COUNT || 
       storedValues.revenueCount < MINIMUM_REVENUE_COUNT) {
-    saveValues(MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT);
+    
+    // Throttle storage writes
+    if (now - lastEnsureTimeRef.value > MIN_STORAGE_INTERVAL) {
+      saveValues(MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT);
+    }
+    
     lastEnsureResultRef.value = {
       adsCount: MINIMUM_ADS_COUNT,
       revenueCount: MINIMUM_REVENUE_COUNT
@@ -76,8 +84,17 @@ export const getDateConsistentStats = () => {
 
 // Throttled version of enforceMinimumStats
 const lastEnforceTimeRef = { value: 0 };
+const lastEnforceValues = {
+  minAds: MINIMUM_ADS_COUNT,
+  minRevenue: MINIMUM_REVENUE_COUNT
+};
 
 export const enforceMinimumStats = (minAds: number, minRevenue: number) => {
+  // Skip if same values to prevent unnecessary operations
+  if (minAds === lastEnforceValues.minAds && minRevenue === lastEnforceValues.minRevenue) {
+    return;
+  }
+  
   // Throttle this operation to prevent loops
   const now = Date.now();
   if (now - lastEnforceTimeRef.value < 30000) { // 30 seconds
@@ -85,6 +102,9 @@ export const enforceMinimumStats = (minAds: number, minRevenue: number) => {
   }
   
   lastEnforceTimeRef.value = now;
+  lastEnforceValues.minAds = minAds;
+  lastEnforceValues.minRevenue = minRevenue;
+  
   const stats = getDateConsistentStats();
   
   if (stats.adsCount < minAds || stats.revenueCount < minRevenue) {

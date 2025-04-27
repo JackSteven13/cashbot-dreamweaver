@@ -21,16 +21,22 @@ export const useStatsPersistence = (
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasSavedInitial = useRef(false);
   const lastUpdateTimeRef = useRef<number>(Date.now());
+  const isMountedRef = useRef(true);
   
   // Initialize state with consistent values - reduce calls to localStorage
   const [adsCount, setAdsCount] = useState(() => {
     // Only compute this once during initialization
     if (!hasSavedInitial.current) {
-      ensureProgressiveValues();
-      const consistentStats = getDateConsistentStats();
-      const initialAdsCount = Math.max(consistentStats.adsCount, MINIMUM_ADS_COUNT);
-      valuesRef.current.adsCount = initialAdsCount;
-      return initialAdsCount;
+      try {
+        ensureProgressiveValues();
+        const consistentStats = getDateConsistentStats();
+        const initialAdsCount = Math.max(consistentStats.adsCount, MINIMUM_ADS_COUNT);
+        valuesRef.current.adsCount = initialAdsCount;
+        return initialAdsCount;
+      } catch (e) {
+        console.error("Error initializing ads count:", e);
+        return MINIMUM_ADS_COUNT;
+      }
     }
     return valuesRef.current.adsCount;
   });
@@ -38,15 +44,28 @@ export const useStatsPersistence = (
   const [revenueCount, setRevenueCount] = useState(() => {
     // Only compute this once during initialization
     if (isFirstLoadRef.current) {
-      const consistentStats = getDateConsistentStats();
-      const initialRevenueCount = Math.max(consistentStats.revenueCount, MINIMUM_REVENUE_COUNT);
-      valuesRef.current.revenueCount = initialRevenueCount;
-      isFirstLoadRef.current = false;
-      hasSavedInitial.current = true;
-      return initialRevenueCount;
+      try {
+        const consistentStats = getDateConsistentStats();
+        const initialRevenueCount = Math.max(consistentStats.revenueCount, MINIMUM_REVENUE_COUNT);
+        valuesRef.current.revenueCount = initialRevenueCount;
+        isFirstLoadRef.current = false;
+        hasSavedInitial.current = true;
+        return initialRevenueCount;
+      } catch (e) {
+        console.error("Error initializing revenue count:", e);
+        return MINIMUM_REVENUE_COUNT;
+      }
     }
     return valuesRef.current.revenueCount;
   });
+
+  // Set component mount/unmount status
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Memoize the setters to avoid recreating them on each render
   const setAdsCountSafe = useCallback((value: number) => {
@@ -72,16 +91,18 @@ export const useStatsPersistence = (
     
     // Only save if values changed recently
     const now = Date.now();
-    if (now - lastUpdateTimeRef.current > 5000) {
+    if (now - lastUpdateTimeRef.current > 5000 && isMountedRef.current) {
       // Debounce saves to avoid excessive localStorage operations
       if (currentTimer) {
         clearTimeout(currentTimer);
       }
       
       saveTimerRef.current = setTimeout(() => {
-        saveValues(adsCount, revenueCount, false);
-        saveTimerRef.current = null;
-        lastUpdateTimeRef.current = Date.now();
+        if (isMountedRef.current) {
+          saveValues(adsCount, revenueCount, false);
+          saveTimerRef.current = null;
+          lastUpdateTimeRef.current = Date.now();
+        }
       }, 2000);
     }
     

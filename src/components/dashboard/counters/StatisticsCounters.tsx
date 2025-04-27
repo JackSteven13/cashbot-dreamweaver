@@ -20,6 +20,7 @@ const StatisticsCounters: React.FC = memo(() => {
   // État local pour la progression
   const [localAdsCount, setLocalAdsCount] = useState(0);
   const [localRevenueCount, setLocalRevenueCount] = useState(0);
+  const [intervalId, setIntervalId] = useState<number | null>(null);
 
   // Synchroniser avec les valeurs de base lorsqu'elles changent
   useEffect(() => {
@@ -32,17 +33,23 @@ const StatisticsCounters: React.FC = memo(() => {
   // Memoize the interval generation to prevent recreating on each render
   const getUserSpecificRate = useCallback(() => {
     if (!userId) return 9500;
+    // Use first character code as a stable seed for this user
     return (userId.charCodeAt(0) % 5 + 8) * 1000; // Entre 8 et 12 secondes, selon l'ID utilisateur
   }, [userId]);
 
-  // Progression locale différenciée par utilisateur
+  // Progression locale différenciée par utilisateur avec nettoyage amélioré
   useEffect(() => {
     if (!userId) return;
+    
+    // Clear any existing interval to prevent multiple intervals
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
     
     // Utiliser un intervalle unique pour chaque utilisateur
     const userSpecificRate = getUserSpecificRate();
     
-    const updateInterval = setInterval(() => {
+    const newIntervalId = window.setInterval(() => {
       setLocalAdsCount(prev => {
         let adsIncrement = 0;
         const adsRand = Math.random();
@@ -62,7 +69,13 @@ const StatisticsCounters: React.FC = memo(() => {
       });
     }, userSpecificRate + Math.floor(Math.random() * 5000));
 
-    return () => clearInterval(updateInterval);
+    setIntervalId(newIntervalId);
+    
+    return () => {
+      if (newIntervalId) {
+        clearInterval(newIntervalId);
+      }
+    };
   }, [userId, getUserSpecificRate]);
 
   return (

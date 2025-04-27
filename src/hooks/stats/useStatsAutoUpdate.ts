@@ -22,6 +22,26 @@ export const useStatsAutoUpdate = ({
   const isRunningRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Stable refs for props to avoid re-renders
+  const propsRef = useRef({
+    adsCount,
+    revenueCount,
+    setAdsCount,
+    setRevenueCount,
+    animateCounters
+  });
+  
+  // Update refs when props change without triggering effects
+  useEffect(() => {
+    propsRef.current = {
+      adsCount,
+      revenueCount,
+      setAdsCount,
+      setRevenueCount,
+      animateCounters
+    };
+  });
 
   useEffect(() => {
     // Prevent running multiple update cycles and re-renders
@@ -41,15 +61,16 @@ export const useStatsAutoUpdate = ({
     }
     
     timerRef.current = setTimeout(() => {
+      // Use refs for consistency check to avoid triggering re-renders
       if (isRunningRef.current) return;
       isRunningRef.current = true;
       
       try {
         const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
         
-        setAdsCount(newAdsCount);
-        setRevenueCount(newRevenueCount);
-        animateCounters(newAdsCount, newRevenueCount);
+        propsRef.current.setAdsCount(newAdsCount);
+        propsRef.current.setRevenueCount(newRevenueCount);
+        propsRef.current.animateCounters(newAdsCount, newRevenueCount);
         lastUpdateTimeRef.current = Date.now();
       } finally {
         isRunningRef.current = false;
@@ -68,15 +89,18 @@ export const useStatsAutoUpdate = ({
         try {
           const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
           
-          setAdsCount(newAdsCount);
-          setRevenueCount(newRevenueCount);
-          animateCounters(newAdsCount, newRevenueCount);
+          propsRef.current.setAdsCount(newAdsCount);
+          propsRef.current.setRevenueCount(newRevenueCount);
+          propsRef.current.animateCounters(newAdsCount, newRevenueCount);
           
           lastUpdateTimeRef.current = now;
           
           try {
-            localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
-            localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
+            // Ensure we don't trigger a re-render from localStorage changes
+            if (document.visibilityState === 'visible') {
+              localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
+              localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
+            }
           } catch (e) {
             console.error("Failed to save displayed counts:", e);
           }
@@ -97,5 +121,5 @@ export const useStatsAutoUpdate = ({
         intervalRef.current = null;
       }
     };
-  }, []); // Empty dependency array since we use refs to track changes
+  }, []); // Empty dependency array as we use refs for all updates
 };

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef, memo } from 'react';
+import React, { useEffect, useState, useRef, memo, useCallback } from 'react';
 
 interface AnimatedNumberProps {
   value: number;
@@ -16,6 +16,42 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = memo(({
   const animationFrameRef = useRef<number | null>(null);
   const previousValueRef = useRef<number>(value);
   const isAnimatingRef = useRef<boolean>(false);
+  const isMountedRef = useRef<boolean>(true);
+  
+  // Memoize the animation function to prevent recreation on render
+  const animate = useCallback((startValue: number, targetValue: number, startTime: number, duration: number) => {
+    const step = (timestamp: number) => {
+      if (!isMountedRef.current) return;
+      
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      
+      // Use easeOutQuart for very smooth but quick animation
+      const easedProgress = 1 - Math.pow(1 - progress, 4);
+      const currentValue = startValue + (targetValue - startValue) * easedProgress;
+      
+      setDisplayValue(currentValue);
+      
+      if (progress < 1 && isMountedRef.current) {
+        animationFrameRef.current = requestAnimationFrame(step);
+      } else {
+        previousValueRef.current = targetValue;
+        isAnimatingRef.current = false;
+        animationFrameRef.current = null;
+      }
+    };
+    
+    animationFrameRef.current = requestAnimationFrame(step);
+  }, []);
+  
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
   
   useEffect(() => {
     // Skip animation for very small changes to improve performance
@@ -44,39 +80,10 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = memo(({
       animationFrameRef.current = null;
     }
     
-    let startTime: number | null = null;
-    const startValue = displayValue;
     isAnimatingRef.current = true;
+    animate(displayValue, value, performance.now(), duration);
     
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      
-      // Use easeOutQuart for very smooth but quick animation
-      const easedProgress = 1 - Math.pow(1 - progress, 4);
-      const currentValue = startValue + (value - startValue) * easedProgress;
-      
-      setDisplayValue(currentValue);
-      
-      if (progress < 1) {
-        animationFrameRef.current = window.requestAnimationFrame(step);
-      } else {
-        previousValueRef.current = value;
-        isAnimatingRef.current = false;
-        animationFrameRef.current = null;
-      }
-    };
-    
-    animationFrameRef.current = window.requestAnimationFrame(step);
-    
-    return () => {
-      if (animationFrameRef.current) {
-        window.cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-        isAnimatingRef.current = false;
-      }
-    };
-  }, [value, duration, displayValue]);
+  }, [value, duration, animate, displayValue]);
 
   return <>{formatValue(displayValue)}</>;
 });
