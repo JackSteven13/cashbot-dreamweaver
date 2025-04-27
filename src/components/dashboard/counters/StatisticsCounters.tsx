@@ -30,14 +30,18 @@ const StatisticsCounters: React.FC = () => {
     }
   }, [baseAdsCount, baseRevenueCount, userId]);
 
+  // Memoize the interval generation to prevent recreating on each render
+  const getUserSpecificRate = useCallback(() => {
+    if (!userId) return 9500;
+    return (userId.charCodeAt(0) % 5 + 8) * 1000; // Entre 8 et 12 secondes, selon l'ID utilisateur
+  }, [userId]);
+
   // Progression locale différenciée par utilisateur
   useEffect(() => {
     if (!userId) return;
     
     // Utiliser un intervalle unique pour chaque utilisateur
-    const userSpecificRate = userId ? 
-      (userId.charCodeAt(0) % 5 + 8) * 1000 : // Entre 8 et 12 secondes, selon l'ID utilisateur
-      9500;
+    const userSpecificRate = getUserSpecificRate();
     
     const updateInterval = setInterval(() => {
       setLocalAdsCount(prev => {
@@ -60,7 +64,7 @@ const StatisticsCounters: React.FC = () => {
     }, userSpecificRate + Math.floor(Math.random() * 5000));
 
     return () => clearInterval(updateInterval);
-  }, [userId]);
+  }, [userId, getUserSpecificRate]);
 
   return (
     <div className="grid grid-cols-2 gap-4 mt-8">

@@ -15,23 +15,38 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
   const [displayValue, setDisplayValue] = useState(value);
   const animationFrameRef = useRef<number | null>(null);
   const previousValue = useRef<number>(value);
+  const isAnimatingRef = useRef<boolean>(false);
   
   useEffect(() => {
     // Skip animation for very small changes to improve performance
     const change = Math.abs(value - previousValue.current);
-    if (change < 0.01) {
+    if (change < 0.01 || isAnimatingRef.current) {
       setDisplayValue(value);
       previousValue.current = value;
       return;
     }
     
-    let startTime: number | null = null;
-    const startValue = displayValue;
-    
-    // Don't animate if the values are the same
-    if (startValue === value) {
+    // Skip animation for initial render
+    if (previousValue.current === 0 && value > 0) {
+      setDisplayValue(value);
+      previousValue.current = value;
       return;
     }
+    
+    // Don't animate if the values are the same
+    if (previousValue.current === value) {
+      return;
+    }
+    
+    // Clean up any existing animation frame
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
+    let startTime: number | null = null;
+    const startValue = displayValue;
+    isAnimatingRef.current = true;
     
     const step = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
@@ -47,6 +62,8 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
         animationFrameRef.current = window.requestAnimationFrame(step);
       } else {
         previousValue.current = value;
+        isAnimatingRef.current = false;
+        animationFrameRef.current = null;
       }
     };
     
@@ -55,6 +72,8 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
     return () => {
       if (animationFrameRef.current) {
         window.cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+        isAnimatingRef.current = false;
       }
     };
   }, [value, duration, displayValue]);

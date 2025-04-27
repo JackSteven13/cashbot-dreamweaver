@@ -58,6 +58,12 @@ const StatisticsDisplay: React.FC = () => {
   const [localAdsCount, setLocalAdsCount] = useState(baseAdsCount);
   const [localRevenueCount, setLocalRevenueCount] = useState(baseRevenueCount);
 
+  // Memoize the rate calculation to prevent recreating on each render
+  const getUserSpecificRate = useCallback(() => {
+    if (!userId) return 10000;
+    return (userId.charCodeAt(0) % 6 + 8) * 1000; // Entre 8 et 14 secondes basé sur l'ID utilisateur
+  }, [userId]);
+
   // Rafraîchit la base lorsque les données de base changent
   useEffect(() => {
     if (userId) {
@@ -72,9 +78,7 @@ const StatisticsDisplay: React.FC = () => {
     if (!userId) return;
     
     // Générer un taux spécifique à l'utilisateur pour éviter que tous les comptes progressent au même rythme
-    const userSpecificRate = userId ? 
-      (userId.charCodeAt(0) % 6 + 8) * 1000 : // Entre 8 et 14 secondes basé sur l'ID utilisateur
-      10000;
+    const userSpecificRate = getUserSpecificRate();
     
     const updateInterval = setInterval(() => {
       setLocalAdsCount(prev => {
@@ -101,7 +105,7 @@ const StatisticsDisplay: React.FC = () => {
     }, userSpecificRate + Math.floor(Math.random() * 6000)); // Variation supplémentaire dans l'intervalle
 
     return () => clearInterval(updateInterval);
-  }, [userId]);
+  }, [userId, getUserSpecificRate]);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

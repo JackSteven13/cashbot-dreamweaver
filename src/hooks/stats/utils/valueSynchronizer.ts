@@ -12,7 +12,7 @@ let lastEnsureResult = {
 export const ensureProgressiveValues = () => {
   // Limit how often we perform this operation to prevent loops
   const now = Date.now();
-  if (now - lastEnsureTime < 5000) {
+  if (now - lastEnsureTime < 10000) { // Increased throttling to 10 seconds
     return lastEnsureResult;
   }
   
@@ -48,7 +48,7 @@ let lastConsistentTime = 0;
 export const getDateConsistentStats = () => {
   // Limit how often we access localStorage to prevent loops
   const now = Date.now();
-  if (now - lastConsistentTime < 1000) {
+  if (now - lastConsistentTime < 5000) { // Increased throttling to 5 seconds
     return lastConsistentStats;
   }
   
@@ -70,8 +70,19 @@ export const getDateConsistentStats = () => {
   return lastConsistentStats;
 };
 
+// Throttled version of enforceMinimumStats
+let lastEnforceTime = 0;
+
 export const enforceMinimumStats = (minAds: number, minRevenue: number) => {
+  // Throttle this operation to prevent loops
+  const now = Date.now();
+  if (now - lastEnforceTime < 30000) { // 30 seconds
+    return;
+  }
+  
+  lastEnforceTime = now;
   const stats = getDateConsistentStats();
+  
   if (stats.adsCount < minAds || stats.revenueCount < minRevenue) {
     saveValues(
       Math.max(stats.adsCount, minAds),

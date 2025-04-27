@@ -20,6 +20,8 @@ export const useStatsAutoUpdate = ({
   const countersInitializedRef = useRef(false);
   const lastUpdateTimeRef = useRef(Date.now());
   const isRunningRef = useRef(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Prevent running multiple update cycles and re-renders
@@ -27,7 +29,18 @@ export const useStatsAutoUpdate = ({
     
     countersInitializedRef.current = true;
     
-    const initialTimeout = setTimeout(() => {
+    // Clean up any existing timers first
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    timerRef.current = setTimeout(() => {
       if (isRunningRef.current) return;
       isRunningRef.current = true;
       
@@ -43,7 +56,7 @@ export const useStatsAutoUpdate = ({
       }
     }, 30000);
     
-    const incrementInterval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       if (isRunningRef.current) return;
       
       const now = Date.now();
@@ -74,8 +87,15 @@ export const useStatsAutoUpdate = ({
     }, 300000);
     
     return () => {
-      clearTimeout(initialTimeout);
-      clearInterval(incrementInterval);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, []); // Empty dependency array since we use refs to track changes
 };

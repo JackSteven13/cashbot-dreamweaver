@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   loadStoredValues, 
   saveValues,
@@ -19,11 +19,12 @@ export const useStatsPersistence = (
   
   const isFirstLoadRef = useRef(true);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasSavedInitial = useRef(false);
   
-  // Initialize state with consistent values
+  // Initialize state with consistent values - reduce calls to localStorage
   const [adsCount, setAdsCount] = useState(() => {
     // Only compute this once during initialization
-    if (isFirstLoadRef.current) {
+    if (!hasSavedInitial.current) {
       ensureProgressiveValues();
       const consistentStats = getDateConsistentStats();
       const initialAdsCount = Math.max(consistentStats.adsCount, MINIMUM_ADS_COUNT);
@@ -36,28 +37,28 @@ export const useStatsPersistence = (
   const [revenueCount, setRevenueCount] = useState(() => {
     // Only compute this once during initialization
     if (isFirstLoadRef.current) {
-      ensureProgressiveValues();
       const consistentStats = getDateConsistentStats();
       const initialRevenueCount = Math.max(consistentStats.revenueCount, MINIMUM_REVENUE_COUNT);
       valuesRef.current.revenueCount = initialRevenueCount;
       isFirstLoadRef.current = false;
+      hasSavedInitial.current = true;
       return initialRevenueCount;
     }
     return valuesRef.current.revenueCount;
   });
 
-  // Custom setters to update the ref and state
-  const setAdsCountSafe = (value: number) => {
+  // Memoize the setters to avoid recreating them on each render
+  const setAdsCountSafe = useCallback((value: number) => {
     valuesRef.current.adsCount = value;
     setAdsCount(value);
-  };
+  }, []);
 
-  const setRevenueCountSafe = (value: number) => {
+  const setRevenueCountSafe = useCallback((value: number) => {
     valuesRef.current.revenueCount = value;
     setRevenueCount(value);
-  };
+  }, []);
 
-  // Save values on unmount - with controlled updates to avoid loops
+  // Save values on unmount with debouncing to limit localStorage writes
   useEffect(() => {
     const handleBeforeUnload = () => {
       saveValues(valuesRef.current.adsCount, valuesRef.current.revenueCount, false);
@@ -65,9 +66,12 @@ export const useStatsPersistence = (
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     
-    // Throttled saving while running
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
+    // Use a ref for the timer to properly clean up
+    const currentTimer = saveTimerRef.current;
+    
+    // Debounce saves to avoid excessive localStorage operations
+    if (currentTimer) {
+      clearTimeout(currentTimer);
     }
     
     saveTimerRef.current = setTimeout(() => {
@@ -79,6 +83,7 @@ export const useStatsPersistence = (
       window.removeEventListener('beforeunload', handleBeforeUnload);
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
       }
     };
   }, [adsCount, revenueCount]);
