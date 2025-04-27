@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -26,7 +25,6 @@ export const useRevenueGeneration = ({
   const [consecutiveGenerationCount, setConsecutiveGenerationCount] = useState(0);
   const { isBotActive, setIsBotActive } = useBotStatus(limitReached);
 
-  // Generate automatic revenue with strict limit checking
   const generateAutomaticRevenue = useCallback(async (forceUpdate = false) => {
     if (!userData || limitReached || !isBotActive) {
       if (limitReached) {
@@ -78,7 +76,6 @@ export const useRevenueGeneration = ({
 
       await updateBalance(finalGain, report, forceUpdate);
       
-      // Trigger events and animations
       triggerDashboardEvent('analysis-complete', {
         gain: finalGain,
         noEffects: false,

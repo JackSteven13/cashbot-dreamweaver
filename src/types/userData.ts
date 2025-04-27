@@ -40,6 +40,6 @@ export interface UserData {
   referralLink?: string;
   registeredAt?: Date;
   lastLogin?: Date;
-  // Add dailySessionCount here since we're using it in the app
   dailySessionCount?: number;
+  isBotActive?: boolean;
 }

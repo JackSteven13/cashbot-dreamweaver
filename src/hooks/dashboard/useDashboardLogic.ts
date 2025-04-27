@@ -8,7 +8,7 @@ import useInitUserData from '@/hooks/useInitUserData';
 import { useBalanceUpdater } from '@/hooks/useBalanceUpdater';
 import { useBalanceSync } from '@/hooks/useBalanceSync';
 import { useUserDataRefresh } from '@/hooks/session/useUserDataRefresh';
-import { useAutomaticRevenue } from '@/hooks/useAutomaticRevenue';
+import { useAutomaticRevenue } from '@/hooks/userData/useAutomaticRevenue';
 import { useAutoSessionScheduler } from '@/hooks/useAutoSessionScheduler';
 import { usePeriodicUpdates } from '@/hooks/usePeriodicUpdates';
 

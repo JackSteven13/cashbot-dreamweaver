@@ -47,7 +47,7 @@ const DashboardMain: React.FC<DashboardMainProps> = ({ dashboardReady, username,
           showLimitAlert={showLimitAlert}
           dailySessionCount={dailySessionCount}
           referrals={userData?.referrals || []}
-          isBotActive={userData?.isBotActive}
+          isBotActive={true}
         />
       </Suspense>
       <BalanceAnimation position="top-right" />
