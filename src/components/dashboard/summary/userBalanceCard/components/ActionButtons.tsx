@@ -1,5 +1,5 @@
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, ArrowUpRight, Gift, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -16,6 +16,7 @@ interface ActionButtonsProps {
   isButtonDisabled?: boolean;
   currentBalance?: number;
   dailyLimit?: number;
+  lastSessionTimestamp?: string; // Add this prop to the interface
 }
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
@@ -29,7 +30,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   dailySessionCount = 0,
   isButtonDisabled = false,
   currentBalance = 0,
-  dailyLimit = 0.5
+  dailyLimit = 0.5,
+  lastSessionTimestamp  // Add this to the props destructuring
 }) => {
   const [localButtonDisabled, setLocalButtonDisabled] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
