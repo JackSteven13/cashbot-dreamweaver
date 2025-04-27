@@ -20,6 +20,7 @@ export const useStatsPersistence = (
   const isFirstLoadRef = useRef(true);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasSavedInitial = useRef(false);
+  const lastUpdateTimeRef = useRef<number>(Date.now());
   
   // Initialize state with consistent values - reduce calls to localStorage
   const [adsCount, setAdsCount] = useState(() => {
@@ -58,7 +59,7 @@ export const useStatsPersistence = (
     setRevenueCount(value);
   }, []);
 
-  // Save values on unmount with debouncing to limit localStorage writes
+  // Save values with debouncing to limit localStorage writes
   useEffect(() => {
     const handleBeforeUnload = () => {
       saveValues(valuesRef.current.adsCount, valuesRef.current.revenueCount, false);
@@ -69,15 +70,20 @@ export const useStatsPersistence = (
     // Use a ref for the timer to properly clean up
     const currentTimer = saveTimerRef.current;
     
-    // Debounce saves to avoid excessive localStorage operations
-    if (currentTimer) {
-      clearTimeout(currentTimer);
+    // Only save if values changed recently
+    const now = Date.now();
+    if (now - lastUpdateTimeRef.current > 5000) {
+      // Debounce saves to avoid excessive localStorage operations
+      if (currentTimer) {
+        clearTimeout(currentTimer);
+      }
+      
+      saveTimerRef.current = setTimeout(() => {
+        saveValues(adsCount, revenueCount, false);
+        saveTimerRef.current = null;
+        lastUpdateTimeRef.current = Date.now();
+      }, 2000);
     }
-    
-    saveTimerRef.current = setTimeout(() => {
-      saveValues(adsCount, revenueCount, false);
-      saveTimerRef.current = null;
-    }, 2000);
     
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);

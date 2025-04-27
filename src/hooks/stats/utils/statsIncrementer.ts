@@ -2,15 +2,15 @@
 import { loadStoredValues, saveValues } from './storageOperations';
 
 // Track when last increment happened to avoid rapid fire updates
-let lastIncrementTime = 0;
-const MIN_INCREMENT_INTERVAL = 15000; // Increased to 15 seconds minimum between increments
+const lastIncrementTimeRef = { value: 0 };
+const MIN_INCREMENT_INTERVAL = 15000; // 15 seconds minimum between increments
 
 export const incrementDateLinkedStats = () => {
   // Prevent multiple calls in short succession with stronger throttling
   const now = Date.now();
   
   // If called too soon, return current values without making changes
-  if (now - lastIncrementTime < MIN_INCREMENT_INTERVAL) {
+  if (now - lastIncrementTimeRef.value < MIN_INCREMENT_INTERVAL) {
     console.log("Throttling stats increment - too soon since last update");
     const storedValues = loadStoredValues();
     return {
@@ -19,7 +19,7 @@ export const incrementDateLinkedStats = () => {
     };
   }
   
-  lastIncrementTime = now;
+  lastIncrementTimeRef.value = now;
   const storedValues = loadStoredValues();
   
   // Base increment values with slight randomness

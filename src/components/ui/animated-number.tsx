@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, memo } from 'react';
 
 interface AnimatedNumberProps {
   value: number;
@@ -7,34 +7,34 @@ interface AnimatedNumberProps {
   formatValue?: (value: number) => string;
 }
 
-export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({ 
+export const AnimatedNumber: React.FC<AnimatedNumberProps> = memo(({ 
   value, 
-  duration = 200, // Durée fortement réduite pour une réactivité instantanée
+  duration = 200, // Durée réduite pour une réactivité instantanée
   formatValue = (val) => Math.round(val).toString()
 }) => {
   const [displayValue, setDisplayValue] = useState(value);
   const animationFrameRef = useRef<number | null>(null);
-  const previousValue = useRef<number>(value);
+  const previousValueRef = useRef<number>(value);
   const isAnimatingRef = useRef<boolean>(false);
   
   useEffect(() => {
     // Skip animation for very small changes to improve performance
-    const change = Math.abs(value - previousValue.current);
+    const change = Math.abs(value - previousValueRef.current);
     if (change < 0.01 || isAnimatingRef.current) {
       setDisplayValue(value);
-      previousValue.current = value;
+      previousValueRef.current = value;
       return;
     }
     
     // Skip animation for initial render
-    if (previousValue.current === 0 && value > 0) {
+    if (previousValueRef.current === 0 && value > 0) {
       setDisplayValue(value);
-      previousValue.current = value;
+      previousValueRef.current = value;
       return;
     }
     
     // Don't animate if the values are the same
-    if (previousValue.current === value) {
+    if (previousValueRef.current === value) {
       return;
     }
     
@@ -61,7 +61,7 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
       if (progress < 1) {
         animationFrameRef.current = window.requestAnimationFrame(step);
       } else {
-        previousValue.current = value;
+        previousValueRef.current = value;
         isAnimatingRef.current = false;
         animationFrameRef.current = null;
       }
@@ -79,4 +79,6 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
   }, [value, duration, displayValue]);
 
   return <>{formatValue(displayValue)}</>;
-};
+});
+
+AnimatedNumber.displayName = 'AnimatedNumber';

@@ -1,10 +1,10 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, memo } from 'react';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import usePersistentStats from '@/hooks/stats/usePersistentStats';
 import { useUserSession } from '@/hooks/useUserSession';
 
-const StatisticsCounters: React.FC = () => {
+const StatisticsCounters: React.FC = memo(() => {
   const { userData } = useUserSession();
   const userId = userData?.profile?.id;
   const CORRELATION_RATIO = 0.76203;
@@ -12,19 +12,18 @@ const StatisticsCounters: React.FC = () => {
   // Utiliser l'ID utilisateur pour isoler les statistiques
   const { adsCount: baseAdsCount, revenueCount: baseRevenueCount } = usePersistentStats({
     autoIncrement: false,
-    userId: userId || 'anonymous', // Utiliser l'ID de l'utilisateur comme clé
+    userId: userId || 'anonymous',
     forceGrowth: true,
     correlationRatio: CORRELATION_RATIO
   });
 
-  // Progression locale ralentie et faiblement "imparfaite"
-  const [localAdsCount, setLocalAdsCount] = useState(baseAdsCount);
-  const [localRevenueCount, setLocalRevenueCount] = useState(baseRevenueCount);
+  // État local pour la progression
+  const [localAdsCount, setLocalAdsCount] = useState(0);
+  const [localRevenueCount, setLocalRevenueCount] = useState(0);
 
   // Synchroniser avec les valeurs de base lorsqu'elles changent
   useEffect(() => {
     if (userId) {
-      console.log(`StatisticsCounters: Synchronisation avec userId=${userId}, ads=${baseAdsCount}, revenue=${baseRevenueCount}`);
       setLocalAdsCount(baseAdsCount);
       setLocalRevenueCount(baseRevenueCount);
     }
@@ -91,6 +90,7 @@ const StatisticsCounters: React.FC = () => {
       </div>
     </div>
   );
-};
+});
 
+StatisticsCounters.displayName = 'StatisticsCounters';
 export default StatisticsCounters;
