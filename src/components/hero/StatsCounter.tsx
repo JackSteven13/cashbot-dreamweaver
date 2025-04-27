@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
 import { formatRevenue } from '@/utils/formatters';
@@ -34,6 +34,16 @@ const StatsCounter = ({
     lastSyncTime: Date.now()
   });
   
+  // Define getSessionBasedId function before it's used
+  const getSessionBasedId = useCallback(() => {
+    try {
+      const userId = localStorage.getItem('lastKnownUserId');
+      return userId || anonymousSessionId.current;
+    } catch (e) {
+      return anonymousSessionId.current;
+    }
+  }, []);
+
   // Get stats from hook
   const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
     dailyAdsTarget,
@@ -44,6 +54,8 @@ const StatsCounter = ({
   const [displayValues, setDisplayValues] = useState(() => {
     ensureProgressiveValues();
     const consistentStats = getDateConsistentStats();
+    
+    // Define randomVariance function inside useState callback to avoid reference error
     const randomVariance = (value: number) => {
       const sessionId = getSessionBasedId();
       const sessionVariance = sessionId ? 
@@ -52,6 +64,7 @@ const StatsCounter = ({
       const variance = 1 + ((Math.random() - 0.5 + sessionVariance) * 0.01);
       return Math.floor(value * variance);
     };
+    
     const ads = Math.max(randomVariance(MINIMUM_ADS), consistentStats.adsCount);
     const revenue = ads * CORRELATION_RATIO;
     return {
@@ -59,16 +72,6 @@ const StatsCounter = ({
       revenueCount: Math.min(revenue, 116329) // Cap at maximum value
     };
   });
-
-  // Récupérer un ID basé sur la session actuelle
-  const getSessionBasedId = () => {
-    try {
-      const userId = localStorage.getItem('lastKnownUserId');
-      return userId || anonymousSessionId.current;
-    } catch (e) {
-      return anonymousSessionId.current;
-    }
-  };
 
   // Regular update effect with stable dependencies
   useEffect(() => {
@@ -104,7 +107,7 @@ const StatsCounter = ({
     }, sessionSpecificRate + Math.floor(Math.random() * 5000));
 
     return () => clearInterval(regularUpdateInterval);
-  }, []); // Empty dependency array to run only once
+  }, [getSessionBasedId, CORRELATION_RATIO]); // Add proper dependencies
 
   // Update based on displayedAdsCount changes, but only when significant
   useEffect(() => {
@@ -117,7 +120,7 @@ const StatsCounter = ({
     }
   }, [displayedAdsCount, displayValues.adsCount, CORRELATION_RATIO]);
 
-  // Handle visibility changes but with memoized handler to prevent unnecessary rerenders
+  // Handle visibility changes with memoized handler
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -155,13 +158,13 @@ const StatsCounter = ({
     };
   }, [displayValues]);
 
-  const formatAdsDisplay = (value: number) => {
+  const formatAdsDisplay = useCallback((value: number) => {
     return Math.floor(value).toLocaleString('fr-FR');
-  };
+  }, []);
   
-  const formatRevenueDisplay = (value: number) => {
+  const formatRevenueDisplay = useCallback((value: number) => {
     return formatRevenue(value);
-  };
+  }, []);
 
   return (
     <div className="grid grid-cols-2 gap-2 w-full max-w-md mx-auto mb-4 md:mb-6">

@@ -14,7 +14,7 @@ import Terms from '../pages/Terms';
 import Contact from '../pages/Contact';
 import AnalysisController from '../components/dashboard/analysis/AnalysisController';
 
-// Memoize AnalysisController with Dashboard to prevent unnecessary re-renders
+// Memoize the Dashboard and AnalysisController together as a single component
 const DashboardWithAnalysis = React.memo(() => (
   <>
     <AnalysisController />
@@ -22,6 +22,7 @@ const DashboardWithAnalysis = React.memo(() => (
   </>
 ));
 
+// Define the component outside of the render function
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
