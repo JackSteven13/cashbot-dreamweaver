@@ -8,8 +8,14 @@ const StatisticsCounters: React.FC = memo(() => {
   const { userData } = useUserSession();
   const userId = userData?.profile?.id;
   const CORRELATION_RATIO = 0.76203;
+  
+  // useRef for stable values between renders
+  const valuesRef = useRef({
+    adsCount: 0,
+    revenueCount: 0,
+  });
 
-  // Use user ID to isolate statistics
+  // Use user ID to isolate statistics - prevent re-renders with usePersistentStats
   const { adsCount: baseAdsCount, revenueCount: baseRevenueCount } = usePersistentStats({
     autoIncrement: false,
     userId: userId || 'anonymous',
@@ -17,24 +23,45 @@ const StatisticsCounters: React.FC = memo(() => {
     correlationRatio: CORRELATION_RATIO
   });
 
-  // Local state for progression
-  const [localAdsCount, setLocalAdsCount] = useState(0);
-  const [localRevenueCount, setLocalRevenueCount] = useState(0);
+  // Local state for progression with stable initialization
+  const [localAdsCount, setLocalAdsCount] = useState(() => baseAdsCount);
+  const [localRevenueCount, setLocalRevenueCount] = useState(() => baseRevenueCount);
   const intervalIdRef = useRef<number | null>(null);
+  const isUpdatingRef = useRef(false);
 
-  // Synchronize with base values when they change
+  // Track if component is mounted to prevent updates after unmount
+  const isMountedRef = useRef(true);
   useEffect(() => {
-    if (userId) {
-      setLocalAdsCount(baseAdsCount);
-      setLocalRevenueCount(baseRevenueCount);
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  // Synchronize with base values when they change - with debounce
+  useEffect(() => {
+    if (!userId || isUpdatingRef.current) return;
+    
+    if (Math.abs(baseAdsCount - valuesRef.current.adsCount) > 5 ||
+        Math.abs(baseRevenueCount - valuesRef.current.revenueCount) > 5) {
+        
+      valuesRef.current = {
+        adsCount: baseAdsCount,
+        revenueCount: baseRevenueCount
+      };
+      
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setLocalAdsCount(baseAdsCount);
+        setLocalRevenueCount(baseRevenueCount);
+      }
     }
   }, [baseAdsCount, baseRevenueCount, userId]);
 
   // Memoize the interval generation to prevent recreating on each render
   const getUserSpecificRate = useCallback(() => {
-    if (!userId) return 9500;
+    if (!userId) return 12000;
     // Use first character code as a stable seed for this user
-    return (userId.charCodeAt(0) % 5 + 8) * 1000; // Between 8 and 12 seconds, based on user ID
+    const charCode = userId.charCodeAt(0) || 100;
+    return (charCode % 5 + 10) * 1000; // Between 10 and 14 seconds
   }, [userId]);
 
   // Differentiated local progression by user with improved cleanup
@@ -51,24 +78,28 @@ const StatisticsCounters: React.FC = memo(() => {
     const userSpecificRate = getUserSpecificRate();
     
     const newIntervalId = window.setInterval(() => {
+      if (!isMountedRef.current) return;
+      
+      isUpdatingRef.current = true;
+      
       setLocalAdsCount(prev => {
         let adsIncrement = 0;
         const adsRand = Math.random();
-        if (adsRand > 0.92) adsIncrement = 2;
-        else if (adsRand > 0.70) adsIncrement = 1;
+        if (adsRand > 0.94) adsIncrement = 1;
         return prev + adsIncrement;
       });
       
       setLocalRevenueCount(prevRev => {
         let revInc = 0;
-        if (Math.random() > 0.82) {
-          // Slight variation based on user ID so each user has a different pattern
-          const userVariation = userId ? (userId.charCodeAt(0) % 10) / 100 : 0;
-          revInc = (Math.random() * 1.7 + 0.25) * (CORRELATION_RATIO + ((Math.random() - 0.5) * 0.032) + userVariation);
+        if (Math.random() > 0.85) {
+          const userVariation = userId ? (userId.charCodeAt(0) % 10) / 200 : 0;
+          revInc = (Math.random() * 1.2 + 0.2) * (CORRELATION_RATIO + ((Math.random() - 0.5) * 0.02) + userVariation);
         }
         return prevRev + revInc;
       });
-    }, userSpecificRate + Math.floor(Math.random() * 5000));
+      
+      isUpdatingRef.current = false;
+    }, userSpecificRate + Math.floor(Math.random() * 2000));
 
     intervalIdRef.current = newIntervalId;
     
@@ -78,7 +109,7 @@ const StatisticsCounters: React.FC = memo(() => {
         intervalIdRef.current = null;
       }
     };
-  }, [userId, getUserSpecificRate]);
+  }, [userId, getUserSpecificRate, CORRELATION_RATIO]);
 
   return (
     <div className="grid grid-cols-2 gap-4 mt-8">
@@ -86,7 +117,7 @@ const StatisticsCounters: React.FC = memo(() => {
         <div className="text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 dark:text-blue-300">
           <AnimatedNumber 
             value={userId ? localAdsCount : 0} 
-            duration={300}
+            duration={500}
             formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} 
           />
         </div>
@@ -96,7 +127,7 @@ const StatisticsCounters: React.FC = memo(() => {
         <div className="text-3xl md:text-4xl lg:text-5xl font-bold text-emerald-900 dark:text-emerald-300">
           <AnimatedNumber 
             value={userId ? localRevenueCount : 0} 
-            duration={300}
+            duration={500}
             formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} 
           />
           <span className="ml-1">€</span>

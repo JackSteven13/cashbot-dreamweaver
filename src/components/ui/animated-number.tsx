@@ -9,7 +9,7 @@ interface AnimatedNumberProps {
 
 export const AnimatedNumber: React.FC<AnimatedNumberProps> = memo(({ 
   value, 
-  duration = 200, // Reduced duration for instant reactivity
+  duration = 400, // Increased for smoother animation
   formatValue = (val) => Math.round(val).toString()
 }) => {
   const [displayValue, setDisplayValue] = useState(value);
@@ -18,14 +18,12 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = memo(({
   const isAnimatingRef = useRef<boolean>(false);
   const isMountedRef = useRef<boolean>(true);
   
-  // Memoize the animation function to prevent recreation on render
+  // Memoize the animation function
   const animate = useCallback((startValue: number, targetValue: number, startTime: number, duration: number) => {
     const step = (timestamp: number) => {
       if (!isMountedRef.current) return;
       
       const progress = Math.min((timestamp - startTime) / duration, 1);
-      
-      // Use easeOutQuart for smooth animation
       const easedProgress = 1 - Math.pow(1 - progress, 4);
       const currentValue = startValue + (targetValue - startValue) * easedProgress;
       
@@ -43,6 +41,7 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = memo(({
     animationFrameRef.current = requestAnimationFrame(step);
   }, []);
   
+  // Handle component mount/unmount
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -53,12 +52,15 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = memo(({
     };
   }, []);
   
+  // Handle value changes
   useEffect(() => {
-    // Skip animation for very small changes to improve performance
+    // Skip animation for very small changes or if already animating
     const change = Math.abs(value - previousValueRef.current);
-    if (change < 0.01 || isAnimatingRef.current) {
-      setDisplayValue(value);
-      previousValueRef.current = value;
+    if (change < 0.05 || isAnimatingRef.current) {
+      if (!isAnimatingRef.current) {
+        setDisplayValue(value);
+        previousValueRef.current = value;
+      }
       return;
     }
     
@@ -85,7 +87,9 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = memo(({
     
   }, [value, duration, animate, displayValue]);
 
-  return <>{formatValue(displayValue)}</>;
+  // Avoid unnecessary rerenders by using a stable formatted value
+  const formattedValue = formatValue(displayValue);
+  return <>{formattedValue}</>;
 });
 
 AnimatedNumber.displayName = 'AnimatedNumber';

@@ -24,7 +24,11 @@ const Dashboard = () => {
   const handleRefreshData = useCallback(() => {
     if (user && !isInitializing && !initialRefreshDone.current) {
       initialRefreshDone.current = true;
-      refreshData();
+      try {
+        refreshData();
+      } catch (error) {
+        console.error("Failed to refresh dashboard data:", error);
+      }
     }
   }, [user, isInitializing, refreshData]);
 
@@ -38,7 +42,7 @@ const Dashboard = () => {
     
     if (user && !isInitializing && !initialRefreshDone.current) {
       // Add a slight delay to ensure everything is loaded
-      refreshTimer.current = setTimeout(handleRefreshData, 1000);
+      refreshTimer.current = setTimeout(handleRefreshData, 2000);
     }
     
     return () => {
@@ -64,8 +68,8 @@ const Dashboard = () => {
         username={username}
         refreshData={refreshData}
       />
-      {/* Add the invisible component that handles background updates */}
-      <DailyBalanceUpdater />
+      {/* Only include DailyBalanceUpdater when dashboard is ready */}
+      {dashboardReady && <DailyBalanceUpdater />}
     </>
   );
 };

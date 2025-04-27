@@ -1,8 +1,76 @@
+import { useState, useEffect, useRef } from 'react';
+import { useUserSession } from '@/hooks/useUserSession';
+import { toast } from '@/components/ui/use-toast';
+import balanceManager from '@/utils/balance/balanceManager';
 
-// Re-export from the new location for backward compatibility
-export { useDashboardInitialization } from './initialization/useDashboardInitialization';
+export const useDashboardInitialization = () => {
+  const { userData, isLoading } = useUserSession();
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
+  const initAttemptsRef = useRef(0);
+  
+  // Initialize dashboard data
+  useEffect(() => {
+    if (isLoading || isInitialized || !userData) return;
+    
+    const initDashboard = async () => {
+      try {
+        // Limit init attempts
+        if (initAttemptsRef.current > 2) return;
+        initAttemptsRef.current++;
+        
+        console.info("Initial load of dashboard data");
+        
+        // Get user information
+        const { profile } = userData;
+        let displayName = profile?.full_name || profile?.username || "Utilisateur";
+        
+        // Set user display name
+        setUsername(displayName);
+        
+        // Initialize balance manager
+        if (profile?.id) {
+          balanceManager.setUserId(profile.id);
+          
+          // Get balance from userData if available
+          if (userData.balance !== undefined && !isNaN(userData.balance)) {
+            balanceManager.forceBalanceSync(userData.balance, profile.id);
+          }
+          
+          // Otherwise try to load from localStorage
+          else {
+            const cachedBalance = parseFloat(localStorage.getItem(`lastKnownBalance_${profile.id}`) || '0');
+            if (cachedBalance > 0) {
+              balanceManager.forceBalanceSync(cachedBalance, profile.id);
+            }
+          }
+        }
+        
+        // Mark initialization as complete
+        setIsInitialized(true);
+        
+        // Notify user when ready
+        setTimeout(() => {
+          toast({
+            title: `Bienvenue, ${displayName}!`,
+            description: "Votre tableau de bord est prêt.",
+            duration: 3000,
+          });
+        }, 1000);
+      } catch (error) {
+        console.error("Failed to initialize dashboard:", error);
+      }
+    };
+    
+    initDashboard();
+  }, [isLoading, userData, isInitialized]);
+  
+  return {
+    isInitialized,
+    username,
+    userData,
+    isLoading
+  };
+};
+
 export default useDashboardInitialization;
-
-// This file is kept for backward compatibility
-// It imports the refactored implementation from the initialization folder
-import { useDashboardInitialization } from './initialization/useDashboardInitialization';

@@ -1,17 +1,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  loadStoredValues, 
-  saveValues,
-  ensureProgressiveValues, 
-  getDateConsistentStats
-} from './utils/storageManager';
+import { loadStoredValues, saveValues } from './utils/storageOperations';
+import { ensureProgressiveValues, getDateConsistentStats } from './utils/valueSynchronizer';
 
 export const useStatsPersistence = (
   MINIMUM_ADS_COUNT: number,
   MINIMUM_REVENUE_COUNT: number
 ) => {
-  // Use ref to prevent unnecessary re-renders
+  // Use ref to prevent unnecessary re-renders and track values
   const valuesRef = useRef({
     adsCount: MINIMUM_ADS_COUNT,
     revenueCount: MINIMUM_REVENUE_COUNT
@@ -25,8 +21,7 @@ export const useStatsPersistence = (
   
   // Initialize state with consistent values - reduce calls to localStorage
   const [adsCount, setAdsCount] = useState(() => {
-    // Only compute this once during initialization
-    if (!hasSavedInitial.current) {
+    if (isFirstLoadRef.current) {
       try {
         ensureProgressiveValues();
         const consistentStats = getDateConsistentStats();
@@ -42,7 +37,6 @@ export const useStatsPersistence = (
   });
 
   const [revenueCount, setRevenueCount] = useState(() => {
-    // Only compute this once during initialization
     if (isFirstLoadRef.current) {
       try {
         const consistentStats = getDateConsistentStats();
@@ -70,18 +64,32 @@ export const useStatsPersistence = (
   // Memoize the setters to avoid recreating them on each render
   const setAdsCountSafe = useCallback((value: number) => {
     valuesRef.current.adsCount = value;
-    setAdsCount(value);
+    if (isMountedRef.current) {
+      setAdsCount(value);
+    }
   }, []);
 
   const setRevenueCountSafe = useCallback((value: number) => {
     valuesRef.current.revenueCount = value;
-    setRevenueCount(value);
+    if (isMountedRef.current) {
+      setRevenueCount(value);
+    }
   }, []);
 
   // Save values with debouncing to limit localStorage writes
   useEffect(() => {
+    // Skip frequent saves
+    const now = Date.now();
+    if (now - lastUpdateTimeRef.current < 10000) {
+      return;
+    }
+    
     const handleBeforeUnload = () => {
-      saveValues(valuesRef.current.adsCount, valuesRef.current.revenueCount, false);
+      try {
+        saveValues(valuesRef.current.adsCount, valuesRef.current.revenueCount, false);
+      } catch (e) {
+        console.error("Failed to save values on unload:", e);
+      }
     };
     
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -90,8 +98,7 @@ export const useStatsPersistence = (
     const currentTimer = saveTimerRef.current;
     
     // Only save if values changed recently and component is mounted
-    const now = Date.now();
-    if (now - lastUpdateTimeRef.current > 5000 && isMountedRef.current) {
+    if (isMountedRef.current) {
       // Debounce saves to avoid excessive localStorage operations
       if (currentTimer) {
         clearTimeout(currentTimer);
@@ -99,11 +106,15 @@ export const useStatsPersistence = (
       
       saveTimerRef.current = setTimeout(() => {
         if (isMountedRef.current) {
-          saveValues(adsCount, revenueCount, false);
+          try {
+            saveValues(adsCount, revenueCount, false);
+          } catch (e) {
+            console.error("Failed to save stats values:", e);
+          }
           saveTimerRef.current = null;
           lastUpdateTimeRef.current = Date.now();
         }
-      }, 2000);
+      }, 30000); // Increased debounce time to 30 seconds
     }
     
     return () => {
@@ -122,3 +133,5 @@ export const useStatsPersistence = (
     setRevenueCount: setRevenueCountSafe
   };
 };
+
+export default useStatsPersistence;
