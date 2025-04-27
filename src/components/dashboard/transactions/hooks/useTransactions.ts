@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 
 export const useTransactions = (initialTransactions: Transaction[]) => {
-  // Utiliser les hooks spécifiques pour chaque fonctionnalité
+  // Use the specific hooks for each functionality
   const { 
     transactions, 
     setTransactions, 
@@ -19,32 +19,25 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     setRefreshKey
   } = useTransactionsState();
   
-  // Récupérer l'utilisateur
+  // Get the user
   const { user } = useAuth();
   
-  // Utiliser le hook de stockage
+  // Use the storage hook
   const { 
     transactionsCacheKey, 
     initialFetchDone,
     restoreFromCache
   } = useTransactionsStorage();
   
-  // Utiliser le hook pour le rafraîchissement des transactions
-  const { 
-    handleManualRefresh: baseHandleManualRefresh, 
-    isMountedRef,
-    throttleTimerRef
-  } = useTransactionsRefresh(transactions, setTransactions, refreshKey, setRefreshKey);
-  
-  // Initialiser les transactions une seule fois
+  // Initialize transactions only once
   useEffect(() => {
     if (!initialFetchDone.current && Array.isArray(initialTransactions)) {
-      // Prioriser les transactions passées en props
+      // Prioritize transactions passed as props
       if (initialTransactions.length > 0) {
         setTransactions(initialTransactions);
         initialFetchDone.current = true;
         
-        // Sauvegarder en cache seulement les transactions valides
+        // Save valid transactions to cache
         const validTx = initialTransactions.filter(tx => 
           tx && (typeof tx.gain === 'number' || typeof tx.amount === 'number') && tx.date
         );
@@ -57,76 +50,49 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
           }
         }
       } else {
-        // Essayer de restaurer depuis le cache si aucune transaction initiale
-        restoreFromCache();
+        // Try to restore from cache if no initial transactions
+        const cachedTx = restoreFromCache();
+        if (cachedTx.length > 0) {
+          setTransactions(cachedTx);
+        }
+        initialFetchDone.current = true;
       }
     }
     
     return () => {
-      initialFetchDone.current = false;
+      // Don't reset initialFetchDone on unmount to avoid re-fetching
     };
   }, [initialTransactions, setTransactions, transactionsCacheKey, restoreFromCache]);
   
-  // Version améliorée de handleManualRefresh qui force le refresh depuis la BD
+  // Use the refresh hook with memoized refresh handler
   const handleManualRefresh = useCallback(async () => {
     if (!user?.id) {
       console.warn("Cannot refresh transactions: no user ID");
-      return;
+      return Promise.resolve();
     }
     
     try {
-      // Force un refresh en ignorant le cache
-      const freshTransactions = await fetchUserTransactions(user.id, true);
+      // Force a refresh by ignoring the cache
+      const freshTransactions = await fetchUserTransactions(user.id);
       
       if (Array.isArray(freshTransactions)) {
         setTransactions(freshTransactions);
         setRefreshKey(Date.now());
         
-        // Mettre à jour le cache avec les nouvelles transactions
+        // Update cache with new transactions
         localStorage.setItem(transactionsCacheKey.current, JSON.stringify(freshTransactions));
         localStorage.setItem('transactionsLastRefresh', Date.now().toString());
         
         console.log(`Refreshed ${freshTransactions.length} transactions from DB`);
-        
-        // Déclencher des événements pour informer les autres composants
-        window.dispatchEvent(new CustomEvent('transactions:updated', {
-          detail: { timestamp: Date.now() }
-        }));
       }
+      return Promise.resolve();
     } catch (error) {
       console.error("Error in handleManualRefresh:", error);
-      throw error;
+      return Promise.reject(error);
     }
   }, [user?.id, setTransactions, setRefreshKey, transactionsCacheKey]);
   
-  // Refresh transactions when a balance update occurs
-  useEffect(() => {
-    const refreshOnBalanceUpdate = () => {
-      console.log("Transaction refresh triggered by balance update");
-      handleManualRefresh().catch(console.error);
-    };
-    
-    window.addEventListener('balance:update', refreshOnBalanceUpdate);
-    window.addEventListener('dashboard:micro-gain', refreshOnBalanceUpdate);
-    window.addEventListener('automatic:revenue', refreshOnBalanceUpdate);
-    
-    return () => {
-      window.removeEventListener('balance:update', refreshOnBalanceUpdate);
-      window.removeEventListener('dashboard:micro-gain', refreshOnBalanceUpdate);
-      window.removeEventListener('automatic:revenue', refreshOnBalanceUpdate);
-    };
-  }, [handleManualRefresh]);
-  
-  // Sauvegarde des préférences utilisateur
-  useEffect(() => {
-    try {
-      localStorage.setItem('showAllTransactions', showAllTransactions.toString());
-    } catch (e) {
-      console.error("Error saving showAllTransactions preference:", e);
-    }
-  }, [showAllTransactions]);
-  
-  // Calculer les transactions à afficher
+  // Calculate which transactions to display
   const { 
     validTransactions, 
     displayedTransactions, 
@@ -143,3 +109,5 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     hiddenTransactionsCount
   };
 };
+
+export default useTransactions;
