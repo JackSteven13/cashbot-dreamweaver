@@ -1,4 +1,6 @@
 
+import { loadStoredValues, saveValues } from './storageOperations';
+
 const MINIMUM_ADS_COUNT = 36742;
 const MINIMUM_REVENUE_COUNT = 23918;
 const DAILY_PROGRESSIVE_FACTOR = 0.0002;

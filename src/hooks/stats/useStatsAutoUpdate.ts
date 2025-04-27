@@ -18,40 +18,47 @@ export const useStatsAutoUpdate = ({
   animateCounters
 }: StatsAutoUpdateProps) => {
   const countersInitializedRef = useRef(false);
+  const lastUpdateTimeRef = useRef(Date.now());
 
   useEffect(() => {
-    if (!countersInitializedRef.current) {
-      countersInitializedRef.current = true;
+    // Prevent running multiple update cycles
+    if (countersInitializedRef.current) return;
+    countersInitializedRef.current = true;
+    
+    const initialTimeout = setTimeout(() => {
+      const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
       
-      const initialTimeout = setTimeout(() => {
+      setAdsCount(newAdsCount);
+      setRevenueCount(newRevenueCount);
+      animateCounters(newAdsCount, newRevenueCount);
+      lastUpdateTimeRef.current = Date.now();
+    }, 30000);
+    
+    const incrementInterval = setInterval(() => {
+      const now = Date.now();
+      
+      // Only update after significant time has passed (5 minutes)
+      if (now - lastUpdateTimeRef.current > 300000 && Math.random() > 0.4) {
         const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
         
         setAdsCount(newAdsCount);
         setRevenueCount(newRevenueCount);
         animateCounters(newAdsCount, newRevenueCount);
-      }, 30000);
-      
-      const incrementInterval = setInterval(() => {
-        if (Math.random() > 0.4) {
-          const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
-          
-          setAdsCount(newAdsCount);
-          setRevenueCount(newRevenueCount);
-          animateCounters(newAdsCount, newRevenueCount);
-          
-          try {
-            localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
-            localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
-          } catch (e) {
-            console.error("Failed to save displayed counts:", e);
-          }
+        
+        lastUpdateTimeRef.current = now;
+        
+        try {
+          localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
+          localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
+        } catch (e) {
+          console.error("Failed to save displayed counts:", e);
         }
-      }, 300000);
-      
-      return () => {
-        clearTimeout(initialTimeout);
-        clearInterval(incrementInterval);
-      };
-    }
-  }, [setAdsCount, setRevenueCount, animateCounters]);
+      }
+    }, 300000);
+    
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(incrementInterval);
+    };
+  }, []); // Empty dependency array since we use refs to track changes
 };

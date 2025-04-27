@@ -1,23 +1,23 @@
 
-import { saveValues, loadStoredValues } from './storageOperations';
-import { MAX_ADS_COUNT, MAX_REVENUE_COUNT } from './valueInitializer';
+import { loadStoredValues, saveValues } from './storageOperations';
 
 export const incrementDateLinkedStats = () => {
-  const { adsCount, revenueCount } = loadStoredValues();
+  const storedValues = loadStoredValues();
   
-  const variationFactor = 0.9 + Math.random() * 0.2;
-  const adsIncrement = Math.max(1, Math.floor(Math.random() * 2 + 1) * variationFactor);
-  const revenueIncrement = Math.max(0.01, (Math.random() * 0.01 + 0.01) * variationFactor);
+  // Base increment values with slight randomness
+  const adsIncrement = Math.floor(1 + Math.random() * 3); // 1-3 ads
+  const revenueCoefficient = 0.76 + (Math.random() * 0.06); // ~0.76-0.82
+  const revenueIncrement = adsIncrement * revenueCoefficient;
   
-  const newAdsCount = Math.min(adsCount + adsIncrement, MAX_ADS_COUNT);
-  const newRevenueCount = Math.min(revenueCount + revenueIncrement, MAX_REVENUE_COUNT);
+  // Calculate new values
+  const newAdsCount = Math.min(storedValues.adsCount + adsIncrement, 152847); // Respect max value
+  const newRevenueCount = Math.min(storedValues.revenueCount + revenueIncrement, 116329); // Respect max value
   
+  // Save the new values
   saveValues(newAdsCount, newRevenueCount);
   
-  return { newAdsCount, newRevenueCount };
-};
-
-export const getDailyGains = (): number => {
-  const gains = localStorage.getItem('dailyGains');
-  return gains ? parseFloat(gains) : 0;
+  return {
+    newAdsCount,
+    newRevenueCount
+  };
 };

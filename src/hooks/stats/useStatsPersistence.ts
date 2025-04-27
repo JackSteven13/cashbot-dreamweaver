@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { 
   ensureProgressiveValues, 
@@ -22,7 +23,7 @@ export const useStatsPersistence = (
     return Math.max(consistentStats.revenueCount, MINIMUM_REVENUE_COUNT);
   });
 
-  // Save values on unmount
+  // Save values on unmount - with dependency array to avoid infinite loops
   useEffect(() => {
     const handleBeforeUnload = () => {
       saveValues(adsCount, revenueCount, false);

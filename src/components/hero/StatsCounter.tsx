@@ -121,20 +121,20 @@ const StatsCounter = ({
   }, [displayedAdsCount, displayValues.adsCount, CORRELATION_RATIO]);
 
   // Handle visibility changes with memoized handler
+  const handleVisibilityChange = useCallback(() => {
+    if (document.visibilityState === 'visible') {
+      ensureProgressiveValues();
+      const consistentStats = getDateConsistentStats();
+      const maxAdsCount = Math.max(displayValues.adsCount, consistentStats.adsCount);
+      const newRevenueCount = maxAdsCount * CORRELATION_RATIO;
+      setDisplayValues({
+        adsCount: maxAdsCount,
+        revenueCount: newRevenueCount
+      });
+    }
+  }, [displayValues, CORRELATION_RATIO]);
+
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        ensureProgressiveValues();
-        const consistentStats = getDateConsistentStats();
-        const maxAdsCount = Math.max(displayValues.adsCount, consistentStats.adsCount);
-        const newRevenueCount = maxAdsCount * CORRELATION_RATIO;
-        setDisplayValues({
-          adsCount: maxAdsCount,
-          revenueCount: newRevenueCount
-        });
-      }
-    };
-    
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleVisibilityChange);
     
@@ -142,7 +142,7 @@ const StatsCounter = ({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
     };
-  }, [displayValues, CORRELATION_RATIO]);
+  }, [handleVisibilityChange]);
 
   // Storage persistence with dependency cleanup
   useEffect(() => {

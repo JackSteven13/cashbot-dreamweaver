@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useStatsPersistence } from './useStatsPersistence';
 import { useStatsAnimation } from './useStatsAnimation';
@@ -37,7 +38,7 @@ export const useStatsCounter = ({
     revenueCount
   );
 
-  // Setup auto-updates
+  // Setup auto-updates with stable dependencies
   useStatsAutoUpdate({
     adsCount,
     revenueCount,
