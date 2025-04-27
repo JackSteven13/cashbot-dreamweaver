@@ -1,6 +1,10 @@
+
 /**
  * Gestionnaire centralisé du solde pour éviter les incohérences
  */
+
+// Import subscription limits at the top of the file
+import { SUBSCRIPTION_LIMITS } from '../subscription/constants';
 
 // Singleton pour gérer l'état du solde
 class BalanceManager {
@@ -314,8 +318,7 @@ class BalanceManager {
   
   // Check if daily limit is reached based on subscription
   isDailyLimitReached(subscription: string): boolean {
-    // Import subscription limits
-    const SUBSCRIPTION_LIMITS = require('../subscription/constants').SUBSCRIPTION_LIMITS;
+    // Use the imported SUBSCRIPTION_LIMITS instead of require
     const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
     // Check if daily gains have reached 95% of the limit
@@ -324,8 +327,7 @@ class BalanceManager {
   
   // Get remaining daily allowance
   getRemainingDailyAllowance(subscription: string): number {
-    // Import subscription limits
-    const SUBSCRIPTION_LIMITS = require('../subscription/constants').SUBSCRIPTION_LIMITS;
+    // Use the imported SUBSCRIPTION_LIMITS instead of require
     const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
     // Return the remaining amount (with a minimum of 0)
