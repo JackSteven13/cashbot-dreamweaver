@@ -158,6 +158,37 @@ class BalanceManager {
       return false;
     }
     
+    // NOUVEAU: Si c'est un compte freemium et un gain, vérifier que la limite quotidienne n'est pas dépassée
+    if (amount > 0) {
+      const currentSubscription = localStorage.getItem('currentSubscription') || 'freemium';
+      
+      // Si c'est un gain et un compte freemium, appliquer une vérification stricte
+      if (currentSubscription === 'freemium') {
+        // Vérifier si l'ajout causerait un dépassement de la limite
+        const dailyLimit = SUBSCRIPTION_LIMITS[currentSubscription] || 0.5;
+        if (this._dailyGains + amount > dailyLimit) {
+          console.error(`Gain quotidien rejeté: ${this._dailyGains + amount}€ > ${dailyLimit}€ (limite freemium)`);
+          
+          // Bloquer explicitement la mise à jour du solde
+          localStorage.setItem(`freemium_daily_limit_reached_${this._userId}`, 'true');
+          
+          // Notification dans les logs pour débogage
+          console.warn(`LIMITE QUOTIDIENNE ATTEINTE: Tentative de dépasser ${dailyLimit}€ pour ${this._userId}`);
+          
+          // Diffuser un événement de limite atteinte
+          window.dispatchEvent(new CustomEvent('daily-limit:reached', {
+            detail: { 
+              userId: this._userId,
+              currentGains: this._dailyGains,
+              limit: dailyLimit
+            }
+          }));
+          
+          return false;
+        }
+      }
+    }
+    
     try {
       // Calculate new balance
       const newBalance = this._currentBalance + amount;
@@ -205,23 +236,41 @@ class BalanceManager {
       // Calculate new daily gains
       const newDailyGains = parseFloat((this._dailyGains + amount).toFixed(3));
       
-      // Check if limit would be exceeded
-      if (newDailyGains > dailyLimit * 0.9) {
-        console.log(`Daily limit would be exceeded: ${newDailyGains}€ > ${dailyLimit * 0.9}€`);
+      // RENFORCÉ: Vérification stricte de la limite quotidienne
+      // Ne pas autoriser si le gain ferait dépasser la limite
+      if (newDailyGains > dailyLimit) {
+        console.error(`Gain quotidien refusé: tentative de dépasser la limite (${newDailyGains}€ > ${dailyLimit}€)`);
         
-        // Mark limit as reached
+        // Marquer explicitement que la limite est atteinte pour ce compte
         localStorage.setItem(`freemium_daily_limit_reached_${this._userId}`, 'true');
         
-        // Also dispatch an event
+        // Notification détaillée dans les logs pour le débogage
+        console.warn(`LIMITE STRICTE: Tentative de gain de ${amount}€ refusée. Total serait ${newDailyGains}€ > limite ${dailyLimit}€`);
+        
+        // Événement pour mettre à jour l'interface
         window.dispatchEvent(new CustomEvent('daily-limit:reached', {
           detail: { 
             userId: this._userId,
-            currentGains: newDailyGains,
+            currentGains: this._dailyGains,
+            attemptedGain: amount,
             limit: dailyLimit
           }
         }));
         
         return false;
+      }
+      
+      // Vérification supplémentaire pour les freemium (80% de la limite)
+      if (currentSubscription === 'freemium' && newDailyGains > dailyLimit * 0.8) {
+        // Marquer comme proche de la limite
+        console.log(`Approche de la limite quotidienne: ${newDailyGains}€/${dailyLimit}€`);
+        
+        // Pour les comptes freemium près de la limite, désactiver le bot
+        if (newDailyGains > dailyLimit * 0.9) {
+          window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
+            detail: { active: false, reason: 'near_limit' } 
+          }));
+        }
       }
       
       // Update internal state
@@ -248,7 +297,7 @@ class BalanceManager {
     return this._highestBalance;
   }
   
-  // Update highest balance (Adding the missing method that caused errors)
+  // Update highest balance
   updateHighestBalance(balance: number): void {
     if (balance > this._highestBalance) {
       this._highestBalance = balance;
@@ -279,6 +328,28 @@ class BalanceManager {
     // Store in localStorage using user-specific keys
     const keys = getStorageKeys(this._userId);
     localStorage.setItem(keys.dailyGains, amount.toString());
+    
+    // NOUVEAU: Vérifier si la limite est atteinte après la mise à jour
+    const currentSubscription = localStorage.getItem('currentSubscription') || 'freemium';
+    const dailyLimit = SUBSCRIPTION_LIMITS[currentSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    
+    // Vérification immédiate si la limite est déjà dépassée
+    if (amount >= dailyLimit) {
+      console.warn(`LIMITE DÉJÀ DÉPASSÉE: Daily gains set to ${amount}€ >= limit ${dailyLimit}€`);
+      
+      if (this._userId) {
+        localStorage.setItem(`freemium_daily_limit_reached_${this._userId}`, 'true');
+      }
+      
+      // Diffuser l'événement de limite atteinte
+      window.dispatchEvent(new CustomEvent('daily-limit:reached', {
+        detail: { 
+          userId: this._userId,
+          currentGains: amount,
+          limit: dailyLimit
+        }
+      }));
+    }
   }
   
   // Sync daily gains from transactions
@@ -299,8 +370,8 @@ class BalanceManager {
     // Get daily limit for the subscription
     const dailyLimit = SUBSCRIPTION_LIMITS[currentSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
-    // Check if limit is reached (with 90% threshold)
-    return this._dailyGains >= dailyLimit * 0.9;
+    // RENFORCEMENT: Vérification stricte à 100% de la limite, pas 90%
+    return this._dailyGains >= dailyLimit;
   }
   
   // Get remaining daily allowance
@@ -316,6 +387,41 @@ class BalanceManager {
     
     // Return remaining, minimum 0
     return Math.max(0, remaining);
+  }
+  
+  // DEBUG: Effacer le solde actuel (pour les tests)
+  resetBalance(): boolean {
+    if (!this._userId) {
+      console.error("Cannot reset balance: no user ID set");
+      return false;
+    }
+    
+    try {
+      // Reset balance values
+      this._currentBalance = 0;
+      
+      // Store zeros in localStorage
+      persistBalance(0, this._userId);
+      
+      console.log(`Balance reset to 0 for user ${this._userId}`);
+      
+      // Emit balance changed event
+      this._eventEmitter.emit('balance-changed', 0);
+      
+      // Dispatch DOM event
+      window.dispatchEvent(new CustomEvent('balance:forced-sync', {
+        detail: { 
+          balance: 0, 
+          userId: this._userId,
+          timestamp: Date.now()
+        }
+      }));
+      
+      return true;
+    } catch (e) {
+      console.error('Failed to reset balance:', e);
+      return false;
+    }
   }
 }
 

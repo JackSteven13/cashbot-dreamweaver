@@ -8,14 +8,14 @@ import { useSessionAnimations } from '@/hooks/sessions/animations/useSessionAnim
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 import balanceManager from '@/utils/balance/balanceManager';
 
-const addDailyGain = (gain: number): void => {
-  const current = getDailyGains();
-  localStorage.setItem('dailyGains', (current + gain).toFixed(2));
+const addDailyGain = (gain: number): boolean => {
+  // RENFORCÉ: Utiliser directement balanceManager pour la limite stricte
+  return balanceManager.addDailyGain(gain);
 };
 
 const getDailyGains = (): number => {
-  const gains = localStorage.getItem('dailyGains');
-  return gains ? parseFloat(gains) : 0;
+  // RENFORCÉ: Utiliser directement balanceManager comme source unique de vérité
+  return balanceManager.getDailyGains();
 };
 
 interface ManualSessionHookProps {
@@ -43,26 +43,55 @@ export const useManualSessions = ({
   useEffect(() => {
     if (userData && userData.subscription === 'freemium') {
       // Pour les comptes freemium, la limite est STRICTEMENT de 1 session par jour
-      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const userId = userData.id || userData.profile?.id;
+      const limitReachedKey = userId ? `freemium_daily_limit_reached_${userId}` : 'freemium_daily_limit_reached';
+      const limitReachedValue = localStorage.getItem(limitReachedKey);
       const lastSessionDate = localStorage.getItem('last_session_date');
       const today = new Date().toDateString();
       
       if (dailySessionCount >= 1) {
         setLimitReached(true);
-        localStorage.setItem('freemium_daily_limit_reached', 'true');
+        localStorage.setItem(limitReachedKey, 'true');
         localStorage.setItem('last_session_date', today);
-      } else if (lastSessionDate === today && limitReached === 'true') {
+      } else if (lastSessionDate === today && limitReachedValue === 'true') {
         setLimitReached(true);
       } else if (lastSessionDate !== today) {
         // Si c'est un nouveau jour, réinitialiser la limite
         setLimitReached(false);
-        localStorage.removeItem('freemium_daily_limit_reached');
+        localStorage.removeItem(limitReachedKey);
+      }
+      
+      // RENFORCÉ: Vérifier aussi la limite de gains quotidiens via balanceManager
+      const dailyLimit = SUBSCRIPTION_LIMITS['freemium'] || 0.5;
+      const currentDailyGains = balanceManager.getDailyGains();
+      
+      if (currentDailyGains >= dailyLimit) {
+        setLimitReached(true);
+        localStorage.setItem(limitReachedKey, 'true');
       }
     }
   }, [userData, dailySessionCount]);
 
+  // RENFORCÉ: Écoute des événements de limite atteinte
+  useEffect(() => {
+    const handleLimitReached = () => {
+      console.log("Event 'daily-limit:reached' détecté dans useManualSessions");
+      setLimitReached(true);
+    };
+    
+    window.addEventListener('daily-limit:reached' as any, handleLimitReached);
+    
+    return () => {
+      window.removeEventListener('daily-limit:reached' as any, handleLimitReached);
+    };
+  }, []);
+
   const canStartSession = useCallback(() => {
     if (isSessionRunning) {
+      return false;
+    }
+    
+    if (limitReached) {
       return false;
     }
     
@@ -77,7 +106,9 @@ export const useManualSessions = ({
     // Pour les comptes freemium, vérifier STRICTEMENT la limite de 1 session par jour
     if (userData && userData.subscription === 'freemium') {
       // Vérifier si la limite journalière a déjà été enregistrée
-      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
+      const userId = userData.id || userData.profile?.id;
+      const limitReachedKey = userId ? `freemium_daily_limit_reached_${userId}` : 'freemium_daily_limit_reached';
+      const limitReached = localStorage.getItem(limitReachedKey);
       const lastSessionDate = localStorage.getItem('last_session_date'); 
       const today = new Date().toDateString();
       
@@ -87,15 +118,10 @@ export const useManualSessions = ({
       }
     }
     
-    // Vérifier si la limite quotidienne de gains est atteinte
-    const dailyLimit = userData?.subscription === 'freemium' ? 0.5 : 
-                     userData?.subscription === 'starter' ? 5 : 
-                     userData?.subscription === 'gold' ? 15 : 25;
-                     
-    const currentDailyGains = getDailyGains();
-    
-    return currentDailyGains < dailyLimit * 0.95;
-  }, [isSessionRunning, userData, dailySessionCount]);
+    // RENFORCÉ: Vérifier si la limite quotidienne de gains est atteinte via balanceManager
+    const subscription = userData?.subscription || 'freemium';
+    return !balanceManager.isDailyLimitReached(subscription);
+  }, [isSessionRunning, userData, dailySessionCount, limitReached]);
 
   const startSession = useCallback(async () => {
     console.log("useManualSessions: startSession called");
@@ -109,8 +135,20 @@ export const useManualSessions = ({
       return;
     }
     
+    // RENFORCÉ: Vérification avant de commencer la session
     if (!canStartSession()) {
-      if (userData.subscription === 'freemium') {
+      const subscription = userData.subscription || 'freemium';
+      const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      const currentGains = balanceManager.getDailyGains();
+      
+      if (currentGains >= dailyLimit) {
+        toast({
+          title: "Limite journalière atteinte",
+          description: `Vous avez atteint votre limite quotidienne de ${dailyLimit}€.`,
+          variant: "destructive",
+          duration: 4000
+        });
+      } else if (userData.subscription === 'freemium' && dailySessionCount >= 1) {
         toast({
           title: "Limite quotidienne atteinte",
           description: "Les comptes freemium sont limités à 1 session par jour.",
@@ -134,14 +172,20 @@ export const useManualSessions = ({
       
       startAnimation();
       
-      const currentDailyGains = getDailyGains();
+      const userId = userData.id || userData.profile?.id;
+      if (userId) {
+        // S'assurer que balanceManager utilise le bon ID utilisateur
+        balanceManager.setUserId(userId);
+      }
+      
+      const currentDailyGains = balanceManager.getDailyGains();
       const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
-      // Vérification stricte que la limite n'est pas atteinte
-      if (currentDailyGains >= dailyLimit * 0.95) {
+      // RENFORCÉ: Vérification stricte que la limite n'est pas atteinte
+      if (currentDailyGains >= dailyLimit) {
         toast({
-          title: "Limite journalière presque atteinte",
-          description: `Vous avez déjà généré ${currentDailyGains.toFixed(2)}€ aujourd'hui, proche de la limite de ${dailyLimit}€.`,
+          title: "Limite journalière atteinte",
+          description: `Vous avez déjà généré ${currentDailyGains.toFixed(2)}€ aujourd'hui, atteignant la limite de ${dailyLimit}€.`,
           variant: "destructive",
           duration: 5000
         });
@@ -152,29 +196,38 @@ export const useManualSessions = ({
       
       const simulationTime = Math.random() * 1500 + 1500;
       
-      // Pour les comptes freemium, limiter strictement le gain
+      // Calculer un gain qui respecte strictement la limite
+      const remainingAllowance = dailyLimit - currentDailyGains;
+      
+      // Pour les comptes freemium, limite stricte sur le gain
       let gain = 0;
       if (userData.subscription === 'freemium') {
-        // Calculer le montant restant avant d'atteindre la limite
-        const remainingAmount = dailyLimit - currentDailyGains;
-        // Limiter le gain pour ne pas dépasser la limite
-        gain = Math.min(Math.random() * 0.05 + 0.1, remainingAmount);
+        // Calculer un gain qui ne dépassera jamais la limite
+        gain = Math.min(Math.random() * 0.05 + 0.1, remainingAllowance * 0.95);
       } else {
-        gain = calculateSessionGain(
+        // Pour les autres abonnements, utiliser la fonction standard mais vérifier la limite
+        const calculatedGain = calculateSessionGain(
           userData.subscription, 
           currentDailyGains,
           userData.referrals?.length || 0
         );
+        gain = Math.min(calculatedGain, remainingAllowance * 0.95);
       }
       
+      // S'assurer que le gain est toujours positif mais ne dépasse pas la limite
+      gain = Math.max(0.01, Math.min(gain, remainingAllowance * 0.95));
       gain = parseFloat(gain.toFixed(2));
       
-      console.log(`Gain calculé: ${gain}€`);
+      console.log(`Gain calculé: ${gain}€ (limite restante: ${remainingAllowance}€)`);
       
-      // Pour les comptes freemium, marquer immédiatement que la limite est atteinte
+      // Pour les comptes freemium, marquer immédiatement que la limite est atteinte après une session
       if (userData.subscription === 'freemium') {
         setLimitReached(true);
-        localStorage.setItem('freemium_daily_limit_reached', 'true');
+        if (userId) {
+          localStorage.setItem(`freemium_daily_limit_reached_${userId}`, 'true');
+        } else {
+          localStorage.setItem('freemium_daily_limit_reached', 'true');
+        }
         localStorage.setItem('last_session_date', new Date().toDateString());
       }
       
@@ -182,19 +235,38 @@ export const useManualSessions = ({
         sessionTimeoutRef.current = setTimeout(resolve, simulationTime);
       });
       
+      // RENFORCÉ: Utiliser addDailyGain d'abord pour vérifier si le gain peut être ajouté
+      if (!addDailyGain(gain)) {
+        console.error("Impossible d'ajouter le gain quotidien, la limite a été atteinte");
+        toast({
+          title: "Limite quotidienne atteinte",
+          description: `Votre limite de gain quotidien de ${dailyLimit}€ a été atteinte.`,
+          variant: "destructive",
+          duration: 4000
+        });
+        setIsSessionRunning(false);
+        stopAnimation();
+        return;
+      }
+      
       const oldBalance = balanceManager.getCurrentBalance();
       
-      addDailyGain(gain);
-      
-      balanceManager.addDailyGain(gain);
-      balanceManager.updateBalance(gain);
+      // RENFORCÉ: N'appliquer la mise à jour du solde que si la limite n'est pas dépassée
+      const balanceUpdated = balanceManager.updateBalance(gain);
+      if (!balanceUpdated) {
+        console.error("Mise à jour du solde rejetée par balanceManager");
+        toast({
+          title: "Erreur de mise à jour",
+          description: "Impossible de mettre à jour votre solde. Limite quotidienne peut-être atteinte.",
+          variant: "destructive",
+          duration: 4000
+        });
+        setIsSessionRunning(false);
+        stopAnimation();
+        return;
+      }
       
       const newBalance = balanceManager.getCurrentBalance();
-      
-      const userId = userData?.profile?.id || userData?.id;
-      if (!userId) {
-        console.error("Missing user ID for transaction");
-      }
       
       const sessionReport = `Session manuelle #${dailySessionCount + 1}: ${gain.toFixed(2)}€ générés.`;
       
