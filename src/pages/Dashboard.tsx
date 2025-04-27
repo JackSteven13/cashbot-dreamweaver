@@ -5,6 +5,7 @@ import DashboardMain from '../components/dashboard/DashboardMain';
 import DashboardSkeleton from '../components/dashboard/DashboardSkeleton';
 import DailyBalanceUpdater from '../components/DailyBalanceUpdater';
 import balanceManager from '@/utils/balance/balanceManager';
+import { useProfileData } from '@/hooks/auth/useProfileData';
 
 const Dashboard = () => {
   const {
@@ -12,10 +13,19 @@ const Dashboard = () => {
     user,
     isInitializing,
     isFirstLoad,
-    username,
+    username: dashboardUsername,
     dashboardReady,
     refreshData
   } = useDashboardLogic();
+  
+  const { username: profileUsername, fetchProfileData } = useProfileData();
+
+  // Fetch profile data on component mount
+  useEffect(() => {
+    if (user?.id && !profileUsername) {
+      fetchProfileData(user.id);
+    }
+  }, [user, profileUsername, fetchProfileData]);
 
   // Force a data refresh when dashboard is loaded
   useEffect(() => {
@@ -34,19 +44,24 @@ const Dashboard = () => {
     }
   }, [user, isInitializing, refreshData]);
 
+  // Try to get the most reliable username
+  const displayUsername = profileUsername || dashboardUsername || 
+                        user?.user_metadata?.full_name || 
+                        (user?.email ? user.email.split('@')[0] : "Utilisateur");
+
   if (authLoading || !user) {
     return <DashboardSkeleton username="Chargement..." />;
   }
 
   if (isInitializing && isFirstLoad) {
-    return <DashboardSkeleton username={username || "Chargement..."} />;
+    return <DashboardSkeleton username={displayUsername || "Chargement..."} />;
   }
 
   return (
     <>
       <DashboardMain
         dashboardReady={dashboardReady}
-        username={username}
+        username={displayUsername}
         refreshData={refreshData}
       />
       {/* Add the invisible component that handles background updates with correct userId */}

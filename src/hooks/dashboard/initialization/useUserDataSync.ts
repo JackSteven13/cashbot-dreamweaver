@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import balanceManager from '@/utils/balance/balanceManager';
 
 interface UseUserDataSyncParams {
   mountedRef: React.RefObject<boolean>;
@@ -34,7 +35,7 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
       
       // Use a more reliable approach to wait for session establishment
       let attempts = 0;
-      const maxAttempts = 5; // Augmenté pour plus de fiabilité
+      const maxAttempts = 5; // Increased for better reliability
       let syncSuccess = false;
       
       while (attempts < maxAttempts && !syncSuccess && mountedRef.current) {
@@ -44,61 +45,79 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
             await new Promise(resolve => setTimeout(resolve, 300 * attempts));
           }
           
-          // Récupérer les données utilisateur avec une requête parallèle
+          // Fetch user data with parallel queries
           const [userBalanceResult, profileResult] = await Promise.all([
             supabase.from('user_balances').select('subscription, balance, daily_session_count').eq('id', session.user.id).maybeSingle(),
             supabase.from('profiles').select('full_name, email').eq('id', session.user.id).maybeSingle()
           ]);
           
-          // Vérifier les résultats et mettre à jour le localStorage
+          // Check results and update localStorage
           if (!userBalanceResult.error && userBalanceResult.data) {
             const userData = userBalanceResult.data;
-            // Mettre à jour l'abonnement dans localStorage
+            // Update subscription in localStorage
             if (userData.subscription) {
               localStorage.setItem('subscription', userData.subscription);
-              console.log("Abonnement mis à jour:", userData.subscription);
+              localStorage.setItem(`subscription_${session.user.id}`, userData.subscription);
+              console.log("Subscription updated:", userData.subscription);
             }
             
-            // Mettre à jour le solde dans localStorage
+            // Update balance in localStorage
             if (userData.balance !== undefined) {
               localStorage.setItem('currentBalance', String(userData.balance));
               localStorage.setItem('lastKnownBalance', String(userData.balance));
-              console.log("Solde mis à jour:", userData.balance);
+              localStorage.setItem(`currentBalance_${session.user.id}`, String(userData.balance));
+              localStorage.setItem(`lastKnownBalance_${session.user.id}`, String(userData.balance));
+              console.log("Balance updated:", userData.balance);
             }
             
-            // Mettre à jour le compteur de sessions quotidiennes
+            // Update daily session count
             if (userData.daily_session_count !== undefined) {
               localStorage.setItem('dailySessionCount', String(userData.daily_session_count));
-              console.log("Compteur de sessions mis à jour:", userData.daily_session_count);
+              localStorage.setItem(`dailySessionCount_${session.user.id}`, String(userData.daily_session_count));
+              console.log("Session count updated:", userData.daily_session_count);
             }
             
             syncSuccess = true;
           } else if (userBalanceResult.error) {
-            console.error("Erreur lors de la récupération du solde:", userBalanceResult.error);
+            console.error("Error fetching balance:", userBalanceResult.error);
           }
           
-          // Récupérer et stocker le nom d'utilisateur
+          // Get and store username
           if (!profileResult.error && profileResult.data && profileResult.data.full_name) {
             localStorage.setItem('lastKnownUsername', profileResult.data.full_name);
-            console.log("Nom d'utilisateur mis à jour:", profileResult.data.full_name);
+            localStorage.setItem(`lastKnownUsername_${session.user.id}`, profileResult.data.full_name);
+            console.log("Username updated:", profileResult.data.full_name);
             syncSuccess = true;
             
-            // Déclencher un événement pour signaler que le nom est disponible
+            // Dispatch event to notify that the username is available
             window.dispatchEvent(new CustomEvent('username:loaded', { 
               detail: { username: profileResult.data.full_name }
             }));
           } else if (session.user.user_metadata?.full_name) {
-            // Fallback sur les métadonnées utilisateur
+            // Fallback to user metadata
             localStorage.setItem('lastKnownUsername', session.user.user_metadata.full_name);
-            console.log("Nom d'utilisateur récupéré des métadonnées:", session.user.user_metadata.full_name);
+            localStorage.setItem(`lastKnownUsername_${session.user.id}`, session.user.user_metadata.full_name);
+            console.log("Username retrieved from metadata:", session.user.user_metadata.full_name);
             syncSuccess = true;
             
-            // Déclencher un événement pour signaler que le nom est disponible
+            // Dispatch event
             window.dispatchEvent(new CustomEvent('username:loaded', { 
               detail: { username: session.user.user_metadata.full_name }
             }));
+          } else if (session.user.email) {
+            // Use email as fallback for username
+            const emailUsername = session.user.email.split('@')[0];
+            localStorage.setItem('lastKnownUsername', emailUsername);
+            localStorage.setItem(`lastKnownUsername_${session.user.id}`, emailUsername);
+            console.log("Username fallback to email:", emailUsername);
+            syncSuccess = true;
+            
+            // Dispatch event
+            window.dispatchEvent(new CustomEvent('username:loaded', { 
+              detail: { username: emailUsername }
+            }));
           } else if (profileResult.error) {
-            console.error("Erreur lors de la récupération du profil:", profileResult.error);
+            console.error("Error fetching profile:", profileResult.error);
           }
           
           if (!syncSuccess) {
@@ -117,7 +136,7 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
         console.log("Force refresh detected, clearing flag");
         localStorage.removeItem('forceRefreshBalance');
         
-        // Déclencher un événement pour forcer la mise à jour de l'interface
+        // Trigger event to force UI update
         window.dispatchEvent(new CustomEvent('balance:force-sync', { 
           detail: { 
             balance: localStorage.getItem('currentBalance'),
@@ -126,11 +145,11 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
         }));
       }
       
-      // Si la synchronisation a échoué après plusieurs tentatives
+      // If synchronization failed after multiple attempts
       if (!syncSuccess && attempts >= maxAttempts) {
-        console.error("La synchronisation a échoué après plusieurs tentatives");
+        console.error("Synchronization failed after multiple attempts");
         
-        // Notifier l'utilisateur en cas d'échec
+        // Notify user if failure
         if (mountedRef.current) {
           toast({
             title: "Synchronisation des données",
@@ -147,7 +166,7 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
       console.error("Error syncing user data:", error);
       localStorage.removeItem('data_syncing');
       
-      // Déclencher un événement pour informer d'une erreur de synchronisation
+      // Dispatch event to inform about sync error
       window.dispatchEvent(new CustomEvent('user:sync-error', { 
         detail: { error: String(error) }
       }));
@@ -158,3 +177,5 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
 
   return { syncUserData };
 };
+
+export default useUserDataSync;

@@ -1,32 +1,29 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import DashboardContent from './DashboardContent';
 import DashboardHeader from './DashboardHeader';
-import DashboardMetrics from './DashboardMetrics';
-import DashboardFooter from './DashboardFooter';
-import DailyLimitAlert from './DailyLimitAlert';
-import DailyLimitEnforcer from './DailyLimitEnforcer';
+import { UserData } from '@/types/userData';
+import { Transaction } from '@/types/userData';
+import { Referral } from '@/types/userData';
 
-interface DashboardContainerProps {
-  isLoading?: boolean;
-  userData: any;
+export interface DashboardContainerProps {
+  userData: UserData | null;
   balance: number;
   referralLink: string;
   isStartingSession: boolean;
   handleStartSession: () => void;
-  handleWithdrawal?: () => void;
-  transactions: any[];
+  handleWithdrawal: () => void;
+  transactions: Transaction[];
   isNewUser?: boolean;
-  subscription?: string;
+  subscription: string;
   showLimitAlert: boolean;
-  dailySessionCount?: number;
-  canStartSession?: boolean;
-  referrals?: any[];
-  lastSessionTimestamp?: string;
+  dailySessionCount: number;
+  referrals: Referral[];
   isBotActive?: boolean;
+  username?: string;
 }
 
 const DashboardContainer: React.FC<DashboardContainerProps> = ({
-  isLoading = false,
   userData,
   balance,
   referralLink,
@@ -36,50 +33,45 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
   transactions,
   isNewUser = false,
   subscription = 'freemium',
-  showLimitAlert,
+  showLimitAlert = false,
   dailySessionCount = 0,
-  canStartSession = true,
   referrals = [],
-  lastSessionTimestamp,
-  isBotActive = true
+  isBotActive = true,
+  username = "Utilisateur"
 }) => {
+  const [selectedNavItem, setSelectedNavItem] = useState('dashboard');
+  
+  // Get user avatar from profile if available
+  const userAvatar = userData?.profile?.avatar_url || null;
+  
+  // Use the explicitly provided username or fall back to userData
+  const displayName = username || userData?.username || "Utilisateur";
+
   return (
-    <div className="dashboard-container flex flex-col min-h-screen">
-      <DailyLimitEnforcer />
+    <div className="flex flex-col min-h-screen bg-background">
       <DashboardHeader 
-        username={userData?.username || userData?.profile?.username || 'Utilisateur'}
-        avatar={userData?.profile?.avatar_url}
+        username={displayName} 
         subscription={subscription}
+        avatar={userAvatar}
       />
       
-      <main className="flex-grow p-4 md:p-6">
-        {showLimitAlert && (
-          <DailyLimitAlert 
-            show={showLimitAlert}
-            subscription={subscription}
-            currentBalance={balance}
-            userData={userData}
-          />
-        )}
-        
-        <DashboardMetrics 
-          balance={balance}
-          referralLink={referralLink}
-          isStartingSession={isStartingSession}
-          handleStartSession={handleStartSession}
-          handleWithdrawal={handleWithdrawal}
-          transactions={transactions}
-          isNewUser={isNewUser}
-          subscription={subscription}
-          dailySessionCount={dailySessionCount}
-          canStartSession={canStartSession}
-          referrals={referrals}
-          lastSessionTimestamp={lastSessionTimestamp}
-          isBotActive={isBotActive}
-        />
-      </main>
-      
-      <DashboardFooter />
+      <DashboardContent
+        balance={balance}
+        referralLink={referralLink}
+        isStartingSession={isStartingSession}
+        handleStartSession={handleStartSession}
+        handleWithdrawal={handleWithdrawal}
+        transactions={transactions}
+        isNewUser={isNewUser}
+        subscription={subscription}
+        dailySessionCount={dailySessionCount}
+        referrals={referrals}
+        showLimitAlert={showLimitAlert}
+        isBotActive={isBotActive}
+        selectedNavItem={selectedNavItem}
+        setSelectedNavItem={setSelectedNavItem}
+        username={displayName}
+      />
     </div>
   );
 };
