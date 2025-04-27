@@ -11,7 +11,6 @@ interface ActionButtonsProps {
   subscription?: string;
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
-  canStartSession?: boolean;
   canWithdraw?: boolean;
   useAnimation?: boolean;
 }
@@ -24,7 +23,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   subscription = 'freemium',
   lastSessionTimestamp = '',
   isBotActive = true,
-  canStartSession = true,
   canWithdraw = false,
   useAnimation = false
 }) => {
@@ -51,7 +49,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   };
   
   const timeSinceLastSession = getTimeSinceLastSession();
-  const canStartNewSession = canStartSession && !hasReachedLimit && timeSinceLastSession > 60; // 1 minute minimum entre les sessions
+  const canStartNewSession = !hasReachedLimit && timeSinceLastSession > 60; // 1 minute minimum entre les sessions
   
   return (
     <div className="flex gap-2 mt-4">

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import BalanceDisplay from './userBalanceCard/components/BalanceDisplay';
@@ -192,11 +193,11 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
           isStartingSession={isStartingSession}
           onStartSession={handleStartSession}
           onWithdrawal={handleWithdrawal}
-          canStartSession={canStartSession && !limitReached && !isNewUser}
           canWithdraw={!isNewUser && (balance || 0) >= 20}
           subscription={subscription}
           isBotActive={isBotActive}
           useAnimation={true}
+          dailySessionCount={0}
         />
       </CardContent>
     </Card>

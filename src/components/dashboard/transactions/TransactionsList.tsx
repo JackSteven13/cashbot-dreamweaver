@@ -49,6 +49,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
             ))}
             <TransactionFooter 
               showAllTransactions={showAllTransactions} 
+              setShowAllTransactions={setShowAllTransactions}
               hiddenTransactionsCount={hiddenTransactionsCount} 
             />
           </div>
