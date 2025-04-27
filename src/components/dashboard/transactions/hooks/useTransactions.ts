@@ -7,7 +7,6 @@ import { useTransactionDisplay } from './useTransactionDisplay';
 import { useAuth } from '@/hooks/useAuth';
 import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 
-// Fixed export syntax
 export const useTransactions = (initialTransactions: Transaction[]) => {
   // Use the specific hooks for each functionality
   const { 
@@ -106,5 +105,4 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
   };
 };
 
-// Default export
 export default useTransactions;
