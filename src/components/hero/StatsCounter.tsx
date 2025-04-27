@@ -42,6 +42,7 @@ const StatsCounter = ({
     }
   };
   
+  // Utiliser useRef pour stocker des valeurs qui ne déclenchent pas de re-renders
   const stableValuesRef = useRef({
     adsCount: MINIMUM_ADS,
     revenueCount: MINIMUM_REVENUE,
@@ -49,6 +50,8 @@ const StatsCounter = ({
     lastSyncTime: Date.now()
   });
   
+  // Initialiser les valeurs d'affichage avec useState avec une fonction d'initialisation
+  // pour éviter de recalculer à chaque rendu
   const [displayValues, setDisplayValues] = useState(() => {
     ensureProgressiveValues();
     const consistentStats = getDateConsistentStats();
@@ -60,14 +63,15 @@ const StatsCounter = ({
       const variance = 1 + ((Math.random() - 0.5 + sessionVariance) * 0.01);
       return Math.floor(value * variance);
     };
-    const ads = Math.min(Math.max(randomVariance(MINIMUM_ADS), consistentStats.adsCount), 152847);
+    const ads = Math.max(randomVariance(MINIMUM_ADS), consistentStats.adsCount);
     const revenue = ads * CORRELATION_RATIO;
     return {
-      adsCount: ads,
-      revenueCount: revenue
+      adsCount: Math.min(ads, 152847), // Cap at maximum value
+      revenueCount: Math.min(revenue, 116329) // Cap at maximum value
     };
   });
 
+  // Effet pour les mises à jour régulières avec des dépendances minimales
   useEffect(() => {
     const sessionId = getSessionBasedId();
     const sessionSpecificRate = sessionId ? 
@@ -79,7 +83,7 @@ const StatsCounter = ({
         let adsIncrement = 0;
         if (adsRand > 0.85) adsIncrement = 2;
         else if (adsRand > 0.55) adsIncrement = 1;
-        const newAdsCount = prev.adsCount + adsIncrement;
+        const newAdsCount = Math.min(prev.adsCount + adsIncrement, 152847); // Cap at maximum value
 
         let newRevenueCount = prev.revenueCount;
         if (adsIncrement > 0) {
@@ -89,7 +93,7 @@ const StatsCounter = ({
           const jitterRatio = CORRELATION_RATIO + ((Math.random() - 0.5) * 0.025) + sessionVariation;
           const revenueIncrement = adsIncrement * jitterRatio;
           if (Math.random() > 0.25) {
-            newRevenueCount = prev.revenueCount + revenueIncrement;
+            newRevenueCount = Math.min(prev.revenueCount + revenueIncrement, 116329); // Cap at maximum value
           }
         }
         return {
@@ -102,18 +106,21 @@ const StatsCounter = ({
     return () => {
       clearInterval(regularUpdateInterval);
     };
-  }, []);
+  }, []); // Empty dependency array to run only once
 
+  // Synchroniser avec les valeurs calculées lorsqu'elles changent
   useEffect(() => {
-    if (displayedAdsCount > displayValues.adsCount) {
+    // Only update if the displayed ads count is significantly higher
+    if (displayedAdsCount > displayValues.adsCount + 10) {
       const newRevenue = displayedAdsCount * CORRELATION_RATIO;
       setDisplayValues({
         adsCount: displayedAdsCount,
         revenueCount: newRevenue
       });
     }
-  }, [displayedAdsCount]);
+  }, [displayedAdsCount, displayValues.adsCount]);
 
+  // Mettre à jour les valeurs lorsque la visibilité de la page change
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -137,10 +144,11 @@ const StatsCounter = ({
     };
   }, [displayValues]);
 
+  // Sauvegarder les valeurs avant la fermeture de la page
   useEffect(() => {
     const handleBeforeUnload = () => {
       localStorage.setItem('last_displayed_ads_count', displayValues.adsCount.toString());
-      localStorage.setItem('last_displayed_revenue_count', (displayValues.adsCount * CORRELATION_RATIO).toString());
+      localStorage.setItem('last_displayed_revenue_count', displayValues.revenueCount.toString());
     };
     
     window.addEventListener('beforeunload', handleBeforeUnload);
