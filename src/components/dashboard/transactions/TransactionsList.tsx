@@ -2,18 +2,22 @@
 import React, { memo, useCallback, useState, useEffect } from 'react';
 import { Transaction } from '@/types/userData';
 import TransactionListItem from './TransactionListItem';
+import TransactionEmptyState from './TransactionEmptyState';
+import TransactionListActions from './TransactionListActions';
 
 interface TransactionsListProps {
   transactions: Transaction[];
   subscription?: string;
   refreshKey?: number;
+  isNewUser?: boolean;
 }
 
 // Use memo to prevent unnecessary re-renders
 const TransactionsList: React.FC<TransactionsListProps> = memo(({
   transactions,
   subscription = 'freemium',
-  refreshKey = 0
+  refreshKey = 0,
+  isNewUser = false
 }) => {
   // Only update lastRendered when refreshKey changes
   const [lastRendered, setLastRendered] = useState<Date>(() => new Date());
@@ -25,11 +29,7 @@ const TransactionsList: React.FC<TransactionsListProps> = memo(({
   }, [refreshKey]);
 
   if (!transactions || transactions.length === 0) {
-    return (
-      <div className="py-8 text-center">
-        <p className="text-muted-foreground">Aucune transaction à afficher.</p>
-      </div>
-    );
+    return <TransactionEmptyState isNewUser={isNewUser} />;
   }
 
   return (

@@ -3,7 +3,7 @@ import React, { useState, useCallback } from 'react';
 import { Transaction } from '@/types/userData';
 import TransactionsList from './TransactionsList';
 import TransactionFooter from './TransactionFooter';
-import { useTransactions } from './hooks/useTransactions';
+import { useTransactions } from './hooks';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Loader2 } from 'lucide-react';
 
@@ -79,17 +79,12 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
             <p className="text-muted-foreground">Chargement des transactions...</p>
           </div>
         ) : (
-          displayedTransactions.length > 0 ? (
-            <TransactionsList 
-              transactions={displayedTransactions}
-              subscription={subscription}
-              refreshKey={refreshKey}
-            />
-          ) : (
-            <div className="py-8 text-center">
-              <p className="text-muted-foreground">Aucune transaction à afficher.</p>
-            </div>
-          )
+          <TransactionsList 
+            transactions={displayedTransactions}
+            subscription={subscription}
+            refreshKey={refreshKey}
+            isNewUser={isNewUser}
+          />
         )}
       </div>
       
