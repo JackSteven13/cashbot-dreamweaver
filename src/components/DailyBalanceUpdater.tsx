@@ -8,28 +8,32 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * Composant invisible qui gère les mises à jour régulières du solde
  */
-const DailyBalanceUpdater: React.FC = () => {
+interface DailyBalanceUpdaterProps {
+  userId: string;
+}
+
+const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => {
   const { user } = useAuth();
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
   const isInitializedRef = useRef<boolean>(false);
-  const userIdRef = useRef<string | undefined>(undefined);
+  const userIdRef = useRef<string | undefined>(userId);
   
   // Synchroniser périodiquement avec la base de données
   useEffect(() => {
-    if (!user?.id) return;
+    if (!userId) return;
     
-    userIdRef.current = user.id;
+    userIdRef.current = userId;
     
     // Vérification initiale
     const initializeBalance = async () => {
-      if (!user.id || isInitializedRef.current) return;
+      if (!userId || isInitializedRef.current) return;
       
       try {
         // Récupérer le solde depuis la base de données
         const { data, error } = await supabase
           .from('user_balances')
           .select('balance')
-          .eq('id', user.id)
+          .eq('id', userId)
           .single();
           
         if (error) {
@@ -38,7 +42,7 @@ const DailyBalanceUpdater: React.FC = () => {
         }
         
         // Récupérer les gains d'aujourd'hui
-        const todaysGains = await calculateTodaysGains(user.id);
+        const todaysGains = await calculateTodaysGains(userId);
         
         // Mettre à jour le gestionnaire avec les valeurs récupérées
         if (data?.balance !== undefined) {
@@ -48,7 +52,7 @@ const DailyBalanceUpdater: React.FC = () => {
           const effectiveBalance = Math.max(data.balance, currentManagerBalance);
           
           if (effectiveBalance > currentManagerBalance) {
-            balanceManager.forceBalanceSync(effectiveBalance, user.id);
+            balanceManager.forceBalanceSync(effectiveBalance, userId);
             console.log(`Solde initialisé à ${effectiveBalance}€`);
           }
           
@@ -70,7 +74,7 @@ const DailyBalanceUpdater: React.FC = () => {
     
     // Vérifier périodiquement les mises à jour
     const syncInterval = setInterval(async () => {
-      if (!user?.id) return;
+      if (!userId) return;
       
       const now = Date.now();
       
@@ -82,13 +86,13 @@ const DailyBalanceUpdater: React.FC = () => {
         const { data, error } = await supabase
           .from('user_balances')
           .select('balance')
-          .eq('id', user.id)
+          .eq('id', userId)
           .single();
           
         if (error) return;
         
         // Récupérer les gains d'aujourd'hui
-        const todaysGains = await calculateTodaysGains(user.id);
+        const todaysGains = await calculateTodaysGains(userId);
         
         // Mettre à jour le gestionnaire avec les valeurs récupérées
         if (data?.balance !== undefined) {
@@ -96,7 +100,7 @@ const DailyBalanceUpdater: React.FC = () => {
           
           // Ne pas permettre au solde de diminuer sans raison, toujours utiliser le plus élevé
           if (data.balance > currentManagerBalance) {
-            balanceManager.forceBalanceSync(data.balance, user.id);
+            balanceManager.forceBalanceSync(data.balance, userId);
             
             // Notifier les autres composants de la mise à jour
             window.dispatchEvent(new CustomEvent('db:balance-updated', {
@@ -112,7 +116,7 @@ const DailyBalanceUpdater: React.FC = () => {
                 balance: currentManagerBalance,
                 updated_at: new Date().toISOString()
               })
-              .eq('id', user.id);
+              .eq('id', userId);
           }
           
           // Mettre à jour les gains quotidiens si nécessaire
@@ -130,7 +134,7 @@ const DailyBalanceUpdater: React.FC = () => {
     return () => {
       clearInterval(syncInterval);
     };
-  }, [user, lastSyncTime]);
+  }, [userId, lastSyncTime]);
 
   return null; // Composant invisible qui ne rend rien à l'écran
 };

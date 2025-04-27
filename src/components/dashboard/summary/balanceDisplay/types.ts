@@ -1,33 +1,15 @@
 
-export interface BalanceDisplayProps {
-  balance: number;
-  isLoading?: boolean;
-  currency?: string;
-  subscription?: string;
-}
-
-export interface BalanceState {
-  displayedBalance: number;
-  isAnimating: boolean;
-  previousBalance: number | null;
-  gain: number | null;
+export interface BalanceSetters {
+  setDisplayedBalance: React.Dispatch<React.SetStateAction<number>>;
+  setIsAnimating: React.Dispatch<React.SetStateAction<boolean>>;
+  setPreviousBalance: React.Dispatch<React.SetStateAction<number | null>>;
+  setGain: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
 export interface BalanceRefs {
   balanceRef: React.RefObject<HTMLDivElement>;
-  lastUpdateTimeRef: { current: number };
-  forceUpdateTimeoutRef: { current: NodeJS.Timeout | null };
-}
-
-export interface BalanceSetters {
-  setDisplayedBalance: (value: number) => void;
-  setIsAnimating: (value: boolean) => void;
-  setPreviousBalance: (value: number | null) => void;
-  setGain: (value: number | null) => void;
-}
-
-export interface BalanceConstants {
-  updateDebounceTime: number;
+  lastUpdateTimeRef: React.RefObject<number>;
+  forceUpdateTimeoutRef: React.RefObject<NodeJS.Timeout | null>;
 }
 
 export interface BalanceEventDetail {
@@ -37,11 +19,19 @@ export interface BalanceEventDetail {
   amount?: number;
   animate?: boolean;
   oldBalance?: number;
+  userId?: string;  // Add userId to the type definition
 }
 
 export interface UseBalanceStateResult {
-  state: BalanceState;
+  state: {
+    displayedBalance: number;
+    isAnimating: boolean;
+    previousBalance: number | null;
+    gain: number | null;
+  };
   refs: BalanceRefs;
   setters: BalanceSetters;
-  constants: BalanceConstants;
+  constants: {
+    updateDebounceTime: number;
+  };
 }

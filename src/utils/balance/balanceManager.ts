@@ -1,4 +1,3 @@
-
 /**
  * Gestionnaire centralisé du solde pour éviter les incohérences
  */
@@ -306,6 +305,31 @@ class BalanceManager {
   // Vérifier que le gestionnaire est initialisé
   isInitialized(): boolean {
     return this.persistentStateInitialized;
+  }
+
+  // Get user ID
+  getUserId(): string | null {
+    return this.userId || null;
+  }
+  
+  // Check if daily limit is reached based on subscription
+  isDailyLimitReached(subscription: string): boolean {
+    // Import subscription limits
+    const SUBSCRIPTION_LIMITS = require('../subscription/constants').SUBSCRIPTION_LIMITS;
+    const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    
+    // Check if daily gains have reached 95% of the limit
+    return this.dailyGains >= dailyLimit * 0.95;
+  }
+  
+  // Get remaining daily allowance
+  getRemainingDailyAllowance(subscription: string): number {
+    // Import subscription limits
+    const SUBSCRIPTION_LIMITS = require('../subscription/constants').SUBSCRIPTION_LIMITS;
+    const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+    
+    // Return the remaining amount (with a minimum of 0)
+    return Math.max(0, dailyLimit - this.dailyGains);
   }
 }
 
