@@ -43,7 +43,7 @@ const Dashboard = () => {
         username={username}
         refreshData={refreshData}
       />
-      {/* Ce composant invisible gère les mises à jour d'équilibre en arrière-plan */}
+      {/* Add the invisible component that handles background updates */}
       <DailyBalanceUpdater />
     </>
   );

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,9 @@ import { ArrowRight, RefreshCw } from 'lucide-react';
 import TransactionEmptyState from './TransactionEmptyState';
 import TransactionListItem from './TransactionListItem';
 import { useUserData } from '@/hooks/useUserData';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/components/ui/use-toast';
 
 interface TransactionsPanelProps {
   transactions: any[];
@@ -25,31 +28,107 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
   const [refreshKey, setRefreshKey] = useState(() => Date.now());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { refreshUserData } = useUserData();
+  const { user } = useAuth();
+  const [localTransactions, setLocalTransactions] = useState<any[]>(transactions);
+
+  // Fonction pour récupérer les dernières transactions depuis la base de données
+  const fetchLatestTransactions = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      setIsRefreshing(true);
+      
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (error) {
+        console.error("Error fetching transactions:", error);
+        return;
+      }
+      
+      if (data && Array.isArray(data)) {
+        const formattedTx = data.map((tx: any) => ({
+          id: tx.id,
+          date: tx.created_at || tx.date,
+          amount: tx.gain,
+          gain: tx.gain,
+          report: tx.report,
+          type: tx.type || 'system'
+        }));
+        
+        setLocalTransactions(formattedTx);
+        setRefreshKey(Date.now());
+      }
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [user]);
 
   // Rafraîchir périodiquement les transactions
   useEffect(() => {
     const interval = setInterval(() => {
-      setRefreshKey(Date.now());
-    }, 30000); // Rafraîchir toutes les 30 secondes
+      fetchLatestTransactions();
+    }, 20000); // Rafraîchir toutes les 20 secondes
     
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchLatestTransactions]);
+  
+  // Configurer la synchronisation en temps réel avec Supabase
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const transactionChannel = supabase
+      .channel('transactions-realtime')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`
+        }, 
+        () => {
+          console.log('Transaction change detected in Supabase - refreshing panel');
+          fetchLatestTransactions();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(transactionChannel);
+    };
+  }, [user, fetchLatestTransactions]);
   
   // Écouter les événements de rafraîchissement
   useEffect(() => {
     const handleRefresh = () => {
       console.log("Transaction refresh event received in TransactionsPanel");
-      setRefreshKey(Date.now());
+      fetchLatestTransactions();
     };
     
+    // Écouter plus d'événements pour assurer la synchronisation des transactions
     window.addEventListener('transactions:refresh', handleRefresh);
     window.addEventListener('balance:update', handleRefresh);
+    window.addEventListener('transactions:updated', handleRefresh);
+    window.addEventListener('automatic:revenue', handleRefresh);
+    window.addEventListener('session:completed', handleRefresh);
+    
+    // Exécuter un rafraîchissement initial
+    fetchLatestTransactions();
     
     return () => {
       window.removeEventListener('transactions:refresh', handleRefresh);
       window.removeEventListener('balance:update', handleRefresh);
+      window.removeEventListener('transactions:updated', handleRefresh);
+      window.removeEventListener('automatic:revenue', handleRefresh);
+      window.removeEventListener('session:completed', handleRefresh);
     };
-  }, []);
+  }, [fetchLatestTransactions]);
 
   const handleViewAllClick = () => {
     navigate('/dashboard/transactions');
@@ -61,7 +140,14 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
     setIsRefreshing(true);
     try {
       await refreshUserData();
-      setRefreshKey(Date.now());
+      await fetchLatestTransactions();
+      
+      toast({
+        title: "Transactions actualisées",
+        description: "Les dernières transactions ont été chargées",
+        duration: 2000,
+      });
+      
       console.log("Transactions manually refreshed");
     } catch (error) {
       console.error("Error refreshing transactions:", error);
@@ -87,6 +173,9 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
     );
   }
 
+  // Utiliser les transactions locales qui sont maintenues à jour
+  const displayTransactions = localTransactions.length > 0 ? localTransactions : transactions;
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -100,7 +189,7 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
-          {transactions.length > 0 && (
+          {displayTransactions.length > 0 && (
             <Button variant="ghost" size="sm" onClick={handleViewAllClick} className="gap-1">
               Tout voir <ArrowRight className="h-4 w-4" />
             </Button>
@@ -108,9 +197,9 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
         </div>
       </CardHeader>
       <CardContent>
-        {transactions.length > 0 ? (
+        {displayTransactions.length > 0 ? (
           <div className="space-y-2">
-            {transactions.slice(0, 5).map((transaction, index) => (
+            {displayTransactions.slice(0, 5).map((transaction, index) => (
               <TransactionListItem 
                 key={`${transaction.id || ''}-${index}-${refreshKey}`}
                 transaction={transaction}

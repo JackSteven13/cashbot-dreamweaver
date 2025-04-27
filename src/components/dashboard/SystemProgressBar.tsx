@@ -3,11 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 import { toast } from "@/components/ui/use-toast";
-import { 
-  calculateUsagePercentage, 
-  formatPrice,
-  getDailyLimitDetails
-} from '@/utils/balance/limitCalculations';
 
 interface SystemProgressBarProps {
   displayBalance: number;
@@ -28,22 +23,17 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
   const [calculatedPercentage, setCalculatedPercentage] = useState(limitPercentage);
   const [localBotActive, setLocalBotActive] = useState(botActive);
   const [limitReached, setLimitReached] = useState(false);
-  const [limitDetails, setLimitDetails] = useState<ReturnType<typeof getDailyLimitDetails> | null>(null);
   
   useEffect(() => {
     const effectiveSub = getEffectiveSubscription(subscription);
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     setEffectiveLimit(limit);
     
-    const percentage = calculateUsagePercentage(displayBalance, limit);
+    const percentage = Math.min(100, (displayBalance / limit) * 100);
     setCalculatedPercentage(percentage);
     
     const isLimitReached = percentage >= 90;
     setLimitReached(isLimitReached);
-    
-    // Calculer les détails complets des limitations
-    const details = getDailyLimitDetails(displayBalance, limit, effectiveSub);
-    setLimitDetails(details);
     
     if (isLimitReached && localBotActive) {
       setLocalBotActive(false);
@@ -54,12 +44,12 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
       
       localStorage.setItem('botActive', 'false');
       
-      console.log("Limite presque atteinte dans SystemProgressBar, bot désactivé");
+      console.log("Limit almost reached in SystemProgressBar, bot disabled");
       
       toast({
         title: "Limite journalière presque atteinte",
         description: `Vous approchez de votre limite journalière de ${limit.toFixed(2)}€. Le bot est maintenant en pause.`,
-        variant: "destructive",
+        variant: "destructive", // Changed from "warning" to "destructive"
         duration: 6000
       });
     }
@@ -74,7 +64,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
         console.log(`SystemProgressBar received bot status update: ${isActive ? 'active' : 'inactive'}`);
         
         if (isActive && limitReached && checkLimit) {
-          console.log("Tentative d'activer le bot avec limite presque atteinte, bloqué");
+          console.log("Attempt to activate bot with limit almost reached, blocked");
           
           window.dispatchEvent(new CustomEvent('bot:force-status', { 
             detail: { active: false, reason: 'limit_reached' } 
@@ -85,7 +75,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
           toast({
             title: "Limite journalière atteinte",
             description: `Vous avez atteint votre limite de gain journalier de ${effectiveLimit.toFixed(2)}€. Revenez demain ou passez à un forfait supérieur.`,
-            variant: "destructive",
+            variant: "destructive", // Changed from "warning" to "destructive"
             duration: 5000
           });
         } else {
@@ -110,7 +100,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
       toast({
         title: "Impossible d'activer l'analyse",
         description: `Vous approchez de votre limite journalière de ${effectiveLimit.toFixed(2)}€. Revenez demain ou passez à un forfait supérieur.`,
-        variant: "destructive",
+        variant: "destructive", // Changed from "warning" to "destructive"
         duration: 5000
       });
       return;
@@ -132,14 +122,6 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
       }
     }));
   };
-  
-  if (!limitDetails) {
-    return (
-      <div className="mb-5">
-        <div className="h-2 bg-slate-700 rounded animate-pulse"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="mb-5">
@@ -150,7 +132,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
         <div className="text-xs font-medium text-gray-300 flex items-center">
           <span className={`mr-2 ${limitReached ? 'text-red-400' : 'text-blue-300'}`}>
             {Math.round(calculatedPercentage)}%
-          </span> / {limitDetails.formattedLimit} par jour
+          </span> / {effectiveLimit.toFixed(2)}€ par jour
           
           <div 
             className="ml-2 flex items-center cursor-pointer" 
@@ -182,20 +164,15 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
         />
       </Progress>
       <div className="mt-1 text-xs text-gray-400 flex justify-between w-full">
-        <span>Solde total: <span className="text-white">{limitDetails.formattedCurrent}</span></span>
+        <span>Solde total: <span className="text-white">{displayBalance.toFixed(2)}€</span></span>
         <span className="text-gray-400 text-xs">
           {limitReached ? (
-            <span className={limitDetails.status.color}>{limitDetails.status.text}</span>
+            <span className="text-red-400">Limite presque atteinte</span>
           ) : (
-            <span>Reste: {limitDetails.formattedRemaining}</span>
+            <span>(Limite: {effectiveLimit.toFixed(2)}€/jour)</span>
           )}
         </span>
       </div>
-      {limitReached && (
-        <div className="mt-1 text-xs text-gray-400 text-right">
-          <span className="text-blue-400">Réinitialisation dans {limitDetails.resetTime}</span>
-        </div>
-      )}
     </div>
   );
 };

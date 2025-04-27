@@ -5,8 +5,8 @@ import { useTransactionsState } from './useTransactionsState';
 import { useTransactionsStorage } from './useTransactionsStorage';
 import { useTransactionsRefresh } from './useTransactionsRefresh';
 import { useTransactionDisplay } from './useTransactionDisplay';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 
 export const useTransactions = (initialTransactions: Transaction[]) => {
   // Utiliser les hooks spécifiques pour chaque fonctionnalité
@@ -19,7 +19,6 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     setRefreshKey
   } = useTransactionsState();
   
-  // Récupérer l'utilisateur
   const { user } = useAuth();
   
   // Utiliser le hook de stockage
@@ -31,7 +30,7 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
   
   // Utiliser le hook pour le rafraîchissement des transactions
   const { 
-    handleManualRefresh: baseHandleManualRefresh, 
+    handleManualRefresh, 
     isMountedRef,
     throttleTimerRef
   } = useTransactionsRefresh(transactions, setTransactions, refreshKey, setRefreshKey);
@@ -67,64 +66,101 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     };
   }, [initialTransactions, setTransactions, transactionsCacheKey, restoreFromCache]);
   
-  // Version améliorée de handleManualRefresh qui force le refresh depuis la BD
-  const handleManualRefresh = useCallback(async () => {
-    if (!user?.id) {
-      console.warn("Cannot refresh transactions: no user ID");
-      return;
-    }
+  // Fonction améliorée pour rafraîchir les transactions directement depuis la base de données
+  const fetchTransactionsFromDB = useCallback(async () => {
+    if (!user?.id) return;
     
     try {
-      // Force un refresh en ignorant le cache
-      const freshTransactions = await fetchUserTransactions(user.id, true);
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
       
-      if (Array.isArray(freshTransactions)) {
-        setTransactions(freshTransactions);
+      if (error) {
+        console.error("Error fetching transactions from DB:", error);
+        return;
+      }
+      
+      if (data && Array.isArray(data)) {
+        const formattedTx = data.map((tx: any) => ({
+          id: tx.id,
+          date: tx.created_at || tx.date,
+          amount: tx.gain,
+          gain: tx.gain,
+          report: tx.report,
+          type: tx.type || 'system'
+        }));
+        
+        setTransactions(formattedTx);
         setRefreshKey(Date.now());
         
-        // Mettre à jour le cache avec les nouvelles transactions
-        localStorage.setItem(transactionsCacheKey.current, JSON.stringify(freshTransactions));
-        localStorage.setItem('transactionsLastRefresh', Date.now().toString());
+        // Mettre à jour le cache local
+        try {
+          localStorage.setItem(transactionsCacheKey.current, JSON.stringify(formattedTx));
+        } catch (e) {
+          console.error("Failed to update cached transactions:", e);
+        }
         
-        console.log(`Refreshed ${freshTransactions.length} transactions from DB`);
-        
-        // Déclencher des événements pour informer les autres composants
+        // Déclencher un événement pour informer les autres composants
         window.dispatchEvent(new CustomEvent('transactions:updated', {
-          detail: { timestamp: Date.now() }
+          detail: { transactions: formattedTx, timestamp: Date.now() }
         }));
       }
     } catch (error) {
-      console.error("Error in handleManualRefresh:", error);
-      throw error;
+      console.error("Failed to fetch transactions from database:", error);
     }
-  }, [user?.id, setTransactions, setRefreshKey, transactionsCacheKey]);
+  }, [user, setTransactions, setRefreshKey, transactionsCacheKey]);
   
-  // Refresh transactions when a balance update occurs
+  // Mettre en place la synchronisation en temps réel
   useEffect(() => {
-    const refreshOnBalanceUpdate = () => {
-      console.log("Transaction refresh triggered by balance update");
-      handleManualRefresh().catch(console.error);
+    if (!user?.id) return;
+    
+    // Écouter les événements Supabase pour les modifications de transactions
+    const transactionChannel = supabase
+      .channel('transactions-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`
+        }, 
+        () => {
+          console.log('Transaction change detected in Supabase');
+          fetchTransactionsFromDB();
+        }
+      )
+      .subscribe();
+      
+    // Écouter les événements de l'application
+    const refreshHandler = () => {
+      console.log('Transaction refresh event received');
+      fetchTransactionsFromDB();
     };
     
-    window.addEventListener('balance:update', refreshOnBalanceUpdate);
-    window.addEventListener('dashboard:micro-gain', refreshOnBalanceUpdate);
-    window.addEventListener('automatic:revenue', refreshOnBalanceUpdate);
+    window.addEventListener('transactions:refresh', refreshHandler);
+    window.addEventListener('balance:update', refreshHandler);
+    window.addEventListener('automatic:revenue', refreshHandler);
+    window.addEventListener('transactions:updated', refreshHandler);
+    
+    // Rafraîchir immédiatement
+    fetchTransactionsFromDB();
+    
+    // Rafraîchissement périodique
+    const interval = setInterval(() => {
+      fetchTransactionsFromDB();
+    }, 30000);
     
     return () => {
-      window.removeEventListener('balance:update', refreshOnBalanceUpdate);
-      window.removeEventListener('dashboard:micro-gain', refreshOnBalanceUpdate);
-      window.removeEventListener('automatic:revenue', refreshOnBalanceUpdate);
+      supabase.removeChannel(transactionChannel);
+      window.removeEventListener('transactions:refresh', refreshHandler);
+      window.removeEventListener('balance:update', refreshHandler);
+      window.removeEventListener('automatic:revenue', refreshHandler);
+      window.removeEventListener('transactions:updated', refreshHandler);
+      clearInterval(interval);
     };
-  }, [handleManualRefresh]);
-  
-  // Sauvegarde des préférences utilisateur
-  useEffect(() => {
-    try {
-      localStorage.setItem('showAllTransactions', showAllTransactions.toString());
-    } catch (e) {
-      console.error("Error saving showAllTransactions preference:", e);
-    }
-  }, [showAllTransactions]);
+  }, [user, fetchTransactionsFromDB]);
   
   // Calculer les transactions à afficher
   const { 
@@ -140,6 +176,8 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     displayedTransactions,
     refreshKey,
     handleManualRefresh,
-    hiddenTransactionsCount
+    hiddenTransactionsCount,
+    setTransactions, // Exposer cette fonction pour permettre des mises à jour directes
+    fetchTransactionsFromDB // Exposer la fonction pour rafraîchir depuis la base de données
   };
 };

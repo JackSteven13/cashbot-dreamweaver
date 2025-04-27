@@ -10,6 +10,7 @@ import {
   getDateConsistentStats,
   ensureProgressiveValues
 } from '@/hooks/stats/utils/storageManager';
+import { synchronizeRevenueWithAds } from '@/hooks/stats/utils/revenueCalculator';
 
 interface StatsCounterProps {
   dailyAdsTarget?: number;
@@ -65,7 +66,10 @@ const StatsCounter = ({
       return Math.floor(value * variance);
     };
     const ads = Math.min(Math.max(randomVariance(MINIMUM_ADS), consistentStats.adsCount), 152847);
-    const revenue = ads * CORRELATION_RATIO;
+    
+    // IMPORTANT: Toujours calculer le revenu à partir des pubs pour maintenir la cohérence
+    const revenue = synchronizeRevenueWithAds(ads);
+    
     return {
       adsCount: ads,
       revenueCount: revenue
@@ -76,35 +80,26 @@ const StatsCounter = ({
     const sessionId = getSessionBasedId();
     // Ajuster l'intervalle en fonction de l'ID de session pour que chaque utilisateur ou visite ait un rythme différent
     const sessionSpecificRate = sessionId ? 
-      (sessionId.charCodeAt(0) % 5 + 10) * 1000 : // Entre 10 et 15 secondes selon l'ID
-      12000;
+      (sessionId.charCodeAt(0) % 5 + 6) * 1000 : // Entre 6 et 11 secondes selon l'ID - Plus rapide pour être visible
+      8000;
       
     const regularUpdateInterval = setInterval(() => {
       setDisplayValues(prev => {
         const adsRand = Math.random();
         let adsIncrement = 0;
-        if (adsRand > 0.85) adsIncrement = 2;
-        else if (adsRand > 0.55) adsIncrement = 1;
+        if (adsRand > 0.70) adsIncrement = 2;  // Augmenté la probabilité d'incrément
+        else if (adsRand > 0.40) adsIncrement = 1;
         const newAdsCount = prev.adsCount + adsIncrement;
 
-        let newRevenueCount = prev.revenueCount;
-        if (adsIncrement > 0) {
-          // Ajuster légèrement le ratio avec une variation basée sur l'ID de session
-          const sessionVariation = sessionId ? 
-            (sessionId.charCodeAt(0) % 10 - 5) / 1000 : 0; // Petite variation par session
-            
-          const jitterRatio = CORRELATION_RATIO + ((Math.random() - 0.5) * 0.025) + sessionVariation;
-          const revenueIncrement = adsIncrement * jitterRatio;
-          if (Math.random() > 0.25) {
-            newRevenueCount = prev.revenueCount + revenueIncrement;
-          }
-        }
+        // IMPORTANT: Toujours calculer les nouveaux revenus basés sur le nouveau nombre de pubs
+        const newRevenueCount = synchronizeRevenueWithAds(newAdsCount);
+
         return {
           adsCount: newAdsCount,
-          revenueCount: Math.floor(newRevenueCount)
+          revenueCount: newRevenueCount
         };
       });
-    }, sessionSpecificRate + Math.floor(Math.random() * 5000));
+    }, sessionSpecificRate + Math.floor(Math.random() * 3000)); // Variation réduite dans l'intervalle
 
     return () => {
       clearInterval(regularUpdateInterval);
@@ -113,7 +108,8 @@ const StatsCounter = ({
 
   useEffect(() => {
     if (displayedAdsCount > displayValues.adsCount) {
-      const newRevenue = displayedAdsCount * CORRELATION_RATIO;
+      // IMPORTANT: Recalculer les revenus à partir des pubs
+      const newRevenue = synchronizeRevenueWithAds(displayedAdsCount);
       setDisplayValues({
         adsCount: displayedAdsCount,
         revenueCount: newRevenue
@@ -127,7 +123,10 @@ const StatsCounter = ({
         ensureProgressiveValues();
         const consistentStats = getDateConsistentStats();
         const maxAdsCount = Math.max(displayValues.adsCount, consistentStats.adsCount);
-        const newRevenueCount = maxAdsCount * CORRELATION_RATIO;
+        
+        // IMPORTANT: Toujours recalculer les revenus
+        const newRevenueCount = synchronizeRevenueWithAds(maxAdsCount);
+        
         setDisplayValues({
           adsCount: maxAdsCount,
           revenueCount: newRevenueCount
@@ -147,7 +146,10 @@ const StatsCounter = ({
   useEffect(() => {
     const handleBeforeUnload = () => {
       localStorage.setItem('last_displayed_ads_count', displayValues.adsCount.toString());
-      localStorage.setItem('last_displayed_revenue_count', (displayValues.adsCount * CORRELATION_RATIO).toString());
+      
+      // IMPORTANT: Sauvegarder un revenu parfaitement cohérent
+      const syncedRevenue = synchronizeRevenueWithAds(displayValues.adsCount);
+      localStorage.setItem('last_displayed_revenue_count', syncedRevenue.toString());
     };
     
     window.addEventListener('beforeunload', handleBeforeUnload);

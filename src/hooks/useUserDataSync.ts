@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import balanceManager from '@/utils/balance/balanceManager';
 import { getStorageKeys, cleanOtherUserData } from '@/utils/balance/balanceStorage';
-import stableBalance from '@/utils/balance/stableBalance';
 
 export const useUserDataSync = () => {
   // Fonction améliorée pour synchroniser les données avec une meilleure stabilité
@@ -34,12 +33,12 @@ export const useUserDataSync = () => {
       // Stocker l'ID utilisateur pour permettre le nettoyage des données d'autres utilisateurs
       localStorage.setItem('lastKnownUserId', userId);
       
-      // Définir l'ID utilisateur dans les gestionnaires de solde
-      balanceManager.setUserId(userId);
-      stableBalance.setUserId(userId);
-      
       // Nettoyer les données d'autres utilisateurs
       cleanOtherUserData(userId);
+      
+      // Vider explicitement les anciennes valeurs globales pour éviter la contamination
+      localStorage.removeItem('lastKnownUsername');
+      localStorage.removeItem('subscription');
       
       // Use a more reliable approach to wait for session establishment
       let attempts = 0;
@@ -69,62 +68,37 @@ export const useUserDataSync = () => {
             // Mettre à jour l'abonnement dans localStorage avec une clé spécifique à l'utilisateur
             if (userData.subscription) {
               localStorage.setItem(`subscription_${userId}`, userData.subscription);
-              console.log("Subscription synchronized:", userData.subscription);
+              console.log("Abonnement mis à jour:", userData.subscription);
             }
             
             // Mettre à jour le solde dans localStorage avec une clé spécifique à l'utilisateur
             if (userData.balance !== undefined) {
-              // Comparer avec le solde local et utiliser le maximum
-              const localBalance = balanceManager.getCurrentBalance();
-              const dbBalance = userData.balance;
+              localStorage.setItem(userKeys.currentBalance, String(userData.balance));
+              localStorage.setItem(userKeys.lastKnownBalance, String(userData.balance));
               
-              if (dbBalance < localBalance) {
-                console.log(`Ignoring DB sync with lower balance: DB=${dbBalance}, Local=${localBalance}`);
-                
-                // Mettre à jour la BD avec le solde local
-                try {
-                  await supabase
-                    .from('user_balances')
-                    .update({ balance: localBalance })
-                    .eq('id', userId);
-                  console.log(`Updated DB balance to match local: ${localBalance}`);
-                } catch (err) {
-                  console.error("Error updating DB balance:", err);
-                }
-                
-                // Utiliser le solde local
-                localStorage.setItem(userKeys.currentBalance, localBalance.toString());
-                localStorage.setItem(userKeys.lastKnownBalance, localBalance.toString());
-                
-              } else {
-                // Si le solde de la BD est plus élevé, l'utiliser
-                localStorage.setItem(userKeys.currentBalance, dbBalance.toString());
-                localStorage.setItem(userKeys.lastKnownBalance, dbBalance.toString());
-                
-                // Mettre à jour balanceManager avec le solde de la BD
-                balanceManager.forceBalanceSync(dbBalance, userId);
-                stableBalance.setBalance(dbBalance);
-              }
+              // Définir également l'ID utilisateur dans le gestionnaire de solde
+              balanceManager.setUserId(userId);
+              balanceManager.forceBalanceSync(userData.balance, userId);
               
-              console.log("Balance synchronized:", userData.balance);
+              console.log("Solde mis à jour:", userData.balance);
             }
             
             // Mettre à jour le compteur de sessions quotidiennes
             if (userData.daily_session_count !== undefined) {
-              localStorage.setItem(`dailySessionCount_${userId}`, userData.daily_session_count.toString());
-              console.log("Daily session count synchronized:", userData.daily_session_count);
+              localStorage.setItem(`dailySessionCount_${userId}`, String(userData.daily_session_count));
+              console.log("Compteur de sessions mis à jour:", userData.daily_session_count);
             }
             
             syncSuccess = true;
           } else if (userBalanceResult.error) {
-            console.error("Error fetching balance:", userBalanceResult.error);
+            console.error("Erreur lors de la récupération du solde:", userBalanceResult.error);
           }
           
           // Récupérer et stocker le nom d'utilisateur
           if (!profileResult.error && profileResult.data && profileResult.data.full_name) {
             // Stocker le nom uniquement avec une clé spécifique à l'utilisateur
             localStorage.setItem(`lastKnownUsername_${userId}`, profileResult.data.full_name);
-            console.log("Username synchronized:", profileResult.data.full_name);
+            console.log("Nom d'utilisateur mis à jour:", profileResult.data.full_name);
             syncSuccess = true;
             
             // Déclencher un événement pour signaler que le nom est disponible
@@ -134,7 +108,7 @@ export const useUserDataSync = () => {
           } else if (session.user.user_metadata?.full_name) {
             // Fallback sur les métadonnées utilisateur
             localStorage.setItem(`lastKnownUsername_${userId}`, session.user.user_metadata.full_name);
-            console.log("Username retrieved from metadata:", session.user.user_metadata.full_name);
+            console.log("Nom d'utilisateur récupéré des métadonnées:", session.user.user_metadata.full_name);
             syncSuccess = true;
             
             // Déclencher un événement pour signaler que le nom est disponible
@@ -142,7 +116,7 @@ export const useUserDataSync = () => {
               detail: { username: session.user.user_metadata.full_name, userId }
             }));
           } else if (profileResult.error) {
-            console.error("Error fetching profile:", profileResult.error);
+            console.error("Erreur lors de la récupération du profil:", profileResult.error);
           }
           
           if (!syncSuccess) {
@@ -174,7 +148,7 @@ export const useUserDataSync = () => {
       
       // Si la synchronisation a échoué après plusieurs tentatives
       if (!syncSuccess && attempts >= maxAttempts) {
-        console.error("Synchronization failed after several attempts");
+        console.error("La synchronisation a échoué après plusieurs tentatives");
         
         // Notifier l'utilisateur en cas d'échec
         toast({

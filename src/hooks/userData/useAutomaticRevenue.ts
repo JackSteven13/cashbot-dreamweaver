@@ -30,43 +30,28 @@ export const useAutomaticRevenue = ({
       return;
     }
     
-    const updateLimitProgress = async () => {
-      const effectiveSub = getEffectiveSubscription(userData.subscription);
-      const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-      
-      // Get daily gains from database to ensure accuracy
-      const userId = userData.profile?.id || userData.id;
-      if (!userId) return;
-      
-      const actualGains = await calculateTodaysGains(userId);
-      
-      // Update local tracking to match database
-      balanceManager.setDailyGains(actualGains);
-      
-      // Calculate percentage of daily limit
-      const percentage = Math.min(100, (actualGains / limit) * 100);
-      setDailyLimitProgress(percentage);
-      
-      // Check if limit is reached (90% of limit for early prevention)
-      const isLimitReached = actualGains >= limit * 0.9;
-      setLimitReached(isLimitReached);
-      
-      // If percentage reaches 90%, automatically deactivate bot
-      if (isLimitReached && isBotActive) {
-        setIsBotActive(false);
-        console.log("Bot automatically deactivated: daily limit reached");
-        
-        // Save state in localStorage
-        localStorage.setItem('botActive', 'false');
-      }
-    };
+    const effectiveSub = getEffectiveSubscription(userData.subscription);
+    const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
-    updateLimitProgress();
+    // Get daily gains from centralized manager
+    const dailyGains = balanceManager.getDailyGains();
     
-    // Check limit progress periodically
-    const checkInterval = setInterval(updateLimitProgress, 60000); // Every minute
+    // Calculate percentage of daily limit
+    const percentage = Math.min(100, (dailyGains / limit) * 100);
+    setDailyLimitProgress(percentage);
     
-    return () => clearInterval(checkInterval);
+    // Check if limit is reached (90% of limit for early prevention)
+    const isLimitReached = dailyGains >= limit * 0.9;
+    setLimitReached(isLimitReached);
+    
+    // If percentage reaches 90%, automatically deactivate bot
+    if (isLimitReached && isBotActive) {
+      setIsBotActive(false);
+      console.log("Bot automatically deactivated: daily limit reached");
+      
+      // Enregistrer l'état dans le localStorage
+      localStorage.setItem('botActive', 'false');
+    }
   }, [userData, isBotActive, isNewUser]);
   
   // Listen for external events that modify bot state
@@ -74,25 +59,19 @@ export const useAutomaticRevenue = ({
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
       if (typeof isActive === 'boolean') {
-        // Check if limit is reached before activating bot
+        // Vérifier si la limite est atteinte avant d'activer le bot
         if (isActive && limitReached) {
-          console.log("Bot cannot be activated: limit already reached");
+          console.log("Bot ne peut pas être activé: limite déjà atteinte");
           return;
         }
         
         console.log(`Bot status update in useAutomaticRevenue: ${isActive ? 'active' : 'inactive'}`);
         setIsBotActive(isActive);
         
-        // Save state in localStorage
+        // Enregistrer l'état dans le localStorage
         localStorage.setItem('botActive', isActive.toString());
       }
     };
-    
-    // Check if bot was previously active
-    const previouslyActive = localStorage.getItem('botActive') === 'true';
-    if (previouslyActive && !limitReached) {
-      setIsBotActive(true);
-    }
     
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('bot:external-status-change' as any, handleBotStatusChange);
@@ -110,17 +89,27 @@ export const useAutomaticRevenue = ({
     }
     
     try {
-      // Get total already earned today from database for accuracy
-      const userId = userData.profile?.id || userData.id;
-      if (!userId) {
-        console.error("Cannot generate revenue: missing user ID");
-        return false;
+      // Get total already earned today from centralized manager
+      let todaysGains = balanceManager.getDailyGains();
+      
+      // Additional verification with database transactions
+      if (!forceUpdate) {
+        // Safe access to userData.profile?.id with fallback
+        const userId = userData.profile?.id || userData.id;
+        if (!userId) {
+          console.error("Cannot generate revenue: missing user ID");
+          return false;
+        }
+        
+        const actualGains = await calculateTodaysGains(userId);
+        
+        // If actual gains are higher than our local tracking, update our local tracking
+        if (actualGains > todaysGains) {
+          console.log(`Updating daily gains: ${todaysGains}€ -> ${actualGains}€ (based on DB transactions)`);
+          todaysGains = actualGains;
+          balanceManager.setDailyGains(actualGains);
+        }
       }
-      
-      const todaysGains = await calculateTodaysGains(userId);
-      
-      // Update local tracking to match database
-      balanceManager.setDailyGains(todaysGains);
       
       // Determine daily limit based on subscription
       const effectiveSub = getEffectiveSubscription(userData.subscription);
@@ -171,73 +160,34 @@ export const useAutomaticRevenue = ({
       const dayCount = Math.floor((Date.now() - new Date('2023-01-01').getTime()) / (1000 * 3600 * 24));
       const report = `Analyse automatique de contenu (jour ${dayCount})`;
       
+      // Safe access to userData.profile?.id with fallback
+      const userId = userData.profile?.id || userData.id;
+      if (!userId) {
+        console.error("Cannot record transaction: missing user ID");
+        return false;
+      }
+      
       // Record transaction in database
       const transactionAdded = await addTransaction(userId, finalGain, report);
       
-      if (!transactionAdded.success) {
+      if (!transactionAdded) {
         console.error("Failed to record transaction");
         return false;
       }
       
-      console.log(`Automatic revenue generated: ${finalGain}€`);
-      
       // Update balance with generated gain
-      await updateBalance(finalGain, report, true);
+      await updateBalance(finalGain, report, forceUpdate);
       
       // Update balance manager
       balanceManager.updateBalance(finalGain);
       balanceManager.addDailyGain(finalGain);
       
-      // Get the current balance after update
-      const updatedBalance = balanceManager.getCurrentBalance();
+      console.log(`Automatic revenue generated: ${finalGain}€`);
       
-      // Trigger balance update animation and UI refresh
+      // Trigger balance update animation
       window.dispatchEvent(new CustomEvent('balance:update', { 
-        detail: { 
-          amount: finalGain, 
-          animate: true, 
-          userId, 
-          timestamp: Date.now(),
-          currentBalance: updatedBalance
-        } 
+        detail: { amount: finalGain, animate: true } 
       }));
-      
-      // Force a balance update to ensure UI is updated
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('balance:force-update', { 
-          detail: { 
-            newBalance: updatedBalance, 
-            timestamp: Date.now(),
-            userId,
-            animate: true,
-            gain: finalGain
-          } 
-        }));
-      }, 300);
-      
-      // Monitor for errors - ensure proper update
-      setTimeout(() => {
-        const currentBalance = balanceManager.getCurrentBalance();
-        const localStorageBalance = parseFloat(localStorage.getItem(`currentBalance_${userId}`) || '0');
-        
-        if (Math.abs(currentBalance - localStorageBalance) > 0.01) {
-          console.log(`Balance inconsistency detected. Manager: ${currentBalance}, Storage: ${localStorageBalance}`);
-          const maxBalance = Math.max(currentBalance, localStorageBalance);
-          balanceManager.forceBalanceSync(maxBalance, userId);
-          localStorage.setItem(`currentBalance_${userId}`, maxBalance.toFixed(2));
-          
-          // Forcer une mise à jour UI
-          window.dispatchEvent(new CustomEvent('balance:force-update', { 
-            detail: { 
-              newBalance: maxBalance, 
-              timestamp: Date.now(),
-              userId,
-              animate: false,
-              forceRefresh: true
-            } 
-          }));
-        }
-      }, 2000);
       
       return true;
     } catch (error) {

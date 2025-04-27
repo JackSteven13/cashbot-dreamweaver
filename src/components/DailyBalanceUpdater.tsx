@@ -1,128 +1,138 @@
 
-import React, { useEffect, useRef } from 'react';
-import { useUserData } from '@/hooks/useUserData';
+import React, { useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import balanceManager from '@/utils/balance/balanceManager';
-import { repairInconsistentData } from '@/utils/balance/storage/localStorageUtils';
-import stableBalance from '@/utils/balance/stableBalance';
-import { useBalanceSynchronization } from '@/hooks/balance/useBalanceSynchronization';
-import { useBalanceStability } from '@/hooks/balance/useBalanceStability';
-import { useBalanceEvents } from '@/hooks/balance/useBalanceEvents';
+import { calculateTodaysGains } from '@/utils/userData/transactionUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Invisible component that helps manage periodic balance updates,
- * synchronize balance across the app, and maintain consistency
+ * Composant invisible qui gère les mises à jour régulières du solde
  */
 const DailyBalanceUpdater: React.FC = () => {
-  const { userData } = useUserData();
-  const userId = userData?.profile?.id;
-  const initialSyncDone = useRef(false);
-  const lastUpdateTime = useRef<number>(Date.now());
-  const forceUpdateCounter = useRef<number>(0);
-
-  const { syncWithDatabase } = useBalanceSynchronization(userData);
-  const { checkBalanceStability } = useBalanceStability(userData);
-  useBalanceEvents(userData);
+  const { user } = useAuth();
+  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+  const isInitializedRef = useRef<boolean>(false);
+  const userIdRef = useRef<string | undefined>(undefined);
   
-  // Initialize balance values and stabilize for 10 seconds after page load
+  // Synchroniser périodiquement avec la base de données
   useEffect(() => {
-    if (userData?.balance && !initialSyncDone.current) {
-      const currentBalance = parseFloat(userData.balance.toString());
-      if (!isNaN(currentBalance)) {
-        const balanceString = currentBalance.toFixed(2);
-        
-        // Store all relevant balance values consistently
-        if (userId) {
-          localStorage.setItem(`currentBalance_${userId}`, balanceString);
-          localStorage.setItem(`lastKnownBalance_${userId}`, balanceString);
-          localStorage.setItem(`lastUpdatedBalance_${userId}`, balanceString);
-          localStorage.setItem(`highest_balance_${userId}`, balanceString);
-        } else {
-          localStorage.setItem('currentBalance', balanceString);
-          localStorage.setItem('lastKnownBalance', balanceString);
-          localStorage.setItem('lastUpdatedBalance', balanceString);
-          localStorage.setItem('highest_balance', balanceString);
+    if (!user?.id) return;
+    
+    userIdRef.current = user.id;
+    
+    // Vérification initiale
+    const initializeBalance = async () => {
+      if (!user.id || isInitializedRef.current) return;
+      
+      try {
+        // Récupérer le solde depuis la base de données
+        const { data, error } = await supabase
+          .from('user_balances')
+          .select('balance')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) {
+          console.error("Erreur lors de la récupération du solde:", error);
+          return;
         }
         
-        balanceManager.forceBalanceSync(currentBalance, userId);
-        stableBalance.setBalance(currentBalance);
+        // Récupérer les gains d'aujourd'hui
+        const todaysGains = await calculateTodaysGains(user.id);
         
-        initialSyncDone.current = true;
-        console.log("Initial balance sync complete:", currentBalance);
-      }
-    }
-    
-    const stabilizationPeriod = setTimeout(() => {
-      console.log("Balance stabilization period ended");
-      // Force a sync with database after stabilization
-      syncWithDatabase();
-    }, 10000);
-    
-    return () => clearTimeout(stabilizationPeriod);
-  }, [userData, userId, syncWithDatabase]);
-  
-  // Periodically check and repair balance inconsistencies
-  useEffect(() => {
-    const checkInterval = setInterval(() => {
-      if (userId) {
-        repairInconsistentData(userId);
-      } else {
-        repairInconsistentData();
-      }
-      
-      checkBalanceStability();
-      
-      // More frequent sync with database to ensure balance is updated
-      const now = Date.now();
-      if (now - lastUpdateTime.current > 20000) { // Every 20 seconds
-        syncWithDatabase();
-        lastUpdateTime.current = now;
-        
-        // Forcer une mise à jour de l'interface toutes les 5 vérifications
-        forceUpdateCounter.current += 1;
-        if (forceUpdateCounter.current >= 5) {
-          forceUpdateCounter.current = 0;
+        // Mettre à jour le gestionnaire avec les valeurs récupérées
+        if (data?.balance !== undefined) {
+          const currentManagerBalance = balanceManager.getCurrentBalance();
           
-          // Obtenir la dernière valeur du balance manager
-          const currentBalance = balanceManager.getCurrentBalance();
+          // Toujours utiliser le solde le plus élevé pour éviter les pertes
+          const effectiveBalance = Math.max(data.balance, currentManagerBalance);
           
-          // Forcer une mise à jour de l'UI
-          window.dispatchEvent(new CustomEvent('balance:force-update', {
-            detail: { 
-              newBalance: currentBalance,
-              animate: false,
-              forceRefresh: true,
-              timestamp: now,
-              userId
-            }
-          }));
+          if (effectiveBalance > currentManagerBalance) {
+            balanceManager.forceBalanceSync(effectiveBalance, user.id);
+            console.log(`Solde initialisé à ${effectiveBalance}€`);
+          }
+          
+          // Initialiser les gains quotidiens
+          if (todaysGains > 0) {
+            balanceManager.setDailyGains(todaysGains);
+            console.log(`Gains quotidiens initialisés à ${todaysGains}€`);
+          }
         }
-      }
-    }, 15000); // Shorter interval for more frequent checks
-    
-    return () => clearInterval(checkInterval);
-  }, [userId, checkBalanceStability, syncWithDatabase]);
-  
-  // Listen for balance update events and trigger synchronization
-  useEffect(() => {
-    const handleBalanceUpdate = (event: CustomEvent) => {
-      const amount = event.detail?.amount;
-      
-      if (amount && amount > 0) {
-        // When balance increases, schedule a sync with the database
-        setTimeout(() => {
-          syncWithDatabase();
-        }, 2000);
+        
+        isInitializedRef.current = true;
+        
+      } catch (err) {
+        console.error("Erreur lors de l'initialisation du solde:", err);
       }
     };
     
-    window.addEventListener('balance:update' as any, handleBalanceUpdate);
+    initializeBalance();
+    
+    // Vérifier périodiquement les mises à jour
+    const syncInterval = setInterval(async () => {
+      if (!user?.id) return;
+      
+      const now = Date.now();
+      
+      // Limiter la fréquence des synchronisations (au plus une fois par minute)
+      if (now - lastSyncTime < 60000) return;
+      
+      try {
+        // Récupérer le solde depuis la base de données
+        const { data, error } = await supabase
+          .from('user_balances')
+          .select('balance')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) return;
+        
+        // Récupérer les gains d'aujourd'hui
+        const todaysGains = await calculateTodaysGains(user.id);
+        
+        // Mettre à jour le gestionnaire avec les valeurs récupérées
+        if (data?.balance !== undefined) {
+          const currentManagerBalance = balanceManager.getCurrentBalance();
+          
+          // Ne pas permettre au solde de diminuer sans raison, toujours utiliser le plus élevé
+          if (data.balance > currentManagerBalance) {
+            balanceManager.forceBalanceSync(data.balance, user.id);
+            
+            // Notifier les autres composants de la mise à jour
+            window.dispatchEvent(new CustomEvent('db:balance-updated', {
+              detail: { newBalance: data.balance, animate: false }
+            }));
+          } else if (data.balance < currentManagerBalance) {
+            // Si le solde du serveur est plus bas, mettre à jour le serveur avec notre valeur locale
+            console.log(`Correction du solde serveur: ${data.balance}€ -> ${currentManagerBalance}€`);
+            
+            await supabase
+              .from('user_balances')
+              .update({ 
+                balance: currentManagerBalance,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', user.id);
+          }
+          
+          // Mettre à jour les gains quotidiens si nécessaire
+          if (todaysGains > balanceManager.getDailyGains()) {
+            balanceManager.setDailyGains(todaysGains);
+          }
+        }
+        
+        setLastSyncTime(now);
+      } catch (err) {
+        console.error("Erreur lors de la synchronisation du solde:", err);
+      }
+    }, 30000); // Vérifier toutes les 30 secondes
     
     return () => {
-      window.removeEventListener('balance:update' as any, handleBalanceUpdate);
+      clearInterval(syncInterval);
     };
-  }, [syncWithDatabase]);
+  }, [user, lastSyncTime]);
 
-  return null;
+  return null; // Composant invisible qui ne rend rien à l'écran
 };
 
 export default DailyBalanceUpdater;

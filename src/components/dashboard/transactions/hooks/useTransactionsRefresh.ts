@@ -44,7 +44,7 @@ export const useTransactionsRefresh = (
       }, 3000);
       
       // Forcer le rafraîchissement depuis la base de données
-      const refreshedTransactions = await fetchUserTransactions(session.user.id, true);
+      const refreshedTransactions = await fetchUserTransactions(session.user.id);
       
       if (refreshedTransactions && isMountedRef.current) {
         // Mettre à jour l'état avec les transactions actualisées

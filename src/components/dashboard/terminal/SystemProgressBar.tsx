@@ -1,8 +1,8 @@
-
 import React, { useEffect, useState } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 import { toast } from "@/components/ui/use-toast";
+import balanceManager from '@/utils/balance/balanceManager'; // Ajout de l'import manquant
 
 interface SystemProgressBarProps {
   displayBalance: number;
@@ -30,15 +30,18 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
     const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     setEffectiveLimit(limit);
     
+    // Utiliser les gains quotidiens du gestionnaire de solde plutôt que le solde total
+    const todaysGains = balanceManager.getDailyGains(); 
+    
     // Calculer le pourcentage actuel de la limite journalière
-    const percentage = Math.min(100, (displayBalance / limit) * 100);
+    const percentage = Math.min(100, (todaysGains / limit) * 100);
     setCalculatedPercentage(percentage);
     
     // Déterminer si la limite est atteinte
-    const isLimitReached = percentage >= 100;
+    const isLimitReached = percentage >= 90; // Utiliser 90% comme seuil
     setLimitReached(isLimitReached);
     
-    // Si le pourcentage atteint 100% (= limite atteinte), désactiver le bot
+    // Si le pourcentage atteint 90% (= limite presque atteinte), désactiver le bot
     if (isLimitReached && localBotActive) {
       setLocalBotActive(false);
       
@@ -47,7 +50,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
         detail: { active: false } 
       }));
       
-      console.log("Limite atteinte dans SystemProgressBar, bot désactivé");
+      console.log(`Limite atteinte dans SystemProgressBar: ${todaysGains.toFixed(2)}€/${limit.toFixed(2)}€, bot désactivé`);
       
       // Afficher un toast pour informer l'utilisateur
       toast({
@@ -58,6 +61,20 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
       });
     }
   }, [subscription, displayBalance, dailyLimit, limitPercentage, localBotActive]);
+  
+  // Écouter les événements de limite atteinte
+  useEffect(() => {
+    const handleLimitReached = () => {
+      setLimitReached(true);
+      setLocalBotActive(false);
+    };
+    
+    window.addEventListener('daily-limit:reached' as any, handleLimitReached);
+    
+    return () => {
+      window.removeEventListener('daily-limit:reached' as any, handleLimitReached);
+    };
+  }, []);
   
   // Synchroniser l'état local avec la prop botActive et écouter les événements
   useEffect(() => {
@@ -132,6 +149,9 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
     }));
   };
 
+  // Récupérer les gains d'aujourd'hui depuis le gestionnaire central
+  const todaysGains = balanceManager.getDailyGains();
+
   return (
     <div className="mb-5">
       <div className="flex justify-between items-center mb-1">
@@ -164,7 +184,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
       <Progress value={calculatedPercentage} className="h-2 bg-slate-700">
         <div 
           className={`h-full rounded-full transition-all duration-500 ${
-            calculatedPercentage >= 100 
+            calculatedPercentage >= 90 
               ? 'bg-red-500' 
               : calculatedPercentage > 80 
                 ? 'bg-orange-400' 
@@ -179,7 +199,7 @@ export const SystemProgressBar: React.FC<SystemProgressBarProps> = ({
           {limitReached ? (
             <span className="text-red-400">Limite atteinte</span>
           ) : (
-            <span>(Limite: {effectiveLimit.toFixed(2)}€/jour)</span>
+            <span>Aujourd'hui: {todaysGains.toFixed(2)}€/{effectiveLimit.toFixed(2)}€</span>
           )}
         </span>
       </div>
