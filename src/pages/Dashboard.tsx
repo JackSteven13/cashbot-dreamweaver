@@ -29,15 +29,19 @@ const Dashboard = () => {
 
   // Force a data refresh when dashboard is loaded
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    
     if (user && !isInitializing) {
       // Add a slight delay to ensure everything is loaded
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         handleRefreshData();
       }, 2000);
-      
-      // Clean up function
-      return () => clearTimeout(timer);
     }
+    
+    // Clean up function - important to prevent memory leaks
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [user, isInitializing, handleRefreshData]);
 
   if (authLoading || !user) {

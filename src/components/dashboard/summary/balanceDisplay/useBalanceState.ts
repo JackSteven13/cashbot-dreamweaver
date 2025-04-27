@@ -16,7 +16,11 @@ export const useBalanceState = (initialBalance: number): UseBalanceStateResult =
   
   // Create stable refs that don't change between renders
   const balanceRef = useRef<HTMLDivElement>(null);
+  
+  // Store update time as a ref instead of a state to avoid re-renders
   const lastUpdateTimeRef = useRef<number>(Date.now());
+  
+  // Fix: Use null as initial value for timeout refs
   const forceUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const updateDebounceTime = 2000;

@@ -18,12 +18,16 @@ export const useBalanceEvents = ({
     const handleBalanceUpdate = (event: CustomEvent<BalanceEventDetail>) => {
       const currentTime = Date.now();
       if (currentTime - refs.lastUpdateTimeRef.current < updateDebounceTime) {
-        if (refs.forceUpdateTimeoutRef.current) {
+        // Clear existing timeout before creating a new one
+        if (refs.forceUpdateTimeoutRef.current !== null) {
           clearTimeout(refs.forceUpdateTimeoutRef.current);
         }
         
+        // Set new timeout and store the reference
         refs.forceUpdateTimeoutRef.current = setTimeout(() => {
           processBalanceUpdate(event);
+          // Clear the reference after execution
+          refs.forceUpdateTimeoutRef.current = null;
         }, updateDebounceTime);
         
         return;
@@ -91,10 +95,16 @@ export const useBalanceEvents = ({
     window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
     window.addEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
     
+    // Cleanup event listeners and any active timeouts
     return () => {
       window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
       window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
       window.removeEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
+      
+      // Clear any pending timeout when component unmounts
+      if (refs.forceUpdateTimeoutRef.current !== null) {
+        clearTimeout(refs.forceUpdateTimeoutRef.current);
+      }
     };
   }, [displayedBalance, setters, refs, updateDebounceTime]);
 };
