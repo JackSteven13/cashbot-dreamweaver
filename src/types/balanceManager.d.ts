@@ -19,10 +19,15 @@ export interface BalanceManagerInstance {
   
   // User management
   setUserId: (userId: string) => void;
+  getUserId: () => string | null;
   
   // Event subscription
   addWatcher: (callback: (newBalance: number) => void) => (() => void);
   
   // Advanced features
   checkForSignificantBalanceChange: (newBalance: number) => boolean;
+  
+  // Daily limit checking
+  isDailyLimitReached: (subscription: string) => boolean;
+  getRemainingDailyAllowance: (subscription: string) => number;
 }

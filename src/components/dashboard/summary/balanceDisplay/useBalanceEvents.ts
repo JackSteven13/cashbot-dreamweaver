@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import balanceManager from '@/utils/balance/balanceManager';
 import { BalanceEventDetail, BalanceSetters, BalanceRefs } from './types';
+import { useAuth } from '@/hooks/useAuth';
 
 export const useBalanceEvents = ({
   displayedBalance,
@@ -14,8 +15,24 @@ export const useBalanceEvents = ({
   refs: BalanceRefs;
   updateDebounceTime: number;
 }) => {
+  // Obtenir l'ID utilisateur actuel
+  const { user } = useAuth();
+  const userId = user?.id || null;
+  
   useEffect(() => {
+    // Définir l'ID utilisateur dans le gestionnaire de solde
+    if (userId) {
+      balanceManager.setUserId(userId);
+    }
+    
     const handleBalanceUpdate = (event: CustomEvent<BalanceEventDetail>) => {
+      // Vérifier si l'événement est destiné à cet utilisateur
+      const eventUserId = event.detail?.userId;
+      if (eventUserId && userId && eventUserId !== userId) {
+        // Ignorer les événements destinés à d'autres utilisateurs
+        return;
+      }
+      
       const currentTime = Date.now();
       if (currentTime - (refs.lastUpdateTimeRef.current || 0) < updateDebounceTime) {
         if (refs.forceUpdateTimeoutRef.current) {
@@ -26,8 +43,7 @@ export const useBalanceEvents = ({
           processBalanceUpdate(event);
         }, updateDebounceTime);
         
-        // Store the timeout ID without directly modifying .current
-        refs.forceUpdateTimeoutRef = { current: timeoutId };
+        refs.forceUpdateTimeoutRef.current = timeoutId;
         return;
       }
       
@@ -46,19 +62,21 @@ export const useBalanceEvents = ({
         const calculatedNewBalance = parseFloat((oldBalance + gain).toFixed(2));
         
         balanceManager.updateBalance(gain);
-        balanceManager.forceBalanceSync(calculatedNewBalance);
+        balanceManager.forceBalanceSync(calculatedNewBalance, userId || undefined);
         
         setters.setPreviousBalance(oldBalance);
         setters.setDisplayedBalance(calculatedNewBalance);
         setters.setIsAnimating(shouldAnimate !== false);
         setters.setGain(gain);
         
-        localStorage.setItem('currentBalance', calculatedNewBalance.toString());
-        localStorage.setItem('lastKnownBalance', calculatedNewBalance.toString());
+        // Utiliser une clé spécifique à l'utilisateur
+        if (userId) {
+          localStorage.setItem(`currentBalance_${userId}`, calculatedNewBalance.toString());
+          localStorage.setItem(`lastKnownBalance_${userId}`, calculatedNewBalance.toString());
+        }
         
         if (refs.lastUpdateTimeRef) {
-          // Update without modifying .current directly
-          refs.lastUpdateTimeRef = { current: currentTime };
+          refs.lastUpdateTimeRef.current = currentTime;
         }
         
         if (shouldAnimate !== false) {
@@ -69,7 +87,7 @@ export const useBalanceEvents = ({
           Math.abs(newBalance - displayedBalance) > 0.001) {
         const implicitGain = Math.max(0, newBalance - displayedBalance);
         
-        balanceManager.forceBalanceSync(newBalance);
+        balanceManager.forceBalanceSync(newBalance, userId || undefined);
         
         setters.setPreviousBalance(displayedBalance);
         setters.setDisplayedBalance(newBalance);
@@ -79,12 +97,14 @@ export const useBalanceEvents = ({
           setters.setGain(implicitGain);
         }
         
-        localStorage.setItem('currentBalance', newBalance.toString());
-        localStorage.setItem('lastKnownBalance', newBalance.toString());
+        // Utiliser une clé spécifique à l'utilisateur
+        if (userId) {
+          localStorage.setItem(`currentBalance_${userId}`, newBalance.toString());
+          localStorage.setItem(`lastKnownBalance_${userId}`, newBalance.toString());
+        }
         
         if (refs.lastUpdateTimeRef) {
-          // Update without modifying .current directly
-          refs.lastUpdateTimeRef = { current: currentTime };
+          refs.lastUpdateTimeRef.current = currentTime;
         }
         
         if (shouldAnimate !== false && implicitGain > 0) {
@@ -102,5 +122,5 @@ export const useBalanceEvents = ({
       window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
       window.removeEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
     };
-  }, [displayedBalance, setters, refs, updateDebounceTime]);
+  }, [displayedBalance, setters, refs, updateDebounceTime, userId]);
 };

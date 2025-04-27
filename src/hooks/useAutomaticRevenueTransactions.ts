@@ -16,15 +16,22 @@ export const useAutomaticRevenueTransactions = () => {
   const [lastTransactionTime, setLastTransactionTime] = useState<Date | null>(null);
   const intervalRef = useRef<number | null>(null);
   const isProcessing = useRef(false);
-  const processingQueue = useRef<Array<number>>([]);
+  const processingQueue = useRef<Array<{amount: number, userId: string | null}>>([]);
+  
+  // Set userId in balanceManager
+  useEffect(() => {
+    if (user?.id) {
+      balanceManager.setUserId(user.id);
+    }
+  }, [user?.id]);
   
   // Process the queue periodically to handle any pending transactions
   useEffect(() => {
     intervalRef.current = window.setInterval(() => {
       if (processingQueue.current.length > 0 && !isProcessing.current) {
-        const amount = processingQueue.current.shift();
-        if (amount && amount > 0) {
-          recordAutomaticTransaction(amount);
+        const transaction = processingQueue.current.shift();
+        if (transaction && transaction.amount > 0) {
+          recordAutomaticTransaction(transaction.amount, transaction.userId);
         }
       }
     }, 5000);
@@ -54,7 +61,7 @@ export const useAutomaticRevenueTransactions = () => {
     // Calculer les gains totaux d'aujourd'hui
     const todaysGains = (todaysTransactions || []).reduce((sum, tx) => sum + (tx.gain || 0), 0);
     
-    console.log(`Vérification limite journalière: ${todaysGains}€/${dailyLimit}€, gain potentiel: ${potentialGain}€`);
+    console.log(`Vérification limite journalière pour l'utilisateur ${userId}: ${todaysGains}€/${dailyLimit}€, gain potentiel: ${potentialGain}€`);
     
     // Si déjà au maximum, ne pas autoriser plus de gains
     if (todaysGains >= dailyLimit) {
@@ -72,16 +79,18 @@ export const useAutomaticRevenueTransactions = () => {
   }, []);
   
   // Create a transaction for automatic revenue
-  const recordAutomaticTransaction = useCallback(async (amount: number) => {
-    if (!user) {
+  const recordAutomaticTransaction = useCallback(async (amount: number, transactionUserId: string | null = null) => {
+    const actualUserId = transactionUserId || user?.id;
+    
+    if (!actualUserId) {
       // Queue the transaction for when the user is available
-      processingQueue.current.push(amount);
+      processingQueue.current.push({ amount, userId: null });
       return;
     }
     
     if (isProcessing.current) {
       // Queue the transaction for later processing
-      processingQueue.current.push(amount);
+      processingQueue.current.push({ amount, userId: actualUserId });
       return;
     }
     
@@ -98,17 +107,20 @@ export const useAutomaticRevenueTransactions = () => {
       const { data: userData } = await supabase
         .from('user_balances')
         .select('subscription')
-        .eq('id', user.id)
+        .eq('id', actualUserId)
         .single();
       
       const subscription = userData?.subscription || 'freemium';
       
+      // Définir l'ID utilisateur dans le balanceManager pour cet utilisateur spécifique
+      balanceManager.setUserId(actualUserId);
+      
       // Vérifier si le gain respecte la limite quotidienne
-      const { allowed, adjustedGain } = await respectsDailyLimit(user.id, subscription, amount);
+      const { allowed, adjustedGain } = await respectsDailyLimit(actualUserId, subscription, amount);
       
       // Si le gain n'est pas autorisé ou est ajusté à zéro, ne pas créer de transaction
       if (!allowed || adjustedGain <= 0) {
-        console.log(`Gain automatique refusé: limite journalière atteinte pour ${subscription}`);
+        console.log(`Gain automatique refusé: limite journalière atteinte pour ${subscription} (utilisateur: ${actualUserId})`);
         isProcessing.current = false;
         return;
       }
@@ -123,7 +135,7 @@ export const useAutomaticRevenueTransactions = () => {
       const { data, error } = await supabase
         .from('transactions')
         .insert({
-          user_id: user.id,
+          user_id: actualUserId,
           gain: finalAmount,
           report: 'Revenu automatique',
           date: formattedDate,
@@ -132,42 +144,42 @@ export const useAutomaticRevenueTransactions = () => {
         .select();
       
       if (error) {
-        console.error("Error recording automatic transaction:", error);
+        console.error(`Error recording automatic transaction for user ${actualUserId}:`, error);
         // Re-queue the transaction on error
-        processingQueue.current.push(amount);
+        processingQueue.current.push({ amount, userId: actualUserId });
         return;
       }
       
-      console.log(`Automatic transaction recorded successfully: ${finalAmount}€`, data);
+      console.log(`Automatic transaction recorded successfully for user ${actualUserId}: ${finalAmount}€`, data);
       
       // Update last transaction time
       setLastTransactionTime(today);
       
       // Trigger multiple events to ensure proper synchronization
       window.dispatchEvent(new CustomEvent('transactions:refresh', { 
-        detail: { timestamp: Date.now() }
+        detail: { timestamp: Date.now(), userId: actualUserId }
       }));
       
       // Trigger an event for balance update animation
       window.dispatchEvent(new CustomEvent('balance:update', { 
-        detail: { gain: finalAmount, automatic: true }
+        detail: { gain: finalAmount, automatic: true, userId: actualUserId }
       }));
       
       // Nouvelle notification pour informer que les transactions ont été mises à jour
       window.dispatchEvent(new CustomEvent('transactions:updated', { 
-        detail: { gain: finalAmount, timestamp: Date.now() }
+        detail: { gain: finalAmount, timestamp: Date.now(), userId: actualUserId }
       }));
       
       // Délai court avant de mettre à jour les transactions pour laisser le temps à la base de données de se mettre à jour
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('transactions:refresh', { 
-          detail: { timestamp: Date.now() + 100 }
+          detail: { timestamp: Date.now() + 100, userId: actualUserId }
         }));
       }, 300);
     } catch (error) {
-      console.error("Failed to record automatic transaction:", error);
+      console.error(`Failed to record automatic transaction for user ${actualUserId}:`, error);
       // Re-queue the transaction on error
-      processingQueue.current.push(amount);
+      processingQueue.current.push({ amount, userId: actualUserId });
     } finally {
       isProcessing.current = false;
     }
@@ -177,10 +189,10 @@ export const useAutomaticRevenueTransactions = () => {
   useEffect(() => {
     const handleAutomaticRevenue = (event: Event) => {
       if (event instanceof CustomEvent && event.detail) {
-        const { amount } = event.detail;
+        const { amount, userId } = event.detail;
         if (typeof amount === 'number' && amount > 0) {
-          console.log(`Recording automatic revenue transaction: ${amount}€`);
-          recordAutomaticTransaction(amount);
+          console.log(`Recording automatic revenue transaction: ${amount}€ for user ${userId || 'current user'}`);
+          recordAutomaticTransaction(amount, userId || null);
         }
       }
     };

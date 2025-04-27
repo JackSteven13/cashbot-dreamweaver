@@ -6,6 +6,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/comp
 import { PLANS } from '@/utils/plans';
 import balanceManager from '@/utils/balance/balanceManager';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SessionButtonProps {
   onClick: () => void;
@@ -28,6 +29,10 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   lastSessionTimestamp,
   isBotActive = true
 }) => {
+  // Obtenir l'ID utilisateur actuel
+  const { user } = useAuth();
+  const userId = user?.id || 'anonymous';
+  
   // Pour les comptes freemium, vérifier aussi le localStorage pour la limite journalière
   const [forceDisabled, setForceDisabled] = useState(false);
   
@@ -35,13 +40,14 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   useEffect(() => {
     const checkFreemiumLimit = () => {
       if (subscription === 'freemium') {
-        const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-        const lastSessionDate = localStorage.getItem('last_session_date');
+        // Utiliser des clés spécifiques à l'utilisateur
+        const limitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`);
+        const lastSessionDate = localStorage.getItem(`last_session_date_${userId}`);
         const today = new Date().toDateString();
         
         // Si c'est un nouveau jour, réinitialiser la limite
         if (lastSessionDate !== today) {
-          localStorage.removeItem('freemium_daily_limit_reached');
+          localStorage.removeItem(`freemium_daily_limit_reached_${userId}`);
           setForceDisabled(false);
         } else if (limitReached === 'true' || dailySessionCount >= 1) {
           // Sinon, appliquer la limite stricte pour les comptes freemium
@@ -62,7 +68,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     return () => {
       clearInterval(intervalId);
     };
-  }, [subscription, dailySessionCount]);
+  }, [subscription, dailySessionCount, userId]);
   
   // Get the max daily sessions based on subscription
   const maxDailySessions = PLANS[subscription]?.dailyLimit || 1;
@@ -79,9 +85,18 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   ) : false;
 
   // Vérifier si la limite quotidienne de gains est atteinte
+  // Assurons-nous que le balanceManager utilise le bon ID utilisateur
+  useEffect(() => {
+    if (userId) {
+      balanceManager.setUserId(userId);
+    }
+  }, [userId]);
+  
   const dailyGains = balanceManager.getDailyGains();
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-  const isLimitReached = dailyGains >= dailyLimit * 0.95; // 95% de la limite pour être préventif
+  const isLimitReached = balanceManager.isDailyLimitReached ? 
+    balanceManager.isDailyLimitReached(subscription) : 
+    (dailyGains >= dailyLimit * 0.95); // 95% de la limite pour être préventif
 
   // Determine the tooltip message
   const getTooltipMessage = () => {

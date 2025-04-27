@@ -8,6 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useLimitChecking } from '@/hooks/sessions/manual/useLimitChecking';
 import { UserData } from '@/types/userData';
 import balanceManager from '@/utils/balance/balanceManager';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DailyLimitAlertProps {
   show: boolean;
@@ -24,10 +25,16 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
   const [isLimitReached, setIsLimitReached] = useState(propIsLimitReached || false);
   const isMobile = useIsMobile();
   const { getTodaysGains } = useLimitChecking();
+  const { user } = useAuth();
   
   // Améliorer le monitoring des gains quotidiens
   useEffect(() => {
     if (!userData) return;
+
+    // Assurer que le balanceManager utilise le bon ID utilisateur
+    if (user?.id) {
+      balanceManager.setUserId(user.id);
+    }
 
     // Obtenir les gains d'aujourd'hui depuis le gestionnaire de solde
     const actualTodaysGains = balanceManager.getDailyGains();
@@ -47,7 +54,8 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
           detail: {
             subscription: effectiveSubscription,
             limit: limit,
-            currentGains: actualTodaysGains
+            currentGains: actualTodaysGains,
+            userId: user?.id // Ajouter l'ID utilisateur à l'événement
           }
         }));
       }
@@ -74,7 +82,8 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
             detail: {
               subscription: effectiveSubscription,
               limit: limit,
-              currentGains: transactionGains
+              currentGains: transactionGains,
+              userId: user?.id // Ajouter l'ID utilisateur à l'événement
             }
           }));
         }
@@ -85,6 +94,11 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
     
     // Écouter les événements de mise à jour des gains
     const handleBalanceUpdate = (event: CustomEvent) => {
+      // Vérifier si l'événement concerne cet utilisateur
+      if (event.detail?.userId && user?.id && event.detail.userId !== user.id) {
+        return;
+      }
+      
       if (event.detail?.dailyGains) {
         const updatedGains = event.detail.dailyGains;
         setTodaysGains(updatedGains);
@@ -100,7 +114,7 @@ const DailyLimitAlert: FC<DailyLimitAlertProps> = ({ show, subscription, current
     return () => {
       window.removeEventListener('balance:update' as any, handleBalanceUpdate);
     };
-  }, [userData, effectiveSubscription, getTodaysGains, isLimitReached]);
+  }, [userData, effectiveSubscription, getTodaysGains, isLimitReached, user]);
   
   // Vérifier si le mode Pro temporaire est activé
   useEffect(() => {
