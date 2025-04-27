@@ -20,7 +20,7 @@ export interface BalanceManagerInstance {
   
   // User management
   setUserId: (userId: string) => void;
-  getUserId?: () => string | null;
+  getUserId: () => string | null;
   
   // Event subscription
   addWatcher: (callback: (newBalance: number) => void) => (() => void);
@@ -31,4 +31,11 @@ export interface BalanceManagerInstance {
   // Daily limit checking
   isDailyLimitReached: (subscription: string) => boolean;
   getRemainingDailyAllowance: (subscription: string) => number;
+  
+  // New method: Hard validation of gains to prevent exceeding limit
+  validateGainAgainstDailyLimit: (amount: number, subscription: string) => { allowed: boolean; adjustedAmount: number };
+  
+  // Reset methods for debugging and testing
+  resetBalance?: () => boolean;
+  resetDailyGains?: () => void;
 }

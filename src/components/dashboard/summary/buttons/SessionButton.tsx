@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlayCircle, Clock, AlertCircle } from 'lucide-react';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -36,6 +36,71 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   // Pour les comptes freemium, vérifier strictement la limite journalière
   const [forceDisabled, setForceDisabled] = useState(false);
   const [limitExactlyReached, setLimitExactlyReached] = useState(false);
+  
+  // Référence pour éviter les clics rapides
+  const lastClickTime = useRef<number>(0);
+  const clickCooldownMs = 5000; // 5 seconds cooldown
+  
+  // Effet pour détecter les changements de limite
+  useEffect(() => {
+    // Vérification immédiate de la limite au montage
+    const checkDailyLimit = () => {
+      // S'assurer que balanceManager a le bon utilisateur
+      if (balanceManager.getUserId && balanceManager.getUserId() !== userId) {
+        balanceManager.setUserId(userId);
+      }
+      
+      // Vérifier si la limite est atteinte
+      const isLimitReached = balanceManager.isDailyLimitReached(subscription);
+      if (isLimitReached) {
+        setForceDisabled(true);
+        setLimitExactlyReached(true);
+      }
+      
+      // Vérifier également les drapeaux de limite de localStorage
+      const limitReached = localStorage.getItem(`daily_limit_reached_${userId}`);
+      if (limitReached === 'true') {
+        setForceDisabled(true);
+        setLimitExactlyReached(true);
+      }
+      
+      // Pour les freemium, vérifier aussi le flag spécifique
+      if (subscription === 'freemium') {
+        const freemiumLimitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`);
+        if (freemiumLimitReached === 'true') {
+          setForceDisabled(true);
+        }
+      }
+    };
+    
+    // Vérifier au montage
+    checkDailyLimit();
+    
+    // Vérifier aussi périodiquement
+    const intervalId = setInterval(checkDailyLimit, 10000);
+    
+    // Écouter les événements de limite atteinte
+    const handleLimitReached = () => {
+      setForceDisabled(true);
+      setLimitExactlyReached(true);
+    };
+    
+    // Écouter les événements de limite enforcée
+    const handleLimitEnforced = () => {
+      setForceDisabled(true);
+      setLimitExactlyReached(true);
+    };
+    
+    window.addEventListener('daily-limit:reached', handleLimitReached);
+    window.addEventListener('daily-limit:enforced', handleLimitEnforced);
+    
+    // Nettoyage
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('daily-limit:reached', handleLimitReached);
+      window.removeEventListener('daily-limit:enforced', handleLimitEnforced);
+    };
+  }, [userId, subscription]);
   
   // RENFORCÉ: Effet pour vérifier si la limite quotidienne est atteinte
   useEffect(() => {
@@ -104,7 +169,19 @@ const SessionButton: React.FC<SessionButtonProps> = ({
         balanceManager.setUserId(userId);
       }
     }
-  }, [userId]);
+    
+    // Vérifier la limite directement via le balanceManager
+    if (userId !== 'anonymous' && subscription) {
+      const isLimitReached = balanceManager.isDailyLimitReached(subscription);
+      if (isLimitReached) {
+        setForceDisabled(true);
+        setLimitExactlyReached(true);
+      }
+      
+      // Force une vérification globale des limites
+      window.dispatchEvent(new CustomEvent('daily-limit:check-all'));
+    }
+  }, [userId, subscription]);
   
   // Get the max daily sessions based on subscription
   const maxDailySessions = PLANS[subscription]?.dailyLimit || 1;
@@ -144,6 +221,24 @@ const SessionButton: React.FC<SessionButtonProps> = ({
 
   // RENFORCÉ: Function to handle click with strict verification
   const handleClick = () => {
+    // Anti-spam protection
+    const now = Date.now();
+    if (now - lastClickTime.current < clickCooldownMs) {
+      console.log("Button clicked too soon after last click, ignoring");
+      return;
+    }
+    lastClickTime.current = now;
+    
+    // DOUBLE VÉRIFICATION EN TEMPS RÉEL
+    // Vérifier à nouveau la limite au moment du clic
+    const realTimeLimit = balanceManager.isDailyLimitReached(subscription);
+    if (realTimeLimit) {
+      console.log("Session button blocked - Limit check at click time returned true");
+      setForceDisabled(true);
+      setLimitExactlyReached(true);
+      return;
+    }
+    
     // Vérification multi-niveau
     if (isFreemium && (dailySessionCount >= 1 || forceDisabled)) {
       console.log("Session button blocked - Freemium limit reached");
