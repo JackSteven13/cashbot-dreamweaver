@@ -1,6 +1,5 @@
 
 import { getPersistentStats, savePersistentStats } from './persistentStats';
-import { synchronizeRevenueWithAds } from '@/hooks/stats/utils/revenueCalculator';
 
 /**
  * Synchronise les statistiques entre les différents composants
@@ -22,19 +21,6 @@ export const initStatsSync = (userId?: string): (() => void) => {
       // Récupérer les dernières statistiques
       const latestStats = getPersistentStats(userId);
       
-      // NOUVEAU: S'assurer que la corrélation est toujours maintenue
-      const currentAdsCount = latestStats.adsCount;
-      const correctRevenueCount = synchronizeRevenueWithAds(currentAdsCount);
-      
-      // Si les revenus ne correspondent pas aux pubs, corriger
-      if (Math.abs(latestStats.revenueCount - correctRevenueCount) > 0.1) {
-        console.log(`Correction du ratio revenus/pubs: ${latestStats.revenueCount} -> ${correctRevenueCount}`);
-        latestStats.revenueCount = correctRevenueCount;
-        
-        // Sauvegarder les statistiques corrigées
-        savePersistentStats(currentAdsCount, correctRevenueCount, userId);
-      }
-      
       // Informer les autres composants du changement
       window.dispatchEvent(new CustomEvent('stats:update', {
         detail: latestStats
@@ -50,7 +36,7 @@ export const initStatsSync = (userId?: string): (() => void) => {
     const stats = getPersistentStats(userId);
     
     // FORCER la parfaite corrélation entre pubs et revenus
-    const correctRevenueCount = synchronizeRevenueWithAds(stats.adsCount);
+    const correctRevenueCount = stats.adsCount * PERFECT_CORRELATION_RATIO;
     
     // Si les revenus ne sont pas en parfaite corrélation, les forcer
     if (Math.abs(stats.revenueCount - correctRevenueCount) > 0.01) {
@@ -105,7 +91,8 @@ export const syncStatsWithServer = async (
   const syncedAdsCount = Math.max(localStats.adsCount, serverAdsCount);
   
   // TOUJOURS calculer les revenus en fonction des publicités avec un ratio fixe
-  const syncedRevenueCount = synchronizeRevenueWithAds(syncedAdsCount);
+  const PERFECT_CORRELATION_RATIO = 0.76203;
+  const syncedRevenueCount = syncedAdsCount * PERFECT_CORRELATION_RATIO;
   
   // Persister les valeurs synchronisées et parfaitement corrélées
   savePersistentStats(syncedAdsCount, syncedRevenueCount, userId);

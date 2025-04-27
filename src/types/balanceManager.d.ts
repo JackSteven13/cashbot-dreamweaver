@@ -17,12 +17,12 @@ export interface BalanceManagerInstance {
   getHighestBalance: () => number;
   updateHighestBalance: (balance: number) => void;
   
-  // User management
-  setUserId: (userId: string) => void;
-  
   // Event subscription
   addWatcher: (callback: (newBalance: number) => void) => (() => void);
   
   // Advanced features
   checkForSignificantBalanceChange: (newBalance: number) => boolean;
+  
+  // User management
+  setUserId: (userId: string) => void;
 }
