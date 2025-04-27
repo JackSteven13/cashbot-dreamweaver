@@ -194,7 +194,6 @@ export function useDashboardLogic() {
 
   // Balance refresh interval
   useEffect(() => {
-    // Create refs inside the effect to avoid invalid hook calls
     const intervalId = setInterval(() => {
       forceBalanceRefresh();
     }, 15000);
@@ -239,4 +238,3 @@ export function useDashboardLogic() {
     dailyLimitProgress
   };
 }
-

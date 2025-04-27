@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { CircleDollarSign, TrendingUp, Award } from 'lucide-react';
 import { useAnimatedCounter } from '@/hooks/useAnimatedCounter';
 import { createMoneyParticles } from '@/utils/animations';
@@ -39,9 +40,12 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const [gainAmount, setGainAmount] = useState<number | null>(null);
   
   // Utiliser le solde stable pour l'affichage ou la prop si elle est fournie
-  const effectiveBalance = typeof animatedBalance === 'number' && !isNaN(animatedBalance) 
-    ? animatedBalance 
-    : (isNaN(stableBalance) ? 0 : stableBalance);
+  const effectiveBalance = useMemo(() => {
+    if (typeof animatedBalance === 'number' && !isNaN(animatedBalance)) {
+      return animatedBalance;
+    }
+    return isNaN(stableBalance) ? 0 : stableBalance;
+  }, [animatedBalance, stableBalance]);
   
   const { formattedValue } = useAnimatedCounter({
     value: effectiveBalance,
@@ -109,7 +113,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     
     if (safeDisplayBalance > 0 && Math.abs(safeDisplayBalance - safeStableBalance) > 0.5) {
       // Si différence significative, synchroniser mais ne pas animer
-      setStableBalance(prev => {
+      setStableBalance((prev) => {
         const safePrev = isNaN(prev) ? 0 : prev;
         // Privilégier la valeur la plus élevée pour éviter de décevoir l'utilisateur
         return Math.max(safePrev, safeDisplayBalance);
