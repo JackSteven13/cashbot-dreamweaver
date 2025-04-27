@@ -3,7 +3,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Transaction } from '@/types/userData';
 import { useTransactionsState } from './useTransactionsState';
 import { useTransactionsStorage } from './useTransactionsStorage';
-import { useTransactionsRefresh } from './useTransactionsRefresh';
 import { useTransactionDisplay } from './useTransactionDisplay';
 import { useAuth } from '@/hooks/useAuth';
 import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
@@ -58,13 +57,9 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
         initialFetchDone.current = true;
       }
     }
-    
-    return () => {
-      // Don't reset initialFetchDone on unmount to avoid re-fetching
-    };
   }, [initialTransactions, setTransactions, transactionsCacheKey, restoreFromCache]);
   
-  // Use the refresh hook with memoized refresh handler
+  // Memoized refresh handler to avoid recreations
   const handleManualRefresh = useCallback(async () => {
     if (!user?.id) {
       console.warn("Cannot refresh transactions: no user ID");

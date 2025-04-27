@@ -5,7 +5,6 @@ import TransactionListItem from './TransactionListItem';
 
 interface TransactionsListProps {
   transactions: Transaction[];
-  isLoading?: boolean;
   subscription?: string;
   refreshKey?: number;
 }
@@ -13,26 +12,17 @@ interface TransactionsListProps {
 // Use memo to prevent unnecessary re-renders
 const TransactionsList: React.FC<TransactionsListProps> = memo(({
   transactions,
-  isLoading = false,
   subscription = 'freemium',
   refreshKey = 0
 }) => {
   // Only update lastRendered when refreshKey changes
-  const [lastRendered, setLastRendered] = useState(new Date());
+  const [lastRendered, setLastRendered] = useState<Date>(() => new Date());
   
   useEffect(() => {
     if (refreshKey > 0) {
       setLastRendered(new Date());
     }
   }, [refreshKey]);
-  
-  if (isLoading) {
-    return (
-      <div className="py-8 text-center">
-        <p className="text-muted-foreground">Chargement des transactions...</p>
-      </div>
-    );
-  }
 
   if (!transactions || transactions.length === 0) {
     return (

@@ -12,16 +12,22 @@ export const useTransactionDisplay = (
     const validTx = Array.isArray(transactions) ? 
       transactions.filter(tx => tx && (typeof tx.gain === 'number' || typeof tx.amount === 'number') && tx.date) : [];
     
-    // Determine transactions to display
-    const displayedTx = showAllTransactions 
-      ? validTx 
-      : validTx.slice(0, 3);
+    // Sort transactions by date (most recent first)
+    const sortedTx = [...validTx].sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateB - dateA;
+    });
     
-    // Calculate how many transactions are hidden
-    const hiddenCount = validTx.length > 3 && !showAllTransactions ? validTx.length - 3 : 0;
+    // Determine transactions to display
+    const displayedTx = showAllTransactions ? sortedTx : sortedTx.slice(0, 5);
+    
+    // Calculate hidden transactions count
+    const hiddenCount = sortedTx.length > 5 && !showAllTransactions ? 
+      sortedTx.length - 5 : 0;
     
     return {
-      validTransactions: validTx,
+      validTransactions: sortedTx,
       displayedTransactions: displayedTx,
       hiddenTransactionsCount: hiddenCount
     };

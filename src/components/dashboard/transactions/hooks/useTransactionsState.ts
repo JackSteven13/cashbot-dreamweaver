@@ -4,6 +4,8 @@ import { Transaction } from '@/types/userData';
 
 export const useTransactionsState = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  
+  // Read the saved value from localStorage only once during initialization
   const [showAllTransactions, setShowAllTransactions] = useState(() => {
     try {
       const storedValue = localStorage.getItem('showAllTransactions');
@@ -12,22 +14,17 @@ export const useTransactionsState = () => {
       return false;
     }
   });
+  
   const [refreshKey, setRefreshKey] = useState<number>(0);
   
-  // Listen for transaction update events to support real-time updates
+  // Save showAllTransactions preference when it changes
   useEffect(() => {
-    const handleTransactionRefresh = (event: any) => {
-      setRefreshKey(prev => prev + 1);
-    };
-    
-    window.addEventListener('transactions:refresh', handleTransactionRefresh as any);
-    window.addEventListener('balance:update', handleTransactionRefresh as any);
-    
-    return () => {
-      window.removeEventListener('transactions:refresh', handleTransactionRefresh as any);
-      window.removeEventListener('balance:update', handleTransactionRefresh as any);
-    };
-  }, []);
+    try {
+      localStorage.setItem('showAllTransactions', String(showAllTransactions));
+    } catch (e) {
+      console.error("Failed to save showAllTransactions preference:", e);
+    }
+  }, [showAllTransactions]);
   
   return {
     transactions,

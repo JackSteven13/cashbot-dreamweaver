@@ -7,11 +7,11 @@ export const useTransactionsStorage = () => {
   const { user } = useAuth();
   const userId = user?.id || '';
   
-  // Create a unique cache key for this user
+  // Create a unique cache key for this user (using useRef to avoid re-renders)
   const transactionsCacheKey = useRef<string>(`cachedTransactions_${userId}`);
   const initialFetchDone = useRef<boolean>(false);
   
-  // Restore from cache
+  // Restore from cache (memoized callback)
   const restoreFromCache = useCallback(() => {
     try {
       const cachedData = localStorage.getItem(transactionsCacheKey.current);
@@ -25,7 +25,7 @@ export const useTransactionsStorage = () => {
       console.error("Error restoring transactions from cache:", e);
     }
     return [];
-  }, [transactionsCacheKey]);
+  }, []);
   
   return {
     transactionsCacheKey,
