@@ -1,7 +1,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { useUserDataSync } from './useUserDataSync'; // Changed from default import to named import
+import { useUserDataSync } from './dashboard/initialization/useUserDataSync';
 import { toast } from "@/components/ui/use-toast";
 import balanceManager from "@/utils/balance/balanceManager";
 import { UserData } from '@/types/userData';
@@ -14,7 +14,17 @@ export const useInitUserData = () => {
   const [balance, setBalance] = useState<number | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const initializedRef = useRef(false);
-  const { syncUserData } = useUserDataSync();
+  const mountedRef = useRef(true);
+  const { syncUserData } = useUserDataSync({ mountedRef });
+  
+  useEffect(() => {
+    // Set mounted ref
+    mountedRef.current = true;
+    
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   
   useEffect(() => {
     const initialize = async () => {
@@ -29,28 +39,11 @@ export const useInitUserData = () => {
           console.log("Active session found, user ID:", session.user.id);
           const userId = session.user.id;
           
+          // Set the user ID in the balance manager
+          balanceManager.setUserId(userId);
+          
           // IMPORTANT: Nettoyer complètement les données d'autres utilisateurs
           cleanOtherUserData(userId);
-          
-          // Pour les nouveaux utilisateurs, nettoyer également toutes les données génériques
-          try {
-            console.log("Nettoyage des données génériques de localStorage");
-            localStorage.removeItem('currentBalance');
-            localStorage.removeItem('lastKnownBalance');
-            localStorage.removeItem('lastUpdatedBalance');
-            localStorage.removeItem('lastKnownUsername'); // Suppression pour éviter la contamination
-            sessionStorage.removeItem('currentBalance');
-            
-            // Suppression explicite des noms d'utilisateur précédents
-            Object.keys(localStorage).forEach(key => {
-              if (key.startsWith('lastKnownUsername_') && !key.includes(userId)) {
-                console.log(`Suppression de la clé d'un autre utilisateur: ${key}`);
-                localStorage.removeItem(key);
-              }
-            });
-          } catch (e) {
-            console.error('Error cleaning generic localStorage keys:', e);
-          }
           
           // Maintenant, on peut essayer de charger les données spécifiques à l'utilisateur
           const userSpecificKeys = {
@@ -77,6 +70,7 @@ export const useInitUserData = () => {
             console.log("Initial sync failed, retrying once...");
             // Wait a bit and retry once
             setTimeout(async () => {
+              if (!mountedRef.current) return;
               await syncUserData();
               
               // Après la synchronisation, activer aussi les agents IA
@@ -113,41 +107,17 @@ export const useInitUserData = () => {
         } else {
           console.log("No active session found during initialization");
           
-          // Nettoyer toute donnée résiduelle pour éviter la contamination entre sessions
-          try {
-            const statsKeys = Object.keys(localStorage).filter(key => 
-              key.startsWith('user_stats_') || 
-              key.startsWith('currentBalance_') || 
-              key.startsWith('lastKnownBalance_') ||
-              key.startsWith('lastUpdatedBalance_') ||
-              key.startsWith('highest_balance_') ||
-              key.startsWith('lastKnownUsername_') || // Ajout pour cibler les noms d'utilisateur
-              key === 'currentBalance' ||
-              key === 'lastKnownBalance' ||
-              key === 'lastUpdatedBalance' ||
-              key === 'lastKnownUsername' // Ajout pour cibler le nom globalement
-            );
-            
-            for (const key of statsKeys) {
-              localStorage.removeItem(key);
-            }
-            
-            // Nettoyer également sessionStorage
-            Object.keys(sessionStorage).forEach(key => {
-              if (key.startsWith('currentBalance_') || key === 'currentBalance') {
-                sessionStorage.removeItem(key);
-              }
-            });
-          } catch (e) {
-            console.error('Error cleaning localStorage for anonymous user:', e);
-          }
+          // Clean balance manager since no user is active
+          balanceManager.setUserId('');
         }
         
         initializedRef.current = true;
       } catch (error) {
         console.error("Error during data initialization:", error);
       } finally {
-        setIsInitializing(false);
+        if (mountedRef.current) {
+          setIsInitializing(false);
+        }
       }
     };
     
@@ -155,7 +125,15 @@ export const useInitUserData = () => {
     
     // Listen for data update events
     const handleUserDataRefreshed = (event: any) => {
-      const { username, subscription, balance, userData, isNewUser } = event.detail;
+      const { username, subscription, balance, userData, isNewUser, userId } = event.detail;
+      
+      // Only process events for the current user
+      const currentUserId = localStorage.getItem('lastKnownUserId');
+      if (userId && currentUserId && userId !== currentUserId) {
+        console.log(`Ignored data refresh event for different user: ${userId}`);
+        return;
+      }
+      
       if (username) setUsername(username);
       if (subscription) setSubscription(subscription);
       
@@ -173,6 +151,7 @@ export const useInitUserData = () => {
     window.addEventListener('user:fast-init', handleUserDataRefreshed);
     
     return () => {
+      mountedRef.current = false;
       window.removeEventListener('user:refreshed', handleUserDataRefreshed);
       window.removeEventListener('user:fast-init', handleUserDataRefreshed);
     };

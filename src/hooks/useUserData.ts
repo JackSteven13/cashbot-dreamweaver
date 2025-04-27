@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
@@ -5,6 +6,8 @@ import { UserData, Transaction } from '@/types/userData';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
 import { generateReferralLink } from '@/utils/referral/referralLinks';
+import balanceManager from '@/utils/balance/balanceManager';
+import { cleanOtherUserData } from '@/utils/balance/balanceStorage';
 
 /**
  * Hook pour récupérer et gérer les données utilisateur
@@ -14,6 +17,7 @@ export const useUserData = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isNewUser, setIsNewUser] = useState(false);
   const { user } = useAuth();
+  const userIdRef = useRef<string | null>(null);
 
   // Fonction pour rafraîchir les données utilisateur
   const refreshUserData = useCallback(async () => {
@@ -25,6 +29,16 @@ export const useUserData = () => {
     setIsLoading(true);
     
     try {
+      // Important: Set the userId in the balanceManager to ensure proper isolation
+      balanceManager.setUserId(user.id);
+      
+      // Clean any data from other users to prevent contamination
+      cleanOtherUserData(user.id);
+      
+      // Store the current user ID for future reference
+      localStorage.setItem('lastKnownUserId', user.id);
+      userIdRef.current = user.id;
+      
       // Récupérer les données de profil
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -80,15 +94,18 @@ export const useUserData = () => {
         referralLink: userReferralLink
       };
       
+      // Force sync balance with balanceManager
+      balanceManager.forceBalanceSync(newUserData.balance, user.id);
+      
       setUserData(newUserData);
       setIsNewUser(!balanceData);
       
-      // Mettre en cache les données clés pour un accès rapide
+      // Mettre en cache les données clés pour un accès rapide avec user id prefix
       try {
-        localStorage.setItem('lastKnownUsername', newUserData.username);
-        localStorage.setItem('lastKnownBalance', newUserData.balance.toString());
-        localStorage.setItem('subscription', newUserData.subscription);
-        localStorage.setItem('referralLink', newUserData.referralLink);
+        localStorage.setItem(`lastKnownUsername_${user.id}`, newUserData.username);
+        localStorage.setItem(`lastKnownBalance_${user.id}`, newUserData.balance.toString());
+        localStorage.setItem(`subscription_${user.id}`, newUserData.subscription);
+        localStorage.setItem(`referralLink_${user.id}`, newUserData.referralLink);
       } catch (e) {
         console.error('Error caching user data', e);
       }
@@ -113,6 +130,13 @@ export const useUserData = () => {
   // Charger les données initiales
   useEffect(() => {
     if (user?.id) {
+      // Important: Check for user switch
+      if (userIdRef.current && userIdRef.current !== user.id) {
+        console.log(`User switched from ${userIdRef.current} to ${user.id}`);
+        // Clear all data from previous user
+        cleanOtherUserData(user.id);
+      }
+      
       refreshUserData();
     } else {
       setIsLoading(false);
@@ -124,23 +148,20 @@ export const useUserData = () => {
     if (!user?.id || !userData) return;
     
     try {
-      // Optimistic update with type safety
-      setUserData(prev => {
-        if (!prev) return null;
-        
-        const updatedBalance: number = (prev.balance || 0) + gain;
-        
-        return {
-          ...prev,
-          balance: updatedBalance,
-          transactions: [{
-            date: new Date().toISOString(),
-            gain,
-            report,
-            type: 'Session'
-          }, ...(prev.transactions || [])]
-        };
-      });
+      // Optimistic update
+      setUserData(prev => prev ? {
+        ...prev,
+        balance: (prev.balance || 0) + gain,
+        transactions: [{
+          date: new Date().toISOString(),
+          gain,
+          report,
+          type: 'Session'
+        }, ...(prev.transactions || [])]
+      } : null);
+      
+      // Update balance in the balanceManager
+      balanceManager.updateBalance(gain);
       
       // Mettre à jour le solde dans la base de données en utilisant une mise à jour directe
       // au lieu de l'appel RPC increase_balance qui n'est pas disponible

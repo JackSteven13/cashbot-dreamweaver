@@ -39,7 +39,7 @@ export const getPersistedBalance = (userId: string | null): number => {
   }
 };
 
-// Add the missing cleanOtherUserData function
+// Clean up all data from other users
 export const cleanOtherUserData = (currentUserId: string | null): void => {
   try {
     // Get all localStorage keys
@@ -66,7 +66,7 @@ export const cleanOtherUserData = (currentUserId: string | null): void => {
   }
 };
 
-// Add the missing getUserSpecificKeys function
+// Get all keys for a specific user
 export const getUserSpecificKeys = (userId: string | null): string[] => {
   if (!userId) return [];
   
