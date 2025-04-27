@@ -43,9 +43,14 @@ export const useBalanceEvents = ({
           processBalanceUpdate(event);
         }, updateDebounceTime);
         
-        // Fix: Use a proper way to update the ref value
-        if (refs.forceUpdateTimeoutRef && refs.forceUpdateTimeoutRef.current !== timeoutId) {
-          refs.forceUpdateTimeoutRef.current = timeoutId;
+        // Using a properly structured update for the ref
+        // Store the timeout ID safely
+        if (refs.forceUpdateTimeoutRef) {
+          const refObject = refs.forceUpdateTimeoutRef;
+          // Use a nested setTimeout to ensure the ref update happens after render
+          setTimeout(() => {
+            refObject.current = timeoutId;
+          }, 0);
         }
         return;
       }
@@ -78,16 +83,15 @@ export const useBalanceEvents = ({
           localStorage.setItem(`lastKnownBalance_${userId}`, calculatedNewBalance.toString());
         }
         
-        // Fix: Store the time value in a local variable
+        // Update the time ref safely with closure
         if (refs.lastUpdateTimeRef) {
-          // Create a new reference instead of modifying current
-          const timeRef = refs.lastUpdateTimeRef;
-          if (timeRef.current !== currentTime) {
-            // Only track the last update time, don't modify the ref directly
-            window.setTimeout(() => {
-              timeRef.current = currentTime;
-            }, 0);
-          }
+          const refCopy = refs.lastUpdateTimeRef;
+          const updateTime = currentTime;
+          
+          // Use setTimeout to defer the update to avoid direct mutation
+          setTimeout(() => {
+            refCopy.current = updateTime;
+          }, 0);
         }
         
         if (shouldAnimate !== false) {
@@ -114,16 +118,15 @@ export const useBalanceEvents = ({
           localStorage.setItem(`lastKnownBalance_${userId}`, newBalance.toString());
         }
         
-        // Fix: Store the time value properly
+        // Update the time ref safely in this case too
         if (refs.lastUpdateTimeRef) {
-          // Create a new variable to track update time
-          const timeRef = refs.lastUpdateTimeRef;
-          if (timeRef.current !== currentTime) {
-            // Use setTimeout to defer the update
-            window.setTimeout(() => {
-              timeRef.current = currentTime;
-            }, 0);
-          }
+          const refCopy = refs.lastUpdateTimeRef;
+          const updateTime = currentTime;
+          
+          // Use setTimeout to defer the update
+          setTimeout(() => {
+            refCopy.current = updateTime;
+          }, 0);
         }
         
         if (shouldAnimate !== false && implicitGain > 0) {
