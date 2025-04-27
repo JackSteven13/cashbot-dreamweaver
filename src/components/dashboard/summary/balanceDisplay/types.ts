@@ -19,7 +19,7 @@ export interface BalanceEventDetail {
   amount?: number;
   animate?: boolean;
   oldBalance?: number;
-  userId?: string;  // Add userId to the type definition
+  userId?: string;
 }
 
 export interface UseBalanceStateResult {
@@ -34,4 +34,12 @@ export interface UseBalanceStateResult {
   constants: {
     updateDebounceTime: number;
   };
+}
+
+// Add the missing BalanceDisplayProps interface
+export interface BalanceDisplayProps {
+  balance: number;
+  isLoading?: boolean;
+  currency?: string;
+  subscription?: string;
 }

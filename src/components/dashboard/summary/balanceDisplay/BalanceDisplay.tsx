@@ -27,8 +27,11 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
         console.log(`Synchronisation du solde affiché avec le prop balance: ${state.displayedBalance} -> ${safeBalance}`);
         setters.setPreviousBalance(state.displayedBalance);
         setters.setDisplayedBalance(safeBalance);
-        // Create a new object for the ref
-        refs.lastUpdateTimeRef = { current: now };
+        // Fix: Don't try to reassign the ref object
+        // Use a deferred update instead
+        setTimeout(() => {
+          refs.lastUpdateTimeRef.current = now;
+        }, 0);
         balanceManager.forceBalanceSync(safeBalance);
       }
     }

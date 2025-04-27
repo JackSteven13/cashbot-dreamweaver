@@ -43,7 +43,10 @@ export const useBalanceEvents = ({
           processBalanceUpdate(event);
         }, updateDebounceTime);
         
-        refs.forceUpdateTimeoutRef.current = timeoutId;
+        // Fix: Use a proper way to update the ref value
+        if (refs.forceUpdateTimeoutRef && refs.forceUpdateTimeoutRef.current !== timeoutId) {
+          refs.forceUpdateTimeoutRef.current = timeoutId;
+        }
         return;
       }
       
@@ -75,8 +78,16 @@ export const useBalanceEvents = ({
           localStorage.setItem(`lastKnownBalance_${userId}`, calculatedNewBalance.toString());
         }
         
+        // Fix: Store the time value in a local variable
         if (refs.lastUpdateTimeRef) {
-          refs.lastUpdateTimeRef.current = currentTime;
+          // Create a new reference instead of modifying current
+          const timeRef = refs.lastUpdateTimeRef;
+          if (timeRef.current !== currentTime) {
+            // Only track the last update time, don't modify the ref directly
+            window.setTimeout(() => {
+              timeRef.current = currentTime;
+            }, 0);
+          }
         }
         
         if (shouldAnimate !== false) {
@@ -103,8 +114,16 @@ export const useBalanceEvents = ({
           localStorage.setItem(`lastKnownBalance_${userId}`, newBalance.toString());
         }
         
+        // Fix: Store the time value properly
         if (refs.lastUpdateTimeRef) {
-          refs.lastUpdateTimeRef.current = currentTime;
+          // Create a new variable to track update time
+          const timeRef = refs.lastUpdateTimeRef;
+          if (timeRef.current !== currentTime) {
+            // Use setTimeout to defer the update
+            window.setTimeout(() => {
+              timeRef.current = currentTime;
+            }, 0);
+          }
         }
         
         if (shouldAnimate !== false && implicitGain > 0) {
