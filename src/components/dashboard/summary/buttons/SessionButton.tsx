@@ -31,7 +31,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Déterminer la limite quotidienne en fonction de l'abonnement
+  // Determine daily limit based on subscription
   const getDailyLimit = useCallback(() => {
     switch (subscription) {
       case 'elite': return 15;
@@ -45,7 +45,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   const dailyLimit = getDailyLimit();
   const hasReachedLimit = dailySessionCount >= dailyLimit;
 
-  // Vérifier le temps écoulé depuis la dernière session
+  // Check time since last session
   const checkLastSessionTime = useCallback(() => {
     if (!lastSessionTimestamp) {
       return true;
@@ -55,8 +55,8 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     const now = Date.now();
     const timeDiff = now - lastSession;
     
-    // Imposer un délai minimum entre les sessions (60 secondes)
-    const minTimeInterval = 60 * 1000; // 60 secondes en millisecondes
+    // Minimum delay between sessions (60 seconds)
+    const minTimeInterval = 60 * 1000; // 60 seconds in milliseconds
     
     if (timeDiff < minTimeInterval) {
       const remainingTime = Math.ceil((minTimeInterval - timeDiff) / 1000);
@@ -68,7 +68,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     return true;
   }, [lastSessionTimestamp]);
 
-  // Mettre à jour le timer toutes les secondes
+  // Update timer every second
   useEffect(() => {
     let timerId: number | undefined;
     
@@ -89,7 +89,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     };
   }, [timeRemaining]);
 
-  // Vérifier si l'utilisateur peut démarrer une session
+  // Check if user can start a session
   const canStart = useCallback(() => {
     if (!user) {
       return false;
@@ -110,7 +110,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     return canStartSession;
   }, [user, isBotActive, hasReachedLimit, canStartSession, checkLastSessionTime]);
 
-  // Ajouter un delai entre les clics
+  // Add delay between clicks and handle click event
   const handleClick = useCallback(() => {
     if (isStartingSession || isButtonDisabled || !canStart()) {
       if (hasReachedLimit) {
@@ -137,11 +137,11 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     
     setIsButtonDisabled(true);
     
-    // Appeler la fonction de démarrage
     try {
+      // Call start function
       handleStartSession();
       
-      // Ajouter un délai avant de réactiver le bouton
+      // Add delay before re-enabling the button
       setTimeout(() => {
         setIsButtonDisabled(false);
       }, 1500);

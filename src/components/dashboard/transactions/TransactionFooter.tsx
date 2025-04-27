@@ -4,11 +4,13 @@ import React from 'react';
 interface TransactionFooterProps {
   showAllTransactions: boolean;
   hiddenTransactionsCount: number;
+  setShowAllTransactions?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const TransactionFooter: React.FC<TransactionFooterProps> = ({
   showAllTransactions,
-  hiddenTransactionsCount
+  hiddenTransactionsCount,
+  setShowAllTransactions
 }) => {
   if (showAllTransactions || hiddenTransactionsCount === 0) {
     return null;
@@ -19,6 +21,14 @@ const TransactionFooter: React.FC<TransactionFooterProps> = ({
       <p>
         {hiddenTransactionsCount} {hiddenTransactionsCount > 1 ? 'transactions masquées' : 'transaction masquée'}
       </p>
+      {setShowAllTransactions && (
+        <button 
+          onClick={() => setShowAllTransactions(true)} 
+          className="text-blue-500 hover:text-blue-700 text-sm mt-1"
+        >
+          Afficher tout
+        </button>
+      )}
     </div>
   );
 };
