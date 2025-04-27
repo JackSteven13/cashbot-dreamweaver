@@ -1,7 +1,22 @@
 
 import { loadStoredValues, saveValues } from './storageOperations';
 
+// Track when last increment happened to avoid rapid fire updates
+let lastIncrementTime = 0;
+const MIN_INCREMENT_INTERVAL = 5000; // 5 seconds minimum between increments
+
 export const incrementDateLinkedStats = () => {
+  // Prevent multiple calls in short succession
+  const now = Date.now();
+  if (now - lastIncrementTime < MIN_INCREMENT_INTERVAL) {
+    const storedValues = loadStoredValues();
+    return {
+      newAdsCount: storedValues.adsCount,
+      newRevenueCount: storedValues.revenueCount
+    };
+  }
+  
+  lastIncrementTime = now;
   const storedValues = loadStoredValues();
   
   // Base increment values with slight randomness
