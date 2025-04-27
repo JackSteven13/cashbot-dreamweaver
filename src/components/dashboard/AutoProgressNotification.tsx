@@ -1,95 +1,45 @@
 
-import React, { useEffect, useState } from 'react';
-import { toast } from '@/components/ui/use-toast';
-import { TrendingUp, Clock } from 'lucide-react';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
+import React, { useState, useEffect, useRef } from 'react';
 
-/**
- * Composant de notification pour la progression automatique
- * Affiche une notification lorsque l'utilisateur revient après une absence
- */
-const AutoProgressNotification = () => {
-  const [showAlert, setShowAlert] = useState(false);
-  const [progressData, setProgressData] = useState<{
-    amount: number;
-    daysMissed: number;
-    consecutiveVisitDays: number;
-  } | null>(null);
+const AutoProgressNotification: React.FC = () => {
+  const [isVisible, setIsVisible] = useState<boolean>(false);
+  const [message, setMessage] = useState<string>('');
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Gestionnaire pour les événements de progression quotidienne
-    const handleDailyGrowth = (event: CustomEvent) => {
-      console.log("Progression quotidienne détectée:", event.detail);
-      
-      const amount = event.detail?.amount || 0;
-      const daysMissed = event.detail?.daysMissed || 0;
-      const consecutiveVisitDays = event.detail?.consecutiveVisitDays || 1;
-      
-      // Ne montrer que si c'est significatif
-      if (amount > 0.01 && daysMissed > 0) {
-        setProgressData({
-          amount,
-          daysMissed,
-          consecutiveVisitDays
-        });
+    const handleNotification = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail && customEvent.detail.message) {
+        setMessage(customEvent.detail.message);
+        setIsVisible(true);
         
-        setTimeout(() => {
-          setShowAlert(true);
-        }, 1500);
+        // Clear any existing timeout
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
         
-        // Notification toast pour informer l'utilisateur
-        toast({
-          title: `Progression pendant votre absence`,
-          description: `Votre solde a progressé de ${amount.toFixed(2)}€ durant les ${daysMissed} jour(s) d'absence.`,
-          duration: 6000,
-        });
+        // Set timeout to hide notification
+        timeoutRef.current = setTimeout(() => {
+          setIsVisible(false);
+        }, customEvent.detail.duration || 3000);
       }
     };
-    
-    // Écouter l'événement de progression quotidienne
-    window.addEventListener('balance:daily-growth', handleDailyGrowth as EventListener);
+
+    window.addEventListener('dashboard:notification', handleNotification as EventListener);
     
     return () => {
-      window.removeEventListener('balance:daily-growth', handleDailyGrowth as EventListener);
+      window.removeEventListener('dashboard:notification', handleNotification as EventListener);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
   }, []);
-  
-  // Masquer l'alerte après un certain temps
-  useEffect(() => {
-    if (showAlert) {
-      const timer = setTimeout(() => {
-        setShowAlert(false);
-      }, 10000); // 10 secondes
-      
-      return () => clearTimeout(timer);
-    }
-  }, [showAlert]);
-  
-  if (!showAlert || !progressData) {
-    return null;
-  }
-  
+
+  if (!isVisible) return null;
+
   return (
-    <div className="fixed bottom-4 right-4 z-50 max-w-md animate-fade-in">
-      <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-        <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-        <AlertTitle className="text-green-800 dark:text-green-300">
-          Progression automatique
-        </AlertTitle>
-        <AlertDescription className="text-green-700 dark:text-green-400 text-sm">
-          <p>Votre solde a progressé de <span className="font-bold">{progressData.amount.toFixed(2)}€</span> pendant votre absence.</p>
-          <div className="flex items-center mt-1 text-xs">
-            <Clock className="h-3 w-3 mr-1" />
-            <span>
-              {progressData.daysMissed} jour(s) d'activité - {progressData.consecutiveVisitDays} jour(s) consécutifs
-            </span>
-          </div>
-        </AlertDescription>
-      </Alert>
+    <div className="fixed bottom-5 right-5 bg-gradient-to-r from-blue-500/90 to-indigo-600/90 text-white p-4 rounded-lg shadow-lg z-50 max-w-xs animate-fade-in">
+      <div className="font-medium">{message}</div>
     </div>
   );
 };

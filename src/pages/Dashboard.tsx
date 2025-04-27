@@ -1,5 +1,5 @@
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { useDashboardLogic } from '@/hooks/dashboard/useDashboardLogic';
 import DashboardMain from '../components/dashboard/DashboardMain';
 import DashboardSkeleton from '../components/dashboard/DashboardSkeleton';
@@ -15,6 +15,10 @@ const Dashboard = () => {
     dashboardReady,
     refreshData
   } = useDashboardLogic();
+  
+  // Use ref to ensure we don't create multiple timers
+  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasInitialRefreshed = useRef<boolean>(false);
 
   // Memoize the refresh function to prevent triggering re-renders
   const handleRefreshData = useCallback(() => {
@@ -27,20 +31,30 @@ const Dashboard = () => {
     }
   }, [user, isInitializing, refreshData]);
 
-  // Force a data refresh when dashboard is loaded
+  // Force a data refresh when dashboard is loaded - using refs to avoid re-renders
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
-    
-    if (user && !isInitializing) {
+    // Only run this effect once when conditions are met
+    if (user && !isInitializing && !hasInitialRefreshed.current) {
+      hasInitialRefreshed.current = true;
+      
+      // Clear any existing timer to prevent memory leaks
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+      
       // Add a slight delay to ensure everything is loaded
-      timer = setTimeout(() => {
+      refreshTimerRef.current = setTimeout(() => {
         handleRefreshData();
+        refreshTimerRef.current = null;
       }, 2000);
     }
     
     // Clean up function - important to prevent memory leaks
     return () => {
-      if (timer) clearTimeout(timer);
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
     };
   }, [user, isInitializing, handleRefreshData]);
 
