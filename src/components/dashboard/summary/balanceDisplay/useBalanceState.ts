@@ -1,5 +1,5 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import balanceManager from '@/utils/balance/balanceManager';
 import { UseBalanceStateResult } from './types';
 

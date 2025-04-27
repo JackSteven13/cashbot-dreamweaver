@@ -192,15 +192,12 @@ export function useDashboardLogic() {
     }
   }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue, forceBalanceRefresh, user, refreshUserData, fetchLatestBalance]);
 
-  // Balance refresh interval using useRef to prevent re-renders
+  // Balance refresh interval
   useEffect(() => {
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
-    
-    if (!intervalRef.current) {
-      intervalRef.current = setInterval(() => {
-        forceBalanceRefresh();
-      }, 15000);
-    }
+    // Create refs inside the effect to avoid invalid hook calls
+    const intervalId = setInterval(() => {
+      forceBalanceRefresh();
+    }, 15000);
 
     const handleBeforeUnload = () => {
       const currentBalance = balanceManager.getCurrentBalance();
@@ -213,10 +210,7 @@ export function useDashboardLogic() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      clearInterval(intervalId);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     }
   }, [forceBalanceRefresh, user]);
@@ -245,3 +239,4 @@ export function useDashboardLogic() {
     dailyLimitProgress
   };
 }
+
