@@ -1,4 +1,3 @@
-
 import { 
   MINIMUM_ADS_COUNT, 
   MINIMUM_REVENUE_COUNT,
@@ -95,5 +94,15 @@ export const saveValues = (adsCount: number, revenueCount: number, skipDateUpdat
   } catch (error) {
     console.error('Error saving values:', error);
     return { safeAdsCount: adsCount, safeRevenueCount: revenueCount };
+  }
+};
+
+export const getDailyGains = (): number => {
+  try {
+    const gains = localStorage.getItem('dailyGains');
+    return gains ? parseFloat(gains) : 0;
+  } catch (error) {
+    console.error('Error getting daily gains:', error);
+    return 0;
   }
 };
