@@ -1,48 +1,38 @@
 
-import {
-  MINIMUM_ADS_COUNT,
-  MINIMUM_REVENUE_COUNT,
-  MAX_ADS_COUNT,
-  MAX_REVENUE_COUNT
-} from './valueInitializer';
+import { saveValues, loadStoredValues } from './storageOperations';
+import { MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT } from './valueInitializer';
 
 export const ensureProgressiveValues = () => {
-  try {
-    const sources = [
-      parseInt(localStorage.getItem('stats_ads_count') || '0'),
-      parseInt(localStorage.getItem('stats_ads_count_backup') || '0'),
-      parseInt(localStorage.getItem('last_displayed_ads_count') || '0'),
-      MINIMUM_ADS_COUNT
-    ];
-    
-    const revenueSources = [
-      parseFloat(localStorage.getItem('stats_revenue_count') || '0'),
-      parseFloat(localStorage.getItem('stats_revenue_count_backup') || '0'),
-      parseFloat(localStorage.getItem('last_displayed_revenue_count') || '0'),
-      MINIMUM_REVENUE_COUNT
-    ];
-    
-    const maxAds = Math.max(...sources.filter(val => !isNaN(val)));
-    const maxRevenue = Math.max(...revenueSources.filter(val => !isNaN(val)));
-    
-    synchronizeValues(maxAds, maxRevenue);
-    
-    return { maxAds, maxRevenue };
-  } catch (error) {
-    console.error("Error synchronizing values:", error);
-    return null;
+  const storedValues = loadStoredValues();
+  
+  // Ensure values are at least minimum
+  if (!storedValues.hasStoredValues || 
+      storedValues.adsCount < MINIMUM_ADS_COUNT || 
+      storedValues.revenueCount < MINIMUM_REVENUE_COUNT) {
+    saveValues(MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT);
   }
 };
 
-const synchronizeValues = (ads: number, revenue: number) => {
-  const safeAds = Math.min(Math.max(ads, MINIMUM_ADS_COUNT), MAX_ADS_COUNT);
-  const safeRevenue = Math.min(Math.max(revenue, MINIMUM_REVENUE_COUNT), MAX_REVENUE_COUNT);
-  
-  localStorage.setItem('stats_ads_count', safeAds.toString());
-  localStorage.setItem('stats_ads_count_backup', safeAds.toString());
-  localStorage.setItem('last_displayed_ads_count', safeAds.toString());
-  
-  localStorage.setItem('stats_revenue_count', safeRevenue.toString());
-  localStorage.setItem('stats_revenue_count_backup', safeRevenue.toString());
-  localStorage.setItem('last_displayed_revenue_count', safeRevenue.toString());
+export const getDateConsistentStats = () => {
+  const stored = loadStoredValues();
+  if (!stored.hasStoredValues) {
+    return {
+      adsCount: MINIMUM_ADS_COUNT,
+      revenueCount: MINIMUM_REVENUE_COUNT
+    };
+  }
+  return {
+    adsCount: stored.adsCount,
+    revenueCount: stored.revenueCount
+  };
+};
+
+export const enforceMinimumStats = (minAds: number, minRevenue: number) => {
+  const stats = getDateConsistentStats();
+  if (stats.adsCount < minAds || stats.revenueCount < minRevenue) {
+    saveValues(
+      Math.max(stats.adsCount, minAds),
+      Math.max(stats.revenueCount, minRevenue)
+    );
+  }
 };

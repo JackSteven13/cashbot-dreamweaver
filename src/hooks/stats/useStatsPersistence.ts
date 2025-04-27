@@ -1,9 +1,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { 
+  loadStoredValues, 
+  saveValues,
   ensureProgressiveValues, 
-  getDateConsistentStats, 
-  saveValues 
+  getDateConsistentStats
 } from './utils/storageManager';
 
 export const useStatsPersistence = (

@@ -1,6 +1,6 @@
 
 import { useEffect, useRef } from 'react';
-import { incrementDateLinkedStats } from './utils/storageManager';
+import { incrementDateLinkedStats } from './utils/statsIncrementer';
 
 interface StatsAutoUpdateProps {
   adsCount: number;
