@@ -33,42 +33,78 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   const { user } = useAuth();
   const userId = user?.id || 'anonymous';
   
-  // Pour les comptes freemium, vérifier aussi le localStorage pour la limite journalière
+  // Pour les comptes freemium, vérifier strictement la limite journalière
   const [forceDisabled, setForceDisabled] = useState(false);
+  const [limitExactlyReached, setLimitExactlyReached] = useState(false);
   
-  // Effet pour vérifier si la limite quotidienne a été atteinte pour les comptes freemium
+  // RENFORCÉ: Effet pour vérifier si la limite quotidienne est atteinte
   useEffect(() => {
-    const checkFreemiumLimit = () => {
+    const checkSessionLimits = () => {
       if (subscription === 'freemium') {
         // Utiliser des clés spécifiques à l'utilisateur
         const limitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`);
+        const dailyLimitReached = localStorage.getItem(`daily_limit_reached_${userId}`);
         const lastSessionDate = localStorage.getItem(`last_session_date_${userId}`);
         const today = new Date().toDateString();
         
         // Si c'est un nouveau jour, réinitialiser la limite
         if (lastSessionDate !== today) {
           localStorage.removeItem(`freemium_daily_limit_reached_${userId}`);
+          localStorage.removeItem(`daily_limit_reached_${userId}`);
           setForceDisabled(false);
-        } else if (limitReached === 'true' || dailySessionCount >= 1) {
+          setLimitExactlyReached(false);
+        } else if (limitReached === 'true' || dailyLimitReached === 'true' || dailySessionCount >= 1) {
           // Sinon, appliquer la limite stricte pour les comptes freemium
           setForceDisabled(true);
+          
+          // Vérifier si c'est précisément la limite de gains qui est atteinte
+          if (dailyLimitReached === 'true') {
+            setLimitExactlyReached(true);
+          }
         } else {
           setForceDisabled(false);
+          setLimitExactlyReached(false);
         }
-      } else {
-        setForceDisabled(false);
       }
     };
     
-    checkFreemiumLimit();
+    // Vérifier immédiatement
+    checkSessionLimits();
     
-    // Vérifier à chaque changement et périodiquement
-    const intervalId = setInterval(checkFreemiumLimit, 2000);
+    // RENFORCÉ: Vérifier à chaque changement et périodiquement
+    const intervalId = setInterval(checkSessionLimits, 2000);
+    
+    // RENFORCÉ: Écouter aussi les événements de limite atteinte
+    const handleLimitReached = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const eventUserId = customEvent.detail?.userId;
+      
+      // Ne réagir qu'aux événements concernant cet utilisateur
+      if (eventUserId === userId) {
+        console.log("Event 'daily-limit:reached' détecté dans SessionButton");
+        setForceDisabled(true);
+        setLimitExactlyReached(true);
+      }
+    };
+    
+    window.addEventListener('daily-limit:reached', handleLimitReached as EventListener);
     
     return () => {
       clearInterval(intervalId);
+      window.removeEventListener('daily-limit:reached', handleLimitReached as EventListener);
     };
   }, [subscription, dailySessionCount, userId]);
+  
+  // RENFORCÉ: S'assurer que le balanceManager utilise le bon ID
+  useEffect(() => {
+    if (userId && userId !== 'anonymous') {
+      if (balanceManager.getUserId && balanceManager.getUserId() !== userId) {
+        balanceManager.setUserId(userId);
+      } else if (!balanceManager.getUserId) {
+        balanceManager.setUserId(userId);
+      }
+    }
+  }, [userId]);
   
   // Get the max daily sessions based on subscription
   const maxDailySessions = PLANS[subscription]?.dailyLimit || 1;
@@ -84,25 +120,20 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     new Date().getTime() - new Date(parseInt(lastSessionTimestamp)).getTime() < 5 * 60 * 1000
   ) : false;
 
-  // Vérifier si la limite quotidienne de gains est atteinte
-  // Assurons-nous que le balanceManager utilise le bon ID utilisateur
-  useEffect(() => {
-    if (userId) {
-      balanceManager.setUserId(userId);
-    }
-  }, [userId]);
-  
+  // RENFORCÉ: Vérifier si la limite quotidienne de gains est atteinte en temps réel
   const dailyGains = balanceManager.getDailyGains();
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   const isLimitReached = balanceManager.isDailyLimitReached ? 
     balanceManager.isDailyLimitReached(subscription) : 
-    (dailyGains >= dailyLimit * 0.95); // 95% de la limite pour être préventif
+    (dailyGains >= dailyLimit * 0.99); // 99% pour éviter les erreurs d'arrondi
 
-  // Determine the tooltip message
+  // RENFORCÉ: Determine button appearance and tooltip message
   const getTooltipMessage = () => {
     if (!isBotActive) return "Le système est temporairement indisponible";
     if (isLoading) return "Démarrage de la session...";
-    if (isLimitReached) return `Limite de gains quotidiens atteinte (${dailyGains.toFixed(2)}€/${dailyLimit}€)`;
+    if (isLimitReached || limitExactlyReached) {
+      return `Limite de gains quotidiens atteinte (${dailyGains.toFixed(2)}€/${dailyLimit}€)`;
+    }
     if (hasReachedLimit) {
       if (isFreemium) return "Limite atteinte: 1 session par jour (freemium)";
       return `Limite quotidienne atteinte (${dailySessionCount}/${maxDailySessions})`;
@@ -111,22 +142,47 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     return "Démarrer une nouvelle session d'analyse";
   };
 
-  // Function to handle click with console log for debugging
+  // RENFORCÉ: Function to handle click with strict verification
   const handleClick = () => {
-    // Pour les comptes freemium, vérification STRICTE avant de permettre le clic
+    // Vérification multi-niveau
     if (isFreemium && (dailySessionCount >= 1 || forceDisabled)) {
       console.log("Session button blocked - Freemium limit reached");
       return;
     }
     
-    // Vérification de la limite de gains
-    if (isLimitReached) {
-      console.log("Session button blocked - Daily gain limit reached");
+    // Vérification de la limite de gains en temps réel
+    const currentGains = balanceManager.getDailyGains();
+    if (currentGains >= dailyLimit * 0.99) {
+      console.log(`Session button blocked - Daily gain limit reached (${currentGains}€/${dailyLimit}€)`);
+      return;
+    }
+    
+    // Vérification finale que le bouton n'est pas désactivé
+    if (disabled || isLoading || hasReachedLimit || isInCooldown || !isBotActive || isLimitReached || forceDisabled) {
+      console.log("Session button blocked - Button is disabled");
       return;
     }
     
     console.log("Session button clicked, executing onClick handler");
     onClick();
+  };
+
+  // RENFORCÉ: Rendre le bouton plus explicite s'il est désactivé pour cause de limite
+  const getButtonStyle = () => {
+    if ((hasReachedLimit && isFreemium) || isLimitReached || limitExactlyReached || forceDisabled) {
+      return 'w-full h-11 bg-red-600 hover:bg-red-600 text-white cursor-not-allowed';
+    }
+    return 'w-full h-11 bg-green-600 hover:bg-green-700 text-white';
+  };
+
+  // RENFORCÉ: Message concret pour l'utilisateur
+  const getButtonLabel = () => {
+    if (!isBotActive) return "Indisponible";
+    if (isLimitReached || limitExactlyReached) return "Limite atteinte";
+    if (isFreemium && forceDisabled) return "Limite (1/jour)";
+    if (hasReachedLimit) return isFreemium ? "Limite (1/jour)" : "Limite atteinte";
+    if (isInCooldown) return "En attente";
+    return "Démarrer";
   };
 
   return (
@@ -137,7 +193,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
             <Button
               onClick={handleClick}
               disabled={disabled || isLoading || hasReachedLimit || isInCooldown || !isBotActive || isLimitReached || forceDisabled}
-              className={`w-full h-11 ${(hasReachedLimit && isFreemium) || isLimitReached || forceDisabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
+              className={getButtonStyle()}
               variant="default"
               size="lg"
               data-testid="session-button"
@@ -149,20 +205,14 @@ const SessionButton: React.FC<SessionButtonProps> = ({
                 </div>
               ) : (
                 <div className="flex items-center">
-                  {!isBotActive || isLimitReached || (isFreemium && forceDisabled) ? (
+                  {!isBotActive || isLimitReached || limitExactlyReached || (isFreemium && forceDisabled) ? (
                     <AlertCircle className="mr-2 h-5 w-5" />
                   ) : hasReachedLimit || isInCooldown ? (
                     <Clock className="mr-2 h-5 w-5" />
                   ) : (
                     <PlayCircle className="mr-2 h-5 w-5" />
                   )}
-                  <span>
-                    {!isBotActive ? "Indisponible" : 
-                     isLimitReached ? "Limite atteinte" :
-                     (isFreemium && forceDisabled) ? "Limite (1/jour)" :
-                     hasReachedLimit ? (isFreemium ? "Limite (1/jour)" : "Limite atteinte") : 
-                     isInCooldown ? "En attente" : "Démarrer"}
-                  </span>
+                  <span>{getButtonLabel()}</span>
                 </div>
               )}
             </Button>

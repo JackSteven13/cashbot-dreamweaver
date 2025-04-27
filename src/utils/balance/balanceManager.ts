@@ -9,6 +9,7 @@ class BalanceManager {
   private _dailyGains: number = 0;
   private _eventEmitter: EventEmitter = new EventEmitter();
   private _userId: string | null = null;
+  private _lastVerifiedDate: string = '';
   
   constructor() {
     // Initialize values from local storage if available
@@ -43,51 +44,78 @@ class BalanceManager {
     }));
   }
   
+  // OPTIMISÉ: Charger les données spécifiques à l'utilisateur
   private initFromLocalStorage(): void {
-    // For balances, use user-specific keys
-    const storedBalance = getPersistedBalance(this._userId);
-    if (!isNaN(storedBalance)) {
-      this._currentBalance = storedBalance;
+    // Vérifier d'abord si nous avons un ID utilisateur
+    if (!this._userId) {
+      console.log('Aucun ID utilisateur défini, utilisation des données génériques');
+      return;
     }
     
-    // For highest balance, use user-specific key
-    const keys = getStorageKeys(this._userId);
-    const storedHighestBalance = localStorage.getItem(keys.highestBalance);
-    if (storedHighestBalance) {
-      this._highestBalance = parseFloat(storedHighestBalance);
-    } else {
-      this._highestBalance = this._currentBalance;
-    }
-    
-    // For daily gains, use user-specific key
-    const storedDailyGains = localStorage.getItem(keys.dailyGains);
-    if (storedDailyGains) {
-      this._dailyGains = parseFloat(storedDailyGains);
-    } else {
-      this._dailyGains = 0;
-      this.setDailyGains(0); // Initialize in localStorage
+    try {
+      // Pour balances, use user-specific keys
+      const storedBalance = getPersistedBalance(this._userId);
+      if (!isNaN(storedBalance)) {
+        this._currentBalance = storedBalance;
+      }
+      
+      // Pour highest balance, use user-specific key
+      const keys = getStorageKeys(this._userId);
+      const storedHighestBalance = localStorage.getItem(keys.highestBalance);
+      if (storedHighestBalance) {
+        this._highestBalance = parseFloat(storedHighestBalance);
+      } else {
+        this._highestBalance = this._currentBalance;
+      }
+      
+      // Pour daily gains, use user-specific key et assurer qu'on reset chaque jour
+      const storedDailyGains = localStorage.getItem(keys.dailyGains);
+      const today = new Date().toDateString();
+      const lastGainsDate = localStorage.getItem(`lastGainsDate_${this._userId}`) || '';
+      
+      if (storedDailyGains && lastGainsDate === today) {
+        // Uniquement utiliser les gains stockés si c'est du même jour
+        this._dailyGains = parseFloat(storedDailyGains);
+      } else {
+        // Sinon réinitialiser les gains quotidiens
+        this._dailyGains = 0;
+        this.setDailyGains(0); // Initialize in localStorage with user ID
+        localStorage.setItem(`lastGainsDate_${this._userId}`, today);
+        
+        // Reset all daily limit flags for this user
+        localStorage.removeItem(`freemium_daily_limit_reached_${this._userId}`);
+        localStorage.removeItem(`daily_limit_reached_${this._userId}`);
+        localStorage.removeItem(`last_session_date_${this._userId}`);
+      }
+      
+      // Store the date we verified
+      this._lastVerifiedDate = today;
+    } catch (e) {
+      console.error(`Erreur lors de l'initialisation des données pour l'utilisateur ${this._userId}:`, e);
     }
   }
   
+  // RENFORCÉ: Réinitialisation quotidienne plus robuste
   private setupDailyReset(): void {
     // Check if we need to reset daily gains
-    const lastResetDate = localStorage.getItem('lastDailyReset');
     const today = new Date().toDateString();
     
-    if (lastResetDate !== today) {
+    if (this._lastVerifiedDate !== today) {
       this._dailyGains = 0;
-      const keys = getStorageKeys(this._userId);
-      localStorage.setItem(keys.dailyGains, '0');
-      localStorage.setItem('lastDailyReset', today);
       
-      // Clear all daily limit flags
+      // Si on a un ID utilisateur, reset ses données spécifiques
       if (this._userId) {
+        const keys = getStorageKeys(this._userId);
+        localStorage.setItem(keys.dailyGains, '0');
+        localStorage.setItem(`lastGainsDate_${this._userId}`, today);
+        
+        // Clear all daily limit flags for this user
         localStorage.removeItem(`freemium_daily_limit_reached_${this._userId}`);
+        localStorage.removeItem(`daily_limit_reached_${this._userId}`);
+        localStorage.removeItem(`last_session_date_${this._userId}`);
       }
       
-      // Also clear generic daily limit flags for safety
-      localStorage.removeItem('freemium_daily_limit_reached');
-      localStorage.removeItem('daily_session_count');
+      this._lastVerifiedDate = today;
     }
     
     // Set up timer for next midnight
@@ -100,18 +128,29 @@ class BalanceManager {
     
     setTimeout(() => {
       this._dailyGains = 0;
-      const keys = getStorageKeys(this._userId);
-      localStorage.setItem(keys.dailyGains, '0');
-      localStorage.setItem('lastDailyReset', new Date().toDateString());
       
-      // Clear all daily limit flags
+      // Reset pour utilisateur spécifique si disponible
       if (this._userId) {
+        const keys = getStorageKeys(this._userId);
+        localStorage.setItem(keys.dailyGains, '0');
+        localStorage.setItem(`lastGainsDate_${this._userId}`, new Date().toDateString());
+        
+        // Clear all daily limit flags for this user
         localStorage.removeItem(`freemium_daily_limit_reached_${this._userId}`);
+        localStorage.removeItem(`daily_limit_reached_${this._userId}`);
+        localStorage.removeItem(`last_session_date_${this._userId}`);
       }
       
-      // Also clear generic daily limit flags for safety
-      localStorage.removeItem('freemium_daily_limit_reached');
-      localStorage.removeItem('daily_session_count');
+      // Update the verified date
+      this._lastVerifiedDate = new Date().toDateString();
+      
+      // Broadcast the reset event
+      window.dispatchEvent(new CustomEvent('daily:reset', {
+        detail: {
+          userId: this._userId,
+          timestamp: Date.now()
+        }
+      }));
       
       this.setupDailyReset(); // Set up the next day's reset
     }, timeUntilMidnight);
@@ -150,7 +189,7 @@ class BalanceManager {
     }));
   }
   
-  // Update balance with a new transaction
+  // RENFORCÉ: Mise à jour du solde avec vérification stricte des limites
   updateBalance(amount: number): boolean {
     // Verify we have a valid userId
     if (!this._userId) {
@@ -158,34 +197,33 @@ class BalanceManager {
       return false;
     }
     
-    // NOUVEAU: Si c'est un compte freemium et un gain, vérifier que la limite quotidienne n'est pas dépassée
+    // RENFORCÉ: Si c'est un gain, vérifier STRICTEMENT que la limite quotidienne n'est pas dépassée
     if (amount > 0) {
       const currentSubscription = localStorage.getItem('currentSubscription') || 'freemium';
       
-      // Si c'est un gain et un compte freemium, appliquer une vérification stricte
-      if (currentSubscription === 'freemium') {
-        // Vérifier si l'ajout causerait un dépassement de la limite
-        const dailyLimit = SUBSCRIPTION_LIMITS[currentSubscription] || 0.5;
-        if (this._dailyGains + amount > dailyLimit) {
-          console.error(`Gain quotidien rejeté: ${this._dailyGains + amount}€ > ${dailyLimit}€ (limite freemium)`);
-          
-          // Bloquer explicitement la mise à jour du solde
-          localStorage.setItem(`freemium_daily_limit_reached_${this._userId}`, 'true');
-          
-          // Notification dans les logs pour débogage
-          console.warn(`LIMITE QUOTIDIENNE ATTEINTE: Tentative de dépasser ${dailyLimit}€ pour ${this._userId}`);
-          
-          // Diffuser un événement de limite atteinte
-          window.dispatchEvent(new CustomEvent('daily-limit:reached', {
-            detail: { 
-              userId: this._userId,
-              currentGains: this._dailyGains,
-              limit: dailyLimit
-            }
-          }));
-          
-          return false;
-        }
+      // Vérification stricte pour tout type de compte
+      // Vérifier si l'ajout causerait un dépassement de la limite
+      const dailyLimit = SUBSCRIPTION_LIMITS[currentSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      if (this._dailyGains + amount > dailyLimit) {
+        console.error(`Gain quotidien REJETÉ: ${this._dailyGains}€ + ${amount}€ = ${this._dailyGains + amount}€ > ${dailyLimit}€ (limite ${currentSubscription})`);
+        
+        // Bloquer explicitement la mise à jour du solde
+        localStorage.setItem(`daily_limit_reached_${this._userId}`, 'true');
+        
+        // Avertissement visible dans les logs
+        console.warn(`🛑 LIMITE QUOTIDIENNE STRICTEMENT RESPECTÉE: gain de ${amount}€ bloqué pour ${this._userId}`);
+        
+        // Diffuser un événement de limite atteinte
+        window.dispatchEvent(new CustomEvent('daily-limit:reached', {
+          detail: { 
+            userId: this._userId,
+            currentGains: this._dailyGains,
+            attemptedGain: amount,
+            limit: dailyLimit
+          }
+        }));
+        
+        return false;
       }
     }
     
@@ -208,6 +246,12 @@ class BalanceManager {
       const keys = getStorageKeys(this._userId);
       localStorage.setItem(keys.highestBalance, this._highestBalance.toString());
       
+      // Si c'est un gain, l'ajouter aux gains quotidiens
+      if (amount > 0) {
+        this._dailyGains = parseFloat((this._dailyGains + amount).toFixed(2));
+        localStorage.setItem(keys.dailyGains, this._dailyGains.toString());
+      }
+      
       // Emit balance changed event
       this._eventEmitter.emit('balance-changed', this._currentBalance);
       
@@ -218,7 +262,7 @@ class BalanceManager {
     }
   }
   
-  // Add to daily gains and check if limit reached
+  // RENFORCÉ: Ajout aux gains quotidiens avec vérification très stricte
   addDailyGain(amount: number): boolean {
     // Verify we have a valid userId for tracking daily gains
     if (!this._userId) {
@@ -233,19 +277,47 @@ class BalanceManager {
       // Get daily limit for the subscription
       const dailyLimit = SUBSCRIPTION_LIMITS[currentSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
-      // Calculate new daily gains
+      // PROTECTION ANTI-DÉPASSEMENT: Vérifier si nous avons déjà atteint la limite
+      if (this._dailyGains >= dailyLimit) {
+        console.error(`Limite quotidienne déjà atteinte: ${this._dailyGains}€ >= ${dailyLimit}€`);
+        
+        // Marquer explicitement que la limite est atteinte
+        localStorage.setItem(`daily_limit_reached_${this._userId}`, 'true');
+        
+        // Vérifier au centième près si nécessaire
+        const preciseGains = parseFloat(this._dailyGains.toFixed(2));
+        const preciseLimit = parseFloat(dailyLimit.toFixed(2));
+        
+        if (preciseGains < preciseLimit) {
+          console.log(`Correction précise: ${preciseGains}€ < ${preciseLimit}€, mais blocage maintenu par sécurité`);
+        }
+        
+        // Notification bloquante
+        window.dispatchEvent(new CustomEvent('daily-limit:reached', {
+          detail: { 
+            userId: this._userId,
+            currentGains: this._dailyGains,
+            limit: dailyLimit,
+            precise: true
+          }
+        }));
+        
+        return false;
+      }
+      
+      // Calculate new daily gains (TRÈS précis jusqu'à 3 décimales)
       const newDailyGains = parseFloat((this._dailyGains + amount).toFixed(3));
       
-      // RENFORCÉ: Vérification stricte de la limite quotidienne
-      // Ne pas autoriser si le gain ferait dépasser la limite
+      // RENFORCÉ: Re-vérification avant modification
       if (newDailyGains > dailyLimit) {
-        console.error(`Gain quotidien refusé: tentative de dépasser la limite (${newDailyGains}€ > ${dailyLimit}€)`);
+        console.error(`BLOCAGE PRÉVENTIF: ${this._dailyGains}€ + ${amount}€ = ${newDailyGains}€ > ${dailyLimit}€`);
         
-        // Marquer explicitement que la limite est atteinte pour ce compte
-        localStorage.setItem(`freemium_daily_limit_reached_${this._userId}`, 'true');
+        // Marquer explicitement que la limite est atteinte
+        localStorage.setItem(`daily_limit_reached_${this._userId}`, 'true');
+        localStorage.setItem(`last_session_date_${this._userId}`, new Date().toDateString());
         
-        // Notification détaillée dans les logs pour le débogage
-        console.warn(`LIMITE STRICTE: Tentative de gain de ${amount}€ refusée. Total serait ${newDailyGains}€ > limite ${dailyLimit}€`);
+        // Notification très détaillée dans les logs
+        console.warn(`🔒 PROTECTION STRICTE: Tentative de gain de ${amount}€ refusée. Total serait ${newDailyGains}€ > limite ${dailyLimit}€`);
         
         // Événement pour mettre à jour l'interface
         window.dispatchEvent(new CustomEvent('daily-limit:reached', {
@@ -260,13 +332,14 @@ class BalanceManager {
         return false;
       }
       
-      // Vérification supplémentaire pour les freemium (80% de la limite)
-      if (currentSubscription === 'freemium' && newDailyGains > dailyLimit * 0.8) {
+      // Vérification supplémentaire pour les freemium (approche de limite)
+      if (currentSubscription === 'freemium' && newDailyGains > dailyLimit * 0.9) {
         // Marquer comme proche de la limite
-        console.log(`Approche de la limite quotidienne: ${newDailyGains}€/${dailyLimit}€`);
+        console.log(`⚠️ Approche de la limite quotidienne: ${newDailyGains}€/${dailyLimit}€ (${(newDailyGains/dailyLimit*100).toFixed(1)}%)`);
         
-        // Pour les comptes freemium près de la limite, désactiver le bot
-        if (newDailyGains > dailyLimit * 0.9) {
+        // Pour les comptes freemium très près de la limite (95%), désactiver le bot
+        if (newDailyGains > dailyLimit * 0.95) {
+          console.log("🤖 Désactivation préventive du bot (proche de la limite)");
           window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
             detail: { active: false, reason: 'near_limit' } 
           }));
@@ -279,6 +352,19 @@ class BalanceManager {
       // Store in localStorage using user-specific keys
       const keys = getStorageKeys(this._userId);
       localStorage.setItem(keys.dailyGains, this._dailyGains.toString());
+      localStorage.setItem(`lastGainsDate_${this._userId}`, new Date().toDateString());
+      
+      // Si on approche de la limite, lancer un événement
+      if (this._dailyGains >= dailyLimit * 0.9) {
+        window.dispatchEvent(new CustomEvent('daily-limit:approaching', {
+          detail: { 
+            userId: this._userId,
+            currentGains: this._dailyGains,
+            limit: dailyLimit,
+            percentage: (this._dailyGains / dailyLimit)
+          }
+        }));
+      }
       
       return true;
     } catch (e) {
@@ -312,6 +398,25 @@ class BalanceManager {
   
   // Get daily gains
   getDailyGains(): number {
+    // RENFORCÉ: Vérifier si nous devons réinitialiser les gains (nouveau jour)
+    const today = new Date().toDateString();
+    if (this._userId && this._lastVerifiedDate !== today) {
+      // C'est un nouveau jour, réinitialiser
+      console.log("Nouveau jour détecté, réinitialisation des gains quotidiens");
+      this._dailyGains = 0;
+      const keys = getStorageKeys(this._userId);
+      localStorage.setItem(keys.dailyGains, '0');
+      localStorage.setItem(`lastGainsDate_${this._userId}`, today);
+      
+      // Réinitialiser aussi les drapeaux de limite
+      localStorage.removeItem(`freemium_daily_limit_reached_${this._userId}`);
+      localStorage.removeItem(`daily_limit_reached_${this._userId}`);
+      localStorage.removeItem(`last_session_date_${this._userId}`);
+      
+      // Mettre à jour la date vérifiée
+      this._lastVerifiedDate = today;
+    }
+    
     return this._dailyGains;
   }
   
@@ -325,36 +430,33 @@ class BalanceManager {
     
     this._dailyGains = amount;
     
-    // Store in localStorage using user-specific keys
-    const keys = getStorageKeys(this._userId);
-    localStorage.setItem(keys.dailyGains, amount.toString());
-    
-    // NOUVEAU: Vérifier si la limite est atteinte après la mise à jour
-    const currentSubscription = localStorage.getItem('currentSubscription') || 'freemium';
-    const dailyLimit = SUBSCRIPTION_LIMITS[currentSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-    
-    // Vérification immédiate si la limite est déjà dépassée
-    if (amount >= dailyLimit) {
-      console.warn(`LIMITE DÉJÀ DÉPASSÉE: Daily gains set to ${amount}€ >= limit ${dailyLimit}€`);
+    // Store in localStorage using user-specific keys if we have a userId
+    if (this._userId) {
+      const keys = getStorageKeys(this._userId);
+      localStorage.setItem(keys.dailyGains, amount.toString());
+      localStorage.setItem(`lastGainsDate_${this._userId}`, new Date().toDateString());
       
-      if (this._userId) {
-        localStorage.setItem(`freemium_daily_limit_reached_${this._userId}`, 'true');
+      // RENFORCÉ: Vérifier si la limite est atteinte après la mise à jour
+      const currentSubscription = localStorage.getItem('currentSubscription') || 'freemium';
+      const dailyLimit = SUBSCRIPTION_LIMITS[currentSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      
+      // Vérification immédiate si la limite est déjà dépassée
+      if (amount >= dailyLimit * 0.999) { // 99.9% de la limite
+        console.warn(`⚠️ LIMITE DÉJÀ ATTEINTE: Daily gains set to ${amount}€ >= limit ${dailyLimit}€`);
+        
+        localStorage.setItem(`daily_limit_reached_${this._userId}`, 'true');
+        
+        // Diffuser l'événement de limite atteinte
+        window.dispatchEvent(new CustomEvent('daily-limit:reached', {
+          detail: { 
+            userId: this._userId,
+            currentGains: amount,
+            limit: dailyLimit,
+            source: 'setDailyGains'
+          }
+        }));
       }
-      
-      // Diffuser l'événement de limite atteinte
-      window.dispatchEvent(new CustomEvent('daily-limit:reached', {
-        detail: { 
-          userId: this._userId,
-          currentGains: amount,
-          limit: dailyLimit
-        }
-      }));
     }
-  }
-  
-  // Sync daily gains from transactions
-  syncDailyGainsFromTransactions(amount: number): void {
-    this.setDailyGains(amount);
   }
   
   // Register a watcher for balance changes
@@ -362,7 +464,7 @@ class BalanceManager {
     return this._eventEmitter.on('balance-changed', callback);
   }
   
-  // Check if daily limit is reached
+  // OPTIMISÉ: Vérifier strictement si la limite quotidienne est atteinte
   isDailyLimitReached(subscription: string = 'freemium'): boolean {
     // Get current subscription if not provided
     const currentSubscription = subscription || localStorage.getItem('currentSubscription') || 'freemium';
@@ -370,8 +472,8 @@ class BalanceManager {
     // Get daily limit for the subscription
     const dailyLimit = SUBSCRIPTION_LIMITS[currentSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
     
-    // RENFORCEMENT: Vérification stricte à 100% de la limite, pas 90%
-    return this._dailyGains >= dailyLimit;
+    // RENFORCEMENT: Vérification stricte à 100% (0.999 pour éviter les erreurs d'arrondi)
+    return this._dailyGains >= dailyLimit * 0.999;
   }
   
   // Get remaining daily allowance
@@ -387,6 +489,11 @@ class BalanceManager {
     
     // Return remaining, minimum 0
     return Math.max(0, remaining);
+  }
+  
+  // Get user ID
+  getUserId(): string | null {
+    return this._userId;
   }
   
   // DEBUG: Effacer le solde actuel (pour les tests)
