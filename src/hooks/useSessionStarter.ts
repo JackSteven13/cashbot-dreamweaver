@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
@@ -118,6 +119,21 @@ export const useSessionStarter = ({
 
       const currentDailyGains = balanceManager.getDailyGains();
       
+      // Vérification stricte de la limite de gains quotidiens
+      const dailyLimit = 0.5; // Pour les comptes freemium
+      if (currentDailyGains >= dailyLimit * 0.95) {
+        toast({
+          title: "Limite quotidienne de gains atteinte",
+          description: `Vous avez atteint votre limite de ${dailyLimit}€ par jour.`,
+          variant: "destructive"
+        });
+        
+        setShowLimitAlert(true);
+        sessionInProgressRef.current = false;
+        setIsStartingSession(false);
+        return;
+      }
+      
       const terminalSequence = createBackgroundTerminalSequence([
         "Initialisation de la session d'analyse manuelle..."
       ]);
@@ -130,10 +146,14 @@ export const useSessionStarter = ({
       terminalSequence.add("Optimisation des résultats...");
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Calculer le gain en fonction du type d'abonnement
-      const gain = userData?.subscription === 'freemium' ? 
-        Math.random() * 0.05 + 0.1 : // Entre 0.1 et 0.15 pour freemium
-        Math.random() * 0.2 + 0.15;  // Entre 0.15 et 0.35 pour les autres
+      // Calculer le gain en fonction du type d'abonnement et de la limite restante
+      const remainingGainAllowance = dailyLimit - currentDailyGains;
+      const baseGain = userData?.subscription === 'freemium' ? 
+          Math.random() * 0.05 + 0.1 : // Entre 0.1 et 0.15 pour freemium
+          Math.random() * 0.2 + 0.15;  // Entre 0.15 et 0.35 pour les autres
+          
+      // S'assurer que le gain ne dépasse pas la limite
+      const gain = Math.min(baseGain, remainingGainAllowance);
 
       const now = Date.now();
       localStorage.setItem('lastSessionTimestamp', now.toString());

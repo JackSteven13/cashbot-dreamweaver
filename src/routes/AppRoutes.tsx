@@ -1,5 +1,5 @@
 
-import React, { lazy, Suspense, memo } from 'react';
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Index from '../pages/Index';
 import Login from '../pages/Login';
@@ -14,25 +14,18 @@ import Terms from '../pages/Terms';
 import Contact from '../pages/Contact';
 import AnalysisController from '../components/dashboard/analysis/AnalysisController';
 
-// Memoize the AnalysisController component to prevent unnecessary re-renders
-const MemoizedAnalysisController = memo(AnalysisController);
-
-// Memoize the Dashboard and AnalysisController together as a single component
-const DashboardWithAnalysis = memo(() => (
-  <>
-    <MemoizedAnalysisController />
-    <Dashboard />
-  </>
-));
-
-// Define the component outside of the render function
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/dashboard/*" element={<DashboardWithAnalysis />} />
+      <Route path="/dashboard/*" element={
+        <>
+          <AnalysisController />
+          <Dashboard />
+        </>
+      } />
       <Route path="/about" element={<About />} />
       <Route path="/offres" element={<Offres />} />
       <Route path="/payment" element={<Payment />} />

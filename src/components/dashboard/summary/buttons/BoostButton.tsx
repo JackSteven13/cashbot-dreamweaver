@@ -59,7 +59,7 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
     checkFreemiumLimit();
     
     // Vérifier périodiquement la limite pour les comptes freemium
-    const intervalId = setInterval(checkFreemiumLimit, 5000);
+    const intervalId = setInterval(checkFreemiumLimit, 2000);
     
     // Vérifier aussi à chaque changement de visibilité du document
     const handleVisibilityChange = () => {

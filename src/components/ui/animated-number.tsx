@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef, memo, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 interface AnimatedNumberProps {
   value: number;
@@ -7,89 +7,57 @@ interface AnimatedNumberProps {
   formatValue?: (value: number) => string;
 }
 
-export const AnimatedNumber: React.FC<AnimatedNumberProps> = memo(({ 
+export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({ 
   value, 
-  duration = 400, // Increased for smoother animation
+  duration = 200, // Durée fortement réduite pour une réactivité instantanée
   formatValue = (val) => Math.round(val).toString()
 }) => {
   const [displayValue, setDisplayValue] = useState(value);
   const animationFrameRef = useRef<number | null>(null);
-  const previousValueRef = useRef<number>(value);
-  const isAnimatingRef = useRef<boolean>(false);
-  const isMountedRef = useRef<boolean>(true);
+  const previousValue = useRef<number>(value);
   
-  // Memoize the animation function
-  const animate = useCallback((startValue: number, targetValue: number, startTime: number, duration: number) => {
+  useEffect(() => {
+    // Skip animation for very small changes to improve performance
+    const change = Math.abs(value - previousValue.current);
+    if (change < 0.01) {
+      setDisplayValue(value);
+      previousValue.current = value;
+      return;
+    }
+    
+    let startTime: number | null = null;
+    const startValue = displayValue;
+    
+    // Don't animate if the values are the same
+    if (startValue === value) {
+      return;
+    }
+    
     const step = (timestamp: number) => {
-      if (!isMountedRef.current) return;
-      
+      if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
+      
+      // Use easeOutQuart for very smooth but quick animation
       const easedProgress = 1 - Math.pow(1 - progress, 4);
-      const currentValue = startValue + (targetValue - startValue) * easedProgress;
+      const currentValue = startValue + (value - startValue) * easedProgress;
       
       setDisplayValue(currentValue);
       
-      if (progress < 1 && isMountedRef.current) {
-        animationFrameRef.current = requestAnimationFrame(step);
+      if (progress < 1) {
+        animationFrameRef.current = window.requestAnimationFrame(step);
       } else {
-        previousValueRef.current = targetValue;
-        isAnimatingRef.current = false;
-        animationFrameRef.current = null;
+        previousValue.current = value;
       }
     };
     
-    animationFrameRef.current = requestAnimationFrame(step);
-  }, []);
-  
-  // Handle component mount/unmount
-  useEffect(() => {
-    isMountedRef.current = true;
+    animationFrameRef.current = window.requestAnimationFrame(step);
+    
     return () => {
-      isMountedRef.current = false;
       if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+        window.cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, []);
-  
-  // Handle value changes
-  useEffect(() => {
-    // Skip animation for very small changes or if already animating
-    const change = Math.abs(value - previousValueRef.current);
-    if (change < 0.05 || isAnimatingRef.current) {
-      if (!isAnimatingRef.current) {
-        setDisplayValue(value);
-        previousValueRef.current = value;
-      }
-      return;
-    }
-    
-    // Skip animation for initial render
-    if (previousValueRef.current === 0 && value > 0) {
-      setDisplayValue(value);
-      previousValueRef.current = value;
-      return;
-    }
-    
-    // Don't animate if the values are the same
-    if (previousValueRef.current === value) {
-      return;
-    }
-    
-    // Clean up any existing animation frame
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    
-    isAnimatingRef.current = true;
-    animate(displayValue, value, performance.now(), duration);
-    
-  }, [value, duration, animate, displayValue]);
+  }, [value, duration, displayValue]);
 
-  // Avoid unnecessary rerenders by using a stable formatted value
-  const formattedValue = formatValue(displayValue);
-  return <>{formattedValue}</>;
-});
-
-AnimatedNumber.displayName = 'AnimatedNumber';
+  return <>{formatValue(displayValue)}</>;
+};

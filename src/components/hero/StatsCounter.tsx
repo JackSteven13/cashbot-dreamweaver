@@ -1,15 +1,16 @@
 
-import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
 import { formatRevenue } from '@/utils/formatters';
 import { 
   loadStoredValues, 
-  incrementDateLinkedStats,
-  enforceMinimumStats,
+  incrementDateLinkedStats, 
+  enforceMinimumStats, 
   getDateConsistentStats,
   ensureProgressiveValues
 } from '@/hooks/stats/utils/storageManager';
+import { synchronizeRevenueWithAds } from '@/hooks/stats/utils/revenueCalculator';
 
 interface StatsCounterProps {
   dailyAdsTarget?: number;
@@ -20,13 +21,31 @@ const StatsCounter = ({
   dailyAdsTarget = 4723,
   dailyRevenueTarget = 3819
 }: StatsCounterProps) => {
-  // Use useMemo to avoid recalculating these values on every render
-  const MINIMUM_ADS = useMemo(() => 36742, []);
-  const MINIMUM_REVENUE = useMemo(() => 28000, []);
-  const CORRELATION_RATIO = useMemo(() => 0.76203, []);
+  const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
+    dailyAdsTarget,
+    dailyRevenueTarget
+  });
+
+  const MINIMUM_ADS = 36742;
+  const MINIMUM_REVENUE = 28000;
+  const CORRELATION_RATIO = 0.76203;
   
-  // Stable reference for session ID and values
+  // Générer une clé unique pour les sessions qui ne sont pas connectées
+  // Cela permettra d'avoir des valeurs différentes lors de la navigation anonyme
   const anonymousSessionId = useRef(Math.random().toString(36).substring(2, 15));
+  
+  // Récupérer un ID basé sur la session actuelle ou générer un ID anonyme
+  const getSessionBasedId = () => {
+    try {
+      // Essayer de récupérer l'ID utilisateur du localStorage (utilisé si connecté)
+      const userId = localStorage.getItem('lastKnownUserId');
+      // Si pas d'ID utilisateur, utiliser un ID de session aléatoire
+      return userId || anonymousSessionId.current;
+    } catch (e) {
+      return anonymousSessionId.current;
+    }
+  };
+  
   const stableValuesRef = useRef({
     adsCount: MINIMUM_ADS,
     revenueCount: MINIMUM_REVENUE,
@@ -34,107 +53,87 @@ const StatsCounter = ({
     lastSyncTime: Date.now()
   });
   
-  // Define getSessionBasedId function before it's used
-  const getSessionBasedId = useCallback(() => {
-    try {
-      const userId = localStorage.getItem('lastKnownUserId');
-      return userId || anonymousSessionId.current;
-    } catch (e) {
-      return anonymousSessionId.current;
-    }
-  }, []);
-
-  // Helper function for random variance wrapped in useCallback
-  const randomVariance = useCallback((value: number) => {
-    const sessionId = getSessionBasedId();
-    const sessionVariance = sessionId ? 
-      (sessionId.charCodeAt(0) % 10) / 100 : 0;
-      
-    const variance = 1 + ((Math.random() - 0.5 + sessionVariance) * 0.01);
-    return Math.floor(value * variance);
-  }, [getSessionBasedId]);
-  
-  // Get stats from hook
-  const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
-    dailyAdsTarget,
-    dailyRevenueTarget
-  });
-  
-  // Initialize display values with useState and stable initialization function - make sure randomVariance is defined before use
   const [displayValues, setDisplayValues] = useState(() => {
     ensureProgressiveValues();
     const consistentStats = getDateConsistentStats();
+    const randomVariance = (value: number) => {
+      // Utiliser l'ID de session pour avoir une variance unique par utilisateur/visite
+      const sessionId = getSessionBasedId();
+      const sessionVariance = sessionId ? 
+        (sessionId.charCodeAt(0) % 10) / 100 : 0; // Variance entre -0.05 et +0.05
+        
+      const variance = 1 + ((Math.random() - 0.5 + sessionVariance) * 0.01);
+      return Math.floor(value * variance);
+    };
+    const ads = Math.min(Math.max(randomVariance(MINIMUM_ADS), consistentStats.adsCount), 152847);
     
-    const ads = Math.max(randomVariance(MINIMUM_ADS), consistentStats.adsCount);
-    const revenue = ads * CORRELATION_RATIO;
+    // IMPORTANT: Toujours calculer le revenu à partir des pubs pour maintenir la cohérence
+    const revenue = synchronizeRevenueWithAds(ads);
+    
     return {
-      adsCount: Math.min(ads, 152847), // Cap at maximum value
-      revenueCount: Math.min(revenue, 116329) // Cap at maximum value
+      adsCount: ads,
+      revenueCount: revenue
     };
   });
 
-  // Regular update effect with stable dependencies
   useEffect(() => {
     const sessionId = getSessionBasedId();
-    // Use the session ID to create consistent yet unique update rates per user
+    // Ajuster l'intervalle en fonction de l'ID de session pour que chaque utilisateur ou visite ait un rythme différent
     const sessionSpecificRate = sessionId ? 
-      (sessionId.charCodeAt(0) % 5 + 10) * 1000 : 12000;
+      (sessionId.charCodeAt(0) % 5 + 6) * 1000 : // Entre 6 et 11 secondes selon l'ID - Plus rapide pour être visible
+      8000;
       
     const regularUpdateInterval = setInterval(() => {
       setDisplayValues(prev => {
         const adsRand = Math.random();
         let adsIncrement = 0;
-        if (adsRand > 0.85) adsIncrement = 2;
-        else if (adsRand > 0.55) adsIncrement = 1;
-        const newAdsCount = Math.min(prev.adsCount + adsIncrement, 152847);
+        if (adsRand > 0.70) adsIncrement = 2;  // Augmenté la probabilité d'incrément
+        else if (adsRand > 0.40) adsIncrement = 1;
+        const newAdsCount = prev.adsCount + adsIncrement;
 
-        let newRevenueCount = prev.revenueCount;
-        if (adsIncrement > 0) {
-          const sessionVariation = sessionId ? 
-            (sessionId.charCodeAt(0) % 10 - 5) / 1000 : 0;
-            
-          const jitterRatio = CORRELATION_RATIO + ((Math.random() - 0.5) * 0.025) + sessionVariation;
-          const revenueIncrement = adsIncrement * jitterRatio;
-          if (Math.random() > 0.25) {
-            newRevenueCount = Math.min(prev.revenueCount + revenueIncrement, 116329);
-          }
-        }
+        // IMPORTANT: Toujours calculer les nouveaux revenus basés sur le nouveau nombre de pubs
+        const newRevenueCount = synchronizeRevenueWithAds(newAdsCount);
+
         return {
           adsCount: newAdsCount,
-          revenueCount: Math.floor(newRevenueCount)
+          revenueCount: newRevenueCount
         };
       });
-    }, sessionSpecificRate + Math.floor(Math.random() * 5000));
+    }, sessionSpecificRate + Math.floor(Math.random() * 3000)); // Variation réduite dans l'intervalle
 
-    return () => clearInterval(regularUpdateInterval);
-  }, [getSessionBasedId, CORRELATION_RATIO]); // Add proper dependencies
+    return () => {
+      clearInterval(regularUpdateInterval);
+    };
+  }, []);
 
-  // Update based on displayedAdsCount changes, but only when significant
   useEffect(() => {
-    if (displayedAdsCount > displayValues.adsCount + 10) {
-      const newRevenue = displayedAdsCount * CORRELATION_RATIO;
+    if (displayedAdsCount > displayValues.adsCount) {
+      // IMPORTANT: Recalculer les revenus à partir des pubs
+      const newRevenue = synchronizeRevenueWithAds(displayedAdsCount);
       setDisplayValues({
         adsCount: displayedAdsCount,
         revenueCount: newRevenue
       });
     }
-  }, [displayedAdsCount, displayValues.adsCount, CORRELATION_RATIO]);
-
-  // Handle visibility changes with memoized handler
-  const handleVisibilityChange = useCallback(() => {
-    if (document.visibilityState === 'visible') {
-      ensureProgressiveValues();
-      const consistentStats = getDateConsistentStats();
-      const maxAdsCount = Math.max(displayValues.adsCount, consistentStats.adsCount);
-      const newRevenueCount = maxAdsCount * CORRELATION_RATIO;
-      setDisplayValues({
-        adsCount: maxAdsCount,
-        revenueCount: newRevenueCount
-      });
-    }
-  }, [displayValues, CORRELATION_RATIO]);
+  }, [displayedAdsCount]);
 
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        ensureProgressiveValues();
+        const consistentStats = getDateConsistentStats();
+        const maxAdsCount = Math.max(displayValues.adsCount, consistentStats.adsCount);
+        
+        // IMPORTANT: Toujours recalculer les revenus
+        const newRevenueCount = synchronizeRevenueWithAds(maxAdsCount);
+        
+        setDisplayValues({
+          adsCount: maxAdsCount,
+          revenueCount: newRevenueCount
+        });
+      }
+    };
+    
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleVisibilityChange);
     
@@ -142,13 +141,15 @@ const StatsCounter = ({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
     };
-  }, [handleVisibilityChange]);
+  }, [displayValues]);
 
-  // Storage persistence with dependency cleanup
   useEffect(() => {
     const handleBeforeUnload = () => {
       localStorage.setItem('last_displayed_ads_count', displayValues.adsCount.toString());
-      localStorage.setItem('last_displayed_revenue_count', displayValues.revenueCount.toString());
+      
+      // IMPORTANT: Sauvegarder un revenu parfaitement cohérent
+      const syncedRevenue = synchronizeRevenueWithAds(displayValues.adsCount);
+      localStorage.setItem('last_displayed_revenue_count', syncedRevenue.toString());
     };
     
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -158,13 +159,14 @@ const StatsCounter = ({
     };
   }, [displayValues]);
 
-  const formatAdsDisplay = useCallback((value: number) => {
-    return Math.floor(value).toLocaleString('fr-FR');
-  }, []);
+  const formatAdsDisplay = (value: number) => {
+    const baseFormatted = Math.floor(value).toLocaleString('fr-FR');
+    return baseFormatted;
+  };
   
-  const formatRevenueDisplay = useCallback((value: number) => {
+  const formatRevenueDisplay = (value: number) => {
     return formatRevenue(value);
-  }, []);
+  };
 
   return (
     <div className="grid grid-cols-2 gap-2 w-full max-w-md mx-auto mb-4 md:mb-6">

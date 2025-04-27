@@ -1,99 +1,218 @@
 
-import React, { useState, useCallback } from 'react';
-import { Transaction } from '@/types/userData';
-import TransactionsList from './TransactionsList';
-import TransactionFooter from './TransactionFooter';
-import { useTransactions } from './hooks';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight, RefreshCw } from 'lucide-react';
+import TransactionEmptyState from './TransactionEmptyState';
+import TransactionListItem from './TransactionListItem';
+import { useUserData } from '@/hooks/useUserData';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/components/ui/use-toast';
 
 interface TransactionsPanelProps {
-  transactions: Transaction[];
+  transactions: any[];
   isLoading?: boolean;
   isNewUser?: boolean;
-  subscription?: string;
+  title?: string;
 }
 
 const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
-  transactions,
+  transactions = [],
   isLoading = false,
   isNewUser = false,
-  subscription = 'freemium'
+  title = "Transactions récentes"
 }) => {
+  const navigate = useNavigate();
+  const [refreshKey, setRefreshKey] = useState(() => Date.now());
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  const {
-    showAllTransactions,
-    setShowAllTransactions,
-    displayedTransactions,
-    hiddenTransactionsCount,
-    handleManualRefresh,
-    refreshKey
-  } = useTransactions(transactions);
+  const { refreshUserData } = useUserData();
+  const { user } = useAuth();
+  const [localTransactions, setLocalTransactions] = useState<any[]>(transactions);
 
-  // Memoize the refresh handler
-  const onRefreshClick = useCallback(async () => {
+  // Fonction pour récupérer les dernières transactions depuis la base de données
+  const fetchLatestTransactions = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      setIsRefreshing(true);
+      
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (error) {
+        console.error("Error fetching transactions:", error);
+        return;
+      }
+      
+      if (data && Array.isArray(data)) {
+        const formattedTx = data.map((tx: any) => ({
+          id: tx.id,
+          date: tx.created_at || tx.date,
+          amount: tx.gain,
+          gain: tx.gain,
+          report: tx.report,
+          type: tx.type || 'system'
+        }));
+        
+        setLocalTransactions(formattedTx);
+        setRefreshKey(Date.now());
+      }
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [user]);
+
+  // Rafraîchir périodiquement les transactions
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchLatestTransactions();
+    }, 20000); // Rafraîchir toutes les 20 secondes
+    
+    return () => clearInterval(interval);
+  }, [fetchLatestTransactions]);
+  
+  // Configurer la synchronisation en temps réel avec Supabase
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const transactionChannel = supabase
+      .channel('transactions-realtime')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`
+        }, 
+        () => {
+          console.log('Transaction change detected in Supabase - refreshing panel');
+          fetchLatestTransactions();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(transactionChannel);
+    };
+  }, [user, fetchLatestTransactions]);
+  
+  // Écouter les événements de rafraîchissement
+  useEffect(() => {
+    const handleRefresh = () => {
+      console.log("Transaction refresh event received in TransactionsPanel");
+      fetchLatestTransactions();
+    };
+    
+    // Écouter plus d'événements pour assurer la synchronisation des transactions
+    window.addEventListener('transactions:refresh', handleRefresh);
+    window.addEventListener('balance:update', handleRefresh);
+    window.addEventListener('transactions:updated', handleRefresh);
+    window.addEventListener('automatic:revenue', handleRefresh);
+    window.addEventListener('session:completed', handleRefresh);
+    
+    // Exécuter un rafraîchissement initial
+    fetchLatestTransactions();
+    
+    return () => {
+      window.removeEventListener('transactions:refresh', handleRefresh);
+      window.removeEventListener('balance:update', handleRefresh);
+      window.removeEventListener('transactions:updated', handleRefresh);
+      window.removeEventListener('automatic:revenue', handleRefresh);
+      window.removeEventListener('session:completed', handleRefresh);
+    };
+  }, [fetchLatestTransactions]);
+
+  const handleViewAllClick = () => {
+    navigate('/dashboard/transactions');
+  };
+  
+  const handleManualRefresh = async () => {
     if (isRefreshing) return;
     
     setIsRefreshing(true);
     try {
-      await handleManualRefresh();
+      await refreshUserData();
+      await fetchLatestTransactions();
+      
+      toast({
+        title: "Transactions actualisées",
+        description: "Les dernières transactions ont été chargées",
+        duration: 2000,
+      });
+      
+      console.log("Transactions manually refreshed");
+    } catch (error) {
+      console.error("Error refreshing transactions:", error);
     } finally {
       setIsRefreshing(false);
     }
-  }, [handleManualRefresh, isRefreshing]);
+  };
 
-  if (isNewUser) {
+  if (isLoading) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">
-          Aucune transaction à afficher. Commencez à générer des gains pour les voir apparaître ici.
-        </p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="h-16 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-md"></div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
+  // Utiliser les transactions locales qui sont maintenues à jour
+  const displayTransactions = localTransactions.length > 0 ? localTransactions : transactions;
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Transactions récentes</h3>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onRefreshClick}
-          disabled={isLoading || isRefreshing}
-          className="h-8 px-2"
-        >
-          {isRefreshing ? (
-            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4 mr-1" />
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>{title}</CardTitle>
+        <div className="flex gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleManualRefresh} 
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          {displayTransactions.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={handleViewAllClick} className="gap-1">
+              Tout voir <ArrowRight className="h-4 w-4" />
+            </Button>
           )}
-          <span className="text-xs">Actualiser</span>
-        </Button>
-      </div>
-      
-      <div>
-        {isLoading || isRefreshing ? (
-          <div className="py-8 text-center">
-            <p className="text-muted-foreground">Chargement des transactions...</p>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {displayTransactions.length > 0 ? (
+          <div className="space-y-2">
+            {displayTransactions.slice(0, 5).map((transaction, index) => (
+              <TransactionListItem 
+                key={`${transaction.id || ''}-${index}-${refreshKey}`}
+                transaction={transaction}
+                refreshKey={refreshKey}
+                index={index}
+              />
+            ))}
           </div>
         ) : (
-          <TransactionsList 
-            transactions={displayedTransactions}
-            subscription={subscription}
-            refreshKey={refreshKey}
-            isNewUser={isNewUser}
-          />
+          <TransactionEmptyState isNewUser={isNewUser} />
         )}
-      </div>
-      
-      <TransactionFooter 
-        showAllTransactions={showAllTransactions}
-        hiddenTransactionsCount={hiddenTransactionsCount}
-        setShowAllTransactions={setShowAllTransactions}
-      />
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

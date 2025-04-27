@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect } from 'react';
 import TerminalOverlay from '../terminal/TerminalOverlay';
 import useTerminalAnalysis from '@/hooks/useTerminalAnalysis';
 import { toast } from '@/components/ui/use-toast';
@@ -17,15 +17,7 @@ const AnalysisController: React.FC = () => {
   // État local pour le mode d'arrière-plan
   const [isBackgroundMode, setIsBackgroundMode] = useState(false);
   
-  // Memoize handler to prevent re-renders
-  const handleBackgroundModeChange = useCallback((event: Event) => {
-    const customEvent = event as CustomEvent;
-    if (customEvent.detail && typeof customEvent.detail.background === 'boolean') {
-      setIsBackgroundMode(customEvent.detail.background);
-    }
-  }, []);
-  
-  // Effet pour montrer un toast quand l'analyse est terminée - with deps array fixed
+  // Effet pour montrer un toast quand l'analyse est terminée
   useEffect(() => {
     if (analysisComplete && !isBackgroundMode) {
       toast({
@@ -39,7 +31,7 @@ const AnalysisController: React.FC = () => {
       });
       
       // Déclencher UNIQUEMENT l'ajout d'UNE SEULE vidéo dans le feed
-      const timer = setTimeout(() => {
+      setTimeout(() => {
         window.dispatchEvent(new CustomEvent('location:added', { 
           detail: { single: true } // Indiquer que c'est un ajout unitaire
         }));
@@ -49,20 +41,24 @@ const AnalysisController: React.FC = () => {
           detail: { timestamp: Date.now(), animate: true }
         }));
       }, 1500);
-
-      return () => clearTimeout(timer);
     }
   }, [analysisComplete, limitReached, isBackgroundMode]);
   
-  // Gérer le mode arrière-plan with stable reference
+  // Gérer le mode arrière-plan
   useEffect(() => {
+    const handleBackgroundModeChange = (event: CustomEvent) => {
+      if (event.detail && typeof event.detail.background === 'boolean') {
+        setIsBackgroundMode(event.detail.background);
+      }
+    };
+    
     // Abonnement aux événements
-    window.addEventListener('dashboard:analysis-start', handleBackgroundModeChange);
+    window.addEventListener('dashboard:analysis-start', handleBackgroundModeChange as EventListener);
     
     return () => {
-      window.removeEventListener('dashboard:analysis-start', handleBackgroundModeChange);
+      window.removeEventListener('dashboard:analysis-start', handleBackgroundModeChange as EventListener);
     };
-  }, [handleBackgroundModeChange]);
+  }, []);
   
   // Ne rien afficher si pas d'analyse en cours
   if (!showAnalysis) {
@@ -86,4 +82,4 @@ const AnalysisController: React.FC = () => {
   );
 };
 
-export default memo(AnalysisController);
+export default AnalysisController;

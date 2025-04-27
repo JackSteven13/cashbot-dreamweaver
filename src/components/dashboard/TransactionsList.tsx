@@ -5,8 +5,8 @@ import { Transaction } from '@/types/userData';
 import { TransactionListItem, TransactionEmptyState, TransactionListActions, TransactionFooter } from './transactions';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 
 interface TransactionsListProps {
   transactions: Transaction[];
@@ -26,100 +26,138 @@ const TransactionsList = memo(({
     displayedTransactions,
     refreshKey,
     handleManualRefresh,
-    hiddenTransactionsCount
+    hiddenTransactionsCount,
+    setTransactions,
+    fetchTransactionsFromDB
   } = useTransactions(initialTransactions);
   
+  const { user } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-  const { user } = useAuth();
   
-  // Force refresh on mount to get latest transactions
-  useEffect(() => {
-    if (user?.id) {
-      onManualRefresh();
-    }
-  }, [user?.id]);
-  
-  // Setup real-time update listeners with more frequent checks
-  useEffect(() => {
-    const handleRealtimeUpdate = () => {
-      setIsRefreshing(true);
-      // Short delay to simulate fetching
-      setTimeout(() => {
-        handleManualRefresh()
-          .then(() => {
-            setIsRefreshing(false);
-            setLastUpdated(new Date());
-            toast({
-              title: "Transactions mises à jour",
-              description: "Nouvelles transactions synchronisées en temps réel",
-              duration: 2000,
-            });
-          })
-          .catch(() => {
-            setIsRefreshing(false);
-          });
-      }, 300);
-    };
+  // Fonction pour récupérer les transactions directement depuis la base de données
+  const fetchLatestTransactions = useCallback(async () => {
+    if (!user?.id) return;
     
-    // Properly type the event handlers to avoid infinite re-renders
-    const typedHandler = handleRealtimeUpdate as EventListener;
-    
-    // Écouter plus d'événements pour s'assurer que les transactions sont à jour
-    window.addEventListener('transactions:refresh', typedHandler);
-    window.addEventListener('balance:update', typedHandler);
-    window.addEventListener('automatic:revenue', typedHandler);
-    window.addEventListener('balance:daily-growth', typedHandler);
-    
-    // Rafraîchir automatiquement toutes les 60 secondes
-    const autoRefresh = setInterval(() => {
-      if (user?.id) {
-        // Use a direct fetch rather than state update to avoid UI flicker
-        fetchUserTransactions(user.id, true)
-          .then(() => {
-            setLastUpdated(new Date());
-            console.log("Transactions auto-refreshed silently");
-          })
-          .catch(() => {
-            console.error("Failed to auto-refresh transactions");
-          });
-      }
-    }, 60000); // 60 seconds
-    
-    return () => {
-      window.removeEventListener('transactions:refresh', typedHandler);
-      window.removeEventListener('balance:update', typedHandler);
-      window.removeEventListener('automatic:revenue', typedHandler);
-      window.removeEventListener('balance:daily-growth', typedHandler);
-      clearInterval(autoRefresh);
-    };
-  }, [handleManualRefresh, user?.id]);
-  
-  // Handle manual refresh
-  const onManualRefresh = useCallback(async () => {
-    if (isRefreshing) return;
-    
-    setIsRefreshing(true);
     try {
-      await handleManualRefresh();
-      setLastUpdated(new Date());
-      toast({
-        title: "Transactions actualisées",
-        description: "Les dernières transactions ont été chargées",
-        duration: 2000,
-      });
+      setIsRefreshing(true);
+      
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching transactions:", error);
+        return;
+      }
+      
+      if (data && Array.isArray(data)) {
+        // Formater les transactions pour correspondre au format attendu
+        const formattedTransactions = data.map((tx: any) => ({
+          id: tx.id,
+          date: tx.created_at || tx.date,
+          amount: tx.gain,
+          gain: tx.gain,
+          report: tx.report,
+          type: tx.type || 'system'
+        }));
+        
+        // Mettre à jour les transactions dans le hook
+        setTransactions(formattedTransactions);
+        
+        // Déclencher un événement pour informer les autres composants
+        window.dispatchEvent(new CustomEvent('transactions:updated', {
+          detail: { transactions: formattedTransactions }
+        }));
+      }
     } catch (error) {
-      console.error("Error refreshing transactions:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de rafraîchir les transactions",
-        variant: "destructive",
-        duration: 3000,
-      });
+      console.error("Failed to fetch transactions:", error);
     } finally {
       setIsRefreshing(false);
+      setLastUpdated(new Date());
     }
-  }, [handleManualRefresh, isRefreshing]);
+  }, [user, setTransactions]);
+  
+  // Mettre en place la réception des événements et le polling pour les mises à jour des transactions
+  useEffect(() => {
+    // Fonction pour gérer les événements de mise à jour
+    const handleRealtimeUpdate = () => {
+      console.log("Transaction update event received - fetching latest transactions");
+      fetchLatestTransactions();
+    };
+    
+    // Écouter plus d'événements pour s'assurer que les transactions sont à jour
+    window.addEventListener('transactions:refresh', handleRealtimeUpdate);
+    window.addEventListener('balance:update', handleRealtimeUpdate);
+    window.addEventListener('automatic:revenue', handleRealtimeUpdate);
+    window.addEventListener('balance:daily-growth', handleRealtimeUpdate);
+    window.addEventListener('session:completed', handleRealtimeUpdate);
+    window.addEventListener('transactions:updated', handleRealtimeUpdate);
+    
+    // Configurer un canal Supabase pour les mises à jour en temps réel
+    const setupRealtimeSubscription = async () => {
+      if (!user?.id) return;
+      
+      // S'abonner aux changements dans la table des transactions pour cet utilisateur
+      const channel = supabase
+        .channel('transactions_changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`,
+        }, () => {
+          console.log('Realtime update detected for transactions');
+          fetchLatestTransactions();
+        })
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+    
+    const realtimeCleanup = setupRealtimeSubscription();
+    
+    // Mise en place d'un rafraîchissement périodique toutes les 30 secondes
+    const pollingInterval = setInterval(() => {
+      console.log("Polling for transaction updates");
+      fetchLatestTransactions();
+    }, 30000);
+    
+    // Rafraîchissement initial des transactions
+    fetchLatestTransactions();
+    
+    return () => {
+      window.removeEventListener('transactions:refresh', handleRealtimeUpdate);
+      window.removeEventListener('balance:update', handleRealtimeUpdate);
+      window.removeEventListener('automatic:revenue', handleRealtimeUpdate);
+      window.removeEventListener('balance:daily-growth', handleRealtimeUpdate);
+      window.removeEventListener('session:completed', handleRealtimeUpdate);
+      window.removeEventListener('transactions:updated', handleRealtimeUpdate);
+      clearInterval(pollingInterval);
+      
+      // Nettoyer l'abonnement Realtime
+      realtimeCleanup.then(cleanup => {
+        if (cleanup) cleanup();
+      });
+    };
+  }, [fetchLatestTransactions, user]);
+  
+  // Handle manual refresh with direct database fetch
+  const onManualRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchLatestTransactions();
+    setIsRefreshing(false);
+    
+    toast({
+      title: "Historique mis à jour",
+      description: "Les transactions ont été synchronisées avec succès",
+      duration: 2000,
+    });
+  };
   
   return (
     <div className="mb-8" key={refreshKey}>
@@ -158,8 +196,7 @@ const TransactionsList = memo(({
       
       <TransactionFooter 
         showAllTransactions={showAllTransactions} 
-        hiddenTransactionsCount={hiddenTransactionsCount}
-        setShowAllTransactions={setShowAllTransactions}
+        hiddenTransactionsCount={hiddenTransactionsCount} 
       />
       
       <div className="text-xs text-muted-foreground mt-2 text-right">

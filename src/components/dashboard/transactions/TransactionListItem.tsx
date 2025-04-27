@@ -1,78 +1,73 @@
 
-import React from 'react';
+import React, { memo } from 'react';
+import SessionCard from '@/components/SessionCard';
 import { Transaction } from '@/types/userData';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { useSessionCountdown } from '@/hooks/useSessionCountdown';
 
-export interface TransactionListItemProps {
+interface TransactionListItemProps {
   transaction: Transaction;
-  subscription?: string;
-  refreshKey?: number;
+  refreshKey: number;
   index: number;
+  subscription?: string;
 }
 
-const TransactionListItem: React.FC<TransactionListItemProps> = ({
-  transaction,
-  subscription = 'freemium',
-  refreshKey = 0,
-  index
-}) => {
-  // Format the date
-  const formattedDate = transaction.date 
-    ? formatDistanceToNow(new Date(transaction.date), { addSuffix: true, locale: fr })
-    : 'Date inconnue';
-
-  // Determine transaction amount
-  const amount = transaction.gain || transaction.amount || 0;
-  const isPositive = amount > 0;
+const TransactionListItem = memo(({ 
+  transaction, 
+  refreshKey, 
+  index,
+  subscription = 'freemium'
+}: TransactionListItemProps) => {
+  // Use session countdown hook to display countdown for freemium users
+  const { timeRemaining, isCountingDown } = useSessionCountdown(
+    1, // We assume this transaction counts as a session
+    subscription,
+    transaction.date
+  );
   
-  // Format the transaction type
-  const getTransactionType = () => {
-    if (transaction.type) return transaction.type;
-    if (transaction.report) {
-      if (transaction.report.toLowerCase().includes('parrainage')) return 'Parrainage';
-      if (transaction.report.toLowerCase().includes('retrait')) return 'Retrait';
-      if (transaction.report.toLowerCase().includes('session')) return 'Session';
-      if (transaction.report.toLowerCase().includes('automatique')) return 'Automatique';
+  // Vérifier si la transaction est du jour même
+  const isToday = () => {
+    try {
+      if (!transaction.date) return false;
+      
+      // Format the dates as YYYY-MM-DD for proper comparison
+      const txDate = new Date(transaction.date);
+      const today = new Date();
+      
+      // Compare only year, month, day
+      return (
+        txDate.getFullYear() === today.getFullYear() &&
+        txDate.getMonth() === today.getMonth() &&
+        txDate.getDate() === today.getDate()
+      );
+    } catch (e) {
+      console.error("Error checking if transaction is from today:", e, transaction.date);
+      return false;
     }
-    return isPositive ? 'Gain' : 'Retrait';
   };
   
-  const transactionType = getTransactionType();
-  
-  // Animation delay based on index
-  const animationDelay = `${Math.min(index * 50, 500)}ms`;
+  const isTodayTx = isToday();
   
   return (
-    <div 
-      className={cn(
-        "p-3 rounded-lg border border-gray-200 dark:border-gray-700 flex justify-between items-center",
-        "transition-all duration-300 ease-in-out transform hover:shadow-md",
-        "animate-fade-in-up opacity-0"
-      )}
-      style={{ 
-        animationDelay,
-        animationFillMode: 'forwards'
-      }}
-    >
-      <div className="flex flex-col">
-        <span className="font-medium text-sm">
-          {transaction.report || transactionType}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {formattedDate}
-        </span>
-      </div>
+    <div className={`transaction-item ${isTodayTx ? 'today-transaction' : ''}`} data-index={index}>
+      <SessionCard 
+        key={`${transaction.id || ''}-${refreshKey}`}
+        date={transaction.date}
+        gain={transaction.gain || transaction.amount || 0}
+        report={transaction.report || transaction.type || ''}
+        isToday={isTodayTx}
+      />
       
-      <div className={cn(
-        "font-semibold",
-        isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-      )}>
-        {isPositive ? '+' : '-'}{Math.abs(amount).toFixed(2)}€
-      </div>
+      {/* Show countdown if this is the most recent transaction for freemium users */}
+      {index === 0 && isCountingDown && (
+        <div className="mt-1 text-xs text-right text-slate-500">
+          <span>Prochaine session disponible dans: {timeRemaining}</span>
+        </div>
+      )}
     </div>
   );
-};
+});
+
+// Set display name for debugging
+TransactionListItem.displayName = 'TransactionListItem';
 
 export default TransactionListItem;

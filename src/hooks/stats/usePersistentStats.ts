@@ -1,149 +1,252 @@
 
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT } from './utils/valueInitializer';
-import { getDateConsistentStats, ensureProgressiveValues } from './utils/valueSynchronizer';
+import { useState, useEffect, useRef } from 'react';
+
+const LOCAL_STORAGE_KEY_PREFIX = 'user_stats_';
 
 interface UsePersistentStatsParams {
+  initialAdsCount?: number;
+  initialRevenueCount?: number;
   autoIncrement?: boolean;
   userId?: string;
   forceGrowth?: boolean;
   correlationRatio?: number;
 }
 
-interface StatsValues {
-  adsCount: number;
-  revenueCount: number;
-}
+// Fonction pour obtenir les clés de stockage spécifiques à l'utilisateur
+const getUserSpecificKeys = (userId: string) => ({
+  adsCount: `${LOCAL_STORAGE_KEY_PREFIX}${userId}_ads_count`,
+  revenueCount: `${LOCAL_STORAGE_KEY_PREFIX}${userId}_revenue_count`,
+  lastUpdate: `${LOCAL_STORAGE_KEY_PREFIX}${userId}_last_update`,
+});
 
-// Cache to prevent recalculating for the same parameters
-const statsCache: Record<string, {
-  values: StatsValues,
-  timestamp: number
-}> = {};
-
-export const usePersistentStats = ({
-  autoIncrement = true,
-  userId = 'global',
-  forceGrowth = false,
-  correlationRatio = 0.76203
-}: UsePersistentStatsParams = {}): StatsValues => {
-  // Create a stable cache key
-  const cacheKey = useMemo(() => 
-    `${userId}:${autoIncrement ? '1' : '0'}:${forceGrowth ? '1' : '0'}:${correlationRatio}`,
-  [userId, autoIncrement, forceGrowth, correlationRatio]);
-
-  // Use refs to avoid unnecessary re-renders
-  const statsRef = useRef<StatsValues>({
-    adsCount: MINIMUM_ADS_COUNT,
-    revenueCount: MINIMUM_REVENUE_COUNT
-  });
+// Fonction pour sauvegarder des statistiques pour un utilisateur spécifique
+const saveStats = (userId: string, adsCount: number, revenueCount: number) => {
+  if (!userId) return;
   
-  // Track mount state
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => { isMountedRef.current = false; };
-  }, []);
+  // Garantir la synchronisation parfaite entre publicités et revenus
+  const PERFECT_CORRELATION_RATIO = 0.76203;
+  const calculatedRevenue = adsCount * PERFECT_CORRELATION_RATIO;
   
-  // Use caching to avoid redundant calculations
-  const getInitialStats = () => {
-    const now = Date.now();
-    const cachedStats = statsCache[cacheKey];
+  // Utiliser la valeur de revenu calculée pour garantir la corrélation
+  const finalRevenueCount = calculatedRevenue;
+  
+  const keys = getUserSpecificKeys(userId);
+  try {
+    localStorage.setItem(keys.adsCount, adsCount.toString());
+    localStorage.setItem(keys.revenueCount, finalRevenueCount.toString());
+    localStorage.setItem(keys.lastUpdate, Date.now().toString());
     
-    // Return cached values if recent enough
-    if (cachedStats && now - cachedStats.timestamp < 10000) {
-      return cachedStats.values;
-    }
+    // Enregistrer également les dernières valeurs pour les comparer ultérieurement
+    localStorage.setItem(`${keys.adsCount}_last`, adsCount.toString());
+    localStorage.setItem(`${keys.revenueCount}_last`, finalRevenueCount.toString());
     
-    try {
-      // Force progression of values if necessary
-      const initialStats = forceGrowth 
-        ? ensureProgressiveValues() 
-        : getDateConsistentStats();
+    // Synchroniser les deux compteurs globaux pour tous les composants
+    window.dispatchEvent(new CustomEvent('stats:update', {
+      detail: { adsCount, revenueCount: finalRevenueCount }
+    }));
+  } catch (error) {
+    console.error('Error saving stats to localStorage:', error);
+  }
+};
+
+// Fonction pour charger des statistiques pour un utilisateur spécifique
+const loadStats = (userId: string): { adsCount: number; revenueCount: number; lastUpdate: number } => {
+  if (!userId) {
+    return { adsCount: 0, revenueCount: 0, lastUpdate: Date.now() };
+  }
+  
+  const keys = getUserSpecificKeys(userId);
+  try {
+    const adsCount = parseInt(localStorage.getItem(keys.adsCount) || '0', 10);
+    const revenueCount = parseFloat(localStorage.getItem(keys.revenueCount) || '0');
+    const lastUpdate = parseInt(localStorage.getItem(keys.lastUpdate) || Date.now().toString(), 10);
+    
+    // Valider et corriger les stats si nécessaire
+    const validAdsCount = isNaN(adsCount) ? 0 : adsCount;
+    const validRevenueCount = isNaN(revenueCount) ? 0 : revenueCount;
+    
+    // Vérifier et corriger la corrélation si nécessaire
+    const PERFECT_CORRELATION_RATIO = 0.76203;
+    const calculatedRevenue = validAdsCount * PERFECT_CORRELATION_RATIO;
+    
+    // Si la différence est trop grande, utiliser la valeur calculée
+    if (Math.abs(validRevenueCount - calculatedRevenue) > 1) {
+      console.log(`Correcting revenue count from ${validRevenueCount} to ${calculatedRevenue}`);
       
-      // Cache the result
-      statsCache[cacheKey] = {
-        values: initialStats,
-        timestamp: now
-      };
+      // Sauvegarder la valeur corrigée
+      if (userId) {
+        localStorage.setItem(keys.revenueCount, calculatedRevenue.toString());
+      }
       
-      return initialStats;
-    } catch (error) {
-      console.error("Error in getInitialStats:", error);
       return {
-        adsCount: MINIMUM_ADS_COUNT,
-        revenueCount: MINIMUM_REVENUE_COUNT
+        adsCount: validAdsCount,
+        revenueCount: calculatedRevenue,
+        lastUpdate: isNaN(lastUpdate) ? Date.now() : lastUpdate
       };
     }
+    
+    return {
+      adsCount: validAdsCount,
+      revenueCount: validRevenueCount,
+      lastUpdate: isNaN(lastUpdate) ? Date.now() : lastUpdate
+    };
+  } catch (error) {
+    console.error('Error loading stats from localStorage:', error);
+    return { adsCount: 0, revenueCount: 0, lastUpdate: Date.now() };
+  }
+};
+
+// Fonction pour calculer la croissance basée sur le temps écoulé
+const calculateGrowth = (
+  lastUpdate: number, 
+  forceGrowth: boolean, 
+  correlationRatio: number = 0.76203
+) => {
+  const now = Date.now();
+  const elapsed = (now - lastUpdate) / 1000; // secondes écoulées
+  
+  // Si moins de 5 secondes se sont écoulées, pas de croissance
+  if (elapsed < 5 && !forceGrowth) return { adsGrowth: 0, revenueGrowth: 0 };
+  
+  // Calculer une croissance raisonnable basée sur le temps écoulé
+  // Plus de temps = plus de croissance, mais avec une limite pour éviter des sauts trop grands
+  const baseGrowth = Math.min(elapsed / 5, 50); // Limiter à 50 unités max
+  const randomFactor = 0.9 + Math.random() * 0.2; // 90% à 110% de variation aléatoire
+  
+  const adsGrowth = Math.floor(baseGrowth * randomFactor);
+  
+  // Calculer directement les revenus à partir des publicités pour une corrélation parfaite
+  const revenueGrowth = adsGrowth * correlationRatio;
+  
+  return { adsGrowth, revenueGrowth };
+};
+
+const usePersistentStats = ({
+  initialAdsCount = 0,
+  initialRevenueCount = 0,
+  autoIncrement = false,
+  userId = '',
+  forceGrowth = false,
+  correlationRatio = 0.76203 // Ratio fixe pour une corrélation parfaite
+}: UsePersistentStatsParams) => {
+  // Ne chargez les statistiques que si un userId est fourni
+  const initialStats = userId ? loadStats(userId) : { 
+    adsCount: initialAdsCount, 
+    revenueCount: initialAdsCount * correlationRatio, // Calculer directement pour garantir la corrélation
+    lastUpdate: Date.now() 
   };
   
-  // Initialize state with stored values - use a function to compute initial state
-  const [stats, setStats] = useState<StatsValues>(() => {
-    const initialStats = getInitialStats();
-    // Update ref
-    statsRef.current = initialStats;
-    return initialStats;
-  });
+  // Utilisez toujours la valeur la plus élevée entre les valeurs initiales et celles chargées
+  const [adsCount, setAdsCount] = useState(Math.max(initialStats.adsCount, initialAdsCount));
+  // Calculer le revenu en fonction des publicités pour garantir la synchronisation
+  const [revenueCount, setRevenueCount] = useState(Math.max(initialStats.revenueCount, initialAdsCount * correlationRatio));
   
-  // Use ref to track if event listeners are set up
-  const listenersSetupRef = useRef(false);
+  // Gardez l'ID utilisateur dans une référence pour les effets
+  const userIdRef = useRef(userId);
   
-  // Update statistics from DOM events - ensure this runs only once
+  // Mettre à jour la référence userId si elle change
   useEffect(() => {
-    // Avoid setting up listeners multiple times
-    if (listenersSetupRef.current) return;
-    listenersSetupRef.current = true;
+    userIdRef.current = userId;
+  }, [userId]);
+  
+  // Charger les données initiales chaque fois que l'ID utilisateur change
+  useEffect(() => {
+    if (!userId) return;
     
-    // Function to update statistics
-    const handleStatsUpdate = (event: CustomEvent) => {
-      if (!isMountedRef.current) return;
-      
-      if (event.detail && typeof event.detail === 'object') {
-        const newAdsCount = event.detail.adsCount ?? statsRef.current.adsCount;
-        const newRevenueCount = event.detail.revenueCount ?? statsRef.current.revenueCount;
+    const stats = loadStats(userId);
+    setAdsCount(Math.max(stats.adsCount, initialAdsCount));
+    // Toujours calculer les revenus pour garantir la synchronisation
+    const syncedRevenue = Math.max(stats.adsCount, initialAdsCount) * correlationRatio;
+    setRevenueCount(syncedRevenue);
+    
+    // Écouter les événements de mise à jour globale
+    const handleStatUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        const { adsCount: newAdsCount, revenueCount: newRevenueCount } = event.detail;
         
-        // Only update if values have changed significantly
-        if (Math.abs(newAdsCount - statsRef.current.adsCount) > 0.5 ||
-            Math.abs(newRevenueCount - statsRef.current.revenueCount) > 0.5) {
-          
-          // Update state with new values
-          if (isMountedRef.current) {
-            setStats(prevStats => {
-              const newStats = {
-                ...prevStats,
-                adsCount: newAdsCount,
-                revenueCount: newRevenueCount
-              };
-              
-              // Update ref
-              statsRef.current = newStats;
-              
-              // Update the cache
-              statsCache[cacheKey] = {
-                values: newStats,
-                timestamp: Date.now()
-              };
-              
-              return newStats;
-            });
-          }
+        if (newAdsCount > adsCount) {
+          setAdsCount(newAdsCount);
+          // Calculer les revenus pour garantir la synchronisation
+          setRevenueCount(newAdsCount * correlationRatio);
         }
       }
     };
     
-    // Listen for statistics update events with wrapped handler
-    window.addEventListener('stats:update', handleStatsUpdate as EventListener);
-    window.addEventListener('stats:sync', handleStatsUpdate as EventListener);
+    window.addEventListener('stats:update' as any, handleStatUpdate);
     
     return () => {
-      window.removeEventListener('stats:update', handleStatsUpdate as EventListener);
-      window.removeEventListener('stats:sync', handleStatsUpdate as EventListener);
-      listenersSetupRef.current = false;
+      window.removeEventListener('stats:update' as any, handleStatUpdate);
     };
-  }, [cacheKey]);
+  }, [userId, initialAdsCount, correlationRatio]);
   
-  // Return stable stats
-  return stats;
+  // Persistez les modifications lorsque les compteurs changent
+  useEffect(() => {
+    if (!userId) return;
+    
+    // Calculer directement le revenu à partir des publicités
+    const syncedRevenue = adsCount * correlationRatio;
+    
+    // Vérifier si le revenu actuel est synchronisé
+    if (Math.abs(revenueCount - syncedRevenue) > 0.1) {
+      console.log(`Forcing revenue sync: ${revenueCount} -> ${syncedRevenue}`);
+      setRevenueCount(syncedRevenue);
+    }
+    
+    saveStats(userId, adsCount, syncedRevenue);
+  }, [adsCount, userId, correlationRatio]);
+  
+  // Croissance automatique plus synchronisée
+  useEffect(() => {
+    if (!autoIncrement || !userId) return;
+    
+    const autoIncrementInterval = setInterval(() => {
+      const stats = loadStats(userId);
+      const { adsGrowth, revenueGrowth } = calculateGrowth(stats.lastUpdate, forceGrowth, correlationRatio);
+      
+      if (adsGrowth > 0) {
+        setAdsCount(prevAdsCount => {
+          const newAdsCount = prevAdsCount + adsGrowth;
+          // Mise à jour synchrone du revenu pour maintenir le rapport
+          const newRevenueCount = newAdsCount * correlationRatio;
+          setRevenueCount(newRevenueCount);
+          
+          return newAdsCount;
+        });
+      }
+    }, 5000); // Synchronisation moins fréquente
+    
+    return () => clearInterval(autoIncrementInterval);
+  }, [autoIncrement, forceGrowth, userId, correlationRatio]);
+  
+  // Fonction pour incrémenter manuellement les compteurs
+  const incrementStats = (adsIncrement = 1, revenueIncrement?: number) => {
+    if (!userId) return;
+    
+    setAdsCount(prevAdsCount => {
+      const newAdsCount = prevAdsCount + adsIncrement;
+      
+      // Toujours calculer le revenu en fonction des publicités
+      const calculatedRevenueIncrement = adsIncrement * correlationRatio;
+      // Utiliser la valeur calculée pour garantir la corrélation
+      const effectiveRevenueIncrement = calculatedRevenueIncrement;
+      
+      const newRevenueCount = newAdsCount * correlationRatio;
+      setRevenueCount(newRevenueCount);
+      
+      // Émettre un événement pour synchroniser tous les autres composants
+      window.dispatchEvent(new CustomEvent('stats:update', {
+        detail: { adsCount: newAdsCount, revenueCount: newRevenueCount }
+      }));
+      
+      return newAdsCount;
+    });
+  };
+  
+  return {
+    adsCount,
+    revenueCount,
+    incrementStats
+  };
 };
 
 export default usePersistentStats;

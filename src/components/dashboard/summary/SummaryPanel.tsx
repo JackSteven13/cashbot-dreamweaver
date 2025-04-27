@@ -1,4 +1,3 @@
-
 import React, { memo } from 'react';
 import BalanceDisplay from './balanceDisplay/BalanceDisplay';
 import SessionButton from './buttons/SessionButton';
@@ -36,13 +35,13 @@ const SummaryPanel: React.FC<SummaryPanelProps> = memo(({
   canStartSession = true,
   referrals = [],
   referralCount = 0,
-  withdrawalThreshold = 300,
+  withdrawalThreshold = 300,  // Par défaut 300 maintenant
   lastSessionTimestamp,
   isBotActive = true
 }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Main column with balance and action buttons */}
+      {/* Colonne principale avec solde et boutons d'action */}
       <div className="lg:col-span-2 space-y-6">
         <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700">
           <div className="px-6 pt-6 pb-0">
@@ -63,11 +62,12 @@ const SummaryPanel: React.FC<SummaryPanelProps> = memo(({
           
           <div className="px-6 pt-4 pb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <SessionButton 
-              handleStartSession={handleStartSession}
-              isStartingSession={isStartingSession}
-              canStartSession={canStartSession && isBotActive}
+              onClick={handleStartSession}
+              isLoading={isStartingSession}
+              disabled={!canStartSession || !isBotActive || isStartingSession}
               subscription={subscription}
               dailySessionCount={dailySessionCount}
+              canStart={canStartSession && isBotActive}
               lastSessionTimestamp={lastSessionTimestamp}
               isBotActive={isBotActive}
             />
@@ -94,7 +94,7 @@ const SummaryPanel: React.FC<SummaryPanelProps> = memo(({
         />
       </div>
       
-      {/* Secondary column with referral and stats */}
+      {/* Colonne secondaire avec parrainage et statistiques */}
       <div className="space-y-6">
         <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700 p-5">
           <ReferralSuggestion 

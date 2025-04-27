@@ -87,29 +87,44 @@ export const useManualSessions = ({
       }
     }
     
-    return true;
+    // Vérifier si la limite quotidienne de gains est atteinte
+    const dailyLimit = userData?.subscription === 'freemium' ? 0.5 : 
+                     userData?.subscription === 'starter' ? 5 : 
+                     userData?.subscription === 'gold' ? 15 : 25;
+                     
+    const currentDailyGains = getDailyGains();
+    
+    return currentDailyGains < dailyLimit * 0.95;
   }, [isSessionRunning, userData, dailySessionCount]);
 
   const startSession = useCallback(async () => {
     console.log("useManualSessions: startSession called");
     
+    if (!userData) {
+      toast({
+        title: "Session non disponible",
+        description: "Données utilisateur non disponibles.",
+        duration: 3000
+      });
+      return;
+    }
+    
     if (!canStartSession()) {
-      if (userData?.subscription === 'freemium') {
+      if (userData.subscription === 'freemium') {
         toast({
           title: "Limite quotidienne atteinte",
           description: "Les comptes freemium sont limités à 1 session par jour.",
           variant: "destructive",
           duration: 3000
         });
-        return;
       } else {
         toast({
           title: "Session non disponible",
           description: "Veuillez attendre avant de démarrer une nouvelle session.",
           duration: 3000
         });
-        return;
       }
+      return;
     }
     
     try {
@@ -119,27 +134,49 @@ export const useManualSessions = ({
       
       startAnimation();
       
-      const simulationTime = Math.random() * 1500 + 1500;
+      const currentDailyGains = getDailyGains();
+      const dailyLimit = SUBSCRIPTION_LIMITS[userData.subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
-      let gain = 0;
-      if (userData) {
-        gain = calculateSessionGain(
-          userData.subscription, 
-          balanceManager.getDailyGains(),
-          userData.referrals?.length || 0
-        );
+      // Vérification stricte que la limite n'est pas atteinte
+      if (currentDailyGains >= dailyLimit * 0.95) {
+        toast({
+          title: "Limite journalière presque atteinte",
+          description: `Vous avez déjà généré ${currentDailyGains.toFixed(2)}€ aujourd'hui, proche de la limite de ${dailyLimit}€.`,
+          variant: "destructive",
+          duration: 5000
+        });
+        setIsSessionRunning(false);
+        stopAnimation();
+        return;
       }
       
-      // Pour les comptes freemium, marquer immédiatement que la limite est atteinte
-      if (userData?.subscription === 'freemium') {
-        setLimitReached(true);
-        localStorage.setItem('freemium_daily_limit_reached', 'true');
-        localStorage.setItem('last_session_date', new Date().toDateString());
+      const simulationTime = Math.random() * 1500 + 1500;
+      
+      // Pour les comptes freemium, limiter strictement le gain
+      let gain = 0;
+      if (userData.subscription === 'freemium') {
+        // Calculer le montant restant avant d'atteindre la limite
+        const remainingAmount = dailyLimit - currentDailyGains;
+        // Limiter le gain pour ne pas dépasser la limite
+        gain = Math.min(Math.random() * 0.05 + 0.1, remainingAmount);
+      } else {
+        gain = calculateSessionGain(
+          userData.subscription, 
+          currentDailyGains,
+          userData.referrals?.length || 0
+        );
       }
       
       gain = parseFloat(gain.toFixed(2));
       
       console.log(`Gain calculé: ${gain}€`);
+      
+      // Pour les comptes freemium, marquer immédiatement que la limite est atteinte
+      if (userData.subscription === 'freemium') {
+        setLimitReached(true);
+        localStorage.setItem('freemium_daily_limit_reached', 'true');
+        localStorage.setItem('last_session_date', new Date().toDateString());
+      }
       
       await new Promise(resolve => {
         sessionTimeoutRef.current = setTimeout(resolve, simulationTime);
@@ -175,6 +212,7 @@ export const useManualSessions = ({
         }
       }));
       
+      // Assurer que tout le monde est informé de la mise à jour
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('balance:force-update', {
           detail: {
@@ -186,16 +224,6 @@ export const useManualSessions = ({
           }
         }));
       }, 100);
-      
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('balance:animation', {
-          detail: {
-            amount: gain,
-            oldBalance: oldBalance,
-            newBalance: newBalance
-          }
-        }));
-      }, 200);
       
       toast({
         title: "Session terminée",

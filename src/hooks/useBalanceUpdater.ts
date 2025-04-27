@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -88,8 +89,20 @@ export const useBalanceUpdater = () => {
       }
     };
     
+    // Écouter également les mises à jour des statistiques pour assurer la cohérence
+    const handleStatsUpdate = (e: Event) => {
+      if (e instanceof CustomEvent && e.detail) {
+        const { revenueCount } = e.detail;
+        if (revenueCount && typeof revenueCount === 'number') {
+          // Ici, on pourrait mettre à jour un état local pour la coordination
+          console.log(`Stats update reçu: nouveaux revenus = ${revenueCount}`);
+        }
+      }
+    };
+    
     window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
     window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
+    window.addEventListener('stats:update', handleStatsUpdate as EventListener);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     // Nettoyer
@@ -97,6 +110,7 @@ export const useBalanceUpdater = () => {
       clearInterval(intervalId);
       window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
       window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
+      window.removeEventListener('stats:update', handleStatsUpdate as EventListener);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [user]);

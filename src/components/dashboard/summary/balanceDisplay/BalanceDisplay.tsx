@@ -19,22 +19,20 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const safeBalance = isNaN(balance) ? 0 : balance;
   const { state, refs, setters, constants } = useBalanceState(safeBalance);
   
-  // Balance synchronization with prop
   useEffect(() => {
     if (safeBalance > state.displayedBalance) {
       const now = Date.now();
-      
-      // Prevent immediate updates by using setTimeout
+      // Update using a new object instead of modifying current directly
       if (now - refs.lastUpdateTimeRef.current > 5000) {
         console.log(`Synchronisation du solde affiché avec le prop balance: ${state.displayedBalance} -> ${safeBalance}`);
         setters.setPreviousBalance(state.displayedBalance);
         setters.setDisplayedBalance(safeBalance);
-        // Update the update time reference
-        refs.lastUpdateTimeRef.current = now;
+        // Create a new object for the ref
+        refs.lastUpdateTimeRef = { current: now };
         balanceManager.forceBalanceSync(safeBalance);
       }
     }
-  }, [safeBalance, state.displayedBalance, setters, refs]);
+  }, [safeBalance, state.displayedBalance]);
 
   useBalanceEvents({
     displayedBalance: state.displayedBalance,

@@ -16,18 +16,11 @@ export function useDashboardLogic() {
   const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { isInitializing, username, refreshData, userData } = useInitUserData();
-  
-  // State declarations
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [dashboardReady, setDashboardReady] = useState(false);
   const [isPreloaded, setIsPreloaded] = useState(false);
   const [lastProcessTime, setLastProcessTime] = useState<number>(0);
-  
-  // Use refs for values that shouldn't trigger re-renders
   const todaysGainsRef = useRef<number>(0);
-  const refreshInProgress = useRef<boolean>(false);
-  
-  // Custom hooks for functionality
   const { updateBalance, lastUpdateTime, forceBalanceUpdate } = useBalanceUpdater();
   const { lastBalanceUpdate, setLastBalanceUpdate, fetchLatestBalance } = useBalanceSync(userData, isPreloaded);
   const { refreshUserData } = useUserDataRefresh();
@@ -40,50 +33,32 @@ export function useDashboardLogic() {
   useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
 
   const forceBalanceRefresh = useCallback(() => {
-    if (!userData || refreshInProgress.current) return;
-    
-    refreshInProgress.current = true;
-    
-    try {
-      if (userData.id || userData.profile?.id) {
-        const userId = userData.id || userData.profile?.id;
-        balanceManager.setUserId(userId);
-      }
-      
-      const currentBalance = balanceManager.getCurrentBalance();
-      if (currentBalance <= 0) {
-        if (userData?.id) {
-          fetchLatestBalance(userData.id)
-            .then(result => {
-              if (result && result.balance > 0) {
-                balanceManager.forceBalanceSync(result.balance, userData.id);
-                setLastBalanceUpdate(Date.now());
-              }
-              refreshInProgress.current = false;
-            })
-            .catch(() => {
-              refreshInProgress.current = false;
-            });
-        } else {
-          refreshInProgress.current = false;
-        }
-        return;
-      }
-      
-      window.dispatchEvent(new CustomEvent('balance:force-update', {
-        detail: {
-          newBalance: currentBalance,
-          timestamp: Date.now(),
-          userId: userData.id || userData.profile?.id
-        }
-      }));
-      
-      setLastBalanceUpdate(Date.now());
-    } finally {
-      setTimeout(() => {
-        refreshInProgress.current = false;
-      }, 500);
+    if (!userData) return;
+    if (userData.id || userData.profile?.id) {
+      const userId = userData.id || userData.profile?.id;
+      balanceManager.setUserId(userId);
     }
+    const currentBalance = balanceManager.getCurrentBalance();
+    if (currentBalance <= 0) {
+      if (userData?.id) {
+        fetchLatestBalance(userData.id)
+          .then(result => {
+            if (result && result.balance > 0) {
+              balanceManager.forceBalanceSync(result.balance, userData.id);
+              setLastBalanceUpdate(Date.now());
+            }
+          });
+      }
+      return;
+    }
+    window.dispatchEvent(new CustomEvent('balance:force-update', {
+      detail: {
+        newBalance: currentBalance,
+        timestamp: Date.now(),
+        userId: userData.id || userData.profile?.id
+      }
+    }));
+    setLastBalanceUpdate(Date.now());
   }, [userData, fetchLatestBalance, setLastBalanceUpdate]);
 
   usePeriodicUpdates(
@@ -95,54 +70,41 @@ export function useDashboardLogic() {
     forceBalanceRefresh
   );
 
-  // Effect for initializing user balance
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/login');
     } else if (!authLoading && user) {
-      if (user.id && !dashboardReady) {
+      if (user.id) {
         balanceManager.setUserId(user.id);
         const cachedBalance = parseFloat(localStorage.getItem(`lastKnownBalance_${user.id}`) || '0');
         if (cachedBalance > 0) {
           balanceManager.forceBalanceSync(cachedBalance, user.id);
         }
-        
-        // Set dashboard ready with slight delay
-        setTimeout(() => {
-          setDashboardReady(true);
-        }, 300);
       }
+      setTimeout(() => {
+        setDashboardReady(true);
+      }, 300);
     }
-  }, [user, authLoading, navigate, dashboardReady]);
+  }, [user, authLoading, navigate]);
 
-  // Effect for first load notifications and initialization
   useEffect(() => {
-    const processedKey = 'dashboard_processed';
-    const alreadyProcessed = sessionStorage.getItem(processedKey);
-    
-    if (!isInitializing && username && isFirstLoad && user?.id && !alreadyProcessed) {
+    if (!isInitializing && username && isFirstLoad && user?.id) {
       setIsFirstLoad(false);
-      sessionStorage.setItem(processedKey, 'true');
-      
       toast({
         title: `Bienvenue, ${username}!`,
         description: "Votre tableau de bord est prêt. Les agents IA sont en cours d'analyse.",
         duration: 3000,
       });
-      
       window.dispatchEvent(new CustomEvent('dashboard:ready', {
         detail: { username, timestamp: Date.now() }
       }));
-      
       const initTimestamp = Date.now();
       localStorage.setItem('dashboardLastInit', initTimestamp.toString());
       setLastProcessTime(initTimestamp);
-      
       if (userData) {
         if (userData.id || userData.profile?.id) {
           const userId = userData.id || userData.profile?.id;
           balanceManager.setUserId(userId);
-          
           if (userId) {
             fetchLatestBalance(userId).then(result => {
               if (result && result.balance > 0) {
@@ -151,7 +113,6 @@ export function useDashboardLogic() {
             });
           }
         }
-        
         setTimeout(() => {
           if (userData.balance !== undefined && userData.balance > 0) {
             balanceManager.forceBalanceSync(userData.balance, userData.id || userData.profile?.id);
@@ -161,17 +122,14 @@ export function useDashboardLogic() {
               forceBalanceRefresh();
             }
           }
-          
           const lastVisit = localStorage.getItem('last_visit_date');
           const now = new Date().toDateString();
-          
           if (lastVisit && lastVisit !== now) {
             const lastVisitDate = new Date(lastVisit);
             lastVisitDate.setHours(0, 0, 0, 0);
             const currentDate = new Date();
             currentDate.setHours(0, 0, 0, 0);
             const daysDifference = Math.floor((currentDate.getTime() - lastVisitDate.getTime()) / (1000 * 60 * 60 * 24));
-            
             if (daysDifference > 0) {
               setTimeout(() => {
                 generateAutomaticRevenue(true);
@@ -183,7 +141,6 @@ export function useDashboardLogic() {
               }, 2000);
             }
           }
-          
           localStorage.setItem('last_visit_date', now);
           generateAutomaticRevenue(true);
           refreshUserData();
@@ -192,9 +149,8 @@ export function useDashboardLogic() {
     }
   }, [isInitializing, username, isFirstLoad, userData, generateAutomaticRevenue, forceBalanceRefresh, user, refreshUserData, fetchLatestBalance]);
 
-  // Balance refresh interval
   useEffect(() => {
-    const intervalId = setInterval(() => {
+    const refreshInterval = setInterval(() => {
       forceBalanceRefresh();
     }, 15000);
 
@@ -207,9 +163,8 @@ export function useDashboardLogic() {
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
     return () => {
-      clearInterval(intervalId);
+      clearInterval(refreshInterval);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     }
   }, [forceBalanceRefresh, user]);
