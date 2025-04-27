@@ -1,140 +1,208 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlayCircle, Clock, AlertCircle } from 'lucide-react';
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { PLANS } from '@/utils/plans';
-import balanceManager from '@/utils/balance/balanceManager';
-import { SUBSCRIPTION_LIMITS } from '@/utils/subscription/constants';
+import { Play, Loader2 } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SessionButtonProps {
-  onClick: () => void;
-  isLoading?: boolean;
-  disabled?: boolean;
+  isStartingSession: boolean;
+  handleStartSession: () => void;
+  canStartSession?: boolean;
+  dailySessionCount: number;
   subscription?: string;
-  dailySessionCount?: number;
-  canStart?: boolean;
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
+  className?: string;
 }
 
-const SessionButton: React.FC<SessionButtonProps> = ({
-  onClick,
-  isLoading = false,
-  disabled = false,
-  subscription = 'freemium',
+const SessionButton: React.FC<SessionButtonProps> = ({ 
+  isStartingSession, 
+  handleStartSession,
+  canStartSession = true,
   dailySessionCount = 0,
-  canStart = true,
-  lastSessionTimestamp,
-  isBotActive = true
+  subscription = 'freemium',
+  lastSessionTimestamp = '',
+  isBotActive = true,
+  className = ''
 }) => {
-  // Pour les comptes freemium, vérifier aussi le localStorage pour la limite journalière
-  const [forceDisabled, setForceDisabled] = useState(false);
-  
-  // Effet pour vérifier si la limite quotidienne a été atteinte pour les comptes freemium
+  const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Déterminer la limite quotidienne en fonction de l'abonnement
+  const getDailyLimit = useCallback(() => {
+    switch (subscription) {
+      case 'elite': return 15;
+      case 'gold': return 10;
+      case 'starter': return 5;
+      case 'freemium': return 3;
+      default: return 3;
+    }
+  }, [subscription]);
+
+  const dailyLimit = getDailyLimit();
+  const hasReachedLimit = dailySessionCount >= dailyLimit;
+
+  // Vérifier le temps écoulé depuis la dernière session
+  const checkLastSessionTime = useCallback(() => {
+    if (!lastSessionTimestamp) {
+      return true;
+    }
+
+    const lastSession = new Date(lastSessionTimestamp).getTime();
+    const now = Date.now();
+    const timeDiff = now - lastSession;
+    
+    // Imposer un délai minimum entre les sessions (60 secondes)
+    const minTimeInterval = 60 * 1000; // 60 secondes en millisecondes
+    
+    if (timeDiff < minTimeInterval) {
+      const remainingTime = Math.ceil((minTimeInterval - timeDiff) / 1000);
+      setTimeRemaining(remainingTime);
+      return false;
+    }
+    
+    setTimeRemaining(null);
+    return true;
+  }, [lastSessionTimestamp]);
+
+  // Mettre à jour le timer toutes les secondes
   useEffect(() => {
-    if (subscription === 'freemium') {
-      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-      const lastSessionDate = localStorage.getItem('last_session_date');
-      const today = new Date().toDateString();
-      
-      // Si c'est un nouveau jour, réinitialiser la limite
-      if (lastSessionDate !== today) {
-        localStorage.removeItem('freemium_daily_limit_reached');
-        setForceDisabled(false);
-      } else if (limitReached === 'true' || dailySessionCount >= 1) {
-        // Sinon, appliquer la limite stricte pour les comptes freemium
-        setForceDisabled(true);
-      } else {
-        setForceDisabled(false);
-      }
-    } else {
-      setForceDisabled(false);
+    let timerId: number | undefined;
+    
+    if (timeRemaining !== null && timeRemaining > 0) {
+      timerId = window.setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev === null || prev <= 1) {
+            clearInterval(timerId);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     }
-  }, [subscription, dailySessionCount]);
-  
-  // Get the max daily sessions based on subscription
-  const maxDailySessions = PLANS[subscription]?.dailyLimit || 1;
-  
-  // Pour les comptes freemium, strictement limité à 1 session
-  const isFreemium = subscription === 'freemium';
-  const hasReachedLimit = isFreemium ? 
-    (dailySessionCount >= 1 || forceDisabled) : 
-    dailySessionCount >= maxDailySessions;
+    
+    return () => {
+      if (timerId) clearInterval(timerId);
+    };
+  }, [timeRemaining]);
 
-  // Check if bot is in cooldown period
-  const isInCooldown = lastSessionTimestamp ? (
-    new Date().getTime() - new Date(lastSessionTimestamp).getTime() < 5 * 60 * 1000
-  ) : false;
-
-  // Vérifier si la limite quotidienne de gains est atteinte
-  const dailyGains = balanceManager.getDailyGains();
-  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-  const isLimitReached = dailyGains >= dailyLimit * 0.95; // 95% de la limite pour être préventif
-
-  // Determine the tooltip message
-  const getTooltipMessage = () => {
-    if (!isBotActive) return "Le système est temporairement indisponible";
-    if (isLoading) return "Démarrage de la session...";
-    if (isLimitReached) return `Limite de gains quotidiens atteinte (${dailyGains.toFixed(2)}€/${dailyLimit}€)`;
+  // Vérifier si l'utilisateur peut démarrer une session
+  const canStart = useCallback(() => {
+    if (!user) {
+      return false;
+    }
+    
+    if (!isBotActive) {
+      return false;
+    }
+    
     if (hasReachedLimit) {
-      if (isFreemium) return "Limite atteinte: 1 session par jour (freemium)";
-      return `Limite quotidienne atteinte (${dailySessionCount}/${maxDailySessions})`;
+      return false;
     }
-    if (isInCooldown) return "Période de refroidissement (5 min)";
-    return "Démarrer une nouvelle session d'analyse";
-  };
+    
+    if (!checkLastSessionTime()) {
+      return false;
+    }
+    
+    return canStartSession;
+  }, [user, isBotActive, hasReachedLimit, canStartSession, checkLastSessionTime]);
 
-  // Function to handle click with console log for debugging
-  const handleClick = () => {
-    console.log("Session button clicked, executing onClick handler");
-    onClick();
-  };
+  // Ajouter un delai entre les clics
+  const handleClick = useCallback(() => {
+    if (isStartingSession || isButtonDisabled || !canStart()) {
+      if (hasReachedLimit) {
+        toast({
+          title: "Limite quotidienne atteinte",
+          description: `Vous avez atteint la limite de ${dailyLimit} sessions pour aujourd'hui.`,
+          variant: "default"
+        });
+      } else if (timeRemaining !== null && timeRemaining > 0) {
+        toast({
+          title: "Veuillez patienter",
+          description: `Vous pourrez démarrer une nouvelle session dans ${timeRemaining} secondes.`,
+          variant: "default"
+        });
+      } else if (!isBotActive) {
+        toast({
+          title: "Le bot est désactivé",
+          description: "Le système est en maintenance, veuillez réessayer plus tard.",
+          variant: "default"
+        });
+      }
+      return;
+    }
+    
+    setIsButtonDisabled(true);
+    
+    // Appeler la fonction de démarrage
+    try {
+      const startPromise = handleStartSession();
+      
+      // S'assurer que nous avons une promesse et y attacher un gestionnaire finally
+      if (startPromise && typeof startPromise.then === 'function') {
+        startPromise.then(() => {
+          // En cas de succès, ne rien faire de spécial
+        }).catch(error => {
+          // Gérer les erreurs potentielles
+          console.error("Erreur lors du démarrage de la session:", error);
+          toast({
+            title: "Erreur",
+            description: "Une erreur s'est produite lors du démarrage de la session.",
+            variant: "destructive"
+          });
+        }).finally(() => {
+          // Réactiver le bouton après un délai, qu'il y ait eu succès ou erreur
+          setTimeout(() => {
+            setIsButtonDisabled(false);
+          }, 1500);
+        });
+      } else {
+        // Si handleStartSession ne renvoie pas une promesse
+        setTimeout(() => {
+          setIsButtonDisabled(false);
+        }, 1500);
+      }
+    } catch (error) {
+      console.error("Exception lors du démarrage de la session:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur s'est produite lors du démarrage de la session.",
+        variant: "destructive"
+      });
+      
+      setTimeout(() => {
+        setIsButtonDisabled(false);
+      }, 1500);
+    }
+  }, [isStartingSession, isButtonDisabled, canStart, hasReachedLimit, timeRemaining, isBotActive, toast, dailyLimit, handleStartSession]);
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="w-full">
-            <Button
-              onClick={handleClick}
-              disabled={disabled || isLoading || hasReachedLimit || isInCooldown || !isBotActive || isLimitReached || forceDisabled}
-              className={`w-full h-11 ${(hasReachedLimit && isFreemium) || isLimitReached || forceDisabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
-              variant="default"
-              size="lg"
-              data-testid="session-button"
-            >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                  <span>Démarrage...</span>
-                </div>
-              ) : (
-                <div className="flex items-center">
-                  {!isBotActive || isLimitReached || (isFreemium && forceDisabled) ? (
-                    <AlertCircle className="mr-2 h-5 w-5" />
-                  ) : hasReachedLimit || isInCooldown ? (
-                    <Clock className="mr-2 h-5 w-5" />
-                  ) : (
-                    <PlayCircle className="mr-2 h-5 w-5" />
-                  )}
-                  <span>
-                    {!isBotActive ? "Indisponible" : 
-                     isLimitReached ? "Limite atteinte" :
-                     (isFreemium && forceDisabled) ? "Limite (1/jour)" :
-                     hasReachedLimit ? (isFreemium ? "Limite (1/jour)" : "Limite atteinte") : 
-                     isInCooldown ? "En attente" : "Démarrer"}
-                  </span>
-                </div>
-              )}
-            </Button>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{getTooltipMessage()}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Button
+      variant="outline"
+      className={`w-full bg-blue-600 hover:bg-blue-700 text-white ${className}`}
+      disabled={isStartingSession || isButtonDisabled || !canStart()}
+      onClick={handleClick}
+    >
+      {isStartingSession ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Génération en cours...
+        </>
+      ) : (
+        <>
+          <Play className="mr-2 h-4 w-4" />
+          {timeRemaining !== null && timeRemaining > 0
+            ? `Disponible dans ${timeRemaining}s`
+            : hasReachedLimit
+              ? `Limite quotidienne atteinte (${dailySessionCount}/${dailyLimit})`
+              : `Démarrer une session (${dailySessionCount}/${dailyLimit})`
+          }
+        </>
+      )}
+    </Button>
   );
 };
 

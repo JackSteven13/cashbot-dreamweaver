@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles } from 'lucide-react';
 import ProgressBar from './components/ProgressBar';
+import ActionButtons from './components/ActionButtons';
+import UserBalanceDisplay from './components/UserBalanceDisplay';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,6 +18,13 @@ interface UserBalanceCardProps {
   referralCount?: number;
   referralBonus?: number;
   withdrawalThreshold?: number;
+  isStartingSession?: boolean;
+  onStartSession?: () => void;
+  onWithdrawal?: () => void;
+  dailySessionCount?: number;
+  lastSessionTimestamp?: string;
+  isBotActive?: boolean;
+  userId?: string;
 }
 
 const UserBalanceCard = ({
@@ -25,17 +34,24 @@ const UserBalanceCard = ({
   dailyLimit = 0.5,
   referralCount = 0,
   referralBonus = 0,
-  withdrawalThreshold
+  withdrawalThreshold,
+  isStartingSession = false,
+  onStartSession,
+  onWithdrawal,
+  dailySessionCount = 0,
+  lastSessionTimestamp = '',
+  isBotActive = true,
+  userId
 }: UserBalanceCardProps) => {
   const { user } = useAuth();
-  const userId = user?.id || 'anonymous';
+  const actualUserId = userId || user?.id || 'anonymous';
   
   // Assurer que le solde est toujours un nombre valide
   const safeBalance = isNaN(balance) ? 0 : balance;
   const safeReferralBonus = isNaN(referralBonus) ? 0 : referralBonus;
   
   // Utiliser une clé spécifique à l'utilisateur pour le stockage local
-  const localStorageKey = `lastKnownBalance_${userId}`;
+  const localStorageKey = `lastKnownBalance_${actualUserId}`;
   const [locallyStoredBalance, setLocallyStoredBalance] = useState<number>(0);
   
   // Charger la valeur du localStorage lors du montage du composant
@@ -47,18 +63,12 @@ const UserBalanceCard = ({
     } catch (e) {
       console.error("Erreur lors de la lecture du localStorage:", e);
     }
-  }, [localStorageKey, userId]); // Se déclenche quand l'utilisateur change
+  }, [localStorageKey, actualUserId]); // Se déclenche quand l'utilisateur change
   
   // Solde effectif à afficher
   const effectiveBalance = Math.max(
     safeBalance,
     locallyStoredBalance
-  );
-  
-  const BalanceDisplay = ({ balance, isNewUser }: { balance: number; isNewUser?: boolean }) => (
-    <div className="text-3xl font-semibold tracking-tight">
-      {isNewUser ? '0.00' : balance.toFixed(2)}€
-    </div>
   );
   
   const GainsDisplay = ({ showGains, referralBonus }: { showGains: boolean; referralBonus?: number }) => (
@@ -88,7 +98,7 @@ const UserBalanceCard = ({
     };
     
     // Utiliser une clé spécifique à l'utilisateur pour la dernière activité
-    const lastActiveKey = `lastActive_${userId}`;
+    const lastActiveKey = `lastActive_${actualUserId}`;
     const [lastActive, setLastActive] = useState<string | null>(null);
     
     // Charger la valeur du localStorage lors du montage du composant
@@ -99,7 +109,7 @@ const UserBalanceCard = ({
       } catch (e) {
         console.error("Erreur lors de la lecture de la dernière activité:", e);
       }
-    }, [lastActiveKey, userId]); // Se déclenche quand l'utilisateur change
+    }, [lastActiveKey, actualUserId]); // Se déclenche quand l'utilisateur change
     
     // Mettre à jour la dernière activité lors du montage du composant
     useEffect(() => {
@@ -134,7 +144,7 @@ const UserBalanceCard = ({
       </CardHeader>
       
       <CardContent className="p-4">
-        <BalanceDisplay balance={effectiveBalance} isNewUser={isNewUser} />
+        <UserBalanceDisplay balance={effectiveBalance} isNewUser={isNewUser} />
         <GainsDisplay showGains={!isNewUser && effectiveBalance > 0} referralBonus={safeReferralBonus} />
         <ProgressBar 
           displayBalance={effectiveBalance} 
@@ -143,6 +153,18 @@ const UserBalanceCard = ({
         />
         <ReferralInfo referralCount={referralCount} />
         <SubscriptionInfo subscription={subscription} />
+
+        {onStartSession && (
+          <ActionButtons 
+            isStartingSession={isStartingSession}
+            onStartSession={onStartSession}
+            onWithdrawal={onWithdrawal}
+            dailySessionCount={dailySessionCount}
+            subscription={subscription}
+            lastSessionTimestamp={lastSessionTimestamp}
+            isBotActive={isBotActive}
+          />
+        )}
       </CardContent>
     </Card>
   );
