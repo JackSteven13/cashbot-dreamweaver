@@ -17,8 +17,8 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
     if (!userId) return;
     
     try {
-      // Format balance to 2 decimal places and convert to string
-      const balanceString = balance.toFixed(2).toString(); // Explicit conversion to string
+      // Explicitly convert balance to a string with 2 decimal places
+      const balanceString = balance.toFixed(2);
       const storageKey = (key: string) => `${key}_${userId}`;
       
       // Save to localStorage with proper user-specific keys
