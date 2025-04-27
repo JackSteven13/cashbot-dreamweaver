@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -17,17 +17,48 @@ export const useAutomaticRevenue = ({
   updateBalance,
   isNewUser = false
 }: UseAutomaticRevenueProps) => {
-  const [isBotActive, setIsBotActive] = useState(false);
+  const [isBotActive, setIsBotActive] = useState(false); // Désactivé par défaut pour plus de sécurité
   const [dailyLimitProgress, setDailyLimitProgress] = useState(0);
   const [limitReached, setLimitReached] = useState(false);
   const [lastGainAmount, setLastGainAmount] = useState(0);
   const [consecutiveGenerationCount, setConsecutiveGenerationCount] = useState(0);
+  
+  // Forcer la vérification quotidienne au démarrage
+  useEffect(() => {
+    const lastResetDate = localStorage.getItem('lastDailyReset');
+    const today = new Date().toDateString();
+    
+    if (lastResetDate !== today) {
+      // Réinitialiser les gains quotidiens si c'est un nouveau jour
+      console.log("Réinitialisation des gains quotidiens au démarrage - nouveau jour détecté");
+      balanceManager.setDailyGains(0);
+      localStorage.setItem('lastDailyReset', today);
+      
+      // Réinitialiser aussi les flags de limite
+      if (userData?.id) {
+        localStorage.removeItem(`freemium_daily_limit_reached_${userData.id}`);
+      }
+    }
+    
+    // Vérifier l'état du bot sauvegardé
+    const savedBotState = localStorage.getItem('botActive');
+    if (savedBotState === 'true') {
+      setIsBotActive(true);
+    } else {
+      setIsBotActive(false);
+    }
+  }, [userData]);
   
   // Calculate daily limit progress percentage
   useEffect(() => {
     if (!userData || isNewUser) {
       setDailyLimitProgress(0);
       return;
+    }
+    
+    // Stocker l'abonnement actuel dans localStorage pour que le balanceManager y ait accès
+    if (userData.subscription) {
+      localStorage.setItem('currentSubscription', userData.subscription);
     }
     
     const effectiveSub = getEffectiveSubscription(userData.subscription);
@@ -40,11 +71,11 @@ export const useAutomaticRevenue = ({
     const percentage = Math.min(100, (dailyGains / limit) * 100);
     setDailyLimitProgress(percentage);
     
-    // Check if limit is reached (90% of limit for early prevention)
-    const isLimitReached = dailyGains >= limit * 0.9;
+    // Check if limit is reached (85% of limit for early prevention - plus strict)
+    const isLimitReached = dailyGains >= limit * 0.85;
     setLimitReached(isLimitReached);
     
-    // If percentage reaches 90%, automatically deactivate bot
+    // If percentage reaches 85%, automatically deactivate bot
     if (isLimitReached && isBotActive) {
       setIsBotActive(false);
       console.log("Bot automatically deactivated: daily limit reached");
@@ -52,6 +83,19 @@ export const useAutomaticRevenue = ({
       // Enregistrer l'état dans le localStorage
       localStorage.setItem('botActive', 'false');
     }
+    
+    // Vérification supplémentaire via le gestionnaire de limite
+    if (userData.id) {
+      const limitReachedKey = `freemium_daily_limit_reached_${userData.id}`;
+      const limitReachedInStorage = localStorage.getItem(limitReachedKey) === 'true';
+      
+      if (limitReachedInStorage && isBotActive) {
+        setIsBotActive(false);
+        console.log("Bot deactivated: limit reached flag found in storage");
+        localStorage.setItem('botActive', 'false');
+      }
+    }
+    
   }, [userData, isBotActive, isNewUser]);
   
   // Listen for external events that modify bot state
@@ -83,7 +127,7 @@ export const useAutomaticRevenue = ({
   }, [limitReached]);
   
   // Automatic revenue generation function with strict limit enforcement
-  const generateAutomaticRevenue = useCallback(async (forceUpdate = false) => {
+  const generateAutomaticRevenue = useCallback(async (forceUpdate = false): Promise<boolean> => {
     if (!userData || isNewUser || !isBotActive || limitReached) {
       return false;
     }
@@ -107,7 +151,7 @@ export const useAutomaticRevenue = ({
         if (actualGains > todaysGains) {
           console.log(`Updating daily gains: ${todaysGains}€ -> ${actualGains}€ (based on DB transactions)`);
           todaysGains = actualGains;
-          balanceManager.setDailyGains(actualGains);
+          balanceManager.syncDailyGainsFromTransactions(actualGains);
         }
       }
       
@@ -115,12 +159,18 @@ export const useAutomaticRevenue = ({
       const effectiveSub = getEffectiveSubscription(userData.subscription);
       const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
-      // Check if limit is reached (with 90% margin for prevention)
-      if (todaysGains >= dailyLimit * 0.9) {
+      // Check if limit is reached (with 85% margin for prevention)
+      if (todaysGains >= dailyLimit * 0.85) {
         console.log(`Daily limit almost reached: ${todaysGains}€/${dailyLimit}€`);
         setLimitReached(true);
         setIsBotActive(false);
         localStorage.setItem('botActive', 'false');
+        
+        // Enregistrer dans localStorage que la limite est atteinte
+        if (userData.id) {
+          localStorage.setItem(`freemium_daily_limit_reached_${userData.id}`, 'true');
+        }
+        
         return false;
       }
       
@@ -130,7 +180,7 @@ export const useAutomaticRevenue = ({
       const potentialGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(3));
       
       // Ensure the gain won't exceed the daily limit
-      const remainingLimit = (dailyLimit * 0.9) - todaysGains;
+      const remainingLimit = (dailyLimit * 0.85) - todaysGains;
       const safeGain = Math.min(potentialGain, remainingLimit * 0.7);
       
       // Use the smallest gain possible to avoid limit issues
@@ -138,6 +188,15 @@ export const useAutomaticRevenue = ({
       
       if (finalGain <= 0.001) {
         console.log("Gain trop faible, génération abandonnée");
+        return false;
+      }
+      
+      // Vérification supplémentaire via balanceManager pour être sûr
+      if (!balanceManager.addDailyGain(finalGain)) {
+        console.log("BalanceManager a rejeté l'ajout de gain - limite atteinte");
+        setLimitReached(true);
+        setIsBotActive(false);
+        localStorage.setItem('botActive', 'false');
         return false;
       }
       
@@ -153,6 +212,12 @@ export const useAutomaticRevenue = ({
         setLimitReached(true);
         setIsBotActive(false);
         localStorage.setItem('botActive', 'false');
+        
+        // Enregistrer dans localStorage que la limite est atteinte
+        if (userData.id) {
+          localStorage.setItem(`freemium_daily_limit_reached_${userData.id}`, 'true');
+        }
+        
         return false;
       }
       
@@ -179,14 +244,17 @@ export const useAutomaticRevenue = ({
       await updateBalance(finalGain, report, forceUpdate);
       
       // Update balance manager
-      balanceManager.updateBalance(finalGain);
-      balanceManager.addDailyGain(finalGain);
+      const updated = balanceManager.updateBalance(finalGain);
+      if (!updated) {
+        console.error("BalanceManager a rejeté la mise à jour du solde - limite probablement atteinte");
+        return false;
+      }
       
       console.log(`Automatic revenue generated: ${finalGain}€`);
       
       // Trigger balance update animation
       window.dispatchEvent(new CustomEvent('balance:update', { 
-        detail: { amount: finalGain, animate: true } 
+        detail: { amount: finalGain, animate: true, userId } 
       }));
       
       return true;
