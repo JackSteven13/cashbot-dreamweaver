@@ -89,7 +89,7 @@ export const useStatsPersistence = (
     // Use a ref for the timer to properly clean up
     const currentTimer = saveTimerRef.current;
     
-    // Only save if values changed recently
+    // Only save if values changed recently and component is mounted
     const now = Date.now();
     if (now - lastUpdateTimeRef.current > 5000 && isMountedRef.current) {
       // Debounce saves to avoid excessive localStorage operations

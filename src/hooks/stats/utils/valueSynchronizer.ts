@@ -17,7 +17,7 @@ const MIN_STORAGE_INTERVAL = 10000; // 10 seconds
 export const ensureProgressiveValues = () => {
   // Limit how often we perform this operation to prevent loops
   const now = Date.now();
-  if (now - lastEnsureTimeRef.value < MIN_STORAGE_INTERVAL) { // Throttling to 10 seconds
+  if (now - lastEnsureTimeRef.value < MIN_STORAGE_INTERVAL) { 
     return lastEnsureResultRef.value;
   }
   
@@ -29,10 +29,7 @@ export const ensureProgressiveValues = () => {
       storedValues.adsCount < MINIMUM_ADS_COUNT || 
       storedValues.revenueCount < MINIMUM_REVENUE_COUNT) {
     
-    // Throttle storage writes
-    if (now - lastEnsureTimeRef.value > MIN_STORAGE_INTERVAL) {
-      saveValues(MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT);
-    }
+    saveValues(MINIMUM_ADS_COUNT, MINIMUM_REVENUE_COUNT);
     
     lastEnsureResultRef.value = {
       adsCount: MINIMUM_ADS_COUNT,

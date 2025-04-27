@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback, memo } from 'react';
+import React, { useEffect, useState, useCallback, memo, useRef } from 'react';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import usePersistentStats from '@/hooks/stats/usePersistentStats';
 import { useUserSession } from '@/hooks/useUserSession';
@@ -9,7 +9,7 @@ const StatisticsCounters: React.FC = memo(() => {
   const userId = userData?.profile?.id;
   const CORRELATION_RATIO = 0.76203;
 
-  // Utiliser l'ID utilisateur pour isoler les statistiques
+  // Use user ID to isolate statistics
   const { adsCount: baseAdsCount, revenueCount: baseRevenueCount } = usePersistentStats({
     autoIncrement: false,
     userId: userId || 'anonymous',
@@ -17,12 +17,12 @@ const StatisticsCounters: React.FC = memo(() => {
     correlationRatio: CORRELATION_RATIO
   });
 
-  // État local pour la progression
+  // Local state for progression
   const [localAdsCount, setLocalAdsCount] = useState(0);
   const [localRevenueCount, setLocalRevenueCount] = useState(0);
-  const [intervalId, setIntervalId] = useState<number | null>(null);
+  const intervalIdRef = useRef<number | null>(null);
 
-  // Synchroniser avec les valeurs de base lorsqu'elles changent
+  // Synchronize with base values when they change
   useEffect(() => {
     if (userId) {
       setLocalAdsCount(baseAdsCount);
@@ -34,19 +34,20 @@ const StatisticsCounters: React.FC = memo(() => {
   const getUserSpecificRate = useCallback(() => {
     if (!userId) return 9500;
     // Use first character code as a stable seed for this user
-    return (userId.charCodeAt(0) % 5 + 8) * 1000; // Entre 8 et 12 secondes, selon l'ID utilisateur
+    return (userId.charCodeAt(0) % 5 + 8) * 1000; // Between 8 and 12 seconds, based on user ID
   }, [userId]);
 
-  // Progression locale différenciée par utilisateur avec nettoyage amélioré
+  // Differentiated local progression by user with improved cleanup
   useEffect(() => {
     if (!userId) return;
     
     // Clear any existing interval to prevent multiple intervals
-    if (intervalId) {
-      clearInterval(intervalId);
+    if (intervalIdRef.current !== null) {
+      clearInterval(intervalIdRef.current);
+      intervalIdRef.current = null;
     }
     
-    // Utiliser un intervalle unique pour chaque utilisateur
+    // Use a unique interval for each user
     const userSpecificRate = getUserSpecificRate();
     
     const newIntervalId = window.setInterval(() => {
@@ -61,7 +62,7 @@ const StatisticsCounters: React.FC = memo(() => {
       setLocalRevenueCount(prevRev => {
         let revInc = 0;
         if (Math.random() > 0.82) {
-          // Variation légère basée sur l'ID utilisateur pour que chaque utilisateur ait un pattern différent
+          // Slight variation based on user ID so each user has a different pattern
           const userVariation = userId ? (userId.charCodeAt(0) % 10) / 100 : 0;
           revInc = (Math.random() * 1.7 + 0.25) * (CORRELATION_RATIO + ((Math.random() - 0.5) * 0.032) + userVariation);
         }
@@ -69,11 +70,12 @@ const StatisticsCounters: React.FC = memo(() => {
       });
     }, userSpecificRate + Math.floor(Math.random() * 5000));
 
-    setIntervalId(newIntervalId);
+    intervalIdRef.current = newIntervalId;
     
     return () => {
-      if (newIntervalId) {
-        clearInterval(newIntervalId);
+      if (intervalIdRef.current !== null) {
+        clearInterval(intervalIdRef.current);
+        intervalIdRef.current = null;
       }
     };
   }, [userId, getUserSpecificRate]);

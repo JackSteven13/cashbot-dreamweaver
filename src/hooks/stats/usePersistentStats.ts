@@ -32,7 +32,7 @@ export const usePersistentStats = ({
     `${userId}:${autoIncrement ? '1' : '0'}:${forceGrowth ? '1' : '0'}:${correlationRatio}`,
   [userId, autoIncrement, forceGrowth, correlationRatio]);
 
-  // Utiliser des références pour éviter les rendus inutiles
+  // Use refs to avoid unnecessary re-renders
   const statsRef = useRef<StatsValues>({
     adsCount: MINIMUM_ADS_COUNT,
     revenueCount: MINIMUM_REVENUE_COUNT
@@ -48,7 +48,7 @@ export const usePersistentStats = ({
       return cachedStats.values;
     }
     
-    // Forcer la progression des valeurs si nécessaire
+    // Force progression of values if necessary
     const initialStats = forceGrowth 
       ? ensureProgressiveValues() 
       : getDateConsistentStats();
@@ -62,10 +62,10 @@ export const usePersistentStats = ({
     return initialStats;
   };
   
-  // Initialiser l'état avec les valeurs stockées
+  // Initialize state with stored values - use a function to compute initial state
   const [stats, setStats] = useState<StatsValues>(() => {
     const initialStats = getInitialStats();
-    // Mettre à jour la référence
+    // Update ref
     statsRef.current = initialStats;
     return initialStats;
   });
@@ -73,16 +73,16 @@ export const usePersistentStats = ({
   // Use ref to track if event listeners are set up
   const listenersSetupRef = useRef(false);
   
-  // Mettre à jour les statistiques à partir des événements du DOM
+  // Update statistics from DOM events
   useEffect(() => {
     // Avoid setting up listeners multiple times
     if (listenersSetupRef.current) return;
     listenersSetupRef.current = true;
     
-    // Fonction pour mettre à jour les statistiques
+    // Function to update statistics
     const handleStatsUpdate = (event: CustomEvent) => {
       if (event.detail && typeof event.detail === 'object') {
-        // Mettre à jour l'état avec les nouvelles valeurs
+        // Update state with new values
         setStats(prevStats => {
           const newStats = {
             ...prevStats,
@@ -90,7 +90,7 @@ export const usePersistentStats = ({
             revenueCount: event.detail.revenueCount ?? prevStats.revenueCount
           };
           
-          // Mettre à jour la référence
+          // Update ref
           statsRef.current = newStats;
           
           // Update the cache
@@ -104,7 +104,7 @@ export const usePersistentStats = ({
       }
     };
     
-    // Écouter les événements de mise à jour des statistiques
+    // Listen for statistics update events
     window.addEventListener('stats:update', handleStatsUpdate as EventListener);
     window.addEventListener('stats:sync', handleStatsUpdate as EventListener);
     

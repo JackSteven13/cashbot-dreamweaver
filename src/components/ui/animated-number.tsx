@@ -9,7 +9,7 @@ interface AnimatedNumberProps {
 
 export const AnimatedNumber: React.FC<AnimatedNumberProps> = memo(({ 
   value, 
-  duration = 200, // Durée réduite pour une réactivité instantanée
+  duration = 200, // Reduced duration for instant reactivity
   formatValue = (val) => Math.round(val).toString()
 }) => {
   const [displayValue, setDisplayValue] = useState(value);
@@ -25,7 +25,7 @@ export const AnimatedNumber: React.FC<AnimatedNumberProps> = memo(({
       
       const progress = Math.min((timestamp - startTime) / duration, 1);
       
-      // Use easeOutQuart for very smooth but quick animation
+      // Use easeOutQuart for smooth animation
       const easedProgress = 1 - Math.pow(1 - progress, 4);
       const currentValue = startValue + (targetValue - startValue) * easedProgress;
       

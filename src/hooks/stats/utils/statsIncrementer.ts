@@ -23,12 +23,11 @@ export const incrementDateLinkedStats = () => {
   }
   
   // Prevent multiple calls in short succession with stronger throttling
-  // If called too soon, return cached values without making changes
   if (now - lastIncrementTimeRef.value < MIN_INCREMENT_INTERVAL) {
     console.log("Throttling stats increment - too soon since last update");
     const storedValues = loadStoredValues();
     
-    // Update cache
+    // Update cache without triggering re-renders
     cachedResults.timestamp = now;
     cachedResults.adsCount = storedValues.adsCount;
     cachedResults.revenueCount = storedValues.revenueCount;
@@ -54,17 +53,12 @@ export const incrementDateLinkedStats = () => {
   // Save the new values - throttled to prevent excessive writes
   if (now - cachedResults.timestamp > 10000) {
     saveValues(newAdsCount, newRevenueCount);
-    
-    // Update cache
-    cachedResults.timestamp = now;
-    cachedResults.adsCount = newAdsCount;
-    cachedResults.revenueCount = newRevenueCount;
-  } else {
-    // Just update cache without writing to storage
-    cachedResults.timestamp = now;
-    cachedResults.adsCount = newAdsCount;
-    cachedResults.revenueCount = newRevenueCount;
   }
+    
+  // Update cache in any case
+  cachedResults.timestamp = now;
+  cachedResults.adsCount = newAdsCount;
+  cachedResults.revenueCount = newRevenueCount;
   
   return {
     newAdsCount,
