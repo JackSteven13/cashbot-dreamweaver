@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -18,21 +18,41 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 }) => {
   const safeBalance = isNaN(balance) ? 0 : balance;
   const { state, refs, setters, constants } = useBalanceState(safeBalance);
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Balance synchronization with prop, using a ref to track update time
   useEffect(() => {
     if (safeBalance > state.displayedBalance) {
       const now = Date.now();
-      // Update using a new object instead of modifying current directly
+      
+      // Clear any pending timeout
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = null;
+      }
+      
+      // Prevent immediate updates by using setTimeout
       if (now - refs.lastUpdateTimeRef.current > 5000) {
-        console.log(`Synchronisation du solde affiché avec le prop balance: ${state.displayedBalance} -> ${safeBalance}`);
-        setters.setPreviousBalance(state.displayedBalance);
-        setters.setDisplayedBalance(safeBalance);
-        // Create a new object for the ref
-        refs.lastUpdateTimeRef = { current: now };
-        balanceManager.forceBalanceSync(safeBalance);
+        // Use timeout to avoid multiple rapid updates
+        syncTimeoutRef.current = setTimeout(() => {
+          console.log(`Synchronisation du solde affiché avec le prop balance: ${state.displayedBalance} -> ${safeBalance}`);
+          setters.setPreviousBalance(state.displayedBalance);
+          setters.setDisplayedBalance(safeBalance);
+          // Update the update time reference
+          refs.lastUpdateTimeRef.current = now;
+          balanceManager.forceBalanceSync(safeBalance);
+          syncTimeoutRef.current = null;
+        }, 100);
       }
     }
-  }, [safeBalance, state.displayedBalance]);
+    
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = null;
+      }
+    };
+  }, [safeBalance, state.displayedBalance, setters, refs]);
 
   useBalanceEvents({
     displayedBalance: state.displayedBalance,

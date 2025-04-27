@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Sparkles, TrendingUp } from 'lucide-react';
 import { AnimatedNumber } from '@/components/ui/animated-number';
@@ -45,6 +45,8 @@ const StatisticsDisplay: React.FC = () => {
   const { userData } = useUserSession();
   const userId = userData?.profile?.id;
   const CORRELATION_RATIO = 0.76203;
+  const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
 
   // S'assurer que nous utilisons l'ID de l'utilisateur pour obtenir des statistiques spécifiques
   const { adsCount: baseAdsCount, revenueCount: baseRevenueCount } = usePersistentStats({
@@ -55,8 +57,20 @@ const StatisticsDisplay: React.FC = () => {
   });
 
   // Compteurs locaux qui progressent lentement et asymétriquement
-  const [localAdsCount, setLocalAdsCount] = useState(baseAdsCount);
-  const [localRevenueCount, setLocalRevenueCount] = useState(baseRevenueCount);
+  const [localAdsCount, setLocalAdsCount] = useState(() => baseAdsCount);
+  const [localRevenueCount, setLocalRevenueCount] = useState(() => baseRevenueCount);
+
+  // Synchronize with mounted state
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   // Memoize the rate calculation to prevent recreating on each render
   const getUserSpecificRate = useCallback(() => {
@@ -66,8 +80,7 @@ const StatisticsDisplay: React.FC = () => {
 
   // Rafraîchit la base lorsque les données de base changent
   useEffect(() => {
-    if (userId) {
-      console.log(`StatisticsDisplay: Synchronisation avec userId=${userId}, ads=${baseAdsCount}, revenue=${baseRevenueCount}`);
+    if (userId && isMountedRef.current) {
       setLocalAdsCount(baseAdsCount);
       setLocalRevenueCount(baseRevenueCount);
     }
@@ -75,53 +88,62 @@ const StatisticsDisplay: React.FC = () => {
 
   // Progression différente pour chaque utilisateur
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !isMountedRef.current) return;
+    
+    // Clean up any existing interval
+    if (updateIntervalRef.current) {
+      clearInterval(updateIntervalRef.current);
+      updateIntervalRef.current = null;
+    }
     
     // Générer un taux spécifique à l'utilisateur pour éviter que tous les comptes progressent au même rythme
     const userSpecificRate = getUserSpecificRate();
     
-    const updateInterval = setInterval(() => {
+    updateIntervalRef.current = setInterval(() => {
+      if (!isMountedRef.current) return;
+      
       setLocalAdsCount(prev => {
         const adsRand = Math.random();
         let adsIncrement = 0;
         if (adsRand > 0.94) adsIncrement = 2;
         else if (adsRand > 0.80) adsIncrement = 1;
-        // La plupart du temps pas d'évolution
-        const nextAds = prev + adsIncrement;
-        return nextAds;
+        return Math.min(prev + adsIncrement, 152847); // Capped at max value
       });
       
-      setLocalRevenueCount(prevRev => {
-        // Ne fait progresser que si les pubs avancent, mais peut parfois rattraper en bloc
+      setLocalRevenueCount(prev => {
         const revenueRand = Math.random();
-        let revInc = 0;
-        if (revenueRand > 0.8) {
-          // Décorrélation douce du ratio attendu avec variation basée sur l'ID utilisateur
-          const userVariation = userId ? (userId.charCodeAt(0) % 10) / 200 : 0; // Petite variation par utilisateur
-          revInc = (Math.random() * 2 + 0.4) * (CORRELATION_RATIO + ((Math.random() - 0.5) * 0.03) + userVariation);
+        let revenueIncrement = 0;
+        if (revenueRand > 0.92) {
+          const sessionVariation = userId ? 
+            (userId.charCodeAt(0) % 10 - 5) / 1000 : 0;
+          const jitterRatio = CORRELATION_RATIO + ((Math.random() - 0.5) * 0.025) + sessionVariation;
+          revenueIncrement = 1 * jitterRatio;
         }
-        return prevRev + revInc;
+        return Math.min(prev + revenueIncrement, 116329); // Capped at max value
       });
-    }, userSpecificRate + Math.floor(Math.random() * 6000)); // Variation supplémentaire dans l'intervalle
-
-    return () => clearInterval(updateInterval);
-  }, [userId, getUserSpecificRate]);
+    }, userSpecificRate);
+    
+    return () => {
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
+      }
+    };
+  }, [userId, getUserSpecificRate, CORRELATION_RATIO]);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
       <StatisticCard
         title="Publicités analysées"
-        value={userId ? localAdsCount : 0}
+        value={localAdsCount}
         icon={<Sparkles className="h-5 w-5" />}
-        description="Annonces traitées par nos algorithmes"
+        suffix=" pubs"
       />
       <StatisticCard
         title="Revenus générés"
-        value={userId ? localRevenueCount : 0}
+        value={localRevenueCount}
         icon={<TrendingUp className="h-5 w-5" />}
-        prefix=""
-        suffix=" €"
-        description="Revenus cumulés par notre système"
+        prefix="€"
       />
     </div>
   );

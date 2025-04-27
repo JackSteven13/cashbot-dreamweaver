@@ -42,7 +42,9 @@ const Dashboard = () => {
     
     if (user && !isInitializing && !initialRefreshDone.current) {
       // Add a slight delay to ensure everything is loaded
-      refreshTimer.current = setTimeout(handleRefreshData, 2000);
+      refreshTimer.current = setTimeout(() => {
+        handleRefreshData();
+      }, 2000);
     }
     
     return () => {
@@ -68,7 +70,6 @@ const Dashboard = () => {
         username={username}
         refreshData={refreshData}
       />
-      {/* Only include DailyBalanceUpdater when dashboard is ready */}
       {dashboardReady && <DailyBalanceUpdater />}
     </>
   );
