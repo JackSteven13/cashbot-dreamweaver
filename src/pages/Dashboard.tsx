@@ -37,16 +37,19 @@ const Dashboard = () => {
     // Clear any existing timers to avoid duplicates
     if (refreshTimer.current) {
       clearTimeout(refreshTimer.current);
-      refreshTimer.current = null;
     }
     
     if (user && !isInitializing && !initialRefreshDone.current) {
       // Add a slight delay to ensure everything is loaded
-      refreshTimer.current = setTimeout(() => {
+      const timer = setTimeout(() => {
         handleRefreshData();
       }, 2000);
+      
+      // Save the timer reference
+      refreshTimer.current = timer;
     }
     
+    // Cleanup function
     return () => {
       if (refreshTimer.current) {
         clearTimeout(refreshTimer.current);

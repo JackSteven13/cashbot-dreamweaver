@@ -28,21 +28,21 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       // Clear any pending timeout
       if (syncTimeoutRef.current) {
         clearTimeout(syncTimeoutRef.current);
-        syncTimeoutRef.current = null;
       }
       
       // Prevent immediate updates by using setTimeout
       if (now - refs.lastUpdateTimeRef.current > 5000) {
         // Use timeout to avoid multiple rapid updates
-        syncTimeoutRef.current = setTimeout(() => {
+        const timeout = setTimeout(() => {
           console.log(`Synchronisation du solde affiché avec le prop balance: ${state.displayedBalance} -> ${safeBalance}`);
           setters.setPreviousBalance(state.displayedBalance);
           setters.setDisplayedBalance(safeBalance);
           // Update the update time reference
           refs.lastUpdateTimeRef.current = now;
           balanceManager.forceBalanceSync(safeBalance);
-          syncTimeoutRef.current = null;
         }, 100);
+        
+        syncTimeoutRef.current = timeout;
       }
     }
     

@@ -14,9 +14,11 @@ export const useBalanceState = (initialBalance: number): UseBalanceStateResult =
   const [previousBalance, setPreviousBalance] = useState<number | null>(null);
   const [gain, setGain] = useState<number | null>(null);
   
+  // Create stable refs that don't change between renders
   const balanceRef = useRef<HTMLDivElement>(null);
   const lastUpdateTimeRef = useRef<number>(Date.now());
   const forceUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const updateDebounceTime = 2000;
 
   return {

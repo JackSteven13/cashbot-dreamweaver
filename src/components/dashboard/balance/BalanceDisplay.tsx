@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CardContent } from '@/components/ui/card';
 import { BalanceIndicators } from './components/BalanceIndicators';
 import { BalanceValue } from './components/BalanceValue';
@@ -22,6 +22,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const [gainAmount, setGainAmount] = useState<number>(0);
   const [showGain, setShowGain] = useState<boolean>(false);
+  const animationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (balance > displayBalance) {
@@ -29,15 +30,30 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       setGainAmount(gain);
       setShowGain(true);
       setIsAnimating(true);
+      setDisplayBalance(balance);
       
-      const timer = setTimeout(() => {
+      // Clear any existing timer
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
+      }
+      
+      // Set new timer
+      animationTimerRef.current = setTimeout(() => {
         setIsAnimating(false);
         setShowGain(false);
       }, 2000);
-      
-      return () => clearTimeout(timer);
+    } else if (balance !== displayBalance) {
+      // Handle case where balance decreases or is set to a different value
+      setDisplayBalance(balance);
     }
-    setDisplayBalance(balance);
+    
+    // Cleanup
+    return () => {
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
+        animationTimerRef.current = null;
+      }
+    };
   }, [balance, displayBalance]);
 
   return (

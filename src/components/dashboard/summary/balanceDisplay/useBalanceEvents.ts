@@ -17,17 +17,15 @@ export const useBalanceEvents = ({
   useEffect(() => {
     const handleBalanceUpdate = (event: CustomEvent<BalanceEventDetail>) => {
       const currentTime = Date.now();
-      if (currentTime - (refs.lastUpdateTimeRef.current || 0) < updateDebounceTime) {
+      if (currentTime - refs.lastUpdateTimeRef.current < updateDebounceTime) {
         if (refs.forceUpdateTimeoutRef.current) {
           clearTimeout(refs.forceUpdateTimeoutRef.current);
         }
         
-        const timeoutId = setTimeout(() => {
+        refs.forceUpdateTimeoutRef.current = setTimeout(() => {
           processBalanceUpdate(event);
         }, updateDebounceTime);
         
-        // Store the timeout ID without directly modifying .current
-        refs.forceUpdateTimeoutRef = { current: timeoutId };
         return;
       }
       
@@ -56,10 +54,8 @@ export const useBalanceEvents = ({
         localStorage.setItem('currentBalance', calculatedNewBalance.toString());
         localStorage.setItem('lastKnownBalance', calculatedNewBalance.toString());
         
-        if (refs.lastUpdateTimeRef) {
-          // Update without modifying .current directly
-          refs.lastUpdateTimeRef = { current: currentTime };
-        }
+        // Update ref directly
+        refs.lastUpdateTimeRef.current = currentTime;
         
         if (shouldAnimate !== false) {
           setTimeout(() => setters.setIsAnimating(false), 2500);
@@ -82,10 +78,8 @@ export const useBalanceEvents = ({
         localStorage.setItem('currentBalance', newBalance.toString());
         localStorage.setItem('lastKnownBalance', newBalance.toString());
         
-        if (refs.lastUpdateTimeRef) {
-          // Update without modifying .current directly
-          refs.lastUpdateTimeRef = { current: currentTime };
-        }
+        // Update ref directly
+        refs.lastUpdateTimeRef.current = currentTime;
         
         if (shouldAnimate !== false && implicitGain > 0) {
           setTimeout(() => setters.setIsAnimating(false), 2500);

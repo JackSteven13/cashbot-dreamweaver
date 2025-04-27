@@ -57,8 +57,8 @@ const StatisticsDisplay: React.FC = () => {
   });
 
   // Compteurs locaux qui progressent lentement et asymétriquement
-  const [localAdsCount, setLocalAdsCount] = useState(() => baseAdsCount);
-  const [localRevenueCount, setLocalRevenueCount] = useState(() => baseRevenueCount);
+  const [localAdsCount, setLocalAdsCount] = useState(baseAdsCount);
+  const [localRevenueCount, setLocalRevenueCount] = useState(baseRevenueCount);
 
   // Synchronize with mounted state
   useEffect(() => {
@@ -67,7 +67,6 @@ const StatisticsDisplay: React.FC = () => {
       isMountedRef.current = false;
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current);
-        updateIntervalRef.current = null;
       }
     };
   }, []);
@@ -93,13 +92,12 @@ const StatisticsDisplay: React.FC = () => {
     // Clean up any existing interval
     if (updateIntervalRef.current) {
       clearInterval(updateIntervalRef.current);
-      updateIntervalRef.current = null;
     }
     
     // Générer un taux spécifique à l'utilisateur pour éviter que tous les comptes progressent au même rythme
     const userSpecificRate = getUserSpecificRate();
     
-    updateIntervalRef.current = setInterval(() => {
+    const interval = setInterval(() => {
       if (!isMountedRef.current) return;
       
       setLocalAdsCount(prev => {
@@ -122,6 +120,9 @@ const StatisticsDisplay: React.FC = () => {
         return Math.min(prev + revenueIncrement, 116329); // Capped at max value
       });
     }, userSpecificRate);
+    
+    // Store the interval reference
+    updateIntervalRef.current = interval;
     
     return () => {
       if (updateIntervalRef.current) {
