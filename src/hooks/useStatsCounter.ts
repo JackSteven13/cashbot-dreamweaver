@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useStatsInitialization } from './stats/useStatsInitialization';
 import { useStatsAnimation } from './stats/useStatsAnimation';
@@ -68,11 +67,11 @@ export const useStatsCounter = ({
   dailyAdsTarget = 15000,
   dailyRevenueTarget = 12000
 }: UseStatsCounterParams): StatsCounterData => {
-  // Récupérer les valeurs minimales dynamiques
+  // Get minimum values but use useMemo to avoid recalculation on every render
   const minimumValues = useMemo(() => getMinimumValues(), []);
   const { ADS_COUNT: MINIMUM_ADS_COUNT, REVENUE_COUNT: MINIMUM_REVENUE_COUNT } = minimumValues;
   
-  // Utiliser useRef pour assurer la stabilité entre les rendus
+  // Keep stable references with useRef
   const stableValuesRef = useRef({
     initialized: false,
     syncInProgress: false,
@@ -84,7 +83,7 @@ export const useStatsCounter = ({
     }
   });
 
-  // Utiliser useState avec fonction d'initialisation pour éviter les re-rendus inutiles
+  // Initialize state with functions to prevent frequent re-computations
   const [adsCount, setAdsCount] = useState(() => {
     ensureProgressiveValues();
     const consistentStats = getDateConsistentStats();
@@ -100,45 +99,39 @@ export const useStatsCounter = ({
   const [displayedAdsCount, setDisplayedAdsCount] = useState(() => adsCount);
   const [displayedRevenueCount, setDisplayedRevenueCount] = useState(() => revenueCount);
   
-  // Track initial load state with useRef to avoid re-renders
+  // Stabilize references
   const isFirstLoadRef = useRef(true);
   const countersInitializedRef = useRef(false);
   
-  // Animation function with useCallback to avoid re-creation
+  // Memoize animation function
   const animateCounters = useCallback((targetAdsCount: number, targetRevenueCount: number) => {
     setDisplayedAdsCount(targetAdsCount);
     setDisplayedRevenueCount(targetRevenueCount);
   }, []);
   
-  // Initialiser les compteurs une seule fois
+  // First load initialization - run only once
   useEffect(() => {
     if (isFirstLoadRef.current) {
       isFirstLoadRef.current = false;
       
-      // S'assurer que les valeurs ne diminuent jamais lors du chargement initial
       ensureProgressiveValues();
-      
-      // Puis obtenir les valeurs synchronisées
       const consistentStats = getDateConsistentStats();
       
-      // Initialiser avec les valeurs cohérentes
       setAdsCount(consistentStats.adsCount);
       setRevenueCount(consistentStats.revenueCount);
       setDisplayedAdsCount(consistentStats.adsCount);
       setDisplayedRevenueCount(consistentStats.revenueCount);
       
-      // Persister ces valeurs pour garantir qu'elles ne diminuent jamais
       saveValues(consistentStats.adsCount, consistentStats.revenueCount, false);
       
       countersInitializedRef.current = true;
     }
   }, []);
   
-  // Handle page visibility changes
+  // Visibility change handling with stable dependencies
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && countersInitializedRef.current) {
-        // Quand la page redevient visible, s'assurer que les valeurs sont bien synchronisées
         ensureProgressiveValues();
         const refreshedStats = getDateConsistentStats();
         
@@ -156,11 +149,11 @@ export const useStatsCounter = ({
     };
   }, []);
   
-  // Incrementation logic - throttled
+  // Throttled incrementation with ref-based logic to prevent excessive updates
   useEffect(() => {
     if (!countersInitializedRef.current) return;
     
-    // Première incrémentation après un délai plus long
+    // Delayed first update
     const initialTimeout = setTimeout(() => {
       const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
       
@@ -170,28 +163,33 @@ export const useStatsCounter = ({
       setDisplayedRevenueCount(newRevenueCount);
       
       stableValuesRef.current.lastAutoIncrementTime = Date.now();
-    }, 30000); // Attendre 30 secondes avant la première mise à jour
+    }, 30000);
     
-    // Ensuite, incrémenter beaucoup moins fréquemment (5 minutes minimum)
+    // Less frequent updates with time limiting
     const incrementInterval = setInterval(() => {
       const now = Date.now();
       
-      // Limiter fortement la fréquence des incrémentations
-      if (now - stableValuesRef.current.lastAutoIncrementTime > 300000) { // 5 minutes minimum
-        // Ajouter une probabilité pour que l'incrémentation ne se produise pas à chaque intervalle
-        if (Math.random() > 0.4) { // 60% de chance d'incrémenter
+      // Only update after significant time has passed
+      if (now - stableValuesRef.current.lastAutoIncrementTime > 300000) {
+        // Add randomness to increments
+        if (Math.random() > 0.4) {
           stableValuesRef.current.lastAutoIncrementTime = now;
           
-          // Ajuster les valeurs d'incrémentation pour qu'elles soient très faibles
           const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
           
-          setAdsCount(newAdsCount);
-          setRevenueCount(newRevenueCount);
+          setAdsCount(prevAds => {
+            // Only update if value actually changes
+            return newAdsCount > prevAds ? newAdsCount : prevAds;
+          });
           
-          // Animation douce vers les nouvelles valeurs
+          setRevenueCount(prevRevenue => {
+            return newRevenueCount > prevRevenue ? newRevenueCount : prevRevenue;
+          });
+          
+          // Animate to new values
           animateCounters(newAdsCount, newRevenueCount);
           
-          // Sauvegarder pour assurer la persistance
+          // Save for persistence
           try {
             localStorage.setItem('last_displayed_ads_count', newAdsCount.toString());
             localStorage.setItem('last_displayed_revenue_count', newRevenueCount.toString());
@@ -200,18 +198,16 @@ export const useStatsCounter = ({
           }
         }
       }
-    }, 300000); // Vérifier toutes les 5 minutes
+    }, 300000);
     
-    // Effet de nettoyage
     return () => {
       clearTimeout(initialTimeout);
       clearInterval(incrementInterval);
     };
   }, [animateCounters]);
   
-  // Protection supplémentaire pour éviter les baisses de valeurs lors des rerendus
+  // Save values on unmount
   useEffect(() => {
-    // Sauvegarder les valeurs actuelles avant la fermeture ou le rafraîchissement
     const handleBeforeUnload = () => {
       saveValues(adsCount, revenueCount, false);
     };

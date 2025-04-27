@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import StatPanel from './StatPanel';
 import { useStatsCounter } from '@/hooks/useStatsCounter';
 import { formatRevenue } from '@/utils/formatters';
@@ -20,29 +20,13 @@ const StatsCounter = ({
   dailyAdsTarget = 4723,
   dailyRevenueTarget = 3819
 }: StatsCounterProps) => {
-  const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
-    dailyAdsTarget,
-    dailyRevenueTarget
-  });
-
-  const MINIMUM_ADS = 36742;
-  const MINIMUM_REVENUE = 28000;
-  const CORRELATION_RATIO = 0.76203;
+  // Use useMemo to avoid recalculating these values on every render
+  const MINIMUM_ADS = useMemo(() => 36742, []);
+  const MINIMUM_REVENUE = useMemo(() => 28000, []);
+  const CORRELATION_RATIO = useMemo(() => 0.76203, []);
   
-  // Générer une clé unique pour les sessions qui ne sont pas connectées
+  // Stable reference for session ID and values
   const anonymousSessionId = useRef(Math.random().toString(36).substring(2, 15));
-  
-  // Récupérer un ID basé sur la session actuelle
-  const getSessionBasedId = () => {
-    try {
-      const userId = localStorage.getItem('lastKnownUserId');
-      return userId || anonymousSessionId.current;
-    } catch (e) {
-      return anonymousSessionId.current;
-    }
-  };
-  
-  // Utiliser useRef pour stocker des valeurs qui ne déclenchent pas de re-renders
   const stableValuesRef = useRef({
     adsCount: MINIMUM_ADS,
     revenueCount: MINIMUM_REVENUE,
@@ -50,8 +34,13 @@ const StatsCounter = ({
     lastSyncTime: Date.now()
   });
   
-  // Initialiser les valeurs d'affichage avec useState avec une fonction d'initialisation
-  // pour éviter de recalculer à chaque rendu
+  // Get stats from hook
+  const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
+    dailyAdsTarget,
+    dailyRevenueTarget
+  });
+  
+  // Initialize display values with useState and stable initialization function
   const [displayValues, setDisplayValues] = useState(() => {
     ensureProgressiveValues();
     const consistentStats = getDateConsistentStats();
@@ -71,9 +60,20 @@ const StatsCounter = ({
     };
   });
 
-  // Effet pour les mises à jour régulières avec des dépendances minimales
+  // Récupérer un ID basé sur la session actuelle
+  const getSessionBasedId = () => {
+    try {
+      const userId = localStorage.getItem('lastKnownUserId');
+      return userId || anonymousSessionId.current;
+    } catch (e) {
+      return anonymousSessionId.current;
+    }
+  };
+
+  // Regular update effect with stable dependencies
   useEffect(() => {
     const sessionId = getSessionBasedId();
+    // Use the session ID to create consistent yet unique update rates per user
     const sessionSpecificRate = sessionId ? 
       (sessionId.charCodeAt(0) % 5 + 10) * 1000 : 12000;
       
@@ -83,7 +83,7 @@ const StatsCounter = ({
         let adsIncrement = 0;
         if (adsRand > 0.85) adsIncrement = 2;
         else if (adsRand > 0.55) adsIncrement = 1;
-        const newAdsCount = Math.min(prev.adsCount + adsIncrement, 152847); // Cap at maximum value
+        const newAdsCount = Math.min(prev.adsCount + adsIncrement, 152847);
 
         let newRevenueCount = prev.revenueCount;
         if (adsIncrement > 0) {
@@ -93,7 +93,7 @@ const StatsCounter = ({
           const jitterRatio = CORRELATION_RATIO + ((Math.random() - 0.5) * 0.025) + sessionVariation;
           const revenueIncrement = adsIncrement * jitterRatio;
           if (Math.random() > 0.25) {
-            newRevenueCount = Math.min(prev.revenueCount + revenueIncrement, 116329); // Cap at maximum value
+            newRevenueCount = Math.min(prev.revenueCount + revenueIncrement, 116329);
           }
         }
         return {
@@ -103,14 +103,11 @@ const StatsCounter = ({
       });
     }, sessionSpecificRate + Math.floor(Math.random() * 5000));
 
-    return () => {
-      clearInterval(regularUpdateInterval);
-    };
+    return () => clearInterval(regularUpdateInterval);
   }, []); // Empty dependency array to run only once
 
-  // Synchroniser avec les valeurs calculées lorsqu'elles changent
+  // Update based on displayedAdsCount changes, but only when significant
   useEffect(() => {
-    // Only update if the displayed ads count is significantly higher
     if (displayedAdsCount > displayValues.adsCount + 10) {
       const newRevenue = displayedAdsCount * CORRELATION_RATIO;
       setDisplayValues({
@@ -118,9 +115,9 @@ const StatsCounter = ({
         revenueCount: newRevenue
       });
     }
-  }, [displayedAdsCount, displayValues.adsCount]);
+  }, [displayedAdsCount, displayValues.adsCount, CORRELATION_RATIO]);
 
-  // Mettre à jour les valeurs lorsque la visibilité de la page change
+  // Handle visibility changes but with memoized handler to prevent unnecessary rerenders
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -142,9 +139,9 @@ const StatsCounter = ({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
     };
-  }, [displayValues]);
+  }, [displayValues, CORRELATION_RATIO]);
 
-  // Sauvegarder les valeurs avant la fermeture de la page
+  // Storage persistence with dependency cleanup
   useEffect(() => {
     const handleBeforeUnload = () => {
       localStorage.setItem('last_displayed_ads_count', displayValues.adsCount.toString());
