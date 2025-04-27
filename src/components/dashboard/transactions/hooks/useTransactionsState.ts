@@ -1,5 +1,5 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Transaction } from '@/types/userData';
 
 export const useTransactionsState = () => {

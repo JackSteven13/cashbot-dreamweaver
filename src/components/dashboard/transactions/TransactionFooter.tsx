@@ -1,10 +1,11 @@
 
 import React from 'react';
+import { Button } from '@/components/ui/button';
 
 interface TransactionFooterProps {
   showAllTransactions: boolean;
   hiddenTransactionsCount: number;
-  setShowAllTransactions?: React.Dispatch<React.SetStateAction<boolean>>; // Make this optional
+  setShowAllTransactions: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const TransactionFooter: React.FC<TransactionFooterProps> = ({
@@ -12,23 +13,22 @@ const TransactionFooter: React.FC<TransactionFooterProps> = ({
   hiddenTransactionsCount,
   setShowAllTransactions
 }) => {
-  if (showAllTransactions || hiddenTransactionsCount === 0) {
+  if (hiddenTransactionsCount <= 0) {
     return null;
   }
 
   return (
-    <div className="text-center mt-4 text-sm text-muted-foreground">
-      <p>
-        {hiddenTransactionsCount} {hiddenTransactionsCount > 1 ? 'transactions masquées' : 'transaction masquée'}
-      </p>
-      {setShowAllTransactions && (
-        <button 
-          onClick={() => setShowAllTransactions(true)} 
-          className="text-blue-500 hover:text-blue-700 text-sm mt-1"
-        >
-          Afficher tout
-        </button>
-      )}
+    <div className="mt-4 text-center">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setShowAllTransactions(!showAllTransactions)}
+        className="text-xs w-full"
+      >
+        {showAllTransactions
+          ? "Afficher moins"
+          : `Afficher ${hiddenTransactionsCount} transaction${hiddenTransactionsCount > 1 ? 's' : ''} supplémentaire${hiddenTransactionsCount > 1 ? 's' : ''}`}
+      </Button>
     </div>
   );
 };

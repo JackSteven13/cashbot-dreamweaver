@@ -31,7 +31,7 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
     refreshKey
   } = useTransactions(transactions);
 
-  // Memoize the refresh handler
+  // Memoize the refresh handler to prevent recreating it on each render
   const onRefreshClick = useCallback(async () => {
     if (isRefreshing) return;
     
@@ -73,12 +73,20 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
         </Button>
       </div>
       
-      <TransactionsList 
-        transactions={displayedTransactions}
-        subscription={subscription}
-        refreshKey={refreshKey}
-        isNewUser={isNewUser}
-      />
+      <div>
+        {isLoading || isRefreshing ? (
+          <div className="py-8 text-center">
+            <p className="text-muted-foreground">Chargement des transactions...</p>
+          </div>
+        ) : (
+          <TransactionsList 
+            transactions={displayedTransactions}
+            subscription={subscription}
+            refreshKey={refreshKey}
+            isNewUser={isNewUser}
+          />
+        )}
+      </div>
       
       <TransactionFooter 
         showAllTransactions={showAllTransactions}

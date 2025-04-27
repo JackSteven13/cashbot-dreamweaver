@@ -8,9 +8,21 @@ export const useTransactionDisplay = (
 ) => {
   // Memoize results to avoid unnecessary re-renders
   const results = useMemo(() => {
+    // Ensure transactions is an array
+    if (!Array.isArray(transactions)) {
+      console.error("Transactions is not an array:", transactions);
+      return {
+        validTransactions: [],
+        displayedTransactions: [],
+        hiddenTransactionsCount: 0
+      };
+    }
+    
     // Filter valid transactions
-    const validTx = Array.isArray(transactions) ? 
-      transactions.filter(tx => tx && (typeof tx.gain === 'number' || typeof tx.amount === 'number') && tx.date) : [];
+    const validTx = transactions.filter(tx => tx && (
+      (typeof tx.gain === 'number' || typeof tx.amount === 'number') && 
+      tx.date
+    ));
     
     // Sort transactions by date (most recent first)
     const sortedTx = [...validTx].sort((a, b) => {

@@ -57,7 +57,7 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
         initialFetchDone.current = true;
       }
     }
-  }, [initialTransactions, setTransactions, transactionsCacheKey, restoreFromCache]);
+  }, [initialTransactions, setTransactions, transactionsCacheKey, initialFetchDone, restoreFromCache]);
   
   // Memoized refresh handler to avoid recreations
   const handleManualRefresh = useCallback(async () => {
