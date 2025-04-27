@@ -63,10 +63,10 @@ const TransactionsList = memo(({
     };
     
     // Écouter plus d'événements pour s'assurer que les transactions sont à jour
-    window.addEventListener('transactions:refresh', handleRealtimeUpdate);
-    window.addEventListener('balance:update', handleRealtimeUpdate);
-    window.addEventListener('automatic:revenue', handleRealtimeUpdate);
-    window.addEventListener('balance:daily-growth', handleRealtimeUpdate);
+    window.addEventListener('transactions:refresh', handleRealtimeUpdate as EventListener);
+    window.addEventListener('balance:update', handleRealtimeUpdate as EventListener);
+    window.addEventListener('automatic:revenue', handleRealtimeUpdate as EventListener);
+    window.addEventListener('balance:daily-growth', handleRealtimeUpdate as EventListener);
     
     // Rafraîchir automatiquement toutes les 60 secondes
     const autoRefresh = setInterval(() => {
@@ -84,10 +84,10 @@ const TransactionsList = memo(({
     }, 60000); // 60 seconds
     
     return () => {
-      window.removeEventListener('transactions:refresh', handleRealtimeUpdate);
-      window.removeEventListener('balance:update', handleRealtimeUpdate);
-      window.removeEventListener('automatic:revenue', handleRealtimeUpdate);
-      window.removeEventListener('balance:daily-growth', handleRealtimeUpdate);
+      window.removeEventListener('transactions:refresh', handleRealtimeUpdate as EventListener);
+      window.removeEventListener('balance:update', handleRealtimeUpdate as EventListener);
+      window.removeEventListener('automatic:revenue', handleRealtimeUpdate as EventListener);
+      window.removeEventListener('balance:daily-growth', handleRealtimeUpdate as EventListener);
       clearInterval(autoRefresh);
     };
   }, [handleManualRefresh, user?.id]);
@@ -155,7 +155,8 @@ const TransactionsList = memo(({
       
       <TransactionFooter 
         showAllTransactions={showAllTransactions} 
-        hiddenTransactionsCount={hiddenTransactionsCount} 
+        hiddenTransactionsCount={hiddenTransactionsCount}
+        setShowAllTransactions={setShowAllTransactions}
       />
       
       <div className="text-xs text-muted-foreground mt-2 text-right">

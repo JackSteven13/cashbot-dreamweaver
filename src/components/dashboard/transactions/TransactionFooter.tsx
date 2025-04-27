@@ -4,7 +4,7 @@ import React from 'react';
 interface TransactionFooterProps {
   showAllTransactions: boolean;
   hiddenTransactionsCount: number;
-  setShowAllTransactions?: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowAllTransactions?: React.Dispatch<React.SetStateAction<boolean>>; // Make this optional
 }
 
 const TransactionFooter: React.FC<TransactionFooterProps> = ({
