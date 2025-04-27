@@ -35,6 +35,22 @@ export const useBalanceState = (initialBalance: number): UseBalanceStateResult =
   const lastUpdateTimeRef = useRef<number>(Date.now());
   const forceUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const updateDebounceTime = 2000;
+  
+  // Listen for timestamp updates from events
+  useEffect(() => {
+    const handleTimestampUpdate = (event: CustomEvent) => {
+      if (event.detail?.timestamp && event.detail?.userId === userId) {
+        // Just store the timestamp in localStorage instead of trying to modify the ref
+        localStorage.setItem(`lastBalanceUpdate_${userId}`, event.detail.timestamp.toString());
+      }
+    };
+    
+    window.addEventListener('balance:timestamp-update', handleTimestampUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('balance:timestamp-update', handleTimestampUpdate as EventListener);
+    };
+  }, [userId]);
 
   return {
     state: {

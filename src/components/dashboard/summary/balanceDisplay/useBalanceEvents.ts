@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import balanceManager from '@/utils/balance/balanceManager';
 import { BalanceEventDetail, BalanceSetters, BalanceRefs } from './types';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,6 +19,9 @@ export const useBalanceEvents = ({
   const { user } = useAuth();
   const userId = user?.id || null;
   
+  // Create a mutable object to store timeout references
+  const timeoutStore = useRef<{[key: string]: NodeJS.Timeout}>({});
+  
   useEffect(() => {
     // Définir l'ID utilisateur dans le gestionnaire de solde
     if (userId) {
@@ -35,23 +38,16 @@ export const useBalanceEvents = ({
       
       const currentTime = Date.now();
       if (currentTime - (refs.lastUpdateTimeRef.current || 0) < updateDebounceTime) {
-        if (refs.forceUpdateTimeoutRef.current) {
-          clearTimeout(refs.forceUpdateTimeoutRef.current);
+        // Clear existing timeout if any
+        if (timeoutStore.current.forceUpdate) {
+          clearTimeout(timeoutStore.current.forceUpdate);
         }
         
-        const timeoutId = setTimeout(() => {
+        // Create new timeout and store the ID in our mutable object
+        timeoutStore.current.forceUpdate = setTimeout(() => {
           processBalanceUpdate(event);
         }, updateDebounceTime);
         
-        // Using a properly structured update for the ref
-        // Store the timeout ID safely
-        if (refs.forceUpdateTimeoutRef) {
-          const refObject = refs.forceUpdateTimeoutRef;
-          // Use a nested setTimeout to ensure the ref update happens after render
-          setTimeout(() => {
-            refObject.current = timeoutId;
-          }, 0);
-        }
         return;
       }
       
@@ -83,16 +79,14 @@ export const useBalanceEvents = ({
           localStorage.setItem(`lastKnownBalance_${userId}`, calculatedNewBalance.toString());
         }
         
-        // Update the time ref safely with closure
-        if (refs.lastUpdateTimeRef) {
-          const refCopy = refs.lastUpdateTimeRef;
-          const updateTime = currentTime;
-          
-          // Use setTimeout to defer the update to avoid direct mutation
-          setTimeout(() => {
-            refCopy.current = updateTime;
-          }, 0);
-        }
+        // Instead of trying to modify the ref directly, dispatch an event
+        // to indicate the balance was updated at this time
+        window.dispatchEvent(new CustomEvent('balance:timestamp-update', {
+          detail: {
+            timestamp: currentTime,
+            userId
+          }
+        }));
         
         if (shouldAnimate !== false) {
           setTimeout(() => setters.setIsAnimating(false), 2500);
@@ -118,16 +112,14 @@ export const useBalanceEvents = ({
           localStorage.setItem(`lastKnownBalance_${userId}`, newBalance.toString());
         }
         
-        // Update the time ref safely in this case too
-        if (refs.lastUpdateTimeRef) {
-          const refCopy = refs.lastUpdateTimeRef;
-          const updateTime = currentTime;
-          
-          // Use setTimeout to defer the update
-          setTimeout(() => {
-            refCopy.current = updateTime;
-          }, 0);
-        }
+        // Instead of trying to modify the ref directly, dispatch an event
+        // to indicate the balance was updated at this time
+        window.dispatchEvent(new CustomEvent('balance:timestamp-update', {
+          detail: {
+            timestamp: currentTime,
+            userId
+          }
+        }));
         
         if (shouldAnimate !== false && implicitGain > 0) {
           setTimeout(() => setters.setIsAnimating(false), 2500);
@@ -135,14 +127,31 @@ export const useBalanceEvents = ({
       }
     };
 
+    // Event listeners for balance updates
     window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
     window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
     window.addEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
     
+    // Listen for timestamp updates and update the last update time in local storage
+    const handleTimestampUpdate = (event: CustomEvent) => {
+      if (event.detail?.timestamp) {
+        localStorage.setItem(`lastBalanceUpdate_${userId || 'anonymous'}`, event.detail.timestamp);
+      }
+    };
+    
+    window.addEventListener('balance:timestamp-update', handleTimestampUpdate as EventListener);
+    
     return () => {
+      // Clean up event listeners
       window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
       window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
       window.removeEventListener('dashboard:micro-gain', handleBalanceUpdate as EventListener);
+      window.removeEventListener('balance:timestamp-update', handleTimestampUpdate as EventListener);
+      
+      // Clear any active timeouts
+      Object.values(timeoutStore.current).forEach(timeout => {
+        clearTimeout(timeout);
+      });
     };
   }, [displayedBalance, setters, refs, updateDebounceTime, userId]);
 };
