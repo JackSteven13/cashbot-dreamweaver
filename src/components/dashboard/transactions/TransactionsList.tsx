@@ -18,6 +18,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
   className = ''
 }) => {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const [refreshKey] = useState(0);
   
   // Display only the 5 most recent transactions unless showAll is true
   const displayedTransactions = showAllTransactions 
@@ -41,6 +42,8 @@ const TransactionsList: React.FC<TransactionsListProps> = ({
               <TransactionListItem 
                 key={index} 
                 transaction={transaction} 
+                refreshKey={refreshKey}
+                index={index}
                 subscription={subscription}
               />
             ))}

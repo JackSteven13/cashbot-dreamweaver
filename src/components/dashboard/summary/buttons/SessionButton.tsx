@@ -139,34 +139,14 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     
     // Appeler la fonction de démarrage
     try {
-      const startPromise = handleStartSession();
+      handleStartSession();
       
-      // S'assurer que nous avons une promesse et y attacher un gestionnaire finally
-      if (startPromise && typeof startPromise.then === 'function') {
-        startPromise.then(() => {
-          // En cas de succès, ne rien faire de spécial
-        }).catch(error => {
-          // Gérer les erreurs potentielles
-          console.error("Erreur lors du démarrage de la session:", error);
-          toast({
-            title: "Erreur",
-            description: "Une erreur s'est produite lors du démarrage de la session.",
-            variant: "destructive"
-          });
-        }).finally(() => {
-          // Réactiver le bouton après un délai, qu'il y ait eu succès ou erreur
-          setTimeout(() => {
-            setIsButtonDisabled(false);
-          }, 1500);
-        });
-      } else {
-        // Si handleStartSession ne renvoie pas une promesse
-        setTimeout(() => {
-          setIsButtonDisabled(false);
-        }, 1500);
-      }
+      // Ajouter un délai avant de réactiver le bouton
+      setTimeout(() => {
+        setIsButtonDisabled(false);
+      }, 1500);
     } catch (error) {
-      console.error("Exception lors du démarrage de la session:", error);
+      console.error("Erreur lors du démarrage de la session:", error);
       toast({
         title: "Erreur",
         description: "Une erreur s'est produite lors du démarrage de la session.",

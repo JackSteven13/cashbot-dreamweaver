@@ -1,3 +1,4 @@
+
 import React, { memo } from 'react';
 import BalanceDisplay from './balanceDisplay/BalanceDisplay';
 import SessionButton from './buttons/SessionButton';
@@ -35,7 +36,7 @@ const SummaryPanel: React.FC<SummaryPanelProps> = memo(({
   canStartSession = true,
   referrals = [],
   referralCount = 0,
-  withdrawalThreshold = 300,  // Par défaut 300 maintenant
+  withdrawalThreshold = 300,
   lastSessionTimestamp,
   isBotActive = true
 }) => {
@@ -62,12 +63,11 @@ const SummaryPanel: React.FC<SummaryPanelProps> = memo(({
           
           <div className="px-6 pt-4 pb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <SessionButton 
-              onClick={handleStartSession}
-              isLoading={isStartingSession}
-              disabled={!canStartSession || !isBotActive || isStartingSession}
+              handleStartSession={handleStartSession}
+              isStartingSession={isStartingSession}
+              canStartSession={canStartSession && isBotActive}
               subscription={subscription}
               dailySessionCount={dailySessionCount}
-              canStart={canStartSession && isBotActive}
               lastSessionTimestamp={lastSessionTimestamp}
               isBotActive={isBotActive}
             />

@@ -11,6 +11,9 @@ interface ActionButtonsProps {
   subscription?: string;
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
+  canStartSession?: boolean;
+  canWithdraw?: boolean;
+  useAnimation?: boolean;
 }
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
@@ -20,7 +23,10 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   dailySessionCount = 0,
   subscription = 'freemium',
   lastSessionTimestamp = '',
-  isBotActive = true
+  isBotActive = true,
+  canStartSession = true,
+  canWithdraw = false,
+  useAnimation = false
 }) => {
   // Déterminer si l'utilisateur a atteint sa limite quotidienne
   const getDailyLimit = () => {
@@ -45,7 +51,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   };
   
   const timeSinceLastSession = getTimeSinceLastSession();
-  const canStartNewSession = !hasReachedLimit && timeSinceLastSession > 60; // 1 minute minimum entre les sessions
+  const canStartNewSession = canStartSession && !hasReachedLimit && timeSinceLastSession > 60; // 1 minute minimum entre les sessions
   
   return (
     <div className="flex gap-2 mt-4">
@@ -72,6 +78,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         variant="outline"
         className="bg-green-600 hover:bg-green-700 text-white"
         onClick={onWithdrawal}
+        disabled={!canWithdraw}
       >
         <Coins className="mr-2 h-4 w-4" />
         Retrait

@@ -16,7 +16,7 @@ const DailyBalanceUpdater = () => {
         console.log("Nouveau jour détecté, réinitialisation des gains quotidiens");
         
         // Réinitialiser les gains quotidiens
-        balanceManager.resetDailyGains();
+        balanceManager.setDailyGains(0);
         
         // Déclencher un événement pour informer le reste de l'application
         window.dispatchEvent(new CustomEvent('dailyGains:reset'));
