@@ -35,7 +35,7 @@ export const useRevenueGeneration = ({
   
   // Fonction pour vérifier et mettre à jour l'état des limites quotidiennes
   const checkDailyLimits = useCallback(async () => {
-    if (!userData) return;
+    if (!userData) return null;
     
     try {
       // Récupérer les gains quotidiens depuis la base de données

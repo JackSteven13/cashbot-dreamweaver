@@ -9,10 +9,11 @@ import { forceSignOut } from '@/utils/auth';
 
 interface DashboardHeaderProps {
   username: string;
-  subscription: string;
+  subscription?: string;
+  avatar?: string;
 }
 
-const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
+const DashboardHeader = ({ username, subscription = 'freemium', avatar }: DashboardHeaderProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -52,6 +53,11 @@ const DashboardHeader = ({ username, subscription }: DashboardHeaderProps) => {
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-3 md:px-6">
       <div className="flex items-center gap-2">
+        {avatar && (
+          <div className="h-8 w-8 rounded-full overflow-hidden bg-muted">
+            <img src={avatar} alt={username} className="h-full w-full object-cover" />
+          </div>
+        )}
         <div className="flex flex-col">
           <h2 className="text-lg font-semibold leading-none tracking-tight">
             Bienvenue, <span className="text-primary">{username}</span>

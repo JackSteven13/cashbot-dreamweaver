@@ -1,10 +1,11 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { UserData } from '@/types/userData';
 import { SUBSCRIPTION_LIMITS, getEffectiveSubscription } from '@/utils/subscription';
 import balanceManager from '@/utils/balance/balanceManager';
-import { addTransaction, calculateTodaysGains } from '@/utils/user/transactionUtils';
+import { addTransaction, calculateTodaysGains } from '@/utils/userData/transactionUtils';
 import { respectsDailyLimit } from '@/utils/subscription/sessionManagement';
+import { toast } from '@/components/ui/use-toast';
 
 interface UseAutomaticRevenueProps {
   userData: UserData | null;
@@ -17,104 +18,20 @@ export const useAutomaticRevenue = ({
   updateBalance,
   isNewUser = false
 }: UseAutomaticRevenueProps) => {
-  const [isBotActive, setIsBotActive] = useState(false); // Désactivé par défaut pour plus de sécurité
+  const [isBotActive, setIsBotActive] = useState(false);
   const [dailyLimitProgress, setDailyLimitProgress] = useState(0);
   const [limitReached, setLimitReached] = useState(false);
   const [lastGainAmount, setLastGainAmount] = useState(0);
   const [consecutiveGenerationCount, setConsecutiveGenerationCount] = useState(0);
+  const [lastDbUpdateTime, setLastDbUpdateTime] = useState(0);
+  const [processingUpdate, setProcessingUpdate] = useState(false);
   const userId = userData?.id || userData?.profile?.id || null;
   
-  // Forcer la vérification quotidienne au démarrage
-  useEffect(() => {
-    const lastResetDate = localStorage.getItem('lastDailyReset');
-    const today = new Date().toDateString();
-    
-    if (lastResetDate !== today) {
-      // Réinitialiser les gains quotidiens si c'est un nouveau jour
-      console.log("Réinitialisation des gains quotidiens au démarrage - nouveau jour détecté");
-      if (userId) {
-        balanceManager.setUserId(userId);
-        balanceManager.setDailyGains(0);
-      }
-      localStorage.setItem('lastDailyReset', today);
-      
-      // Réinitialiser aussi les flags de limite
-      if (userId) {
-        localStorage.removeItem(`freemium_daily_limit_reached_${userId}`);
-        localStorage.removeItem(`daily_limit_reached_${userId}`);
-      }
-    }
-    
-    // Vérifier l'état du bot sauvegardé
-    const savedBotState = localStorage.getItem('botActive');
-    if (savedBotState === 'true') {
-      setIsBotActive(true);
-    } else {
-      setIsBotActive(false);
-    }
-    
-    // Double vérification des limites au démarrage
-    if (userData?.id && !isNewUser) {
-      // Assurer que le balanceManager utilise le bon ID
-      balanceManager.setUserId(userData.id);
-      
-      // Vérifier la base de données pour obtenir les gains réels d'aujourd'hui
-      const fetchAndSyncTransactions = async () => {
-        try {
-          const actualDailyGains = await calculateTodaysGains(userData.id);
-          
-          // Vérifier si les gains rapportés sont cohérents
-          const currentGains = balanceManager.getDailyGains();
-          
-          if (Math.abs(actualDailyGains - currentGains) > 0.01) {
-            console.log(`Correction des gains quotidiens: ${currentGains}€ -> ${actualDailyGains}€ (base de données)`);
-            // Synchroniser avec la valeur de la base de données (source de vérité)
-            balanceManager.syncDailyGainsFromTransactions(actualDailyGains);
-          }
-          
-          // Vérifier si la limite est atteinte
-          const effectiveSub = getEffectiveSubscription(userData.subscription);
-          const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-          if (actualDailyGains >= dailyLimit * 0.99) {
-            setLimitReached(true);
-            setIsBotActive(false);
-            localStorage.setItem('botActive', 'false');
-            localStorage.setItem(`daily_limit_reached_${userData.id}`, 'true');
-            
-            // Notification à l'interface
-            window.dispatchEvent(new CustomEvent('daily-limit:reached', {
-              detail: {
-                userId: userData.id,
-                currentGains: actualDailyGains,
-                limit: dailyLimit,
-                source: 'startup_verification'
-              }
-            }));
-          }
-        } catch (err) {
-          console.error("Erreur lors de la vérification des gains quotidiens:", err);
-        }
-      };
-      
-      fetchAndSyncTransactions();
-    }
-  }, [userData, isNewUser, userId]);
-  
-  // Calculate daily limit progress percentage
+  // Calculate daily limit progress percentage with improved verification
   useEffect(() => {
     if (!userData || isNewUser) {
       setDailyLimitProgress(0);
       return;
-    }
-    
-    // Assurer que le balanceManager utilise le bon ID
-    if (userId) {
-      balanceManager.setUserId(userId);
-    }
-    
-    // Stocker l'abonnement actuel dans localStorage pour que le balanceManager y ait accès
-    if (userData.subscription) {
-      localStorage.setItem('currentSubscription', userData.subscription);
     }
     
     const effectiveSub = getEffectiveSubscription(userData.subscription);
@@ -127,92 +44,290 @@ export const useAutomaticRevenue = ({
     const percentage = Math.min(100, (dailyGains / limit) * 100);
     setDailyLimitProgress(percentage);
     
-    // Check if limit is reached (85% of limit for early prevention - plus strict)
-    const isLimitReached = dailyGains >= limit * 0.85;
+    // Check if limit is reached (90% of limit for early prevention)
+    const isLimitReached = dailyGains >= limit * 0.9;
+    
+    // If limit is now reached but wasn't before, show a toast notification
+    if (isLimitReached && !limitReached) {
+      toast({
+        title: "Limite quotidienne atteinte",
+        description: `Vous avez atteint votre limite quotidienne de ${limit.toFixed(2)}€.`,
+        variant: "destructive",
+        duration: 5000
+      });
+      
+      // Broadcast event to update UI components
+      window.dispatchEvent(new CustomEvent('daily-limit:reached', {
+        detail: { 
+          subscription: effectiveSub,
+          limit: limit,
+          currentGains: dailyGains
+        }
+      }));
+    }
+    
     setLimitReached(isLimitReached);
     
-    // If percentage reaches 85%, automatically deactivate bot
+    // Automatically deactivate bot when limit is reached
     if (isLimitReached && isBotActive) {
       setIsBotActive(false);
       console.log("Bot automatically deactivated: daily limit reached");
       
-      // Enregistrer l'état dans le localStorage
+      // Save state in localStorage
       localStorage.setItem('botActive', 'false');
     }
-    
-    // Vérification supplémentaire via le gestionnaire de limite
-    if (userId) {
-      const limitReachedKey = `daily_limit_reached_${userId}`;
-      const limitReachedInStorage = localStorage.getItem(limitReachedKey) === 'true';
-      
-      if (limitReachedInStorage && isBotActive) {
-        setIsBotActive(false);
-        localStorage.setItem('botActive', 'false');
-        console.log("Bot deactivated: limit flag found in storage");
-      }
-    }
-  }, [userData, effectiveSub, isBotActive, isNewUser, userId]);
+  }, [userData, isBotActive, isNewUser, limitReached]);
   
-  // Mettre en place un système de vérification périodique
+  // Listen for external events that modify bot state
   useEffect(() => {
-    if (!userData || isNewUser || !userId) return;
-    
-    const checkLimits = async () => {
-      try {
-        // Récupérer les gains quotidiens depuis la base de données
-        const actualGains = await calculateTodaysGains(userId);
-        
-        // Mettre à jour le balanceManager
-        if (Math.abs(actualGains - balanceManager.getDailyGains()) > 0.01) {
-          balanceManager.syncDailyGainsFromTransactions(actualGains);
-        }
-        
-        // Vérifier si la limite est atteinte
-        const effectiveSub = getEffectiveSubscription(userData.subscription);
-        const limit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
-        
-        // Si on approche de la limite (95%), désactiver le bot
-        if (actualGains >= limit * 0.95 && isBotActive) {
-          setIsBotActive(false);
-          localStorage.setItem('botActive', 'false');
+    const handleBotStatusChange = (event: CustomEvent) => {
+      const isActive = event.detail?.active;
+      if (typeof isActive === 'boolean') {
+        // Enforce stricter limit checking before activating bot
+        if (isActive && limitReached) {
+          console.log("Bot cannot be activated: limit already reached");
           
-          // Déclencher l'événement
-          window.dispatchEvent(new CustomEvent('daily-limit:approaching', {
-            detail: {
-              userId,
-              currentGains: actualGains,
-              limit,
-              percentage: actualGains / limit
-            }
-          }));
+          // Notify user that bot can't be activated due to limit
+          toast({
+            title: "Bot inactif",
+            description: "Le robot ne peut pas être activé: limite quotidienne atteinte.",
+            variant: "destructive"
+          });
+          return;
         }
         
-        // Si la limite est atteinte, marquer
-        if (actualGains >= limit * 0.999) {
-          setLimitReached(true);
-          localStorage.setItem(`daily_limit_reached_${userId}`, 'true');
-          
-          // Déclencher l'événement
-          window.dispatchEvent(new CustomEvent('daily-limit:reached', {
-            detail: {
-              userId,
-              currentGains: actualGains,
-              limit,
-              source: 'periodic_check'
-            }
-          }));
-        }
-      } catch (err) {
-        console.error("Erreur lors de la vérification périodique des limites:", err);
+        console.log(`Bot status update in useAutomaticRevenue: ${isActive ? 'active' : 'inactive'}`);
+        setIsBotActive(isActive);
+        
+        // Save state in localStorage
+        localStorage.setItem('botActive', isActive.toString());
       }
     };
     
-    // Vérifier toutes les 30 secondes
-    const intervalId = setInterval(checkLimits, 30000);
+    window.addEventListener('bot:status-change' as any, handleBotStatusChange);
+    window.addEventListener('bot:external-status-change' as any, handleBotStatusChange);
     
-    // Nettoyage
-    return () => clearInterval(intervalId);
-  }, [userData, isNewUser, isBotActive, userId]);
+    return () => {
+      window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
+      window.removeEventListener('bot:external-status-change' as any, handleBotStatusChange);
+    };
+  }, [limitReached]);
+  
+  // Improved automatic revenue generation with stricter limit checking
+  const generateAutomaticRevenue = useCallback(async (forceUpdate = false) => {
+    if (!userData || isNewUser || !isBotActive || limitReached || processingUpdate) {
+      if (limitReached) {
+        console.log("Skipping automatic revenue generation: daily limit reached");
+      }
+      return false;
+    }
+    
+    // Activate processing lock to prevent concurrent updates
+    setProcessingUpdate(true);
+    
+    try {
+      // Get total already earned today from centralized manager
+      let todaysGains = balanceManager.getDailyGains();
+      
+      // Additional verification with database transactions
+      if (!forceUpdate) {
+        // Safe access to userData.profile?.id with fallback
+        const userId = userData.profile?.id || userData.id;
+        if (!userId) {
+          console.error("Cannot generate revenue: missing user ID");
+          return false;
+        }
+        
+        const actualGains = await calculateTodaysGains(userId);
+        
+        // If actual gains are higher than our local tracking, update our local tracking
+        if (actualGains > todaysGains) {
+          console.log(`Updating daily gains: ${todaysGains}€ -> ${actualGains}€ (based on DB transactions)`);
+          todaysGains = actualGains;
+          balanceManager.syncDailyGainsFromTransactions(actualGains);
+        }
+      }
+      
+      // Determine daily limit based on subscription
+      const effectiveSub = getEffectiveSubscription(userData.subscription);
+      const dailyLimit = SUBSCRIPTION_LIMITS[effectiveSub as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      
+      // STRICTER CHECK: Compare with 85% of the limit to stop earlier
+      if (todaysGains >= dailyLimit * 0.85) {
+        console.log(`Daily limit almost reached: ${todaysGains.toFixed(2)}€/${dailyLimit}€`);
+        setLimitReached(true);
+        setIsBotActive(false);
+        localStorage.setItem('botActive', 'false');
+        
+        // Notify all components about limit being reached
+        window.dispatchEvent(new CustomEvent('daily-limit:reached', {
+          detail: {
+            subscription: effectiveSub,
+            limit: dailyLimit,
+            currentGains: todaysGains
+          }
+        }));
+        
+        return false;
+      }
+      
+      // Generate smaller, more consistent gains
+      const minGain = 0.001;
+      const maxGain = effectiveSub === 'freemium' ? 0.003 : 0.005; // Reduced max gain
+      const potentialGain = parseFloat((Math.random() * (maxGain - minGain) + minGain).toFixed(3));
+      
+      // EVEN MORE CAUTIOUS: Ensure gain won't exceed daily limit with larger margin
+      const remainingLimit = (dailyLimit * 0.85) - todaysGains;
+      const safeGain = Math.min(potentialGain, remainingLimit * 0.15); // Even more conservative
+      
+      // Use the smallest gain possible to avoid limit issues
+      const finalGain = parseFloat(safeGain.toFixed(3));
+      
+      if (finalGain <= 0.001) {
+        console.log("Gain too small, generation aborted");
+        return false;
+      }
+      
+      // Additional strict check using the respectsDailyLimit utility
+      const { allowed, adjustedGain } = respectsDailyLimit(
+        effectiveSub,
+        todaysGains,
+        finalGain
+      );
+      
+      // If gain is blocked, stop the bot
+      if (!allowed) {
+        setLimitReached(true);
+        setIsBotActive(false);
+        localStorage.setItem('botActive', 'false');
+        
+        // Notify all components
+        window.dispatchEvent(new CustomEvent('daily-limit:reached', {
+          detail: {
+            subscription: effectiveSub,
+            limit: dailyLimit,
+            currentGains: todaysGains
+          }
+        }));
+        
+        return false;
+      }
+      
+      // Create report for transaction
+      const dayCount = Math.floor((Date.now() - new Date('2023-01-01').getTime()) / (1000 * 3600 * 24));
+      const report = `Analyse automatique de contenu (jour ${dayCount})`;
+      
+      // Safe access to userData.profile?.id with fallback
+      const userId = userData.profile?.id || userData.id;
+      if (!userId) {
+        console.error("Cannot record transaction: missing user ID");
+        return false;
+      }
+      
+      const now = Date.now();
+      // Limit database updates to prevent spam
+      const shouldUpdateDb = forceUpdate || (now - lastDbUpdateTime > 30000);
+      
+      if (shouldUpdateDb) {
+        // Capture balance before update for comparison
+        const balanceBefore = balanceManager.getCurrentBalance();
+        
+        // CRITICAL CHANGE: First verify if adding this gain would exceed daily limit
+        const newDailyGainsTotal = todaysGains + finalGain;
+        if (newDailyGainsTotal > dailyLimit) {
+          console.log(`Prevented exceeding daily limit: ${todaysGains.toFixed(2)}€ + ${finalGain.toFixed(3)}€ > ${dailyLimit}€`);
+          setLimitReached(true);
+          return false;
+        }
+        
+        // Record transaction in database FIRST
+        const transaction = await addTransaction(userId, finalGain, report);
+        
+        if (!transaction.success) {
+          console.error("Failed to record transaction");
+          return false;
+        } else {
+          console.log("Automatic transaction recorded successfully");
+        }
+        
+        // Update database timestamp
+        setLastDbUpdateTime(now);
+        
+        // Update balance with generated gain
+        await updateBalance(finalGain, report, forceUpdate);
+        
+        // Verify that balance increased correctly
+        const balanceAfter = balanceManager.getCurrentBalance();
+        if (balanceAfter < balanceBefore) {
+          console.error(`Anomaly detected: Balance decreased from ${balanceBefore}€ to ${balanceAfter}€ after gain`);
+          
+          // Restore previous balance in centralized manager
+          balanceManager.forceBalanceSync(balanceBefore + finalGain);
+        }
+      } else {
+        // If not updating the database, at least update local manager
+        balanceManager.updateBalance(finalGain);
+        balanceManager.addDailyGain(finalGain);
+      }
+      
+      // Get current balance from manager
+      const currentBalance = balanceManager.getCurrentBalance();
+      
+      console.log(`Automatic revenue generated: ${finalGain}€, current balance: ${currentBalance}€`);
+      
+      // Dispatch events to update UI
+      
+      // First, trigger automatic revenue event to create transaction record
+      window.dispatchEvent(new CustomEvent('automatic:revenue', { 
+        detail: { 
+          amount: finalGain,
+          timestamp: now
+        } 
+      }));
+      
+      // Update daily limit progress 
+      const newDailyGains = todaysGains + finalGain;
+      const newPercentage = Math.min(100, (newDailyGains / dailyLimit) * 100);
+      setDailyLimitProgress(newPercentage);
+      
+      // Trigger balance update animation
+      window.dispatchEvent(new CustomEvent('balance:update', { 
+        detail: { 
+          amount: finalGain, 
+          currentBalance: currentBalance,
+          animate: true,
+          timestamp: now,
+          dailyGains: newDailyGains,
+          dailyLimit: dailyLimit,
+          percentage: newPercentage
+        } 
+      }));
+      
+      // Force UI update to ensure balance is displayed correctly
+      window.dispatchEvent(new CustomEvent('balance:force-update', { 
+        detail: { 
+          newBalance: currentBalance,
+          gain: finalGain,
+          animate: true,
+          timestamp: now,
+          dailyGains: newDailyGains
+        } 
+      }));
+      
+      // Also notify that there's a new transaction to display
+      window.dispatchEvent(new CustomEvent('transactions:refresh', {
+        detail: { timestamp: now }
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error("Error generating automatic revenue:", error);
+      return false;
+    } finally {
+      // Disable processing lock once completed
+      setProcessingUpdate(false);
+    }
+  }, [userData, isNewUser, isBotActive, limitReached, updateBalance, lastDbUpdateTime, processingUpdate]);
   
   return {
     isBotActive,
@@ -222,7 +337,8 @@ export const useAutomaticRevenue = ({
     lastGainAmount,
     setLastGainAmount,
     consecutiveGenerationCount,
-    setConsecutiveGenerationCount
+    setConsecutiveGenerationCount,
+    generateAutomaticRevenue
   };
 };
 

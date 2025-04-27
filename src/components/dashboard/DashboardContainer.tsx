@@ -49,6 +49,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
       <DashboardHeader 
         username={userData?.username || userData?.profile?.username || 'Utilisateur'}
         avatar={userData?.profile?.avatar_url}
+        subscription={subscription}
       />
       
       <main className="flex-grow p-4 md:p-6">
