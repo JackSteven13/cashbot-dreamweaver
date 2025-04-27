@@ -62,11 +62,14 @@ const TransactionsList = memo(({
       }, 300);
     };
     
+    // Properly type the event handlers to avoid infinite re-renders
+    const typedHandler = handleRealtimeUpdate as EventListener;
+    
     // Écouter plus d'événements pour s'assurer que les transactions sont à jour
-    window.addEventListener('transactions:refresh', handleRealtimeUpdate as EventListener);
-    window.addEventListener('balance:update', handleRealtimeUpdate as EventListener);
-    window.addEventListener('automatic:revenue', handleRealtimeUpdate as EventListener);
-    window.addEventListener('balance:daily-growth', handleRealtimeUpdate as EventListener);
+    window.addEventListener('transactions:refresh', typedHandler);
+    window.addEventListener('balance:update', typedHandler);
+    window.addEventListener('automatic:revenue', typedHandler);
+    window.addEventListener('balance:daily-growth', typedHandler);
     
     // Rafraîchir automatiquement toutes les 60 secondes
     const autoRefresh = setInterval(() => {
@@ -84,10 +87,10 @@ const TransactionsList = memo(({
     }, 60000); // 60 seconds
     
     return () => {
-      window.removeEventListener('transactions:refresh', handleRealtimeUpdate as EventListener);
-      window.removeEventListener('balance:update', handleRealtimeUpdate as EventListener);
-      window.removeEventListener('automatic:revenue', handleRealtimeUpdate as EventListener);
-      window.removeEventListener('balance:daily-growth', handleRealtimeUpdate as EventListener);
+      window.removeEventListener('transactions:refresh', typedHandler);
+      window.removeEventListener('balance:update', typedHandler);
+      window.removeEventListener('automatic:revenue', typedHandler);
+      window.removeEventListener('balance:daily-growth', typedHandler);
       clearInterval(autoRefresh);
     };
   }, [handleManualRefresh, user?.id]);

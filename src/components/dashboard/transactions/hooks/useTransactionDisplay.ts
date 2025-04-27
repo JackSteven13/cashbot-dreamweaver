@@ -2,71 +2,32 @@
 import { useMemo } from 'react';
 import { Transaction } from '@/types/userData';
 
-/**
- * Hook pour gérer l'affichage des transactions
- */
 export const useTransactionDisplay = (
   transactions: Transaction[],
   showAllTransactions: boolean
 ) => {
-  // Memoize les résultats pour éviter les re-rendus inutiles
-  const { validTransactions, displayedTransactions, hiddenTransactionsCount, todayTransactions } = useMemo(() => {
-    // Ne traiter que les transactions valides
+  // Memoize results to avoid unnecessary re-renders
+  const results = useMemo(() => {
+    // Filter valid transactions
     const validTx = Array.isArray(transactions) ? 
-      transactions.filter(tx => tx && (
-        // Vérifier que tx.gain ou tx.amount est un nombre valide
-        (typeof tx.gain === 'number' || typeof tx.amount === 'number') && 
-        // Vérifier que tx.date existe
-        tx.date
-      )) : [];
+      transactions.filter(tx => tx && (typeof tx.gain === 'number' || typeof tx.amount === 'number') && tx.date) : [];
     
-    // Journaliser pour le débogage
-    console.log(`Transactions valides: ${validTx.length}/${transactions?.length || 0}`);
+    // Determine transactions to display
+    const displayedTx = showAllTransactions 
+      ? validTx 
+      : validTx.slice(0, 3);
     
-    // Déterminer les transactions à afficher
-    const displayedTx = showAllTransactions ? validTx : validTx.slice(0, 5);
-    
-    // Calculer combien de transactions sont masquées
-    const hiddenCount = validTx.length > 5 && !showAllTransactions ? 
-      validTx.length - 5 : 0;
-    
-    // Identifier les transactions d'aujourd'hui
-    const today = new Date();
-    const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    
-    const todayTx = validTx.filter(tx => {
-      try {
-        if (!tx.date) return false;
-        
-        // Convertir en date et comparer seulement l'année, le mois et le jour
-        const txDate = new Date(tx.date);
-        return (
-          txDate.getFullYear() === today.getFullYear() &&
-          txDate.getMonth() === today.getMonth() &&
-          txDate.getDate() === today.getDate()
-        );
-      } catch (e) {
-        console.error("Erreur lors de la comparaison de date:", e, tx.date);
-        return false;
-      }
-    });
-    
-    console.log(`Transactions d'aujourd'hui: ${todayTx.length}`, todayTx);
+    // Calculate how many transactions are hidden
+    const hiddenCount = validTx.length > 3 && !showAllTransactions ? validTx.length - 3 : 0;
     
     return {
       validTransactions: validTx,
       displayedTransactions: displayedTx,
-      hiddenTransactionsCount: hiddenCount,
-      todayTransactions: todayTx
+      hiddenTransactionsCount: hiddenCount
     };
   }, [transactions, showAllTransactions]);
   
-  return {
-    validTransactions,
-    displayedTransactions,
-    hiddenTransactionsCount,
-    todayTransactions
-  };
+  return results;
 };
 
 export default useTransactionDisplay;
