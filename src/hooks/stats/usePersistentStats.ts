@@ -192,11 +192,43 @@ export const usePersistentStats = ({
     };
   }, []);  // Dependency array intentionally empty - using refs to prevent loops
 
+  // Add the incrementStats function to manually increment stats
+  const incrementStats = (adsIncrement = 1, revenueIncrement?: number) => {
+    const actualRevenueIncrement = revenueIncrement !== undefined ? 
+      revenueIncrement : 
+      adsIncrement * correlationRatio;
+
+    setAdsCount(prev => {
+      const newValue = prev + adsIncrement;
+      statsRef.current.adsCount = newValue;
+      return newValue;
+    });
+    
+    setRevenueCount(prev => {
+      const newValue = prev + actualRevenueIncrement;
+      statsRef.current.revenueCount = newValue;
+      return newValue;
+    });
+    
+    // If a userId is provided, save the updated stats
+    if (userId) {
+      const newAdsCount = statsRef.current.adsCount + adsIncrement;
+      const newRevenueCount = statsRef.current.revenueCount + actualRevenueIncrement;
+      saveStats(userId, newAdsCount, newRevenueCount);
+    }
+    
+    return {
+      newAdsCount: statsRef.current.adsCount + adsIncrement,
+      newRevenueCount: statsRef.current.revenueCount + actualRevenueIncrement
+    };
+  };
+
   return {
     adsCount,
     revenueCount,
     setAdsCount,
-    setRevenueCount
+    setRevenueCount,
+    incrementStats
   };
 };
 

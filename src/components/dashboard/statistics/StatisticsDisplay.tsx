@@ -47,7 +47,7 @@ const StatisticsDisplay: React.FC = () => {
   const CORRELATION_RATIO = 0.76203;
 
   // S'assurer que nous utilisons l'ID de l'utilisateur pour obtenir des statistiques spécifiques
-  const { adsCount: baseAdsCount, revenueCount: baseRevenueCount, incrementStats } = usePersistentStats({
+  const { adsCount: baseAdsCount, revenueCount: baseRevenueCount } = usePersistentStats({
     autoIncrement: false,
     userId: userId || 'anonymous', // Clé pour isoler les données par utilisateur
     forceGrowth: true,
