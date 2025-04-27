@@ -396,6 +396,49 @@ class BalanceManager {
     }
   }
   
+  // Sync daily gains from transaction history
+  syncDailyGainsFromTransactions(amount: number): void {
+    // Validate userId to ensure user-specific storage
+    if (!this._userId && amount > 0) {
+      console.error("Cannot sync daily gains: no user ID set in balance manager");
+      return;
+    }
+
+    // Only update if the amount is valid and different from current value
+    if (!isNaN(amount) && amount >= 0 && this._dailyGains !== amount) {
+      console.log(`Syncing daily gains from transactions: ${this._dailyGains}€ -> ${amount}€`);
+      this._dailyGains = amount;
+      
+      // Store in localStorage using user-specific keys if we have a userId
+      if (this._userId) {
+        const keys = getStorageKeys(this._userId);
+        localStorage.setItem(keys.dailyGains, amount.toString());
+        localStorage.setItem(`lastGainsDate_${this._userId}`, new Date().toDateString());
+        
+        // RENFORCÉ: Vérifier si la limite est atteinte après la mise à jour
+        const currentSubscription = localStorage.getItem('currentSubscription') || 'freemium';
+        const dailyLimit = SUBSCRIPTION_LIMITS[currentSubscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+        
+        // Vérification immédiate si la limite est déjà dépassée
+        if (amount >= dailyLimit * 0.999) { // 99.9% de la limite
+          console.warn(`⚠️ LIMITE DÉJÀ ATTEINTE: Daily gains synced to ${amount}€ >= limit ${dailyLimit}€`);
+          
+          localStorage.setItem(`daily_limit_reached_${this._userId}`, 'true');
+          
+          // Diffuser l'événement de limite atteinte
+          window.dispatchEvent(new CustomEvent('daily-limit:reached', {
+            detail: { 
+              userId: this._userId,
+              currentGains: amount,
+              limit: dailyLimit,
+              source: 'syncDailyGainsFromTransactions'
+            }
+          }));
+        }
+      }
+    }
+  }
+  
   // Get daily gains
   getDailyGains(): number {
     // RENFORCÉ: Vérifier si nous devons réinitialiser les gains (nouveau jour)
