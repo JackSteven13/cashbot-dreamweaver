@@ -1,129 +1,73 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React from 'react';
+import { Transaction } from '@/types/userData';
+import TransactionsList from './TransactionsList';
+import TransactionFooter from './TransactionFooter';
+import { useTransactions } from './hooks/useTransactions';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, RefreshCw } from 'lucide-react';
-import TransactionEmptyState from './TransactionEmptyState';
-import TransactionListItem from './TransactionListItem';
-import { useUserData } from '@/hooks/useUserData';
+import { RefreshCw } from 'lucide-react';
 
 interface TransactionsPanelProps {
-  transactions: any[];
+  transactions: Transaction[];
   isLoading?: boolean;
   isNewUser?: boolean;
-  title?: string;
+  subscription?: string;
 }
 
 const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
-  transactions = [],
+  transactions,
   isLoading = false,
   isNewUser = false,
-  title = "Transactions récentes"
+  subscription = 'freemium'
 }) => {
-  const navigate = useNavigate();
-  const [refreshKey, setRefreshKey] = useState(() => Date.now());
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const { refreshUserData } = useUserData();
+  const {
+    showAllTransactions,
+    setShowAllTransactions,
+    displayedTransactions,
+    hiddenTransactionsCount,
+    handleManualRefresh,
+    refreshKey
+  } = useTransactions(transactions);
 
-  // Rafraîchir périodiquement les transactions
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRefreshKey(Date.now());
-    }, 30000); // Rafraîchir toutes les 30 secondes
-    
-    return () => clearInterval(interval);
-  }, []);
-  
-  // Écouter les événements de rafraîchissement
-  useEffect(() => {
-    const handleRefresh = () => {
-      console.log("Transaction refresh event received in TransactionsPanel");
-      setRefreshKey(Date.now());
-    };
-    
-    window.addEventListener('transactions:refresh', handleRefresh);
-    window.addEventListener('balance:update', handleRefresh);
-    
-    return () => {
-      window.removeEventListener('transactions:refresh', handleRefresh);
-      window.removeEventListener('balance:update', handleRefresh);
-    };
-  }, []);
-
-  const handleViewAllClick = () => {
-    navigate('/dashboard/transactions');
-  };
-  
-  const handleManualRefresh = async () => {
-    if (isRefreshing) return;
-    
-    setIsRefreshing(true);
-    try {
-      await refreshUserData();
-      setRefreshKey(Date.now());
-      console.log("Transactions manually refreshed");
-    } catch (error) {
-      console.error("Error refreshing transactions:", error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  if (isLoading) {
+  if (isNewUser) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="h-16 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-md"></div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">
+          Aucune transaction à afficher. Commencez à générer des gains pour les voir apparaître ici.
+        </p>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>{title}</CardTitle>
-        <div className="flex gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleManualRefresh} 
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </Button>
-          {transactions.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={handleViewAllClick} className="gap-1">
-              Tout voir <ArrowRight className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        {transactions.length > 0 ? (
-          <div className="space-y-2">
-            {transactions.slice(0, 5).map((transaction, index) => (
-              <TransactionListItem 
-                key={`${transaction.id || ''}-${index}-${refreshKey}`}
-                transaction={transaction}
-                refreshKey={refreshKey}
-                index={index}
-              />
-            ))}
-          </div>
-        ) : (
-          <TransactionEmptyState isNewUser={isNewUser} />
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-medium">Transactions récentes</h3>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleManualRefresh}
+          disabled={isLoading}
+          className="h-8 px-2"
+        >
+          <RefreshCw className="h-4 w-4 mr-1" />
+          <span className="text-xs">Actualiser</span>
+        </Button>
+      </div>
+      
+      <TransactionsList 
+        transactions={displayedTransactions} 
+        isLoading={isLoading}
+        subscription={subscription}
+        refreshKey={refreshKey}
+      />
+      
+      <TransactionFooter 
+        showAllTransactions={showAllTransactions}
+        hiddenTransactionsCount={hiddenTransactionsCount}
+        setShowAllTransactions={setShowAllTransactions}
+      />
+    </div>
   );
 };
 

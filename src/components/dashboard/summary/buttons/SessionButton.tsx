@@ -110,7 +110,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     return canStartSession;
   }, [user, isBotActive, hasReachedLimit, canStartSession, checkLastSessionTime]);
 
-  // Add delay between clicks and handle click event
+  // Handle click event
   const handleClick = useCallback(() => {
     if (isStartingSession || isButtonDisabled || !canStart()) {
       if (hasReachedLimit) {

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import BalanceDisplay from './userBalanceCard/components/BalanceDisplay';
@@ -197,6 +198,9 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
           isBotActive={isBotActive}
           useAnimation={true}
           dailySessionCount={0}
+          isButtonDisabled={false}
+          currentBalance={balance || 0}
+          dailyLimit={dailyLimit}
         />
       </CardContent>
     </Card>

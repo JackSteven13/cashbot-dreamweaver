@@ -1,63 +1,49 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React from 'react';
 import { Transaction } from '@/types/userData';
-import { TransactionListItem, TransactionEmptyState, TransactionFooter } from './';
+import TransactionListItem from './TransactionListItem';
 
 interface TransactionsListProps {
   transactions: Transaction[];
-  isNewUser?: boolean;
+  isLoading?: boolean;
   subscription?: string;
-  className?: string;
+  refreshKey?: number;
 }
 
-const TransactionsList: React.FC<TransactionsListProps> = ({ 
-  transactions = [], 
-  isNewUser = false,
+const TransactionsList: React.FC<TransactionsListProps> = ({
+  transactions,
+  isLoading = false,
   subscription = 'freemium',
-  className = ''
+  refreshKey = 0
 }) => {
-  const [showAllTransactions, setShowAllTransactions] = useState(false);
-  const [refreshKey] = useState(0);
-  
-  // Display only the 5 most recent transactions unless showAll is true
-  const displayedTransactions = showAllTransactions 
-    ? transactions 
-    : transactions.slice(0, 5);
-  
-  const hiddenTransactionsCount = transactions.length - displayedTransactions.length;
+  if (isLoading) {
+    return (
+      <div className="py-8 text-center">
+        <p className="text-muted-foreground">Chargement des transactions...</p>
+      </div>
+    );
+  }
+
+  if (!transactions || transactions.length === 0) {
+    return (
+      <div className="py-8 text-center">
+        <p className="text-muted-foreground">Aucune transaction à afficher.</p>
+      </div>
+    );
+  }
 
   return (
-    <Card className={`overflow-hidden ${className}`}>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Historique des transactions</CardTitle>
-        <CardDescription>
-          Vos gains récents et revenus générés par l'automatisation
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="px-6">
-        {transactions.length > 0 ? (
-          <div className="space-y-4">
-            {displayedTransactions.map((transaction, index) => (
-              <TransactionListItem 
-                key={index} 
-                transaction={transaction} 
-                refreshKey={refreshKey}
-                index={index}
-                subscription={subscription}
-              />
-            ))}
-            <TransactionFooter 
-              showAllTransactions={showAllTransactions} 
-              setShowAllTransactions={setShowAllTransactions}
-              hiddenTransactionsCount={hiddenTransactionsCount} 
-            />
-          </div>
-        ) : (
-          <TransactionEmptyState isNewUser={isNewUser} />
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-2">
+      {transactions.map((transaction, index) => (
+        <TransactionListItem 
+          key={transaction.id || index}
+          transaction={transaction}
+          subscription={subscription}
+          refreshKey={refreshKey}
+          index={index}
+        />
+      ))}
+    </div>
   );
 };
 
