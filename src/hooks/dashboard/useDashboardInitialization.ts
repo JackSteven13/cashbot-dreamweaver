@@ -1,17 +1,19 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useUserSession } from '@/hooks/useUserSession';
 import { toast } from '@/components/ui/use-toast';
 import balanceManager from '@/utils/balance/balanceManager';
 
 export const useDashboardInitialization = () => {
-  const { userData, isLoading } = useUserSession();
+  const { userData, session } = useUserSession();
+  const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const initAttemptsRef = useRef(0);
   
   // Initialize dashboard data
   useEffect(() => {
-    if (isLoading || isInitialized || !userData) return;
+    if (isInitialized || !userData) return;
     
     const initDashboard = async () => {
       try {
@@ -48,6 +50,7 @@ export const useDashboardInitialization = () => {
         
         // Mark initialization as complete
         setIsInitialized(true);
+        setIsLoading(false);
         
         // Notify user when ready
         setTimeout(() => {
@@ -59,11 +62,12 @@ export const useDashboardInitialization = () => {
         }, 1000);
       } catch (error) {
         console.error("Failed to initialize dashboard:", error);
+        setIsLoading(false);
       }
     };
     
     initDashboard();
-  }, [isLoading, userData, isInitialized]);
+  }, [userData, isInitialized]);
   
   return {
     isInitialized,
