@@ -1,5 +1,5 @@
 
-import React, { memo, useCallback, useState, useEffect } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { Transaction } from '@/types/userData';
 import TransactionListItem from './TransactionListItem';
 import TransactionEmptyState from './TransactionEmptyState';

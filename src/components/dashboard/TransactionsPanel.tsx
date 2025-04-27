@@ -1,9 +1,9 @@
 
 import React, { useState, useCallback } from 'react';
 import { Transaction } from '@/types/userData';
-import TransactionsList from './TransactionsList';
-import TransactionFooter from './TransactionFooter';
-import { useTransactions } from './hooks/useTransactions';
+import TransactionsList from './transactions/TransactionsList';
+import TransactionFooter from './transactions/TransactionFooter';
+import { useTransactions } from './transactions/hooks';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Loader2 } from 'lucide-react';
 
@@ -74,10 +74,10 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
       </div>
       
       <TransactionsList 
-        transactions={displayedTransactions} 
-        isLoading={isLoading || isRefreshing}
+        transactions={displayedTransactions}
         subscription={subscription}
         refreshKey={refreshKey}
+        isNewUser={isNewUser}
       />
       
       <TransactionFooter 

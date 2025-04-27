@@ -1,13 +1,13 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 interface TransactionListActionsProps {
   showAllTransactions: boolean;
-  setShowAllTransactions: (show: boolean) => void;
+  setShowAllTransactions: React.Dispatch<React.SetStateAction<boolean>>;
   validTransactionsCount: number;
-  onManualRefresh: () => Promise<void>;
+  onManualRefresh?: () => Promise<void>;
 }
 
 const TransactionListActions: React.FC<TransactionListActionsProps> = ({
@@ -16,38 +16,32 @@ const TransactionListActions: React.FC<TransactionListActionsProps> = ({
   validTransactionsCount,
   onManualRefresh
 }) => {
-  if (validTransactionsCount === 0) return null;
-
   return (
-    <div className="flex justify-between items-center mb-4">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="text-sm font-normal flex items-center gap-1"
-        onClick={() => setShowAllTransactions(!showAllTransactions)}
-      >
-        {showAllTransactions ? (
-          <>
-            <ChevronUp className="w-4 h-4" />
-            Voir moins
-          </>
-        ) : (
-          <>
-            <ChevronDown className="w-4 h-4" />
-            Voir tout
-          </>
+    <div className="flex justify-between items-center mb-3">
+      <div>
+        {validTransactionsCount > 5 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAllTransactions(!showAllTransactions)}
+            className="text-xs h-7"
+          >
+            {showAllTransactions ? "Afficher moins" : "Afficher tout"}
+          </Button>
         )}
-      </Button>
+      </div>
       
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onManualRefresh}
-        className="text-sm font-normal"
-      >
-        <RefreshCw className="w-4 h-4 mr-1" />
-        Actualiser
-      </Button>
+      {onManualRefresh && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onManualRefresh}
+          className="text-xs h-7"
+        >
+          <RefreshCw className="h-3 w-3 mr-1" />
+          Actualiser
+        </Button>
+      )}
     </div>
   );
 };
