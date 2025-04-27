@@ -13,6 +13,32 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
   const lastDbSync = useRef<number>(Date.now() - SYNC_INTERVAL);
   const syncCounter = useRef<number>(0);
 
+  const saveBalanceToStorage = (balance: number, userId?: string | null) => {
+    if (!userId) return;
+    
+    try {
+      // Format balance to 2 decimal places and convert to string
+      const balanceString = balance.toFixed(2);
+      const storageKey = (key: string) => `${key}_${userId}`;
+      
+      // Save to localStorage with proper user-specific keys
+      localStorage.setItem(storageKey('currentBalance'), balanceString);
+      localStorage.setItem(storageKey('lastKnownBalance'), balanceString);
+      localStorage.setItem(storageKey('highest_balance'), balanceString);
+      localStorage.setItem(storageKey('lastUpdatedBalance'), balanceString);
+      
+      // Save to sessionStorage
+      sessionStorage.setItem(storageKey('currentBalance'), balanceString);
+    } catch (error) {
+      console.error('Error saving balance to storage:', error);
+      toast({
+        title: "Erreur de synchronisation",
+        description: "Impossible de sauvegarder le solde local.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const syncWithDatabase = async () => {
     if (!userId) return;
     
@@ -36,29 +62,6 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       const dbBalance = parseFloat(data.balance);
       const localBalance = balanceManager.getCurrentBalance();
 
-      const saveBalanceToStorage = (balance: number) => {
-        // Convert number to string explicitly before storing
-        const balanceString = balance.toFixed(2).toString();
-        
-        const storageKey = (key: string) => userId ? `${key}_${userId}` : key;
-        
-        try {
-          localStorage.setItem(storageKey('currentBalance'), balanceString);
-          localStorage.setItem(storageKey('lastKnownBalance'), balanceString);
-          localStorage.setItem(storageKey('highest_balance'), balanceString);
-          localStorage.setItem(storageKey('lastUpdatedBalance'), balanceString);
-          
-          sessionStorage.setItem(storageKey('currentBalance'), balanceString);
-        } catch (error) {
-          console.error("Erreur lors de l'enregistrement du solde:", error);
-          toast({
-            title: "Erreur de synchronisation",
-            description: "Impossible de sauvegarder le solde local.",
-            variant: "destructive"
-          });
-        }
-      };
-
       if (localBalance > dbBalance) {
         console.log(`Sync: Local balance (${localBalance}) is higher than DB balance (${dbBalance}). Updating DB.`);
         await supabase
@@ -66,11 +69,11 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
           .update({ balance: localBalance })
           .eq('id', userId);
           
-        saveBalanceToStorage(localBalance);
+        saveBalanceToStorage(localBalance, userId);
       } else if (dbBalance > localBalance && (dbBalance - localBalance) > TOLERANCE) {
         console.log(`Sync: DB balance (${dbBalance}) is higher than local balance (${localBalance}). Updating local.`);
         balanceManager.forceBalanceSync(dbBalance, userId);
-        saveBalanceToStorage(dbBalance);
+        saveBalanceToStorage(dbBalance, userId);
         
         window.dispatchEvent(new CustomEvent('balance:force-update', {
           detail: {
@@ -101,14 +104,16 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
       syncCounter.current = 2;
     };
     
-    // Listen to both standard updates and automatic bot updates
+    // Listen to balance updates, automatic revenue, and force updates
     window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
     window.addEventListener('automatic:revenue', handleBalanceUpdate as EventListener);
+    window.addEventListener('balance:force-update', handleBalanceUpdate as EventListener);
     
     return () => {
       clearInterval(checkInterval);
       window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
       window.removeEventListener('automatic:revenue', handleBalanceUpdate as EventListener);
+      window.removeEventListener('balance:force-update', handleBalanceUpdate as EventListener);
     };
   }, [userId]);
 
