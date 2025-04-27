@@ -5,8 +5,8 @@ import { useStatsCounter } from '@/hooks/useStatsCounter';
 import { formatRevenue } from '@/utils/formatters';
 import { 
   loadStoredValues, 
-  incrementDateLinkedStats, 
-  enforceMinimumStats, 
+  incrementDateLinkedStats,
+  enforceMinimumStats,
   getDateConsistentStats,
   ensureProgressiveValues
 } from '@/hooks/stats/utils/storageManager';

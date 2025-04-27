@@ -1,10 +1,12 @@
-
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useStatsPersistence } from './useStatsPersistence';
 import { useStatsAnimation } from './useStatsAnimation';
 import { useStatsAutoUpdate } from './useStatsAutoUpdate';
 import { getMinimumValues } from './utils/statsCalculator';
-import { ensureProgressiveValues, getDateConsistentStats } from './utils/storageManager';
+import { 
+  ensureProgressiveValues, 
+  getDateConsistentStats
+} from './utils/storageManager';
 
 interface UseStatsCounterParams {
   dailyAdsTarget: number;

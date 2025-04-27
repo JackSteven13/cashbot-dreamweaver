@@ -19,6 +19,30 @@ export const initializeFirstUseDate = () => {
   return firstUseDate;
 };
 
+export const enforceMinimumStats = (minAds: number, minRevenue: number) => {
+  const stats = getDateConsistentStats();
+  if (stats.adsCount < minAds || stats.revenueCount < minRevenue) {
+    saveValues(
+      Math.max(stats.adsCount, minAds),
+      Math.max(stats.revenueCount, minRevenue)
+    );
+  }
+};
+
+export const getDateConsistentStats = () => {
+  const stored = loadStoredValues();
+  if (!stored.hasStoredValues) {
+    return {
+      adsCount: MINIMUM_ADS_COUNT,
+      revenueCount: MINIMUM_REVENUE_COUNT
+    };
+  }
+  return {
+    adsCount: stored.adsCount,
+    revenueCount: stored.revenueCount
+  };
+};
+
 export {
   MINIMUM_ADS_COUNT,
   MINIMUM_REVENUE_COUNT,

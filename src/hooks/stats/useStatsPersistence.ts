@@ -1,6 +1,9 @@
-
 import { useState, useEffect, useRef } from 'react';
-import { ensureProgressiveValues, getDateConsistentStats, saveValues } from './utils/storageManager';
+import { 
+  ensureProgressiveValues, 
+  getDateConsistentStats, 
+  saveValues 
+} from './utils/storageManager';
 
 export const useStatsPersistence = (
   MINIMUM_ADS_COUNT: number,
