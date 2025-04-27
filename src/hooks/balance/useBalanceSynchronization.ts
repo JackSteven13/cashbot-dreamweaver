@@ -118,3 +118,5 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
 
   return { syncWithDatabase };
 };
+
+export default useBalanceSynchronization;
