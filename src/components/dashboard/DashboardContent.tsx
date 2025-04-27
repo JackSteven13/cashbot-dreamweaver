@@ -1,6 +1,9 @@
 
-import React, { useEffect, useState } from 'react';
-import { DailyLimitAlert, TransactionsList, UserBalanceCard, ActionNoticePanel } from './';
+import React from 'react';
+import DailyLimitAlert from './DailyLimitAlert';
+import TransactionsList from './TransactionsList';
+import UserBalanceCard from './summary/userBalanceCard/UserBalanceCard';
+import ActionNoticePanel from './ActionNoticePanel';
 
 interface DashboardContentProps {
   userData: any;
