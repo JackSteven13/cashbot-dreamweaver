@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from 'react';
 import { UserData } from '@/types/userData';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -18,7 +17,7 @@ export const useBalanceSynchronization = (userData: UserData | null) => {
     
     try {
       // Format balance to 2 decimal places and convert to string
-      const balanceString = balance.toFixed(2);
+      const balanceString = balance.toFixed(2).toString(); // Explicit conversion to string
       const storageKey = (key: string) => `${key}_${userId}`;
       
       // Save to localStorage with proper user-specific keys
