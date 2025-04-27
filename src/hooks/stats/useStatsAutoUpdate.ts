@@ -23,7 +23,6 @@ export const useStatsAutoUpdate = ({
     if (!countersInitializedRef.current) {
       countersInitializedRef.current = true;
       
-      // Delayed first update
       const initialTimeout = setTimeout(() => {
         const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
         
@@ -32,13 +31,12 @@ export const useStatsAutoUpdate = ({
         animateCounters(newAdsCount, newRevenueCount);
       }, 30000);
       
-      // Less frequent updates
       const incrementInterval = setInterval(() => {
         if (Math.random() > 0.4) {
           const { newAdsCount, newRevenueCount } = incrementDateLinkedStats();
           
-          setAdsCount(prevAds => newAdsCount > prevAds ? newAdsCount : prevAds);
-          setRevenueCount(prevRevenue => newRevenueCount > prevRevenue ? newRevenueCount : prevRevenue);
+          setAdsCount(newAdsCount);
+          setRevenueCount(newRevenueCount);
           animateCounters(newAdsCount, newRevenueCount);
           
           try {
