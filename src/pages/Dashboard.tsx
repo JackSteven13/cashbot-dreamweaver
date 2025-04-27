@@ -18,6 +18,7 @@ const Dashboard = () => {
 
   // Use a ref to track if initial refresh has happened
   const initialRefreshDone = useRef(false);
+  const refreshTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Memoize the refresh function to prevent triggering re-renders
   const handleRefreshData = useCallback(() => {
@@ -29,11 +30,23 @@ const Dashboard = () => {
 
   // Force a data refresh when dashboard is loaded, but with a stable dependency array
   useEffect(() => {
+    // Clear any existing timers to avoid duplicates
+    if (refreshTimer.current) {
+      clearTimeout(refreshTimer.current);
+      refreshTimer.current = null;
+    }
+    
     if (user && !isInitializing && !initialRefreshDone.current) {
       // Add a slight delay to ensure everything is loaded
-      const timer = setTimeout(handleRefreshData, 1000);
-      return () => clearTimeout(timer);
+      refreshTimer.current = setTimeout(handleRefreshData, 1000);
     }
+    
+    return () => {
+      if (refreshTimer.current) {
+        clearTimeout(refreshTimer.current);
+        refreshTimer.current = null;
+      }
+    };
   }, [user, isInitializing, handleRefreshData]);
 
   if (authLoading || !user) {

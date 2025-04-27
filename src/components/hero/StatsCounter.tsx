@@ -44,26 +44,26 @@ const StatsCounter = ({
     }
   }, []);
 
+  // Helper function for random variance wrapped in useCallback
+  const randomVariance = useCallback((value: number) => {
+    const sessionId = getSessionBasedId();
+    const sessionVariance = sessionId ? 
+      (sessionId.charCodeAt(0) % 10) / 100 : 0;
+      
+    const variance = 1 + ((Math.random() - 0.5 + sessionVariance) * 0.01);
+    return Math.floor(value * variance);
+  }, [getSessionBasedId]);
+  
   // Get stats from hook
   const { displayedAdsCount, displayedRevenueCount } = useStatsCounter({
     dailyAdsTarget,
     dailyRevenueTarget
   });
   
-  // Initialize display values with useState and stable initialization function
+  // Initialize display values with useState and stable initialization function - make sure randomVariance is defined before use
   const [displayValues, setDisplayValues] = useState(() => {
     ensureProgressiveValues();
     const consistentStats = getDateConsistentStats();
-    
-    // Define randomVariance function inside useState callback to avoid reference error
-    const randomVariance = (value: number) => {
-      const sessionId = getSessionBasedId();
-      const sessionVariance = sessionId ? 
-        (sessionId.charCodeAt(0) % 10) / 100 : 0;
-        
-      const variance = 1 + ((Math.random() - 0.5 + sessionVariance) * 0.01);
-      return Math.floor(value * variance);
-    };
     
     const ads = Math.max(randomVariance(MINIMUM_ADS), consistentStats.adsCount);
     const revenue = ads * CORRELATION_RATIO;
