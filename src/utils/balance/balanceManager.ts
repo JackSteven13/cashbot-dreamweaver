@@ -248,6 +248,19 @@ class BalanceManager {
     return this._highestBalance;
   }
   
+  // Update highest balance (Adding the missing method that caused errors)
+  updateHighestBalance(balance: number): void {
+    if (balance > this._highestBalance) {
+      this._highestBalance = balance;
+      
+      // Store the updated highest balance in localStorage
+      if (this._userId) {
+        const keys = getStorageKeys(this._userId);
+        localStorage.setItem(keys.highestBalance, this._highestBalance.toString());
+      }
+    }
+  }
+  
   // Get daily gains
   getDailyGains(): number {
     return this._dailyGains;
