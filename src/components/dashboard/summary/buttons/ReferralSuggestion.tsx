@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatPrice } from '@/utils/balance/limitCalculations';
@@ -64,15 +65,15 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center">
           <Users className="h-5 w-5 mr-2 text-purple-500" />
-          Club Élite
+          Programme VIP
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
           {referralCount > 0 ? (
-            <>Votre réseau compte {referralCount} membre{referralCount > 1 ? 's' : ''}. Optimisez votre potentiel en développant votre communauté.</>
+            <>Déjà {referralCount} membre{referralCount > 1 ? 's' : ''} dans votre réseau. Multipliez vos gains en invitant plus de personnes.</>
           ) : (
-            <>Accédez à des opportunités exclusives. Développez un réseau de {estimatedReferralsNeeded} membre{estimatedReferralsNeeded > 1 ? 's' : ''} pour débloquer des avantages premium.</>
+            <>Rejoignez l'élite des utilisateurs. Invitez {estimatedReferralsNeeded} personne{estimatedReferralsNeeded > 1 ? 's' : ''} pour accéder aux retraits prioritaires.</>
           )}
         </p>
         <div className="text-sm font-medium">
