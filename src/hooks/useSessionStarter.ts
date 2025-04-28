@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
@@ -243,35 +244,60 @@ export const useSessionStarter = ({
       // Afficher le résultat dans l'animation
       terminalSequence.add(`Résultats optimisés! Gain: ${gain.toFixed(2)}€`);
 
-      // Mettre à jour les gains
+      // Mettre à jour les gains quotidiens
       balanceManager.addDailyGain(gain);
+
+      // Récupérer l'ancien solde pour l'animation
       const oldBalance = balanceManager.getCurrentBalance();
+      
+      // Mettre à jour le solde local
       balanceManager.updateBalance(gain);
+      
+      // Récupérer le nouveau solde pour l'animation
       const newBalance = balanceManager.getCurrentBalance();
 
       // Mettre à jour le solde dans la base de données
       const sessionReport = `Session d'analyse manuelle: +${gain.toFixed(2)}€`;
       await updateBalance(gain, sessionReport, true);
 
+      // Créer la transaction dans la base de données
+      try {
+        await supabase.from('transactions').insert([{
+          user_id: userId,
+          gain: gain,
+          report: sessionReport,
+          date: new Date().toISOString()
+        }]);
+        console.log("Transaction enregistrée dans la base de données");
+      } catch (error) {
+        console.error("Erreur lors de l'enregistrement de la transaction:", error);
+      }
+
       // Marquer l'animation comme terminée
       terminalSequence.complete(gain);
 
-      // Déclencher un événement pour informer les autres composants
+      // Déclencher plusieurs événements pour informer tous les composants de la mise à jour du solde
       window.dispatchEvent(new CustomEvent('transactions:refresh'));
+      
+      // Déclencher l'animation du solde (important pour la mise à jour visuelle)
       window.dispatchEvent(new CustomEvent('balance:update', {
         detail: {
           amount: gain,
           oldBalance,
           newBalance,
           animate: true,
-          duration: 1500
+          duration: 1500,
+          userId
         }
       }));
+      
+      // Déclencher un autre événement pour les composants qui écoutent session:completed
       window.dispatchEvent(new CustomEvent('session:completed', {
         detail: {
           gain,
           timestamp: now,
-          userId
+          userId,
+          finalBalance: newBalance
         }
       }));
 
@@ -305,6 +331,11 @@ export const useSessionStarter = ({
         }));
       }
       
+      // Forcer un rafraîchissement général des données après une légère pause
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('dashboard:refresh-data'));
+      }, 500);
+      
     } catch (error) {
       console.error('Error starting session:', error);
       toast({
@@ -318,6 +349,9 @@ export const useSessionStarter = ({
       setTimeout(() => {
         setIsStartingSession(false);
         sessionInProgressRef.current = false;
+        
+        // Forcer une mise à jour du composant Dashboard
+        window.dispatchEvent(new CustomEvent('balance:force-update'));
       }, 1000);
     }
   };

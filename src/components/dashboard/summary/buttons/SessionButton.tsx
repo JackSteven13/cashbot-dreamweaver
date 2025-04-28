@@ -117,6 +117,14 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     // Exécuter le gestionnaire de clic
     onClick();
     
+    // Enregistrer le timestamp de la session pour le cooldown
+    localStorage.setItem('lastSessionTimestamp', now.toString());
+    
+    // Déclencher un événement pour que d'autres composants soient informés
+    window.dispatchEvent(new CustomEvent('session:manual-start', {
+      detail: { timestamp: now }
+    }));
+    
     // Réactiver le bouton après un délai
     setTimeout(() => {
       setIsInternalLoading(false);
@@ -130,7 +138,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
       } else {
         setIsInternalDisabled(false);
       }
-    }, 3000); // 3 secondes minimum avant de pouvoir cliquer à nouveau
+    }, clickCooldownMs); // 3 secondes minimum avant de pouvoir cliquer à nouveau
   };
 
   // Style du bouton amélioré

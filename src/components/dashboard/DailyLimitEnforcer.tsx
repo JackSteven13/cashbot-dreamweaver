@@ -101,9 +101,29 @@ const DailyLimitEnforcer: FC = () => {
     // Vérifier aussi le changement de jour toutes les minutes
     const dayChangeInterval = setInterval(checkForDayChange, 60000);
     
+    // Écouter les événements de session terminée pour mettre à jour le solde
+    const handleSessionCompleted = (event: CustomEvent) => {
+      if (event.detail && event.detail.gain && event.detail.gain > 0) {
+        console.log(`Session terminée, gain: ${event.detail.gain}€`);
+        
+        // Forcer une mise à jour du solde et de l'interface
+        window.dispatchEvent(new CustomEvent('balance:update', {
+          detail: {
+            amount: event.detail.gain,
+            animate: true,
+            userId: userId,
+            timestamp: Date.now()
+          }
+        }));
+      }
+    };
+    
+    window.addEventListener('session:completed', handleSessionCompleted as EventListener);
+    
     return () => {
       clearInterval(interval);
       clearInterval(dayChangeInterval);
+      window.removeEventListener('session:completed', handleSessionCompleted as EventListener);
     };
   }, [user]);
 

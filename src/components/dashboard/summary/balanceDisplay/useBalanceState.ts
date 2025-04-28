@@ -36,6 +36,65 @@ export const useBalanceState = (initialBalance: number): UseBalanceStateResult =
   const forceUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const updateDebounceTime = 2000;
   
+  // Suivre les mises à jour de solde via balanceManager
+  useEffect(() => {
+    const handleBalanceUpdate = () => {
+      const currentBalance = balanceManager.getCurrentBalance();
+      if (!isNaN(currentBalance) && Math.abs(currentBalance - displayedBalance) > 0.01) {
+        console.log(`useBalanceState: Mise à jour du solde depuis balanceManager: ${displayedBalance.toFixed(2)} -> ${currentBalance.toFixed(2)}`);
+        setPreviousBalance(displayedBalance);
+        setDisplayedBalance(currentBalance);
+        setIsAnimating(true);
+        
+        // Stocker la valeur pour persistence
+        localStorage.setItem(`lastKnownBalance_${userId}`, currentBalance.toString());
+        
+        // Réinitialiser l'animation après un délai
+        setTimeout(() => {
+          setIsAnimating(false);
+        }, 3000);
+      }
+    };
+    
+    // S'abonner aux mises à jour du balanceManager
+    const unsubscribe = balanceManager.addWatcher(handleBalanceUpdate);
+    
+    // Écouter les événements de balance:update
+    const handleBalanceUpdateEvent = (event: CustomEvent) => {
+      if (event.detail && event.detail.amount > 0) {
+        // Calculer le nouveau solde
+        const newAmount = displayedBalance + event.detail.amount;
+        
+        console.log(`useBalanceState: Event balance:update reçu, gain: ${event.detail.amount}€, nouveau solde: ${newAmount.toFixed(2)}€`);
+        
+        // Mettre à jour le solde avec animation
+        setPreviousBalance(displayedBalance);
+        setDisplayedBalance(newAmount);
+        setGain(event.detail.amount);
+        setIsAnimating(true);
+        
+        // Synchroniser avec balanceManager
+        balanceManager.forceBalanceSync(newAmount);
+        
+        // Stocker la valeur pour persistence
+        localStorage.setItem(`lastKnownBalance_${userId}`, newAmount.toString());
+        
+        // Réinitialiser l'animation après un délai
+        setTimeout(() => {
+          setIsAnimating(false);
+          setGain(null);
+        }, 3000);
+      }
+    };
+    
+    window.addEventListener('balance:update', handleBalanceUpdateEvent as EventListener);
+    
+    return () => {
+      unsubscribe();
+      window.removeEventListener('balance:update', handleBalanceUpdateEvent as EventListener);
+    };
+  }, [displayedBalance, userId]);
+  
   // Listen for timestamp updates from events
   useEffect(() => {
     const handleTimestampUpdate = (event: CustomEvent) => {

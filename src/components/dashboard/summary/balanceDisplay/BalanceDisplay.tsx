@@ -19,38 +19,55 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
   const safeBalance = isNaN(balance) ? 0 : balance;
   const { state, refs, setters, constants } = useBalanceState(safeBalance);
   
+  // Force the balance to update when the prop changes significantly
   useEffect(() => {
-    if (safeBalance > state.displayedBalance) {
-      const now = Date.now();
-      // Update using a new object instead of modifying current directly
-      if (now - refs.lastUpdateTimeRef.current > 5000) {
-        console.log(`Synchronisation du solde affiché avec le prop balance: ${state.displayedBalance} -> ${safeBalance}`);
-        setters.setPreviousBalance(state.displayedBalance);
-        setters.setDisplayedBalance(safeBalance);
-        
-        // Instead of trying to modify the ref directly, we'll store the value
-        // and let the balanceManager handle it
-        balanceManager.forceBalanceSync(safeBalance);
-        
-        // Use a custom effect cleanup to track timing
-        let isMounted = true;
-        
-        // Notify any code that needs to know about the balance update
-        if (isMounted) {
-          window.dispatchEvent(new CustomEvent('balance:updated', {
-            detail: {
-              timestamp: now,
-              newBalance: safeBalance
-            }
-          }));
-        }
-        
-        return () => {
-          isMounted = false;
-        };
-      }
+    if (safeBalance > 0 && Math.abs(safeBalance - state.displayedBalance) > 0.01) {
+      console.log(`Synchronisation du solde depuis les props: ${state.displayedBalance.toFixed(2)} -> ${safeBalance.toFixed(2)}`);
+      setters.setPreviousBalance(state.displayedBalance);
+      setters.setDisplayedBalance(safeBalance);
+      balanceManager.forceBalanceSync(safeBalance);
     }
   }, [safeBalance, state.displayedBalance]);
+
+  // Listen for manual session events
+  useEffect(() => {
+    const handleSessionCompleted = (event: CustomEvent) => {
+      if (event.detail && event.detail.gain) {
+        console.log(`BalanceDisplay: Session completed event received with gain ${event.detail.gain}€`);
+        
+        // Update display with animation
+        setters.setPreviousBalance(state.displayedBalance);
+        setters.setDisplayedBalance(state.displayedBalance + event.detail.gain);
+        setters.setGain(event.detail.gain);
+        setters.setIsAnimating(true);
+        
+        // Reset animation after a delay
+        setTimeout(() => {
+          setters.setIsAnimating(false);
+          setters.setGain(null);
+        }, 3000);
+      }
+    };
+    
+    // Listen for force update events
+    const handleForceUpdate = (event: CustomEvent) => {
+      if (event.detail && event.detail.newBalance !== undefined) {
+        console.log(`BalanceDisplay: Force update event received with new balance ${event.detail.newBalance}€`);
+        
+        // Update display without animation
+        setters.setDisplayedBalance(event.detail.newBalance);
+        balanceManager.forceBalanceSync(event.detail.newBalance);
+      }
+    };
+    
+    window.addEventListener('session:completed', handleSessionCompleted as EventListener);
+    window.addEventListener('balance:force-update', handleForceUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('session:completed', handleSessionCompleted as EventListener);
+      window.removeEventListener('balance:force-update', handleForceUpdate as EventListener);
+    };
+  }, [state.displayedBalance, setters]);
 
   useBalanceEvents({
     displayedBalance: state.displayedBalance,
