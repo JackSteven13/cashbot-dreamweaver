@@ -304,22 +304,7 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
         />
       </CardContent>
       
-      <style jsx global>{`
-        .balance-updated {
-          transition: all 0.3s ease;
-          box-shadow: 0 0 15px rgba(56, 189, 248, 0.8);
-        }
-        
-        .pulse-animation {
-          animation: pulse 2s ease-in-out;
-        }
-        
-        @keyframes pulse {
-          0% { box-shadow: 0 0 15px rgba(56, 189, 248, 0.3); }
-          50% { box-shadow: 0 0 25px rgba(56, 189, 248, 0.8); }
-          100% { box-shadow: 0 0 15px rgba(56, 189, 248, 0.3); }
-        }
-      `}</style>
+      {/* Remplacé le style JSX par une classe CSS définie dans balanceAnimations.css */}
     </Card>
   );
 };
