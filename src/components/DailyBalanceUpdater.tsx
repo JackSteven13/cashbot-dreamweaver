@@ -1,142 +1,119 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import balanceManager from '@/utils/balance/balanceManager';
-import { calculateTodaysGains } from '@/utils/userData/transactionUtils';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
+import { UserData } from '@/types/userData';
 
-/**
- * Composant invisible qui gère les mises à jour régulières du solde
- */
 interface DailyBalanceUpdaterProps {
   userId: string;
 }
 
+// Composant invisible qui s'assure que le solde est actualisé régulièrement
 const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => {
+  const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
-  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
-  const isInitializedRef = useRef<boolean>(false);
-  const userIdRef = useRef<string | undefined>(userId);
   
-  // Synchroniser périodiquement avec la base de données
+  // S'assurer que le userId est défini dans le balance manager
   useEffect(() => {
-    if (!userId) return;
+    if (userId) {
+      balanceManager.setUserId(userId);
+      console.log("DailyBalanceUpdater: userId défini dans balanceManager:", userId);
+    }
+  }, [userId]);
+  
+  // Crée un intervalle pour déclencher une mise à jour automatique
+  useEffect(() => {
+    // Déclencher une mise à jour auto après un léger délai
+    const delayedUpdate = setTimeout(() => {
+      triggerAutomaticRevenueGeneration();
+    }, 2000);
     
-    userIdRef.current = userId;
-    
-    // Vérification initiale
-    const initializeBalance = async () => {
-      if (!userId || isInitializedRef.current) return;
-      
-      try {
-        // Récupérer le solde depuis la base de données
-        const { data, error } = await supabase
-          .from('user_balances')
-          .select('balance')
-          .eq('id', userId)
-          .single();
-          
-        if (error) {
-          console.error("Erreur lors de la récupération du solde:", error);
-          return;
-        }
-        
-        // Récupérer les gains d'aujourd'hui
-        const todaysGains = await calculateTodaysGains(userId);
-        
-        // Mettre à jour le gestionnaire avec les valeurs récupérées
-        if (data?.balance !== undefined) {
-          const currentManagerBalance = balanceManager.getCurrentBalance();
-          
-          // Toujours utiliser le solde le plus élevé pour éviter les pertes
-          const effectiveBalance = Math.max(data.balance, currentManagerBalance);
-          
-          if (effectiveBalance > currentManagerBalance) {
-            balanceManager.forceBalanceSync(effectiveBalance, userId);
-            console.log(`Solde initialisé à ${effectiveBalance}€`);
-          }
-          
-          // Initialiser les gains quotidiens
-          if (todaysGains > 0) {
-            balanceManager.setDailyGains(todaysGains);
-            console.log(`Gains quotidiens initialisés à ${todaysGains}€`);
-          }
-        }
-        
-        isInitializedRef.current = true;
-        
-      } catch (err) {
-        console.error("Erreur lors de l'initialisation du solde:", err);
-      }
-    };
-    
-    initializeBalance();
-    
-    // Vérifier périodiquement les mises à jour
-    const syncInterval = setInterval(async () => {
-      if (!userId) return;
-      
-      const now = Date.now();
-      
-      // Limiter la fréquence des synchronisations (au plus une fois par minute)
-      if (now - lastSyncTime < 60000) return;
-      
-      try {
-        // Récupérer le solde depuis la base de données
-        const { data, error } = await supabase
-          .from('user_balances')
-          .select('balance')
-          .eq('id', userId)
-          .single();
-          
-        if (error) return;
-        
-        // Récupérer les gains d'aujourd'hui
-        const todaysGains = await calculateTodaysGains(userId);
-        
-        // Mettre à jour le gestionnaire avec les valeurs récupérées
-        if (data?.balance !== undefined) {
-          const currentManagerBalance = balanceManager.getCurrentBalance();
-          
-          // Ne pas permettre au solde de diminuer sans raison, toujours utiliser le plus élevé
-          if (data.balance > currentManagerBalance) {
-            balanceManager.forceBalanceSync(data.balance, userId);
-            
-            // Notifier les autres composants de la mise à jour
-            window.dispatchEvent(new CustomEvent('db:balance-updated', {
-              detail: { newBalance: data.balance, animate: false }
-            }));
-          } else if (data.balance < currentManagerBalance) {
-            // Si le solde du serveur est plus bas, mettre à jour le serveur avec notre valeur locale
-            console.log(`Correction du solde serveur: ${data.balance}€ -> ${currentManagerBalance}€`);
-            
-            await supabase
-              .from('user_balances')
-              .update({ 
-                balance: currentManagerBalance,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', userId);
-          }
-          
-          // Mettre à jour les gains quotidiens si nécessaire
-          if (todaysGains > balanceManager.getDailyGains()) {
-            balanceManager.setDailyGains(todaysGains);
-          }
-        }
-        
-        setLastSyncTime(now);
-      } catch (err) {
-        console.error("Erreur lors de la synchronisation du solde:", err);
-      }
-    }, 30000); // Vérifier toutes les 30 secondes
+    // Mettre en place une mise à jour périodique
+    updateIntervalRef.current = setInterval(() => {
+      triggerAutomaticRevenueGeneration();
+    }, 60000 + Math.random() * 30000); // Entre 60 et 90 secondes
     
     return () => {
-      clearInterval(syncInterval);
+      clearTimeout(delayedUpdate);
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+      }
     };
-  }, [userId, lastSyncTime]);
-
-  return null; // Composant invisible qui ne rend rien à l'écran
+  }, [userId]);
+  
+  // Fonction pour déclencher la génération automatique de revenus
+  const triggerAutomaticRevenueGeneration = async () => {
+    if (!userId) return;
+    
+    try {
+      // Générer un petit montant et le sauvegarder directement
+      const gain = 0.01 + Math.random() * 0.04; // Entre 0.01 et 0.05
+      
+      // Créer un événement pour que tout composant qui écoute puisse réagir
+      window.dispatchEvent(new CustomEvent('auto:revenue-generated', {
+        detail: { 
+          amount: gain,
+          userId: userId
+        }
+      }));
+      
+      // Mettre à jour le solde local
+      balanceManager.updateBalance(gain);
+      balanceManager.addDailyGain(gain);
+      
+      // Ajouter une transaction en arrière-plan
+      const report = `Analyse automatique (${new Date().toLocaleTimeString()})`;
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert([
+          { user_id: userId, gain, report }
+        ]);
+        
+      if (error) {
+        console.error("Erreur lors de l'enregistrement de la transaction:", error);
+        return;
+      }
+      
+      // Mettre à jour le solde dans la base de données
+      const { data: userData, error: userError } = await supabase
+        .from('user_balances')
+        .select('balance')
+        .eq('id', userId)
+        .single();
+        
+      if (userError) {
+        console.error("Erreur lors de la récupération du solde:", userError);
+        return;
+      }
+      
+      const newBalance = (userData.balance || 0) + gain;
+      
+      const { error: updateError } = await supabase
+        .from('user_balances')
+        .update({ balance: newBalance })
+        .eq('id', userId);
+        
+      if (updateError) {
+        console.error("Erreur lors de la mise à jour du solde:", updateError);
+        return;
+      }
+      
+      // Forcer une mise à jour de l'interface
+      window.dispatchEvent(new CustomEvent('balance:update', {
+        detail: {
+          amount: gain,
+          animate: false
+        }
+      }));
+      
+    } catch (error) {
+      console.error("Erreur lors de la génération automatique de revenus:", error);
+    }
+  };
+  
+  // Ce composant ne rend rien visuellement
+  return null;
 };
 
 export default DailyBalanceUpdater;

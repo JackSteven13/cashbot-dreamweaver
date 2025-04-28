@@ -1,8 +1,9 @@
+
 import { useState, useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import balanceManager from '@/utils/balance/balanceManager';
 import { checkAndUpdateDailyLimits } from './dailyLimits';
-import { useBotStatus } from './useBotStatus';
+import { useBotStatus } from '../sessions/useBotStatus';
 import { calculateAutoSessionGain } from '@/utils/subscription';
 import { triggerDashboardEvent } from '@/utils/animations/triggerDashboardEvent';
 import { addTransaction, calculateTodaysGains } from '@/utils/user/transactionUtils';
@@ -98,7 +99,7 @@ export const useRevenueGeneration = ({
       console.error("Error generating automatic revenue:", error);
       return false;
     }
-  }, [userData, limitReached, isBotActive, lastGenerationTime, updateBalance]);
+  }, [userData, limitReached, isBotActive, lastGenerationTime, updateBalance, setIsBotActive]);
 
   return {
     isBotActive,
