@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 
 export const useBotStatus = (limitReached: boolean) => {
-  const [isBotActive, setIsBotActive] = useState(true);
+  const [isBotActive, setIsBotActive] = useState(true); // Toujours actif par défaut
 
   useEffect(() => {
     const handleBotStatusChange = (event: CustomEvent) => {
@@ -27,6 +27,13 @@ export const useBotStatus = (limitReached: boolean) => {
     
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('bot:external-status-change' as any, handleBotStatusChange);
+    
+    // Initialiser à actif au chargement
+    if (!limitReached) {
+      setIsBotActive(true);
+      localStorage.setItem('botActive', 'true');
+      console.log("Bot initialized as active");
+    }
     
     return () => {
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);

@@ -57,13 +57,18 @@ const DashboardMain: React.FC<DashboardMainProps> = ({ dashboardReady, username:
   // Handle starting a session
   const handleStartSession = () => {
     setIsStartingSession(true);
+    // Déclencher un événement pour notifier le système
+    window.dispatchEvent(new CustomEvent('session:manual-start', {
+      detail: { timestamp: Date.now() }
+    }));
     // Reset after animation completes
-    setTimeout(() => setIsStartingSession(false), 2000);
+    setTimeout(() => setIsStartingSession(false), 3000);
   };
   
   // Handle withdrawal (placeholder)
   const handleWithdrawal = () => {
     console.log('Withdrawal requested');
+    window.dispatchEvent(new CustomEvent('withdrawal:requested'));
   };
   
   // Try to get username from different sources and use fallback if not found
@@ -88,7 +93,7 @@ const DashboardMain: React.FC<DashboardMainProps> = ({ dashboardReady, username:
           showLimitAlert={showLimitAlert}
           dailySessionCount={dailySessionCount}
           referrals={userData?.referrals || []}
-          isBotActive={true}
+          isBotActive={true} // Forcer le bot à toujours être actif
           username={effectiveUsername}
         />
       </Suspense>

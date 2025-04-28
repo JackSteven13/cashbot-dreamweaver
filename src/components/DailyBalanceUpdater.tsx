@@ -27,12 +27,12 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
     // Déclencher une mise à jour auto après un léger délai
     const delayedUpdate = setTimeout(() => {
       triggerAutomaticRevenueGeneration();
-    }, 2000);
+    }, 1500);
     
-    // Mettre en place une mise à jour périodique
+    // Mettre en place une mise à jour périodique plus fréquente (15-30 secondes)
     updateIntervalRef.current = setInterval(() => {
       triggerAutomaticRevenueGeneration();
-    }, 60000 + Math.random() * 30000); // Entre 60 et 90 secondes
+    }, 15000 + Math.random() * 15000);
     
     return () => {
       clearTimeout(delayedUpdate);
@@ -47,16 +47,19 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
     if (!userId) return;
     
     try {
-      // Générer un petit montant et le sauvegarder directement
-      const gain = 0.01 + Math.random() * 0.04; // Entre 0.01 et 0.05
+      // Générer un petit montant plus significatif
+      const gain = 0.02 + Math.random() * 0.08; // Entre 0.02 et 0.10€
       
       // Créer un événement pour que tout composant qui écoute puisse réagir
       window.dispatchEvent(new CustomEvent('auto:revenue-generated', {
         detail: { 
           amount: gain,
-          userId: userId
+          userId: userId,
+          timestamp: Date.now()
         }
       }));
+      
+      console.log(`Génération automatique de revenus: +${gain.toFixed(2)}€`);
       
       // Mettre à jour le solde local
       balanceManager.updateBalance(gain);
@@ -67,7 +70,7 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
       const { data, error } = await supabase
         .from('transactions')
         .insert([
-          { user_id: userId, gain, report }
+          { user_id: userId, gain, report, date: new Date().toISOString() }
         ]);
         
       if (error) {
@@ -99,11 +102,13 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
         return;
       }
       
-      // Forcer une mise à jour de l'interface
+      // Forcer une mise à jour de l'interface (avec animation si c'est un gain significatif)
       window.dispatchEvent(new CustomEvent('balance:update', {
         detail: {
           amount: gain,
-          animate: false
+          animate: gain > 0.05,  // Animation seulement pour les gains importants
+          userId: userId,
+          timestamp: Date.now()
         }
       }));
       

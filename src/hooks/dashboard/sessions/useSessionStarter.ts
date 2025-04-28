@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
@@ -36,40 +37,58 @@ export const useSessionStarter = ({
   }, [dailySessionCount]);
 
   const handleStartSession = async () => {
-    if (sessionInProgressRef.current || isStartingSession) return;
+    // Vérification de sécurité - éviter les doubles clics
+    if (sessionInProgressRef.current || isStartingSession) {
+      console.log("Session déjà en cours, ignoré");
+      return;
+    }
 
     try {
+      console.log("Démarrage d'une session manuelle");
       sessionInProgressRef.current = true;
       setIsStartingSession(true);
 
-      // Force la génération d'un gain même si la limite est atteinte (pour débloquer l'UI)
-      const gain = Math.max(0.05, Math.random() * 0.1 + 0.05);
+      // Force la génération d'un gain substantiel pour récompenser l'utilisateur
+      const gain = Math.max(0.1, Math.random() * 0.2 + 0.1); // Entre 0.1€ et 0.3€
       
       const terminalSequence = createBackgroundTerminalSequence([
         "Initialisation de la session d'analyse manuelle..."
       ]);
 
-      window.dispatchEvent(new CustomEvent('session:start', { detail: { manual: true } }));
+      // Déclencher l'événement de début de session
+      window.dispatchEvent(new CustomEvent('session:start', { 
+        detail: { 
+          manual: true,
+          timestamp: Date.now() 
+        }
+      }));
+      
       simulateActivity();
 
+      // Simulation de l'analyse
       terminalSequence.add("Analyse des données en cours...");
       await new Promise(resolve => setTimeout(resolve, 800));
       terminalSequence.add("Optimisation des résultats...");
       await new Promise(resolve => setTimeout(resolve, 1000));
 
+      // Enregistrer le timestamp de la session
       const now = Date.now();
       localStorage.setItem('lastSessionTimestamp', now.toString());
       setLastSessionTimestamp(now);
 
+      // Incrémenter le compteur de sessions
       await incrementSessionCount();
 
+      // Afficher le résultat dans le terminal
       terminalSequence.add(`Résultats optimisés! Gain: ${gain.toFixed(2)}€`);
 
       // Mettre à jour les gains quotidiens dans le gestionnaire de solde
       balanceManager.addDailyGain(gain);
 
-      await updateBalance(gain, `Session d'analyse manuelle: +${gain.toFixed(2)}€`);
+      // Mettre à jour le solde total
+      await updateBalance(gain, `Session d'analyse manuelle: +${gain.toFixed(2)}€`, true);
 
+      // Marquer la séquence comme terminée
       terminalSequence.complete(gain);
 
       // Déclencher un événement pour rafraîchir les transactions
@@ -79,10 +98,13 @@ export const useSessionStarter = ({
       window.dispatchEvent(new CustomEvent('balance:force-update', {
         detail: { 
           newBalance: userData?.balance + gain,
-          animate: true 
+          animate: true,
+          userId: userData?.id || userData?.profile?.id,
+          timestamp: Date.now()
         }
       }));
 
+      // Notification du succès
       toast({
         title: "Session complétée",
         description: `Votre session a généré ${gain.toFixed(2)}€`,
@@ -96,8 +118,11 @@ export const useSessionStarter = ({
         variant: "destructive"
       });
     } finally {
-      setIsStartingSession(false);
-      sessionInProgressRef.current = false;
+      // Réinitialiser l'état après un délai pour l'animation
+      setTimeout(() => {
+        setIsStartingSession(false);
+        sessionInProgressRef.current = false;
+      }, 1000);
     }
   };
 

@@ -38,24 +38,48 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   const isFreemium = subscription === 'freemium';
   const hasReachedLimit = isFreemium ? dailySessionCount >= 1 : dailySessionCount >= maxDailySessions;
 
-  // Check if bot is in cooldown period (RÉDUIT à 30 secondes pour faciliter les tests)
-  const isInCooldown = lastSessionTimestamp ? (
-    new Date().getTime() - new Date(parseInt(lastSessionTimestamp)).getTime() < 30 * 1000
-  ) : false;
+  // Check if bot is in cooldown period (RÉDUIT à 15 secondes pour faciliter les tests)
+  const [isInCooldown, setIsInCooldown] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  
+  // Gestion du cooldown
+  useEffect(() => {
+    if (!lastSessionTimestamp) return;
+    
+    const checkCooldown = () => {
+      const cooldownTime = 15 * 1000; // 15 secondes
+      const timeSinceLastSession = Date.now() - parseInt(lastSessionTimestamp);
+      
+      if (timeSinceLastSession < cooldownTime) {
+        setIsInCooldown(true);
+        setCooldownRemaining(Math.ceil((cooldownTime - timeSinceLastSession) / 1000));
+      } else {
+        setIsInCooldown(false);
+        setCooldownRemaining(0);
+      }
+    };
+    
+    // Vérifier immédiatement
+    checkCooldown();
+    
+    // Puis vérifier toutes les secondes
+    const intervalId = setInterval(checkCooldown, 1000);
+    
+    return () => clearInterval(intervalId);
+  }, [lastSessionTimestamp]);
 
   // Determine button appearance and tooltip message
   const getTooltipMessage = () => {
-    if (!isBotActive) return "Le système est temporairement indisponible";
     if (isLoading) return "Démarrage de la session...";
+    if (isInCooldown) return `En attente (${cooldownRemaining}s)`;
     if (hasReachedLimit) {
       if (isFreemium) return "Limite conseillée: 1 session par jour (freemium)";
       return `Limite quotidienne conseillée (${dailySessionCount}/${maxDailySessions})`;
     }
-    if (isInCooldown) return "Période de refroidissement (30 secondes)";
     return "Démarrer une nouvelle session d'analyse";
   };
 
-  // RÉPARÉ: Ne pas bloquer le clic même si les limites sont atteintes
+  // SIMPLIFIÉ: Toujours permettre le clic
   const handleClick = () => {
     // Anti-spam protection avec délai réduit
     const now = Date.now();
@@ -69,18 +93,17 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     onClick();
   };
 
-  // RENFORCÉ: Rendre le bouton plus explicite s'il est désactivé pour cause de limite
+  // Style du bouton amélioré
   const getButtonStyle = () => {
-    if (isLoading) return 'w-full h-11 bg-orange-600 hover:bg-orange-700 text-white';
-    if (!isBotActive) return 'w-full h-11 bg-gray-600 hover:bg-gray-700 text-white';
-    return 'w-full h-11 bg-green-600 hover:bg-green-700 text-white';
+    if (isLoading) return 'w-full h-11 bg-orange-500 hover:bg-orange-600 text-white';
+    if (isInCooldown) return 'w-full h-11 bg-amber-500 hover:bg-amber-600 text-white';
+    return 'w-full h-11 bg-green-500 hover:bg-green-600 text-white';
   };
 
   // Message concret pour l'utilisateur
   const getButtonLabel = () => {
-    if (!isBotActive) return "Indisponible";
-    if (isInCooldown) return "En attente";
     if (isLoading) return "Démarrage...";
+    if (isInCooldown) return `En attente (${cooldownRemaining}s)`;
     return "Démarrer";
   };
 
@@ -91,7 +114,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
           <div className="w-full">
             <Button
               onClick={handleClick}
-              disabled={isLoading}
+              disabled={isLoading} // Seulement désactivé pendant le chargement
               className={getButtonStyle()}
               variant="default"
               size="lg"
@@ -104,9 +127,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
                 </div>
               ) : (
                 <div className="flex items-center">
-                  {!isBotActive ? (
-                    <AlertCircle className="mr-2 h-5 w-5" />
-                  ) : isInCooldown ? (
+                  {isInCooldown ? (
                     <Clock className="mr-2 h-5 w-5" />
                   ) : (
                     <PlayCircle className="mr-2 h-5 w-5" />

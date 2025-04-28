@@ -1,3 +1,4 @@
+
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -7,7 +8,7 @@ import useInitUserData from '@/hooks/useInitUserData';
 import { useBalanceUpdater } from '@/hooks/useBalanceUpdater';
 import { useBalanceSync } from '@/hooks/useBalanceSync';
 import { useUserDataRefresh } from '@/hooks/session/useUserDataRefresh';
-import { useRevenueGeneration } from '@/hooks/userData/useAutomaticRevenue';
+import { useRevenueGeneration } from '@/hooks/revenue/useRevenueGeneration';
 import { useAutoSessionScheduler } from '@/hooks/useAutoSessionScheduler';
 import { usePeriodicUpdates } from '@/hooks/usePeriodicUpdates';
 
