@@ -18,7 +18,6 @@ export const BalanceIndicators: React.FC<BalanceIndicatorsProps> = ({
       </div>
       <div className="relative w-full">
         <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
-          Solde disponible
           {subscription !== 'freemium' && (
             <span className="ml-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs px-1.5 py-0.5 rounded">
               {subscription.toUpperCase()}

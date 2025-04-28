@@ -35,13 +35,12 @@ const SummaryPanel: React.FC<SummaryPanelProps> = memo(({
   canStartSession = true,
   referrals = [],
   referralCount = 0,
-  withdrawalThreshold = 300,  // Par défaut 300 maintenant
+  withdrawalThreshold = 300,
   lastSessionTimestamp,
   isBotActive = true
 }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Colonne principale avec solde et boutons d'action */}
       <div className="lg:col-span-2 space-y-6">
         <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700">
           <div className="px-6 pt-6 pb-0">
@@ -94,7 +93,6 @@ const SummaryPanel: React.FC<SummaryPanelProps> = memo(({
         />
       </div>
       
-      {/* Colonne secondaire avec parrainage et statistiques */}
       <div className="space-y-6">
         <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700 p-5">
           <ReferralSuggestion 
