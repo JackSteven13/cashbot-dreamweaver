@@ -1,8 +1,10 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
 import { simulateActivity } from '@/utils/animations/moneyParticles';
 import balanceManager from '@/utils/balance/balanceManager';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
 export interface UseSessionStarterProps {
   userData: any;
@@ -45,9 +47,42 @@ export const useSessionStarter = ({
       sessionInProgressRef.current = true;
       setIsStartingSession(true);
 
-      // Force la génération d'un gain substantiel pour récompenser l'utilisateur
-      // Gain augmenté pour être plus visible
-      const gain = Math.max(0.2, Math.random() * 0.3 + 0.2); // Entre 0.2€ et 0.5€
+      // Vérifier les limites quotidiennes
+      const subscription = userData?.subscription || 'freemium';
+      const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+      const dailyGains = balanceManager.getDailyGains();
+      
+      // Vérifier si la limite est atteinte
+      if (dailyGains >= dailyLimit) {
+        toast({
+          title: "Limite quotidienne atteinte",
+          description: `Vous avez atteint votre limite quotidienne de ${dailyLimit}€.`,
+          variant: "destructive",
+          duration: 5000
+        });
+        setShowLimitAlert(true);
+        sessionInProgressRef.current = false;
+        setIsStartingSession(false);
+        return;
+      }
+      
+      // Pour les comptes freemium, limite stricte de 1 session par jour
+      if (subscription === 'freemium' && dailySessionCount >= 1) {
+        toast({
+          title: "Limite de sessions atteinte",
+          description: "Les comptes freemium sont limités à 1 session manuelle par jour.",
+          variant: "destructive",
+          duration: 5000
+        });
+        sessionInProgressRef.current = false;
+        setIsStartingSession(false);
+        return;
+      }
+
+      // Calcul du gain potentiel (réduit)
+      const maxPotentialGain = Math.min(0.15, dailyLimit - dailyGains);
+      const gain = Math.max(0.05, Math.random() * maxPotentialGain);
+      const finalGain = parseFloat(gain.toFixed(2));
       
       const terminalSequence = createBackgroundTerminalSequence([
         "Initialisation de la session d'analyse manuelle..."
@@ -78,16 +113,16 @@ export const useSessionStarter = ({
       await incrementSessionCount();
 
       // Afficher le résultat dans le terminal
-      terminalSequence.add(`Résultats optimisés! Gain: ${gain.toFixed(2)}€`);
+      terminalSequence.add(`Résultats optimisés! Gain: ${finalGain.toFixed(2)}€`);
 
       // Mettre à jour les gains quotidiens dans le gestionnaire de solde
-      balanceManager.addDailyGain(gain);
+      balanceManager.addDailyGain(finalGain);
 
       // Mettre à jour le solde total
-      await updateBalance(gain, `Session d'analyse manuelle: +${gain.toFixed(2)}€`, true);
+      await updateBalance(finalGain, `Session d'analyse manuelle: +${finalGain.toFixed(2)}€`, true);
 
       // Marquer la séquence comme terminée
-      terminalSequence.complete(gain);
+      terminalSequence.complete(finalGain);
 
       // Déclencher un événement pour rafraîchir les transactions
       window.dispatchEvent(new CustomEvent('transactions:refresh'));
@@ -95,7 +130,7 @@ export const useSessionStarter = ({
       // Force une mise à jour de l'interface
       window.dispatchEvent(new CustomEvent('balance:update', {
         detail: { 
-          amount: gain,
+          amount: finalGain,
           animate: true,
           userId: userData?.id || userData?.profile?.id,
           timestamp: Date.now()
@@ -105,8 +140,33 @@ export const useSessionStarter = ({
       // Notification du succès
       toast({
         title: "Session complétée",
-        description: `Votre session a généré ${gain.toFixed(2)}€`,
+        description: `Votre session a généré ${finalGain.toFixed(2)}€`,
       });
+      
+      // Si c'est un compte freemium, marquer comme limite atteinte pour aujourd'hui
+      if (subscription === 'freemium') {
+        const userId = userData?.id || userData?.profile?.id;
+        if (userId) {
+          localStorage.setItem(`freemium_daily_limit_reached_${userId}`, 'true');
+          localStorage.setItem('last_session_date', new Date().toDateString());
+        }
+      }
+      
+      // Vérifier si on a atteint la limite quotidienne après cette session
+      const updatedDailyGains = balanceManager.getDailyGains();
+      if (updatedDailyGains >= dailyLimit * 0.95) {
+        setShowLimitAlert(true);
+        
+        // Déclencher un événement pour informer les autres composants
+        window.dispatchEvent(new CustomEvent('daily-limit:reached', {
+          detail: {
+            subscription: subscription,
+            limit: dailyLimit,
+            currentGains: updatedDailyGains,
+            userId: userData?.id || userData?.profile?.id
+          }
+        }));
+      }
       
     } catch (error) {
       console.error('Error starting session:', error);

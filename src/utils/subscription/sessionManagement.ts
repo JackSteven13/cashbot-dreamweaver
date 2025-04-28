@@ -1,4 +1,3 @@
-
 import { SUBSCRIPTION_LIMITS } from './constants';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,7 +18,7 @@ export interface SessionCheckResult {
   reason?: string;
 }
 
-// Modifié: Permettre toujours la génération de gains
+// Réactivé: Respect strict des limites quotidiennes
 export const respectsDailyLimit = (
   subscription: string,
   currentDailyGains: number,
@@ -30,7 +29,27 @@ export const respectsDailyLimit = (
   // Log pour traçabilité et débogage
   console.log(`Vérification limite: ${subscription}, gains actuels ${currentDailyGains}€/${dailyLimit}€, gain potentiel ${potentialGain}€`);
   
-  // MODIFIÉ: Toujours permettre le gain, même au-delà de la limite
+  // Si la limite est déjà dépassée, bloquer tout gain supplémentaire
+  if (currentDailyGains >= dailyLimit) {
+    console.log(`LIMITE ATTEINTE: ${currentDailyGains}€/${dailyLimit}€, aucun gain autorisé`);
+    return {
+      allowed: false,
+      adjustedGain: 0
+    };
+  }
+  
+  // Si le gain potentiel ferait dépasser la limite, ajuster le gain
+  if (currentDailyGains + potentialGain > dailyLimit) {
+    const adjustedGain = parseFloat((dailyLimit - currentDailyGains).toFixed(2));
+    console.log(`GAIN AJUSTÉ: ${potentialGain}€ -> ${adjustedGain}€ pour respecter la limite de ${dailyLimit}€`);
+    
+    return {
+      allowed: true,
+      adjustedGain: adjustedGain
+    };
+  }
+  
+  // Si tout est en ordre, autoriser le gain complet
   return {
     allowed: true,
     adjustedGain: potentialGain
@@ -76,16 +95,38 @@ export const shouldResetDailyCounters = (): boolean => {
   return false;
 };
 
-// Modifié: Permettre toujours le démarrage d'une session manuelle
+// Réactiver la vérification pour les sessions manuelles
 export const canStartManualSession = (
   subscription: string,
   dailySessionCount: number,
   currentDailyGains: number
 ): SessionCheckResult => {
+  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  
+  // Pour les comptes freemium, limite stricte de 1 session par jour
+  if (subscription === 'freemium' && dailySessionCount >= 1) {
+    return { 
+      canStart: false,
+      reason: "Les comptes freemium sont limités à 1 session manuelle par jour."
+    };
+  }
+  
+  // Si la limite quotidienne est atteinte, bloquer les sessions
+  if (currentDailyGains >= dailyLimit * 0.95) {
+    return {
+      canStart: false,
+      reason: `Vous avez presque atteint votre limite quotidienne de ${dailyLimit}€.`
+    };
+  }
+  
   return { canStart: true };
 };
 
-// Désactivé: Toujours retourner false pour permettre la génération continue de revenus
+// Réactiver: Vérification des limites quotidiennes
 export const checkUserDailyLimits = (userId: string, subscription: string = 'freemium'): boolean => {
-  return false;
+  const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
+  const limitReachedKey = `daily_limit_reached_${userId}`;
+  const limitReached = localStorage.getItem(limitReachedKey) === 'true';
+  
+  return limitReached;
 };
