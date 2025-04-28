@@ -4,40 +4,47 @@ import SummaryPanel from './summary/SummaryPanel';
 import DashboardTabs from './metrics/tabs/DashboardTabs';
 import { ReferralLinkDisplay } from './referral';
 import { Card } from '@/components/ui/card';
-import { UserData } from '@/types/userData';
+import { UserData, Transaction, Referral } from '@/types/userData';
 import { getWithdrawalThreshold } from '@/utils/referral/withdrawalUtils';
-import { TrendingUp } from 'lucide-react'; // Add the missing import
+import { TrendingUp } from 'lucide-react';
 
-interface DashboardContentProps {
-  userData: UserData | null;
+export interface DashboardContentProps {
+  balance: number;
+  referralLink: string;
   isStartingSession: boolean;
   handleStartSession: () => void;
   handleWithdrawal?: () => void;
   isNewUser?: boolean;
+  subscription: string;
   dailySessionCount: number;
   showLimitAlert: boolean;
+  transactions: Transaction[];
+  referrals: Referral[];
   lastSessionTimestamp?: string;
   isBotActive?: boolean;
+  selectedNavItem: string;
+  setSelectedNavItem: React.Dispatch<React.SetStateAction<string>>;
+  username: string;
 }
 
 const DashboardContent: React.FC<DashboardContentProps> = ({
-  userData,
+  balance,
+  referralLink,
   isStartingSession,
   handleStartSession,
   handleWithdrawal,
   isNewUser = false,
   dailySessionCount,
   showLimitAlert,
+  transactions,
+  subscription,
+  referrals,
   lastSessionTimestamp,
-  isBotActive = true
+  isBotActive = true,
+  selectedNavItem,
+  setSelectedNavItem,
+  username
 }) => {
-  const [activeTab, setActiveTab] = useState<string>('overview');
-  
-  const balance = userData?.balance || 0;
-  const subscription = userData?.subscription || 'freemium';
-  const transactions = userData?.transactions || [];
-  const referrals = userData?.referrals || [];
-  const referralLink = userData?.referralLink || window.location.origin + '/register?ref=user';
   const referralCount = referrals.length;
   const referralBonus = referralCount * 10;
 
@@ -102,8 +109,8 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
           <DashboardTabs
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
+            activeTab={selectedNavItem}
+            setActiveTab={setSelectedNavItem}
             subscription={subscription}
             dailySessionCount={dailySessionCount}
             isTopReferrer={referralCount > 5}
