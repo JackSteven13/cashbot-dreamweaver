@@ -44,6 +44,7 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
   });
   const [balanceAnimating, setBalanceAnimating] = useState(false);
   const [totalGeneratedBalance, setTotalGeneratedBalance] = useState(balance * 1.2);
+  const [sessionComplete, setSessionComplete] = useState(false);
 
   const balanceRef = useRef<HTMLDivElement>(null);
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -51,10 +52,22 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
   
   const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
   
+  // Initialiser le solde du gestionnaire si nécessaire
+  useEffect(() => {
+    if (typeof balance === 'number' && !isNaN(balance) && balance > 0) {
+      const currentBalance = balanceManager.getCurrentBalance();
+      if (isNaN(currentBalance) || currentBalance === 0) {
+        console.log(`Initialisation du balanceManager avec ${balance}€`);
+        balanceManager.forceBalanceSync(balance);
+      }
+    }
+  }, [balance]);
+  
   // NOUVEAU: Synchroniser immédiatement avec le gestionnaire
   useEffect(() => {
     const currentBalance = balanceManager.getCurrentBalance();
     if (!isNaN(currentBalance) && currentBalance > 0) {
+      console.log(`Synchronisation initiale avec balanceManager: ${currentBalance}€`);
       setAnimatedBalance(currentBalance);
     }
   }, []);
@@ -66,6 +79,7 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
       
       // Ne mettre à jour que si le solde est différent pour éviter les boucles
       if (Math.abs(newBalance - animatedBalance) > 0.001) {
+        console.log(`Mise à jour depuis le watcher de balanceManager: ${animatedBalance}€ -> ${newBalance}€`);
         setPreviousBalance(animatedBalance);
         setAnimatedBalance(newBalance);
       }
@@ -74,12 +88,48 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
     return unsubscribe;
   }, [animatedBalance]);
   
+  // Écouter l'événement de session complétée pour animer le solde
+  useEffect(() => {
+    const handleSessionComplete = (event: CustomEvent) => {
+      const gain = event.detail?.gain;
+      if (!gain) return;
+      
+      console.log(`Session complétée reçue avec gain: ${gain}€`);
+      setSessionComplete(true);
+      setTimeout(() => setSessionComplete(false), 3000);
+      
+      // Mettre à jour avec animation
+      const newBalance = animatedBalance + gain;
+      setPreviousBalance(animatedBalance);
+      setBalanceAnimating(true);
+      
+      animateBalanceUpdate(
+        animatedBalance,
+        newBalance,
+        (value) => {
+          setAnimatedBalance(value);
+          if (Math.abs(value - newBalance) < 0.01) {
+            setBalanceAnimating(false);
+          }
+        },
+        1500
+      );
+    };
+    
+    window.addEventListener('session:completed' as any, handleSessionComplete);
+    
+    return () => {
+      window.removeEventListener('session:completed' as any, handleSessionComplete);
+    };
+  }, [animatedBalance]);
+  
   // Gérer les événements de mise à jour du solde
   useEffect(() => {
     const handleBalanceUpdate = (event: CustomEvent) => {
       const amount = event.detail?.amount;
-      const currentBalance = event.detail?.currentBalance;
       const shouldAnimate = event.detail?.animate !== false;
+      
+      console.log(`Balance update reçu: ${amount}€, animer: ${shouldAnimate}`);
       
       // Compteur pour éviter les mises à jour trop fréquentes
       balanceUpdateCountRef.current += 1;
@@ -100,6 +150,7 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
         
         if (!isNaN(managerBalance) && managerBalance > 0) {
           if (shouldAnimate && Math.abs(managerBalance - animatedBalance) > 0.01) {
+            console.log(`Animation de solde: ${animatedBalance}€ -> ${managerBalance}€`);
             setPreviousBalance(animatedBalance);
             setBalanceAnimating(true);
             
@@ -123,6 +174,8 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
       const newBalance = event.detail?.newBalance;
       const shouldAnimate = event.detail?.animate !== false;
       
+      console.log(`Force update reçu: ${newBalance}€, animer: ${shouldAnimate}`);
+      
       if (typeof newBalance === 'number' && !isNaN(newBalance) && newBalance > 0) {
         // Ne pas mettre à jour si la différence est minime
         if (Math.abs(newBalance - animatedBalance) < 0.01) return;
@@ -130,6 +183,7 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
         setPreviousBalance(animatedBalance);
         
         if (shouldAnimate) {
+          console.log(`Forçage d'animation de solde: ${animatedBalance}€ -> ${newBalance}€`);
           setBalanceAnimating(true);
           
           animateBalanceUpdate(
@@ -167,6 +221,7 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
     const safeBalance = typeof balance === 'number' && !isNaN(balance) ? balance : 0;
     
     if (safeBalance > 0 && Math.abs(safeBalance - animatedBalance) > 0.05) {
+      console.log(`Différence significative détectée avec la prop balance: ${safeBalance}€ vs ${animatedBalance}€`);
       const managerBalance = balanceManager.getCurrentBalance();
       
       // Prendre la valeur la plus élevée parmi les trois sources
@@ -194,6 +249,7 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
         
         // S'assurer que le gestionnaire est synchronisé avec la valeur la plus élevée
         if (effectiveBalance > managerBalance) {
+          console.log(`Mise à jour forcée du balanceManager: ${managerBalance}€ -> ${effectiveBalance}€`);
           balanceManager.forceBalanceSync(effectiveBalance);
         }
       }
@@ -203,8 +259,10 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
   // Utiliser le solde du gestionnaire ou la valeur animée
   const displayBalance = isNewUser ? 0 : animatedBalance;
 
+  const balanceCardClass = `shadow-lg overflow-hidden bg-gradient-to-b from-blue-900 to-slate-900 text-white border-none ${sessionComplete ? 'balance-updated pulse-animation' : ''}`;
+
   return (
-    <Card className="shadow-lg overflow-hidden bg-gradient-to-b from-blue-900 to-slate-900 text-white border-none" ref={balanceRef}>
+    <Card className={balanceCardClass} ref={balanceRef}>
       <CardHeader className="pb-0">
         <CardTitle className="text-xl font-semibold flex items-center gap-2">
           <Sparkles size={18} className="text-yellow-400" />
@@ -245,6 +303,23 @@ const BalanceCard: React.FC<BalanceCardProps> = ({
           useAnimation={true}
         />
       </CardContent>
+      
+      <style jsx global>{`
+        .balance-updated {
+          transition: all 0.3s ease;
+          box-shadow: 0 0 15px rgba(56, 189, 248, 0.8);
+        }
+        
+        .pulse-animation {
+          animation: pulse 2s ease-in-out;
+        }
+        
+        @keyframes pulse {
+          0% { box-shadow: 0 0 15px rgba(56, 189, 248, 0.3); }
+          50% { box-shadow: 0 0 25px rgba(56, 189, 248, 0.8); }
+          100% { box-shadow: 0 0 15px rgba(56, 189, 248, 0.3); }
+        }
+      `}</style>
     </Card>
   );
 };

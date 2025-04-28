@@ -35,6 +35,7 @@ export const useSessionStarter = ({
   // Keep sessionCountRef in sync
   useEffect(() => {
     sessionCountRef.current = dailySessionCount;
+    console.log(`Session count updated to ${dailySessionCount}`);
   }, [dailySessionCount]);
 
   // Réinitialiser les limites quotidiennes si nécessaire
@@ -68,8 +69,11 @@ export const useSessionStarter = ({
       const lastSessionDate = localStorage.getItem(`last_session_date_${userData.id}`);
       const today = new Date().toDateString();
       
+      console.log(`Vérification limite freemium: ${limitReached}, date: ${lastSessionDate}, aujourd'hui: ${today}, compteur: ${sessionCountRef.current}`);
+      
       // Si ce n'est pas un nouveau jour et que la limite est déjà atteinte
-      if (lastSessionDate === today && (limitReached === 'true' || sessionCountRef.current >= 1)) {
+      if ((lastSessionDate === today && limitReached === 'true') || sessionCountRef.current >= 1) {
+        console.log("Limite freemium atteinte: session bloquée");
         return true;
       }
     }
@@ -122,6 +126,8 @@ export const useSessionStarter = ({
   };
 
   const handleStartSession = async () => {
+    console.log("Démarrage de session demandé");
+    
     // Double vérification pour éviter les démarrages multiples
     if (sessionInProgressRef.current || isStartingSession) {
       console.log("Session déjà en cours, ignorée");
@@ -132,7 +138,7 @@ export const useSessionStarter = ({
       });
       return;
     }
-    
+
     // Vérifier si une session peut être démarrée
     if (!canStartNewSession()) {
       if (userData?.subscription === 'freemium' && checkFreemiumLimit()) {
@@ -142,6 +148,11 @@ export const useSessionStarter = ({
           variant: "destructive",
           duration: 4000
         });
+        // Marquer comme limite atteinte
+        if (userId) {
+          localStorage.setItem(`freemium_daily_limit_reached_${userId}`, 'true');
+          localStorage.setItem(`last_session_date_${userId}`, new Date().toDateString());
+        }
       } else {
         const subscription = userData?.subscription || 'freemium';
         const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
@@ -170,6 +181,7 @@ export const useSessionStarter = ({
       // Marquer comme en cours de traitement
       sessionInProgressRef.current = true;
       setIsStartingSession(true);
+      console.log("Session démarrée: état de traitement actif");
       
       // Vérifications supplémentaires
       const subscription = userData?.subscription || 'freemium';
@@ -226,6 +238,8 @@ export const useSessionStarter = ({
       
       // Arrondir à 2 décimales
       gain = parseFloat(gain.toFixed(2));
+      
+      console.log(`Gain calculé: ${gain}€ (limite restante: ${remainingAllowance}€)`);
 
       // Enregistrer le timestamp de la session
       const now = Date.now();
@@ -234,18 +248,21 @@ export const useSessionStarter = ({
 
       // Pour les comptes freemium, marquer que la limite est atteinte après une session
       if (subscription === 'freemium' && userId) {
+        console.log("Marquage de la limite freemium comme atteinte");
         localStorage.setItem(`freemium_daily_limit_reached_${userId}`, 'true');
         localStorage.setItem(`last_session_date_${userId}`, new Date().toDateString());
       }
 
       // Incrémenter le compteur de sessions
       await incrementSessionCount();
+      console.log(`Compteur de sessions incrémenté à ${sessionCountRef.current + 1}`);
 
       // Afficher le résultat dans l'animation
       terminalSequence.add(`Résultats optimisés! Gain: ${gain.toFixed(2)}€`);
 
       // Mettre à jour les gains quotidiens
       balanceManager.addDailyGain(gain);
+      console.log(`Gain quotidien ajouté: ${gain}€`);
 
       // Récupérer l'ancien solde pour l'animation
       const oldBalance = balanceManager.getCurrentBalance();
@@ -255,10 +272,12 @@ export const useSessionStarter = ({
       
       // Récupérer le nouveau solde pour l'animation
       const newBalance = balanceManager.getCurrentBalance();
+      console.log(`Balance mise à jour: ${oldBalance}€ -> ${newBalance}€`);
 
       // Mettre à jour le solde dans la base de données
       const sessionReport = `Session d'analyse manuelle: +${gain.toFixed(2)}€`;
       await updateBalance(gain, sessionReport, true);
+      console.log("Solde mis à jour dans la base de données");
 
       // Créer la transaction dans la base de données
       try {
@@ -298,6 +317,15 @@ export const useSessionStarter = ({
           timestamp: now,
           userId,
           finalBalance: newBalance
+        }
+      }));
+      
+      // Déclencher un événement spécifique pour la mise à jour forcée du solde
+      window.dispatchEvent(new CustomEvent('balance:force-update', {
+        detail: {
+          newBalance: newBalance,
+          animate: true,
+          userId
         }
       }));
 
@@ -349,6 +377,7 @@ export const useSessionStarter = ({
       setTimeout(() => {
         setIsStartingSession(false);
         sessionInProgressRef.current = false;
+        console.log("Session terminée: état de traitement désactivé");
         
         // Forcer une mise à jour du composant Dashboard
         window.dispatchEvent(new CustomEvent('balance:force-update'));

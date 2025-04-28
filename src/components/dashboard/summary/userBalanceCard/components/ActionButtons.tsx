@@ -29,6 +29,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   const [isLocallyProcessing, setIsLocallyProcessing] = useState(false);
   const [localBotActive, setLocalBotActive] = useState(isBotActive);
   const [limitReached, setLimitReached] = useState(false);
+  const [freemiumLimitReached, setFreemiumLimitReached] = useState(false);
 
   // Écouter les changements d'état du bot
   useEffect(() => {
@@ -45,34 +46,59 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     };
     
     const handleLimitReached = () => {
+      console.log("Limit reached event received in ActionButtons");
       setLimitReached(true);
       setLocalBotActive(false);
     };
+    
+    // Pour les comptes freemium, vérifier si la limite est déjà atteinte
+    const checkFreemiumLimit = () => {
+      if (subscription === 'freemium') {
+        const userId = localStorage.getItem('current_user_id');
+        if (!userId) return false;
+
+        const limitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`);
+        const lastSessionDate = localStorage.getItem(`last_session_date_${userId}`);
+        const today = new Date().toDateString();
+        
+        const isLimited = lastSessionDate === today && limitReached === 'true';
+        console.log(`Vérification limite freemium (ActionButtons): ${isLimited}`);
+        setFreemiumLimitReached(isLimited);
+        return isLimited;
+      }
+      return false;
+    };
+    
+    checkFreemiumLimit();
     
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('bot:force-status' as any, handleBotStatusChange);
     window.addEventListener('bot:limit-reached' as any, handleLimitReached);
     window.addEventListener('dashboard:limit-reached' as any, handleLimitReached);
+    window.addEventListener('session:completed' as any, () => {
+      setTimeout(() => {
+        checkFreemiumLimit();
+      }, 500);
+    });
     
     // Initialiser avec la prop
     setLocalBotActive(isBotActive);
     
-    // Pour les comptes freemium, vérifier si la limite est déjà atteinte
-    if (subscription === 'freemium') {
-      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-      const lastSessionDate = localStorage.getItem('last_session_date');
-      const today = new Date().toDateString();
-      
-      if (lastSessionDate === today && limitReached === 'true') {
-        setLimitReached(true);
+    // Vérifier aussi à chaque changement de visibilité pour s'assurer que l'état est à jour
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkFreemiumLimit();
       }
-    }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
       window.removeEventListener('bot:status-change' as any, handleBotStatusChange);
       window.removeEventListener('bot:force-status' as any, handleBotStatusChange);
       window.removeEventListener('bot:limit-reached' as any, handleLimitReached);
       window.removeEventListener('dashboard:limit-reached' as any, handleLimitReached);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isBotActive, subscription]);
 
@@ -86,8 +112,11 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     
     // Vérifier si la limite a été atteinte pour les comptes freemium
     if (subscription === 'freemium') {
-      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-      const lastSessionDate = localStorage.getItem('last_session_date');
+      const userId = localStorage.getItem('current_user_id');
+      if (!userId) return;
+      
+      const limitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`);
+      const lastSessionDate = localStorage.getItem(`last_session_date_${userId}`);
       const today = new Date().toDateString();
       const sessionCount = parseInt(localStorage.getItem('dailySessionCount') || '0');
       
@@ -104,10 +133,12 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     }
     
     // Vérifier si la limite a été atteinte
-    if (limitReached) {
+    if (limitReached || freemiumLimitReached) {
       toast({
         title: "Limite journalière atteinte",
-        description: "Vous avez atteint votre limite de gains quotidiens. Revenez demain ou passez à un forfait supérieur.",
+        description: subscription === 'freemium' 
+          ? "Les comptes freemium sont limités à 1 session par jour."
+          : "Vous avez atteint votre limite de gains quotidiens. Revenez demain ou passez à un forfait supérieur.",
         variant: "destructive",
         duration: 5000
       });
@@ -151,19 +182,13 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   // Déterminer l'état visuel du bouton en fonction des différents états
   const getButtonState = () => {
     // Pour les comptes freemium, vérifier si la limite quotidienne est atteinte
-    if (subscription === 'freemium') {
-      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-      const lastSessionDate = localStorage.getItem('last_session_date');
-      const today = new Date().toDateString();
-      
-      if (lastSessionDate === today && limitReached === 'true') {
-        return {
-          text: 'Limite atteinte (1/jour)',
-          disabled: true,
-          animate: false,
-          color: 'bg-red-600'
-        };
-      }
+    if (subscription === 'freemium' && freemiumLimitReached) {
+      return {
+        text: 'Limite atteinte (1/jour)',
+        disabled: true,
+        animate: false,
+        color: 'bg-red-600'
+      };
     }
     
     if (isStartingSession || isLocallyProcessing) {

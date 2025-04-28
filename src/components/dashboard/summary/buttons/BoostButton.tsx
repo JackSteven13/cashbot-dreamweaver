@@ -36,12 +36,17 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
   useEffect(() => {
     const checkFreemiumLimit = () => {
       if (subscription === 'freemium') {
-        const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-        const lastSessionDate = localStorage.getItem('last_session_date');
+        const userId = localStorage.getItem('current_user_id');
+        if (!userId) return false;
+        
+        const limitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`);
+        const lastSessionDate = localStorage.getItem(`last_session_date_${userId}`);
         const today = new Date().toDateString();
         
         // Si ce n'est pas un nouveau jour et que la limite est déjà atteinte
         const isLimited = lastSessionDate === today && limitReached === 'true';
+        
+        console.log(`Vérification limite freemium (BoostButton): ${isLimited}`);
         setIsFreemiumLimited(isLimited);
         
         // Déclencher un événement pour mettre à jour l'interface si la limite a changé
@@ -74,7 +79,8 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
     const handleSessionComplete = () => {
       if (subscription === 'freemium') {
         setTimeout(() => {
-          checkFreemiumLimit();
+          const isLimited = checkFreemiumLimit();
+          console.log(`Session terminée, limite freemium: ${isLimited}`);
         }, 500);
       }
     };
@@ -90,15 +96,34 @@ export const BoostButton: React.FC<BoostButtonProps> = ({
   
   // Gérer le clic avec un feedback visuel supplémentaire
   const handleClick = () => {
-    if (isButtonDisabled || isStartingSession || limitReached || isFreemiumLimited) return;
+    if (isButtonDisabled || isStartingSession || limitReached || isFreemiumLimited) {
+      console.log("Clic bloqué:", {isButtonDisabled, isStartingSession, limitReached, isFreemiumLimited});
+      return;
+    }
     
     setIsClicked(true);
+    console.log("BoostButton: clic détecté et traité");
     
     // Support pour l'ancienne et la nouvelle API
     if (handleStartSession) {
       handleStartSession();
     } else {
       onClick();
+    }
+    
+    // Si c'est un compte freemium, marquer comme limite atteinte immédiatement après le clic
+    if (subscription === 'freemium') {
+      const userId = localStorage.getItem('current_user_id');
+      if (userId) {
+        console.log("Marquage immédiat de la limite freemium après le clic");
+        localStorage.setItem(`freemium_daily_limit_reached_${userId}`, 'true');
+        localStorage.setItem(`last_session_date_${userId}`, new Date().toDateString());
+        
+        // Mettre à jour l'état local avec un peu de délai pour permettre au traitement de commencer
+        setTimeout(() => {
+          setIsFreemiumLimited(true);
+        }, 200);
+      }
     }
     
     // Réinitialiser l'état cliqué après un délai

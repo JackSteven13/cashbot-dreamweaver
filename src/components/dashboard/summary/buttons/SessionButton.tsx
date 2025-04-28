@@ -19,7 +19,9 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   onClick,
   isLoading = false,
   disabled = false,
-  lastSessionTimestamp
+  lastSessionTimestamp,
+  subscription = 'freemium',
+  dailySessionCount = 0,
 }) => {
   // Référence pour éviter les doubles clics
   const lastClickTime = useRef<number>(0);
@@ -41,30 +43,52 @@ const SessionButton: React.FC<SessionButtonProps> = ({
       
       // Vérifier si la limite est atteinte pour l'utilisateur
       const limitReached = localStorage.getItem(`daily_limit_reached_${userId}`) === 'true';
-      const subscription = localStorage.getItem(`subscription_${userId}`) || 'freemium';
+      const userSubscription = localStorage.getItem(`subscription_${userId}`) || subscription;
       
       // Pour les comptes freemium, vérifier aussi la limite de session
-      if (subscription === 'freemium') {
+      if (userSubscription === 'freemium') {
         const freemiumLimitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`) === 'true';
-        return limitReached || freemiumLimitReached;
+        console.log(`Vérification de la limite freemium: ${freemiumLimitReached}, compteur de session: ${dailySessionCount}`);
+        return limitReached || freemiumLimitReached || dailySessionCount >= 1;
       }
       
       return limitReached;
     };
     
-    setIsInternalDisabled(checkLimitReached());
+    const isLimited = checkLimitReached();
+    console.log("Bouton désactivé en raison de la limite ?", isLimited);
+    setIsInternalDisabled(isLimited);
     
     // Écouter les événements de limite atteinte
     const handleLimitReached = () => {
+      console.log("Événement de limite atteinte reçu, désactivation du bouton");
       setIsInternalDisabled(true);
     };
     
     window.addEventListener('daily-limit:reached', handleLimitReached as EventListener);
+    window.addEventListener('freemium:limit-changed', (e: any) => {
+      if (e.detail?.limited) {
+        setIsInternalDisabled(true);
+      }
+    });
+    
+    // Écouter les événements de fin de session
+    window.addEventListener('session:completed', () => {
+      if (subscription === 'freemium') {
+        console.log("Session terminée, vérification des limites freemium");
+        setTimeout(() => {
+          const newLimitStatus = checkLimitReached();
+          setIsInternalDisabled(newLimitStatus);
+        }, 500);
+      }
+    });
     
     return () => {
       window.removeEventListener('daily-limit:reached', handleLimitReached as EventListener);
+      window.removeEventListener('freemium:limit-changed', (e: any) => {});
+      window.removeEventListener('session:completed', () => {});
     };
-  }, []);
+  }, [subscription, dailySessionCount]);
   
   // Gestion du cooldown
   useEffect(() => {
@@ -96,6 +120,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   const getTooltipMessage = () => {
     if (isLoading || isInternalLoading) return "Démarrage de la session...";
     if (isInCooldown) return `En attente (${cooldownRemaining}s)`;
+    if (isInternalDisabled && subscription === 'freemium') return "Limite quotidienne atteinte (1/jour)";
     if (isInternalDisabled) return "Limite quotidienne atteinte";
     if (disabled) return "Sessions non disponibles actuellement";
     return "Démarrer une nouvelle session d'analyse";
@@ -120,6 +145,14 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     // Enregistrer le timestamp de la session pour le cooldown
     localStorage.setItem('lastSessionTimestamp', now.toString());
     
+    // Si c'est un compte freemium, marquer comme limite atteinte immédiatement
+    const userId = localStorage.getItem('current_user_id');
+    if (userId && subscription === 'freemium') {
+      console.log("Marquer la limite freemium comme atteinte après le clic");
+      localStorage.setItem(`freemium_daily_limit_reached_${userId}`, 'true');
+      localStorage.setItem('last_session_date', new Date().toDateString());
+    }
+    
     // Déclencher un événement pour que d'autres composants soient informés
     window.dispatchEvent(new CustomEvent('session:manual-start', {
       detail: { timestamp: now }
@@ -128,15 +161,18 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     // Réactiver le bouton après un délai
     setTimeout(() => {
       setIsInternalLoading(false);
+      
       // Ne pas réactiver si la limite est atteinte
-      const userId = localStorage.getItem('current_user_id');
-      if (userId) {
-        const limitReached = localStorage.getItem(`daily_limit_reached_${userId}`) === 'true';
-        if (!limitReached) {
+      if (subscription !== 'freemium') {
+        const userId = localStorage.getItem('current_user_id');
+        if (userId) {
+          const limitReached = localStorage.getItem(`daily_limit_reached_${userId}`) === 'true';
+          if (!limitReached) {
+            setIsInternalDisabled(false);
+          }
+        } else {
           setIsInternalDisabled(false);
         }
-      } else {
-        setIsInternalDisabled(false);
       }
     }, clickCooldownMs); // 3 secondes minimum avant de pouvoir cliquer à nouveau
   };
@@ -153,6 +189,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   const getButtonLabel = () => {
     if (isLoading || isInternalLoading) return "Démarrage...";
     if (isInCooldown) return `En attente (${cooldownRemaining}s)`;
+    if (isInternalDisabled && subscription === 'freemium') return "Limite (1/jour)";
     if (isInternalDisabled) return "Limite atteinte";
     return "Démarrer";
   };
