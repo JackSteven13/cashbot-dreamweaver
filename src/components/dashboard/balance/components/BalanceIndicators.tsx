@@ -17,13 +17,11 @@ export const BalanceIndicators: React.FC<BalanceIndicatorsProps> = ({
         <Coins className={`h-8 w-8 ${isAnimating ? 'text-yellow-300 animate-bounce' : 'text-blue-600 dark:text-blue-400'}`} />
       </div>
       <div className="relative w-full">
-        <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
-          {subscription !== 'freemium' && (
-            <span className="ml-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs px-1.5 py-0.5 rounded">
-              {subscription.toUpperCase()}
-            </span>
-          )}
-        </p>
+        {subscription !== 'freemium' && (
+          <span className="ml-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs px-1.5 py-0.5 rounded">
+            {subscription.toUpperCase()}
+          </span>
+        )}
       </div>
     </div>
   );
