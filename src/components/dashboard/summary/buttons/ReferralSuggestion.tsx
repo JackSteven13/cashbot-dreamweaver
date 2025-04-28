@@ -65,15 +65,15 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center">
           <Users className="h-5 w-5 mr-2 text-purple-500" />
-          Programme d'affiliation
+          Programme VIP
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
           {referralCount > 0 ? (
-            <>Vous avez <span className="font-semibold">{referralCount} affilié{referralCount > 1 ? 's' : ''}</span>. Continuez à inviter des amis pour augmenter vos gains.</>
+            <>Déjà {referralCount} membre{referralCount > 1 ? 's' : ''} dans votre réseau. Multipliez vos gains en invitant plus de personnes.</>
           ) : (
-            <>Invitez environ <span className="font-semibold">{estimatedReferralsNeeded} personne{estimatedReferralsNeeded > 1 ? 's' : ''}</span> pour atteindre le seuil de retrait de {formatPrice(withdrawalThreshold)}.</>
+            <>Rejoignez l'élite des utilisateurs. Invitez {estimatedReferralsNeeded} personne{estimatedReferralsNeeded > 1 ? 's' : ''} pour accéder aux retraits prioritaires.</>
           )}
         </p>
         <div className="text-sm font-medium">
