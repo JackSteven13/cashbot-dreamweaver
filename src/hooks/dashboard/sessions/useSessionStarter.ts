@@ -1,9 +1,6 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
-import { canStartManualSession, SessionCheckResult } from '@/utils/subscription/sessionManagement';
-import { calculateManualSessionGain } from '@/utils/subscription/sessionGain';
 import { simulateActivity } from '@/utils/animations/moneyParticles';
 import balanceManager from '@/utils/balance/balanceManager';
 
@@ -49,7 +46,8 @@ export const useSessionStarter = ({
       setIsStartingSession(true);
 
       // Force la génération d'un gain substantiel pour récompenser l'utilisateur
-      const gain = Math.max(0.1, Math.random() * 0.2 + 0.1); // Entre 0.1€ et 0.3€
+      // Gain augmenté pour être plus visible
+      const gain = Math.max(0.2, Math.random() * 0.3 + 0.2); // Entre 0.2€ et 0.5€
       
       const terminalSequence = createBackgroundTerminalSequence([
         "Initialisation de la session d'analyse manuelle..."
@@ -95,9 +93,9 @@ export const useSessionStarter = ({
       window.dispatchEvent(new CustomEvent('transactions:refresh'));
 
       // Force une mise à jour de l'interface
-      window.dispatchEvent(new CustomEvent('balance:force-update', {
+      window.dispatchEvent(new CustomEvent('balance:update', {
         detail: { 
-          newBalance: userData?.balance + gain,
+          amount: gain,
           animate: true,
           userId: userData?.id || userData?.profile?.id,
           timestamp: Date.now()

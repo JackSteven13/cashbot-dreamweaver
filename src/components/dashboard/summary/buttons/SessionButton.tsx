@@ -1,10 +1,8 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlayCircle, Clock, AlertCircle } from 'lucide-react';
+import { PlayCircle, Clock } from 'lucide-react';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { PLANS } from '@/utils/plans';
-import balanceManager from '@/utils/balance/balanceManager';
 
 interface SessionButtonProps {
   onClick: () => void;
@@ -21,24 +19,13 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   onClick,
   isLoading = false,
   disabled = false,
-  subscription = 'freemium',
-  dailySessionCount = 0,
-  canStart = true,
-  lastSessionTimestamp,
-  isBotActive = true
+  lastSessionTimestamp
 }) => {
   // Référence pour éviter les clics rapides
   const lastClickTime = useRef<number>(0);
   const clickCooldownMs = 1000; // 1 second cooldown
   
-  // Get the max daily sessions based on subscription
-  const maxDailySessions = PLANS[subscription]?.dailyLimit || 1;
-  
-  // Pour les comptes freemium, limité à 1 session
-  const isFreemium = subscription === 'freemium';
-  const hasReachedLimit = isFreemium ? dailySessionCount >= 1 : dailySessionCount >= maxDailySessions;
-
-  // Check if bot is in cooldown period (RÉDUIT à 15 secondes pour faciliter les tests)
+  // Check if bot is in cooldown period (RÉDUIT à 5 secondes)
   const [isInCooldown, setIsInCooldown] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   
@@ -47,7 +34,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     if (!lastSessionTimestamp) return;
     
     const checkCooldown = () => {
-      const cooldownTime = 15 * 1000; // 15 secondes
+      const cooldownTime = 5 * 1000; // 5 secondes
       const timeSinceLastSession = Date.now() - parseInt(lastSessionTimestamp);
       
       if (timeSinceLastSession < cooldownTime) {
@@ -72,14 +59,9 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   const getTooltipMessage = () => {
     if (isLoading) return "Démarrage de la session...";
     if (isInCooldown) return `En attente (${cooldownRemaining}s)`;
-    if (hasReachedLimit) {
-      if (isFreemium) return "Limite conseillée: 1 session par jour (freemium)";
-      return `Limite quotidienne conseillée (${dailySessionCount}/${maxDailySessions})`;
-    }
     return "Démarrer une nouvelle session d'analyse";
   };
 
-  // SIMPLIFIÉ: Toujours permettre le clic
   const handleClick = () => {
     // Anti-spam protection avec délai réduit
     const now = Date.now();

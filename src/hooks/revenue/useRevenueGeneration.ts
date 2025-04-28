@@ -3,11 +3,10 @@ import { useState, useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import balanceManager from '@/utils/balance/balanceManager';
 import { checkAndUpdateDailyLimits } from './dailyLimits';
-import { useBotStatus } from '../revenue/useBotStatus';
+import { useBotStatus } from './useBotStatus';
 import { calculateAutoSessionGain } from '@/utils/subscription';
 import { triggerDashboardEvent } from '@/utils/animations/triggerDashboardEvent';
-import { addTransaction, calculateTodaysGains } from '@/utils/user/transactionUtils';
-import { respectsDailyLimit } from '@/utils/subscription/sessionManagement';
+import { addTransaction } from '@/utils/user/transactionUtils';
 import { UserData } from '@/types/userData';
 
 interface UseRevenueGenerationProps {
@@ -32,14 +31,6 @@ export const useRevenueGeneration = ({
       return false;
     }
     
-    // Toujours actif même si limitReached est true, pour des raisons de débogage
-    // if (limitReached || !isBotActive) {
-    //   if (limitReached) {
-    //     console.log("Skipping automatic revenue generation: daily limit reached");
-    //   }
-    //   return false;
-    // }
-
     const now = Date.now();
     const timeSinceLastGeneration = now - lastGenerationTime;
 
@@ -49,36 +40,26 @@ export const useRevenueGeneration = ({
       return false;
     }
 
-    const limits = await checkAndUpdateDailyLimits(
-      userData,
-      setDailyLimitProgress,
-      setLimitReached,
-      setIsBotActive
-    );
+    // Désactiver temporairement la vérification de limite pour permettre aux gains de continuer
+    // const limits = await checkAndUpdateDailyLimits(
+    //   userData,
+    //   setDailyLimitProgress,
+    //   setLimitReached,
+    //   setIsBotActive
+    // );
+    
+    // if (!limits) return false;
 
-    if (!limits) return false;
-
+    // Forcer l'exécution même si la limite est atteinte
     setLastGenerationTime(now);
 
     try {
-      const baseGain = calculateAutoSessionGain(
-        userData.subscription,
-        limits.dailyGains,
-        userData.referrals?.length || 0
-      );
+      // Génération de gains automatiques avec valeur augmentée
+      const baseGain = 0.05 + Math.random() * 0.15; // Entre 0.05 et 0.20€ par génération automatique
 
-      // Augmenter légèrement le gain pour être plus visible
-      const enhancedGain = baseGain * 1.5;
-
-      const { allowed, adjustedGain } = respectsDailyLimit(
-        userData.subscription,
-        limits.dailyGains,
-        enhancedGain
-      );
-
-      // Autoriser même si la limite est atteinte (mais avec un gain réduit)
-      const finalGain = allowed ? adjustedGain : baseGain * 0.1;
-      const report = `Analyse automatique de contenu (jour ${Math.floor((Date.now() - new Date('2023-01-01').getTime()) / (1000 * 3600 * 24))})`;
+      // Pour garantir que le gain soit toujours appliqué
+      const finalGain = parseFloat(baseGain.toFixed(2));
+      const report = `Analyse automatique de contenu (${new Date().toLocaleTimeString()})`;
 
       await updateBalance(finalGain, report, forceUpdate);
       
@@ -104,7 +85,7 @@ export const useRevenueGeneration = ({
       console.error("Error generating automatic revenue:", error);
       return false;
     }
-  }, [userData, limitReached, isBotActive, lastGenerationTime, updateBalance, setIsBotActive]);
+  }, [userData, lastGenerationTime, updateBalance, setIsBotActive]);
 
   return {
     isBotActive,

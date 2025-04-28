@@ -29,10 +29,10 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
       triggerAutomaticRevenueGeneration();
     }, 1500);
     
-    // Mettre en place une mise à jour périodique plus fréquente (15-30 secondes)
+    // Mettre en place une mise à jour périodique plus fréquente (5-10 secondes)
     updateIntervalRef.current = setInterval(() => {
       triggerAutomaticRevenueGeneration();
-    }, 15000 + Math.random() * 15000);
+    }, 5000 + Math.random() * 5000);
     
     return () => {
       clearTimeout(delayedUpdate);
@@ -47,8 +47,8 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
     if (!userId) return;
     
     try {
-      // Générer un petit montant plus significatif
-      const gain = 0.02 + Math.random() * 0.08; // Entre 0.02 et 0.10€
+      // Générer un montant plus significatif
+      const gain = 0.05 + Math.random() * 0.15; // Entre 0.05 et 0.20€
       
       // Créer un événement pour que tout composant qui écoute puisse réagir
       window.dispatchEvent(new CustomEvent('auto:revenue-generated', {
@@ -102,11 +102,11 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
         return;
       }
       
-      // Forcer une mise à jour de l'interface (avec animation si c'est un gain significatif)
+      // Forcer une mise à jour de l'interface avec animation
       window.dispatchEvent(new CustomEvent('balance:update', {
         detail: {
           amount: gain,
-          animate: gain > 0.05,  // Animation seulement pour les gains importants
+          animate: true,
           userId: userId,
           timestamp: Date.now()
         }
