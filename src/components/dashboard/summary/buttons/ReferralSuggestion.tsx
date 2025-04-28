@@ -23,6 +23,21 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
   // S'assurer qu'un lien d'affiliation est toujours disponible
   const displayLink = referralLink || `${window.location.origin}/register?ref=generate`;
   
+  // Le nombre d'affiliés requis pour le statut prioritaire
+  const priorityStatusThreshold = 4;
+  
+  // Fonction pour obtenir le message en fonction du nombre d'affiliations
+  const getReferralMessage = () => {
+    if (referralCount === 0) {
+      return "Multipliez vos affiliations, accélérez vos retraits. Statut prioritaire dès 4 affiliés actifs.";
+    } else if (referralCount < priorityStatusThreshold) {
+      const remaining = priorityStatusThreshold - referralCount;
+      return `Encore ${remaining} affilié${remaining > 1 ? 's' : ''} actif${remaining > 1 ? 's' : ''} pour obtenir le statut prioritaire pour vos retraits !`;
+    } else {
+      return "Félicitations ! Votre statut prioritaire est activé pour vos retraits. Continuez à développer votre réseau.";
+    }
+  };
+  
   // Fonction pour copier le lien
   const handleCopyLink = () => {
     try {
@@ -70,11 +85,7 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
       </CardHeader>
       <CardContent className="pt-0">
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-          {referralCount > 0 ? (
-            <>Déjà {referralCount} membre{referralCount > 1 ? 's' : ''} dans votre réseau. Multipliez vos gains en invitant plus de personnes.</>
-          ) : (
-            <>Rejoignez l'élite des utilisateurs. Invitez {estimatedReferralsNeeded} personne{estimatedReferralsNeeded > 1 ? 's' : ''} pour accéder aux retraits prioritaires.</>
-          )}
+          {getReferralMessage()}
         </p>
         <div className="text-sm font-medium">
           Votre lien unique:

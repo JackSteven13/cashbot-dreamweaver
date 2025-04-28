@@ -70,11 +70,11 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   const getMotivationalMessage = () => {
     if (isNewUser) return "Bienvenue! Démarrez votre première session pour commencer à générer des revenus!";
     if (isActiveReferrer) return "Félicitations! Votre statut VIP vous donne accès aux retraits prioritaires!";
-    if (hasRecentReferral) return "Excellent travail! Votre dernier parrainage accélère votre progression!";
+    if (hasRecentReferral) return "Excellent travail! Votre dernière affiliation accélère votre progression!";
     if (withdrawalPercentage >= 75) return "Vous vous rapprochez rapidement de votre premier retrait!";
     if (withdrawalPercentage >= 50) return "Continuez ainsi, vous êtes sur la bonne voie!";
-    if (referralCount > 0) return "Vos parrainages boostent votre progression, continuez!";
-    return "Parrainez des amis pour débloquer des avantages exclusifs!";
+    if (referralCount > 0) return "Vos affiliations boostent votre progression, continuez!";
+    return "Affiliez des amis pour débloquer des avantages exclusifs!";
   };
 
   return (

@@ -24,6 +24,21 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
   // S'assurer qu'un lien d'affiliation est toujours disponible
   const displayLink = referralLink || `${window.location.origin}/register?ref=generate`;
   
+  // Le nombre d'affiliés requis pour le statut prioritaire
+  const priorityStatusThreshold = 4;
+  
+  // Fonction pour obtenir le message en fonction du nombre d'affiliations
+  const getReferralMessage = () => {
+    if (referralCount === 0) {
+      return "Multipliez vos affiliations, accélérez vos retraits. Statut prioritaire dès 4 affiliés actifs.";
+    } else if (referralCount < priorityStatusThreshold) {
+      const remaining = priorityStatusThreshold - referralCount;
+      return `Encore ${remaining} affilié${remaining > 1 ? 's' : ''} actif${remaining > 1 ? 's' : ''} pour obtenir le statut prioritaire pour vos retraits !`;
+    } else {
+      return "Félicitations ! Votre statut prioritaire est activé pour vos retraits. Continuez à développer votre réseau.";
+    }
+  };
+  
   // Fonction pour copier le lien
   const handleCopyLink = () => {
     try {
@@ -76,16 +91,14 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
               <span className="font-semibold">{referralCount} affilié{referralCount > 1 ? 's' : ''} actif{referralCount > 1 ? 's' : ''}</span>
             </p>
             <p className="text-sm text-green-600 dark:text-green-400 font-medium mt-1">
-              {referralCount >= 3 ? 
-                "Excellent! Vous êtes éligible pour les retraits prioritaires!" : 
-                "Invitez encore quelques amis pour débloquer les retraits prioritaires!"}
+              {getReferralMessage()}
             </p>
           </div>
         ) : (
           <div className="flex items-center space-x-2 mb-4 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg">
             <TrendingUp className="h-5 w-5 text-amber-500" />
             <p className="text-sm text-amber-800 dark:text-amber-300">
-              Invitez <span className="font-semibold">{suggestedReferralsCount} ami{suggestedReferralsCount > 1 ? 's' : ''}</span> et débloquez jusqu'à <span className="font-bold">{formatPrice(withdrawalThreshold/2)}</span> de bonus!
+              {getReferralMessage()}
             </p>
           </div>
         )}
