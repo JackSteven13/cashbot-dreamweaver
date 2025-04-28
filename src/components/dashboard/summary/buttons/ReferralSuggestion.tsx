@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatPrice } from '@/utils/balance/limitCalculations';
-import { Users, Link, Copy, TrendingUp } from 'lucide-react';
+import { Users, Link, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 
@@ -17,8 +17,8 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
   referralCount = 0,
   withdrawalThreshold = 200
 }) => {
-  // Calculer un nombre d'affiliations suggéré plus petit et atteignable
-  const suggestedReferralsCount = Math.min(5, Math.max(1, Math.ceil(withdrawalThreshold / 200)));
+  // Calculer le nombre approximatif d'affiliations nécessaires pour atteindre le seuil
+  const estimatedReferralsNeeded = Math.max(0, Math.ceil((withdrawalThreshold - 0) / 50));
   
   // S'assurer qu'un lien d'affiliation est toujours disponible
   const displayLink = referralLink || `${window.location.origin}/register?ref=generate`;
@@ -69,25 +69,13 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        {referralCount > 0 ? (
-          <div className="mb-4">
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              <span className="font-semibold">{referralCount} affilié{referralCount > 1 ? 's' : ''} actif{referralCount > 1 ? 's' : ''}</span>
-            </p>
-            <p className="text-sm text-green-600 dark:text-green-400 font-medium mt-1">
-              {referralCount >= 3 ? 
-                "Excellent! Vous êtes éligible pour les retraits prioritaires!" : 
-                "Invitez encore quelques amis pour débloquer les retraits prioritaires!"}
-            </p>
-          </div>
-        ) : (
-          <div className="flex items-center space-x-2 mb-4 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg">
-            <TrendingUp className="h-5 w-5 text-amber-500" />
-            <p className="text-sm text-amber-800 dark:text-amber-300">
-              Invitez <span className="font-semibold">{suggestedReferralsCount} ami{suggestedReferralsCount > 1 ? 's' : ''}</span> et débloquez jusqu'à <span className="font-bold">{formatPrice(withdrawalThreshold/2)}</span> de bonus!
-            </p>
-          </div>
-        )}
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+          {referralCount > 0 ? (
+            <>Vous avez <span className="font-semibold">{referralCount} affilié{referralCount > 1 ? 's' : ''}</span>. Continuez à inviter des amis pour augmenter vos gains.</>
+          ) : (
+            <>Invitez environ <span className="font-semibold">{estimatedReferralsNeeded} personne{estimatedReferralsNeeded > 1 ? 's' : ''}</span> pour atteindre le seuil de retrait de {formatPrice(withdrawalThreshold)}.</>
+          )}
+        </p>
         <div className="text-sm font-medium">
           Votre lien unique:
         </div>
@@ -99,7 +87,7 @@ export const ReferralSuggestion: React.FC<ReferralSuggestionProps> = ({
           variant="outline" 
           size="sm" 
           onClick={handleCopyLink}
-          className="w-full flex items-center justify-center gap-2 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/40 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300"
+          className="w-full flex items-center justify-center gap-2"
         >
           <Copy className="h-4 w-4" />
           Copier le lien
