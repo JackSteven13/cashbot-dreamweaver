@@ -14,26 +14,69 @@ interface DailyBalanceUpdaterProps {
 const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => {
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { user } = useAuth();
+  const lastUpdateRef = useRef<number>(Date.now());
   
   // S'assurer que le userId est défini dans le balance manager
   useEffect(() => {
     if (userId) {
       balanceManager.setUserId(userId);
+      localStorage.setItem('current_user_id', userId); // Stocker l'ID utilisateur actuel
       console.log("DailyBalanceUpdater: userId défini dans balanceManager:", userId);
     }
   }, [userId]);
   
+  // Fonction pour vérifier si nous devons réinitialiser pour un nouveau jour
+  useEffect(() => {
+    if (!userId) return;
+    
+    const checkForDayChange = () => {
+      const lastSessionDate = localStorage.getItem(`last_session_date_${userId}`);
+      const today = new Date().toDateString();
+      
+      // Si c'est un nouveau jour ou si la date n'est pas définie, réinitialiser les limites
+      if (!lastSessionDate || lastSessionDate !== today) {
+        console.log("Nouveau jour détecté ou premier démarrage! Réinitialisation des limites quotidiennes.");
+        
+        // Supprimer les marqueurs de limite
+        localStorage.removeItem(`daily_limit_reached_${userId}`);
+        localStorage.removeItem(`freemium_daily_limit_reached_${userId}`);
+        
+        // Réinitialiser les gains quotidiens
+        balanceManager.resetDailyGains();
+        
+        // Réactiver le bot
+        window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
+          detail: { active: true, reason: 'new_day' } 
+        }));
+        
+        // Mettre à jour la date
+        localStorage.setItem(`last_session_date_${userId}`, today);
+      }
+    };
+    
+    // Vérifier immédiatement
+    checkForDayChange();
+    
+    // Puis vérifier périodiquement
+    const dayCheckInterval = setInterval(checkForDayChange, 60000); // Toutes les minutes
+    
+    return () => clearInterval(dayCheckInterval);
+  }, [userId]);
+  
   // Crée un intervalle pour déclencher une mise à jour automatique
   useEffect(() => {
-    // Déclencher une mise à jour auto après un léger délai
+    // Déclencher une mise à jour auto après un léger délai au démarrage
     const delayedUpdate = setTimeout(() => {
       triggerAutomaticRevenueGeneration();
-    }, 5000); // Délai augmenté à 5 secondes
+    }, 5000); // 5 secondes après le chargement
     
-    // Mettre en place une mise à jour périodique moins fréquente (30-60 secondes)
+    // Mettre en place une mise à jour périodique
     updateIntervalRef.current = setInterval(() => {
-      triggerAutomaticRevenueGeneration();
-    }, 30000 + Math.random() * 30000); // Entre 30 et 60 secondes
+      // Vérifier si suffisamment de temps s'est écoulé depuis la dernière mise à jour
+      if (Date.now() - lastUpdateRef.current > 45000) { // Au moins 45 secondes entre les mises à jour
+        triggerAutomaticRevenueGeneration();
+      }
+    }, 45000 + Math.random() * 15000); // Entre 45 et 60 secondes
     
     return () => {
       clearTimeout(delayedUpdate);
@@ -48,6 +91,9 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
     if (!userId) return;
     
     try {
+      // Mise à jour du timestamp de dernière mise à jour
+      lastUpdateRef.current = Date.now();
+      
       // Vérifier d'abord si la limite quotidienne est atteinte
       const { data: userData } = await supabase
         .from('user_balances')
@@ -61,14 +107,29 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
       // Obtenir les gains quotidiens actuels
       const dailyGains = balanceManager.getDailyGains();
       
+      // Vérifier si la limite est déjà marquée comme atteinte
+      const limitReached = localStorage.getItem(`daily_limit_reached_${userId}`) === 'true';
+      
       // Vérifier si la limite est atteinte
-      if (dailyGains >= dailyLimit) {
+      if (limitReached || dailyGains >= dailyLimit) {
         console.log(`Génération automatique bloquée: limite quotidienne atteinte (${dailyGains.toFixed(2)}€/${dailyLimit}€)`);
+        
+        // Marquer la limite comme atteinte si ce n'est pas déjà fait
+        if (!limitReached) {
+          localStorage.setItem(`daily_limit_reached_${userId}`, 'true');
+          localStorage.setItem(`last_session_date_${userId}`, new Date().toDateString());
+          
+          // Désactiver le bot automatique
+          window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
+            detail: { active: false, reason: 'limit_reached' } 
+          }));
+        }
+        
         return;
       }
       
-      // Générer un montant plus petit (entre 0.01€ et 0.05€)
-      const gain = 0.01 + Math.random() * 0.04;
+      // Générer un montant plus petit
+      const gain = 0.01 + Math.random() * 0.03; // Entre 0.01€ et 0.04€
       const roundedGain = parseFloat(gain.toFixed(2));
       
       // Vérifier si ce gain fera dépasser la limite
@@ -134,6 +195,8 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
         
         // Si cette transaction a atteint la limite, déclencher l'événement de limite atteinte
         if (dailyGains + finalGain >= dailyLimit) {
+          localStorage.setItem(`daily_limit_reached_${userId}`, 'true');
+          
           window.dispatchEvent(new CustomEvent('daily-limit:reached', {
             detail: {
               subscription: subscription,

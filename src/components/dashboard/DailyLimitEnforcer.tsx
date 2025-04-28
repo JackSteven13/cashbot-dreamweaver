@@ -11,6 +11,34 @@ const DailyLimitEnforcer: FC = () => {
   useEffect(() => {
     if (!user) return;
     
+    // Fonction pour vérifier si nous devons réinitialiser les limites (nouveau jour)
+    const checkForDayChange = () => {
+      const userId = user.id;
+      const lastSessionDate = localStorage.getItem(`last_session_date_${userId}`);
+      const today = new Date().toDateString();
+      
+      // Si c'est un nouveau jour, réinitialiser toutes les limites
+      if (lastSessionDate && lastSessionDate !== today) {
+        console.log("Nouveau jour détecté! Réinitialisation des limites quotidiennes.");
+        localStorage.removeItem(`daily_limit_reached_${userId}`);
+        localStorage.removeItem(`freemium_daily_limit_reached_${userId}`);
+        
+        // Réinitialiser les gains quotidiens dans balanceManager
+        balanceManager.resetDailyGains();
+        
+        // Réactiver le bot automatiquement pour le nouveau jour
+        window.dispatchEvent(new CustomEvent('bot:external-status-change', { 
+          detail: { active: true, reason: 'new_day' } 
+        }));
+        
+        // Mettre à jour la date de dernière session
+        localStorage.setItem(`last_session_date_${userId}`, today);
+      }
+    };
+    
+    // Vérifier immédiatement pour la réinitialisation quotidienne
+    checkForDayChange();
+    
     const checkLimits = () => {
       const userId = user.id;
       const subscription = localStorage.getItem(`subscription_${userId}`) || 'freemium';
@@ -70,7 +98,13 @@ const DailyLimitEnforcer: FC = () => {
     // Vérifier immédiatement au chargement
     checkLimits();
     
-    return () => clearInterval(interval);
+    // Vérifier aussi le changement de jour toutes les minutes
+    const dayChangeInterval = setInterval(checkForDayChange, 60000);
+    
+    return () => {
+      clearInterval(interval);
+      clearInterval(dayChangeInterval);
+    };
   }, [user]);
 
   return null;

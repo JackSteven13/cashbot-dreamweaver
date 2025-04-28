@@ -23,7 +23,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
 }) => {
   // Référence pour éviter les doubles clics
   const lastClickTime = useRef<number>(0);
-  const clickCooldownMs = 3000; // 3 seconds cooldown (increased from 1 second)
+  const clickCooldownMs = 3000; // 3 seconds cooldown
   const [isInternalLoading, setIsInternalLoading] = useState(false);
   
   // Check if bot is in cooldown period (5 secondes)
@@ -32,6 +32,39 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   
   // État interne pour désactiver temporairement le bouton
   const [isInternalDisabled, setIsInternalDisabled] = useState(false);
+  
+  // Vérifier si nous avons déjà atteint la limite quotidienne en un seul appel
+  useEffect(() => {
+    const checkLimitReached = () => {
+      const userId = localStorage.getItem('current_user_id');
+      if (!userId) return false;
+      
+      // Vérifier si la limite est atteinte pour l'utilisateur
+      const limitReached = localStorage.getItem(`daily_limit_reached_${userId}`) === 'true';
+      const subscription = localStorage.getItem(`subscription_${userId}`) || 'freemium';
+      
+      // Pour les comptes freemium, vérifier aussi la limite de session
+      if (subscription === 'freemium') {
+        const freemiumLimitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`) === 'true';
+        return limitReached || freemiumLimitReached;
+      }
+      
+      return limitReached;
+    };
+    
+    setIsInternalDisabled(checkLimitReached());
+    
+    // Écouter les événements de limite atteinte
+    const handleLimitReached = () => {
+      setIsInternalDisabled(true);
+    };
+    
+    window.addEventListener('daily-limit:reached', handleLimitReached as EventListener);
+    
+    return () => {
+      window.removeEventListener('daily-limit:reached', handleLimitReached as EventListener);
+    };
+  }, []);
   
   // Gestion du cooldown
   useEffect(() => {
@@ -63,7 +96,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   const getTooltipMessage = () => {
     if (isLoading || isInternalLoading) return "Démarrage de la session...";
     if (isInCooldown) return `En attente (${cooldownRemaining}s)`;
-    if (isInternalDisabled) return "Session déjà en cours";
+    if (isInternalDisabled) return "Limite quotidienne atteinte";
     if (disabled) return "Sessions non disponibles actuellement";
     return "Démarrer une nouvelle session d'analyse";
   };
@@ -87,7 +120,16 @@ const SessionButton: React.FC<SessionButtonProps> = ({
     // Réactiver le bouton après un délai
     setTimeout(() => {
       setIsInternalLoading(false);
-      setIsInternalDisabled(false);
+      // Ne pas réactiver si la limite est atteinte
+      const userId = localStorage.getItem('current_user_id');
+      if (userId) {
+        const limitReached = localStorage.getItem(`daily_limit_reached_${userId}`) === 'true';
+        if (!limitReached) {
+          setIsInternalDisabled(false);
+        }
+      } else {
+        setIsInternalDisabled(false);
+      }
     }, 3000); // 3 secondes minimum avant de pouvoir cliquer à nouveau
   };
 
@@ -103,7 +145,7 @@ const SessionButton: React.FC<SessionButtonProps> = ({
   const getButtonLabel = () => {
     if (isLoading || isInternalLoading) return "Démarrage...";
     if (isInCooldown) return `En attente (${cooldownRemaining}s)`;
-    if (isInternalDisabled) return "Traitement...";
+    if (isInternalDisabled) return "Limite atteinte";
     return "Démarrer";
   };
 

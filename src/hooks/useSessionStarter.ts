@@ -30,18 +30,41 @@ export const useSessionStarter = ({
   const sessionInProgressRef = useRef(false);
   const sessionCountRef = useRef(dailySessionCount);
   const userId = userData?.profile?.id || userData?.id;
-  const minimumSessionInterval = 5000; // 5 secondes minimum entre les sessions
 
   // Keep sessionCountRef in sync
   useEffect(() => {
     sessionCountRef.current = dailySessionCount;
   }, [dailySessionCount]);
 
+  // Réinitialiser les limites quotidiennes si nécessaire
+  useEffect(() => {
+    if (!userId) return;
+    
+    const checkForNewDay = () => {
+      const lastSessionDate = localStorage.getItem(`last_session_date_${userId}`);
+      const today = new Date().toDateString();
+      
+      if (!lastSessionDate || lastSessionDate !== today) {
+        // C'est un nouveau jour, réinitialiser les limites
+        localStorage.removeItem(`daily_limit_reached_${userId}`);
+        localStorage.removeItem(`freemium_daily_limit_reached_${userId}`);
+        balanceManager.resetDailyGains();
+        
+        console.log("Nouveau jour détecté, limites quotidiennes réinitialisées");
+      }
+    };
+    
+    checkForNewDay();
+  }, [userId]);
+
   // Vérifier si le compte freemium a déjà atteint sa limite quotidienne
   const checkFreemiumLimit = () => {
+    if (!userData || !userData.id) return false;
+    
     if (userData?.subscription === 'freemium') {
-      const limitReached = localStorage.getItem('freemium_daily_limit_reached');
-      const lastSessionDate = localStorage.getItem('last_session_date');
+      // Vérifier si nous avons déjà une session aujourd'hui
+      const limitReached = localStorage.getItem(`freemium_daily_limit_reached_${userData.id}`);
+      const lastSessionDate = localStorage.getItem(`last_session_date_${userData.id}`);
       const today = new Date().toDateString();
       
       // Si ce n'est pas un nouveau jour et que la limite est déjà atteinte
@@ -56,20 +79,32 @@ export const useSessionStarter = ({
   const canStartNewSession = (): boolean => {
     // Si une session est déjà en cours, bloquer
     if (sessionInProgressRef.current || isStartingSession) {
+      console.log("Session déjà en cours, nouvelle requête bloquée");
       return false;
     }
     
     // Vérifier le délai minimum entre sessions
     if (lastSessionTimestamp) {
       const now = Date.now();
-      if (now - lastSessionTimestamp < minimumSessionInterval) {
+      if (now - lastSessionTimestamp < 5000) { // 5 secondes minimum
+        console.log("Session trop récente, requête bloquée");
         return false;
       }
     }
     
     // Pour les comptes freemium, vérifier la limite stricte
     if (userData?.subscription === 'freemium' && checkFreemiumLimit()) {
+      console.log("Limite de session freemium atteinte, requête bloquée");
       return false;
+    }
+    
+    // Vérifier si la limite quotidienne est déjà atteinte
+    if (userData?.id) {
+      const limitReached = localStorage.getItem(`daily_limit_reached_${userData.id}`) === 'true';
+      if (limitReached) {
+        console.log("Limite quotidienne déjà atteinte, requête bloquée");
+        return false;
+      }
     }
     
     // Vérifier les limites quotidiennes
@@ -78,6 +113,7 @@ export const useSessionStarter = ({
     const currentDailyGains = balanceManager.getDailyGains();
     
     if (currentDailyGains >= dailyLimit) {
+      console.log(`Limite quotidienne dépassée: ${currentDailyGains}€ >= ${dailyLimit}€, requête bloquée`);
       return false;
     }
     
@@ -88,6 +124,11 @@ export const useSessionStarter = ({
     // Double vérification pour éviter les démarrages multiples
     if (sessionInProgressRef.current || isStartingSession) {
       console.log("Session déjà en cours, ignorée");
+      toast({
+        title: "Session en cours",
+        description: "Veuillez attendre la fin de la session en cours.",
+        duration: 3000
+      });
       return;
     }
     
@@ -191,9 +232,9 @@ export const useSessionStarter = ({
       setLastSessionTimestamp(now);
 
       // Pour les comptes freemium, marquer que la limite est atteinte après une session
-      if (subscription === 'freemium') {
-        localStorage.setItem('freemium_daily_limit_reached', 'true');
-        localStorage.setItem('last_session_date', new Date().toDateString());
+      if (subscription === 'freemium' && userId) {
+        localStorage.setItem(`freemium_daily_limit_reached_${userId}`, 'true');
+        localStorage.setItem(`last_session_date_${userId}`, new Date().toDateString());
       }
 
       // Incrémenter le compteur de sessions
@@ -210,7 +251,7 @@ export const useSessionStarter = ({
 
       // Mettre à jour le solde dans la base de données
       const sessionReport = `Session d'analyse manuelle: +${gain.toFixed(2)}€`;
-      await updateBalance(gain, sessionReport);
+      await updateBalance(gain, sessionReport, true);
 
       // Marquer l'animation comme terminée
       terminalSequence.complete(gain);
@@ -249,6 +290,11 @@ export const useSessionStarter = ({
       
       // Si la limite est strictement atteinte, déclencher l'événement
       if (updatedGains >= dailyLimit) {
+        if (userId) {
+          localStorage.setItem(`daily_limit_reached_${userId}`, 'true');
+          localStorage.setItem(`last_session_date_${userId}`, new Date().toDateString());
+        }
+        
         window.dispatchEvent(new CustomEvent('daily-limit:reached', {
           detail: {
             subscription,
