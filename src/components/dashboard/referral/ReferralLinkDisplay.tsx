@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Copy, CheckCheck, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,9 +16,7 @@ const ReferralLinkDisplay: React.FC<ReferralLinkDisplayProps> = ({
   const [copied, setCopied] = useState(false);
   const [displayedLink, setDisplayedLink] = useState("");
   
-  // S'assurer que le lien est visible, même si vide
   React.useEffect(() => {
-    // Garantir qu'un lien existe toujours pour l'affichage
     const linkToDisplay = referralLink || `${window.location.origin}/register?ref=your-code`;
     setDisplayedLink(linkToDisplay);
   }, [referralLink]);
@@ -116,4 +113,3 @@ const ReferralLinkDisplay: React.FC<ReferralLinkDisplayProps> = ({
 };
 
 export default ReferralLinkDisplay;
-
