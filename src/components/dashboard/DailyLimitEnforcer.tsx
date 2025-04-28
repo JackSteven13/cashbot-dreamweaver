@@ -111,7 +111,7 @@ const DailyLimitEnforcer: FC = () => {
           detail: {
             amount: event.detail.gain,
             animate: true,
-            userId: userId,
+            userId: user.id,  // Fixed: Changed 'userId' to 'user.id'
             timestamp: Date.now()
           }
         }));
