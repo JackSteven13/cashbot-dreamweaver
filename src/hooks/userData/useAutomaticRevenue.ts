@@ -6,4 +6,3 @@ export { useRevenueGeneration };
 
 // Export as default as well for compatibility with both named and default imports
 export default useRevenueGeneration;
-

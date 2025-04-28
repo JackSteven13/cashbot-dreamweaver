@@ -1,4 +1,3 @@
-
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -28,7 +27,7 @@ export function useDashboardLogic() {
     generateAutomaticRevenue,
     isBotActive,
     dailyLimitProgress
-  } = useAutomaticRevenue({ userData, updateBalance });
+  } = useRevenueGeneration({ userData, updateBalance });
 
   useAutoSessionScheduler(todaysGainsRef, generateAutomaticRevenue, userData, isBotActive);
 

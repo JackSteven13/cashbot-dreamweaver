@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
@@ -121,8 +120,14 @@ export const useBotStatus = (initialState: boolean = true) => {
     }
   }, [checkLimitAndUpdateBot]);
   
+  // Add setIsBotActive for compatibility with existing code
+  const setIsBotActive = useCallback((active: boolean) => {
+    setBotActive(active);
+  }, []);
+  
   return {
     isBotActive,
+    setIsBotActive,
     updateBotStatus,
     resetBotActivity,
     checkLimitAndUpdateBot

@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import balanceManager from '@/utils/balance/balanceManager';
@@ -109,4 +108,3 @@ export const useRevenueGeneration = ({
     generateAutomaticRevenue
   };
 };
-
