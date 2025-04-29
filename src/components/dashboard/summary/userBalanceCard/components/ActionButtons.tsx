@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Zap, Download, Coins } from 'lucide-react';
 import { createBackgroundTerminalSequence } from '@/utils/animations/terminalAnimator';
 import { toast } from '@/components/ui/use-toast';
+import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
+import balanceManager from '@/utils/balance/balanceManager';
 
 interface ActionButtonsProps {
   isStartingSession: boolean;
@@ -28,66 +30,90 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 }) => {
   const [isLocallyProcessing, setIsLocallyProcessing] = useState(false);
   const [localBotActive, setLocalBotActive] = useState(isBotActive);
-  const [limitReached, setLimitReached] = useState(false);
-  const [freemiumLimitReached, setFreemiumLimitReached] = useState(false);
+  const [limitReached, setLimitReached] = useState(() => {
+    // Vérifie immédiatement si la limite est atteinte
+    const userId = localStorage.getItem('current_user_id');
+    if (userId) {
+      const limitReachedKey = `daily_limit_reached_${userId}`;
+      return localStorage.getItem(limitReachedKey) === 'true';
+    }
+    return false;
+  });
+  
+  const [freemiumLimitReached, setFreemiumLimitReached] = useState(() => {
+    // Vérifie immédiatement si la limite freemium est atteinte
+    if (subscription !== 'freemium') return false;
+    
+    const userId = localStorage.getItem('current_user_id');
+    if (!userId) return false;
+    
+    const lastSessionDate = localStorage.getItem(`last_session_date`);
+    const today = new Date().toDateString();
+    const limitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`);
+    
+    return lastSessionDate === today && limitReached === 'true';
+  });
 
-  // Écouter les changements d'état du bot
+  // Vérifie les limites quotidiennes à chaque changement du statut du bot ou de l'abonnement
   useEffect(() => {
+    const checkDailyLimits = () => {
+      const userId = localStorage.getItem('current_user_id');
+      if (!userId) return;
+      
+      // Vérifier si c'est un nouveau jour pour réinitialiser les limites
+      const lastSessionDate = localStorage.getItem(`last_session_date`);
+      const today = new Date().toDateString();
+      
+      if (lastSessionDate !== today) {
+        localStorage.removeItem(`daily_limit_reached_${userId}`);
+        localStorage.removeItem(`freemium_daily_limit_reached_${userId}`);
+        setLimitReached(false);
+        setFreemiumLimitReached(false);
+        return;
+      }
+      
+      // Vérifier les limites générales
+      const limitReached = localStorage.getItem(`daily_limit_reached_${userId}`) === 'true';
+      setLimitReached(limitReached);
+      
+      // Vérifier les limites spécifiques freemium
+      if (subscription === 'freemium') {
+        const freemiumLimitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`) === 'true';
+        setFreemiumLimitReached(freemiumLimitReached);
+      }
+    };
+    
+    checkDailyLimits();
+    
+    // Écouter les changements d'état du bot
     const handleBotStatusChange = (event: CustomEvent) => {
       const isActive = event.detail?.active;
-      const reason = event.detail?.reason;
       
       if (typeof isActive === 'boolean') {
         setLocalBotActive(isActive);
-        if (reason === 'limit_reached') {
-          setLimitReached(true);
-        }
       }
     };
     
     const handleLimitReached = () => {
-      console.log("Limit reached event received in ActionButtons");
       setLimitReached(true);
-      setLocalBotActive(false);
     };
     
-    // Pour les comptes freemium, vérifier si la limite est déjà atteinte
-    const checkFreemiumLimit = () => {
-      if (subscription === 'freemium') {
-        const userId = localStorage.getItem('current_user_id');
-        if (!userId) return false;
-
-        const limitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`);
-        const lastSessionDate = localStorage.getItem(`last_session_date_${userId}`);
-        const today = new Date().toDateString();
-        
-        const isLimited = lastSessionDate === today && limitReached === 'true';
-        console.log(`Vérification limite freemium (ActionButtons): ${isLimited}`);
-        setFreemiumLimitReached(isLimited);
-        return isLimited;
-      }
-      return false;
-    };
-    
-    checkFreemiumLimit();
-    
+    // Vérifier à nouveau les limites à chaque fois que le statut du bot change
     window.addEventListener('bot:status-change' as any, handleBotStatusChange);
     window.addEventListener('bot:force-status' as any, handleBotStatusChange);
     window.addEventListener('bot:limit-reached' as any, handleLimitReached);
     window.addEventListener('dashboard:limit-reached' as any, handleLimitReached);
     window.addEventListener('session:completed' as any, () => {
-      setTimeout(() => {
-        checkFreemiumLimit();
-      }, 500);
+      setTimeout(checkDailyLimits, 500);
     });
     
     // Initialiser avec la prop
     setLocalBotActive(isBotActive);
     
-    // Vérifier aussi à chaque changement de visibilité pour s'assurer que l'état est à jour
+    // Vérifier aussi à chaque changement de visibilité
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        checkFreemiumLimit();
+        checkDailyLimits();
       }
     };
     
@@ -103,42 +129,30 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   }, [isBotActive, subscription]);
 
   const handleStartAnalysis = async () => {
-    console.log("Début handleStartAnalysis");
+    const userId = localStorage.getItem('current_user_id');
     
+    // Vérifier si déjà en cours de traitement
     if (!canStartSession || isStartingSession || isLocallyProcessing) {
-      console.log("Action bloquée:", {canStartSession, isStartingSession, isLocallyProcessing});
       return;
     }
     
-    // Vérifier si la limite a été atteinte pour les comptes freemium
-    if (subscription === 'freemium') {
-      const userId = localStorage.getItem('current_user_id');
-      if (!userId) return;
-      
-      const limitReached = localStorage.getItem(`freemium_daily_limit_reached_${userId}`);
-      const lastSessionDate = localStorage.getItem(`last_session_date_${userId}`);
-      const today = new Date().toDateString();
-      const sessionCount = parseInt(localStorage.getItem('dailySessionCount') || '0');
-      
-      // Si ce n'est pas un nouveau jour et que la limite est atteinte
-      if (lastSessionDate === today && (limitReached === 'true' || sessionCount >= 1)) {
-        toast({
-          title: "Limite quotidienne atteinte",
-          description: "Les comptes freemium sont limités à 1 session par jour.",
-          variant: "destructive",
-          duration: 5000
-        });
-        return;
-      }
+    // Vérifier les limites freemium
+    if (subscription === 'freemium' && freemiumLimitReached) {
+      toast({
+        title: "Limite quotidienne atteinte",
+        description: "Les comptes freemium sont limités à 1 session par jour.",
+        variant: "destructive",
+        duration: 5000
+      });
+      return;
     }
     
-    // Vérifier si la limite a été atteinte
-    if (limitReached || freemiumLimitReached) {
+    // Vérifier si la limite générale est atteinte
+    if (limitReached) {
+      const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       toast({
         title: "Limite journalière atteinte",
-        description: subscription === 'freemium' 
-          ? "Les comptes freemium sont limités à 1 session par jour."
-          : "Vous avez atteint votre limite de gains quotidiens. Revenez demain ou passez à un forfait supérieur.",
+        description: `Vous avez atteint votre limite de ${dailyLimit}€ pour aujourd'hui.`,
         variant: "destructive",
         duration: 5000
       });
@@ -146,23 +160,32 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     }
     
     try {
-      console.log("Démarrage de l'animation et de l'analyse");
       setIsLocallyProcessing(true);
       
-      // Créer une séquence d'animation qui s'affiche immédiatement
-      const terminalAnimation = createBackgroundTerminalSequence([
-        "Initialisation de l'analyse vidéo..."
-      ]);
+      if (useAnimation) {
+        const terminalAnimation = createBackgroundTerminalSequence([
+          "Initialisation de l'analyse vidéo..."
+        ]);
+        terminalAnimation.add("Traitement des données en cours...");
+      }
       
-      // Utiliser add pour ajouter une ligne au lieu de addLine
-      terminalAnimation.add("Traitement des données en cours...");
-      
-      // Attendre un court instant pour l'animation visuelle avant d'appeler la fonction principale
+      // Attendre un court instant pour l'animation visuelle
       setTimeout(() => {
-        console.log("Appel de onStartSession");
         onStartSession();
         setIsLocallyProcessing(false);
       }, 200);
+      
+      // Si c'est un compte freemium, marquer comme limite atteinte immédiatement
+      if (subscription === 'freemium' && userId) {
+        localStorage.setItem(`freemium_daily_limit_reached_${userId}`, 'true');
+        localStorage.setItem('last_session_date', new Date().toDateString());
+        setFreemiumLimitReached(true);
+        
+        // Informer les autres composants
+        window.dispatchEvent(new CustomEvent('freemium:limit-changed', {
+          detail: { limited: true }
+        }));
+      }
     } catch (error) {
       console.error("Erreur lors du démarrage de l'analyse:", error);
       setIsLocallyProcessing(false);
@@ -179,9 +202,8 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     onWithdrawal();
   };
 
-  // Déterminer l'état visuel du bouton en fonction des différents états
+  // État visuel du bouton
   const getButtonState = () => {
-    // Pour les comptes freemium, vérifier si la limite quotidienne est atteinte
     if (subscription === 'freemium' && freemiumLimitReached) {
       return {
         text: 'Limite atteinte (1/jour)',
