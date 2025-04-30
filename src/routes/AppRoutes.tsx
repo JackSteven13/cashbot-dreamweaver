@@ -22,7 +22,7 @@ const AppRoutes: React.FC = () => {
       window.location.hostname !== '127.0.0.1' && 
       window.location.protocol === 'http:'
     ) {
-      window.location.href = window.location.href.replace('http:', 'https:');
+      window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}`);
     }
   }, []);
 

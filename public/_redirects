@@ -4,3 +4,7 @@ http://*  https://:splat 301!
 
 # SPA fallback
 /* /index.html 200
+
+# Specific domain redirects if needed
+http://streamgenius.io/* https://streamgenius.io/:splat 301!
+http://www.streamgenius.io/* https://streamgenius.io/:splat 301!
