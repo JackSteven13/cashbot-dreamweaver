@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Index from '../pages/Index';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
@@ -15,6 +15,17 @@ import Contact from '../pages/Contact';
 import AnalysisController from '../components/dashboard/analysis/AnalysisController';
 
 const AppRoutes: React.FC = () => {
+  // Force HTTPS in production
+  React.useEffect(() => {
+    if (
+      window.location.hostname !== 'localhost' && 
+      window.location.hostname !== '127.0.0.1' && 
+      window.location.protocol === 'http:'
+    ) {
+      window.location.href = window.location.href.replace('http:', 'https:');
+    }
+  }, []);
+
   return (
     <Routes>
       <Route path="/" element={<Index />} />
