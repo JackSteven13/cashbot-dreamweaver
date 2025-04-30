@@ -1,4 +1,3 @@
-
 /**
  * BalanceManager: Gestionnaire centralisé du solde utilisateur
  * Assure la cohérence du solde entre les différents composants
@@ -341,6 +340,29 @@ const balanceManager: BalanceManagerInstance = {
       localStorage.removeItem(`daily_limit_reached_${userId}`);
       localStorage.removeItem(`freemium_daily_limit_reached_${userId}`);
     }
+  },
+  
+  // Method for synchronizing on authentication
+  syncOnAuth: (userId: string, balance: number): void => {
+    if (typeof balance !== 'number' || isNaN(balance)) {
+      console.error("Invalid balance for syncOnAuth:", balance);
+      return;
+    }
+    
+    // Set the user ID first
+    balanceManager.setUserId(userId);
+    
+    // Compare with the current balance and use the highest
+    const currentBalance = balanceManager.getCurrentBalance();
+    const syncBalance = Math.max(currentBalance, balance);
+    
+    console.log(`Auth sync: userId=${userId}, dbBalance=${balance}, localBalance=${currentBalance}, syncBalance=${syncBalance}`);
+    
+    // Force balance sync with the highest value
+    balanceManager.forceBalanceSync(syncBalance, userId);
+    
+    // Reset daily gains if it's a new day
+    resetDailyGainsIfNewDay();
   }
 };
 

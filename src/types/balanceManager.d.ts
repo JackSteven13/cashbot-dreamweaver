@@ -38,4 +38,7 @@ export interface BalanceManagerInstance {
   // Reset methods for debugging and testing
   resetBalance?: () => boolean;
   resetDailyGains?: () => void;
+  
+  // Method for synchronizing on authentication
+  syncOnAuth: (userId: string, balance: number) => void;
 }
