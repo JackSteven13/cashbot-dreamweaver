@@ -1,5 +1,5 @@
 
-import { AuthProvider } from './hooks/useAuth';
+import { AuthProvider } from './hooks/useAuth.tsx'; // Change the path to use .tsx extension
 import AppRoutes from './routes/AppRoutes';
 import { Toaster } from './components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';

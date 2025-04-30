@@ -10,13 +10,12 @@ import { toast } from "sonner";
 // Vérifie si l'utilisateur doit être encouragé à renforcer son mot de passe
 export const checkPasswordSecurity = async (user: { id: string, email?: string | null }) => {
   try {
-    // Si l'utilisateur change de mot de passe, nous pouvons l'encourager à respecter
-    // nos règles de sécurité, même si nous ne pouvons pas voir son mot de passe actuel
-    const metadata = await getPasswordMetadata(user.id);
+    // Stocker en local storage qu'on a déjà montré le message pour ne pas répéter
+    const securityCheckShown = localStorage.getItem(`password_security_shown_${user.id}`);
     
-    if (metadata && !metadata.password_checked) {
-      // Enregistrer que nous avons effectué la vérification
-      await updatePasswordMetadata(user.id, true);
+    if (!securityCheckShown) {
+      // Marquer que nous avons affiché la notification
+      localStorage.setItem(`password_security_shown_${user.id}`, 'true');
       
       // Afficher une notification pour encourager un mot de passe fort
       setTimeout(() => {
@@ -38,32 +37,22 @@ export const checkPasswordSecurity = async (user: { id: string, email?: string |
   }
 };
 
-// Obtenir les métadonnées du mot de passe de l'utilisateur
+// Version adaptée qui utilise localStorage au lieu de la base de données
+// pour éviter de modifier la structure de la table profiles
 const getPasswordMetadata = async (userId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('password_checked')
-      .eq('id', userId)
-      .maybeSingle();
-      
-    if (error) throw error;
-    return data;
+    const isChecked = localStorage.getItem(`password_checked_${userId}`) === 'true';
+    return { password_checked: isChecked };
   } catch (error) {
     console.error("Erreur lors de la récupération des métadonnées du mot de passe:", error);
     return null;
   }
 };
 
-// Mettre à jour les métadonnées du mot de passe de l'utilisateur
+// Version adaptée qui utilise localStorage au lieu de la base de données
 const updatePasswordMetadata = async (userId: string, checked: boolean) => {
   try {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ password_checked: checked })
-      .eq('id', userId);
-      
-    if (error) throw error;
+    localStorage.setItem(`password_checked_${userId}`, checked ? 'true' : 'false');
     return true;
   } catch (error) {
     console.error("Erreur lors de la mise à jour des métadonnées du mot de passe:", error);
