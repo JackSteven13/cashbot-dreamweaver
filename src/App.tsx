@@ -1,24 +1,24 @@
 
+import { AuthProvider } from './hooks/useAuth';
 import AppRoutes from './routes/AppRoutes';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { QueryProvider } from '@/components/QueryProvider';
-import { ToastNotification } from './components/ui/toast-notification';
-import { Toaster } from '@/components/ui/toaster'; // On garde également l'ancien système pour compatibilité
+import { Toaster } from './components/ui/toaster';
+import { Toaster as SonnerToaster } from 'sonner';
+import useAuthProvider from './hooks/auth/useAuthProvider';
+
+function AuthSecurityWrapper() {
+  // Utiliser notre hook pour les vérifications de sécurité
+  useAuthProvider();
+  
+  return <AppRoutes />;
+}
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark">
-      <QueryProvider>
-        <AppRoutes />
-        <ToastNotification 
-          position="top-right" 
-          theme="dark"
-          richColors={true}
-          offset="1rem"
-        />
-        <Toaster /> {/* Conserver l'ancien système de notification pour compatibilité */}
-      </QueryProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <AuthSecurityWrapper />
+      <Toaster />
+      <SonnerToaster position="top-right" richColors />
+    </AuthProvider>
   );
 }
 
