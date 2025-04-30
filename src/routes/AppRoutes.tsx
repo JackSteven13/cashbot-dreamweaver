@@ -15,7 +15,7 @@ import Contact from '../pages/Contact';
 import AnalysisController from '../components/dashboard/analysis/AnalysisController';
 
 const AppRoutes: React.FC = () => {
-  // Force HTTPS in production
+  // Force HTTPS in production with more specific conditions
   React.useEffect(() => {
     if (
       window.location.hostname !== 'localhost' && 

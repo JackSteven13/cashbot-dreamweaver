@@ -10,8 +10,10 @@
     <meta property="og:image" content="/og-image.png" />
     <!-- Canonical URL to avoid duplicate content issues -->
     <link rel="canonical" href="https://streamgenius.io" />
-    <!-- Force HTTPS -->
+    <!-- Force HTTPS with stronger Content-Security-Policy -->
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <!-- Additional SSL verification meta tag -->
+    <meta name="verify-ssl" content="true">
   </head>
 
   <body>

@@ -18,19 +18,6 @@
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Content-Security-Policy = "upgrade-insecure-requests"
-    Access-Control-Allow-Origin = "*"
-
-# Custom 404 page
-[[redirects]]
-  from = "/*"
-  to = "/404.html"
-  status = 404
-
-# Custom error page for 500 responses
-[[redirects]]
-  from = "/*"
-  to = "/404.html"
-  status = 500
 
 # Force HTTP to HTTPS for all requests
 [[redirects]]
