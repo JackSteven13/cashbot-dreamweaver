@@ -17,13 +17,27 @@ import AnalysisController from '../components/dashboard/analysis/AnalysisControl
 const AppRoutes: React.FC = () => {
   // Force HTTPS in production with more specific conditions
   React.useEffect(() => {
+    // Check if we're not on localhost and not using HTTPS
     if (
       window.location.hostname !== 'localhost' && 
       window.location.hostname !== '127.0.0.1' && 
       window.location.protocol === 'http:'
     ) {
+      // Force redirect to HTTPS
       window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}`);
     }
+    
+    // Add specific check for streamgenius.io domain
+    if (
+      window.location.hostname === 'www.streamgenius.io' &&
+      window.location.protocol === 'https:'
+    ) {
+      // Redirect www to non-www
+      window.location.replace(`https://streamgenius.io${window.location.pathname}${window.location.search}`);
+    }
+    
+    // Force dark mode class on document for consistent appearance
+    document.documentElement.classList.add('dark');
   }, []);
 
   return (
