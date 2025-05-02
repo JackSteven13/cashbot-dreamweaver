@@ -1,10 +1,11 @@
 
-import { AuthProvider } from './hooks/useAuth.tsx'; // Change the path to use .tsx extension
+import { AuthProvider } from './hooks/useAuth.tsx';
 import AppRoutes from './routes/AppRoutes';
 import { Toaster } from './components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
 import useAuthProvider from './hooks/auth/useAuthProvider';
 import { useEffect } from 'react';
+import NetworkStatusMonitor from './components/NetworkStatusMonitor';
 
 // Composant de récupération en cas d'erreur DNS et d'application HTTPS
 const SecurityAndDNSHandler = () => {
@@ -21,29 +22,12 @@ const SecurityAndDNSHandler = () => {
       return true;
     };
     
-    // Vérifier la configuration DNS
-    const checkDNS = () => {
-      const img = new Image();
-      img.src = `https://www.google.com/favicon.ico?${new Date().getTime()}`;
-      return new Promise((resolve, reject) => {
-        img.onload = () => resolve(true);
-        img.onerror = () => reject(new Error("DNS error"));
-        setTimeout(() => reject(new Error("DNS timeout")), 5000);
-      });
-    };
-
     // Exécuter les vérifications de sécurité
     enforceHttps();
-    checkDNS().catch(error => {
-      console.warn("DNS check failed:", error);
-    });
 
     // Vérifier périodiquement
     const intervalId = setInterval(() => {
       enforceHttps();
-      checkDNS().catch(() => {
-        console.log("Attempting recovery for DNS issues...");
-      });
     }, 30000);
 
     // Redirection .fr vers .io immédiate
@@ -107,6 +91,7 @@ function App() {
     <AuthProvider>
       <SecurityAndDNSHandler />
       <AuthSecurityWrapper />
+      <NetworkStatusMonitor />
       <Toaster />
       <SonnerToaster position="top-right" richColors />
     </AuthProvider>
