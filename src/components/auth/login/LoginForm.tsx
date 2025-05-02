@@ -47,12 +47,10 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
         throw new Error("Vous semblez être hors ligne. Vérifiez votre connexion internet.");
       }
       
-      // Always manually sign in with the provided credentials with production domain options
+      // Always manually sign in with the provided credentials
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      }, {
-        redirectTo: window.location.origin + '/dashboard',
       });
       
       if (error) throw error;
@@ -110,6 +108,19 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
       clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = null;
     }
+    
+    // Définir les drapeaux de blocage au niveau de cette fonction
+    const loginBlockingFlags = [
+      'auth_checking',
+      'auth_refreshing',
+      'auth_redirecting',
+      'auth_check_timestamp',
+      'auth_refresh_timestamp',
+      'auth_redirect_timestamp',
+      'auth_signing_out',
+      'sb-cfjibduhagxiwqkiyhqd-auth-token',
+      'sb-cfjibduhagxiwqkiyhqd-auth-refresh'
+    ];
     
     try {
       await performLogin();
@@ -208,19 +219,6 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
       }
     }
   };
-
-  // Définir les drapeaux de blocage au niveau de la fonction
-  const loginBlockingFlags = [
-    'auth_checking',
-    'auth_refreshing',
-    'auth_redirecting',
-    'auth_check_timestamp',
-    'auth_refresh_timestamp',
-    'auth_redirect_timestamp',
-    'auth_signing_out',
-    'sb-cfjibduhagxiwqkiyhqd-auth-token',
-    'sb-cfjibduhagxiwqkiyhqd-auth-refresh'
-  ];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

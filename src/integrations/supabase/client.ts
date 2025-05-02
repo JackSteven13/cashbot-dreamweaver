@@ -28,8 +28,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     storage: localStorage,
     flowType: 'implicit',
-    // Configurer les URLs pour fonctionner à la fois en développement et en production
-    redirectTo: `${getCurrentHost()}/dashboard`,
   },
   // Options globales pour améliorer la résilience
   global: {

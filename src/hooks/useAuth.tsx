@@ -1,5 +1,5 @@
 
-import { useState, useEffect, createContext, ReactNode } from 'react';
+import { useState, useEffect, createContext, ReactNode, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 
@@ -108,7 +108,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
 // Hook personnalisé pour utiliser le contexte d'authentification
 export const useAuth = () => {
-  const context = createContext(AuthContext);
+  const context = useContext(AuthContext);
   
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
