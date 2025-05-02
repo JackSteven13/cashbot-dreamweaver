@@ -1,46 +1,36 @@
 
-import { LocationData } from '../data/locationData';
-import { adValueCategories } from '../data/adConstants';
-
 /**
- * Calcule les revenus pour une localisation donnée avec une parfaite
- * corrélation avec le nombre de publicités
- */
-export const calculateRevenueForLocation = (
-  location: LocationData,
-  ads: number
-): number => {
-  // FORCER une parfaite corrélation entre les publicités et revenus
-  // avec un facteur de conversion fixe
-  const REVENUE_PER_AD = 0.76203;
-  
-  // Calculer directement le revenu basé sur le nombre de publicités
-  // Cette garantit que le revenu évolue toujours quand les pubs évoluent
-  return ads * REVENUE_PER_AD;
-};
-
-/**
- * Synchronise les revenus avec les publicités en utilisant un ratio constant
- * pour garantir que toute augmentation de publicités se traduit par une augmentation de revenus
+ * Synchronise parfaitement les revenus avec le nombre de publicités
+ * pour garantir une cohérence des données.
  */
 export const synchronizeRevenueWithAds = (adsCount: number): number => {
-  // Utiliser exactement le même ratio pour maintenir une cohérence parfaite
+  // Ce ratio fixe est utilisé dans tout le système pour garantir la cohérence
   const PERFECT_CORRELATION_RATIO = 0.76203;
   
-  // Appliquer le ratio et retourner le montant de revenus synchronisé
-  return adsCount * PERFECT_CORRELATION_RATIO;
+  // Calcul du revenu avec précision à 2 décimales
+  return Math.round(adsCount * PERFECT_CORRELATION_RATIO * 100) / 100;
 };
 
 /**
- * Génère un petit incrément aléatoire pour les revenus basé sur l'incrément de pubs
- * mais en gardant le ratio global relativement constant
+ * Calcule les statistiques globales à partir des valeurs centralisées
  */
-export const generateRevenueIncrement = (adsIncrement: number): number => {
-  const CORRELATION_RATIO = 0.76203;
-  
-  // Réduire encore plus la variation aléatoire pour une parfaite cohérence
-  const jitterFactor = 1 + (Math.random() - 0.5) * 0.01; // ±0.5% variation (réduite)
-  
-  // Calculer l'incrément de revenu correspondant
-  return adsIncrement * CORRELATION_RATIO * jitterFactor;
+export const getGlobalStats = async (): Promise<{adsCount: number, revenueCount: number}> => {
+  try {
+    // Récupérer les statistiques depuis la base de données
+    // Pour l'instant on utilise des valeurs fixes jusqu'à la mise en place d'une API
+    const BASE_ADS_COUNT = 152847;
+    const BASE_REVENUE_COUNT = synchronizeRevenueWithAds(BASE_ADS_COUNT);
+    
+    return {
+      adsCount: BASE_ADS_COUNT,
+      revenueCount: BASE_REVENUE_COUNT
+    };
+  } catch (error) {
+    console.error("Erreur lors de la récupération des statistiques globales", error);
+    // Valeurs par défaut en cas d'erreur
+    return {
+      adsCount: 150000,
+      revenueCount: synchronizeRevenueWithAds(150000)
+    };
+  }
 };

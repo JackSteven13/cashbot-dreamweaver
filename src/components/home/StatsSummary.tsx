@@ -2,55 +2,36 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Activity, TrendingUp, Star } from 'lucide-react';
-import usePersistentStats from '@/hooks/stats/usePersistentStats';
-import { useUserSession } from '@/hooks/useUserSession';
-import { initStatsSync } from '@/utils/stats/statsSynchronizer';
+import { getGlobalStats } from '@/hooks/stats/utils/revenueCalculator';
 
 const StatsSummary: React.FC = () => {
-  const { userData } = useUserSession();
-  const userId = userData?.profile?.id;
-  
-  const { adsCount, revenueCount } = usePersistentStats({
-    autoIncrement: true,
-    userId,
-    correlationRatio: 0.75 // Synchroniser publicités et revenus
+  const [stats, setStats] = useState({
+    adsCount: 150000,
+    revenueCount: 114304.5
   });
   
-  // État local pour détecter la première visite du jour
-  const [isFirstVisitToday, setIsFirstVisitToday] = useState(false);
-  
-  // Initialiser la synchronisation des statistiques
+  // Charger les statistiques centralisées
   useEffect(() => {
-    const cleanup = initStatsSync(userId);
+    const loadStats = async () => {
+      const globalStats = await getGlobalStats();
+      setStats(globalStats);
+    };
     
-    // Vérifier si c'est la première visite du jour
-    const lastVisitDate = localStorage.getItem('last_visit_date');
-    const today = new Date().toDateString();
+    loadStats();
     
-    if (lastVisitDate !== today) {
-      setIsFirstVisitToday(true);
-      // Ajouter une progression automatique pour les jours d'absence
-      const daysDifference = lastVisitDate 
-        ? Math.floor((new Date(today).getTime() - new Date(lastVisitDate).getTime()) / (1000 * 60 * 60 * 24))
-        : 0;
-        
-      if (daysDifference > 0) {
-        console.log(`Premier accès du jour, ${daysDifference} jour(s) d'absence`);
-        // La progression sera gérée par useAutoSessionScheduler
-      }
-      
-      // Mettre à jour la date de dernière visite
-      localStorage.setItem('last_visit_date', today);
-    }
+    // Actualiser périodiquement
+    const refreshInterval = setInterval(async () => {
+      const globalStats = await getGlobalStats();
+      setStats(globalStats);
+    }, 60000);
     
-    return cleanup;
-  }, [userId]);
+    return () => clearInterval(refreshInterval);
+  }, []);
   
   // Formater les nombres de façon réaliste avec des décimales pour éviter les chiffres trop ronds
   const formatRealisticNumber = (value: number): string => {
     // Arrondir à l'entier pour les analyses
     if (value > 100000) {
-      // Éviter les valeurs trop rondes pour les grands nombres
       const roundedValue = Math.floor(value);
       return new Intl.NumberFormat('fr-FR').format(roundedValue);
     } else {
@@ -63,7 +44,7 @@ const StatsSummary: React.FC = () => {
     return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   };
   
-  // Calculer un nombre d'affiliés crédible et variable (pas un simple facteur de division)
+  // Calculer un nombre d'affiliés crédible et variable
   const calculateAffiliateCount = (count: number): number => {
     const baseCount = Math.max(Math.floor(count / 762), 1); // Division non-ronde
     // Ajouter une légère variation aléatoire fixée au montage
@@ -81,7 +62,7 @@ const StatsSummary: React.FC = () => {
           </div>
           <div className="p-4 flex items-center">
             <span className="text-2xl md:text-3xl font-bold">
-              {formatRealisticNumber(adsCount)}
+              {formatRealisticNumber(stats.adsCount)}
             </span>
           </div>
         </CardContent>
@@ -95,7 +76,7 @@ const StatsSummary: React.FC = () => {
           </div>
           <div className="p-4 flex items-center">
             <span className="text-2xl md:text-3xl font-bold">
-              {formatRealisticRevenue(revenueCount)} €
+              {formatRealisticRevenue(stats.revenueCount)} €
             </span>
           </div>
         </CardContent>
@@ -109,7 +90,7 @@ const StatsSummary: React.FC = () => {
           </div>
           <div className="p-4 flex items-center justify-between">
             <span className="text-2xl md:text-3xl font-bold">
-              {formatRealisticNumber(calculateAffiliateCount(adsCount))}
+              {formatRealisticNumber(calculateAffiliateCount(stats.adsCount))}
             </span>
             <span className="text-xs text-green-500 font-medium bg-green-100 px-2 py-0.5 rounded-full">
               En hausse!
