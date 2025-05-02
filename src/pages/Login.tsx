@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Loader2, AlertTriangle, WifiOff, RefreshCw } from 'lucide-react';
@@ -8,6 +7,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
 import { hasValidConnection, retryConnection } from '@/utils/auth';
+import { ToastAction } from '@/components/ui/toast';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -286,10 +286,11 @@ const Login = () => {
           description: "Impossible de joindre le serveur. Vérifiez votre connexion internet et réessayez.",
           variant: "destructive",
           duration: 8000,
-          action: {
-            label: 'Réessayer',
-            onClick: () => handleRetryConnection()
-          }
+          action: (
+            <ToastAction altText="Réessayer" onClick={() => handleRetryConnection()}>
+              Réessayer
+            </ToastAction>
+          ),
         });
         
         // Mettre à jour l'état de connexion si une erreur réseau est détectée
