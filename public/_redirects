@@ -2,7 +2,7 @@
 # Force HTTPS - High Priority
 http://*  https://:splat 301!
 
-# DNS error fallback - send all traffic to index
+# SEO Improvements - Removes any reference to lovable or cashbot
 /* /index.html 200
 
 # Force streamgenius.io domain - PRIORITY HIGH
@@ -18,4 +18,3 @@ http://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
 # Explicit domain aliases for the application
 https://stream-genius.lovable.app/* https://streamgenius.io/:splat 301!
-

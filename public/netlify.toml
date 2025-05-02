@@ -8,7 +8,7 @@
   command = "npm run build"
   publish = "dist"
 
-# Security Headers - Enhanced
+# SEO Improvements - Set custom headers to enhance indexing and security
 [[headers]]
   for = "/*"
   [headers.values]
@@ -22,6 +22,8 @@
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
     Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    # SEO Improvements - No cachbot reference
+    X-Robots-Tag = "index, follow"
 
 # Force HTTP to HTTPS for all requests - High Priority
 [[redirects]]
@@ -62,3 +64,7 @@
 [[plugins]]
   package = "@netlify/plugin-sitemap"
 
+# Custom site metadata for SEO
+[build.environment]
+  SITE_NAME = "StreamGenius"
+  SITE_DESCRIPTION = "Plateforme d'intelligence artificielle pour l'analyse publicitaire"

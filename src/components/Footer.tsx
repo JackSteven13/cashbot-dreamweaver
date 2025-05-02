@@ -11,9 +11,9 @@ const Footer = () => {
           {/* Logo et copyright */}
           <div className="flex flex-col items-center md:items-start space-y-2">
             <Link to="/" className="text-2xl font-semibold tracking-tight hover:opacity-90 transition-opacity">
-              Stream genius
+              StreamGenius
             </Link>
-            <p className="text-sm text-gray-400">© {new Date().getFullYear()} Tous droits réservés</p>
+            <p className="text-sm text-gray-400">© {new Date().getFullYear()} StreamGenius - Tous droits réservés</p>
           </div>
           
           {/* Liens importants */}
@@ -23,7 +23,9 @@ const Footer = () => {
               <Link to="/terms" className="text-sm text-gray-300 hover:text-white transition-colors">
                 Conditions d'utilisation
               </Link>
-              {/* Suppression du lien de politique de confidentialité */}
+              <Link to="/about" className="text-sm text-gray-300 hover:text-white transition-colors">
+                À propos de nous
+              </Link>
             </div>
           </div>
           
@@ -37,15 +39,12 @@ const Footer = () => {
               <MessageSquare className="w-4 h-4" />
               Nous contacter
             </Link>
-            <div className="flex space-x-4 mt-2">
-              {/* Icônes de réseaux sociaux peuvent être ajoutées ici */}
-            </div>
           </div>
         </div>
         
         <div className="mt-8 pt-6 border-t border-gray-800">
           <p className="text-xs text-center text-gray-500">
-            Stream genius - Plateforme d'intelligence artificielle pour l'analyse publicitaire
+            StreamGenius - Plateforme d'intelligence artificielle pour l'analyse publicitaire et la monétisation d'audience
           </p>
         </div>
       </div>
