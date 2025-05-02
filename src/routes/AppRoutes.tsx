@@ -1,6 +1,7 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import Index from '../pages/Index';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
@@ -16,7 +17,26 @@ import AnalysisController from '../components/dashboard/analysis/AnalysisControl
 
 const AppRoutes: React.FC = () => {
   // Force HTTPS in production with more specific conditions
-  React.useEffect(() => {
+  useEffect(() => {
+    // DNS Error detection and recovery
+    const checkConnectivity = () => {
+      const isOnline = navigator.onLine;
+      if (!isOnline) {
+        toast.error("Problème de connexion réseau. Vérifiez votre connexion internet.");
+        return;
+      }
+      
+      // Vérification DNS simple
+      const img = new Image();
+      img.src = "https://www.google.com/favicon.ico?" + new Date().getTime();
+      img.onload = () => {
+        console.log("Connexion Internet fonctionnelle");
+      };
+      img.onerror = () => {
+        toast.error("Problème de DNS détecté. Essayez de vider votre cache DNS.");
+      };
+    };
+    
     // Check if we're not on localhost and not using HTTPS
     if (
       window.location.hostname !== 'localhost' && 
@@ -36,8 +56,18 @@ const AppRoutes: React.FC = () => {
       window.location.replace(`https://streamgenius.io${window.location.pathname}${window.location.search}`);
     }
     
+    // Check DNS and connectivity on load
+    checkConnectivity();
+    
+    // Check periodically
+    const intervalId = setInterval(checkConnectivity, 30000);
+    
     // Force dark mode class on document for consistent appearance
     document.documentElement.classList.add('dark');
+    
+    return () => {
+      clearInterval(intervalId);
+    };
   }, []);
 
   return (

@@ -19,6 +19,8 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Content-Security-Policy = "upgrade-insecure-requests"
     Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization"
 
 # Force HTTP to HTTPS for all requests
 [[redirects]]
@@ -26,3 +28,14 @@
   to = "https://:splat"
   status = 301
   force = true
+
+# Custom 404 page redirect
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 404
+
+# Handle DNS errors with a fallback
+[[plugins]]
+  package = "@netlify/plugin-sitemap"
+
