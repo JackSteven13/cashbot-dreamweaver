@@ -1,11 +1,13 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2, AlertTriangle, WifiOff } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
+import { hasValidConnection } from '@/utils/auth';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,9 +17,47 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'ok' | 'dns_error' | 'offline'>('checking');
   const loginAttempted = useRef(false);
+  const connectionCheckInterval = useRef<number | null>(null);
   
   const from = (location.state as any)?.from?.pathname || '/dashboard';
+
+  // Vérifier la connexion réseau et DNS
+  useEffect(() => {
+    const checkConnection = async () => {
+      if (!navigator.onLine) {
+        setConnectionStatus('offline');
+        return;
+      }
+      
+      try {
+        const isValid = await hasValidConnection();
+        setConnectionStatus(isValid ? 'ok' : 'dns_error');
+      } catch (error) {
+        console.error("Erreur lors de la vérification de connexion:", error);
+        setConnectionStatus('dns_error');
+      }
+    };
+    
+    // Vérifier immédiatement
+    checkConnection();
+    
+    // Vérifier périodiquement
+    connectionCheckInterval.current = window.setInterval(checkConnection, 10000);
+    
+    // Écouter les changements d'état de connexion
+    window.addEventListener('online', () => checkConnection());
+    window.addEventListener('offline', () => setConnectionStatus('offline'));
+    
+    return () => {
+      if (connectionCheckInterval.current) {
+        clearInterval(connectionCheckInterval.current);
+      }
+      window.removeEventListener('online', () => checkConnection());
+      window.removeEventListener('offline', () => setConnectionStatus('offline'));
+    };
+  }, []);
 
   // Nettoyer les flags d'authentification potentiellement bloquants
   useEffect(() => {
@@ -103,6 +143,25 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Vérifier l'état de la connexion avant de tenter la connexion
+    if (connectionStatus === 'offline') {
+      toast({
+        title: "Erreur de connexion",
+        description: "Vous êtes actuellement hors ligne. Veuillez vérifier votre connexion internet.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (connectionStatus === 'dns_error') {
+      toast({
+        title: "Problème de DNS détecté",
+        description: "Essayez de vider votre cache DNS ou utilisez un autre réseau.",
+        variant: "destructive",
+      });
+      // Continuer malgré l'erreur DNS, car la connexion pourrait quand même fonctionner
+    }
+    
     if (isLoading || loginAttempted.current) return;
     
     setIsLoading(true);
@@ -184,6 +243,41 @@ const Login = () => {
     }
   };
 
+  // Affichage d'un avertissement pour les problèmes de réseau
+  const renderConnectionWarning = () => {
+    if (connectionStatus === 'ok') return null;
+    
+    if (connectionStatus === 'offline') {
+      return (
+        <div className="mb-4 p-3 bg-red-900/30 border border-red-900/50 rounded-lg">
+          <div className="flex items-center">
+            <WifiOff className="h-5 w-5 text-red-400 mr-2" />
+            <p className="text-sm font-medium text-red-400">Vous êtes hors ligne</p>
+          </div>
+          <p className="text-xs text-red-300/80 mt-1">
+            Vérifiez votre connexion internet et réessayez.
+          </p>
+        </div>
+      );
+    }
+    
+    if (connectionStatus === 'dns_error') {
+      return (
+        <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-900/40 rounded-lg">
+          <div className="flex items-center">
+            <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2" />
+            <p className="text-sm font-medium text-yellow-500">Problème de DNS détecté</p>
+          </div>
+          <p className="text-xs text-yellow-400/80 mt-1">
+            Essayez de vider votre cache DNS ou utilisez un autre réseau.
+          </p>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
   // Si on vérifie encore la session, afficher un loader amélioré
   if (isCheckingSession) {
     return (
@@ -214,6 +308,8 @@ const Login = () => {
           </div>
           
           <div className="glass-panel p-6 rounded-xl">
+            {renderConnectionWarning()}
+            
             {lastLoggedInEmail && (
               <div className="mb-4 p-3 bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-blue-300">
@@ -265,7 +361,7 @@ const Login = () => {
                   size="lg" 
                   isLoading={isLoading} 
                   className="group"
-                  disabled={isLoading || loginAttempted.current}
+                  disabled={isLoading || loginAttempted.current || connectionStatus === 'offline'}
                 >
                   {isLoading ? (
                     <>

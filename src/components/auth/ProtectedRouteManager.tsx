@@ -5,10 +5,11 @@ import { useAuthVerification } from '@/hooks/useAuthVerification';
 import AuthLoadingScreen from './AuthLoadingScreen';
 import ProtectedRouteRecovery from './ProtectedRouteRecovery';
 import { toast } from '@/components/ui/use-toast';
-import { forceSignOut } from '@/utils/auth/sessionUtils';
+import { forceSignOut, hasValidConnection } from '@/utils/auth';
 import { useProtectedRouteState } from './useProtectedRouteState';
 import { useAuthRedirect } from './useAuthRedirect';
 import { useAuthTimeouts } from './useAuthTimeouts';
+import ConnectionErrorScreen from './ConnectionErrorScreen';
 
 interface ProtectedRouteManagerProps {
   children: ReactNode;
@@ -30,6 +31,7 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
   
   const [forceReset, setForceReset] = useState(false);
   const [redirectAttempts, setRedirectAttempts] = useState(0);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   
   const { 
     isAuthenticated: authStatus, 
@@ -40,6 +42,44 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
   } = useAuthVerification();
 
   const { handleCleanLogin, location } = useAuthRedirect();
+  
+  // Vérifier la connexion réseau
+  useEffect(() => {
+    const checkConnection = async () => {
+      if (!navigator.onLine) {
+        setConnectionError('offline');
+        return;
+      }
+      
+      try {
+        const isValid = await hasValidConnection();
+        if (!isValid) {
+          setConnectionError('dns');
+        } else {
+          setConnectionError(null);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la vérification de la connexion:', error);
+        setConnectionError('unknown');
+      }
+    };
+    
+    // Vérifier immédiatement
+    checkConnection();
+    
+    // Vérifier périodiquement
+    const interval = setInterval(checkConnection, 30000);
+    
+    // Écouter les événements de connexion
+    window.addEventListener('online', () => checkConnection());
+    window.addEventListener('offline', () => setConnectionError('offline'));
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', () => checkConnection());
+      window.removeEventListener('offline', () => setConnectionError('offline'));
+    };
+  }, []);
 
   // Force reset auth state when needed
   useEffect(() => {
@@ -165,6 +205,20 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
       window.location.href = '/login';
     }
   }, [redirectAttempts, redirectInProgress]);
+  
+  // Afficher l'écran d'erreur de connexion si nécessaire
+  if (connectionError) {
+    return (
+      <ConnectionErrorScreen 
+        errorType={connectionError}
+        onRetry={() => {
+          setConnectionError(null);
+          checkAuth(true);
+        }}
+        onCleanLogin={handleCleanLoginSafely}
+      />
+    );
+  }
 
   // Afficher l'écran de récupération en cas d'échec après plusieurs tentatives
   if (authCheckFailed && (autoRetryCount.current >= 2 || retryAttempts >= 3)) {

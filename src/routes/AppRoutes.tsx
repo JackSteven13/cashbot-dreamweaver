@@ -14,6 +14,7 @@ import PaymentSuccess from '../pages/PaymentSuccess';
 import Terms from '../pages/Terms';
 import Contact from '../pages/Contact';
 import AnalysisController from '../components/dashboard/analysis/AnalysisController';
+import { hasValidConnection } from '@/utils/auth';
 
 const AppRoutes: React.FC = () => {
   // Force HTTPS in production with more specific conditions
@@ -33,23 +34,34 @@ const AppRoutes: React.FC = () => {
       return true;
     };
     
-    // DNS Error detection and recovery
-    const checkConnectivity = () => {
+    // DNS Error detection and recovery avec amélioration
+    const checkConnectivity = async () => {
       const isOnline = navigator.onLine;
       if (!isOnline) {
         toast.error("Problème de connexion réseau. Vérifiez votre connexion internet.");
         return;
       }
       
-      // Vérification DNS simple
-      const img = new Image();
-      img.src = "https://www.google.com/favicon.ico?" + new Date().getTime();
-      img.onload = () => {
-        console.log("Connexion Internet fonctionnelle");
-      };
-      img.onerror = () => {
-        toast.error("Problème de DNS détecté. Essayez de vider votre cache DNS.");
-      };
+      try {
+        // Utiliser notre fonction améliorée pour vérifier la connexion
+        const hasConnection = await hasValidConnection();
+        
+        if (!hasConnection) {
+          toast.error("Problème de DNS détecté. Essayez de vider votre cache DNS.", {
+            duration: 8000,
+            action: {
+              label: "Aide",
+              onClick: () => {
+                toast.info("Conseil: Essayez de basculer sur les données mobiles ou un autre réseau WiFi.", {
+                  duration: 8000
+                });
+              }
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Erreur lors de la vérification de la connexion:", error);
+      }
     };
     
     // First enforce HTTPS
@@ -78,11 +90,11 @@ const AppRoutes: React.FC = () => {
     // Check DNS and connectivity on load
     checkConnectivity();
     
-    // Check periodically
+    // Check periodically - moins souvent pour économiser les ressources
     const intervalId = setInterval(() => {
       enforceHttps();
       checkConnectivity();
-    }, 30000);
+    }, 60000); // Check toutes les minutes au lieu de 30 secondes
     
     // Force dark mode class on document for consistent appearance
     document.documentElement.classList.add('dark');

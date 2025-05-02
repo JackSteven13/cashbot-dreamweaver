@@ -1,49 +1,146 @@
 
-import { SUBSCRIPTION_LIMITS } from "@/utils/subscription/constants";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
+import { refreshSession } from './sessionUtils';
 
-/**
- * Checks if a user is authenticated
- */
-export const isUserAuthenticated = async (): Promise<boolean> => {
+let authChangeCallbacks: Array<(status: boolean) => void> = [];
+
+// Vérifie si l'utilisateur a atteint sa limite quotidienne
+export const checkDailyLimit = async (userId: string): Promise<boolean> => {
   try {
-    const { data, error } = await supabase.auth.getSession();
-    if (error || !data.session) {
+    // Mettre en cache les résultats pendant 1 minute pour réduire les appels API
+    const cacheKey = `daily_limit_${userId}`;
+    const cachedResult = sessionStorage.getItem(cacheKey);
+    if (cachedResult && Date.now() - parseInt(cachedResult.split(':')[1]) < 60000) {
+      return cachedResult.split(':')[0] === 'true';
+    }
+    
+    const { data, error } = await supabase
+      .from('user_limits')
+      .select('daily_count, daily_limit, last_reset')
+      .eq('id', userId)
+      .single();
+      
+    if (error) {
+      console.error('Error checking daily limit:', error);
+      // En cas d'erreur, considérer que la limite n'est pas atteinte
       return false;
     }
-    return true;
-  } catch (error) {
-    console.error("Error checking authentication:", error);
+    
+    const hasReachedLimit = data && data.daily_count >= data.daily_limit;
+    
+    // Mettre en cache le résultat
+    sessionStorage.setItem(cacheKey, `${hasReachedLimit}:${Date.now()}`);
+    
+    return hasReachedLimit;
+  } catch (err) {
+    console.error('Exception checking daily limit:', err);
     return false;
   }
 };
 
-/**
- * Checks if a user is at their daily limit based on subscription and balance
- */
-export const checkDailyLimit = (balance: number, subscription: string) => {
-  return balance >= (SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5);
+// Récupère l'abonnement effectif de l'utilisateur
+export const getEffectiveSubscription = async (userId: string): Promise<string> => {
+  try {
+    // Tenter d'abord de récupérer depuis le cache local
+    const cachedSubscription = localStorage.getItem('subscription');
+    if (cachedSubscription) {
+      return cachedSubscription;
+    }
+    
+    // Sinon, chercher dans la base de données
+    const { data, error } = await supabase
+      .from('user_balances')
+      .select('subscription')
+      .eq('id', userId)
+      .maybeSingle();
+      
+    if (error) {
+      console.error('Error getting subscription:', error);
+      return 'free'; // Par défaut, retourner 'free'
+    }
+    
+    const subscription = data?.subscription || 'free';
+    
+    // Mettre en cache le résultat
+    localStorage.setItem('subscription', subscription);
+    
+    return subscription;
+  } catch (err) {
+    console.error('Exception getting subscription:', err);
+    return 'free';
+  }
 };
 
-/**
- * Get the effective subscription type (accounting for trials, etc.)
- */
-export const getEffectiveSubscription = (subscription: string) => {
-  // For now, we just return the subscription as is
-  // In the future, this could check for trial status or other modifiers
-  return subscription;
+// S'abonne aux changements d'état d'authentification
+export const subscribeToAuthChanges = (callback: (status: boolean) => void): void => {
+  authChangeCallbacks.push(callback);
 };
 
-/**
- * These functions are provided for backward compatibility
- */
-export const subscribeToAuthChanges = () => {
-  console.log("Auth change subscription function called - deprecated");
-  return () => {}; // Return noop cleanup function
+// Se désabonne des changements d'état d'authentification
+export const unsubscribeFromAuthChanges = (callback: (status: boolean) => void): void => {
+  authChangeCallbacks = authChangeCallbacks.filter(cb => cb !== callback);
 };
 
-export const unsubscribeFromAuthChanges = () => {
-  console.log("Auth change unsubscription function called - deprecated");
+// Vérifie si l'utilisateur est authentifié
+export const isUserAuthenticated = async (): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    
+    if (error || !data.session) {
+      // Si pas de session ou erreur, essayer de rafraîchir
+      const refreshedSession = await refreshSession();
+      return !!refreshedSession;
+    }
+    
+    if (data.session.expires_at && Date.now() / 1000 >= data.session.expires_at) {
+      // Session expirée, essayer de rafraîchir
+      const refreshedSession = await refreshSession();
+      return !!refreshedSession;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('Error checking authentication:', err);
+    return false;
+  }
 };
 
-export { shouldResetDailyCounters } from '@/utils/subscription/sessionManagement';
+// Nouvelle fonction pour vérifier si la connexion internet est valide
+export const hasValidConnection = async (): Promise<boolean> => {
+  // Vérifier si le navigateur est en ligne
+  if (!navigator.onLine) {
+    return false;
+  }
+  
+  // Vérifier la résolution DNS en envoyant une requête à une image connue
+  try {
+    // Liste de domaines à tester
+    const domains = [
+      'https://www.google.com/favicon.ico',
+      'https://www.cloudflare.com/favicon.ico',
+      'https://www.apple.com/favicon.ico'
+    ];
+    
+    // Prendre un domaine au hasard
+    const randomIndex = Math.floor(Math.random() * domains.length);
+    const testUrl = `${domains[randomIndex]}?nocache=${Date.now()}`;
+    
+    // Essayer de charger l'image avec un timeout
+    const timeoutPromise = new Promise<boolean>((_, reject) => {
+      setTimeout(() => reject(new Error('DNS timeout')), 5000);
+    });
+    
+    const fetchPromise = new Promise<boolean>(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = testUrl;
+    });
+    
+    // Retourner le résultat du premier qui termine
+    return await Promise.race([fetchPromise, timeoutPromise]) as boolean;
+  } catch (error) {
+    console.warn('DNS check failed:', error);
+    return false;
+  }
+};
