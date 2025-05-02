@@ -1,6 +1,4 @@
 
-import { toast } from 'sonner';
-
 type NetworkStatus = {
   isOnline: boolean;
   dnsWorking: boolean;
@@ -79,36 +77,19 @@ export const getNetworkStatus = async (bypassCache = false): Promise<NetworkStat
 };
 
 /**
- * Affiche une notification adaptée selon le problème réseau détecté
+ * Fonction conservée mais ne fait plus rien (pour éviter les erreurs)
+ * Ne montre plus de toast à l'utilisateur
  */
-export const showNetworkStatusToast = (status: NetworkStatus) => {
-  if (!status.isOnline) {
-    toast.error("Connexion internet indisponible", {
-      description: "Vérifiez votre connexion réseau.",
-      duration: 8000
-    });
-    return;
-  }
-  
-  if (!status.dnsWorking) {
-    toast.warning("Problème de résolution DNS détecté", {
-      description: "Essayez de vider votre cache DNS ou utiliser un autre réseau.",
-      duration: 8000,
-      action: {
-        label: "Solutions",
-        onClick: () => showDnsTroubleshootingToast()
-      }
-    });
-    return;
-  }
+export const showNetworkStatusToast = () => {
+  // Ne fait plus rien - pas de notification à l'utilisateur
+  return;
 };
 
 /**
- * Affiche des conseils pour résoudre les problèmes DNS
+ * Fonction conservée mais ne fait plus rien (pour éviter les erreurs)
+ * Ne montre plus de toast à l'utilisateur
  */
 export const showDnsTroubleshootingToast = () => {
-  toast.info("Pour résoudre les problèmes DNS:", {
-    duration: 15000,
-    description: "- Basculez vers les données mobiles\n- Essayez un autre réseau WiFi\n- Redémarrez votre routeur\n- Utilisez des DNS alternatifs (1.1.1.1 ou 8.8.8.8)"
-  });
+  // Ne fait plus rien - pas de notification à l'utilisateur
+  return;
 };

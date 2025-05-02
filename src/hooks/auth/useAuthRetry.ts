@@ -1,6 +1,5 @@
 
 import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
 
 interface UseAuthRetryProps {
   maxRetries?: number;
@@ -13,17 +12,8 @@ export const useAuthRetry = ({ maxRetries = 3, retryDelay = 2000 }: UseAuthRetry
   
   const retry = useCallback(async (operation: () => Promise<any>, errorMessage: string) => {
     if (retryCount >= maxRetries) {
-      toast.error(`Après plusieurs tentatives: ${errorMessage}`, {
-        duration: 5000,
-        action: {
-          label: "Solutions",
-          onClick: () => {
-            toast.info("Essayez de vider votre cache DNS ou utiliser un autre réseau.", {
-              duration: 8000
-            });
-          }
-        }
-      });
+      // Aucun toast visible à l'utilisateur
+      console.warn(`Après plusieurs tentatives: ${errorMessage}`);
       return null;
     }
     
@@ -40,16 +30,8 @@ export const useAuthRetry = ({ maxRetries = 3, retryDelay = 2000 }: UseAuthRetry
       setRetryCount(prev => prev + 1);
       setIsRetrying(false);
       
-      // Notification à l'utilisateur
-      if (retryCount + 1 >= maxRetries) {
-        toast.error(`Problème de connexion persistant. ${errorMessage}`, {
-          duration: 6000
-        });
-      } else {
-        toast.warning(`Tentative de reconnexion... (${retryCount + 1}/${maxRetries})`, { 
-          duration: 2000 
-        });
-      }
+      // Pas de notification à l'utilisateur, juste logging
+      console.warn(`Tentative de reconnexion... (${retryCount + 1}/${maxRetries})`);
       
       return null;
     }

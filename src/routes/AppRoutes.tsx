@@ -1,7 +1,6 @@
 
-import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import React, { useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import Index from '../pages/Index';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
@@ -15,21 +14,8 @@ import Terms from '../pages/Terms';
 import Contact from '../pages/Contact';
 import AnalysisController from '../components/dashboard/analysis/AnalysisController';
 import { hasValidConnection, checkDnsResolution } from '@/utils/auth';
-import { NetworkStatusAlert } from '@/components/ui/alert-dns';
-import { getNetworkStatus, showDnsTroubleshootingToast } from '@/utils/auth/networkUtils';
 
 const AppRoutes: React.FC = () => {
-  // État pour suivre les problèmes de réseau
-  const [networkIssue, setNetworkIssue] = useState<{
-    show: boolean;
-    isOnline: boolean;
-    dnsWorking: boolean;
-  }>({
-    show: false,
-    isOnline: true,
-    dnsWorking: true
-  });
-  
   // Force HTTPS in production with more specific conditions
   useEffect(() => {
     // HTTPS Enforcement - Critical Security Check
@@ -47,37 +33,21 @@ const AppRoutes: React.FC = () => {
       return true;
     };
     
-    // DNS Error detection and recovery - version améliorée
-    const checkConnectivity = async () => {
+    // DNS Error detection and recovery - version silencieuse
+    const checkConnectivitySilently = async () => {
       try {
-        // Vérification plus robuste avec multiples domaines et gestion intelligente
-        const status = await getNetworkStatus(true);
+        // Vérification silencieuse sans notification à l'utilisateur
+        const isOnline = await hasValidConnection();
+        const dnsWorking = await checkDnsResolution();
         
-        // Mise à jour de l'état pour l'affichage des alertes
-        setNetworkIssue({
-          show: !status.isOnline || !status.dnsWorking,
-          isOnline: status.isOnline,
-          dnsWorking: status.dnsWorking
-        });
-        
-        // Notification à l'utilisateur si problème détecté
-        if (status.isOnline && !status.dnsWorking) {
-          toast.warning("Problème de DNS détecté. Essayez de vider votre cache DNS.", {
-            duration: 8000,
-            action: {
-              label: "Aide",
-              onClick: () => {
-                showDnsTroubleshootingToast();
-              }
-            }
-          });
-        } else if (!status.isOnline) {
-          toast.error("Problème de connexion réseau. Vérifiez votre connexion internet.", {
-            duration: 5000
-          });
+        // Juste logger pour debug, aucune notification visible
+        if (!isOnline) {
+          console.log("Network connection issue detected");
+        } else if (!dnsWorking) {
+          console.log("DNS resolution issue detected");
         }
       } catch (error) {
-        console.error("Erreur lors de la vérification de la connexion:", error);
+        console.error("Error during connectivity check:", error);
       }
     };
     
@@ -104,14 +74,14 @@ const AppRoutes: React.FC = () => {
       window.location.replace(`https://streamgenius.io${window.location.pathname}${window.location.search}`);
     }
     
-    // Check DNS and connectivity on load
-    checkConnectivity();
+    // Check DNS and connectivity on load silently
+    checkConnectivitySilently();
     
     // Check periodically - moins souvent pour économiser les ressources
     const intervalId = setInterval(() => {
       enforceHttps();
-      checkConnectivity();
-    }, 60000); // Check toutes les minutes au lieu de 30 secondes
+      checkConnectivitySilently();
+    }, 60000); // Check toutes les minutes
     
     // Force dark mode class on document for consistent appearance
     document.documentElement.classList.add('dark');
@@ -120,25 +90,9 @@ const AppRoutes: React.FC = () => {
       clearInterval(intervalId);
     };
   }, []);
-  
-  // Gestionnaire pour l'aide DNS
-  const handleDnsHelp = () => {
-    showDnsTroubleshootingToast();
-  };
 
   return (
-    <>
-      {/* Alerte de problème réseau/DNS */}
-      {networkIssue.show && (
-        <div className="sticky top-0 z-50 w-full px-4 py-2">
-          <NetworkStatusAlert 
-            isOnline={networkIssue.isOnline} 
-            onHelp={handleDnsHelp}
-            className="mx-auto max-w-md shadow-lg"
-          />
-        </div>
-      )}
-      
+    <>      
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/login" element={<Login />} />

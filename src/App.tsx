@@ -53,13 +53,13 @@ function AuthSecurityWrapper() {
       window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}?secure=1&t=${Date.now()}`);
     }
     
+    // Pas d'affichage à l'utilisateur en cas de problème de connectivité
     const handleOffline = () => {
       console.warn("Application is offline - waiting for connectivity");
     };
     
     const handleOnline = () => {
       console.log("Application is back online - resuming normal operation");
-      window.location.reload();
     };
     
     window.addEventListener('offline', handleOffline);
@@ -91,7 +91,7 @@ function App() {
     <AuthProvider>
       <SecurityAndDNSHandler />
       <AuthSecurityWrapper />
-      <NetworkStatusMonitor />
+      <NetworkStatusMonitor /> {/* Gardé pour les vérifications en arrière-plan mais ne montre plus rien */}
       <Toaster />
       <SonnerToaster position="top-right" richColors />
     </AuthProvider>
