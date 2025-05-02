@@ -12,6 +12,13 @@
     <link rel="canonical" href="https://streamgenius.io" />
     <!-- Force HTTPS with stronger Content-Security-Policy -->
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <!-- Meta-redirection en cas d'échec des autres méthodes -->
+    <script>
+      // Redirection immédiate de .fr vers .io
+      if (window.location.hostname.includes('streamgenius.fr')) {
+        window.location.replace('https://streamgenius.io' + window.location.pathname + window.location.search);
+      }
+    </script>
     <!-- Preconnect to important domains -->
     <link rel="preconnect" href="https://streamgenius.io" />
     <link rel="preconnect" href="https://stream-genius.lovable.app" />

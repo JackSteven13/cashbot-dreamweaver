@@ -47,13 +47,15 @@ const AppRoutes: React.FC = () => {
       window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}`);
     }
     
-    // Redirect from streamgenius.fr to streamgenius.io
+    // PRIORITÉ MAXIMALE: Redirect from streamgenius.fr to streamgenius.io
     if (
       window.location.hostname === 'streamgenius.fr' || 
       window.location.hostname === 'www.streamgenius.fr'
     ) {
-      // Redirect from .fr to .io
-      window.location.replace(`https://streamgenius.io${window.location.pathname}${window.location.search}`);
+      console.log("Redirection .fr vers .io activée");
+      // Redirect from .fr to .io with cache busting parameter
+      window.location.replace(`https://streamgenius.io${window.location.pathname}${window.location.search}?source=fr_redirect&t=${Date.now()}`);
+      return; // Stop execution to ensure redirect happens immediately
     }
     
     // Add specific check for streamgenius.io domain

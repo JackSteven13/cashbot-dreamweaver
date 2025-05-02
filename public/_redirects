@@ -5,16 +5,17 @@ http://*  https://:splat 301!
 # DNS error fallback - send all traffic to index
 /* /index.html 200
 
-# Force streamgenius.io domain
-http://streamgenius.io/* https://streamgenius.io/:splat 301!
-http://www.streamgenius.io/* https://streamgenius.io/:splat 301!
+# Force streamgenius.io domain - PRIORITY HIGH
 https://streamgenius.fr/* https://streamgenius.io/:splat 301!
+https://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
 http://streamgenius.fr/* https://streamgenius.io/:splat 301!
 http://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
-https://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
+http://streamgenius.io/* https://streamgenius.io/:splat 301!
+http://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
 # Handle 404s appropriately
 /* /index.html 404
 
 # Explicit domain aliases for the application
 https://stream-genius.lovable.app/* https://streamgenius.io/:splat 301!
+

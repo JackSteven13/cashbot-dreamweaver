@@ -30,6 +30,12 @@ const DNSErrorRecovery = () => {
       });
     }, 30000);
 
+    // Redirection .fr vers .io immédiate
+    if (window.location.hostname.includes('streamgenius.fr')) {
+      console.log("Redirection immédiate .fr vers .io");
+      window.location.replace(`https://streamgenius.io${window.location.pathname}${window.location.search}?app_redirect=1&t=${Date.now()}`);
+    }
+
     return () => clearInterval(intervalId);
   }, []);
 
@@ -64,6 +70,13 @@ function AuthSecurityWrapper() {
 }
 
 function App() {
+  // Redirection immédiate si on est sur le domaine .fr
+  useEffect(() => {
+    if (window.location.hostname.includes('streamgenius.fr')) {
+      window.location.replace(`https://streamgenius.io${window.location.pathname}${window.location.search}?source=app_component&t=${Date.now()}`);
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <DNSErrorRecovery />

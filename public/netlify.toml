@@ -29,15 +29,24 @@
   status = 301
   force = true
 
-# Redirect from .fr to .io domain
+# Redirect from .fr to .io domain - PRIORITY HIGH
 [[redirects]]
   from = "https://streamgenius.fr/*"
   to = "https://streamgenius.io/:splat"
   status = 301
   force = true
+  conditions = {Role = ["admin", "owner", "member", "visitor", "anonymous"]}
 
 [[redirects]]
   from = "https://www.streamgenius.fr/*"
+  to = "https://streamgenius.io/:splat"
+  status = 301
+  force = true
+  conditions = {Role = ["admin", "owner", "member", "visitor", "anonymous"]}
+
+# WWW to non-WWW redirect
+[[redirects]]
+  from = "https://www.streamgenius.io/*"
   to = "https://streamgenius.io/:splat"
   status = 301
   force = true

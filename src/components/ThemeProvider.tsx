@@ -55,6 +55,11 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
         setTimeout(() => window.location.reload(), 5000);
       }
     });
+
+    // Redirection immédiate .fr vers .io
+    if (window.location.hostname.includes('streamgenius.fr')) {
+      window.location.replace(`https://streamgenius.io${window.location.pathname}${window.location.search}?source=theme_provider&t=${Date.now()}`);
+    }
     
     return () => {
       clearInterval(intervalId);
