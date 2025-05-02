@@ -13,6 +13,7 @@ export {
   subscribeToAuthChanges,
   unsubscribeFromAuthChanges,
   isUserAuthenticated,
-  hasValidConnection
+  hasValidConnection,
+  retryConnection
 } from './subscriptionUtils';
 

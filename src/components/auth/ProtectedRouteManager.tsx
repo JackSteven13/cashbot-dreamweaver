@@ -5,7 +5,7 @@ import { useAuthVerification } from '@/hooks/useAuthVerification';
 import AuthLoadingScreen from './AuthLoadingScreen';
 import ProtectedRouteRecovery from './ProtectedRouteRecovery';
 import { toast } from '@/components/ui/use-toast';
-import { forceSignOut, hasValidConnection } from '@/utils/auth';
+import { forceSignOut, hasValidConnection, retryConnection } from '@/utils/auth';
 import { useProtectedRouteState } from './useProtectedRouteState';
 import { useAuthRedirect } from './useAuthRedirect';
 import { useAuthTimeouts } from './useAuthTimeouts';
@@ -32,6 +32,7 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
   const [forceReset, setForceReset] = useState(false);
   const [redirectAttempts, setRedirectAttempts] = useState(0);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isRetryingConnection, setIsRetryingConnection] = useState(false);
   
   const { 
     isAuthenticated: authStatus, 
@@ -43,7 +44,7 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
 
   const { handleCleanLogin, location } = useAuthRedirect();
   
-  // Vérifier la connexion réseau
+  // Vérifier la connexion réseau de façon plus complète
   useEffect(() => {
     const checkConnection = async () => {
       if (!navigator.onLine) {
@@ -54,6 +55,7 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
       try {
         const isValid = await hasValidConnection();
         if (!isValid) {
+          // Détection plus nuancée des problèmes réseau
           setConnectionError('dns');
         } else {
           setConnectionError(null);
@@ -71,15 +73,53 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
     const interval = setInterval(checkConnection, 30000);
     
     // Écouter les événements de connexion
-    window.addEventListener('online', () => checkConnection());
-    window.addEventListener('offline', () => setConnectionError('offline'));
+    const handleOnline = () => {
+      console.log("Appareil en ligne, vérification de la connexion...");
+      checkConnection();
+    };
+    
+    const handleOffline = () => {
+      console.log("Appareil hors ligne");
+      setConnectionError('offline');
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
     
     return () => {
       clearInterval(interval);
-      window.removeEventListener('online', () => checkConnection());
-      window.removeEventListener('offline', () => setConnectionError('offline'));
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // Fonction pour tester la connexion manuellement
+  const handleTestConnection = async () => {
+    setIsRetryingConnection(true);
+    
+    try {
+      const result = await retryConnection();
+      
+      if (result.success) {
+        toast({
+          title: "Connexion rétablie",
+          description: result.message
+        });
+        setConnectionError(null);
+        checkAuth(true);
+      } else {
+        toast({
+          title: "Problème de connexion",
+          description: result.message,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Erreur lors du test de connexion:", error);
+    } finally {
+      setIsRetryingConnection(false);
+    }
+  };
 
   // Force reset auth state when needed
   useEffect(() => {
@@ -211,10 +251,7 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
     return (
       <ConnectionErrorScreen 
         errorType={connectionError}
-        onRetry={() => {
-          setConnectionError(null);
-          checkAuth(true);
-        }}
+        onRetry={handleTestConnection}
         onCleanLogin={handleCleanLoginSafely}
       />
     );
