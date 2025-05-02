@@ -226,13 +226,27 @@ const Login = () => {
       }
     } catch (error: any) {
       console.error("Login error:", error);
-      toast({
-        title: "Erreur de connexion",
-        description: error.message === "Invalid login credentials" 
-          ? "Email ou mot de passe incorrect" 
-          : (error.message || "Une erreur est survenue lors de la connexion"),
-        variant: "destructive",
-      });
+      
+      // Améliorer la gestion des erreurs pour les problèmes de réseau
+      if (error.message === "Failed to fetch" || error.message?.includes("NetworkError") || error.message?.includes("network")) {
+        toast({
+          title: "Erreur de connexion réseau",
+          description: "Impossible de joindre le serveur. Vérifiez votre connexion internet et réessayez.",
+          variant: "destructive",
+        });
+      } else if (error.message === "Invalid login credentials") {
+        toast({
+          title: "Identifiants incorrects",
+          description: "Email ou mot de passe incorrect",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erreur de connexion",
+          description: error.message || "Une erreur est survenue lors de la connexion",
+          variant: "destructive",
+        });
+      }
       
       // Réinitialiser pour permettre de réessayer
       setTimeout(() => {
@@ -269,7 +283,7 @@ const Login = () => {
             <p className="text-sm font-medium text-yellow-500">Problème de DNS détecté</p>
           </div>
           <p className="text-xs text-yellow-400/80 mt-1">
-            Essayez de vider votre cache DNS ou utilisez un autre réseau.
+            Essayez de vider votre cache DNS ou utilisez un autre réseau (données mobiles).
           </p>
         </div>
       );
