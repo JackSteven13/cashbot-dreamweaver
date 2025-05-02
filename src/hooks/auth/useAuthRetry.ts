@@ -1,51 +1,132 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { refreshSession, verifyAuth } from "@/utils/auth/index";
 
-interface UseAuthRetryProps {
+interface UseAuthRetryOptions {
   maxRetries?: number;
-  retryDelay?: number;
+  isMounted: React.RefObject<boolean>;
 }
 
-export const useAuthRetry = ({ maxRetries = 3, retryDelay = 2000 }: UseAuthRetryProps = {}) => {
-  const [retryCount, setRetryCount] = useState(0);
+interface UseAuthRetryResult {
+  retryAttempts: number;
+  isRetrying: boolean;
+  setIsRetrying: (value: boolean) => void;
+  performAuthCheck: (isManualRetry?: boolean) => Promise<boolean>;
+}
+
+/**
+ * Hook to handle authentication retry logic with improved persistence and offline support
+ */
+export const useAuthRetry = ({ 
+  maxRetries = 3,
+  isMounted
+}: UseAuthRetryOptions): UseAuthRetryResult => {
+  const [retryAttempts, setRetryAttempts] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
+  const authCheckInProgress = useRef(false);
   
-  const retry = useCallback(async (operation: () => Promise<any>, errorMessage: string) => {
-    if (retryCount >= maxRetries) {
-      // Aucun toast visible à l'utilisateur
-      console.warn(`Après plusieurs tentatives: ${errorMessage}`);
-      return null;
+  const performAuthCheck = useCallback(async (isManualRetry = false): Promise<boolean> => {
+    // Vérifier si offline
+    if (!navigator.onLine) {
+      console.log("Device is offline, skipping auth check");
+      return false;
     }
     
-    setIsRetrying(true);
+    // Avoid simultaneous checks
+    if (authCheckInProgress.current) {
+      console.log("Auth check already in progress, skipping");
+      return false;
+    }
     
     try {
-      // Petite pause avant de réessayer
-      await new Promise(resolve => setTimeout(resolve, retryDelay));
-      const result = await operation();
+      authCheckInProgress.current = true;
+      
+      if (isManualRetry) {
+        setIsRetrying(true);
+      }
+      
+      console.log(`Vérification d'authentification ${isManualRetry ? "manuelle" : "automatique"} (tentative ${retryAttempts + 1})`);
+      
+      // Try refreshing the session first for better persistence
+      if (retryAttempts > 0) {
+        console.log("Trying to refresh session before auth check");
+        await refreshSession();
+        
+        // Petit délai pour permettre au rafraîchissement de se propager
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      // Vérification avec persistance améliorée
+      const isAuthValid = await verifyAuth();
+      
+      if (!isMounted.current) {
+        authCheckInProgress.current = false;
+        return false;
+      }
+      
+      if (!isAuthValid) {
+        console.log("Échec d'authentification");
+        
+        if (retryAttempts < maxRetries && !isManualRetry) {
+          // Auto-retry with exponential backoff
+          const delay = Math.min(1000 * Math.pow(1.5, retryAttempts), 5000);
+          console.log(`Nouvelle tentative automatique dans ${delay}ms`);
+          
+          setRetryAttempts(prev => prev + 1);
+          authCheckInProgress.current = false;
+          
+          setTimeout(() => {
+            if (isMounted.current && navigator.onLine) {
+              performAuthCheck();
+            }
+          }, delay);
+          return false;
+        }
+        
+        setIsRetrying(false);
+        authCheckInProgress.current = false;
+        return false;
+      }
+      
+      // Auth check successful
+      setRetryAttempts(0); // Reset retry counter on success
       setIsRetrying(false);
-      return result;
+      authCheckInProgress.current = false;
+      return true;
+      
     } catch (error) {
-      console.error("Retry failed:", error);
-      setRetryCount(prev => prev + 1);
-      setIsRetrying(false);
+      console.error("Erreur lors de la vérification d'authentification:", error);
       
-      // Pas de notification à l'utilisateur, juste logging
-      console.warn(`Tentative de reconnexion... (${retryCount + 1}/${maxRetries})`);
+      if (retryAttempts < maxRetries && !isManualRetry && isMounted.current && navigator.onLine) {
+        // Auto-retry with exponential backoff
+        const delay = Math.min(1000 * Math.pow(1.5, retryAttempts), 5000);
+        console.log(`Nouvelle tentative après erreur dans ${delay}ms`);
+        
+        setRetryAttempts(prev => prev + 1);
+        authCheckInProgress.current = false;
+        
+        setTimeout(() => {
+          if (isMounted.current && navigator.onLine) {
+            performAuthCheck();
+          }
+        }, delay);
+        return false;
+      }
       
-      return null;
+      if (isMounted.current) {
+        setIsRetrying(false);
+      }
+      
+      authCheckInProgress.current = false;
+      return false;
     }
-  }, [retryCount, maxRetries, retryDelay]);
-  
-  const resetRetryCount = useCallback(() => {
-    setRetryCount(0);
-  }, []);
-  
+  }, [retryAttempts, maxRetries, isMounted]);
+
   return {
-    retry,
-    retryCount,
+    retryAttempts,
     isRetrying,
-    resetRetryCount
+    setIsRetrying,
+    performAuthCheck
   };
 };
 

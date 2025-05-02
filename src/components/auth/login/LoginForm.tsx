@@ -18,15 +18,9 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const loginAttempted = useRef(false);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (isLoading || loginAttempted.current) return;
-    
-    setIsLoading(true);
-    loginAttempted.current = true;
-    
+  const performLogin = async (): Promise<boolean> => {
     try {
       // Force clear problematic stored sessions first
       localStorage.removeItem('supabase.auth.token');
@@ -45,6 +39,11 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
       loginBlockingFlags.forEach(flag => {
         localStorage.removeItem(flag);
       });
+      
+      // Try using offline detection before making the request
+      if (!navigator.onLine) {
+        throw new Error("Vous semblez être hors ligne. Vérifiez votre connexion internet.");
+      }
       
       // Always manually sign in with the provided credentials
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -83,43 +82,114 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
           loginAttempted.current = false;
           navigate('/dashboard', { replace: true });
         }, 1000);
+        
+        return true;
       }
+      
+      return false;
+    } catch (error: any) {
+      console.error("Login error:", error);
+      throw error;
+    }
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isLoading || loginAttempted.current) return;
+    
+    setIsLoading(true);
+    loginAttempted.current = true;
+    
+    // Clear any existing retry timeout
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+    
+    try {
+      await performLogin();
     } catch (error: any) {
       console.error("Login error:", error);
       
       // Améliorer la gestion des erreurs pour les problèmes de réseau
-      if (error.message === "Failed to fetch" || error.message?.includes("NetworkError") || error.message?.includes("network")) {
+      if (error.message === "Failed to fetch" || 
+          error.message?.includes("NetworkError") || 
+          error.message?.includes("network") ||
+          !navigator.onLine) {
+        
+        // Préparation pour une nouvelle tentative silencieuse
+        const retryDelay = 2000;
+        console.log(`Tentative de reconnexion automatique dans ${retryDelay}ms...`);
+        
         toast({
-          title: "Erreur de connexion réseau",
-          description: "Impossible de joindre le serveur. Vérifiez votre connexion internet et réessayez.",
-          variant: "destructive",
-          duration: 8000,
-          action: (
-            <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
-              Réessayer
-            </ToastAction>
-          )
+          title: "Problème de connexion",
+          description: "La connexion au serveur a échoué. Une nouvelle tentative sera effectuée automatiquement.",
+          duration: 6000,
+          variant: "destructive"
         });
+        
+        // Tentative silencieuse après un délai
+        retryTimeoutRef.current = setTimeout(async () => {
+          if (navigator.onLine) {
+            try {
+              console.log("Tentative de reconnexion silencieuse...");
+              const success = await performLogin();
+              if (!success) {
+                setIsLoading(false);
+                loginAttempted.current = false;
+              }
+            } catch (retryError) {
+              console.error("La reconnexion a échoué:", retryError);
+              setIsLoading(false);
+              loginAttempted.current = false;
+              
+              toast({
+                title: "Échec de la connexion",
+                description: "Veuillez réessayer ultérieurement.",
+                variant: "destructive",
+                duration: 5000,
+              });
+            }
+          } else {
+            setIsLoading(false);
+            loginAttempted.current = false;
+            
+            toast({
+              title: "Toujours hors ligne",
+              description: "Vérifiez votre connexion et réessayez.",
+              variant: "destructive",
+              duration: 5000,
+              action: (
+                <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
+                  Réessayer
+                </ToastAction>
+              )
+            });
+          }
+        }, retryDelay);
+        
       } else if (error.message === "Invalid login credentials") {
         toast({
           title: "Identifiants incorrects",
           description: "Email ou mot de passe incorrect",
           variant: "destructive",
         });
+        setIsLoading(false);
+        setTimeout(() => {
+          loginAttempted.current = false;
+        }, 1000);
       } else {
         toast({
           title: "Erreur de connexion",
           description: error.message || "Une erreur est survenue lors de la connexion",
           variant: "destructive",
         });
+        setIsLoading(false);
+        setTimeout(() => {
+          loginAttempted.current = false;
+        }, 1000);
       }
-      
-      // Réinitialiser pour permettre de réessayer
-      setTimeout(() => {
-        loginAttempted.current = false;
-      }, 2000);
-    } finally {
-      setIsLoading(false);
     }
   };
 
