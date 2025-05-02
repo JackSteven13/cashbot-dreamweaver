@@ -11,9 +11,22 @@
     <!-- Canonical URL to avoid duplicate content issues -->
     <link rel="canonical" href="https://streamgenius.io" />
     <!-- Force HTTPS with stronger Content-Security-Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.gpteng.co; connect-src 'self' https://api.supabase.co https://lovable.dev; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; upgrade-insecure-requests; block-all-mixed-content">
+    <meta http-equiv="X-Content-Security-Policy" content="upgrade-insecure-requests">
+    <!-- Ajout d'une balise pour la vérification SSL -->
+    <meta name="verify-ssl" content="true">
+    <!-- Forcing HTTPS via http-equiv -->
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <!-- Enhanced security meta tags -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <!-- Meta-redirection en cas d'échec des autres méthodes -->
     <script>
+      // Forcer HTTPS
+      if (window.location.protocol === 'http:' && !window.location.hostname.includes('localhost')) {
+        window.location.replace('https://' + window.location.hostname + window.location.pathname + window.location.search);
+      }
+      
       // Redirection immédiate de .fr vers .io
       if (window.location.hostname.includes('streamgenius.fr')) {
         window.location.replace('https://streamgenius.io' + window.location.pathname + window.location.search);
@@ -24,8 +37,6 @@
     <link rel="preconnect" href="https://stream-genius.lovable.app" />
     <link rel="preconnect" href="https://lovable.dev" />
     <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
-    <!-- Additional SSL verification meta tag -->
-    <meta name="verify-ssl" content="true">
     <!-- Force dark mode -->
     <script>
       // Apply dark mode immediately to prevent flash of light mode
@@ -38,10 +49,15 @@
         }
       }, true);
       
-      // Check if we're on a valid domain
+      // Check if we're on a valid domain and using HTTPS
       const validDomains = ['streamgenius.io', 'www.streamgenius.io', 'streamgenius.fr', 'www.streamgenius.fr', 'stream-genius.lovable.app', 'localhost'];
       if (!validDomains.some(domain => window.location.hostname.includes(domain))) {
         console.warn('Running on unrecognized domain:', window.location.hostname);
+      }
+      
+      // Force HTTPS in production
+      if (window.location.hostname !== 'localhost' && window.location.protocol === 'http:') {
+        window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}`);
       }
     </script>
   </head>

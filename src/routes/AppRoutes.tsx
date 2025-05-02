@@ -18,6 +18,21 @@ import AnalysisController from '../components/dashboard/analysis/AnalysisControl
 const AppRoutes: React.FC = () => {
   // Force HTTPS in production with more specific conditions
   useEffect(() => {
+    // HTTPS Enforcement - Critical Security Check
+    const enforceHttps = () => {
+      // Ensure we're on HTTPS and not on localhost
+      if (
+        window.location.hostname !== 'localhost' && 
+        window.location.hostname !== '127.0.0.1' && 
+        window.location.protocol === 'http:'
+      ) {
+        // Force redirect to HTTPS with cache-busting parameter
+        window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}?secure=1&t=${Date.now()}`);
+        return false;
+      }
+      return true;
+    };
+    
     // DNS Error detection and recovery
     const checkConnectivity = () => {
       const isOnline = navigator.onLine;
@@ -37,15 +52,8 @@ const AppRoutes: React.FC = () => {
       };
     };
     
-    // Check if we're not on localhost and not using HTTPS
-    if (
-      window.location.hostname !== 'localhost' && 
-      window.location.hostname !== '127.0.0.1' && 
-      window.location.protocol === 'http:'
-    ) {
-      // Force redirect to HTTPS
-      window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}`);
-    }
+    // First enforce HTTPS
+    if (!enforceHttps()) return;
     
     // PRIORITÉ MAXIMALE: Redirect from streamgenius.fr to streamgenius.io
     if (
@@ -71,7 +79,10 @@ const AppRoutes: React.FC = () => {
     checkConnectivity();
     
     // Check periodically
-    const intervalId = setInterval(checkConnectivity, 30000);
+    const intervalId = setInterval(() => {
+      enforceHttps();
+      checkConnectivity();
+    }, 30000);
     
     // Force dark mode class on document for consistent appearance
     document.documentElement.classList.add('dark');

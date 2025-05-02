@@ -1,5 +1,5 @@
 
-# Force HTTPS
+# Force HTTPS - High Priority
 http://*  https://:splat 301!
 
 # DNS error fallback - send all traffic to index
