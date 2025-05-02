@@ -1,12 +1,12 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Loader2, AlertTriangle, WifiOff, RefreshCw } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase } from "@/integrations/supabase/client";
-import { hasValidConnection, retryConnection } from '@/utils/auth';
 import { ToastAction } from '@/components/ui/toast';
 
 const Login = () => {
@@ -17,101 +17,9 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'ok' | 'dns_error' | 'offline' | 'retry'>('checking');
-  const [retryingConnection, setRetryingConnection] = useState(false);
   const loginAttempted = useRef(false);
-  const connectionCheckInterval = useRef<number | null>(null);
   
   const from = (location.state as any)?.from?.pathname || '/dashboard';
-
-  // Vérifier la connexion réseau et DNS - version améliorée
-  useEffect(() => {
-    const checkConnection = async () => {
-      if (!navigator.onLine) {
-        setConnectionStatus('offline');
-        return;
-      }
-      
-      try {
-        setConnectionStatus('checking');
-        const isValid = await hasValidConnection();
-        setConnectionStatus(isValid ? 'ok' : 'dns_error');
-      } catch (error) {
-        console.error("Erreur lors de la vérification de connexion:", error);
-        setConnectionStatus('dns_error');
-      }
-    };
-    
-    // Vérifier immédiatement
-    checkConnection();
-    
-    // Vérifier périodiquement
-    connectionCheckInterval.current = window.setInterval(checkConnection, 15000);
-    
-    // Écouter les changements d'état de connexion
-    const handleOnline = () => {
-      console.log("Appareil en ligne, vérification de la connexion...");
-      checkConnection();
-    };
-    
-    const handleOffline = () => {
-      console.log("Appareil hors ligne");
-      setConnectionStatus('offline');
-    };
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      if (connectionCheckInterval.current) {
-        clearInterval(connectionCheckInterval.current);
-      }
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  // Gérer les tentatives de reconnexion manuelles
-  const handleRetryConnection = async () => {
-    if (retryingConnection) return;
-    
-    setRetryingConnection(true);
-    setConnectionStatus('retry');
-    
-    try {
-      const result = await retryConnection();
-      
-      if (result.success) {
-        toast({
-          title: "Connexion rétablie",
-          description: result.message,
-        });
-        setConnectionStatus('ok');
-        
-        // Réessayer la vérification de session après une reconnexion réussie
-        setTimeout(() => {
-          checkExistingSession();
-        }, 1000);
-      } else {
-        toast({
-          title: "Problème de connexion",
-          description: result.message,
-          variant: "destructive",
-        });
-        setConnectionStatus(navigator.onLine ? 'dns_error' : 'offline');
-      }
-    } catch (error) {
-      console.error("Erreur lors de la tentative de reconnexion:", error);
-      toast({
-        title: "Échec de la reconnexion",
-        description: "Une erreur inattendue s'est produite. Vérifiez votre connexion.",
-        variant: "destructive",
-      });
-      setConnectionStatus(navigator.onLine ? 'dns_error' : 'offline');
-    } finally {
-      setRetryingConnection(false);
-    }
-  };
 
   // Nettoyer les flags d'authentification potentiellement bloquants
   useEffect(() => {
@@ -195,25 +103,6 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Vérifier l'état de la connexion avant de tenter la connexion
-    if (connectionStatus === 'offline') {
-      toast({
-        title: "Erreur de connexion",
-        description: "Vous êtes actuellement hors ligne. Veuillez vérifier votre connexion internet.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (connectionStatus === 'dns_error') {
-      toast({
-        title: "Problème de DNS détecté",
-        description: "Essayez de vider votre cache DNS ou utilisez un autre réseau.",
-        variant: "destructive",
-      });
-      // Continuer malgré l'erreur DNS, car la connexion pourrait quand même fonctionner
-    }
-    
     if (isLoading || loginAttempted.current) return;
     
     setIsLoading(true);
@@ -287,14 +176,11 @@ const Login = () => {
           variant: "destructive",
           duration: 8000,
           action: (
-            <ToastAction altText="Réessayer" onClick={() => handleRetryConnection()}>
+            <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
               Réessayer
             </ToastAction>
-          ),
+          )
         });
-        
-        // Mettre à jour l'état de connexion si une erreur réseau est détectée
-        setConnectionStatus(navigator.onLine ? 'dns_error' : 'offline');
       } else if (error.message === "Invalid login credentials") {
         toast({
           title: "Identifiants incorrects",
@@ -316,73 +202,6 @@ const Login = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Affichage d'un avertissement pour les problèmes de réseau
-  const renderConnectionWarning = () => {
-    if (connectionStatus === 'ok') return null;
-    
-    if (connectionStatus === 'offline') {
-      return (
-        <div className="mb-4 p-3 bg-red-900/30 border border-red-900/50 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <WifiOff className="h-5 w-5 text-red-400 mr-2" />
-              <p className="text-sm font-medium text-red-400">Vous êtes hors ligne</p>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRetryConnection}
-              disabled={retryingConnection}
-              className="text-xs bg-red-900/50 border-red-700/50"
-            >
-              {retryingConnection ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              <span className="ml-1">Réessayer</span>
-            </Button>
-          </div>
-          <p className="text-xs text-red-300/80 mt-1">
-            Vérifiez votre connexion internet et réessayez.
-          </p>
-        </div>
-      );
-    }
-    
-    if (connectionStatus === 'dns_error' || connectionStatus === 'retry') {
-      return (
-        <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-900/40 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2" />
-              <p className="text-sm font-medium text-yellow-500">
-                {connectionStatus === 'retry' 
-                  ? "Tentative de reconnexion..." 
-                  : "Problème de DNS détecté"
-                }
-              </p>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRetryConnection}
-              disabled={retryingConnection || connectionStatus === 'retry'}
-              className="text-xs bg-yellow-900/20 border-yellow-700/40"
-            >
-              {(retryingConnection || connectionStatus === 'retry') 
-                ? <Loader2 className="h-3 w-3 animate-spin" /> 
-                : <RefreshCw className="h-3 w-3" />
-              }
-              <span className="ml-1">Reconnecter</span>
-            </Button>
-          </div>
-          <p className="text-xs text-yellow-400/80 mt-1">
-            Essayez de vider votre cache DNS ou utilisez un autre réseau (données mobiles).
-          </p>
-        </div>
-      );
-    }
-    
-    return null;
   };
 
   // Si on vérifie encore la session, afficher un loader amélioré
@@ -415,8 +234,6 @@ const Login = () => {
           </div>
           
           <div className="glass-panel p-6 rounded-xl">
-            {renderConnectionWarning()}
-            
             {lastLoggedInEmail && (
               <div className="mb-4 p-3 bg-blue-900/20 rounded-lg">
                 <p className="text-sm text-blue-300">
@@ -468,7 +285,7 @@ const Login = () => {
                   size="lg" 
                   isLoading={isLoading} 
                   className="group"
-                  disabled={isLoading || loginAttempted.current || connectionStatus === 'offline'}
+                  disabled={isLoading || loginAttempted.current}
                 >
                   {isLoading ? (
                     <>

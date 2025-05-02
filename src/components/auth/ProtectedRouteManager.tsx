@@ -5,11 +5,10 @@ import { useAuthVerification } from '@/hooks/useAuthVerification';
 import AuthLoadingScreen from './AuthLoadingScreen';
 import ProtectedRouteRecovery from './ProtectedRouteRecovery';
 import { toast } from '@/components/ui/use-toast';
-import { forceSignOut, hasValidConnection, retryConnection } from '@/utils/auth';
+import { forceSignOut } from '@/utils/auth';
 import { useProtectedRouteState } from './useProtectedRouteState';
 import { useAuthRedirect } from './useAuthRedirect';
 import { useAuthTimeouts } from './useAuthTimeouts';
-import ConnectionErrorScreen from './ConnectionErrorScreen';
 
 interface ProtectedRouteManagerProps {
   children: ReactNode;
@@ -31,8 +30,6 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
   
   const [forceReset, setForceReset] = useState(false);
   const [redirectAttempts, setRedirectAttempts] = useState(0);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [isRetryingConnection, setIsRetryingConnection] = useState(false);
   
   const { 
     isAuthenticated: authStatus, 
@@ -43,83 +40,6 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
   } = useAuthVerification();
 
   const { handleCleanLogin, location } = useAuthRedirect();
-  
-  // Vérifier la connexion réseau de façon plus complète
-  useEffect(() => {
-    const checkConnection = async () => {
-      if (!navigator.onLine) {
-        setConnectionError('offline');
-        return;
-      }
-      
-      try {
-        const isValid = await hasValidConnection();
-        if (!isValid) {
-          // Détection plus nuancée des problèmes réseau
-          setConnectionError('dns');
-        } else {
-          setConnectionError(null);
-        }
-      } catch (error) {
-        console.error('Erreur lors de la vérification de la connexion:', error);
-        setConnectionError('unknown');
-      }
-    };
-    
-    // Vérifier immédiatement
-    checkConnection();
-    
-    // Vérifier périodiquement
-    const interval = setInterval(checkConnection, 30000);
-    
-    // Écouter les événements de connexion
-    const handleOnline = () => {
-      console.log("Appareil en ligne, vérification de la connexion...");
-      checkConnection();
-    };
-    
-    const handleOffline = () => {
-      console.log("Appareil hors ligne");
-      setConnectionError('offline');
-    };
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  // Fonction pour tester la connexion manuellement
-  const handleTestConnection = async () => {
-    setIsRetryingConnection(true);
-    
-    try {
-      const result = await retryConnection();
-      
-      if (result.success) {
-        toast({
-          title: "Connexion rétablie",
-          description: result.message
-        });
-        setConnectionError(null);
-        checkAuth(true);
-      } else {
-        toast({
-          title: "Problème de connexion",
-          description: result.message,
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error("Erreur lors du test de connexion:", error);
-    } finally {
-      setIsRetryingConnection(false);
-    }
-  };
 
   // Force reset auth state when needed
   useEffect(() => {
@@ -245,17 +165,6 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
       window.location.href = '/login';
     }
   }, [redirectAttempts, redirectInProgress]);
-  
-  // Afficher l'écran d'erreur de connexion si nécessaire
-  if (connectionError) {
-    return (
-      <ConnectionErrorScreen 
-        errorType={connectionError}
-        onRetry={handleTestConnection}
-        onCleanLogin={handleCleanLoginSafely}
-      />
-    );
-  }
 
   // Afficher l'écran de récupération en cas d'échec après plusieurs tentatives
   if (authCheckFailed && (autoRetryCount.current >= 2 || retryAttempts >= 3)) {

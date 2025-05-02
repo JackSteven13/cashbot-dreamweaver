@@ -12,8 +12,5 @@ export {
   getEffectiveSubscription,
   subscribeToAuthChanges,
   unsubscribeFromAuthChanges,
-  isUserAuthenticated,
-  hasValidConnection,
-  retryConnection
+  isUserAuthenticated
 } from './subscriptionUtils';
-
