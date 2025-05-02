@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface DNSAlertProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "destructive" | "warning" | "info";
+  variant?: "default" | "destructive" | "warning"; // Removed "info" to match Alert component's allowed variants
   title?: string;
   description?: string;
   icon?: React.ReactNode;
@@ -28,8 +28,7 @@ export function DNSAlert({
   const alertIcon = icon || (
     variant === "destructive" ? <AlertCircle className="h-5 w-5" /> : 
     variant === "warning" ? <AlertCircle className="h-5 w-5" /> : 
-    variant === "info" ? <Info className="h-5 w-5" /> : 
-    <WifiOff className="h-5 w-5" />
+    <Info className="h-5 w-5" />
   );
 
   return (
