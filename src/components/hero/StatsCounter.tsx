@@ -14,8 +14,8 @@ const StatsCounter = ({
   dailyRevenueTarget = 3819
 }: StatsCounterProps) => {
   const [displayValues, setDisplayValues] = useState({
-    adsCount: 150000,
-    revenueCount: 114304.5
+    adsCount: 46800,
+    revenueCount: 35665.4
   });
 
   // Charger les statistiques globales au démarrage
@@ -27,11 +27,23 @@ const StatsCounter = ({
     
     loadGlobalStats();
     
-    // Mettre à jour les statistiques toutes les 60 secondes
+    // Mettre à jour les statistiques périodiquement mais pas trop fréquemment
+    // pour donner l'impression de changements naturels
     const updateInterval = setInterval(async () => {
       const stats = await getGlobalStats();
-      setDisplayValues(stats);
-    }, 60000);
+      
+      // Animation fluide des valeurs
+      setDisplayValues(prevValues => {
+        // Calculer une petite partie de la différence pour une transition plus douce
+        const diffAds = stats.adsCount - prevValues.adsCount;
+        const diffRevenue = stats.revenueCount - prevValues.revenueCount;
+        
+        return {
+          adsCount: prevValues.adsCount + Math.ceil(diffAds * 0.2),
+          revenueCount: prevValues.revenueCount + (diffRevenue * 0.2)
+        };
+      });
+    }, 15000);
     
     return () => {
       clearInterval(updateInterval);

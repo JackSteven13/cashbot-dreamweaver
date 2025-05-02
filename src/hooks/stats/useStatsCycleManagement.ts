@@ -1,9 +1,6 @@
+
 import { useState, useCallback, useEffect } from 'react';
-import { activeLocations } from './data/locationData';
-import { calculateRevenueForLocation } from './utils/revenueCalculator';
 import { scheduleMidnightReset } from './utils/cycleManager';
-import { getTotalHourlyRate } from './utils/hourlyRates';
-import { calculateBurstActivity } from './utils/burstActivity';
 import { 
   saveValues, 
   enforceMinimumStats, 

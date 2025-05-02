@@ -6,8 +6,8 @@ import { getGlobalStats } from '@/hooks/stats/utils/revenueCalculator';
 
 const StatsSummary: React.FC = () => {
   const [stats, setStats] = useState({
-    adsCount: 150000,
-    revenueCount: 114304.5
+    adsCount: 46800,
+    revenueCount: 35665.4
   });
   
   // Charger les statistiques centralisées
@@ -19,11 +19,11 @@ const StatsSummary: React.FC = () => {
     
     loadStats();
     
-    // Actualiser périodiquement
+    // Actualiser périodiquement avec un intervalle raisonnable
     const refreshInterval = setInterval(async () => {
       const globalStats = await getGlobalStats();
       setStats(globalStats);
-    }, 60000);
+    }, 30000); // Intervalle modéré pour éviter des incrémentations trop fréquentes
     
     return () => clearInterval(refreshInterval);
   }, []);
@@ -40,8 +40,8 @@ const StatsSummary: React.FC = () => {
   };
   
   const formatRealisticRevenue = (value: number): string => {
-    // Garder 2 décimales pour les montants
-    return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+    // Garder 0 décimales pour les montants importants
+    return new Intl.NumberFormat('fr-FR').format(Math.floor(value));
   };
   
   // Calculer un nombre d'affiliés crédible et variable

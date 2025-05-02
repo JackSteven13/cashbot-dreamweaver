@@ -9,8 +9,8 @@ const StatisticsCounters: React.FC = () => {
   const userId = userData?.profile?.id;
   
   const [stats, setStats] = useState({
-    adsCount: 0,
-    revenueCount: 0
+    adsCount: 46800,
+    revenueCount: 35665.4
   });
   
   // Charger les statistiques centralisées
@@ -24,13 +24,13 @@ const StatisticsCounters: React.FC = () => {
     
     loadStats();
     
-    // Actualiser périodiquement
+    // Actualiser périodiquement, pas trop souvent pour éviter les incréments trop visibles
     const refreshInterval = setInterval(async () => {
       if (!userId) return;
       
       const globalStats = await getGlobalStats();
       setStats(globalStats);
-    }, 60000);
+    }, 30000);
     
     return () => clearInterval(refreshInterval);
   }, [userId]);
@@ -41,7 +41,7 @@ const StatisticsCounters: React.FC = () => {
         <div className="text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 dark:text-blue-300">
           <AnimatedNumber 
             value={userId ? stats.adsCount : 0} 
-            duration={300}
+            duration={1500}
             formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} 
           />
         </div>
@@ -51,7 +51,7 @@ const StatisticsCounters: React.FC = () => {
         <div className="text-3xl md:text-4xl lg:text-5xl font-bold text-emerald-900 dark:text-emerald-300">
           <AnimatedNumber 
             value={userId ? stats.revenueCount : 0} 
-            duration={300}
+            duration={1500}
             formatValue={(value) => Math.floor(value).toLocaleString('fr-FR')} 
           />
           <span className="ml-1">€</span>
