@@ -7,7 +7,8 @@ import { checkPasswordSecurity } from '@/utils/auth/securityUtils';
  * Hook pour gérer les vérifications de sécurité après l'authentification
  */
 export const useAuthProvider = () => {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user || null;
   
   // Effectuer des vérifications de sécurité après connexion
   useEffect(() => {

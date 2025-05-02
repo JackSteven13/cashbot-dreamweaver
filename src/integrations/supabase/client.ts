@@ -31,9 +31,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   // Options globales pour améliorer la résilience
   global: {
-    // Fixed: Using proper function syntax without spread operator
     fetch: function(url, options) {
-      return fetch(url, options);
+      const fetchOptions = {
+        ...options,
+        mode: 'cors',
+        cache: 'no-cache',
+      };
+      return fetch(url, fetchOptions);
     },
     headers: {
       'X-Client-Info': 'supabase-js-v2',

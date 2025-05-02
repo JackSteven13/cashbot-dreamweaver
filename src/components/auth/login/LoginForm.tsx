@@ -50,7 +50,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
       // Always manually sign in with the provided credentials
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       });
       
       if (error) throw error;
@@ -109,19 +109,6 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
       retryTimeoutRef.current = null;
     }
     
-    // Définir les drapeaux de blocage au niveau de cette fonction
-    const loginBlockingFlags = [
-      'auth_checking',
-      'auth_refreshing',
-      'auth_redirecting',
-      'auth_check_timestamp',
-      'auth_refresh_timestamp',
-      'auth_redirect_timestamp',
-      'auth_signing_out',
-      'sb-cfjibduhagxiwqkiyhqd-auth-token',
-      'sb-cfjibduhagxiwqkiyhqd-auth-refresh'
-    ];
-    
     try {
       await performLogin();
     } catch (error: any) {
@@ -143,7 +130,12 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
           title: "Problème de connexion",
           description: "La connexion au serveur a échoué. Une nouvelle tentative sera effectuée automatiquement.",
           duration: 6000,
-          variant: "destructive"
+          variant: "destructive",
+          action: (
+            <ToastAction altText="Maintenant" onClick={() => window.location.reload()}>
+              Recharger
+            </ToastAction>
+          )
         });
         
         // Tentative silencieuse après un délai
@@ -151,15 +143,17 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
           if (navigator.onLine) {
             try {
               console.log("Tentative de reconnexion silencieuse...");
-              // Une tentative avec options de domaine alternative
-              try {
-                // Nettoyage complet avant réessai
-                loginBlockingFlags.forEach(flag => {
-                  localStorage.removeItem(flag);
-                });
-              } catch (e) {
-                console.warn("Erreur lors du nettoyage du stockage local:", e);
-              }
+              
+              // Nettoyage complet avant réessai
+              localStorage.removeItem('auth_checking');
+              localStorage.removeItem('auth_refreshing');
+              localStorage.removeItem('auth_redirecting');
+              localStorage.removeItem('auth_check_timestamp');
+              localStorage.removeItem('auth_refresh_timestamp');
+              localStorage.removeItem('auth_redirect_timestamp');
+              localStorage.removeItem('auth_signing_out');
+              localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+              localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
               
               const success = await performLogin();
               if (!success) {
@@ -173,9 +167,14 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
               
               toast({
                 title: "Échec de la connexion",
-                description: "Veuillez réessayer ultérieurement.",
+                description: "Veuillez réessayer ultérieurement ou vérifier votre réseau.",
                 variant: "destructive",
                 duration: 5000,
+                action: (
+                  <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
+                    Recharger
+                  </ToastAction>
+                )
               });
             }
           } else {
