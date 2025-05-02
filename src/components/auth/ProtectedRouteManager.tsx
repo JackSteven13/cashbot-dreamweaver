@@ -1,14 +1,14 @@
 
-import { ReactNode, useEffect, useRef, useState, useCallback } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuthVerification } from '@/hooks/useAuthVerification';
-import AuthLoadingScreen from './AuthLoadingScreen';
-import ProtectedRouteRecovery from './ProtectedRouteRecovery';
-import { toast } from '@/components/ui/use-toast';
-import { forceSignOut } from '@/utils/auth';
+import AuthCheckingScreen from './protectedRoute/AuthCheckingScreen';
+import AuthRecoveryWrapper from './protectedRoute/AuthRecoveryWrapper';
 import { useProtectedRouteState } from './useProtectedRouteState';
 import { useAuthRedirect } from './useAuthRedirect';
 import { useAuthTimeouts } from './useAuthTimeouts';
+import useAuthRetryHandler from './protectedRoute/useAuthRetryHandler';
+import useResetHandler from './protectedRoute/useResetHandler';
 
 interface ProtectedRouteManagerProps {
   children: ReactNode;
@@ -28,8 +28,8 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
     maxLoadingTime
   } = useProtectedRouteState();
   
-  const [forceReset, setForceReset] = useState(false);
-  const [redirectAttempts, setRedirectAttempts] = useState(0);
+  const { forceReset, setForceReset, handleForceReset } = useResetHandler();
+  const { redirectAttempts, handleCleanLoginSafely } = useAuthRetryHandler();
   
   const { 
     isAuthenticated: authStatus, 
@@ -55,7 +55,7 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
       checkAuth(true);
       setForceReset(false);
     }
-  }, [forceReset, checkAuth]);
+  }, [forceReset, checkAuth, setForceReset]);
 
   // Update isAuthenticated state from useAuthVerification
   useEffect(() => {
@@ -111,7 +111,7 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
         timeoutRef.current = null;
       }
     };
-  }, [authCheckFailed, isAuthenticated, checkAuth, timeoutRef, redirectInProgress]);
+  }, [authCheckFailed, isAuthenticated, checkAuth, timeoutRef, redirectInProgress, autoRetryCount]);
 
   // Clean up on unmount to prevent memory leaks
   useEffect(() => {
@@ -129,71 +129,22 @@ const ProtectedRouteManager = ({ children }: ProtectedRouteManagerProps) => {
     };
   }, [redirectInProgress]);
 
-  // Fonction pour rediriger vers la page de login de manière sécurisée
-  const handleCleanLoginSafely = useCallback(() => {
-    if (redirectAttempts >= 3) {
-      // Si trop de redirections, forcer une déconnexion complète
-      forceSignOut().then(() => {
-        window.location.href = '/login';
-      });
-      return;
-    }
-    
-    if (!redirectInProgress.current) {
-      redirectInProgress.current = true;
-      setRedirectAttempts(prev => prev + 1);
-      
-      // Forcer la suppression de tous les tokens et flags
-      try {
-        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
-        localStorage.removeItem('auth_checking');
-        localStorage.removeItem('auth_refreshing');
-        localStorage.removeItem('auth_redirecting');
-        localStorage.removeItem('auth_check_timestamp');
-      } catch (e) {
-        console.error("Erreur lors du nettoyage du localStorage:", e);
-      }
-      
-      toast({
-        title: "Problème d'authentification",
-        description: "Veuillez vous reconnecter",
-        variant: "destructive"
-      });
-      
-      // Utiliser une redirection directe pour éviter les problèmes de React Router
-      window.location.href = '/login';
-    }
-  }, [redirectAttempts, redirectInProgress]);
-
   // Afficher l'écran de récupération en cas d'échec après plusieurs tentatives
   if (authCheckFailed && (autoRetryCount.current >= 2 || retryAttempts >= 3)) {
     return (
-      <ProtectedRouteRecovery
+      <AuthRecoveryWrapper
         isRetrying={isRetrying}
         autoRetryCount={autoRetryCount.current}
         maxAutoRetries={2}
         onRetry={() => checkAuth(true)}
-        onCleanLogin={handleCleanLoginSafely}
+        onCleanLogin={() => handleCleanLoginSafely(redirectInProgress)}
       />
     );
   }
   
   // Afficher l'écran de chargement pendant la vérification d'authentification
   if (isAuthenticated === null) {
-    return <AuthLoadingScreen onManualRetry={() => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      
-      if (maxLoadingTime.current) {
-        clearTimeout(maxLoadingTime.current);
-        maxLoadingTime.current = null;
-      }
-      
-      setForceReset(true);
-    }} />;
+    return <AuthCheckingScreen onManualRetry={handleForceReset} />;
   }
 
   // Rediriger vers login si non authentifié
