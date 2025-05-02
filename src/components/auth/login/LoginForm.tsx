@@ -1,11 +1,11 @@
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import Button from '@/components/Button';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
 import { ToastAction } from '@/components/ui/toast';
 
 interface LoginFormProps {
@@ -17,37 +17,24 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   const [email, setEmail] = useState(lastLoggedInEmail || '');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const loginAttempted = useRef(false);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const performLogin = async (): Promise<boolean> => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    
+    // Nettoyer complètement les données d'authentification stockées
+    clearStoredAuthData();
+    
     try {
-      // Force clear problematic stored sessions first
-      localStorage.removeItem('supabase.auth.token');
-      
-      // Nettoyer tous les flags d'authentification
-      const loginBlockingFlags = [
-        'auth_checking',
-        'auth_refreshing',
-        'auth_redirecting',
-        'auth_check_timestamp',
-        'auth_refresh_timestamp',
-        'auth_redirect_timestamp',
-        'auth_signing_out',
-        'sb-cfjibduhagxiwqkiyhqd-auth-token',
-        'sb-cfjibduhagxiwqkiyhqd-auth-refresh'
-      ];
-      
-      loginBlockingFlags.forEach(flag => {
-        localStorage.removeItem(flag);
-      });
-      
-      // Try using offline detection before making the request
+      // Vérifier la connexion réseau
       if (!navigator.onLine) {
         throw new Error("Vous semblez être hors ligne. Vérifiez votre connexion internet.");
       }
       
-      // Always manually sign in with the provided credentials
+      // Tentative d'authentification avec Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -56,166 +43,56 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
       if (error) throw error;
       
       if (data && data.user) {
-        // Save the email for future suggestions
+        // Sauvegarder l'email pour les futures suggestions
         localStorage.setItem('last_logged_in_email', email);
-        
-        // Pre-fetch user data to avoid loading issues
-        try {
-          const { data: userData } = await supabase
-            .from('user_balances')
-            .select('subscription')
-            .eq('id', data.user.id)
-            .maybeSingle();
-            
-          if (userData) {
-            localStorage.setItem('subscription', userData.subscription);
-          }
-        } catch (prefetchError) {
-          console.warn("Prefetch warning (non-critical):", prefetchError);
-        }
         
         toast({
           title: "Connexion réussie",
           description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
         });
         
-        // Redirect with a short delay to ensure auth state is fully updated
+        // Redirection avec un délai pour s'assurer que l'état d'authentification est mis à jour
         setTimeout(() => {
-          loginAttempted.current = false;
           navigate('/dashboard', { replace: true });
-        }, 1000);
-        
-        return true;
+        }, 500);
+      } else {
+        throw new Error("Échec de connexion: aucune donnée utilisateur retournée");
       }
-      
-      return false;
     } catch (error: any) {
-      console.error("Login error:", error);
-      throw error;
-    }
-  };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (isLoading || loginAttempted.current) return;
-    
-    setIsLoading(true);
-    loginAttempted.current = true;
-    
-    // Clear any existing retry timeout
-    if (retryTimeoutRef.current) {
-      clearTimeout(retryTimeoutRef.current);
-      retryTimeoutRef.current = null;
-    }
-    
-    try {
-      await performLogin();
-    } catch (error: any) {
-      console.error("Login error:", error);
+      console.error("Erreur de connexion:", error);
       
-      // Améliorer la gestion des erreurs pour les problèmes de réseau et d'authentification
-      if (error.message === "Failed to fetch" || 
-          error.message?.includes("NetworkError") || 
-          error.message?.includes("network") ||
-          error.message?.includes("CORS") ||
-          error.message?.includes("URL") ||
-          !navigator.onLine) {
-        
-        // Préparation pour une nouvelle tentative silencieuse
-        const retryDelay = 2000;
-        console.log(`Tentative de reconnexion automatique dans ${retryDelay}ms...`);
-        
+      // Gestion des différents types d'erreurs
+      if (!navigator.onLine) {
         toast({
-          title: "Problème de connexion",
-          description: "La connexion au serveur a échoué. Une nouvelle tentative sera effectuée automatiquement.",
-          duration: 6000,
+          title: "Pas de connexion internet",
+          description: "Vérifiez votre connexion réseau et réessayez.",
           variant: "destructive",
           action: (
-            <ToastAction altText="Maintenant" onClick={() => window.location.reload()}>
-              Recharger
+            <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
+              Réessayer
             </ToastAction>
           )
         });
-        
-        // Tentative silencieuse après un délai
-        retryTimeoutRef.current = setTimeout(async () => {
-          if (navigator.onLine) {
-            try {
-              console.log("Tentative de reconnexion silencieuse...");
-              
-              // Nettoyage complet avant réessai
-              localStorage.removeItem('auth_checking');
-              localStorage.removeItem('auth_refreshing');
-              localStorage.removeItem('auth_redirecting');
-              localStorage.removeItem('auth_check_timestamp');
-              localStorage.removeItem('auth_refresh_timestamp');
-              localStorage.removeItem('auth_redirect_timestamp');
-              localStorage.removeItem('auth_signing_out');
-              localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-              localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
-              
-              const success = await performLogin();
-              if (!success) {
-                setIsLoading(false);
-                loginAttempted.current = false;
-              }
-            } catch (retryError) {
-              console.error("La reconnexion a échoué:", retryError);
-              setIsLoading(false);
-              loginAttempted.current = false;
-              
-              toast({
-                title: "Échec de la connexion",
-                description: "Veuillez réessayer ultérieurement ou vérifier votre réseau.",
-                variant: "destructive",
-                duration: 5000,
-                action: (
-                  <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
-                    Recharger
-                  </ToastAction>
-                )
-              });
-            }
-          } else {
-            setIsLoading(false);
-            loginAttempted.current = false;
-            
-            toast({
-              title: "Toujours hors ligne",
-              description: "Vérifiez votre connexion et réessayez.",
-              variant: "destructive",
-              duration: 5000,
-              action: (
-                <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
-                  Réessayer
-                </ToastAction>
-              )
-            });
-          }
-        }, retryDelay);
-        
       } else if (error.message === "Invalid login credentials") {
         toast({
           title: "Identifiants incorrects",
           description: "Email ou mot de passe incorrect",
           variant: "destructive",
         });
-        setIsLoading(false);
-        setTimeout(() => {
-          loginAttempted.current = false;
-        }, 1000);
       } else {
         toast({
           title: "Erreur de connexion",
-          description: error.message || "Une erreur est survenue lors de la connexion",
+          description: "Impossible de se connecter. Veuillez réessayer.",
           variant: "destructive",
+          action: (
+            <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
+              Réessayer
+            </ToastAction>
+          )
         });
-        setIsLoading(false);
-        setTimeout(() => {
-          loginAttempted.current = false;
-        }, 1000);
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -260,7 +137,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
           size="lg" 
           isLoading={isLoading} 
           className="group"
-          disabled={isLoading || loginAttempted.current}
+          disabled={isLoading}
         >
           {isLoading ? (
             <>

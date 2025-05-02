@@ -3,7 +3,7 @@ import { useState, useEffect, createContext, ReactNode, useContext } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 
-// Créer le contexte avec une valeur par défaut appropriée
+// Interface pour le contexte d'authentification
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -21,82 +21,54 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSessionChecked, setIsSessionChecked] = useState(false);
 
   useEffect(() => {
-    // Important: configurer d'abord l'écouteur d'événements avant de vérifier la session
+    // Configuration de l'écouteur d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log(`Changement d'état d'authentification: ${event}`);
         setUser(session?.user ?? null);
+        setIsLoading(false);
         
-        // Si l'authentification vient de changer, marquer comme vérifié
-        if (!isSessionChecked) {
-          setIsLoading(false);
-          setIsSessionChecked(true);
-        }
-
         // Actions spécifiques selon l'événement
         if (event === 'SIGNED_IN') {
           console.log('Utilisateur connecté:', session?.user?.email);
         } else if (event === 'SIGNED_OUT') {
           console.log('Utilisateur déconnecté');
-          // Nettoyer les données locales en cas de déconnexion
           localStorage.removeItem('subscription');
-        } else if (event === 'TOKEN_REFRESHED') {
-          console.log('Jeton rafraîchi');
         }
       }
     );
 
-    // Vérifier la session existante
-    const getInitialSession = async () => {
+    // Vérification de la session existante
+    const checkSession = async () => {
       try {
-        console.log("Vérification de la session initiale");
-        
         const { data: { session } } = await supabase.auth.getSession();
-        
         setUser(session?.user ?? null);
-        
-        // Une dernière vérification pour s'assurer que nous avons des détails valides
-        if (session?.user && !user) {
-          // Vérification supplémentaire pour s'assurer de la validité de la session
-          const { data } = await supabase.auth.getUser();
-          if (data?.user) {
-            setUser(data.user);
-          }
-        }
       } catch (error) {
-        console.error("Erreur lors de la récupération de la session:", error);
+        console.error('Erreur lors de la récupération de la session:', error);
       } finally {
-        // Marquer comme non chargement uniquement si nous n'avons pas déjà traité un événement d'authentification
-        if (!isSessionChecked) {
-          setIsLoading(false);
-          setIsSessionChecked(true);
-        }
+        setIsLoading(false);
       }
     };
 
-    // Vérifier la session existante après avoir configuré l'écouteur
-    getInitialSession();
+    checkSession();
 
-    // Nettoyer l'abonnement lorsque le composant est démonté
+    // Nettoyage à la désinscription
     return () => {
       subscription.unsubscribe();
     };
-  }, []); // Pas de dépendances pour ne s'exécuter qu'une seule fois
+  }, []);
 
-  // Protection contre le blocage - si toujours en chargement après 5 secondes, forcer à false
+  // Protection contre le blocage - forcer à false après 3 secondes
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
+    const timeout = setTimeout(() => {
       if (isLoading) {
-        console.warn("Délai d'attente de vérification de session dépassé, passage en mode non chargement");
         setIsLoading(false);
-        setIsSessionChecked(true);
       }
-    }, 5000);
+    }, 3000);
     
-    return () => clearTimeout(timeoutId);
+    return () => clearTimeout(timeout);
   }, [isLoading]);
 
   return (
@@ -106,7 +78,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   );
 };
 
-// Hook personnalisé pour utiliser le contexte d'authentification
+// Hook pour utiliser le contexte d'authentification
 export const useAuth = () => {
   const context = useContext(AuthContext);
   
