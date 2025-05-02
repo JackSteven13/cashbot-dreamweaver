@@ -1,6 +1,7 @@
+
 import { useEffect, useRef, useState } from 'react';
 import { toast } from '@/hooks/use-toast';
-import { animateBalanceUpdate } from '@/utils/animations/balanceAnimations';
+import { animateBalanceUpdate } from '@/utils/animations';
 
 export const useAutoSessionAnimation = () => {
   const balanceElementRef = useRef<HTMLElement | null>(null);
