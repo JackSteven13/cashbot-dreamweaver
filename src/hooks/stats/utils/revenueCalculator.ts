@@ -12,6 +12,29 @@ export const synchronizeRevenueWithAds = (adsCount: number): number => {
 };
 
 /**
+ * Calcule les revenus basés sur différentes localisations géographiques
+ * pour simuler la diversité des taux de publicité
+ */
+export const calculateRevenueForLocation = (
+  adsCount: number,
+  location: string = 'global'
+): number => {
+  // Coefficients de base par région
+  const locationFactors: Record<string, number> = {
+    'us': 0.85,
+    'eu': 0.78,
+    'asia': 0.72,
+    'global': 0.76203
+  };
+  
+  // Utiliser le facteur de localisation ou le facteur global par défaut
+  const factor = locationFactors[location.toLowerCase()] || locationFactors.global;
+  
+  // Calcul du revenu avec précision à 2 décimales
+  return Math.round(adsCount * factor * 100) / 100;
+};
+
+/**
  * Calcule les statistiques globales à partir des valeurs centralisées
  * avec une évolution naturelle et réaliste au fil du temps
  */
