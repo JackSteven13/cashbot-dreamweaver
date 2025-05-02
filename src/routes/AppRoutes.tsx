@@ -47,6 +47,15 @@ const AppRoutes: React.FC = () => {
       window.location.replace(`https://${window.location.host}${window.location.pathname}${window.location.search}`);
     }
     
+    // Redirect from streamgenius.fr to streamgenius.io
+    if (
+      window.location.hostname === 'streamgenius.fr' || 
+      window.location.hostname === 'www.streamgenius.fr'
+    ) {
+      // Redirect from .fr to .io
+      window.location.replace(`https://streamgenius.io${window.location.pathname}${window.location.search}`);
+    }
+    
     // Add specific check for streamgenius.io domain
     if (
       window.location.hostname === 'www.streamgenius.io' &&

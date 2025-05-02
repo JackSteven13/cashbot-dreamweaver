@@ -29,6 +29,19 @@
   status = 301
   force = true
 
+# Redirect from .fr to .io domain
+[[redirects]]
+  from = "https://streamgenius.fr/*"
+  to = "https://streamgenius.io/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.streamgenius.fr/*"
+  to = "https://streamgenius.io/:splat"
+  status = 301
+  force = true
+
 # Custom 404 page redirect
 [[redirects]]
   from = "/*"
@@ -38,4 +51,3 @@
 # Handle DNS errors with a fallback
 [[plugins]]
   package = "@netlify/plugin-sitemap"
-
