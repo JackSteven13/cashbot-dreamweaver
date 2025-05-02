@@ -6,6 +6,7 @@ import { Toaster as SonnerToaster } from 'sonner';
 import useAuthProvider from './hooks/auth/useAuthProvider';
 import { useEffect } from 'react';
 import NetworkStatusMonitor from './components/NetworkStatusMonitor';
+import { supabase } from '@/integrations/supabase/client';
 
 // Composant de récupération en cas d'erreur DNS et d'application HTTPS
 const SecurityAndDNSHandler = () => {
@@ -36,6 +37,15 @@ const SecurityAndDNSHandler = () => {
       window.location.replace(`https://streamgenius.io${window.location.pathname}${window.location.search}?app_redirect=1&t=${Date.now()}`);
     }
 
+    // Forcer la reconnexion de Supabase après un délai pour résoudre les problèmes potentiels
+    setTimeout(() => {
+      try {
+        supabase.auth.getSession();
+      } catch (e) {
+        console.warn("Reconnexion proactive de Supabase - erreur gérée:", e);
+      }
+    }, 1000);
+
     return () => clearInterval(intervalId);
   }, []);
 
@@ -60,6 +70,13 @@ function AuthSecurityWrapper() {
     
     const handleOnline = () => {
       console.log("Application is back online - resuming normal operation");
+      
+      // Tentative de reconstruction de la connexion Supabase en cas de reconnexion
+      try {
+        supabase.auth.getSession();
+      } catch (e) {
+        console.warn("Erreur lors de la reconstruction de la session:", e);
+      }
     };
     
     window.addEventListener('offline', handleOffline);
@@ -84,6 +101,15 @@ function App() {
     // Redirection immédiate si on est sur le domaine .fr
     if (window.location.hostname.includes('streamgenius.fr')) {
       window.location.replace(`https://streamgenius.io${window.location.pathname}${window.location.search}?source=app_component&t=${Date.now()}`);
+    }
+    
+    // Configuration de la compatibilité pour différents domaines
+    if (window.location.hostname.includes('streamgenius.io')) {
+      localStorage.setItem('auth_domain', 'streamgenius.io');
+    } else if (window.location.hostname.includes('lovable.dev')) {
+      localStorage.setItem('auth_domain', 'lovable.dev');
+    } else {
+      localStorage.setItem('auth_domain', window.location.hostname);
     }
   }, []);
 

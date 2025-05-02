@@ -1,151 +1,120 @@
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+import { useState, useEffect, createContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import balanceManager from '@/utils/balance/balanceManager';
+import { User } from '@supabase/supabase-js';
 
+// Créer le contexte avec une valeur par défaut appropriée
 interface AuthContextType {
-  session: Session | null;
   user: User | null;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{
-    error: Error | null;
-    data: Session | null;
-  }>;
-  signUp: (email: string, password: string, metadata?: any) => Promise<{
-    error: Error | null;
-    data: any;
-  }>;
-  signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  isLoading: true,
+});
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSessionChecked, setIsSessionChecked] = useState(false);
 
   useEffect(() => {
-    // Set up listener for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      
-      // When user signs in, sync their balance data
-      if (event === 'SIGNED_IN' && newSession?.user) {
-        const userId = newSession.user.id;
+    // Important: configurer d'abord l'écouteur d'événements avant de vérifier la session
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log(`Changement d'état d'authentification: ${event}`);
+        setUser(session?.user ?? null);
         
-        // Try to load user balance from database after a short delay
-        setTimeout(async () => {
-          try {
-            const { data, error } = await supabase
-              .from('user_balances')
-              .select('balance')
-              .eq('id', userId)
-              .maybeSingle();
-              
-            if (!error && data && typeof data.balance === 'number') {
-              // Sync with balance manager to ensure we're using highest balance
-              balanceManager.syncOnAuth(userId, data.balance);
-              
-              // Store userId in localStorage for future reference
-              localStorage.setItem('userId', userId);
-              
-              console.log(`Auth: Synced balance data for user ${userId}: ${data.balance}`);
-            } else {
-              console.log(`Auth: No balance data found for user ${userId}`);
-            }
-          } catch (err) {
-            console.error("Error loading balance on auth:", err);
+        // Si l'authentification vient de changer, marquer comme vérifié
+        if (!isSessionChecked) {
+          setIsLoading(false);
+          setIsSessionChecked(true);
+        }
+
+        // Actions spécifiques selon l'événement
+        if (event === 'SIGNED_IN') {
+          console.log('Utilisateur connecté:', session?.user?.email);
+        } else if (event === 'SIGNED_OUT') {
+          console.log('Utilisateur déconnecté');
+          // Nettoyer les données locales en cas de déconnexion
+          localStorage.removeItem('subscription');
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log('Jeton rafraîchi');
+        }
+      }
+    );
+
+    // Vérifier la session existante
+    const getInitialSession = async () => {
+      try {
+        console.log("Vérification de la session initiale");
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        setUser(session?.user ?? null);
+        
+        // Une dernière vérification pour s'assurer que nous avons des détails valides
+        if (session?.user && !user) {
+          // Vérification supplémentaire pour s'assurer de la validité de la session
+          const { data } = await supabase.auth.getUser();
+          if (data?.user) {
+            setUser(data.user);
           }
-        }, 500);
+        }
+      } catch (error) {
+        console.error("Erreur lors de la récupération de la session:", error);
+      } finally {
+        // Marquer comme non chargement uniquement si nous n'avons pas déjà traité un événement d'authentification
+        if (!isSessionChecked) {
+          setIsLoading(false);
+          setIsSessionChecked(true);
+        }
       }
-    });
+    };
 
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-      
-      // If user is logged in, sync their balance
-      if (session?.user) {
-        const userId = session.user.id;
-        localStorage.setItem('userId', userId);
-      }
-    });
+    // Vérifier la session existante après avoir configuré l'écouteur
+    getInitialSession();
 
+    // Nettoyer l'abonnement lorsque le composant est démonté
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Pas de dépendances pour ne s'exécuter qu'une seule fois
 
-  const signIn = async (email: string, password: string) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      return { data: data.session, error };
-    } catch (error) {
-      return { data: null, error: error as Error };
-    }
-  };
-
-  const signUp = async (email: string, password: string, metadata?: any) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: metadata,
-        },
-      });
-      
-      return { data, error };
-    } catch (error) {
-      return { data: null, error: error as Error };
-    }
-  };
-
-  const signOut = async () => {
-    // Before signing out, store the current balance to ensure it's preserved
-    if (user) {
-      const currentBalance = balanceManager.getCurrentBalance();
-      const highestBalance = balanceManager.getHighestBalance();
-      const effectiveBalance = Math.max(currentBalance, highestBalance);
-      
-      localStorage.setItem(`lastKnownBalance_${user.id}`, effectiveBalance.toString());
-      
-      // Try to update the database with the latest balance before logout
-      try {
-        await supabase
-          .from('user_balances')
-          .update({ balance: effectiveBalance })
-          .eq('id', user.id);
-          
-        console.log(`Updated database balance before logout: ${effectiveBalance}€`);
-      } catch (err) {
-        console.error("Error updating balance before logout:", err);
+  // Protection contre le blocage - si toujours en chargement après 5 secondes, forcer à false
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.warn("Délai d'attente de vérification de session dépassé, passage en mode non chargement");
+        setIsLoading(false);
+        setIsSessionChecked(true);
       }
-    }
+    }, 5000);
     
-    await supabase.auth.signOut();
-  };
+    return () => clearTimeout(timeoutId);
+  }, [isLoading]);
 
   return (
-    <AuthContext.Provider value={{ session, user, isLoading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
+// Hook personnalisé pour utiliser le contexte d'authentification
+export const useAuth = () => {
+  const context = createContext(AuthContext);
+  
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+  
   return context;
-}
+};
+
+export default useAuth;

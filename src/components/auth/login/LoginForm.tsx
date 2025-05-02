@@ -33,7 +33,9 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
         'auth_check_timestamp',
         'auth_refresh_timestamp',
         'auth_redirect_timestamp',
-        'auth_signing_out'
+        'auth_signing_out',
+        'sb-cfjibduhagxiwqkiyhqd-auth-token',
+        'sb-cfjibduhagxiwqkiyhqd-auth-refresh'
       ];
       
       loginBlockingFlags.forEach(flag => {
@@ -45,10 +47,12 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
         throw new Error("Vous semblez être hors ligne. Vérifiez votre connexion internet.");
       }
       
-      // Always manually sign in with the provided credentials
+      // Always manually sign in with the provided credentials with production domain options
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+      }, {
+        redirectTo: window.location.origin + '/dashboard',
       });
       
       if (error) throw error;
@@ -112,10 +116,12 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     } catch (error: any) {
       console.error("Login error:", error);
       
-      // Améliorer la gestion des erreurs pour les problèmes de réseau
+      // Améliorer la gestion des erreurs pour les problèmes de réseau et d'authentification
       if (error.message === "Failed to fetch" || 
           error.message?.includes("NetworkError") || 
           error.message?.includes("network") ||
+          error.message?.includes("CORS") ||
+          error.message?.includes("URL") ||
           !navigator.onLine) {
         
         // Préparation pour une nouvelle tentative silencieuse
@@ -134,6 +140,16 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
           if (navigator.onLine) {
             try {
               console.log("Tentative de reconnexion silencieuse...");
+              // Une tentative avec options de domaine alternative
+              try {
+                // Nettoyage complet avant réessai
+                loginBlockingFlags.forEach(flag => {
+                  localStorage.removeItem(flag);
+                });
+              } catch (e) {
+                console.warn("Erreur lors du nettoyage du stockage local:", e);
+              }
+              
               const success = await performLogin();
               if (!success) {
                 setIsLoading(false);
@@ -192,6 +208,19 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
       }
     }
   };
+
+  // Définir les drapeaux de blocage au niveau de la fonction
+  const loginBlockingFlags = [
+    'auth_checking',
+    'auth_refreshing',
+    'auth_redirecting',
+    'auth_check_timestamp',
+    'auth_refresh_timestamp',
+    'auth_redirect_timestamp',
+    'auth_signing_out',
+    'sb-cfjibduhagxiwqkiyhqd-auth-token',
+    'sb-cfjibduhagxiwqkiyhqd-auth-refresh'
+  ];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
