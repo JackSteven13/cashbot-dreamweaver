@@ -14,9 +14,10 @@ export const checkDailyLimit = async (userId: string): Promise<boolean> => {
       return cachedResult.split(':')[0] === 'true';
     }
     
+    // Get the user's balance and subscription
     const { data, error } = await supabase
-      .from('user_limits')
-      .select('daily_count, daily_limit, last_reset')
+      .from('user_balances')
+      .select('balance, subscription, daily_session_count')
       .eq('id', userId)
       .single();
       
@@ -26,7 +27,36 @@ export const checkDailyLimit = async (userId: string): Promise<boolean> => {
       return false;
     }
     
-    const hasReachedLimit = data && data.daily_count >= data.daily_limit;
+    // Check if the user has reached their limit based on subscription
+    const subscription = data?.subscription || 'freemium';
+    let dailyLimit = 0.5; // Default for freemium
+    
+    // Set limit based on subscription
+    switch (subscription) {
+      case 'starter': dailyLimit = 5; break;
+      case 'gold': dailyLimit = 15; break;
+      case 'elite': dailyLimit = 30; break;
+      default: dailyLimit = 0.5; // freemium
+    }
+    
+    // Calculate if limit is reached using transactions from today
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    const { data: todaysTransactions, error: txError } = await supabase
+      .from('transactions')
+      .select('gain')
+      .eq('user_id', userId)
+      .eq('date', today);
+      
+    if (txError) {
+      console.error('Error getting transactions:', txError);
+      return false;
+    }
+    
+    const dailyGains = todaysTransactions ? 
+      todaysTransactions.reduce((sum, tx) => sum + (tx.gain || 0), 0) : 0;
+    
+    const hasReachedLimit = dailyGains >= dailyLimit;
     
     // Mettre en cache le résultat
     sessionStorage.setItem(cacheKey, `${hasReachedLimit}:${Date.now()}`);
@@ -56,10 +86,10 @@ export const getEffectiveSubscription = async (userId: string): Promise<string> 
       
     if (error) {
       console.error('Error getting subscription:', error);
-      return 'free'; // Par défaut, retourner 'free'
+      return 'freemium'; // Par défaut, retourner 'free'
     }
     
-    const subscription = data?.subscription || 'free';
+    const subscription = data?.subscription || 'freemium';
     
     // Mettre en cache le résultat
     localStorage.setItem('subscription', subscription);
@@ -67,7 +97,7 @@ export const getEffectiveSubscription = async (userId: string): Promise<string> 
     return subscription;
   } catch (err) {
     console.error('Exception getting subscription:', err);
-    return 'free';
+    return 'freemium';
   }
 };
 
