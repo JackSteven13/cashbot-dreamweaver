@@ -1,6 +1,6 @@
 
-import { animateBalanceUpdate } from '@/utils/animations/animateBalanceUpdate';
-import { createMoneyParticles } from '@/utils/animations';
+import { animateBalanceUpdate } from '@/utils/animations/balanceAnimations';
+import { createMoneyParticles } from '@/utils/animations/particleEffects';
 
 /**
  * Helper functions for balance animations during session updates
@@ -37,6 +37,7 @@ export const animateBalance = (
     animateBalanceUpdate(
       startBalance,
       newBalance,
+      1000,
       (value) => {
         setLocalBalance(value);
         if (value === newBalance) resolve();

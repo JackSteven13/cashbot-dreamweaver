@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState, useRef } from 'react';
-import { createMoneyParticles } from '@/utils/animations';
+import { createMoneyParticles } from '@/utils/animations/particleEffects';
 
 interface BalanceAnimationProps {
   position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'center';
