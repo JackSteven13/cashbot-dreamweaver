@@ -1,8 +1,8 @@
 
-# Force HTTPS - High Priority
+# Force HTTPS
 http://*  https://:splat 301!
 
-# SEO Improvements - Removes any reference to lovable or cashbot
+# SEO Improvements
 /* /index.html 200
 
 # Force streamgenius.io domain - PRIORITY HIGH

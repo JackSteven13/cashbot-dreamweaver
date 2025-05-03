@@ -4,15 +4,15 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Configuration universelle pour les domaines streamgenius.io et lovable.dev
+// Configuration optimisée pour streamgenius.io en production
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false, // Important: désactivé pour résoudre les conflits multi-domaines
+    detectSessionInUrl: false,
     storage: localStorage,
-    storageKey: 'sb-auth-token', // Clé universelle pour tous les domaines
-    flowType: 'pkce', // PKCE plus sécurisé pour les redirections cross-domain
+    storageKey: 'supabase-auth-token',
+    flowType: 'implicit',
   },
   global: {
     headers: {
@@ -20,13 +20,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'X-Client-Domain': typeof window !== 'undefined' ? window.location.hostname : 'unknown',
     },
   },
-  // Paramètres réseau plus tolérants pour les connexions instables
   realtime: {
     params: {
       eventsPerSecond: 1,
     },
   },
-  // Paramètres robustes pour les domaines streamgenius.io et lovable.dev
   db: {
     schema: 'public'
   }
@@ -89,7 +87,7 @@ export const testSupabaseConnection = async (): Promise<boolean> => {
     
     // Test simple pour vérifier que Supabase est accessible
     try {
-      // Alternative approach without using abortSignal method
+      // Test avec une requête simple qui devrait toujours fonctionner
       const { error } = await supabase.from('_health').select('*').limit(1).maybeSingle();
       
       clearTimeout(timeoutId);
