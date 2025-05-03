@@ -1,10 +1,10 @@
 
+import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
 import { getNetworkStatus, attemptNetworkRecovery } from '@/utils/auth/networkUtils';
-import * as React from 'react';
 
 export const useLoginSubmit = () => {
   const navigate = useNavigate();
@@ -137,7 +137,10 @@ export const useLoginSubmit = () => {
           description: "Impossible de joindre le serveur. Vérifiez votre connexion internet et réessayez.",
           variant: "destructive",
           action: (
-            <ToastAction onClick={() => window.location.reload()}>
+            <ToastAction 
+              altText="Réessayer" 
+              onClick={() => window.location.reload()}
+            >
               Réessayer
             </ToastAction>
           )
@@ -154,7 +157,10 @@ export const useLoginSubmit = () => {
           description: "Impossible de se connecter. Veuillez réessayer.",
           variant: "destructive",
           action: (
-            <ToastAction onClick={() => window.location.reload()}>
+            <ToastAction 
+              altText="Réessayer" 
+              onClick={() => window.location.reload()}
+            >
               Réessayer
             </ToastAction>
           )
