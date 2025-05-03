@@ -1,22 +1,19 @@
 
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { checkPasswordSecurity } from '@/utils/auth/securityUtils';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Hook pour gérer les vérifications de sécurité après l'authentification
+ * Hook pour gérer les vérifications après l'authentification
+ * Version simplifiée sans la vérification de sécurité des mots de passe
  */
 export const useAuthProvider = () => {
   const auth = useAuth();
   const user = auth?.user || null;
   
-  // Effectuer des vérifications de sécurité après connexion
+  // Vérifier uniquement que la session est bien établie
   useEffect(() => {
     if (user) {
-      // Vérifier la sécurité du mot de passe
-      checkPasswordSecurity(user);
-      
       // Vérifier que la session est bien établie
       const checkSession = async () => {
         try {

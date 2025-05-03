@@ -64,10 +64,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
           // Tentative d'authentification avec Supabase
           authResult = await supabase.auth.signInWithPassword({
             email,
-            password,
-            options: {
-              redirectTo: window.location.origin + '/dashboard'
-            }
+            password
           });
           
           if (!authResult.error) break;
