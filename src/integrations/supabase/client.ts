@@ -4,24 +4,19 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Configuration simplifiée pour compatibilité multi-domaines
+// Configuration améliorée pour compatibilité multi-domaines
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
-    detectSessionInUrl: false, // Désactiver pour éviter les problèmes de détection
+    persistSession: true,
+    detectSessionInUrl: true,
     storage: localStorage,
-    storageKey: 'supabase-auth-token', // Clé unifiée pour tous les domaines
-    flowType: 'pkce', // PKCE pour sécurité renforcée
+    storageKey: 'sb-auth-token', // Clé universelle pour tous les domaines
+    flowType: 'implicit', // Flow plus simple pour éviter les problèmes PKCE
   },
   global: {
     headers: {
       'X-Client-Info': 'streamgenius@1.0.0',
-    },
-  },
-  // Retry logic for network issues
-  realtime: {
-    params: {
-      eventsPerSecond: 2,
     },
   },
 });

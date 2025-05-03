@@ -17,12 +17,12 @@
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.gpteng.co; connect-src 'self' https://api.supabase.co https://lovable.dev; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.gpteng.co; connect-src 'self' https://api.supabase.co https://lovable.dev https://cfjibduhagxiwqkiyhqd.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content"
     Permissions-Policy = "camera=(), geolocation=(), microphone=()"
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
     Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    # SEO Improvements - No cachbot reference
+    # SEO Improvements - No cashbot reference
     X-Robots-Tag = "index, follow"
 
 # Force HTTP to HTTPS for all requests - High Priority
