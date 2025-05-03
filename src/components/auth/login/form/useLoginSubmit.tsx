@@ -31,15 +31,6 @@ export const useLoginSubmit = () => {
       
       console.log("Tentative de connexion pour:", email);
       
-      // Configuration pour une authentification plus robuste
-      const options = {
-        email,
-        password,
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-        }
-      };
-      
       // Variable pour suivre les tentatives
       let attemptCount = 0;
       let maxAttempts = 3;
@@ -51,16 +42,12 @@ export const useLoginSubmit = () => {
         console.log(`Tentative d'authentification ${attemptCount}/${maxAttempts}...`);
         
         try {
-          // Configuration avancée pour la requête d'authentification
-          const authPromise = supabase.auth.signInWithPassword(options);
-          
-          // Définir un timeout de 20 secondes (augmenté pour les connexions lentes)
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error("Délai d'attente dépassé pour la connexion")), 20000);
+          // Configuration simplifiée pour l'authentification - Removed the redirectTo option
+          // qui causait l'erreur TypeScript
+          authResult = await supabase.auth.signInWithPassword({
+            email,
+            password
           });
-          
-          // Utiliser race pour gérer le timeout
-          authResult = await Promise.race([authPromise, timeoutPromise]);
           
           if (!authResult.error) break;
           lastError = authResult.error;
@@ -97,7 +84,7 @@ export const useLoginSubmit = () => {
           description: `Bienvenue ${authResult.data.user.user_metadata?.full_name || authResult.data.user.email?.split('@')[0] || 'utilisateur'}!`,
         });
         
-        // Redirection directe, sans vérification supplémentaire
+        // Redirection directe vers le dashboard
         navigate('/dashboard', { replace: true });
       } else {
         throw new Error("Échec de connexion: aucune donnée utilisateur retournée");

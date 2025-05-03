@@ -9,7 +9,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: true,
     storage: localStorage,
     storageKey: 'supabase-auth-token',
     flowType: 'implicit',
@@ -19,14 +19,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'X-Client-Info': 'streamgenius@1.0.0',
       'X-Client-Domain': typeof window !== 'undefined' ? window.location.hostname : 'unknown',
     },
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 1,
-    },
-  },
-  db: {
-    schema: 'public'
   }
 });
 
@@ -88,7 +80,10 @@ export const testSupabaseConnection = async (): Promise<boolean> => {
     // Test simple pour vérifier que Supabase est accessible
     try {
       // Test avec une requête simple qui devrait toujours fonctionner
-      const { error } = await supabase.from('_health').select('*').limit(1).maybeSingle();
+      const { error } = await supabase.from('_health')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
       
       clearTimeout(timeoutId);
       
