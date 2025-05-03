@@ -4,11 +4,10 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Configuration complètement révisée pour une meilleure compatibilité multi-domaines
+// Configuration révisée pour une meilleure compatibilité multi-domaines
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
-    persistSession: true,
     detectSessionInUrl: false, // Désactiver pour éviter les problèmes de détection
     storage: localStorage,
     storageKey: 'supabase-auth-token', // Clé unifiée pour tous les domaines
@@ -20,7 +19,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     },
   },
   // Retry logic for network issues
-  persistSession: true,
   realtime: {
     params: {
       eventsPerSecond: 2,

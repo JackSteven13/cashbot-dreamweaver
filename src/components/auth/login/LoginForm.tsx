@@ -66,8 +66,6 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
             email,
             password,
             options: {
-              // Forcer l'authentification à passer par le PKCE pour une meilleure compatibilité multi-domaines
-              storeSession: true,
               redirectTo: window.location.origin + '/dashboard'
             }
           });
