@@ -4,15 +4,15 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Configuration compatible streamgenius.io et environnement de développement
+// Configuration universelle pour les domaines streamgenius.io et lovable.dev
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false, // Important: désactivé pour résoudre les conflits multi-domaines
     storage: localStorage,
     storageKey: 'sb-auth-token', // Clé universelle pour tous les domaines
-    flowType: 'implicit', // Flow plus simple pour éviter les problèmes PKCE
+    flowType: 'pkce', // PKCE plus sécurisé pour les redirections cross-domain
   },
   global: {
     headers: {
@@ -26,11 +26,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       eventsPerSecond: 1,
     },
   },
-  // Paramètres plus robustes pour les domaines streamgenius.io et lovable.dev
+  // Paramètres robustes pour les domaines streamgenius.io et lovable.dev
   db: {
     schema: 'public'
-  },
-  // Note: Removing 'rest' property as it's not supported in the SupabaseClientOptions type
+  }
 });
 
 /**
@@ -89,7 +88,6 @@ export const testSupabaseConnection = async (): Promise<boolean> => {
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
     // Test simple pour vérifier que Supabase est accessible
-    // Fixed: Removed abortSignal method, using a fetch request with AbortSignal instead
     try {
       // Alternative approach without using abortSignal method
       const { error } = await supabase.from('_health').select('*').limit(1).maybeSingle();

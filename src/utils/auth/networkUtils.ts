@@ -1,6 +1,7 @@
 
 /**
  * Utilitaires pour la gestion du réseau et la récupération en cas d'erreur
+ * Version optimisée pour la stabilité cross-domain
  */
 
 /**
@@ -22,7 +23,7 @@ export const getNetworkStatus = async (silentMode = false): Promise<{isOnline: b
   try {
     // Utiliser une requête HEAD pour réduire la charge réseau
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // Augmenter le timeout pour les connexions lentes
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Augmenter le timeout pour les connexions lentes
     
     const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/', {
       method: 'HEAD',
@@ -45,45 +46,29 @@ export const getNetworkStatus = async (silentMode = false): Promise<{isOnline: b
     
     return { isOnline: true, dnsWorking };
   } catch (error) {
-    // Une erreur de fetch pourrait indiquer un problème DNS ou de connectivité
-    if (!silentMode) {
-      console.error("Erreur de connexion:", error);
-    }
-    
-    // Déterminer si c'est une erreur réseau spécifique
-    const isDNSError = String(error).includes('DNS') || 
-                       String(error).includes('net::') || 
-                       String(error).includes('network') || 
-                       String(error).includes('abort') ||
-                       String(error).includes('Failed to fetch');
-    
-    // Pour une URL spécifique, essayer une autre URL de secours
-    if (isDNSError && typeof window !== 'undefined') {
-      // Si nous sommes sur streamgenius.io, tester une autre URL
-      try {
-        if (window.location.hostname.includes('streamgenius')) {
-          // Tester une connexion alternative
-          const altController = new AbortController();
-          const altTimeoutId = setTimeout(() => altController.abort(), 4000);
-          
-          await fetch('https://supabase.co/ping', {
-            method: 'HEAD',
-            signal: altController.signal,
-            mode: 'no-cors'
-          });
-          
-          clearTimeout(altTimeoutId);
-          
-          // Si cette requête fonctionne, c'est probablement un problème avec Supabase spécifiquement
-          return { isOnline: true, dnsWorking: true };
+    // Tenter une deuxième connexion avec un autre domaine pour vérifier
+    try {
+      const altController = new AbortController();
+      const altTimeoutId = setTimeout(() => altController.abort(), 6000);
+      
+      const altResponse = await fetch('https://supabase.com/ping', {
+        method: 'HEAD',
+        signal: altController.signal,
+        mode: 'no-cors',
+        headers: {
+          'Cache-Control': 'no-cache'
         }
-      } catch (err) {
-        // Échec également avec l'URL alternative
-        console.warn("Échec de connexion alternatif:", err);
+      });
+      
+      clearTimeout(altTimeoutId);
+      return { isOnline: true, dnsWorking: true };
+    } catch (altError) {
+      // Si les deux échouent, c'est probablement un problème DNS
+      if (!silentMode) {
+        console.error("Erreur de connexion générale:", altError);
       }
+      return { isOnline: true, dnsWorking: false };
     }
-    
-    return { isOnline: true, dnsWorking: !isDNSError };
   }
 };
 
@@ -93,11 +78,11 @@ export const getNetworkStatus = async (silentMode = false): Promise<{isOnline: b
  */
 export const attemptNetworkRecovery = async (): Promise<boolean> => {
   // Attendre un court délai avant d'essayer de récupérer
-  await new Promise(resolve => setTimeout(resolve, 500));
+  await new Promise(resolve => setTimeout(resolve, 800));
   
   try {
     // Faire plusieurs tentatives de récupération avec délai exponentiel
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       // Forcer un rechargement des ressources réseau avec no-cache
       const status = await getNetworkStatus(true);
       if (status.isOnline && status.dnsWorking) {
@@ -105,13 +90,13 @@ export const attemptNetworkRecovery = async (): Promise<boolean> => {
       }
       
       // Pause entre les tentatives avec backoff exponentiel
-      await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(2, i)));
+      await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, i)));
     }
     
     // Tester avec une autre URL qui n'est pas Supabase
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
       
       await fetch('https://www.google.com/generate_204', {
         method: 'HEAD',

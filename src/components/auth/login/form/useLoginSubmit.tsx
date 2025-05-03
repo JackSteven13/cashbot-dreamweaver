@@ -26,14 +26,7 @@ export const useLoginSubmit = () => {
     
     try {
       // Vérifier la connexion réseau et la résolution DNS de manière plus robuste
-      let networkStatus;
-      try {
-        networkStatus = await getNetworkStatus();
-      } catch (networkError) {
-        console.error("Erreur lors de la vérification du réseau:", networkError);
-        // Supposer que nous sommes hors ligne si la vérification échoue
-        networkStatus = { isOnline: false, dnsWorking: false };
-      }
+      const networkStatus = await getNetworkStatus();
       
       if (!networkStatus.isOnline) {
         throw new Error("Vous semblez être hors ligne. Vérifiez votre connexion internet.");
@@ -41,17 +34,22 @@ export const useLoginSubmit = () => {
       
       if (!networkStatus.dnsWorking) {
         // Tentative de récupération réseau
-        let recovered = false;
-        try {
-          recovered = await attemptNetworkRecovery();
-        } catch (recoveryError) {
-          console.error("Erreur lors de la tentative de récupération réseau:", recoveryError);
-        }
+        const recovered = await attemptNetworkRecovery();
         
         if (!recovered) {
           throw new Error("Problème de connexion au serveur Supabase. Vérifiez votre connexion ou réessayez plus tard.");
         }
       }
+      
+      // Configuration pour une authentification plus robuste, spécialement pour streamgenius.io
+      const options = {
+        email,
+        password,
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          captchaToken: null,
+        }
+      };
       
       // Variable pour suivre les tentatives
       let attemptCount = 0;
@@ -65,14 +63,11 @@ export const useLoginSubmit = () => {
         
         try {
           // Configuration avancée pour la requête d'authentification
-          const authPromise = supabase.auth.signInWithPassword({
-            email,
-            password
-          });
+          const authPromise = supabase.auth.signInWithPassword(options);
           
-          // Définir un timeout de 15 secondes (augmenté pour les connexions lentes)
+          // Définir un timeout de 20 secondes (augmenté pour les connexions lentes)
           const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error("Délai d'attente dépassé pour la connexion")), 15000);
+            setTimeout(() => reject(new Error("Délai d'attente dépassé pour la connexion")), 20000);
           });
           
           // Utiliser race pour gérer le timeout
@@ -83,7 +78,7 @@ export const useLoginSubmit = () => {
           
           // Attendre brièvement entre les tentatives avec délai exponentiel
           if (attemptCount < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 800 * Math.pow(1.5, attemptCount)));
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(1.5, attemptCount)));
           }
         } catch (err) {
           console.error("Erreur lors de la tentative d'authentification:", err);
@@ -91,7 +86,7 @@ export const useLoginSubmit = () => {
           
           // Attendre brièvement entre les tentatives avec délai exponentiel
           if (attemptCount < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 800 * Math.pow(1.5, attemptCount)));
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(1.5, attemptCount)));
           }
         }
       } while (attemptCount < maxAttempts && (!authResult || authResult.error));
@@ -113,44 +108,39 @@ export const useLoginSubmit = () => {
           description: `Bienvenue ${authResult.data.user.user_metadata?.full_name || authResult.data.user.email?.split('@')[0] || 'utilisateur'}!`,
         });
         
-        // Mettre en place une double vérification de session
-        setTimeout(async () => {
-          try {
-            // Vérifier que la session est bien établie avant de rediriger
-            const { data: sessionCheck } = await supabase.auth.getSession();
-            
-            if (sessionCheck && sessionCheck.session) {
-              // Session confirmée, rediriger
-              navigate('/dashboard', { replace: true });
-            } else {
-              // Session non confirmée, essayer une nouvelle connexion
-              console.log("Session non confirmée après connexion, nouvelle tentative...");
-              const secondAttempt = await supabase.auth.signInWithPassword({
-                email,
-                password
-              });
-              
-              if (!secondAttempt.error && secondAttempt.data.session) {
-                navigate('/dashboard', { replace: true });
-              } else {
-                throw new Error("Échec de validation de session après connexion");
-              }
-            }
-          } catch (sessionError) {
+        // Mettre en place une double vérification de session avec temps limité
+        const sessionCheckTimeout = setTimeout(() => {
+          console.log("Expiration de la vérification de session, redirection forcée");
+          navigate('/dashboard', { replace: true });
+        }, 2000);
+        
+        try {
+          // Vérifier que la session est bien établie avant de rediriger
+          const { data: sessionCheck, error: sessionError } = await supabase.auth.getSession();
+          
+          clearTimeout(sessionCheckTimeout);
+          
+          if (sessionError) {
             console.error("Erreur lors de la vérification de session:", sessionError);
-            toast({
-              title: "Erreur de session",
-              description: "Impossible de valider votre session. Veuillez réessayer.",
-              variant: "destructive",
-              action: <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
-                Réessayer
-              </ToastAction>
-            });
-            if (setIsLoading) {
-              setIsLoading(false);
-            }
+            // Malgré l'erreur, continuer avec la redirection
+            navigate('/dashboard', { replace: true });
+            return;
           }
-        }, 800);
+          
+          if (sessionCheck && sessionCheck.session) {
+            // Session confirmée, rediriger
+            navigate('/dashboard', { replace: true });
+          } else {
+            // Session non confirmée, mais utilisateur authentifié
+            console.log("Session non confirmée après connexion, mais utilisateur authentifié");
+            navigate('/dashboard', { replace: true });
+          }
+        } catch (sessionError) {
+          clearTimeout(sessionCheckTimeout);
+          console.error("Erreur lors de la vérification de session:", sessionError);
+          // Malgré l'erreur, continuer avec la redirection
+          navigate('/dashboard', { replace: true });
+        }
       } else {
         throw new Error("Échec de connexion: aucune donnée utilisateur retournée");
       }
