@@ -7,6 +7,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
 import { ToastAction } from '@/components/ui/toast';
+import { getNetworkStatus, attemptNetworkRecovery } from '@/utils/auth/networkUtils';
 
 interface LoginFormProps {
   lastLoggedInEmail: string | null;
@@ -34,38 +35,67 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     clearStoredAuthData();
     
     try {
-      // Vérifier la connexion réseau
-      if (!navigator.onLine) {
+      // Vérifier la connexion réseau et la résolution DNS
+      const networkStatus = await getNetworkStatus();
+      
+      if (!networkStatus.isOnline) {
         throw new Error("Vous semblez être hors ligne. Vérifiez votre connexion internet.");
+      }
+      
+      if (!networkStatus.dnsWorking) {
+        // Tentative de récupération réseau
+        const recovered = await attemptNetworkRecovery();
+        if (!recovered) {
+          throw new Error("Problème de connexion au serveur. Vérifiez votre connexion ou réessayez plus tard.");
+        }
       }
       
       // Variable pour suivre les tentatives
       let attemptCount = 0;
-      let maxAttempts = 2;
+      let maxAttempts = 3;
       let authResult;
+      let lastError = null;
       
       do {
         attemptCount++;
         console.log(`Tentative d'authentification ${attemptCount}/${maxAttempts}...`);
         
-        // Tentative d'authentification avec Supabase
-        authResult = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        
-        if (!authResult.error) break;
-        
-        // Attendre brièvement entre les tentatives
-        if (attemptCount < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 800));
+        try {
+          // Tentative d'authentification avec Supabase
+          authResult = await supabase.auth.signInWithPassword({
+            email,
+            password,
+            options: {
+              // Forcer l'authentification à passer par le PKCE pour une meilleure compatibilité multi-domaines
+              storeSession: true,
+              redirectTo: window.location.origin + '/dashboard'
+            }
+          });
+          
+          if (!authResult.error) break;
+          lastError = authResult.error;
+          
+          // Attendre brièvement entre les tentatives avec délai exponentiel
+          if (attemptCount < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 800 * attemptCount));
+          }
+        } catch (err) {
+          console.error("Erreur lors de la tentative d'authentification:", err);
+          lastError = err;
+          
+          // Attendre brièvement entre les tentatives
+          if (attemptCount < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 800 * attemptCount));
+          }
         }
-      } while (attemptCount < maxAttempts && authResult.error);
+      } while (attemptCount < maxAttempts && (!authResult || authResult.error));
       
       // Si nous avons toujours une erreur après toutes les tentatives
-      if (authResult.error) throw authResult.error;
+      if (lastError || (authResult && authResult.error)) {
+        throw lastError || authResult.error;
+      }
       
-      if (authResult.data && authResult.data.user) {
+      if (authResult?.data && authResult.data.user) {
         // Sauvegarder l'email pour les futures suggestions
         localStorage.setItem('last_logged_in_email', email);
         
@@ -74,10 +104,39 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
           description: `Bienvenue ${authResult.data.user.user_metadata?.full_name || authResult.data.user.email?.split('@')[0] || 'utilisateur'}!`,
         });
         
-        // Redirection avec un délai pour s'assurer que l'état d'authentification est mis à jour
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true });
-        }, 500);
+        // Mettre en place une double vérification de session
+        setTimeout(async () => {
+          try {
+            // Vérifier que la session est bien établie avant de rediriger
+            const { data: sessionCheck } = await supabase.auth.getSession();
+            
+            if (sessionCheck && sessionCheck.session) {
+              // Session confirmée, rediriger
+              navigate('/dashboard', { replace: true });
+            } else {
+              // Session non confirmée, essayer une nouvelle connexion
+              console.log("Session non confirmée après connexion, nouvelle tentative...");
+              const secondAttempt = await supabase.auth.signInWithPassword({
+                email,
+                password
+              });
+              
+              if (!secondAttempt.error && secondAttempt.data.session) {
+                navigate('/dashboard', { replace: true });
+              } else {
+                throw new Error("Échec de validation de session après connexion");
+              }
+            }
+          } catch (sessionError) {
+            console.error("Erreur lors de la vérification de session:", sessionError);
+            toast({
+              title: "Erreur de session",
+              description: "Impossible de valider votre session. Veuillez réessayer.",
+              variant: "destructive",
+            });
+            setIsLoading(false);
+          }
+        }, 800);
       } else {
         throw new Error("Échec de connexion: aucune donnée utilisateur retournée");
       }
@@ -114,7 +173,6 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
           )
         });
       }
-    } finally {
       setIsLoading(false);
     }
   };

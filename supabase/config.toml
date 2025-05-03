@@ -23,7 +23,15 @@ enabled = true
 [auth]
 enabled = true
 site_url = "https://streamgenius.io"
-additional_redirect_urls = ["https://streamgenius.io/dashboard", "https://streamgenius.io/login", "https://streamgenius.io", "https://stream-genius.lovable.app", "https://www.streamgenius.io", "http://localhost:3000"]
+additional_redirect_urls = [
+  "https://streamgenius.io/dashboard", 
+  "https://streamgenius.io/login", 
+  "https://streamgenius.io", 
+  "https://stream-genius.lovable.app", 
+  "https://www.streamgenius.io", 
+  "http://localhost:3000",
+  "https://*.lovable.app"
+]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
