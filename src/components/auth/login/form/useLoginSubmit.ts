@@ -1,6 +1,7 @@
 
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
 import { getNetworkStatus, attemptNetworkRecovery } from '@/utils/auth/networkUtils';
 
@@ -134,10 +135,7 @@ export const useLoginSubmit = () => {
           title: "Problème de connexion réseau",
           description: "Impossible de joindre le serveur. Vérifiez votre connexion internet et réessayez.",
           variant: "destructive",
-          action: {
-            label: "Réessayer",
-            onClick: () => window.location.reload()
-          }
+          action: <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>Réessayer</ToastAction>
         });
       } else if (error.message === "Invalid login credentials" || error.message?.includes("credentials")) {
         toast({
@@ -150,10 +148,7 @@ export const useLoginSubmit = () => {
           title: "Erreur de connexion",
           description: "Impossible de se connecter. Veuillez réessayer.",
           variant: "destructive",
-          action: {
-            label: "Réessayer",
-            onClick: () => window.location.reload()
-          }
+          action: <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>Réessayer</ToastAction>
         });
       }
       
