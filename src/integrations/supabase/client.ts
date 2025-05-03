@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Configuration améliorée pour compatibilité multi-domaines et stabilité réseau
+// Configuration compatible streamgenius.io et environnement de développement
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -17,18 +17,26 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: {
       'X-Client-Info': 'streamgenius@1.0.0',
+      'X-Client-Domain': typeof window !== 'undefined' ? window.location.hostname : 'unknown',
     },
   },
-  // Ajouter des options de réseau pour améliorer la fiabilité
-  // Augmenter les retries et les timeouts
+  // Paramètres réseau plus tolérants pour les connexions instables
   realtime: {
     params: {
-      eventsPerSecond: 2,
+      eventsPerSecond: 1,
     },
   },
+  // Paramètres plus robustes pour les domaines streamgenius.io et lovable.dev
   db: {
     schema: 'public'
-  }
+  },
+  // Ajout de paramètres pour améliorer la stabilité des requêtes
+  rest: {
+    headers: {
+      'Cache-Control': 'no-store, no-cache',
+      'Pragma': 'no-cache'
+    }
+  },
 });
 
 /**
@@ -62,7 +70,7 @@ export const clearStoredAuthData = () => {
     // Nettoyer les cookies qui pourraient interférer
     document.cookie.split(';').forEach(cookie => {
       const [name] = cookie.trim().split('=');
-      if (name.includes('sb-') || name.includes('supabase')) {
+      if (name && (name.includes('sb-') || name.includes('supabase'))) {
         document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.streamgenius.io`;
         document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
       }
@@ -82,8 +90,14 @@ export const clearStoredAuthData = () => {
  */
 export const testSupabaseConnection = async (): Promise<boolean> => {
   try {
+    // Paramètres pour une requête légère avec timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     // Test simple pour vérifier que Supabase est accessible
-    const { data, error } = await supabase.from('_health').select('*').limit(1).maybeSingle();
+    const { error } = await supabase.from('_health').select('*').limit(1).maybeSingle().abortSignal(controller.signal);
+    
+    clearTimeout(timeoutId);
     
     if (error && error.code !== 'PGRST116') {
       // PGRST116 signifie juste que la table n'existe pas, ce qui est normal

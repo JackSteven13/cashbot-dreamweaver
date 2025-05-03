@@ -64,15 +64,15 @@ export const useLoginSubmit = () => {
         console.log(`Tentative d'authentification ${attemptCount}/${maxAttempts}...`);
         
         try {
-          // Utiliser un timeout pour éviter les attentes infinies
+          // Configuration avancée pour la requête d'authentification
           const authPromise = supabase.auth.signInWithPassword({
             email,
             password
           });
           
-          // Définir un timeout de 10 secondes
+          // Définir un timeout de 15 secondes (augmenté pour les connexions lentes)
           const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error("Délai d'attente dépassé pour la connexion")), 10000);
+            setTimeout(() => reject(new Error("Délai d'attente dépassé pour la connexion")), 15000);
           });
           
           // Utiliser race pour gérer le timeout
@@ -83,15 +83,15 @@ export const useLoginSubmit = () => {
           
           // Attendre brièvement entre les tentatives avec délai exponentiel
           if (attemptCount < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 800 * attemptCount));
+            await new Promise(resolve => setTimeout(resolve, 800 * Math.pow(1.5, attemptCount)));
           }
         } catch (err) {
           console.error("Erreur lors de la tentative d'authentification:", err);
           lastError = err;
           
-          // Attendre brièvement entre les tentatives
+          // Attendre brièvement entre les tentatives avec délai exponentiel
           if (attemptCount < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 800 * attemptCount));
+            await new Promise(resolve => setTimeout(resolve, 800 * Math.pow(1.5, attemptCount)));
           }
         }
       } while (attemptCount < maxAttempts && (!authResult || authResult.error));
@@ -104,6 +104,9 @@ export const useLoginSubmit = () => {
       if (authResult?.data && authResult.data.user) {
         // Sauvegarder l'email pour les futures suggestions
         localStorage.setItem('last_logged_in_email', email);
+        
+        // Stocker l'origine du domaine pour aider à la compatibilité multi-domaines
+        localStorage.setItem('auth_origin_domain', window.location.hostname);
         
         toast({
           title: "Connexion réussie",
@@ -139,6 +142,9 @@ export const useLoginSubmit = () => {
               title: "Erreur de session",
               description: "Impossible de valider votre session. Veuillez réessayer.",
               variant: "destructive",
+              action: <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
+                Réessayer
+              </ToastAction>
             });
             if (setIsLoading) {
               setIsLoading(false);
@@ -162,34 +168,27 @@ export const useLoginSubmit = () => {
           title: "Problème de connexion réseau",
           description: "Impossible de joindre le serveur Supabase. Vérifiez votre connexion internet et réessayez.",
           variant: "destructive",
-          action: (
-            <ToastAction 
-              altText="Réessayer" 
-              onClick={() => window.location.reload()}
-            >
-              Réessayer
-            </ToastAction>
-          )
+          action: <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
+            Réessayer
+          </ToastAction>
         });
       } else if (error.message === "Invalid login credentials" || error.message?.includes("credentials")) {
         toast({
           title: "Identifiants incorrects",
           description: "Email ou mot de passe incorrect",
           variant: "destructive",
+          action: <ToastAction altText="Réessayer" onClick={() => null}>
+            OK
+          </ToastAction>
         });
       } else {
         toast({
           title: "Erreur de connexion",
           description: "Impossible de se connecter. Veuillez réessayer.",
           variant: "destructive",
-          action: (
-            <ToastAction 
-              altText="Réessayer" 
-              onClick={() => window.location.reload()}
-            >
-              Réessayer
-            </ToastAction>
-          )
+          action: <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
+            Réessayer
+          </ToastAction>
         });
       }
       
