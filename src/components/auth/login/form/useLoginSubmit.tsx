@@ -157,7 +157,7 @@ export const useLoginSubmit = () => {
           error.message?.includes('réseau') ||
           error.message?.includes('fetch') ||
           error.message?.includes('Failed to fetch') ||
-          error.message?.includes('Délai d'attente dépassé')) {
+          error.message?.includes("Délai d'attente dépassé")) {
         toast({
           title: "Problème de connexion réseau",
           description: "Impossible de joindre le serveur Supabase. Vérifiez votre connexion internet et réessayez.",
