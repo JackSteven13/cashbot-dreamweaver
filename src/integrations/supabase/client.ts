@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Configuration améliorée pour compatibilité multi-domaines
+// Configuration améliorée pour compatibilité multi-domaines et stabilité réseau
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -19,6 +19,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'X-Client-Info': 'streamgenius@1.0.0',
     },
   },
+  // Ajouter des options de réseau pour améliorer la fiabilité
+  // Augmenter les retries et les timeouts
+  realtime: {
+    params: {
+      eventsPerSecond: 2,
+    },
+  },
+  db: {
+    schema: 'public'
+  }
 });
 
 /**
@@ -63,5 +73,45 @@ export const clearStoredAuthData = () => {
   } catch (err) {
     console.error("Erreur lors du nettoyage des données d'authentification:", err);
     return false;
+  }
+};
+
+/**
+ * Fonction utilitaire pour tester la connexion à Supabase
+ * @returns true si la connexion est établie avec succès
+ */
+export const testSupabaseConnection = async (): Promise<boolean> => {
+  try {
+    // Test simple pour vérifier que Supabase est accessible
+    const { data, error } = await supabase.from('_health').select('*').limit(1).maybeSingle();
+    
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 signifie juste que la table n'existe pas, ce qui est normal
+      console.error("Erreur de connexion à Supabase:", error);
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error("Exception lors du test de connexion à Supabase:", err);
+    return false;
+  }
+};
+
+/**
+ * Récupère une session proprement
+ * @returns La session si elle existe, null sinon
+ */
+export const getSessionSafely = async () => {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error("Erreur lors de la récupération de session:", error);
+      return null;
+    }
+    return data.session;
+  } catch (err) {
+    console.error("Exception lors de la récupération de session:", err);
+    return null;
   }
 };

@@ -18,9 +18,12 @@ export const getNetworkStatus = async (silentMode = false): Promise<{isOnline: b
     return { isOnline: false, dnsWorking: false };
   }
   
-  // Vérifier si la résolution DNS fonctionne en testant un ping vers Supabase
+  // Vérifier si la résolution DNS fonctionne en testant un ping vers Supabase avec un timeout
   try {
     // Utiliser une URL qui ne sera pas bloquée par les AD blockers
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 secondes de timeout
+    
     const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/', {
       method: 'HEAD',
       headers: {
@@ -28,9 +31,10 @@ export const getNetworkStatus = async (silentMode = false): Promise<{isOnline: b
         'Pragma': 'no-cache'
       },
       mode: 'cors',
-      // Court timeout pour éviter de bloquer trop longtemps
-      signal: AbortSignal.timeout(3000)
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     const dnsWorking = response.status < 500; // Tout code < 500 signifie que DNS a résolu correctement
     
@@ -48,7 +52,8 @@ export const getNetworkStatus = async (silentMode = false): Promise<{isOnline: b
     // Si c'est une erreur réseau particulière, marquer DNS comme ne fonctionnant pas
     const isDNSError = String(error).includes('DNS') || 
                        String(error).includes('net::') || 
-                       String(error).includes('network');
+                       String(error).includes('network') || 
+                       String(error).includes('abort');
     
     return { isOnline: true, dnsWorking: !isDNSError };
   }
@@ -63,11 +68,45 @@ export const attemptNetworkRecovery = async (): Promise<boolean> => {
   await new Promise(resolve => setTimeout(resolve, 500));
   
   try {
-    // Forcer un rechargement des ressources réseau
-    const status = await getNetworkStatus(true);
-    return status.isOnline && status.dnsWorking;
+    // Faire plusieurs tentatives de récupération
+    for (let i = 0; i < 3; i++) {
+      // Forcer un rechargement des ressources réseau
+      const status = await getNetworkStatus(true);
+      if (status.isOnline && status.dnsWorking) {
+        return true;
+      }
+      // Pause entre les tentatives
+      await new Promise(resolve => setTimeout(resolve, 300 * (i + 1)));
+    }
+    return false;
   } catch (e) {
     console.error("Erreur lors de la tentative de récupération réseau:", e);
+    return false;
+  }
+};
+
+/**
+ * Vérifie si une URL est accessible
+ * @param url L'URL à vérifier
+ * @param timeout Le délai d'attente en millisecondes
+ * @returns true si l'URL est accessible
+ */
+export const isUrlReachable = async (url: string, timeout = 5000): Promise<boolean> => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(url, {
+      method: 'HEAD',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    return true;
+  } catch (error) {
+    console.error(`L'URL ${url} n'est pas accessible:`, error);
     return false;
   }
 };

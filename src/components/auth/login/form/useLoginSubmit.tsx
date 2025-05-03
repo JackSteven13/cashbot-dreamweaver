@@ -1,7 +1,7 @@
 
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
 import { getNetworkStatus, attemptNetworkRecovery } from '@/utils/auth/networkUtils';
@@ -25,8 +25,15 @@ export const useLoginSubmit = () => {
     clearStoredAuthData();
     
     try {
-      // Vérifier la connexion réseau et la résolution DNS
-      const networkStatus = await getNetworkStatus();
+      // Vérifier la connexion réseau et la résolution DNS de manière plus robuste
+      let networkStatus;
+      try {
+        networkStatus = await getNetworkStatus();
+      } catch (networkError) {
+        console.error("Erreur lors de la vérification du réseau:", networkError);
+        // Supposer que nous sommes hors ligne si la vérification échoue
+        networkStatus = { isOnline: false, dnsWorking: false };
+      }
       
       if (!networkStatus.isOnline) {
         throw new Error("Vous semblez être hors ligne. Vérifiez votre connexion internet.");
@@ -34,9 +41,15 @@ export const useLoginSubmit = () => {
       
       if (!networkStatus.dnsWorking) {
         // Tentative de récupération réseau
-        const recovered = await attemptNetworkRecovery();
+        let recovered = false;
+        try {
+          recovered = await attemptNetworkRecovery();
+        } catch (recoveryError) {
+          console.error("Erreur lors de la tentative de récupération réseau:", recoveryError);
+        }
+        
         if (!recovered) {
-          throw new Error("Problème de connexion au serveur. Vérifiez votre connexion ou réessayez plus tard.");
+          throw new Error("Problème de connexion au serveur Supabase. Vérifiez votre connexion ou réessayez plus tard.");
         }
       }
       
@@ -51,11 +64,19 @@ export const useLoginSubmit = () => {
         console.log(`Tentative d'authentification ${attemptCount}/${maxAttempts}...`);
         
         try {
-          // Tentative d'authentification avec Supabase
-          authResult = await supabase.auth.signInWithPassword({
+          // Utiliser un timeout pour éviter les attentes infinies
+          const authPromise = supabase.auth.signInWithPassword({
             email,
             password
           });
+          
+          // Définir un timeout de 10 secondes
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("Délai d'attente dépassé pour la connexion")), 10000);
+          });
+          
+          // Utiliser race pour gérer le timeout
+          authResult = await Promise.race([authPromise, timeoutPromise]);
           
           if (!authResult.error) break;
           lastError = authResult.error;
@@ -131,10 +152,15 @@ export const useLoginSubmit = () => {
       console.error("Erreur de connexion:", error);
       
       // Gestion plus robuste des erreurs réseau
-      if (!navigator.onLine || error.message?.includes('network') || error.message?.includes('réseau')) {
+      if (!navigator.onLine || 
+          error.message?.includes('network') || 
+          error.message?.includes('réseau') ||
+          error.message?.includes('fetch') ||
+          error.message?.includes('Failed to fetch') ||
+          error.message?.includes('Délai d'attente dépassé')) {
         toast({
           title: "Problème de connexion réseau",
-          description: "Impossible de joindre le serveur. Vérifiez votre connexion internet et réessayez.",
+          description: "Impossible de joindre le serveur Supabase. Vérifiez votre connexion internet et réessayez.",
           variant: "destructive",
           action: (
             <ToastAction 
