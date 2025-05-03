@@ -1,59 +1,73 @@
 
-type NetworkStatus = {
-  isOnline: boolean;
-  dnsWorking: boolean;
-  lastChecked: number;
-};
+/**
+ * Utilitaires pour la gestion du réseau et la récupération en cas d'erreur
+ */
 
 /**
- * Vérifie la connexion réseau - version silencieuse
+ * Vérifie l'état du réseau et de la résolution DNS
+ * @param silentMode Si vrai, ne montre pas de notification à l'utilisateur
+ * @returns Une promesse qui résout à un objet contenant l'état de la connexion
  */
-export const checkNetworkStatus = async (): Promise<NetworkStatus> => {
+export const getNetworkStatus = async (silentMode = false): Promise<{isOnline: boolean, dnsWorking: boolean}> => {
+  // Vérifier d'abord si le navigateur est en ligne
   const isOnline = navigator.onLine;
   
-  // En mode silencieux, nous supposons que si navigator.onLine est true, DNS fonctionne aussi
-  const dnsWorking = isOnline;
-  
-  return {
-    isOnline,
-    dnsWorking,
-    lastChecked: Date.now()
-  };
-};
-
-// Cache pour éviter trop de vérifications
-let networkStatusCache: NetworkStatus | null = null;
-const CACHE_TTL = 30000; // 30 secondes
-
-/**
- * Vérifie le réseau et la résolution DNS, avec cache
- */
-export const getNetworkStatus = async (bypassCache = false): Promise<NetworkStatus> => {
-  // Vérifier si on a un statut récent en cache
-  if (!bypassCache && networkStatusCache && (Date.now() - networkStatusCache.lastChecked < CACHE_TTL)) {
-    return networkStatusCache;
+  // Si nous sommes offline, pas besoin de vérifier plus loin
+  if (!isOnline) {
+    console.log("Le navigateur rapporte être hors ligne");
+    return { isOnline: false, dnsWorking: false };
   }
   
-  // Sinon vérifier à nouveau
-  const status = await checkNetworkStatus();
-  networkStatusCache = status;
-  return status;
+  // Vérifier si la résolution DNS fonctionne en testant un ping vers Supabase
+  try {
+    // Utiliser une URL qui ne sera pas bloquée par les AD blockers
+    const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/', {
+      method: 'HEAD',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      },
+      mode: 'cors',
+      // Court timeout pour éviter de bloquer trop longtemps
+      signal: AbortSignal.timeout(3000)
+    });
+    
+    const dnsWorking = response.status < 500; // Tout code < 500 signifie que DNS a résolu correctement
+    
+    if (!dnsWorking && !silentMode) {
+      console.error("Erreur de résolution DNS");
+    }
+    
+    return { isOnline: true, dnsWorking };
+  } catch (error) {
+    // Une erreur de fetch pourrait indiquer un problème DNS ou de connectivité
+    if (!silentMode) {
+      console.error("Erreur de connexion:", error);
+    }
+    
+    // Si c'est une erreur réseau particulière, marquer DNS comme ne fonctionnant pas
+    const isDNSError = String(error).includes('DNS') || 
+                       String(error).includes('net::') || 
+                       String(error).includes('network');
+    
+    return { isOnline: true, dnsWorking: !isDNSError };
+  }
 };
 
 /**
- * Fonction conservée mais ne fait plus rien (pour éviter les erreurs)
- * Ne montre plus de toast à l'utilisateur
+ * Tente de récupérer une session en cas d'échec de connexion
+ * @returns true si la récupération a réussi
  */
-export const showNetworkStatusToast = () => {
-  // Ne fait plus rien - pas de notification à l'utilisateur
-  return;
-};
-
-/**
- * Fonction conservée mais ne fait plus rien (pour éviter les erreurs)
- * Ne montre plus de toast à l'utilisateur
- */
-export const showDnsTroubleshootingToast = () => {
-  // Ne fait plus rien - pas de notification à l'utilisateur
-  return;
+export const attemptNetworkRecovery = async (): Promise<boolean> => {
+  // Attendre un court délai avant d'essayer de récupérer
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  try {
+    // Forcer un rechargement des ressources réseau
+    const status = await getNetworkStatus(true);
+    return status.isOnline && status.dnsWorking;
+  } catch (e) {
+    console.error("Erreur lors de la tentative de récupération réseau:", e);
+    return false;
+  }
 };

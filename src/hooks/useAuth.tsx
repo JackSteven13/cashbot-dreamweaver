@@ -23,22 +23,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Configuration de l'écouteur d'authentification
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log(`Changement d'état d'authentification: ${event}`);
-        setUser(session?.user ?? null);
-        setIsLoading(false);
-        
-        // Actions spécifiques selon l'événement
-        if (event === 'SIGNED_IN') {
-          console.log('Utilisateur connecté:', session?.user?.email);
-        } else if (event === 'SIGNED_OUT') {
-          console.log('Utilisateur déconnecté');
-          localStorage.removeItem('subscription');
+    // Configuration de l'écouteur d'authentification avec désinscription robuste
+    let subscription: { unsubscribe: () => void } | null = null;
+    
+    try {
+      const { data } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          console.log(`Changement d'état d'authentification: ${event}`);
+          setUser(session?.user ?? null);
+          setIsLoading(false);
+          
+          // Actions spécifiques selon l'événement
+          if (event === 'SIGNED_IN') {
+            console.log('Utilisateur connecté:', session?.user?.email);
+          } else if (event === 'SIGNED_OUT') {
+            console.log('Utilisateur déconnecté');
+            localStorage.removeItem('subscription');
+          }
         }
-      }
-    );
+      );
+      
+      subscription = data.subscription;
+    } catch (error) {
+      console.error('Erreur lors de la configuration de l\'écouteur d\'authentification:', error);
+    }
 
     // Vérification de la session existante
     const checkSession = async () => {
@@ -56,7 +64,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Nettoyage à la désinscription
     return () => {
-      subscription.unsubscribe();
+      if (subscription) {
+        try {
+          subscription.unsubscribe();
+        } catch (e) {
+          console.error('Erreur lors de la désinscription:', e);
+        }
+      }
     };
   }, []);
 

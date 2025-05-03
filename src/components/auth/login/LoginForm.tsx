@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import Button from '@/components/Button';
@@ -17,6 +17,11 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   const [email, setEmail] = useState(lastLoggedInEmail || '');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Nettoyer les données d'authentification au chargement pour éviter les conflits
+  useEffect(() => {
+    clearStoredAuthData();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,21 +39,39 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
         throw new Error("Vous semblez être hors ligne. Vérifiez votre connexion internet.");
       }
       
-      // Tentative d'authentification avec Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      // Variable pour suivre les tentatives
+      let attemptCount = 0;
+      let maxAttempts = 2;
+      let authResult;
       
-      if (error) throw error;
+      do {
+        attemptCount++;
+        console.log(`Tentative d'authentification ${attemptCount}/${maxAttempts}...`);
+        
+        // Tentative d'authentification avec Supabase
+        authResult = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (!authResult.error) break;
+        
+        // Attendre brièvement entre les tentatives
+        if (attemptCount < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+      } while (attemptCount < maxAttempts && authResult.error);
       
-      if (data && data.user) {
+      // Si nous avons toujours une erreur après toutes les tentatives
+      if (authResult.error) throw authResult.error;
+      
+      if (authResult.data && authResult.data.user) {
         // Sauvegarder l'email pour les futures suggestions
         localStorage.setItem('last_logged_in_email', email);
         
         toast({
           title: "Connexion réussie",
-          description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
+          description: `Bienvenue ${authResult.data.user.user_metadata?.full_name || authResult.data.user.email?.split('@')[0] || 'utilisateur'}!`,
         });
         
         // Redirection avec un délai pour s'assurer que l'état d'authentification est mis à jour
@@ -61,11 +84,11 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       
-      // Gestion des différents types d'erreurs
-      if (!navigator.onLine) {
+      // Gestion plus robuste des erreurs réseau
+      if (!navigator.onLine || error.message?.includes('network') || error.message?.includes('réseau')) {
         toast({
-          title: "Pas de connexion internet",
-          description: "Vérifiez votre connexion réseau et réessayez.",
+          title: "Problème de connexion réseau",
+          description: "Impossible de joindre le serveur. Vérifiez votre connexion internet et réessayez.",
           variant: "destructive",
           action: (
             <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
@@ -73,7 +96,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
             </ToastAction>
           )
         });
-      } else if (error.message === "Invalid login credentials") {
+      } else if (error.message === "Invalid login credentials" || error.message?.includes("credentials")) {
         toast({
           title: "Identifiants incorrects",
           description: "Email ou mot de passe incorrect",
