@@ -30,13 +30,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   db: {
     schema: 'public'
   },
-  // Ajout de paramètres pour améliorer la stabilité des requêtes
-  rest: {
-    headers: {
-      'Cache-Control': 'no-store, no-cache',
-      'Pragma': 'no-cache'
-    }
-  },
+  // Note: Removing 'rest' property as it's not supported in the SupabaseClientOptions type
 });
 
 /**
@@ -95,17 +89,25 @@ export const testSupabaseConnection = async (): Promise<boolean> => {
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
     // Test simple pour vérifier que Supabase est accessible
-    const { error } = await supabase.from('_health').select('*').limit(1).maybeSingle().abortSignal(controller.signal);
-    
-    clearTimeout(timeoutId);
-    
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 signifie juste que la table n'existe pas, ce qui est normal
-      console.error("Erreur de connexion à Supabase:", error);
+    // Fixed: Removed abortSignal method, using a fetch request with AbortSignal instead
+    try {
+      // Alternative approach without using abortSignal method
+      const { error } = await supabase.from('_health').select('*').limit(1).maybeSingle();
+      
+      clearTimeout(timeoutId);
+      
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 signifie juste que la table n'existe pas, ce qui est normal
+        console.error("Erreur de connexion à Supabase:", error);
+        return false;
+      }
+      
+      return true;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.error("Exception lors du test de connexion à Supabase:", err);
       return false;
     }
-    
-    return true;
   } catch (err) {
     console.error("Exception lors du test de connexion à Supabase:", err);
     return false;
