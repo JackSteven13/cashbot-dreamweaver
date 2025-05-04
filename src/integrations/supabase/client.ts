@@ -4,22 +4,20 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Configuration optimisée pour les appareils mobiles et les réseaux instables
+// Configuration mobile-first avec fallbacks multiples
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
     storage: localStorage,
-    storageKey: 'sb-auth-token',
-    flowType: 'implicit'
+    storageKey: 'sb-auth-token'
   },
   global: {
     headers: { 
       'X-Client-Info': 'streamgenius-web'
     },
   },
-  // Désactiver les connexions en temps réel pour améliorer la stabilité sur mobile
   realtime: {
     params: {
       eventsPerSecond: 0
@@ -80,6 +78,24 @@ export const clearStoredAuthData = () => {
     console.error("Erreur lors du nettoyage des données d'authentification:", err);
     return false;
   }
+};
+
+// Utiliser un nouveau client léger pour les appareils mobiles
+export const createLightClient = () => {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+      storage: localStorage,
+      storageKey: 'sb-auth-token-light'
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 0
+      }
+    }
+  });
 };
 
 // Initialiser la connexion au chargement du module

@@ -1,15 +1,15 @@
 
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import AuthCleanup from '@/components/auth/login/AuthCleanup';
 import LoadingScreen from '@/components/auth/login/LoadingScreen';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
 import { supabase } from "@/integrations/supabase/client";
+import { checkDirectConnectivity } from '@/utils/auth/directApiCalls';
+import { toast } from '@/hooks/use-toast';
 
 const Login = () => {
-  const location = useLocation();
   const { isCheckingSession, lastLoggedInEmail } = useLoginSession();
 
   // Préparation spéciale pour la page de connexion
@@ -19,11 +19,28 @@ const Login = () => {
       console.log("Préparation de l'environnement d'authentification");
       
       try {
+        // Vérifier la connectivité directe avec Supabase pour informer l'utilisateur
+        const isDirectConnectivityOk = await checkDirectConnectivity();
+        
         // Forcer une connexion pour vérifier que le serveur est accessible
         await supabase.auth.getSession();
         console.log("Session Supabase récupérée avec succès");
+        
+        if (!isDirectConnectivityOk) {
+          toast({
+            title: "Connectivité réduite",
+            description: "La connexion au serveur pourrait être limitée. Si vous rencontrez des problèmes, utilisez un autre réseau.",
+            variant: "warning",
+            duration: 7000
+          });
+        }
       } catch (e) {
         console.error("Erreur lors de la préparation de l'environnement d'authentification:", e);
+        toast({
+          title: "Problème de connexion",
+          description: "Un problème de connexion au serveur a été détecté. Si l'erreur persiste, essayez de vous reconnecter plus tard.",
+          variant: "destructive"
+        });
       }
     };
     

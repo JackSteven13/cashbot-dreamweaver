@@ -3,12 +3,15 @@ import { AuthProvider } from './hooks/useAuth.tsx';
 import AppRoutes from './routes/AppRoutes';
 import { Toaster } from './components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import NetworkStatusMonitor from './components/NetworkStatusMonitor';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, clearStoredAuthData } from '@/integrations/supabase/client';
+import { checkDirectConnectivity } from '@/utils/auth/directApiCalls';
 
 function App() {
-  // Initialisation précoce et réchauffement de la connexion
+  const authInitialized = useRef(false);
+  
+  // Initialisation précoce et réchauffement de la connexion avec stratégie mobile-first
   useEffect(() => {
     // Force HTTPS pour toutes les connexions
     if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
@@ -33,7 +36,19 @@ function App() {
     
     // Préchauffage des connexions réseau
     const warmupConnections = async () => {
+      if (authInitialized.current) return;
+      
       try {
+        console.log("Initialisation de l'environnement d'authentification");
+        authInitialized.current = true;
+        
+        // Nettoyage complet des données d'authentification précédentes
+        clearStoredAuthData();
+        
+        // Vérifier la connectivité directe avec Supabase
+        const isDirectConnectivityOk = await checkDirectConnectivity();
+        console.log("Connectivité directe avec Supabase:", isDirectConnectivityOk ? "OK" : "KO");
+        
         // Initialisation et réchauffement de Supabase
         await supabase.auth.getSession().catch(() => {});
         
@@ -43,16 +58,17 @@ function App() {
             // Faire une demande silencieuse pour maintenir la connexion
             supabase.auth.getSession().catch(() => {});
           }
-        }, 30000);
+        }, 60000);
         
         // Nettoyer l'intervalle lors du démontage
         return () => clearInterval(interval);
       } catch (e) {
         console.warn("Erreur lors de l'initialisation des connexions:", e);
+        authInitialized.current = false;
       }
     };
     
-    warmupConnections();
+    setTimeout(warmupConnections, 200);
   }, []);
 
   return (
