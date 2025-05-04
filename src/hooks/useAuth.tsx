@@ -22,20 +22,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Configuration de l'écouteur d'authentification AVANT la vérification de session
+    // Définir les écouteurs d'authentification AVANT de vérifier la session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        console.log("Événement d'authentification:", event);
         setUser(session?.user ?? null);
         setIsLoading(false);
       }
     );
     
-    // Vérification de la session existante
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data?.session?.user ?? null);
-      setIsLoading(false);
-    });
+    // Vérifier la session existante
+    const checkSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        console.log("Session vérifiée:", data.session ? "Valide" : "Non trouvée");
+        setUser(data?.session?.user ?? null);
+      } catch (error) {
+        console.error("Erreur lors de la vérification de la session:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkSession();
 
+    // Nettoyage
     return () => {
       subscription.unsubscribe();
     };

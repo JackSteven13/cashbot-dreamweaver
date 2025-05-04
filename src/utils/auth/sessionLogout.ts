@@ -5,13 +5,23 @@ import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
  * Force la déconnexion de l'utilisateur et nettoie toutes les données d'authentification
  */
 export const forceSignOut = async (): Promise<void> => {
+  console.log("Tentative de déconnexion forcée");
+  
   try {
-    // Déconnecter via l'API Supabase d'abord
+    // Nettoyer les données d'authentification avant la déconnexion 
+    // pour éviter les conflits potentiels
+    clearStoredAuthData();
+    
+    // Petit délai pour assurer un nettoyage complet
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Déconnecter via l'API Supabase
     await supabase.auth.signOut({
       scope: 'global', // Déconnexion de tous les appareils
     });
     
-    // Nettoyer tous les jetons et données d'authentification stockés localement
+    // Deuxième nettoyage après la déconnexion pour s'assurer 
+    // qu'il ne reste aucune donnée d'authentification
     clearStoredAuthData();
     
     console.log("Déconnexion forcée réussie");
@@ -20,8 +30,5 @@ export const forceSignOut = async (): Promise<void> => {
     
     // Même en cas d'erreur, tenter de nettoyer le stockage local
     clearStoredAuthData();
-    
-    // Relancer l'erreur pour permettre un traitement supplémentaire si nécessaire
-    throw error;
   }
 };

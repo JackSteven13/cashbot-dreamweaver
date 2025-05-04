@@ -6,9 +6,7 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://cfjibduhagxiwqkiyhqd.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4";
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
+// Simple initialization with reduced options for reliability
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     autoRefreshToken: true,
@@ -24,8 +22,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
  */
 export const clearStoredAuthData = () => {
   try {
-    // Targeted removal of auth-related keys
-    const keysToRemove = [];
+    // Clear all Supabase related items from localStorage
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && (
@@ -34,13 +31,11 @@ export const clearStoredAuthData = () => {
           key.includes('auth') || 
           key.includes('token')
         )) {
-        keysToRemove.push(key);
+        localStorage.removeItem(key);
       }
     }
     
-    // Remove all identified keys
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-    
+    console.log("Auth data cleared successfully");
     return true;
   } catch (err) {
     console.error("Error clearing authentication data:", err);

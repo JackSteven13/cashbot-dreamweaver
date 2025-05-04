@@ -17,30 +17,35 @@ export const useLoginSubmit = () => {
     setIsLoading(true);
     
     try {
-      // Nettoyer complètement toutes les données d'authentification existantes
+      console.log("Tentative de connexion pour:", email);
+      
+      // Nettoyer les données d'authentification existantes
       clearStoredAuthData();
       
-      // Attendre un moment pour s'assurer que le nettoyage est terminé
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Attendre pour que le nettoyage soit effectué
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Connexion directe sans options complexes
+      // Tentative de connexion directe sans options supplémentaires
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+        email: email.trim(),
+        password: password
       });
       
       if (error) {
+        console.error("Erreur d'authentification:", error.message);
         throw error;
       }
       
       if (data?.user) {
+        console.log("Connexion réussie pour l'utilisateur:", data.user.id);
+        
         // Enregistrer l'email pour une reconnexion ultérieure
         localStorage.setItem('last_logged_in_email', email);
         
         // Afficher un toast de confirmation
         toast({
           title: "Connexion réussie",
-          description: `Bienvenue ${data.user.user_metadata?.full_name || email.split('@')[0] || 'utilisateur'}!`,
+          description: "Vous êtes maintenant connecté.",
         });
         
         // Redirection vers le tableau de bord

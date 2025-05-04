@@ -6,9 +6,10 @@ export const useLoginFormState = (lastLoggedInEmail: string | null) => {
   const [email, setEmail] = useState(lastLoggedInEmail || '');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Nettoyer les données d'authentification au chargement pour éviter les conflits
+
+  // Nettoyer les données d'authentification au chargement du formulaire
   useEffect(() => {
+    console.log("Formulaire de connexion initialisé, nettoyage des données d'authentification");
     clearStoredAuthData();
   }, []);
 

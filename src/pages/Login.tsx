@@ -10,8 +10,8 @@ const Login = () => {
 
   // Nettoyage au chargement de la page pour partir avec un état propre
   useEffect(() => {
+    console.log("Page de connexion chargée, nettoyage des données d'authentification");
     clearStoredAuthData();
-    console.log("Données d'authentification nettoyées au chargement de la page");
   }, []);
 
   return (
