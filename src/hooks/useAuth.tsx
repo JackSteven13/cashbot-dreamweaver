@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Configuration simplifiée de l'authentification
+    // Version ultra-simplifiée du setup d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null);
@@ -30,19 +30,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     );
     
-    // Vérifier la session existante
-    const checkSession = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        setUser(data?.session?.user ?? null);
-      } catch (error) {
-        console.error('Erreur lors de la récupération de la session:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    checkSession();
+    // Vérification simplifiée de la session
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data?.session?.user ?? null);
+      setIsLoading(false);
+    });
     
     return () => {
       subscription.unsubscribe();

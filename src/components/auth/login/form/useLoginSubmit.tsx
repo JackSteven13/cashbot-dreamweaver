@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
 
 export const useLoginSubmit = () => {
   const navigate = useNavigate();
@@ -17,44 +17,23 @@ export const useLoginSubmit = () => {
     setIsLoading(true);
     
     try {
-      console.log("Tentative de connexion avec:", email);
+      // Nettoyer complètement avant de commencer
+      clearStoredAuthData();
+      console.log("Données d'authentification nettoyées");
       
-      // Authentification simplifiée
+      // Attendre un peu pour s'assurer que le nettoyage est terminé
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log("Tentative de connexion directe pour:", email);
+      
+      // Connexion avec une configuration minimale
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
       if (error) {
-        console.error("Erreur d'authentification:", error);
-        
-        // Forcer la reconnexion en contournant les erreurs courantes
-        if (error.message.includes("Invalid login credentials")) {
-          // Réessayons après nettoyage des jetons
-          localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-          localStorage.removeItem('supabase.auth.token');
-          localStorage.removeItem('supabase-auth-token');
-          
-          // Deuxième tentative après nettoyage
-          console.log("Deuxième tentative de connexion");
-          const secondAttempt = await supabase.auth.signInWithPassword({
-            email,
-            password
-          });
-          
-          if (!secondAttempt.error && secondAttempt.data?.user) {
-            localStorage.setItem('last_logged_in_email', email);
-            
-            toast({
-              title: "Connexion réussie",
-              description: `Bienvenue ${secondAttempt.data.user.user_metadata?.full_name || email.split('@')[0] || 'utilisateur'}!`,
-            });
-            
-            navigate('/dashboard', { replace: true });
-            return;
-          }
-        }
-        
+        console.error("Erreur de connexion:", error);
         throw error;
       }
       
@@ -66,12 +45,13 @@ export const useLoginSubmit = () => {
           description: `Bienvenue ${data.user.user_metadata?.full_name || email.split('@')[0] || 'utilisateur'}!`,
         });
         
+        console.log("Redirection vers le tableau de bord");
         navigate('/dashboard', { replace: true });
       } else {
         throw new Error("Échec de connexion: aucune donnée utilisateur retournée");
       }
     } catch (error: any) {
-      console.error("Erreur détaillée de connexion:", error);
+      console.error("Erreur détaillée:", error);
       
       toast({
         title: "Erreur de connexion",

@@ -5,36 +5,17 @@ import AuthCleanup from '@/components/auth/login/AuthCleanup';
 import LoadingScreen from '@/components/auth/login/LoadingScreen';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from '@/hooks/use-toast';
+import { clearStoredAuthData } from "@/integrations/supabase/client";
 
 const Login = () => {
   const { isCheckingSession, lastLoggedInEmail } = useLoginSession();
 
-  // Préparation spéciale pour la page de connexion
+  // Nettoyage complet au chargement de la page
   useEffect(() => {
-    // Initialisation immédiate de Supabase pour préparer la connexion
-    const prepareAuthEnvironment = async () => {
-      console.log("Préparation de l'environnement d'authentification");
-      
-      try {
-        // Forcer une connexion pour vérifier que le serveur est accessible
-        await supabase.auth.getSession();
-        console.log("Session Supabase récupérée avec succès");
-      } catch (e) {
-        console.error("Erreur lors de la préparation de l'environnement d'authentification:", e);
-        toast({
-          title: "Problème de connexion",
-          description: "Un problème de connexion au serveur a été détecté. Si l'erreur persiste, essayez de vous reconnecter plus tard.",
-          variant: "destructive"
-        });
-      }
-    };
-    
-    prepareAuthEnvironment();
+    clearStoredAuthData();
+    console.log("Données d'authentification nettoyées au chargement de la page de connexion");
   }, []);
 
-  // Si on vérifie encore la session, afficher un loader amélioré
   if (isCheckingSession) {
     return <LoadingScreen />;
   }

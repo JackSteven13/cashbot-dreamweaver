@@ -1,24 +1,19 @@
 
 import { createClient } from '@supabase/supabase-js';
 
+// Adresses URL universelles qui fonctionneront dans tous les environnements
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Client supabase avec configuration adaptée pour la production
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-    storage: localStorage,
-    storageKey: 'sb-cfjibduhagxiwqkiyhqd-auth-token'
-  }
-});
+// Configuration minimale garantie de fonctionner partout
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Fonction pour nettoyer les données d'authentification
+// Fonction pour nettoyer radicalement toutes les données d'authentification
 export const clearStoredAuthData = () => {
   try {
+    // Supprimer tous les éléments de localStorage
     localStorage.clear();
+    // Supprimer tous les éléments de sessionStorage
     sessionStorage.clear();
     return true;
   } catch (err) {
