@@ -1,30 +1,30 @@
 
 import { useState, useEffect } from 'react';
+import { clearStoredAuthData } from "@/integrations/supabase/client";
 
 export const useLoginSession = () => {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);
   
-  // Version simplifiée qui ne vérifie pas la session mais récupère juste l'email mémorisé
-  const checkExistingSession = async () => {
-    // Ne pas essayer de vérifier la session automatiquement, juste récupérer l'email
+  useEffect(() => {
+    // Clear auth data on login page load to ensure a clean start
+    clearStoredAuthData();
+    
+    // Just retrieve the saved email
     const savedEmail = localStorage.getItem('last_logged_in_email');
     if (savedEmail) {
       setLastLoggedInEmail(savedEmail);
     }
     
-    // Terminer le chargement rapidement
+    // Finish loading quickly
     setIsCheckingSession(false);
-  };
-  
-  useEffect(() => {
-    const sessionTimeout = setTimeout(() => {
+    
+    // Failsafe to prevent infinite loading
+    const timeout = setTimeout(() => {
       setIsCheckingSession(false);
-    }, 2000); // Réduire encore le délai pour éviter l'attente prolongée
+    }, 1000);
     
-    checkExistingSession();
-    
-    return () => clearTimeout(sessionTimeout);
+    return () => clearTimeout(timeout);
   }, []);
 
   return { isCheckingSession, lastLoggedInEmail };

@@ -2,7 +2,7 @@
 # Force HTTPS
 http://*  https://:splat 301!
 
-# SEO Improvements
+# Handle SPA routes
 /* /index.html 200
 
 # Force streamgenius.io domain - PRIORITY HIGH
@@ -13,8 +13,3 @@ http://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
 http://streamgenius.io/* https://streamgenius.io/:splat 301!
 http://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
-# Explicit domain aliases for the application
-https://stream-genius.lovable.app/* https://streamgenius.io/:splat 301!
-
-# Handle all routes
-/* /index.html 200

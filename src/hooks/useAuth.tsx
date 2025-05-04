@@ -1,5 +1,5 @@
 
-import { useState, useEffect, createContext, ReactNode, useContext } from 'react';
+import { useState, useEffect, createContext, ReactNode, useContext, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 
@@ -22,15 +22,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Établir l'écouteur d'authentification en premier
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log(`Auth state changed: ${event}`);
         setUser(session?.user ?? null);
         setIsLoading(false);
       }
     );
 
-    // Ensuite vérifier la session existante
+    // Check for existing session
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -44,19 +45,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     checkSession();
 
-    // Nettoyage à la désinscription
+    // Cleanup subscription
     return () => {
       subscription.unsubscribe();
     };
   }, []);
 
-  // Protection contre le blocage - forcer à false après 3 secondes
+  // Failsafe: prevent infinite loading state
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (isLoading) {
         setIsLoading(false);
       }
-    }, 3000);
+    }, 2000);
     
     return () => clearTimeout(timeout);
   }, [isLoading]);
@@ -68,7 +69,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   );
 };
 
-// Hook pour utiliser le contexte d'authentification
+// Hook for using the auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   

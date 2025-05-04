@@ -13,9 +13,9 @@
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.supabase.co https://cfjibduhagxiwqkiyhqd.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-ancestors 'none'; upgrade-insecure-requests;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.supabase.co https://cfjibduhagxiwqkiyhqd.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-ancestors 'none';"
 
-# Simple redirect from HTTP to HTTPS
+# Force HTTPS
 [[redirects]]
   from = "http://*"
   to = "https://:splat"
@@ -35,8 +35,9 @@
   status = 301
   force = true
 
-# Handle all routes
+# Handle all routes for SPA
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
