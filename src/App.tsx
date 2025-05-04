@@ -8,7 +8,7 @@ import NetworkStatusMonitor from './components/NetworkStatusMonitor';
 import { supabase } from '@/integrations/supabase/client';
 
 function App() {
-  // Initialisation précoce de la connexion Supabase
+  // Initialisation précoce et réchauffement de la connexion
   useEffect(() => {
     // Force HTTPS pour toutes les connexions
     if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
@@ -31,22 +31,28 @@ function App() {
       return;
     }
     
-    // Préchauffage de la connexion Supabase
-    try {
-      // Test de connexion immédiat à Supabase
-      supabase.auth.getSession().catch(() => {});
-      
-      // Vérifications périodiques de la connexion
-      const interval = setInterval(() => {
-        if (navigator.onLine) {
-          supabase.auth.getSession().catch(() => {});
-        }
-      }, 5000);
-      
-      return () => clearInterval(interval);
-    } catch (e) {
-      console.warn("Erreur lors de l'initialisation de la connexion:", e);
-    }
+    // Préchauffage des connexions réseau
+    const warmupConnections = async () => {
+      try {
+        // Initialisation et réchauffement de Supabase
+        await supabase.auth.getSession().catch(() => {});
+        
+        // Vérifier périodiquement la connexion et maintenir au chaud
+        const interval = setInterval(() => {
+          if (navigator.onLine) {
+            // Faire une demande silencieuse pour maintenir la connexion
+            supabase.auth.getSession().catch(() => {});
+          }
+        }, 30000);
+        
+        // Nettoyer l'intervalle lors du démontage
+        return () => clearInterval(interval);
+      } catch (e) {
+        console.warn("Erreur lors de l'initialisation des connexions:", e);
+      }
+    };
+    
+    warmupConnections();
   }, []);
 
   return (

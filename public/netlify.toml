@@ -14,7 +14,7 @@
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
     # Configuration CSP ouverte pour résoudre les problèmes de connexion
-    Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline' 'unsafe-eval'; font-src * data:; img-src * data:; media-src * blob:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';"
+    Content-Security-Policy = "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https: wss: ws: blob: data:; font-src 'self' https: data:; img-src 'self' https: data: blob:; media-src 'self' https: blob: data:; object-src 'none'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; style-src 'self' https: 'unsafe-inline';"
     # Headers CORS très permissifs
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
@@ -49,29 +49,19 @@
   status = 301
   force = true
 
-# Proxy direct pour l'API Supabase Auth
+# Configuration de proxy direct pour Supabase Auth
 [[redirects]]
   from = "/supabase-auth/*"
   to = "https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat"
   status = 200
   force = true
-  [redirects.headers]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-    Access-Control-Allow-Headers = "*"
-    Access-Control-Allow-Credentials = "true"
 
-# Proxy direct pour l'API Supabase REST
+# Configuration de proxy direct pour Supabase REST
 [[redirects]]
   from = "/supabase-rest/*"
   to = "https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat"
   status = 200
   force = true
-  [redirects.headers]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-    Access-Control-Allow-Headers = "*"
-    Access-Control-Allow-Credentials = "true"
 
 # Handle all routes for SPA
 [[redirects]]

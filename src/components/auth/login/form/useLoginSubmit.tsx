@@ -25,7 +25,12 @@ export const useLoginSubmit = () => {
     try {
       console.log("Tentative de connexion pour:", email);
       
-      // Version ultra-simplifiée d'authentification 
+      // Vérifier la connectivité internet
+      if (!navigator.onLine) {
+        throw new Error("Vous êtes actuellement hors ligne. Veuillez vérifier votre connexion internet.");
+      }
+
+      // Version optimisée utilisant des options plus simples
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -53,22 +58,29 @@ export const useLoginSubmit = () => {
     } catch (error: any) {
       console.error("Erreur détaillée de connexion:", error);
       
-      if (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError")) {
+      // Messages d'erreur améliorés et plus spécifiques
+      if (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError") || error.message?.includes("network") || error.status === 0) {
         toast({
-          title: "Erreur de connexion réseau",
-          description: "Impossible de contacter le serveur. Veuillez réessayer dans quelques instants.",
+          title: "Problème de connexion au serveur",
+          description: "Impossible de contacter le serveur d'authentification. Veuillez vérifier votre connexion internet ou réessayer dans quelques instants.",
           variant: "destructive"
         });
-      } else if (error.message?.includes("credentials")) {
+      } else if (error.message?.includes("credentials") || error.status === 400) {
         toast({
           title: "Identifiants incorrects",
           description: "Email ou mot de passe incorrect",
           variant: "destructive"
         });
+      } else if (error.message?.includes("CORS") || error.message?.includes("cross-origin")) {
+        toast({
+          title: "Erreur de configuration",
+          description: "Problème de sécurité lors de la connexion. Veuillez essayer avec un autre navigateur ou contacter le support.",
+          variant: "destructive"
+        });
       } else {
         toast({
           title: "Erreur de connexion",
-          description: `${error.message || "Erreur inconnue"}`,
+          description: `${error.message || "Erreur inconnue"} (code: ${error.status || 'inconnu'})`,
           variant: "destructive"
         });
       }
