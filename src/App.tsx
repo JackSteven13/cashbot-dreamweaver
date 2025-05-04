@@ -8,7 +8,7 @@ import NetworkStatusMonitor from './components/NetworkStatusMonitor';
 import { supabase } from '@/integrations/supabase/client';
 
 function App() {
-  // Application des redirections HTTPS immédiatement
+  // Application des redirections HTTPS et préparation de l'authentification immédiatement
   useEffect(() => {
     // Force HTTPS pour toutes les connexions
     if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
@@ -31,16 +31,22 @@ function App() {
       return;
     }
     
-    // Pré-initialisation de Supabase avec temporisation pour éviter les conflits
-    const initTimer = setTimeout(() => {
-      try {
-        supabase.auth.getSession();
-      } catch (e) {
-        console.warn("Initialisation proactive de Supabase:", e);
-      }
-    }, 800);
-    
-    return () => clearTimeout(initTimer);
+    // Initialisation immédiate de Supabase pour préparer l'environnement
+    try {
+      // Pré-initialisation de la connexion API - cruciale pour résoudre les problèmes de connexion
+      supabase.auth.getSession().catch(e => console.log("Initialisation proactive de Supabase:", e));
+      
+      // Préparation aux problèmes de connectivité en pré-initialisant plusieurs fois
+      const intervalId = setInterval(() => {
+        if (window.location.pathname.includes('login')) {
+          supabase.auth.getSession().catch(e => console.log("Refresh de connexion Supabase:", e));
+        }
+      }, 3000);
+      
+      return () => clearInterval(intervalId);
+    } catch (e) {
+      console.warn("Erreur lors de l'initialisation proactive:", e);
+    }
   }, []);
 
   return (

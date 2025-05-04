@@ -19,26 +19,32 @@ export const useLoginSubmit = () => {
       setIsLoading(true);
     }
     
-    // Nettoyage complet des données d'authentification avant la tentative
+    // Nettoyage radical des données d'authentification avant la tentative
     clearStoredAuthData();
     
     try {
       console.log("Tentative de connexion pour:", email);
       
-      // Ajouter un délai pour éviter les problèmes de timing - solution clé
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Délai pour stabiliser
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Utilisation ultra-simplifiée de l'API d'authentification
+      // Version ultra-simplifiée d'authentification utilisant une URL directe
+      // avec options directes pour éviter les problèmes réseau
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
+        options: {
+          redirectTo: 'https://streamgenius.io/dashboard'
+        }
       });
       
       if (error) {
+        console.error("Erreur d'authentification:", error);
         throw error;
       }
       
       if (data.user) {
+        // Stocker l'email pour faciliter les connexions futures
         localStorage.setItem('last_logged_in_email', email);
         
         toast({
@@ -46,27 +52,27 @@ export const useLoginSubmit = () => {
           description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
         });
         
-        // Attendre un peu plus longtemps avant la redirection pour assurer l'établissement de la session
+        // Délai important avant redirection pour assurer que la session est bien établie
         setTimeout(() => {
           navigate('/dashboard', { replace: true });
-        }, 500);
+        }, 1000);
       } else {
         throw new Error("Échec de connexion: aucune donnée utilisateur retournée");
       }
     } catch (error: any) {
-      console.error("Erreur de connexion:", error);
+      console.error("Erreur détaillée de connexion:", error);
       
-      // Messages d'erreur plus informatifs
-      if (error.message === "Invalid login credentials" || error.message?.includes("credentials")) {
-        toast({
-          title: "Identifiants incorrects",
-          description: "Email ou mot de passe incorrect",
-          variant: "destructive"
-        });
-      } else if (error.message?.includes("fetch") || error.message?.includes("network")) {
+      // Messages d'erreur plus détaillés
+      if (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError")) {
         toast({
           title: "Erreur de connexion réseau",
           description: "Impossible de contacter le serveur d'authentification. Vérifiez votre connexion.",
+          variant: "destructive"
+        });
+      } else if (error.message === "Invalid login credentials" || error.message?.includes("credentials")) {
+        toast({
+          title: "Identifiants incorrects",
+          description: "Email ou mot de passe incorrect",
           variant: "destructive"
         });
       } else {

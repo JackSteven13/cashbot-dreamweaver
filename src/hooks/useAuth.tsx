@@ -1,5 +1,5 @@
 
-import { useState, useEffect, createContext, ReactNode, useContext, useCallback } from 'react';
+import { useState, useEffect, createContext, ReactNode, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 
@@ -22,42 +22,66 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log(`Auth state changed: ${event}`);
-        setUser(session?.user ?? null);
-        setIsLoading(false);
-      }
-    );
-
-    // Check for existing session
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
-      } catch (error) {
-        console.error('Erreur lors de la récupération de la session:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkSession();
-
-    // Cleanup subscription
-    return () => {
-      subscription.unsubscribe();
-    };
+    // Configuration initiale pour la détection des problèmes réseaux
+    console.log("État de la connexion:", navigator.onLine ? "En ligne" : "Hors ligne");
+    
+    // Écouteur d'état d'authentification avec gestion améliorée des erreurs
+    try {
+      // Mettre en place l'écouteur d'état d'authentification en premier
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          console.log(`Changement d'état d'authentification: ${event}`);
+          
+          // Gestion synchrone de l'état utilisateur pour éviter les blocages
+          setUser(session?.user ?? null);
+          setIsLoading(false);
+          
+          // Enregistrement des événements d'authentification
+          if (event === 'SIGNED_IN') {
+            console.log("Utilisateur connecté:", session?.user?.email);
+          } else if (event === 'SIGNED_OUT') {
+            console.log("Utilisateur déconnecté");
+          } else if (event === 'TOKEN_REFRESHED') {
+            console.log("Token d'authentification rafraîchi");
+          }
+        }
+      );
+      
+      // Vérifier la session existante après avoir configuré l'écouteur
+      const checkSession = async () => {
+        try {
+          // Utiliser un délai court pour éviter les problèmes de blocage
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          const { data: { session } } = await supabase.auth.getSession();
+          setUser(session?.user ?? null);
+        } catch (error) {
+          console.error('Erreur lors de la récupération de la session:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      checkSession();
+      
+      // Nettoyage de l'abonnement
+      return () => {
+        subscription.unsubscribe();
+      };
+    } catch (error) {
+      console.error("Erreur lors de l'initialisation du contexte d'authentification:", error);
+      setIsLoading(false);
+    }
   }, []);
 
-  // Failsafe: prevent infinite loading state
+  // Protection contre l'état de chargement infini
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (isLoading) {
+        console.log("Timeout de sécurité atteint pour le chargement de l'authentification");
         setIsLoading(false);
       }
-    }, 2000);
+    }, 3000);
     
     return () => clearTimeout(timeout);
   }, [isLoading]);
@@ -69,12 +93,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   );
 };
 
-// Hook for using the auth context
+// Hook pour utiliser le contexte d'authentification
 export const useAuth = () => {
   const context = useContext(AuthContext);
   
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth doit être utilisé dans un AuthProvider');
   }
   
   return context;

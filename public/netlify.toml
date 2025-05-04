@@ -13,8 +13,14 @@
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    # Élargissement du CSP pour autoriser toutes les connexions API nécessaires
-    Content-Security-Policy = "default-src 'self' https://cfjibduhagxiwqkiyhqd.supabase.co https://*.supabase.co; script-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co https://api.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-ancestors 'none';"
+    # Configuration CSP très permissive pour résoudre les problèmes de connexion
+    Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline' 'unsafe-eval'; font-src * data:; img-src * data:; media-src * blob:; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline';"
+    # Headers CORS spécifiques pour résoudre les problèmes d'API
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    Access-Control-Allow-Headers = "*"
+    Access-Control-Allow-Credentials = "true"
+    Access-Control-Max-Age = "86400"
 
 # Force HTTPS avec priorité maximale
 [[redirects]]
@@ -42,6 +48,18 @@
   to = "https://streamgenius.io/:splat"
   status = 301
   force = true
+
+# Proxy pour les appels API Supabase pour résoudre les problèmes CORS
+[[redirects]]
+  from = "/auth/*"
+  to = "https://cfjibduhagxiwqkiyhqd.supabase.co/auth/:splat"
+  status = 200
+  force = true
+  [redirects.headers]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    Access-Control-Allow-Headers = "*"
+    Access-Control-Allow-Credentials = "true"
 
 # Handle all routes for SPA
 [[redirects]]

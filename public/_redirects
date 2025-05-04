@@ -12,7 +12,14 @@ http://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
 https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 http://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
-# CORS Headers pour l'API Supabase
+# CORS Headers pour l'API Supabase - Configuration élargie
+https://cfjibduhagxiwqkiyhqd.supabase.co/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS
+  Access-Control-Allow-Headers: *
+  Access-Control-Allow-Credentials: true
+  Access-Control-Max-Age: 86400
+
 /api/*
   Access-Control-Allow-Origin: *
   Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
