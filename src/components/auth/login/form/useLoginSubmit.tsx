@@ -17,9 +17,9 @@ export const useLoginSubmit = () => {
     setIsLoading(true);
     
     try {
-      console.log("Tentative de connexion directe pour:", email);
+      console.log("Tentative de connexion pour:", email);
       
-      // Authentification simple et directe
+      // Authentification directe et simple
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -31,7 +31,6 @@ export const useLoginSubmit = () => {
       }
       
       if (data?.user) {
-        // Stocker l'email pour faciliter les connexions futures
         localStorage.setItem('last_logged_in_email', email);
         
         toast({
@@ -39,7 +38,6 @@ export const useLoginSubmit = () => {
           description: `Bienvenue ${data.user.user_metadata?.full_name || email.split('@')[0] || 'utilisateur'}!`,
         });
         
-        // Redirection immédiate vers le tableau de bord
         navigate('/dashboard', { replace: true });
       } else {
         throw new Error("Échec de connexion: aucune donnée utilisateur retournée");
