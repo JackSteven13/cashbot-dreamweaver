@@ -19,40 +19,46 @@ export const useLoginSubmit = () => {
     try {
       console.log("Tentative de connexion pour:", email);
       
-      // Nettoyer les données d'authentification existantes
+      // Nettoyer les données d'authentification existantes AVANT de tenter la connexion
       clearStoredAuthData();
       
-      // Attendre pour que le nettoyage soit effectué
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Attendre un court instant pour s'assurer que le nettoyage est effectif
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Tentative de connexion directe sans options supplémentaires
+      // Effectuer une connexion simple
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password
       });
       
+      // Gérer les erreurs d'authentification
       if (error) {
         console.error("Erreur d'authentification:", error.message);
-        throw error;
+        throw new Error(`Erreur d'authentification: ${error.message}`);
       }
       
-      if (data?.user) {
-        console.log("Connexion réussie pour l'utilisateur:", data.user.id);
-        
-        // Enregistrer l'email pour une reconnexion ultérieure
-        localStorage.setItem('last_logged_in_email', email);
-        
-        // Afficher un toast de confirmation
-        toast({
-          title: "Connexion réussie",
-          description: "Vous êtes maintenant connecté.",
-        });
-        
-        // Redirection vers le tableau de bord
-        navigate('/dashboard', { replace: true });
-      } else {
+      // Vérifier la réponse
+      if (!data?.user || !data?.session) {
         throw new Error("Échec de connexion: aucune donnée utilisateur retournée");
       }
+      
+      console.log("Connexion réussie pour l'utilisateur:", data.user.id);
+      
+      // Enregistrer l'email pour une reconnexion ultérieure
+      localStorage.setItem('last_logged_in_email', email);
+      
+      // Afficher un toast de confirmation
+      toast({
+        title: "Connexion réussie",
+        description: "Vous êtes maintenant connecté.",
+      });
+      
+      // Redirection vers le tableau de bord après un court délai
+      // pour permettre à la session d'être correctement établie
+      setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 300);
+      
     } catch (error: any) {
       console.error("Erreur lors de la tentative de connexion:", error);
       

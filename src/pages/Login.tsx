@@ -11,7 +11,16 @@ const Login = () => {
   // Nettoyage au chargement de la page pour partir avec un état propre
   useEffect(() => {
     console.log("Page de connexion chargée, nettoyage des données d'authentification");
+    
+    // Nettoyage radical pour partir d'un état propre
     clearStoredAuthData();
+    
+    // Nettoyer également les anciens flags qui pourraient bloquer l'authentification
+    localStorage.removeItem('auth_checking');
+    localStorage.removeItem('auth_refreshing');
+    localStorage.removeItem('auth_redirecting');
+    localStorage.removeItem('auth_redirect_timestamp');
+    localStorage.removeItem('auth_check_timestamp');
   }, []);
 
   return (

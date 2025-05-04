@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { clearStoredAuthData } from '@/integrations/supabase/client';
 
 const AuthCleanup = () => {
-  // Nettoyer les données d'authentification au chargement de la page de connexion
+  // Nettoyer les données d'authentification au chargement
   useEffect(() => {
     const cleanup = () => {
       console.log("Nettoyage des données d'authentification via AuthCleanup");

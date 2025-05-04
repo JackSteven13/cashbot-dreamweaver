@@ -23,6 +23,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 export const clearStoredAuthData = () => {
   try {
     // Clear all Supabase related items from localStorage
+    const keysToRemove = [];
+
+    // First identify all keys to remove
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && (
@@ -31,11 +34,14 @@ export const clearStoredAuthData = () => {
           key.includes('auth') || 
           key.includes('token')
         )) {
-        localStorage.removeItem(key);
+        keysToRemove.push(key);
       }
     }
     
-    console.log("Auth data cleared successfully");
+    // Then remove them (can't remove while iterating)
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    console.log(`Auth data cleared: removed ${keysToRemove.length} items`);
     return true;
   } catch (err) {
     console.error("Error clearing authentication data:", err);

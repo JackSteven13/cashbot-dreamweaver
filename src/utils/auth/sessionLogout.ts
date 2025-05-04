@@ -8,17 +8,14 @@ export const forceSignOut = async (): Promise<void> => {
   console.log("Tentative de déconnexion forcée");
   
   try {
-    // Nettoyer les données d'authentification avant la déconnexion 
-    // pour éviter les conflits potentiels
+    // Nettoyer toutes les données d'authentification pour éviter les conflits
     clearStoredAuthData();
     
     // Petit délai pour assurer un nettoyage complet
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Déconnecter via l'API Supabase
-    await supabase.auth.signOut({
-      scope: 'global', // Déconnexion de tous les appareils
-    });
+    // Déconnecter via l'API Supabase avec des options simplifiées
+    await supabase.auth.signOut();
     
     // Deuxième nettoyage après la déconnexion pour s'assurer 
     // qu'il ne reste aucune donnée d'authentification
