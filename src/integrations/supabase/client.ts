@@ -6,14 +6,20 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://cfjibduhagxiwqkiyhqd.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4";
 
-// Simple initialization with reduced options for reliability
+// Configuration simplifiée et robuste pour éviter les problèmes d'authentification
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    autoRefreshToken: true,
+    autoRefreshToken: true, 
     persistSession: true,
-    detectSessionInUrl: false,
-    storage: localStorage
-  }
+    detectSessionInUrl: true, // Activer pour détecter les sessions dans l'URL
+    storage: localStorage,
+    flowType: 'implicit', // Forcer le flow implicite pour plus de compatibilité
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'streamgenius',
+    },
+  },
 });
 
 /**

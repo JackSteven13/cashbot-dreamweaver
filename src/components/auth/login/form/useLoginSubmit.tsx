@@ -16,33 +16,50 @@ export const useLoginSubmit = () => {
     e.preventDefault();
     setIsLoading(true);
     
+    // Nettoyer les données d'authentification avant la tentative de connexion
     try {
       console.log("Tentative de connexion pour:", email);
-      
-      // Nettoyer les données d'authentification existantes AVANT de tenter la connexion
       clearStoredAuthData();
       
       // Attendre un court instant pour s'assurer que le nettoyage est effectif
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Effectuer une connexion simple
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password
+      // Essayer la connexion avec un timeout pour éviter les blocages
+      const loginPromise = new Promise(async (resolve, reject) => {
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password: password
+          });
+          
+          if (error) {
+            console.error("Erreur d'authentification:", error.message);
+            reject(error);
+            return;
+          }
+          
+          if (!data?.user || !data?.session) {
+            reject(new Error("Échec de connexion: aucune donnée utilisateur retournée"));
+            return;
+          }
+          
+          resolve(data);
+        } catch (error) {
+          console.error("Exception lors de la connexion:", error);
+          reject(error);
+        }
       });
       
-      // Gérer les erreurs d'authentification
-      if (error) {
-        console.error("Erreur d'authentification:", error.message);
-        throw new Error(`Erreur d'authentification: ${error.message}`);
-      }
+      // Ajouter un timeout pour éviter les attentes infinies
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Délai d'attente dépassé")), 10000);
+      });
       
-      // Vérifier la réponse
-      if (!data?.user || !data?.session) {
-        throw new Error("Échec de connexion: aucune donnée utilisateur retournée");
-      }
+      // Utiliser Promise.race pour implémenter un timeout
+      const data = await Promise.race([loginPromise, timeoutPromise]);
       
-      console.log("Connexion réussie pour l'utilisateur:", data.user.id);
+      // Si on arrive ici, c'est que la connexion a réussi
+      console.log("Connexion réussie pour l'utilisateur");
       
       // Enregistrer l'email pour une reconnexion ultérieure
       localStorage.setItem('last_logged_in_email', email);
@@ -54,21 +71,25 @@ export const useLoginSubmit = () => {
       });
       
       // Redirection vers le tableau de bord après un court délai
-      // pour permettre à la session d'être correctement établie
       setTimeout(() => {
         navigate('/dashboard', { replace: true });
       }, 300);
-      
     } catch (error: any) {
       console.error("Erreur lors de la tentative de connexion:", error);
       
-      // Message d'erreur utilisateur
+      // Message d'erreur utilisateur plus détaillé
+      const errorMessage = error.message && error.message.includes("Invalid login")
+        ? "Email ou mot de passe incorrect. Veuillez réessayer."
+        : error.message && error.message.includes("timeout") 
+          ? "Délai de connexion dépassé. Veuillez réessayer."
+          : "Une erreur s'est produite lors de la connexion. Veuillez réessayer.";
+      
       toast({
         title: "Erreur de connexion",
-        description: "Email ou mot de passe incorrect. Veuillez réessayer.",
+        description: errorMessage,
         variant: "destructive"
       });
-      
+    } finally {
       setIsLoading(false);
     }
   };
