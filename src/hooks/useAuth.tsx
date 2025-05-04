@@ -27,13 +27,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       (event, session) => {
         setUser(session?.user ?? null);
         setIsLoading(false);
-        
-        // Actions spécifiques selon l'événement
-        if (event === 'SIGNED_IN') {
-          console.log('Utilisateur connecté:', session?.user?.email);
-        } else if (event === 'SIGNED_OUT') {
-          console.log('Utilisateur déconnecté');
-        }
       }
     );
 

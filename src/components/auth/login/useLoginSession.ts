@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from "@/integrations/supabase/client";
 
 export const useLoginSession = () => {
   const [isCheckingSession, setIsCheckingSession] = useState(true);

@@ -16,5 +16,5 @@ http://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 # Explicit domain aliases for the application
 https://stream-genius.lovable.app/* https://streamgenius.io/:splat 301!
 
-# Handle all routes - Simplified from original file to avoid error triggering rules
+# Handle all routes
 /* /index.html 200

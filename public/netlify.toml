@@ -21,7 +21,7 @@
     Permissions-Policy = "camera=(), geolocation=(), microphone=()"
     X-Robots-Tag = "index, follow"
 
-# Simplified redirects - Reduced from original file
+# Simplified redirects
 [[redirects]]
   from = "http://*"
   to = "https://:splat"
