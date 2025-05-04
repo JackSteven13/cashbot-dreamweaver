@@ -1,14 +1,10 @@
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
+# Base configuration for Netlify
 [build]
   command = "npm run build"
   publish = "dist"
 
-# SEO Improvements - Set custom headers
+# Headers to improve security and performance
 [[headers]]
   for = "/*"
   [headers.values]
@@ -17,17 +13,16 @@
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.supabase.co https://cfjibduhagxiwqkiyhqd.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content"
-    Permissions-Policy = "camera=(), geolocation=(), microphone=()"
-    X-Robots-Tag = "index, follow"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.supabase.co https://cfjibduhagxiwqkiyhqd.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-ancestors 'none'; upgrade-insecure-requests;"
 
-# Simplified redirects
+# Simple redirect from HTTP to HTTPS
 [[redirects]]
   from = "http://*"
   to = "https://:splat"
   status = 301
   force = true
 
+# Redirect from streamgenius.fr to streamgenius.io
 [[redirects]]
   from = "https://streamgenius.fr/*"
   to = "https://streamgenius.io/:splat"
@@ -39,3 +34,9 @@
   to = "https://streamgenius.io/:splat"
   status = 301
   force = true
+
+# Handle all routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -26,23 +26,23 @@ export const useLoginSubmit = () => {
     try {
       console.log("Tentative de connexion pour:", email);
       
-      // Version ultra simplifiée - sans options complexes qui causent des erreurs
-      const authResult = await supabase.auth.signInWithPassword({
+      // Version ultra simplifiée - sans options qui causent des erreurs
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
-      if (authResult.error) {
-        throw authResult.error;
+      if (error) {
+        throw error;
       }
       
-      if (authResult.data && authResult.data.user) {
+      if (data.user) {
         // Sauvegarder l'email pour les futures connexions
         localStorage.setItem('last_logged_in_email', email);
         
         toast({
           title: "Connexion réussie",
-          description: `Bienvenue ${authResult.data.user.user_metadata?.full_name || authResult.data.user.email?.split('@')[0] || 'utilisateur'}!`,
+          description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
         });
         
         // Redirection directe vers le dashboard
