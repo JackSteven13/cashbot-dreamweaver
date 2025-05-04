@@ -23,49 +23,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     // Configuration simplifiée de l'authentification
-    try {
-      // Mettre en place l'écouteur d'état d'authentification
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (event, session) => {
-          setUser(session?.user ?? null);
-          setIsLoading(false);
-        }
-      );
-      
-      // Vérifier la session existante
-      const checkSession = async () => {
-        try {
-          const { data } = await supabase.auth.getSession();
-          setUser(data?.session?.user ?? null);
-        } catch (error) {
-          console.error('Erreur lors de la récupération de la session:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      
-      checkSession();
-      
-      // Nettoyage de l'abonnement
-      return () => {
-        subscription.unsubscribe();
-      };
-    } catch (error) {
-      console.error("Erreur d'authentification:", error);
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Protection contre l'état de chargement infini
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (isLoading) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
         setIsLoading(false);
       }
-    }, 3000);
+    );
     
-    return () => clearTimeout(timeout);
-  }, [isLoading]);
+    // Vérifier la session existante
+    const checkSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        setUser(data?.session?.user ?? null);
+      } catch (error) {
+        console.error('Erreur lors de la récupération de la session:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkSession();
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, isLoading }}>

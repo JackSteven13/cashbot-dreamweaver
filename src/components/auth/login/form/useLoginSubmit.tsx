@@ -17,9 +17,9 @@ export const useLoginSubmit = () => {
     setIsLoading(true);
     
     try {
-      console.log("Tentative de connexion pour:", email);
+      console.log("Tentative de connexion avec:", email);
       
-      // Authentification directe et simple
+      // Authentification simplifiée
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -27,6 +27,34 @@ export const useLoginSubmit = () => {
       
       if (error) {
         console.error("Erreur d'authentification:", error);
+        
+        // Forcer la reconnexion en contournant les erreurs courantes
+        if (error.message.includes("Invalid login credentials")) {
+          // Réessayons après nettoyage des jetons
+          localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+          localStorage.removeItem('supabase.auth.token');
+          localStorage.removeItem('supabase-auth-token');
+          
+          // Deuxième tentative après nettoyage
+          console.log("Deuxième tentative de connexion");
+          const secondAttempt = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+          
+          if (!secondAttempt.error && secondAttempt.data?.user) {
+            localStorage.setItem('last_logged_in_email', email);
+            
+            toast({
+              title: "Connexion réussie",
+              description: `Bienvenue ${secondAttempt.data.user.user_metadata?.full_name || email.split('@')[0] || 'utilisateur'}!`,
+            });
+            
+            navigate('/dashboard', { replace: true });
+            return;
+          }
+        }
+        
         throw error;
       }
       
