@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Version ultra-simplifiée du setup d'authentification
+    // Configuration de l'écouteur d'authentification AVANT la vérification de session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null);
@@ -30,12 +30,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     );
     
-    // Vérification simplifiée de la session
+    // Vérification de la session existante
     supabase.auth.getSession().then(({ data }) => {
       setUser(data?.session?.user ?? null);
       setIsLoading(false);
     });
-    
+
     return () => {
       subscription.unsubscribe();
     };

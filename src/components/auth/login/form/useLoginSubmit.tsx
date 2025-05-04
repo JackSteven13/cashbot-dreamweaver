@@ -17,42 +17,41 @@ export const useLoginSubmit = () => {
     setIsLoading(true);
     
     try {
-      // Nettoyer complètement avant de commencer
+      // Nettoyer complètement toutes les données d'authentification existantes
       clearStoredAuthData();
-      console.log("Données d'authentification nettoyées");
       
-      // Attendre un peu pour s'assurer que le nettoyage est terminé
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Attendre un moment pour s'assurer que le nettoyage est terminé
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      console.log("Tentative de connexion directe pour:", email);
-      
-      // Connexion avec une configuration minimale
+      // Connexion directe sans options complexes
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
       if (error) {
-        console.error("Erreur de connexion:", error);
         throw error;
       }
       
       if (data?.user) {
+        // Enregistrer l'email pour une reconnexion ultérieure
         localStorage.setItem('last_logged_in_email', email);
         
+        // Afficher un toast de confirmation
         toast({
           title: "Connexion réussie",
           description: `Bienvenue ${data.user.user_metadata?.full_name || email.split('@')[0] || 'utilisateur'}!`,
         });
         
-        console.log("Redirection vers le tableau de bord");
+        // Redirection vers le tableau de bord
         navigate('/dashboard', { replace: true });
       } else {
         throw new Error("Échec de connexion: aucune donnée utilisateur retournée");
       }
     } catch (error: any) {
-      console.error("Erreur détaillée:", error);
+      console.error("Erreur lors de la tentative de connexion:", error);
       
+      // Message d'erreur utilisateur
       toast({
         title: "Erreur de connexion",
         description: "Email ou mot de passe incorrect. Veuillez réessayer.",
