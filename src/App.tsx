@@ -8,7 +8,7 @@ import NetworkStatusMonitor from './components/NetworkStatusMonitor';
 import { supabase } from '@/integrations/supabase/client';
 
 function App() {
-  // Application des redirections HTTPS et préparation de l'authentification immédiatement
+  // Initialisation précoce de la connexion Supabase
   useEffect(() => {
     // Force HTTPS pour toutes les connexions
     if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
@@ -31,21 +31,21 @@ function App() {
       return;
     }
     
-    // Initialisation immédiate de Supabase pour préparer l'environnement
+    // Préchauffage de la connexion Supabase
     try {
-      // Pré-initialisation de la connexion API - cruciale pour résoudre les problèmes de connexion
-      supabase.auth.getSession().catch(e => console.log("Initialisation proactive de Supabase:", e));
+      // Test de connexion immédiat à Supabase
+      supabase.auth.getSession().catch(() => {});
       
-      // Préparation aux problèmes de connectivité en pré-initialisant plusieurs fois
-      const intervalId = setInterval(() => {
-        if (window.location.pathname.includes('login')) {
-          supabase.auth.getSession().catch(e => console.log("Refresh de connexion Supabase:", e));
+      // Vérifications périodiques de la connexion
+      const interval = setInterval(() => {
+        if (navigator.onLine) {
+          supabase.auth.getSession().catch(() => {});
         }
-      }, 3000);
+      }, 5000);
       
-      return () => clearInterval(intervalId);
+      return () => clearInterval(interval);
     } catch (e) {
-      console.warn("Erreur lors de l'initialisation proactive:", e);
+      console.warn("Erreur lors de l'initialisation de la connexion:", e);
     }
   }, []);
 

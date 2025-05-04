@@ -25,10 +25,7 @@ export const useLoginSubmit = () => {
     try {
       console.log("Tentative de connexion pour:", email);
       
-      // Délai pour stabiliser
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Version simplifiée d'authentification sans l'option redirectTo
+      // Version ultra-simplifiée d'authentification 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -48,24 +45,21 @@ export const useLoginSubmit = () => {
           description: `Bienvenue ${data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'utilisateur'}!`,
         });
         
-        // Délai important avant redirection pour assurer que la session est bien établie
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true });
-        }, 1000);
+        // Redirection immédiate vers le tableau de bord
+        navigate('/dashboard', { replace: true });
       } else {
         throw new Error("Échec de connexion: aucune donnée utilisateur retournée");
       }
     } catch (error: any) {
       console.error("Erreur détaillée de connexion:", error);
       
-      // Messages d'erreur plus détaillés
       if (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError")) {
         toast({
           title: "Erreur de connexion réseau",
-          description: "Impossible de contacter le serveur d'authentification. Vérifiez votre connexion.",
+          description: "Impossible de contacter le serveur. Veuillez réessayer dans quelques instants.",
           variant: "destructive"
         });
-      } else if (error.message === "Invalid login credentials" || error.message?.includes("credentials")) {
+      } else if (error.message?.includes("credentials")) {
         toast({
           title: "Identifiants incorrects",
           description: "Email ou mot de passe incorrect",
@@ -74,7 +68,7 @@ export const useLoginSubmit = () => {
       } else {
         toast({
           title: "Erreur de connexion",
-          description: `Impossible de se connecter: ${error.message || "Erreur inconnue"}`,
+          description: `${error.message || "Erreur inconnue"}`,
           variant: "destructive"
         });
       }
