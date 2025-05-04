@@ -28,14 +28,10 @@ export const useLoginSubmit = () => {
       // Délai pour stabiliser
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Version ultra-simplifiée d'authentification utilisant une URL directe
-      // avec options directes pour éviter les problèmes réseau
+      // Version simplifiée d'authentification sans l'option redirectTo
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password,
-        options: {
-          redirectTo: 'https://streamgenius.io/dashboard'
-        }
+        password
       });
       
       if (error) {

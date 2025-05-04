@@ -4,17 +4,16 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Configuration ultra-simple du client Supabase avec options avancées pour la compatibilité réseau
+// Configuration simplifiée du client Supabase avec options standard pour la compatibilité TypeScript
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    // IMPORTANT: Désactiver totalement la détection d'URL pour éviter les problèmes
+    // Désactiver la détection d'URL pour éviter les problèmes
     detectSessionInUrl: false,
     persistSession: true,
     autoRefreshToken: true,
-    // Options spécifiques pour résoudre les problèmes de stockage
+    // Options pour le stockage
     storageKey: 'sb-auth-token',
-    storage: localStorage,
-    flowType: 'implicit'
+    storage: localStorage
   },
   global: {
     // Headers personnalisés pour améliorer la compatibilité
@@ -25,8 +24,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'Cache-Control': 'no-cache',
     }
   },
-  // Activation du mode debug pour identifier les problèmes
-  debug: true,
   // Configuration réseau pour les problèmes de connectivité
   realtime: {
     timeout: 60000,
@@ -36,7 +33,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Fonction extrêmement agressive pour nettoyer TOUS les tokens d'authentification
+// Fonction pour nettoyer TOUS les tokens d'authentification
 export const clearStoredAuthData = () => {
   try {
     // Nettoyage de tous les tokens possibles
