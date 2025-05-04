@@ -21,14 +21,13 @@
     Permissions-Policy = "camera=(), geolocation=(), microphone=()"
     X-Robots-Tag = "index, follow"
 
-# Force HTTP to HTTPS for all requests
+# Simplified redirects - Reduced from original file
 [[redirects]]
   from = "http://*"
   to = "https://:splat"
   status = 301
   force = true
 
-# Redirect from .fr to .io domain - PRIORITY HIGH
 [[redirects]]
   from = "https://streamgenius.fr/*"
   to = "https://streamgenius.io/:splat"
@@ -40,16 +39,3 @@
   to = "https://streamgenius.io/:splat"
   status = 301
   force = true
-
-# WWW to non-WWW redirect
-[[redirects]]
-  from = "https://www.streamgenius.io/*"
-  to = "https://streamgenius.io/:splat"
-  status = 301
-  force = true
-
-# Custom 404 page redirect
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 404

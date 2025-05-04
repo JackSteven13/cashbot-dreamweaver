@@ -12,11 +12,6 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
     document.documentElement.classList.add('dark');
     document.body.classList.add('dark-theme-body');
     document.body.classList.remove('light-theme-body');
-    
-    // Redirection immédiate .fr vers .io
-    if (window.location.hostname.includes('streamgenius.fr')) {
-      window.location.replace(`https://streamgenius.io${window.location.pathname}`);
-    }
   }, []);
 
   return (

@@ -42,8 +42,7 @@ export const useLoginSubmit = () => {
         console.log(`Tentative d'authentification ${attemptCount}/${maxAttempts}...`);
         
         try {
-          // Configuration simplifiée pour l'authentification - Removed the redirectTo option
-          // qui causait l'erreur TypeScript
+          // Version ultra simplifiée - sans options complexes qui peuvent causer des erreurs
           authResult = await supabase.auth.signInWithPassword({
             email,
             password
@@ -76,15 +75,12 @@ export const useLoginSubmit = () => {
         // Sauvegarder l'email pour les futures suggestions
         localStorage.setItem('last_logged_in_email', email);
         
-        // Stocker l'origine du domaine pour aider à la compatibilité multi-domaines
-        localStorage.setItem('auth_origin_domain', window.location.hostname);
-        
         toast({
           title: "Connexion réussie",
           description: `Bienvenue ${authResult.data.user.user_metadata?.full_name || authResult.data.user.email?.split('@')[0] || 'utilisateur'}!`,
         });
         
-        // Redirection directe vers le dashboard
+        // Redirection directe vers le dashboard sans options supplémentaires
         navigate('/dashboard', { replace: true });
       } else {
         throw new Error("Échec de connexion: aucune donnée utilisateur retournée");

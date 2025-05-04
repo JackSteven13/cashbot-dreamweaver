@@ -4,62 +4,34 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Configuration optimisée pour streamgenius.io en production
+// Version de base sans configuration complexe qui pourrait causer des erreurs
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true,
+    // Désactiver cette option qui peut causer des problèmes sur streamgenius.io
+    detectSessionInUrl: false,
     storage: localStorage,
-    storageKey: 'supabase-auth-token',
-    flowType: 'implicit',
+    storageKey: 'supabase-auth-token'
   },
   global: {
     headers: {
-      'X-Client-Info': 'streamgenius@1.0.0',
-      'X-Client-Domain': typeof window !== 'undefined' ? window.location.hostname : 'unknown',
+      'X-Client-Info': 'streamgenius@1.0.0'
     },
   }
 });
 
 /**
  * Nettoie complètement toutes les données d'authentification
- * Version robuste qui résout les problèmes de connexion multi-domaines
+ * Version simplifiée sans trop de logique compliquée
  */
 export const clearStoredAuthData = () => {
   try {
-    // Nettoyer tous les jetons possibles (anciens et nouveaux formats)
+    // Nettoyer les jetons principaux uniquement
     localStorage.removeItem('supabase-auth-token');
-    localStorage.removeItem('supabase.auth.token');
     localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-    localStorage.removeItem('sb-auth-token');
     
-    // Nettoyer tous les refresh tokens
-    localStorage.removeItem('sb-refresh-token');
-    localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
-    localStorage.removeItem('supabase-auth-refresh');
-    
-    // Nettoyer d'autres flags et métadonnées
-    const allKeys = Object.keys(localStorage);
-    const authKeys = allKeys.filter(key => 
-      key.includes('auth') || 
-      key.includes('supabase') || 
-      key.includes('sb-') || 
-      key.includes('token')
-    );
-    
-    authKeys.forEach(key => localStorage.removeItem(key));
-    
-    // Nettoyer les cookies qui pourraient interférer
-    document.cookie.split(';').forEach(cookie => {
-      const [name] = cookie.trim().split('=');
-      if (name && (name.includes('sb-') || name.includes('supabase'))) {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.streamgenius.io`;
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-      }
-    });
-    
-    console.log("Nettoyage complet des données d'authentification effectué");
+    console.log("Nettoyage des données d'authentification effectué");
     return true;
   } catch (err) {
     console.error("Erreur lors du nettoyage des données d'authentification:", err);
@@ -73,32 +45,15 @@ export const clearStoredAuthData = () => {
  */
 export const testSupabaseConnection = async (): Promise<boolean> => {
   try {
-    // Paramètres pour une requête légère avec timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    // Test simple, sans options complexes
+    const { data, error } = await supabase.from('profiles').select('count').limit(1);
     
-    // Test simple pour vérifier que Supabase est accessible
-    try {
-      // Test avec une requête simple qui devrait toujours fonctionner
-      const { error } = await supabase.from('_health')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-      
-      clearTimeout(timeoutId);
-      
-      if (error && error.code !== 'PGRST116') {
-        // PGRST116 signifie juste que la table n'existe pas, ce qui est normal
-        console.error("Erreur de connexion à Supabase:", error);
-        return false;
-      }
-      
-      return true;
-    } catch (err) {
-      clearTimeout(timeoutId);
-      console.error("Exception lors du test de connexion à Supabase:", err);
+    if (error) {
+      console.error("Erreur de connexion à Supabase:", error);
       return false;
     }
+    
+    return true;
   } catch (err) {
     console.error("Exception lors du test de connexion à Supabase:", err);
     return false;
