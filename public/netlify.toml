@@ -13,16 +13,17 @@
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.supabase.co https://cfjibduhagxiwqkiyhqd.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-ancestors 'none';"
+    # Élargissement du CSP pour autoriser toutes les connexions API nécessaires
+    Content-Security-Policy = "default-src 'self' https://cfjibduhagxiwqkiyhqd.supabase.co https://*.supabase.co; script-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co https://api.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-ancestors 'none';"
 
-# Force HTTPS
+# Force HTTPS avec priorité maximale
 [[redirects]]
   from = "http://*"
   to = "https://:splat"
   status = 301
   force = true
 
-# Redirect from streamgenius.fr to streamgenius.io
+# Redirection prioritaire de streamgenius.fr vers streamgenius.io
 [[redirects]]
   from = "https://streamgenius.fr/*"
   to = "https://streamgenius.io/:splat"
@@ -35,9 +36,15 @@
   status = 301
   force = true
 
+# Redirection www vers non-www
+[[redirects]]
+  from = "https://www.streamgenius.io/*"
+  to = "https://streamgenius.io/:splat"
+  status = 301
+  force = true
+
 # Handle all routes for SPA
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-

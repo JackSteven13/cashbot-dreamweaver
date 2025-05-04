@@ -1,15 +1,22 @@
 
-# Force HTTPS
+# Force HTTPS - Priorité maximale
 http://*  https://:splat 301!
 
-# Handle SPA routes
-/* /index.html 200
-
-# Force streamgenius.io domain - PRIORITY HIGH
+# Redirection prioritaire .fr vers .io
 https://streamgenius.fr/* https://streamgenius.io/:splat 301!
 https://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
 http://streamgenius.fr/* https://streamgenius.io/:splat 301!
 http://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
-http://streamgenius.io/* https://streamgenius.io/:splat 301!
+
+# Redirection www vers non-www
+https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 http://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
+# CORS Headers pour l'API Supabase
+/api/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept, Authorization
+
+# Handle SPA routes - Toujours en dernier
+/* /index.html 200

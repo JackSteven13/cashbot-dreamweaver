@@ -30,7 +30,9 @@ additional_redirect_urls = [
   "https://stream-genius.lovable.app", 
   "https://www.streamgenius.io", 
   "http://localhost:3000",
-  "https://*.lovable.app"
+  "https://*.lovable.app",
+  "http://localhost:5173",
+  "*"
 ]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
