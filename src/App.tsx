@@ -5,8 +5,7 @@ import { Toaster } from './components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
 import { useEffect, useRef } from 'react';
 import NetworkStatusMonitor from './components/NetworkStatusMonitor';
-import { supabase, clearStoredAuthData } from '@/integrations/supabase/client';
-import { checkDirectConnectivity } from '@/utils/auth/directApiCalls';
+import { supabase } from '@/integrations/supabase/client';
 
 function App() {
   const authInitialized = useRef(false);
@@ -42,14 +41,7 @@ function App() {
         console.log("Initialisation de l'environnement d'authentification");
         authInitialized.current = true;
         
-        // Nettoyage complet des données d'authentification précédentes
-        clearStoredAuthData();
-        
-        // Vérifier la connectivité directe avec Supabase
-        const isDirectConnectivityOk = await checkDirectConnectivity();
-        console.log("Connectivité directe avec Supabase:", isDirectConnectivityOk ? "OK" : "KO");
-        
-        // Initialisation et réchauffement de Supabase
+        // Initialisation de Supabase
         await supabase.auth.getSession().catch(() => {});
         
         // Vérifier périodiquement la connexion et maintenir au chaud
