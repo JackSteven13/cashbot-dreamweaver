@@ -22,39 +22,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Configuration initiale pour la détection des problèmes réseaux
-    console.log("État de la connexion:", navigator.onLine ? "En ligne" : "Hors ligne");
-    
-    // Écouteur d'état d'authentification avec gestion améliorée des erreurs
+    // Configuration simplifiée de l'authentification
     try {
-      // Mettre en place l'écouteur d'état d'authentification en premier
+      // Mettre en place l'écouteur d'état d'authentification
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         (event, session) => {
-          console.log(`Changement d'état d'authentification: ${event}`);
-          
-          // Gestion synchrone de l'état utilisateur pour éviter les blocages
           setUser(session?.user ?? null);
           setIsLoading(false);
-          
-          // Enregistrement des événements d'authentification
-          if (event === 'SIGNED_IN') {
-            console.log("Utilisateur connecté:", session?.user?.email);
-          } else if (event === 'SIGNED_OUT') {
-            console.log("Utilisateur déconnecté");
-          } else if (event === 'TOKEN_REFRESHED') {
-            console.log("Token d'authentification rafraîchi");
-          }
         }
       );
       
-      // Vérifier la session existante après avoir configuré l'écouteur
+      // Vérifier la session existante
       const checkSession = async () => {
         try {
-          // Utiliser un délai court pour éviter les problèmes de blocage
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
-          const { data: { session } } = await supabase.auth.getSession();
-          setUser(session?.user ?? null);
+          const { data } = await supabase.auth.getSession();
+          setUser(data?.session?.user ?? null);
         } catch (error) {
           console.error('Erreur lors de la récupération de la session:', error);
         } finally {
@@ -69,7 +51,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         subscription.unsubscribe();
       };
     } catch (error) {
-      console.error("Erreur lors de l'initialisation du contexte d'authentification:", error);
+      console.error("Erreur d'authentification:", error);
       setIsLoading(false);
     }
   }, []);
@@ -78,7 +60,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (isLoading) {
-        console.log("Timeout de sécurité atteint pour le chargement de l'authentification");
         setIsLoading(false);
       }
     }, 3000);
