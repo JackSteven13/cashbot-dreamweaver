@@ -13,10 +13,14 @@ import PaymentSuccess from '../pages/PaymentSuccess';
 import Terms from '../pages/Terms';
 import Contact from '../pages/Contact';
 import AnalysisController from '../components/dashboard/analysis/AnalysisController';
+import { clearStoredAuthData } from '@/integrations/supabase/client';
 
 const AppRoutes: React.FC = () => {
-  // Force HTTPS and handle domain redirections
+  // Force HTTPS, handle domain redirections, and clean auth data at load
   useEffect(() => {
+    // Clean auth data on initial app load
+    clearStoredAuthData();
+    
     // HTTPS Enforcement
     if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
       window.location.replace(`https://${window.location.host}${window.location.pathname}`);
@@ -41,6 +45,10 @@ const AppRoutes: React.FC = () => {
     
     // Force dark mode for consistent appearance
     document.documentElement.classList.add('dark');
+    
+    // Log domain information for debugging
+    console.log("Application chargée sur:", window.location.hostname);
+    console.log("Protocole:", window.location.protocol);
   }, []);
 
   return (

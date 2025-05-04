@@ -3,54 +3,148 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://cfjibduhagxiwqkiyhqd.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4";
+export const SUPABASE_URL = "https://cfjibduhagxiwqkiyhqd.supabase.co";
+export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4";
 
-// Configuration simplifiée et robuste pour éviter les problèmes d'authentification
+// Configuration optimisée pour la production
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    autoRefreshToken: true, 
+    autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true, // Activer pour détecter les sessions dans l'URL
+    detectSessionInUrl: false, // Désactivé pour éviter les problèmes de redirection
     storage: localStorage,
-    flowType: 'implicit', // Forcer le flow implicite pour plus de compatibilité
+    flowType: 'implicit',
+    debug: true, // Activer le débogage
   },
   global: {
     headers: {
       'X-Client-Info': 'streamgenius',
+      'Content-Type': 'application/json',
+    },
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
     },
   },
 });
 
 /**
- * Function to clean up all authentication data in local storage
- * This is useful for ensuring a clean state before login attempts
+ * Fonction radicale de nettoyage de toutes les données d'authentification
+ * Optimisée pour résoudre les problèmes de connexion persistants
  */
 export const clearStoredAuthData = () => {
   try {
-    // Clear all Supabase related items from localStorage
-    const keysToRemove = [];
-
-    // First identify all keys to remove
+    console.log("🧹 Nettoyage radical des données d'authentification");
+    
+    // Liste des préfixes de clés liées à l'authentification à supprimer
+    const authPrefixes = [
+      'sb-', 
+      'supabase', 
+      'auth.',
+      'auth_',
+      'token',
+      'access_token',
+      'refresh_token'
+    ];
+    
+    // Identifiant spécifique du projet Supabase à nettoyer
+    const projectRef = 'cfjibduhagxiwqkiyhqd';
+    
+    // Nettoyer les clés spécifiques au projet
+    const specificKeys = [
+      `sb-${projectRef}-auth-token`,
+      `sb-${projectRef}-auth-token-for-integration`,
+      `supabase.auth.token`,
+      `supabase.auth.refreshToken`,
+      `auth.token`,
+      `auth_session`,
+      `sb-access-token`,
+      `sb-refresh-token`,
+      'auth_checking',
+      'auth_refreshing',
+      'auth_redirecting',
+      'auth_redirect_timestamp',
+      'auth_check_timestamp',
+      'auth_retry_count',
+      'auth_in_progress'
+    ];
+    
+    // Supprimer les clés spécifiques
+    specificKeys.forEach(key => {
+      try {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      } catch (e) {
+        console.warn(`Impossible de supprimer la clé ${key}`, e);
+      }
+    });
+    
+    // Recherche et suppression de toutes les clés correspondant aux préfixes
+    let keysToRemove = [];
+    
+    // Vérification dans localStorage
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (
-          key.includes('supabase') || 
-          key.includes('sb-') || 
-          key.includes('auth') || 
-          key.includes('token')
-        )) {
+      if (key && authPrefixes.some(prefix => key.includes(prefix))) {
         keysToRemove.push(key);
       }
     }
     
-    // Then remove them (can't remove while iterating)
-    keysToRemove.forEach(key => localStorage.removeItem(key));
+    // Suppression des clés identifiées
+    keysToRemove.forEach(key => {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        console.warn(`Échec de suppression de ${key} dans localStorage`, e);
+      }
+    });
     
-    console.log(`Auth data cleared: removed ${keysToRemove.length} items`);
+    // Même opération pour sessionStorage
+    keysToRemove = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && authPrefixes.some(prefix => key.includes(prefix))) {
+        keysToRemove.push(key);
+      }
+    }
+    
+    keysToRemove.forEach(key => {
+      try {
+        sessionStorage.removeItem(key);
+      } catch (e) {
+        console.warn(`Échec de suppression de ${key} dans sessionStorage`, e);
+      }
+    });
+    
+    // Suppression complète des cookies liés à l'authentification
+    document.cookie.split(';').forEach(cookie => {
+      const cookieName = cookie.split('=')[0].trim();
+      if (authPrefixes.some(prefix => cookieName.includes(prefix))) {
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+      }
+    });
+    
+    console.log(`Nettoyage des données d'authentification terminé: ${keysToRemove.length} éléments supprimés`);
     return true;
   } catch (err) {
-    console.error("Error clearing authentication data:", err);
+    console.error("Erreur critique lors du nettoyage des données d'authentification:", err);
+    return false;
+  }
+};
+
+/**
+ * Fonction de vérification pour s'assurer qu'aucun jeton d'authentification n'existe
+ * @returns true si les données sont propres, false sinon
+ */
+export const verifyAuthDataIsClean = () => {
+  try {
+    const projectRef = 'cfjibduhagxiwqkiyhqd';
+    const tokenKey = `sb-${projectRef}-auth-token`;
+    
+    return !localStorage.getItem(tokenKey) && !sessionStorage.getItem(tokenKey);
+  } catch (e) {
+    console.error("Erreur lors de la vérification des données d'authentification:", e);
     return false;
   }
 };

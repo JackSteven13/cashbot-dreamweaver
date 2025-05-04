@@ -9,3 +9,6 @@
   Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
   Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, x-client-info
   Access-Control-Allow-Credentials: true
+  Access-Control-Max-Age: 86400
+  Cache-Control: no-cache
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload

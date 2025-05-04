@@ -9,16 +9,21 @@ export const useLoginFormState = (lastLoggedInEmail: string | null) => {
 
   // Nettoyer les données d'authentification au chargement du formulaire
   useEffect(() => {
-    console.log("Formulaire de connexion initialisé, nettoyage des données d'authentification");
-    // Nettoyage initial pour partir d'un état propre
-    clearStoredAuthData();
+    console.log("Formulaire de connexion initialisé, nettoyage radical des données d'authentification");
     
-    // Nettoyages supplémentaires des flags qui pourraient bloquer l'authentification
-    localStorage.removeItem('auth_checking');
-    localStorage.removeItem('auth_refreshing');
-    localStorage.removeItem('auth_redirecting');
-    localStorage.removeItem('auth_redirect_timestamp');
-    localStorage.removeItem('auth_check_timestamp');
+    // Fonction de nettoyage
+    const performCleanup = () => {
+      // Nettoyage initial pour partir d'un état propre
+      clearStoredAuthData();
+    };
+    
+    // Exécuter immédiatement
+    performCleanup();
+    
+    // Puis réexécuter après un court délai
+    const timer = setTimeout(performCleanup, 500);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   return {

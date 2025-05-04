@@ -12,14 +12,18 @@ http://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
 https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 http://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
-# Configuration de proxy direct pour Supabase
+# Configuration de proxy direct pour Supabase - MODIFICATIONS CRITIQUES
 /.supabase/auth/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200!
 /.supabase/rest/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200!
 /auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200!
 /rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200!
 /storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200!
 
-# Headers CORS pour toutes les routes API
+# Route spéciale pour les callbacks d'authentification
+/supabase-auth-callback/* /login 200!
+/auth/callback/* /login 200!
+
+# Headers CORS spécifiques pour l'authentification
 /.supabase/*
   Access-Control-Allow-Origin: *
   Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS
