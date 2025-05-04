@@ -30,7 +30,7 @@ export const useLoginSubmit = () => {
         throw new Error("Vous êtes actuellement hors ligne. Veuillez vérifier votre connexion internet.");
       }
 
-      // Version optimisée utilisant des options plus simples
+      // Méthode d'authentification simplifiée pour les appareils mobiles
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
