@@ -6,96 +6,140 @@ import type { Database } from './types';
 export const SUPABASE_URL = "https://cfjibduhagxiwqkiyhqd.supabase.co";
 export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4";
 
-// Détecter l'environnement pour adapter les paramètres
-const isProduction = typeof window !== 'undefined' && window.location.hostname.includes('streamgenius.io');
-console.log("Environnement détecté :", isProduction ? "PRODUCTION" : "DÉVELOPPEMENT");
+// Détecter l'environnement avec une méthode plus fiable
+export const isProductionEnvironment = () => {
+  return typeof window !== 'undefined' && 
+         (window.location.hostname.includes('streamgenius.io') || 
+          window.location.hostname.includes('netlify.app'));
+};
 
-// Configuration Supabase optimisée pour supporter production et développement
-export const supabase = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_PUBLISHABLE_KEY,
-  {
+// Fonction de log simplifiée
+const log = (message: string, ...args: any[]) => {
+  console.log(`[Supabase] ${message}`, ...args);
+};
+
+// Configuration Supabase ultra simplifiée pour la production
+const createSupabaseClient = () => {
+  const isProduction = isProductionEnvironment();
+  log(`Environnement détecté: ${isProduction ? "PRODUCTION" : "DÉVELOPPEMENT"}`);
+
+  const options = {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      // Configuration adaptée en fonction de l'environnement
-      flowType: isProduction ? 'pkce' : 'implicit',
+      // En production, utiliser un flow simplifié plutôt que PKCE
+      flowType: 'implicit',
       storage: localStorage,
       storageKey: 'sb-auth-token-' + (isProduction ? 'prod' : 'dev'),
-      // Désactiver ces options problématiques en production
+      // En production, désactiver les cookies pour éviter les problèmes CORS
       ...(isProduction && {
-        debug: true,
         cookieOptions: {
-          name: 'sb-auth-token-prod',
-          lifetime: 60 * 60 * 8, // 8 heures
-          domain: 'streamgenius.io',
-          sameSite: 'lax',
-          secure: true
+          secure: true,
+          sameSite: 'lax' as 'lax',
+          domain: undefined  // Laisser le navigateur gérer
         }
       })
     },
     global: {
       headers: {
-        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
         'X-Client-Info': 'streamgenius-web-' + (isProduction ? 'prod' : 'dev')
       }
     }
+  };
+
+  try {
+    // Tenter de créer le client avec une gestion explicite des erreurs
+    const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, options);
+    log("Client Supabase créé avec succès");
+    return client;
+  } catch (error) {
+    // En cas d'erreur lors de la création du client, créer une version de secours
+    console.error("Erreur lors de la création du client Supabase:", error);
+    
+    const fallbackOptions = {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+        storage: localStorage
+      }
+    };
+    
+    return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, fallbackOptions);
   }
-);
+};
+
+// Créer une instance du client
+export const supabase = createSupabaseClient();
 
 // Fonction de nettoyage complète pour les données d'authentification
-// avec adaptation spécifique au domaine
 export const clearStoredAuthData = () => {
   try {
-    console.log("Nettoyage des données d'authentification");
+    log("Nettoyage radical des données d'authentification");
     
-    // Détecter si nous sommes en production
-    const isProduction = typeof window !== 'undefined' && 
-                        window.location.hostname.includes('streamgenius.io');
+    // Nettoyer localStorage - approche très agressive
+    const keysToRemove = [
+      // Clés Supabase
+      'supabase.auth.token',
+      'sb-access-token',
+      'sb-refresh-token',
+      'sb-auth-token-prod',
+      'sb-auth-token-dev',
+      'sb-cfjibduhagxiwqkiyhqd-auth-token',
+      // Clés personnalisées
+      'auth_checking',
+      'auth_refreshing',
+      'auth_redirecting',
+      'auth_check_timestamp',
+      'auth_redirect_timestamp',
+      'auth_retries'
+    ];
     
-    // Nettoyer localStorage - approche exhaustive
+    // Supprimer les clés connues
+    keysToRemove.forEach(key => {
+      try {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      } catch (e) {
+        // Ignorer les erreurs
+      }
+    });
+    
+    // Suppression encore plus agressive - analyser toutes les clés
     Object.keys(localStorage).forEach(key => {
-      if (key.includes('supabase') || 
-          key.includes('sb-') || 
+      if (key.includes('sb-') || 
+          key.includes('supabase') || 
           key.includes('auth') || 
           key.includes('token')) {
         try {
           localStorage.removeItem(key);
         } catch (e) {
-          console.error(`Erreur lors de la suppression de ${key}:`, e);
+          // Ignorer les erreurs
         }
       }
     });
     
-    // Supprimer explicitement les clés connues
-    const knownKeys = [
-      'supabase.auth.token',
-      'sb-cfjibduhagxiwqkiyhqd-auth-token',
-      'sb-access-token',
-      'sb-refresh-token',
-      'sb-auth-token-prod',
-      'sb-auth-token-dev'
-    ];
-    
-    knownKeys.forEach(key => {
-      try {
-        localStorage.removeItem(key);
-        sessionStorage.removeItem(key);
-      } catch (e) {
-        console.error(`Erreur lors de la suppression de la clé ${key}:`, e);
+    // Nettoyer TOUS les cookies
+    if (document.cookie) {
+      const cookies = document.cookie.split(';');
+      
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i];
+        const eqPos = cookie.indexOf('=');
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+        
+        // Supprimer avec différents domaines/paths
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        
+        // Si en production, essayer avec domaine spécifique
+        if (isProductionEnvironment()) {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.streamgenius.io;`;
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=streamgenius.io;`;
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.netlify.app;`;
+        }
       }
-    });
-    
-    // Nettoyer les cookies avec un ciblage explicite pour tous les domaines possibles
-    document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    
-    // Traitement spécifique pour le domaine streamgenius.io
-    if (isProduction) {
-      document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.streamgenius.io;';
-      document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.streamgenius.io;';
-      document.cookie = 'sb-auth-token-prod=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.streamgenius.io;';
     }
     
     return true;
@@ -105,20 +149,18 @@ export const clearStoredAuthData = () => {
   }
 };
 
-// Fonctions d'aide pour la gestion de l'authentification en production
-export const isProductionEnvironment = () => {
-  return typeof window !== 'undefined' && window.location.hostname.includes('streamgenius.io');
-};
-
+// Fonction pour forcer une réinitialisation complète de l'authentification
 export const forceRetrySigning = async () => {
-  // Nettoyer tous les jetons
+  log("Réinitialisation complète de l'authentification");
+  
+  // Étape 1: Nettoyer toutes les données
   clearStoredAuthData();
   
   try {
-    // Déconnexion explicite
+    // Étape 2: Déconnexion explicite
     await supabase.auth.signOut({ scope: 'global' });
   } catch (e) {
-    console.error("Erreur lors de la déconnexion forcée:", e);
+    // Ignorer les erreurs
   }
   
   // Attendre un court délai
@@ -127,6 +169,20 @@ export const forceRetrySigning = async () => {
   // Vider à nouveau le stockage par précaution
   clearStoredAuthData();
   
+  // Étape 3: Vider le cache du navigateur pour les requêtes réseau
+  try {
+    if ('caches' in window) {
+      // Tenter de vider le cache des requêtes faites à Supabase
+      const caches = await window.caches.keys();
+      for (const cache of caches) {
+        if (cache.includes('supabase') || cache.includes('auth')) {
+          await window.caches.delete(cache);
+        }
+      }
+    }
+  } catch (e) {
+    // Ignorer les erreurs
+  }
+  
   return true;
 };
-

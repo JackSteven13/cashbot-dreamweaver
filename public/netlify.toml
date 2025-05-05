@@ -1,34 +1,34 @@
 
-# Configuration Netlify optimisée pour l'authentification
+# Configuration Netlify pour résoudre les problèmes d'authentification
 [build]
   command = "npm run build"
   publish = "dist"
 
-# Headers pour améliorer la connexion Supabase et CORS
+# Headers pour résoudre les problèmes CORS et CSP
 [[headers]]
   for = "/*"
   [headers.values]
-    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
-    X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * https://*.supabase.co wss://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *;"
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers = "authorization, x-client-info, apikey, content-type, content-length, accept, origin, x-requested-with"
+    Access-Control-Allow-Headers = "*"
     Access-Control-Max-Age = "86400"
     Access-Control-Allow-Credentials = "true"
+    Referrer-Policy = "no-referrer-when-downgrade"
+    Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * https://*.supabase.co wss://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *;"
+    X-Content-Type-Options = "nosniff"
 
 # Configurations spéciales pour l'authentification
 [[redirects]]
   from = "/auth/callback"
   to = "/index.html"
   status = 200
+  headers = { Access-Control-Allow-Origin = "*" }
 
 [[redirects]]
   from = "/auth/callback/*"
   to = "/index.html"
   status = 200
+  headers = { Access-Control-Allow-Origin = "*" }
 
 # Redirection HTTPS
 [[redirects]]
@@ -74,4 +74,3 @@
   from = "/*"
   to = "/index.html"
   status = 200
-

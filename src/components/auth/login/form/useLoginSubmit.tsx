@@ -7,6 +7,16 @@ import { supabase, clearStoredAuthData, isProductionEnvironment, forceRetrySigni
 export const useLoginSubmit = () => {
   const navigate = useNavigate();
 
+  // Fonction pour vérifier manuellement si on est authentifié
+  const checkAuthentication = async (): Promise<boolean> => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      return !!(data && data.session && data.session.user);
+    } catch (e) {
+      return false;
+    }
+  };
+
   const handleSubmit = async (
     e: React.FormEvent,
     email: string,
@@ -22,147 +32,153 @@ export const useLoginSubmit = () => {
       console.log("Environnement détecté:", isProduction ? "PRODUCTION" : "DÉVELOPPEMENT");
       
       // Nettoyage préventif radical
-      clearStoredAuthData();
+      await clearStoredAuthData();
       
       // Petit délai pour s'assurer que le nettoyage est effectif
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // En production, utiliser des options spécifiquement adaptées
-      const authOptions = isProduction 
-        ? {
-            // Options spécifiques à la production
-            emailRedirectTo: `https://streamgenius.io/dashboard`,
-            data: {
-              // Métadonnées additionnelles pour traçage des problèmes
-              login_from: 'production',
-              login_timestamp: new Date().toISOString()
-            }
-          }
-        : undefined;
-          
-      // Authentification adaptée selon l'environnement
-      console.log("Options d'authentification:", authOptions || "standards");
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password,
-      });
+      // Stockage des tentatives pour gestion d'erreurs
+      const retryCount = parseInt(localStorage.getItem('auth_retries') || '0');
+      localStorage.setItem('auth_retries', (retryCount + 1).toString());
       
-      if (error) {
-        console.error("Erreur d'authentification:", error);
+      // En production, utiliser une stratégie de connexion plus sophistiquée
+      if (isProduction) {
+        console.log("Stratégie de connexion spéciale pour la production");
         
-        // En production, essayer une seconde tentative avec nettoyage plus radical
-        if (isProduction) {
-          console.log("Échec en production, tentative de seconde chance");
-          
-          // Attendre un peu plus entre les tentatives en production
-          await forceRetrySigning();
-          
-          // Seconde tentative
-          const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+        try {
+          // Première tentative avec options simplifiées
+          const { error } = await supabase.auth.signInWithPassword({
             email: email.trim(),
             password: password,
           });
           
-          if (retryError) {
-            console.error("Échec de la seconde tentative:", retryError);
-            throw new Error(retryError.message || "Erreur de connexion persistante");
+          if (error) {
+            console.error("Première tentative d'authentification échouée:", error);
+            
+            // Si l'erreur semble liée au réseau, essayer avec une connexion simplifiée
+            if (error.message.includes('network') || 
+                error.message.includes('fetch') || 
+                error.message.includes('Failed') ||
+                error.message.includes('timeout')) {
+              
+              // Nettoyer à nouveau
+              await clearStoredAuthData();
+              
+              // Forcer la définition manuelle du localStorage après connexion réussie
+              console.log("Tentative de stockage manuel des informations d'authentification");
+              
+              // Tenter de se connecter avec une approche plus directe
+              const baseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1';
+              const headers = {
+                'Content-Type': 'application/json',
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4'
+              };
+              
+              const response = await fetch(`${baseUrl}/token?grant_type=password`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                  email: email.trim(),
+                  password: password
+                }),
+                credentials: 'omit' // Ne pas envoyer les cookies
+              });
+              
+              if (!response.ok) {
+                console.error("Échec de la connexion directe:", response.status);
+                throw new Error("Échec de connexion après plusieurs tentatives");
+              }
+              
+              const authData = await response.json();
+              
+              if (!authData.access_token || !authData.refresh_token) {
+                console.error("Données d'authentification incomplètes:", authData);
+                throw new Error("Données d'authentification incomplètes");
+              }
+              
+              // Stocker manuellement les tokens
+              localStorage.setItem('sb-auth-token-prod', JSON.stringify({
+                access_token: authData.access_token,
+                refresh_token: authData.refresh_token,
+                expires_at: Math.floor(Date.now() / 1000) + authData.expires_in
+              }));
+              
+              console.log("Authentification manuelle réussie");
+              
+              // Vérifier l'authentification
+              await new Promise(resolve => setTimeout(resolve, 800));
+              const isAuthenticated = await checkAuthentication();
+              
+              if (!isAuthenticated) {
+                console.error("Vérification d'authentification manuelle échouée");
+                throw new Error("Impossible de confirmer l'authentification");
+              }
+            } else {
+              throw error; // Autres erreurs non liées au réseau
+            }
           }
           
-          if (!retryData || !retryData.user || !retryData.session) {
-            throw new Error("Données d'authentification incomplètes après seconde tentative");
-          }
+          // Après connexion réussie, vérifier si la session est présente
+          await new Promise(resolve => setTimeout(resolve, 800));
+          const isAuthenticated = await checkAuthentication();
           
-          // Utiliser les données de la seconde tentative
-          data.user = retryData.user;
-          data.session = retryData.session;
-          console.log("Seconde tentative réussie!");
-        } else {
-          throw new Error(error.message || "Erreur de connexion");
+          if (!isAuthenticated) {
+            console.warn("Session non trouvée après connexion réussie");
+            // Afficher un avertissement mais continuer
+            toast({
+              title: "Attention",
+              description: "Connexion réussie mais session instable. Rechargement automatique possible.",
+              variant: "default"
+            });
+          }
+        } catch (error: any) {
+          console.error("Erreur complète:", error);
+          toast({
+            title: "Échec de connexion",
+            description: "Email ou mot de passe incorrect, ou problème de réseau.",
+            variant: "destructive"
+          });
+          
+          // Nettoyer après échec
+          clearStoredAuthData();
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        // En développement, processus standard
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: password,
+        });
+        
+        if (error) {
+          console.error("Erreur d'authentification:", error);
+          toast({
+            title: "Échec de connexion",
+            description: "Email ou mot de passe incorrect.",
+            variant: "destructive"
+          });
+          
+          clearStoredAuthData();
+          setIsLoading(false);
+          return;
         }
       }
       
-      if (!data || !data.user || !data.session) {
-        console.error("Données d'authentification incomplètes");
-        throw new Error("Données d'authentification incomplètes");
-      }
-      
-      console.log("Connexion réussie pour:", data.user.email);
+      console.log("Connexion réussie pour:", email);
       
       // Enregistrer l'email pour la prochaine connexion
       localStorage.setItem('last_logged_in_email', email);
-      
-      // Stockage explicite des tokens pour une meilleure persistance
-      try {
-        localStorage.setItem(
-          isProduction ? 'sb-auth-token-prod' : 'sb-cfjibduhagxiwqkiyhqd-auth-token',
-          JSON.stringify({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-            expires_at: data.session.expires_at
-          })
-        );
-        
-        // Sauvegarder aussi les informations utilisateur
-        localStorage.setItem('auth_user_id', data.user.id);
-        localStorage.setItem('auth_user_email', data.user.email || '');
-      } catch (e) {
-        console.error("Erreur lors du stockage manuel de la session:", e);
-      }
+      localStorage.removeItem('auth_retries'); // Réinitialiser les compteurs de tentatives
       
       // Afficher un toast de réussite
       toast({
         title: "Connexion réussie",
-        description: `Bienvenue ${data.user.user_metadata?.full_name || ''}!`,
+        description: "Redirection vers votre tableau de bord...",
       });
       
       // Attendre plus longtemps en production pour s'assurer que la session est bien établie
-      await new Promise(resolve => setTimeout(resolve, isProduction ? 2000 : 800));
-      
-      // Vérification explicite que la session est bien enregistrée
-      const { data: sessionCheck, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !sessionCheck.session) {
-        console.warn("Session non trouvée après connexion, tentative de correction");
-        
-        // En production, forcer un nouveau stockage des tokens
-        if (isProduction) {
-          try {
-            localStorage.setItem(
-              'sb-auth-token-prod',
-              JSON.stringify({
-                access_token: data.session.access_token,
-                refresh_token: data.session.refresh_token,
-                expires_at: data.session.expires_at
-              })
-            );
-            
-            console.log("Tokens forcés manuellement en localStorage");
-          } catch (e) {
-            console.error("Échec du forçage manuel des tokens:", e);
-          }
-        }
-        
-        // Nouvelle vérification après correction
-        const sessionResult = await supabase.auth.getSession();
-        
-        if (!sessionResult.data.session) {
-          console.error("Impossible de confirmer la session après correction");
-          
-          if (isProduction) {
-            // En production, procéder tout de même à la redirection avec un avertissement
-            toast({
-              title: "Authentification incomplète",
-              description: "La session pourrait être instable, contactez le support si nécessaire.",
-              variant: "destructive"
-            });
-          } else {
-            // En développement, bloquer et demander une reconnexion
-            throw new Error("Session non persistante après reconnexion");
-          }
-        } else {
-          console.log("Session vérifiée après correction");
-        }
-      }
+      await new Promise(resolve => setTimeout(resolve, isProductionEnvironment() ? 1500 : 800));
       
       // Redirection vers le tableau de bord avec remplacement de l'historique
       console.log("Redirection vers le dashboard");
@@ -170,8 +186,13 @@ export const useLoginSubmit = () => {
     } catch (error: any) {
       console.error("Erreur complète:", error);
       
-      // Message d'erreur par défaut
-      let errorMessage = "Email ou mot de passe incorrect.";
+      // Message d'erreur adapté
+      let errorMessage = "Email ou mot de passe incorrect, ou problème de connexion.";
+      
+      // En production, gérer différemment les erreurs réseau
+      if (isProductionEnvironment() && (error.message?.includes('network') || error.message?.includes('fetch'))) {
+        errorMessage = "Problème de connexion au serveur d'authentification. Veuillez vérifier votre connexion internet.";
+      }
       
       // Notification d'erreur
       toast({
@@ -191,4 +212,3 @@ export const useLoginSubmit = () => {
 };
 
 export default useLoginSubmit;
-
