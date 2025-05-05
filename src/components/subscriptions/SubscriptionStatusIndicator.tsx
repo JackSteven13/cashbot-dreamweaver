@@ -19,7 +19,8 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
     const verifySubscriptionWithSupabase = async () => {
       try {
         // Vérifier si l'utilisateur est connecté
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data } = await supabase.auth.getSession();
+        const session = data.session;
         
         if (session) {
           // Essayer d'abord la fonction RPC pour une récupération fiable
@@ -27,7 +28,7 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
             const { data: rpcData, error: rpcError } = await supabase
               .rpc('get_current_subscription', { 
                 user_id: session.user.id 
-              });
+              }) as any;
               
             if (!rpcError && rpcData) {
               // Si le retour est "alpha", le remplacer par "starter" pour la migration
@@ -43,7 +44,7 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
                 .from('user_balances')
                 .select('subscription')
                 .eq('id', session.user.id)
-                .single();
+                .single() as any;
                 
               if (!directError && userData && userData.subscription) {
                 // Si le retour est "alpha", le remplacer par "starter" pour la migration
@@ -63,7 +64,7 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
               .from('user_balances')
               .select('subscription')
               .eq('id', session.user.id)
-              .single();
+              .single() as any;
               
             if (!directError && userData && userData.subscription) {
               // Si le retour est "alpha", le remplacer par "starter" pour la migration

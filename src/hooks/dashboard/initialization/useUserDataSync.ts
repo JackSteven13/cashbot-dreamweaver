@@ -51,13 +51,13 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
             .from('user_balances')
             .select('subscription, balance, daily_session_count')
             .eq('id', session.user.id)
-            .maybeSingle();
+            .maybeSingle() as any;
             
           const profileResult = await supabase
             .from('profiles')
             .select('full_name, email')
             .eq('id', session.user.id)
-            .maybeSingle();
+            .maybeSingle() as any;
           
           // Check results and update localStorage
           if (!userBalanceResult.error && userBalanceResult.data) {

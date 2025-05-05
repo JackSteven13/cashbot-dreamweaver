@@ -1,5 +1,5 @@
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 // Configuration des URLs
@@ -19,7 +19,7 @@ const log = (message: string, ...args: any[]) => {
 };
 
 // Configuration Supabase avec typage explicite
-const createSupabaseClient = () => {
+const createSupabaseClient = (): SupabaseClient<Database> => {
   const isProduction = isProductionEnvironment();
   log(`Environnement détecté: ${isProduction ? "PRODUCTION" : "DÉVELOPPEMENT"}`);
 

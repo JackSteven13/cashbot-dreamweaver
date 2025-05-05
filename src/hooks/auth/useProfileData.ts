@@ -26,11 +26,13 @@ export const useProfileData = (): UseProfileDataResult => {
       }
       
       // Get profile for welcome message
-      const { data: profileData, error: profileError } = await supabase
+      const response = await supabase
         .from('profiles')
         .select('full_name')
         .eq('id', userId)
-        .maybeSingle();
+        .maybeSingle() as any;
+      
+      const { data: profileData, error: profileError } = response;
       
       if (profileError) {
         console.error("Error fetching profile:", profileError);
