@@ -1,5 +1,5 @@
 
-import { supabase, isProductionEnvironment } from '@/integrations/supabase/client';
+import { supabase, isProductionEnvironment, SUPABASE_URL } from '@/integrations/supabase/client';
 
 /**
  * Vérifier la connectivité réseau
@@ -13,7 +13,7 @@ const checkNetworkConnectivity = async (): Promise<boolean> => {
   // Vérifier la connexion à Supabase avec une requête simple
   try {
     const startTime = Date.now();
-    const response = await fetch(`${supabase.supabaseUrl}`, {
+    const response = await fetch(`${SUPABASE_URL}`, {
       method: 'HEAD',
       mode: 'no-cors', // Permet de tester la connexion sans CORS
       cache: 'no-store'

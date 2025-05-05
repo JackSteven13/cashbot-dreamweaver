@@ -68,3 +68,30 @@ export const addTransaction = async (
     return null;
   }
 };
+
+/**
+ * Calculate today's total gains - critical for enforcing daily limits
+ */
+export const calculateTodaysGains = async (userId: string): Promise<number> => {
+  try {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('gain')
+      .eq('user_id', userId)
+      .eq('date', today);
+      
+    if (error) {
+      console.error("Error calculating today's gains:", error);
+      return 0;
+    }
+    
+    const total = (data || []).reduce((sum, tx) => sum + (tx.gain || 0), 0);
+    console.log(`Today's total gains for ${userId}: ${total}€`);
+    return total;
+  } catch (error) {
+    console.error("Error calculating today's gains:", error);
+    return 0;
+  }
+};
