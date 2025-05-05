@@ -11,9 +11,11 @@ export {
   checkDailyLimit,
   getEffectiveSubscription,
   subscribeToAuthChanges,
-  unsubscribeFromAuthChanges,
-  isUserAuthenticated
+  unsubscribeFromAuthChanges
 } from './subscriptionUtils';
+
+// Re-export isUserAuthenticated from verificationUtils instead of subscriptionUtils
+export { isUserAuthenticated } from './verificationUtils';
 
 // Function to check if network connection is valid (connected to the internet)
 export const hasValidConnection = async (): Promise<boolean> => {
