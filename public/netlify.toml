@@ -1,10 +1,10 @@
 
-# Configuration optimisée pour Netlify
+# Configuration Netlify simplifiée
 [build]
   command = "npm run build"
   publish = "dist"
 
-# Paramètres spécifiques pour améliorer la connexion Supabase
+# Headers pour améliorer la connexion Supabase
 [[headers]]
   for = "/*"
   [headers.values]
@@ -22,11 +22,4 @@
   from = "http://*"
   to = "https://:splat"
   status = 301
-  force = true
-
-# Configuration d'accès direct à Supabase
-[[redirects]]
-  from = "/auth/v1/*"
-  to = "https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat"
-  status = 200
   force = true

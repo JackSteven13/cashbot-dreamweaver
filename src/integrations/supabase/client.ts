@@ -6,70 +6,34 @@ import type { Database } from './types';
 export const SUPABASE_URL = "https://cfjibduhagxiwqkiyhqd.supabase.co";
 export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4";
 
-// Client Supabase avec configuration ultra simplifiée
+// Client Supabase avec une configuration ULTRA simplifiée
 export const supabase = createClient<Database>(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY,
   {
     auth: {
-      autoRefreshToken: true,
       persistSession: true,
-      storageKey: 'supabase-auth-token',
-      storage: localStorage,
+      autoRefreshToken: true,
       detectSessionInUrl: false,
-      flowType: 'pkce'  // Utilisation du flux PKCE plus stable
+      flowType: 'implicit' // Changement de PKCE à implicit pour simplifier
     }
   }
 );
 
-// Fonction radicale de nettoyage, garantissant qu'aucune donnée d'authentification ne subsiste
+// Fonction de nettoyage simplifiée
 export const clearStoredAuthData = () => {
   try {
-    console.log("🔥 Nettoyage RADICAL des données d'authentification");
+    // Nettoyer localStorage
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
     
-    // 1. Nettoyer TOUT le localStorage lié à l'auth
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (
-          key.includes('sb-') || 
-          key.includes('supabase') || 
-          key.includes('auth') ||
-          key.includes('token')
-      )) {
-        try {
-          console.log(`Suppression de: ${key}`);
-          localStorage.removeItem(key);
-        } catch (e) {}
-      }
-    }
-    
-    // 2. Nettoyer TOUT le sessionStorage
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key && (
-          key.includes('sb-') || 
-          key.includes('supabase') || 
-          key.includes('auth')
-      )) {
-        try {
-          sessionStorage.removeItem(key);
-        } catch (e) {}
-      }
-    }
-    
-    // 3. Éliminer TOUS les cookies pertinents
-    document.cookie.split(';').forEach(cookie => {
-      const cookieName = cookie.split('=')[0].trim();
-      if (cookieName.includes('sb-') || cookieName.includes('supabase')) {
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.streamgenius.io; secure; samesite=strict`;
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; secure; samesite=strict`;
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-      }
-    });
+    // Nettoyer les cookies
+    document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
     return true;
   } catch (err) {
-    console.error("Erreur critique lors du nettoyage des données d'authentification:", err);
+    console.error("Erreur de nettoyage:", err);
     return false;
   }
 };
