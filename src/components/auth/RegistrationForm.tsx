@@ -1,14 +1,12 @@
 
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { ArrowRight, Loader2, Shield, AlertCircle } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import Button from '@/components/Button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
 import { handleError, ErrorType } from '@/utils/errorHandling';
-import PasswordStrengthMeter from '@/components/auth/PasswordStrengthMeter';
-import { isPasswordSecure } from '@/utils/auth/passwordValidator';
 
 interface RegistrationFormProps {
   onSuccessfulRegistration: (name: string) => void;
@@ -20,7 +18,6 @@ const RegistrationForm = ({ onSuccessfulRegistration }: RegistrationFormProps) =
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [passwordChecked, setPasswordChecked] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   
   const location = useLocation();
@@ -43,11 +40,9 @@ const RegistrationForm = ({ onSuccessfulRegistration }: RegistrationFormProps) =
       return;
     }
     
-    // Vérifier la sécurité du mot de passe
-    setPasswordChecked(true);
-    
-    if (!isPasswordSecure(password, email)) {
-      toast.error("Votre mot de passe n'est pas assez sécurisé");
+    // Vérification basique du mot de passe
+    if (password.length < 8) {
+      toast.error("Votre mot de passe doit contenir au moins 8 caractères");
       return;
     }
     
@@ -172,8 +167,9 @@ const RegistrationForm = ({ onSuccessfulRegistration }: RegistrationFormProps) =
           placeholder="••••••••"
           required
         />
-        {/* Afficher la force du mot de passe */}
-        <PasswordStrengthMeter password={password} email={email} />
+        <p className="text-xs text-gray-400 mt-1">
+          8 caractères minimum
+        </p>
       </div>
       
       <div>
@@ -190,26 +186,6 @@ const RegistrationForm = ({ onSuccessfulRegistration }: RegistrationFormProps) =
           required
         />
       </div>
-      
-      {!isPasswordSecure(password, email) && passwordChecked && (
-        <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800 flex items-start gap-2">
-          <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium">Mot de passe insuffisamment sécurisé</p>
-            <p className="text-xs mt-1">Veuillez renforcer votre mot de passe en suivant les recommandations ci-dessus.</p>
-          </div>
-        </div>
-      )}
-      
-      {isPasswordSecure(password, email) && password && (
-        <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-800 flex items-start gap-2">
-          <Shield size={18} className="mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium">Mot de passe sécurisé</p>
-            <p className="text-xs mt-1">Votre mot de passe répond aux critères de sécurité recommandés.</p>
-          </div>
-        </div>
-      )}
       
       {referralCode && (
         <div className="bg-amber-50 border border-amber-100 rounded-md p-2 text-sm text-amber-800">

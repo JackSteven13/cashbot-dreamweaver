@@ -17,53 +17,31 @@ export const useLoginSubmit = () => {
     setIsLoading(true);
     
     try {
-      console.log("=== DÉBUT PROCÉDURE DE CONNEXION - MÉTHODE FORTE ===");
+      console.log("=== DÉBUT PROCÉDURE DE CONNEXION - MÉTHODE DIRECTE ===");
       
       // 1. Nettoyage RADICAL avant tout
       console.log("Étape 1: Nettoyage radical des données d'authentification");
       clearStoredAuthData();
       
-      // 2. Délai pour s'assurer que le nettoyage est complet
-      console.log("Étape 2: Pause pour traitement complet du nettoyage");
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // 2. Tentative de connexion immédiate et directe
+      console.log("Étape 2: Tentative de connexion directe simplifiée");
       
-      // 3. Tentative de connexion directe avec timeout de sécurité
-      console.log("Étape 3: Tentative de connexion avec timeout de 15s");
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password,
+      });
       
-      // Création d'une promesse avec timeout pour éviter les blocages
-      const loginWithTimeout = async () => {
-        // Création d'un controller pour pouvoir annuler la requête si besoin
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        
-        try {
-          // Tentative de connexion avec le client Supabase standard
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password: password,
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (error) throw error;
-          return data;
-        } catch (err) {
-          clearTimeout(timeoutId);
-          throw err;
-        }
-      };
-      
-      const data = await loginWithTimeout();
+      if (error) throw error;
       
       if (!data || !data.user || !data.session) {
         throw new Error("La réponse d'authentification est incomplète");
       }
       
-      // 4. Stockage de l'email pour la prochaine connexion
-      console.log("Étape 4: Sauvegarde de l'email et finalisation");
+      // 3. Stockage de l'email pour la prochaine connexion
+      console.log("Étape 3: Sauvegarde de l'email et finalisation");
       localStorage.setItem('last_logged_in_email', email);
       
-      // 5. Toast et redirection
+      // 4. Toast et redirection
       toast({
         title: "Connexion réussie",
         description: "Vous êtes maintenant connecté.",
@@ -75,9 +53,9 @@ export const useLoginSubmit = () => {
       }, 300);
       
     } catch (error: any) {
-      console.error("ERREUR DE CONNEXION (détaillée):", error);
+      console.error("ERREUR DE CONNEXION:", error);
       
-      // Message d'erreur simplifié et clair
+      // Message d'erreur simplifié
       let errorMessage = "Impossible de se connecter.";
       
       if (error.message) {

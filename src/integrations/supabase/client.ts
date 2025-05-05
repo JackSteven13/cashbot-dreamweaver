@@ -6,7 +6,7 @@ import type { Database } from './types';
 export const SUPABASE_URL = "https://cfjibduhagxiwqkiyhqd.supabase.co";
 export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4";
 
-// Client Supabase avec configuration simplifiée pour maximiser la stabilité
+// Client Supabase avec configuration ultra simplifiée
 export const supabase = createClient<Database>(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY,
@@ -17,7 +17,7 @@ export const supabase = createClient<Database>(
       storageKey: 'supabase-auth-token',
       storage: localStorage,
       detectSessionInUrl: false,
-      flowType: 'implicit'
+      flowType: 'pkce'  // Utilisation du flux PKCE plus stable
     }
   }
 );
@@ -65,22 +65,6 @@ export const clearStoredAuthData = () => {
         document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; secure; samesite=strict`;
         document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
       }
-    });
-    
-    // 4. Forcer la suppression spécifique des clés problématiques
-    const specificKeys = [
-      'sb-cfjibduhagxiwqkiyhqd-auth-token',
-      'sb-cfjibduhagxiwqkiyhqd-auth-refresh',
-      'supabase-auth-token',
-      'supabase.auth.token',
-      'auth.token'
-    ];
-    
-    specificKeys.forEach(key => {
-      try {
-        localStorage.removeItem(key);
-        sessionStorage.removeItem(key);
-      } catch (e) {}
     });
     
     return true;
