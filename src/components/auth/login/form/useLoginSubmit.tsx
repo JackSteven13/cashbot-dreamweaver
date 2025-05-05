@@ -20,14 +20,15 @@ export const useLoginSubmit = () => {
       console.log("Nettoyage préventif des données d'authentification...");
       clearStoredAuthData();
       
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Petit délai pour s'assurer que le nettoyage est terminé
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       console.log("Tentative de connexion avec email:", email);
       
-      // Version simplifiée de l'authentification sans options complexes
+      // Version améliorée de l'authentification avec options explicites pour meilleure compatibilité
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
-        password: password
+        password: password,
       });
       
       if (error) {
@@ -35,12 +36,34 @@ export const useLoginSubmit = () => {
         throw new Error(error.message || "Erreur de connexion");
       }
       
-      if (!data || !data.user) {
+      if (!data || !data.user || !data.session) {
         console.error("Données d'authentification incomplètes");
         throw new Error("Données d'authentification incomplètes");
       }
       
       console.log("Connexion réussie pour:", data.user.email);
+      console.log("Informations de session:", {
+        expiresAt: data.session.expires_at,
+        userId: data.session.user.id
+      });
+      
+      // Vérifier explicitement que la session est stockée
+      const storedSession = localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+      if (!storedSession) {
+        console.warn("Session non trouvée dans localStorage après connexion, tentative de correction");
+        
+        // Attendre un peu et vérifier à nouveau
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const retryStoredSession = localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+        
+        if (!retryStoredSession) {
+          console.error("Impossible de confirmer le stockage de la session");
+        } else {
+          console.log("Session trouvée après délai");
+        }
+      } else {
+        console.log("Session bien stockée dans localStorage");
+      }
       
       // Enregistrer l'email pour la prochaine connexion
       localStorage.setItem('last_logged_in_email', email);
@@ -51,8 +74,8 @@ export const useLoginSubmit = () => {
         description: `Bienvenue ${data.user.user_metadata?.full_name || ''}!`,
       });
       
-      // Délai court pour laisser le toast s'afficher
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Délai plus long pour s'assurer que tout est bien configuré avant la redirection
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Redirection vers le tableau de bord avec remplacement de l'historique
       navigate('/dashboard', { replace: true });
@@ -68,6 +91,9 @@ export const useLoginSubmit = () => {
         description: errorMessage,
         variant: "destructive"
       });
+      
+      // Nettoyage après échec
+      clearStoredAuthData();
     } finally {
       setIsLoading(false);
     }

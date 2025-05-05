@@ -8,7 +8,7 @@ import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
 
-  // Nettoyage radical au chargement de la page
+  // Nettoyage radical au chargement de la page avec retentatives
   useEffect(() => {    
     // Déconnexion et nettoyage complet
     const cleanupAuth = async () => {
@@ -21,13 +21,40 @@ const Login = () => {
         // Déconnexion explicite de Supabase
         await supabase.auth.signOut({ scope: 'global' });
         
+        // Ajouter un délai pour s'assurer que la déconnexion est traitée
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
         // Second nettoyage après la déconnexion
         clearStoredAuthData();
         
-        // Délai court puis troisième nettoyage pour s'assurer que tout est propre
+        // Troisième nettoyage après un délai pour s'assurer que tout est propre
         setTimeout(() => {
           clearStoredAuthData();
         }, 500);
+        
+        // Quatrième nettoyage final après un délai plus long
+        setTimeout(() => {
+          // Suppression explicite des cookies spécifiques à Supabase
+          document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.streamgenius.io;';
+          document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.streamgenius.io;';
+          
+          // Suppression sans domaine
+          document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          
+          clearStoredAuthData();
+          
+          // Vérification finale de l'état de connexion
+          supabase.auth.getSession().then(({ data }) => {
+            if (data.session) {
+              console.warn("Session toujours présente après nettoyage, forçage supplémentaire");
+              supabase.auth.signOut();
+              clearStoredAuthData();
+            } else {
+              console.log("Confirmation: aucune session active");
+            }
+          });
+        }, 1000);
       } catch (err) {
         console.error("Erreur de nettoyage d'authentification:", err);
         // Malgré l'erreur, tenter un dernier nettoyage

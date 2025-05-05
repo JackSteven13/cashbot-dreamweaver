@@ -14,9 +14,11 @@ https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 /rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200
 /storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200
 
-# Route SPÉCIALE pour les callbacks d'authentification
-/auth/callback/* /login 200!
-/auth/* /login 200!
+# Route SPÉCIALE pour les callbacks d'authentification - amélioration pour les déploiements
+/auth/callback https://streamgenius.io/login 200!
+/auth/callback/* https://streamgenius.io/login 200!
+/auth/* https://streamgenius.io/login 200!
 
 # SPA fallback pour toutes les autres routes
 /* /index.html 200
+
