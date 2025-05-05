@@ -18,7 +18,7 @@ const log = (message: string, ...args: any[]) => {
   console.log(`[Supabase] ${message}`, ...args);
 };
 
-// Configuration Supabase ultra simplifiée pour la production
+// Configuration Supabase avec typage explicite
 const createSupabaseClient = () => {
   const isProduction = isProductionEnvironment();
   log(`Environnement détecté: ${isProduction ? "PRODUCTION" : "DÉVELOPPEMENT"}`);
@@ -28,8 +28,8 @@ const createSupabaseClient = () => {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      // En production, utiliser un flow simplifié plutôt que PKCE
-      flowType: 'implicit',
+      // En production, utiliser un flow simplifié
+      flowType: isProduction ? 'implicit' : 'pkce',
       storage: localStorage,
       storageKey: 'sb-auth-token-' + (isProduction ? 'prod' : 'dev'),
       // En production, désactiver les cookies pour éviter les problèmes CORS
@@ -50,7 +50,7 @@ const createSupabaseClient = () => {
   };
 
   try {
-    // Tenter de créer le client avec une gestion explicite des erreurs
+    // Utiliser un typage explicite pour le client Supabase
     const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, options);
     log("Client Supabase créé avec succès");
     return client;

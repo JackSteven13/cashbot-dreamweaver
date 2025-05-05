@@ -23,24 +23,42 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
         
         if (session) {
           // Essayer d'abord la fonction RPC pour une récupération fiable
-          const { data: rpcData, error: rpcError } = await supabase
-            .rpc('get_current_subscription', { 
-              user_id: session.user.id 
-            }, {
-              head: false, // Contourner le cache
-              count: 'exact' as const
-            }) as { data: string | null, error: any };
-            
-          if (!rpcError && rpcData) {
-            // Si le retour est "alpha", le remplacer par "starter" pour la migration
-            const mappedSubscription = rpcData === "alpha" ? "starter" : rpcData;
-            setVerifiedSubscription(mappedSubscription);
-            // Force la mise à jour du localStorage pour cohérence
-            if (mappedSubscription !== localStorage.getItem('subscription')) {
-              localStorage.setItem('subscription', mappedSubscription);
+          try {
+            const { data: rpcData, error: rpcError } = await supabase
+              .rpc('get_current_subscription', { 
+                user_id: session.user.id 
+              });
+              
+            if (!rpcError && rpcData) {
+              // Si le retour est "alpha", le remplacer par "starter" pour la migration
+              const mappedSubscription = rpcData === "alpha" ? "starter" : rpcData;
+              setVerifiedSubscription(mappedSubscription);
+              // Force la mise à jour du localStorage pour cohérence
+              if (mappedSubscription !== localStorage.getItem('subscription')) {
+                localStorage.setItem('subscription', mappedSubscription);
+              }
+            } else {
+              // Fallback sur requête directe
+              const { data: userData, error: directError } = await supabase
+                .from('user_balances')
+                .select('subscription')
+                .eq('id', session.user.id)
+                .single();
+                
+              if (!directError && userData && userData.subscription) {
+                // Si le retour est "alpha", le remplacer par "starter" pour la migration
+                const mappedSubscription = userData.subscription === "alpha" ? "starter" : userData.subscription;
+                setVerifiedSubscription(mappedSubscription);
+                // Force aussi la mise à jour du localStorage
+                if (mappedSubscription !== localStorage.getItem('subscription')) {
+                  localStorage.setItem('subscription', mappedSubscription);
+                }
+              }
             }
-          } else {
-            // Fallback sur requête directe
+          } catch (error) {
+            console.error("Erreur RPC:", error);
+            
+            // Fallback sur requête directe en cas d'échec RPC
             const { data: userData, error: directError } = await supabase
               .from('user_balances')
               .select('subscription')

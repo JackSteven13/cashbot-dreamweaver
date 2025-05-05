@@ -95,11 +95,16 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
       lastUpdateRef.current = Date.now();
       
       // Vérifier d'abord si la limite quotidienne est atteinte
-      const { data: userData } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('user_balances')
         .select('subscription')
         .eq('id', userId)
         .single();
+      
+      if (userError) {
+        console.error("Erreur lors de la récupération des données utilisateur:", userError);
+        return;
+      }
       
       const subscription = userData?.subscription || 'freemium';
       const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
@@ -163,25 +168,40 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
         
         // Ajouter une transaction en arrière-plan
         const report = `Analyse automatique (${new Date().toLocaleTimeString()})`;
-        await supabase
+        const { error: txError } = await supabase
           .from('transactions')
           .insert([
             { user_id: userId, gain: finalGain, report, date: new Date().toISOString() }
           ]);
           
+        if (txError) {
+          console.error("Erreur lors de l'ajout de la transaction:", txError);
+          return;
+        }
+          
         // Mettre à jour le solde dans la base de données
-        const { data: userBalanceData } = await supabase
+        const { data: userBalanceData, error: balanceError } = await supabase
           .from('user_balances')
           .select('balance')
           .eq('id', userId)
           .single();
           
+        if (balanceError) {
+          console.error("Erreur lors de la récupération du solde:", balanceError);
+          return;
+        }
+        
         const newBalance = (userBalanceData?.balance || 0) + finalGain;
         
-        await supabase
+        const { error: updateError } = await supabase
           .from('user_balances')
           .update({ balance: newBalance })
           .eq('id', userId);
+          
+        if (updateError) {
+          console.error("Erreur lors de la mise à jour du solde:", updateError);
+          return;
+        }
           
         // Forcer une mise à jour de l'interface avec animation
         window.dispatchEvent(new CustomEvent('balance:update', {
@@ -227,25 +247,40 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
       
       // Ajouter une transaction en arrière-plan
       const report = `Analyse automatique (${new Date().toLocaleTimeString()})`;
-      await supabase
+      const { error: txError } = await supabase
         .from('transactions')
         .insert([
           { user_id: userId, gain: roundedGain, report, date: new Date().toISOString() }
         ]);
         
+      if (txError) {
+        console.error("Erreur lors de l'ajout de la transaction:", txError);
+        return;
+      }
+        
       // Mettre à jour le solde dans la base de données
-      const { data: userBalanceData } = await supabase
+      const { data: userBalanceData, error: balanceError } = await supabase
         .from('user_balances')
         .select('balance')
         .eq('id', userId)
         .single();
         
+      if (balanceError) {
+        console.error("Erreur lors de la récupération du solde:", balanceError);
+        return;
+      }
+      
       const newBalance = (userBalanceData?.balance || 0) + roundedGain;
       
-      await supabase
+      const { error: updateError } = await supabase
         .from('user_balances')
         .update({ balance: newBalance })
         .eq('id', userId);
+        
+      if (updateError) {
+        console.error("Erreur lors de la mise à jour du solde:", updateError);
+        return;
+      }
         
       // Forcer une mise à jour de l'interface avec animation
       window.dispatchEvent(new CustomEvent('balance:update', {
