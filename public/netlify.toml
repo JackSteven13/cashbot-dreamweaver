@@ -18,6 +18,17 @@
     Access-Control-Allow-Headers = "authorization, x-client-info, apikey, content-type, content-length, accept, origin, x-requested-with"
     Access-Control-Max-Age = "86400"
 
+# Routes spécifiques pour l'authentification
+[[redirects]]
+  from = "/auth/callback"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/auth/callback/*"
+  to = "/index.html"
+  status = 200
+
 # Redirection HTTPS
 [[redirects]]
   from = "http://*"

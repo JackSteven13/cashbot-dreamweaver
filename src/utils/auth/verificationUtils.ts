@@ -46,22 +46,17 @@ export const verifyAuth = async (): Promise<boolean> => {
       }
     }
     
-    // Test supplémentaire: essayer de récupérer le profil utilisateur pour confirmer que l'auth fonctionne
-    try {
-      const userId = data.session.user.id;
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle();
-        
-      if (profileError) {
-        console.warn("Authentification validée mais accès au profil impossible:", profileError);
-        // On ne considère pas ça comme une erreur bloquante
+    // Test supplémentaire pour environnement de production: vérifier si le domaine est streamgenius.io
+    const isProduction = window.location.hostname.includes('streamgenius.io');
+    if (isProduction) {
+      console.log("Environnement de production détecté, vérification supplémentaire");
+      
+      // Vérification additionnelle: les cookies sont-ils correctement définis?
+      const hasSbCookie = document.cookie.includes('sb-');
+      if (!hasSbCookie) {
+        console.warn("Aucun cookie Supabase trouvé en production");
+        // On continue malgré tout, car les cookies peuvent être gérés différemment
       }
-    } catch (profileError) {
-      console.warn("Erreur lors de la vérification du profil:", profileError);
-      // Ne pas échouer si cette vérification supplémentaire échoue
     }
     
     // Session validée avec toutes les vérifications

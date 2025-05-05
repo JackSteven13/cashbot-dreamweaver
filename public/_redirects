@@ -9,16 +9,15 @@ https://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
 # Redirection www vers non-www
 https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
-# Configuration DIRECTE pour Supabase - sans proxy pour éviter les problèmes CORS
+# Configuration Supabase - version directe sans proxy
 /auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200
 /rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200
 /storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200
 
-# Route SPÉCIALE pour les callbacks d'authentification - amélioration pour les déploiements
-/auth/callback https://streamgenius.io/login 200!
-/auth/callback/* https://streamgenius.io/login 200!
-/auth/* https://streamgenius.io/login 200!
+# Routes SPÉCIALES pour les callbacks d'authentification
+/auth/callback/* /index.html 200
+/auth/v1/callback/* /index.html 200
+/auth/* /index.html 200
 
 # SPA fallback pour toutes les autres routes
 /* /index.html 200
-
