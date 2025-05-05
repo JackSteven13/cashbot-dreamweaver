@@ -8,28 +8,14 @@ import { clearStoredAuthData } from "@/integrations/supabase/client";
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
 
-  // Nettoyage radical au chargement de la page pour partir avec un état propre
+  // Nettoyage radical au chargement de la page
   useEffect(() => {
     console.log("Page de connexion chargée, nettoyage radical des données d'authentification");
+    clearStoredAuthData();
     
-    const performCleanup = () => {
-      // Nettoyer toutes les données d'authentification
-      clearStoredAuthData();
-    };
-    
-    // Exécuter immédiatement
-    performCleanup();
-    
-    // Réexécuter après un court délai pour s'assurer que tout est propre
-    const cleanupTimeout = setTimeout(performCleanup, 500);
-    
-    // Définir un intervalle pour nettoyer périodiquement (au cas où)
-    const cleanupInterval = setInterval(performCleanup, 5000);
-    
-    return () => {
-      clearTimeout(cleanupTimeout);
-      clearInterval(cleanupInterval);
-    };
+    // Répéter le nettoyage après un court délai pour s'assurer que tout est bien nettoyé
+    const cleanupTimeout = setTimeout(clearStoredAuthData, 500);
+    return () => clearTimeout(cleanupTimeout);
   }, []);
 
   return (

@@ -1,37 +1,30 @@
 
-# Base configuration for Netlify
+# Configuration optimisée pour Netlify
 [build]
   command = "npm run build"
   publish = "dist"
 
-# Headers to improve security and performance
+# Headers de sécurité et CORS pour toutes les routes
 [[headers]]
   for = "/*"
   [headers.values]
     Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    # Configuration CSP très permissive pour résoudre les problèmes d'authentification
-    Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * wss://* https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *;"
-    # Headers CORS très permissifs pour l'authentification
+    Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *;"
     Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
     Access-Control-Allow-Headers = "*"
-    Access-Control-Allow-Credentials = "true"
-    Access-Control-Max-Age = "86400"
-    Cache-Control = "no-store, must-revalidate"
-    Pragma = "no-cache"
 
-# Force HTTPS avec priorité maximale
+# Force HTTPS
 [[redirects]]
   from = "http://*"
   to = "https://:splat"
   status = 301
   force = true
 
-# Redirection prioritaire de streamgenius.fr vers streamgenius.io
+# Redirection .fr vers .io
 [[redirects]]
   from = "https://streamgenius.fr/*"
   to = "https://streamgenius.io/:splat"
@@ -44,81 +37,14 @@
   status = 301
   force = true
 
-# Redirection www vers non-www
-[[redirects]]
-  from = "https://www.streamgenius.io/*"
-  to = "https://streamgenius.io/:splat"
-  status = 301
-  force = true
-
-# Configuration de proxy direct pour Supabase Auth - CRITIQUE
-[[redirects]]
-  from = "/.supabase/auth/*"
-  to = "https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat"
-  status = 200
-  force = true
-  [redirects.headers]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-    Access-Control-Allow-Headers = "*"
-    Access-Control-Allow-Credentials = "true"
-
-# Configuration pour les options CORS spécifiques à l'authentification
-[[redirects]]
-  from = "/auth/v1/*"  
-  to = "https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat"
-  status = 200
-  force = true
-  [redirects.headers]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS" 
-    Access-Control-Allow-Headers = "Authorization, X-Client-Info, apikey, Content-Type, Accept, Origin, X-Requested-With"
-    Access-Control-Allow-Credentials = "true"
-    Access-Control-Max-Age = "86400"
-
-# Option intégrée pour les requêtes OPTIONS vers l'API d'authentification
+# Configuration d'authentification sans proxy - accès direct
 [[redirects]]
   from = "/auth/v1/*"
   to = "https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat"
   status = 200
   force = true
-  methods = ["OPTIONS"]
-  [redirects.headers]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-    Access-Control-Allow-Headers = "*"
-    Access-Control-Max-Age = "86400"
-    Content-Type = "text/plain"
-    Content-Length = "0"
 
-# Configuration de redirection spécifique pour l'API REST
-[[redirects]]
-  from = "/rest/v1/*"
-  to = "https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat"
-  status = 200
-  force = true
-
-# Configuration spéciale pour le callback d'authentification
-[[redirects]]
-  from = "/supabase-auth-callback"
-  to = "/login"
-  status = 200
-  force = true
-  
-[[redirects]]
-  from = "/auth/callback"
-  to = "/login"
-  status = 200
-  force = true
-
-# Configuration spéciale pour les callbacks storage
-[[redirects]]
-  from = "/storage/v1/*"
-  to = "https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat"
-  status = 200
-  force = true
-
-# Handle all routes for SPA
+# Gestion des routes SPA
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -3,20 +3,17 @@ import { useEffect } from 'react';
 import { clearStoredAuthData } from '@/integrations/supabase/client';
 
 const AuthCleanup = () => {
-  // Nettoyer les données d'authentification au chargement et périodiquement
+  // Nettoyer les données d'authentification immédiatement
   useEffect(() => {
-    const cleanup = () => {
-      console.log("Nettoyage radical des données d'authentification via AuthCleanup");
-      clearStoredAuthData();
-    };
+    console.log("Nettoyage radical des données d'authentification via AuthCleanup");
     
     // Exécuter immédiatement
-    cleanup();
+    clearStoredAuthData();
     
-    // Et re-exécuter périodiquement pour s'assurer qu'aucune donnée résiduelle n'existe
-    const timer = setInterval(cleanup, 3000);
+    // Et réexécuter après 500ms pour s'assurer que tout est propre
+    const timer = setTimeout(clearStoredAuthData, 500);
     
-    return () => clearInterval(timer);
+    return () => clearTimeout(timer);
   }, []);
 
   return null; // Composant sans rendu
