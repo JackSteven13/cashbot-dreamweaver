@@ -41,127 +41,60 @@ export const useLoginSubmit = () => {
       const retryCount = parseInt(localStorage.getItem('auth_retries') || '0');
       localStorage.setItem('auth_retries', (retryCount + 1).toString());
       
-      // En production, utiliser une stratégie de connexion plus sophistiquée
-      if (isProduction) {
-        console.log("Stratégie de connexion spéciale pour la production");
+      // Stratégie de connexion universelle, simplifiée pour tous les environnements
+      console.log("Tentative de connexion simplifiée");
+      
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password,
+      });
+      
+      if (error) {
+        console.error("Erreur d'authentification:", error);
         
-        try {
-          // Première tentative avec options simplifiées
-          const { error } = await supabase.auth.signInWithPassword({
+        // Si erreur, essayer avec stratégie alternative
+        if (error.message.includes('network') || 
+            error.message.includes('fetch') || 
+            error.message.includes('Failed') ||
+            error.message.includes('timeout')) {
+          
+          console.log("Problème de réseau détecté, tentative de connexion alternative");
+          
+          // Vider à nouveau le stockage
+          await clearStoredAuthData();
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // Forcer un nouveau processus d'authentification
+          await forceRetrySigning();
+          
+          // Nouvelle tentative directe
+          const secondAttempt = await supabase.auth.signInWithPassword({
             email: email.trim(),
             password: password,
           });
           
-          if (error) {
-            console.error("Première tentative d'authentification échouée:", error);
-            
-            // Si l'erreur semble liée au réseau, essayer avec une connexion simplifiée
-            if (error.message.includes('network') || 
-                error.message.includes('fetch') || 
-                error.message.includes('Failed') ||
-                error.message.includes('timeout')) {
-              
-              // Nettoyer à nouveau
-              await clearStoredAuthData();
-              
-              // Forcer la définition manuelle du localStorage après connexion réussie
-              console.log("Tentative de stockage manuel des informations d'authentification");
-              
-              // Tenter de se connecter avec une approche plus directe
-              const baseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1';
-              const headers = {
-                'Content-Type': 'application/json',
-                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4'
-              };
-              
-              const response = await fetch(`${baseUrl}/token?grant_type=password`, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({
-                  email: email.trim(),
-                  password: password
-                }),
-                credentials: 'omit' // Ne pas envoyer les cookies
-              });
-              
-              if (!response.ok) {
-                console.error("Échec de la connexion directe:", response.status);
-                throw new Error("Échec de connexion après plusieurs tentatives");
-              }
-              
-              const authData = await response.json();
-              
-              if (!authData.access_token || !authData.refresh_token) {
-                console.error("Données d'authentification incomplètes:", authData);
-                throw new Error("Données d'authentification incomplètes");
-              }
-              
-              // Stocker manuellement les tokens
-              localStorage.setItem('sb-auth-token-prod', JSON.stringify({
-                access_token: authData.access_token,
-                refresh_token: authData.refresh_token,
-                expires_at: Math.floor(Date.now() / 1000) + authData.expires_in
-              }));
-              
-              console.log("Authentification manuelle réussie");
-              
-              // Vérifier l'authentification
-              await new Promise(resolve => setTimeout(resolve, 800));
-              const isAuthenticated = await checkAuthentication();
-              
-              if (!isAuthenticated) {
-                console.error("Vérification d'authentification manuelle échouée");
-                throw new Error("Impossible de confirmer l'authentification");
-              }
-            } else {
-              throw error; // Autres erreurs non liées au réseau
-            }
+          if (secondAttempt.error) {
+            throw secondAttempt.error;
           }
-          
-          // Après connexion réussie, vérifier si la session est présente
-          await new Promise(resolve => setTimeout(resolve, 800));
-          const isAuthenticated = await checkAuthentication();
-          
-          if (!isAuthenticated) {
-            console.warn("Session non trouvée après connexion réussie");
-            // Afficher un avertissement mais continuer
-            toast({
-              title: "Attention",
-              description: "Connexion réussie mais session instable. Rechargement automatique possible.",
-              variant: "default"
-            });
-          }
-        } catch (error: any) {
-          console.error("Erreur complète:", error);
-          toast({
-            title: "Échec de connexion",
-            description: "Email ou mot de passe incorrect, ou problème de réseau.",
-            variant: "destructive"
-          });
-          
-          // Nettoyer après échec
-          clearStoredAuthData();
-          setIsLoading(false);
-          return;
+        } else {
+          throw error;
         }
-      } else {
-        // En développement, processus standard
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password: password,
-        });
+      }
+      
+      // Après connexion réussie, vérifier si la session est présente
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const isAuthenticated = await checkAuthentication();
+      
+      if (!isAuthenticated) {
+        console.warn("Session non trouvée après connexion réussie, tentative de récupération");
         
-        if (error) {
-          console.error("Erreur d'authentification:", error);
-          toast({
-            title: "Échec de connexion",
-            description: "Email ou mot de passe incorrect.",
-            variant: "destructive"
-          });
-          
-          clearStoredAuthData();
-          setIsLoading(false);
-          return;
+        // Tentative de récupération silencieuse
+        await supabase.auth.refreshSession();
+        
+        // Seconde vérification
+        const retryAuthentication = await checkAuthentication();
+        if (!retryAuthentication) {
+          console.error("Impossible de confirmer l'authentification après plusieurs essais");
         }
       }
       
@@ -177,8 +110,8 @@ export const useLoginSubmit = () => {
         description: "Redirection vers votre tableau de bord...",
       });
       
-      // Attendre plus longtemps en production pour s'assurer que la session est bien établie
-      await new Promise(resolve => setTimeout(resolve, isProductionEnvironment() ? 1500 : 800));
+      // Attendre un peu avant la redirection
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Redirection vers le tableau de bord avec remplacement de l'historique
       console.log("Redirection vers le dashboard");
@@ -187,17 +120,9 @@ export const useLoginSubmit = () => {
       console.error("Erreur complète:", error);
       
       // Message d'erreur adapté
-      let errorMessage = "Email ou mot de passe incorrect, ou problème de connexion.";
-      
-      // En production, gérer différemment les erreurs réseau
-      if (isProductionEnvironment() && (error.message?.includes('network') || error.message?.includes('fetch'))) {
-        errorMessage = "Problème de connexion au serveur d'authentification. Veuillez vérifier votre connexion internet.";
-      }
-      
-      // Notification d'erreur
       toast({
         title: "Échec de connexion",
-        description: errorMessage,
+        description: "Email ou mot de passe incorrect.",
         variant: "destructive"
       });
       

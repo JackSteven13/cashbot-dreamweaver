@@ -28,18 +28,10 @@ const createSupabaseClient = (): SupabaseClient<Database> => {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      // En production, utiliser un flow simplifié mais avec valeur stricte pour le type
-      flowType: isProduction ? 'implicit' as const : 'pkce' as const,
+      // Utiliser le même type pour tous les environnements pour éviter les problèmes
+      flowType: 'pkce' as const,
       storage: localStorage,
       storageKey: 'sb-auth-token-' + (isProduction ? 'prod' : 'dev'),
-      // En production, désactiver les cookies pour éviter les problèmes CORS
-      ...(isProduction ? {
-        cookieOptions: {
-          secure: true,
-          sameSite: 'lax' as const,
-          domain: undefined  // Laisser le navigateur gérer
-        }
-      } : {})
     },
     global: {
       headers: {
