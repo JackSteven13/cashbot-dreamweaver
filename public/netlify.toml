@@ -30,3 +30,4 @@
   to = "https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat"
   status = 200
   force = true
+

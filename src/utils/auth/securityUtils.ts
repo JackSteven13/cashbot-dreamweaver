@@ -9,3 +9,4 @@ export const checkPasswordSecurity = async () => {
   // Ne fait rien - vérification de sécurité désactivée
   return;
 };
+
