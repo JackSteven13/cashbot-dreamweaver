@@ -4,7 +4,7 @@
   command = "npm run build"
   publish = "dist"
 
-# Headers de sécurité et CORS pour toutes les routes
+# Paramètres spécifiques pour améliorer la connexion Supabase
 [[headers]]
   for = "/*"
   [headers.values]
@@ -12,40 +12,21 @@
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *;"
+    Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * https://*.supabase.co wss://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *;"
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers = "*"
+    Access-Control-Allow-Headers = "authorization, x-client-info, apikey, content-type"
 
-# Force HTTPS
+# Redirection HTTPS
 [[redirects]]
   from = "http://*"
   to = "https://:splat"
   status = 301
   force = true
 
-# Redirection .fr vers .io
-[[redirects]]
-  from = "https://streamgenius.fr/*"
-  to = "https://streamgenius.io/:splat"
-  status = 301
-  force = true
-
-[[redirects]]
-  from = "https://www.streamgenius.fr/*"
-  to = "https://streamgenius.io/:splat"
-  status = 301
-  force = true
-
-# Configuration d'authentification sans proxy - accès direct
+# Configuration d'accès direct à Supabase
 [[redirects]]
   from = "/auth/v1/*"
   to = "https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat"
   status = 200
   force = true
-
-# Gestion des routes SPA
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200

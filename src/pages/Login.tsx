@@ -3,19 +3,39 @@ import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
-import { clearStoredAuthData } from "@/integrations/supabase/client";
+import { clearStoredAuthData, supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
 
-  // Nettoyage radical au chargement de la page
+  // Nettoyage ultra-radical au chargement de la page
   useEffect(() => {
-    console.log("Page de connexion chargée, nettoyage radical des données d'authentification");
+    console.log("🔄 Page Login: Nettoyage ultra-radical au chargement");
+    
+    // 1. Déconnexion explicite - première étape
+    const performSignOut = async () => {
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        console.error("Erreur lors de la déconnexion:", err);
+      }
+    };
+    
+    performSignOut();
+    
+    // 2. Premier nettoyage immédiat
     clearStoredAuthData();
     
-    // Répéter le nettoyage après un court délai pour s'assurer que tout est bien nettoyé
-    const cleanupTimeout = setTimeout(clearStoredAuthData, 500);
-    return () => clearTimeout(cleanupTimeout);
+    // 3. Second nettoyage après un court délai
+    const timer1 = setTimeout(clearStoredAuthData, 300);
+    
+    // 4. Troisième nettoyage pour s'assurer que tout est bien propre
+    const timer2 = setTimeout(clearStoredAuthData, 1000);
+    
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
   }, []);
 
   return (

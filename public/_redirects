@@ -1,24 +1,21 @@
 
-# Force HTTPS
+# Force HTTPS pour toutes les requêtes
 http://*  https://:splat 301!
 
 # Redirection prioritaire .fr vers .io
 https://streamgenius.fr/* https://streamgenius.io/:splat 301!
 https://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
-http://streamgenius.fr/* https://streamgenius.io/:splat 301!
-http://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
 
 # Redirection www vers non-www
 https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
-http://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
-# Configuration de proxy direct pour Supabase - SANS PROXY
-/auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200!
-/rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200!
-/storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200!
+# Configuration DIRECTE pour Supabase - SANS PROXY
+/auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200
+/rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200
+/storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200
 
-# Route spéciale pour les callbacks d'authentification
+# Route spécifique pour les callbacks d'authentification - double sécurité
 /auth/callback/* /login 200!
 
-# SPA fallback
+# SPA fallback - assurer que toutes les routes non-API renvoient vers index.html
 /* /index.html 200

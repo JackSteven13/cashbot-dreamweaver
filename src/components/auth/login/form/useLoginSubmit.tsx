@@ -17,58 +17,80 @@ export const useLoginSubmit = () => {
     setIsLoading(true);
     
     try {
-      console.log("=== DÉBUT DE LA PROCÉDURE DE CONNEXION ===");
-      console.log("Email utilisé:", email);
+      console.log("=== DÉBUT PROCÉDURE DE CONNEXION - MÉTHODE FORTE ===");
       
-      // Nettoyage radical avant toute tentative
+      // 1. Nettoyage RADICAL avant tout
+      console.log("Étape 1: Nettoyage radical des données d'authentification");
       clearStoredAuthData();
       
-      // Attendre pour s'assurer que le nettoyage est effectif
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 2. Délai pour s'assurer que le nettoyage est complet
+      console.log("Étape 2: Pause pour traitement complet du nettoyage");
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      console.log("Tentative de connexion directe...");
+      // 3. Tentative de connexion directe avec timeout de sécurité
+      console.log("Étape 3: Tentative de connexion avec timeout de 15s");
       
-      // Utiliser une version simplifiée et directe de l'API d'authentification
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password,
-      });
+      // Création d'une promesse avec timeout pour éviter les blocages
+      const loginWithTimeout = async () => {
+        // Création d'un controller pour pouvoir annuler la requête si besoin
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        try {
+          // Tentative de connexion avec le client Supabase standard
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password: password,
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (error) throw error;
+          return data;
+        } catch (err) {
+          clearTimeout(timeoutId);
+          throw err;
+        }
+      };
       
-      if (error) {
-        console.error("Erreur d'authentification:", error.message);
-        throw new Error(error.message);
+      const data = await loginWithTimeout();
+      
+      if (!data || !data.user || !data.session) {
+        throw new Error("La réponse d'authentification est incomplète");
       }
       
-      if (!data?.user || !data?.session) {
-        console.error("Réponse d'authentification incomplète:", data);
-        throw new Error("La réponse du serveur d'authentification est incomplète");
-      }
-      
-      // La connexion a réussi
-      console.log("Connexion réussie!", data.user);
+      // 4. Stockage de l'email pour la prochaine connexion
+      console.log("Étape 4: Sauvegarde de l'email et finalisation");
       localStorage.setItem('last_logged_in_email', email);
       
-      // Afficher un toast de confirmation
+      // 5. Toast et redirection
       toast({
         title: "Connexion réussie",
         description: "Vous êtes maintenant connecté.",
       });
       
-      // Redirection vers le tableau de bord après un court délai
+      // Redirection vers le tableau de bord
       setTimeout(() => {
         navigate('/dashboard', { replace: true });
       }, 300);
       
     } catch (error: any) {
-      console.error("Erreur complète lors de la connexion:", error);
+      console.error("ERREUR DE CONNEXION (détaillée):", error);
       
-      // Message d'erreur utilisateur détaillé mais simplifié
-      let errorMessage = "Une erreur s'est produite lors de la connexion.";
+      // Message d'erreur simplifié et clair
+      let errorMessage = "Impossible de se connecter.";
       
       if (error.message) {
-        if (error.message.includes("Failed to fetch") || error.message.includes("fetch")) {
-          errorMessage = "Impossible de communiquer avec le serveur d'authentification. Veuillez vérifier votre connexion internet.";
-        } else if (error.message.includes("Invalid login") || error.message.includes("incorrect")) {
+        if (error.message.includes("Failed to fetch") || 
+            error.message.includes("fetch") ||
+            error.message.includes("network") ||
+            error.message.includes("AbortError")) {
+          errorMessage = "Erreur de communication avec le serveur d'authentification. Vérifiez votre connexion internet et réessayez.";
+        } else if (error.message.includes("Invalid login") || 
+                  error.message.includes("incorrect") ||
+                  error.message.includes("wrong") ||
+                  error.message.includes("Email") ||
+                  error.message.includes("password")) {
           errorMessage = "Email ou mot de passe incorrect. Veuillez réessayer.";
         } else {
           errorMessage = `Erreur: ${error.message}`;
@@ -76,15 +98,15 @@ export const useLoginSubmit = () => {
       }
       
       toast({
-        title: "Erreur de connexion",
+        title: "Échec de connexion",
         description: errorMessage,
         variant: "destructive"
       });
       
-      // Nettoyer à nouveau en cas d'échec
+      // Nettoyage après échec
       clearStoredAuthData();
     } finally {
-      console.log("=== FIN DE LA PROCÉDURE DE CONNEXION ===");
+      console.log("=== FIN PROCÉDURE DE CONNEXION ===");
       setIsLoading(false);
     }
   };

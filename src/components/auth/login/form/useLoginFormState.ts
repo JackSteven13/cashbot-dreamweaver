@@ -7,23 +7,23 @@ export const useLoginFormState = (lastLoggedInEmail: string | null) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Nettoyer les données d'authentification au chargement du formulaire
+  // Nettoyer agressivement les données d'authentification au chargement du formulaire
   useEffect(() => {
-    console.log("Formulaire de connexion initialisé, nettoyage radical des données d'authentification");
+    console.log("🧹 LoginFormState: Nettoyage des données d'authentification");
     
-    // Fonction de nettoyage
-    const performCleanup = () => {
-      // Nettoyage initial pour partir d'un état propre
-      clearStoredAuthData();
+    // Premier nettoyage immédiat
+    clearStoredAuthData();
+    
+    // Second nettoyage après un court délai
+    const timer1 = setTimeout(clearStoredAuthData, 300);
+    
+    // Troisième nettoyage pour s'assurer que tout est propre
+    const timer2 = setTimeout(clearStoredAuthData, 1000);
+    
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
     };
-    
-    // Exécuter immédiatement
-    performCleanup();
-    
-    // Puis réexécuter après un court délai
-    const timer = setTimeout(performCleanup, 500);
-    
-    return () => clearTimeout(timer);
   }, []);
 
   return {
