@@ -1,5 +1,5 @@
 
-# Configuration Netlify simplifiée
+# Configuration Netlify optimisée pour l'authentification
 [build]
   command = "npm run build"
   publish = "dist"
@@ -17,8 +17,9 @@
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
     Access-Control-Allow-Headers = "authorization, x-client-info, apikey, content-type, content-length, accept, origin, x-requested-with"
     Access-Control-Max-Age = "86400"
+    Access-Control-Allow-Credentials = "true"
 
-# Routes spécifiques pour l'authentification
+# Configurations spéciales pour l'authentification
 [[redirects]]
   from = "/auth/callback"
   to = "/index.html"
@@ -36,9 +37,41 @@
   status = 301
   force = true
 
-# Route cruciale pour le dashboard
+# Redirection des domaines .fr vers .io
+[[redirects]]
+  from = "https://streamgenius.fr/*"
+  to = "https://streamgenius.io/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.streamgenius.fr/*"
+  to = "https://streamgenius.io/:splat"
+  status = 301
+  force = true
+
+# Redirection www vers non-www
+[[redirects]]
+  from = "https://www.streamgenius.io/*"
+  to = "https://streamgenius.io/:splat"
+  status = 301
+  force = true
+
+# Routes principales avec fallback SPA
 [[redirects]]
   from = "/dashboard/*"
   to = "/index.html"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/login"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+

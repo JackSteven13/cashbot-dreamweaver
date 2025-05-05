@@ -1,23 +1,39 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, isProductionEnvironment } from '@/integrations/supabase/client';
 
 /**
- * Vérifie si l'utilisateur est authentifié - version simplifiée et robuste
+ * Vérifie si l'utilisateur est authentifié - version optimisée pour production
  * @returns Une promesse qui résout à un booléen indiquant si l'utilisateur est authentifié
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
     console.log("Début de la vérification d'authentification");
     
-    // Vérifier d'abord localStorage
-    const hasLocalStorage = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+    // Détection de l'environnement pour adapter la vérification
+    const isProduction = isProductionEnvironment();
+    console.log(`Vérification d'auth en ${isProduction ? 'PRODUCTION' : 'DÉVELOPPEMENT'}`);
+    
+    // Vérifier d'abord localStorage - clé adaptée selon l'environnement
+    const storageKey = isProduction ? 'sb-auth-token-prod' : 'sb-cfjibduhagxiwqkiyhqd-auth-token';
+    const hasLocalStorage = !!localStorage.getItem(storageKey);
     
     if (!hasLocalStorage) {
-      console.log("Aucun token trouvé dans localStorage");
+      console.log(`Aucun token trouvé dans localStorage (${storageKey})`);
       return false;
     }
     
-    // Version améliorée - récupération de la session avec options explicites
+    // Vérification des cookies si en production
+    if (isProduction) {
+      const cookies = document.cookie;
+      const hasCookieToken = cookies.includes('sb-') || cookies.includes('token');
+      
+      if (!hasCookieToken) {
+        console.log("Aucun cookie d'authentification trouvé en production");
+        // On continue tout de même la vérification car les cookies peuvent être bloqués
+      }
+    }
+    
+    // Utiliser getSession avec options explicites
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
@@ -36,34 +52,44 @@ export const verifyAuth = async (): Promise<boolean> => {
       return false;
     }
     
-    // Essayer de faire un appel API simple pour confirmer que l'authentification fonctionne
-    try {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', data.session.user.id)
-        .single();
-        
-      if (profileError) {
-        console.warn("Erreur lors de la vérification du profil:", profileError);
-        // On continue malgré tout - ce n'est pas un échec critique
-      }
-    } catch (e) {
-      console.warn("Exception lors de la vérification du profil:", e);
-      // On continue malgré tout
-    }
-    
-    // Test supplémentaire pour environnement de production: vérifier si le domaine est streamgenius.io
-    const isProduction = window.location.hostname.includes('streamgenius.io');
+    // En production, faire une vérification supplémentaire avec un appel API réel
     if (isProduction) {
-      console.log("Environnement de production détecté, vérification supplémentaire");
+      console.log("Environnement de production détecté, vérification supplémentaire avec API");
       
-      // En production, il est normal de ne pas avoir de cookies visibles pour raisons de sécurité
-      // On se fie d'abord à la validité de l'objet session qu'on a déjà vérifié
+      try {
+        // Vérification directe avec un appel à la table profiles
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', data.session.user.id)
+          .single();
+          
+        if (profileError) {
+          console.warn("Erreur lors de la vérification du profil:", profileError);
+          
+          // En production, une erreur d'accès aux données est critique
+          if (isProduction && profileError.message.includes('JWT')) {
+            console.error("Problème de JWT détecté, authentification invalide");
+            return false;
+          }
+        }
+      } catch (e) {
+        console.warn("Exception lors de la vérification du profil:", e);
+        // On continue tout de même
+      }
     }
     
     // Session validée avec toutes les vérifications
     console.log("Session valide confirmée pour:", data.session.user.email);
+    
+    // Stocker des indicateurs permettant de détecter des problèmes de synchro
+    try {
+      localStorage.setItem('last_auth_check', new Date().toISOString());
+      localStorage.setItem('auth_user_id', data.session.user.id);
+    } catch (e) {
+      console.error("Erreur lors de la sauvegarde des indicateurs d'auth:", e);
+    }
+    
     return true;
   } catch (error) {
     console.error("Exception lors de la vérification d'authentification:", error);
@@ -72,9 +98,10 @@ export const verifyAuth = async (): Promise<boolean> => {
 };
 
 /**
- * Version plus robuste de isUserAuthenticated
+ * Version plus robuste de isUserAuthenticated avec adaptation production/dev
  */
 export const isUserAuthenticated = async (): Promise<boolean> => {
   // Implémentation directe pour éviter les redirections circulaires
   return await verifyAuth();
 };
+
