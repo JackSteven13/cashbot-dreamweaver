@@ -4,7 +4,7 @@
   command = "npm run build"
   publish = "dist"
 
-# Headers pour améliorer la connexion Supabase
+# Headers pour améliorer la connexion Supabase et CORS
 [[headers]]
   for = "/*"
   [headers.values]
@@ -15,7 +15,8 @@
     Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * https://*.supabase.co wss://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *;"
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers = "authorization, x-client-info, apikey, content-type"
+    Access-Control-Allow-Headers = "authorization, x-client-info, apikey, content-type, content-length, accept, origin, x-requested-with"
+    Access-Control-Max-Age = "86400"
 
 # Redirection HTTPS
 [[redirects]]

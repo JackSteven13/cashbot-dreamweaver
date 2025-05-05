@@ -13,12 +13,25 @@ const Login = () => {
     // Déconnexion et nettoyage complet
     const cleanupAuth = async () => {
       try {
-        // Déconnexion de Supabase
-        await supabase.auth.signOut();
-        // Nettoyage local
+        console.log("Nettoyage complet des données d'authentification au chargement de Login");
+        
+        // Premier nettoyage exhaustif
         clearStoredAuthData();
+        
+        // Déconnexion explicite de Supabase
+        await supabase.auth.signOut({ scope: 'global' });
+        
+        // Second nettoyage après la déconnexion
+        clearStoredAuthData();
+        
+        // Délai court puis troisième nettoyage pour s'assurer que tout est propre
+        setTimeout(() => {
+          clearStoredAuthData();
+        }, 500);
       } catch (err) {
-        console.error("Erreur de nettoyage:", err);
+        console.error("Erreur de nettoyage d'authentification:", err);
+        // Malgré l'erreur, tenter un dernier nettoyage
+        clearStoredAuthData();
       }
     };
     
