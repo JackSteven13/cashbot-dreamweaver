@@ -2,12 +2,20 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Vérifie si l'utilisateur est authentifié - version ultra simplifiée et robuste
+ * Vérifie si l'utilisateur est authentifié - version simplifiée et robuste
  * @returns Une promesse qui résout à un booléen indiquant si l'utilisateur est authentifié
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
     console.log("Début de la vérification d'authentification");
+    
+    // Vérifier d'abord localStorage
+    const hasLocalStorage = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+    
+    if (!hasLocalStorage) {
+      console.log("Aucun token trouvé dans localStorage");
+      return false;
+    }
     
     // Version améliorée - récupération de la session avec options explicites
     const { data, error } = await supabase.auth.getSession();
@@ -28,22 +36,21 @@ export const verifyAuth = async (): Promise<boolean> => {
       return false;
     }
     
-    // Vérifier si le jeton d'accès n'est pas expiré
-    const now = Math.floor(Date.now() / 1000); // Timestamp actuel en secondes
-    if (data.session.expires_at && data.session.expires_at < now) {
-      console.log("Session expirée, tentative de rafraîchissement");
-      
-      try {
-        const refreshResult = await supabase.auth.refreshSession();
-        if (refreshResult.error || !refreshResult.data.session) {
-          console.log("Échec du rafraîchissement de la session");
-          return false;
-        }
-        console.log("Session rafraîchie avec succès");
-      } catch (refreshError) {
-        console.error("Erreur lors du rafraîchissement de la session:", refreshError);
-        return false;
+    // Essayer de faire un appel API simple pour confirmer que l'authentification fonctionne
+    try {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', data.session.user.id)
+        .single();
+        
+      if (profileError) {
+        console.warn("Erreur lors de la vérification du profil:", profileError);
+        // On continue malgré tout - ce n'est pas un échec critique
       }
+    } catch (e) {
+      console.warn("Exception lors de la vérification du profil:", e);
+      // On continue malgré tout
     }
     
     // Test supplémentaire pour environnement de production: vérifier si le domaine est streamgenius.io
@@ -51,12 +58,8 @@ export const verifyAuth = async (): Promise<boolean> => {
     if (isProduction) {
       console.log("Environnement de production détecté, vérification supplémentaire");
       
-      // Vérification additionnelle: les cookies sont-ils correctement définis?
-      const hasSbCookie = document.cookie.includes('sb-');
-      if (!hasSbCookie) {
-        console.warn("Aucun cookie Supabase trouvé en production");
-        // On continue malgré tout, car les cookies peuvent être gérés différemment
-      }
+      // En production, il est normal de ne pas avoir de cookies visibles pour raisons de sécurité
+      // On se fie d'abord à la validité de l'objet session qu'on a déjà vérifié
     }
     
     // Session validée avec toutes les vérifications

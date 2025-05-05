@@ -25,7 +25,7 @@ export const useLoginSubmit = () => {
       // Petit délai pour s'assurer que le nettoyage est effectif
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Tentative d'authentification améliorée avec détection d'environnement
+      // Authentification directe sans options supplémentaires pour maximiser la compatibilité
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,
@@ -55,32 +55,53 @@ export const useLoginSubmit = () => {
         description: `Bienvenue ${data.user.user_metadata?.full_name || ''}!`,
       });
       
-      // Délai supplémentaire en production pour s'assurer que la session est bien enregistrée
+      // Attendre un peu plus longtemps en production pour s'assurer que la session est bien établie
       if (isProduction) {
         console.log("Environnement de production détecté, délai supplémentaire");
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 2000));
       } else {
         await new Promise(resolve => setTimeout(resolve, 800));
       }
       
-      // Double vérification de la session avant redirection
+      // Vérification explicite que la session est bien enregistrée
       const { data: sessionCheck } = await supabase.auth.getSession();
       
       if (!sessionCheck.session) {
         console.warn("Session non trouvée après connexion, tentative de correction");
         
-        // Tentative supplémentaire de rafraîchissement
-        await supabase.auth.refreshSession();
+        // Utilisation de la méthode getSession qui est plus fiable pour la vérification
+        const sessionResult = await supabase.auth.getSession();
         
-        // Vérification finale
-        const { data: finalCheck } = await supabase.auth.getSession();
-        
-        if (!finalCheck.session) {
+        if (!sessionResult.data.session) {
           console.error("Impossible de confirmer la session après plusieurs tentatives");
-          throw new Error("Session non persistante après connexion");
+          
+          // En dernier recours, essayons une reconnexion simplifiée
+          const reloginAttempt = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password: password,
+          });
+          
+          if (!reloginAttempt.data.session) {
+            throw new Error("Session non persistante après reconnexion");
+          } else {
+            console.log("Reconnexion réussie");
+          }
         } else {
           console.log("Session vérifiée après correction");
         }
+      }
+      
+      // Stocker explicitement la session dans localStorage pour une meilleure persistance
+      try {
+        if (data.session) {
+          const sessionStr = JSON.stringify({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token
+          });
+          localStorage.setItem('supabase.auth.token', sessionStr);
+        }
+      } catch (e) {
+        console.error("Erreur lors du stockage de la session:", e);
       }
       
       // Redirection vers le tableau de bord avec remplacement de l'historique

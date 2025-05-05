@@ -17,23 +17,28 @@ const Login = () => {
         // Premier nettoyage
         clearStoredAuthData();
         
-        // Déconnexion explicite de Supabase (scope global)
+        // Déconnexion explicite de Supabase avec champ d'application global
         await supabase.auth.signOut({ scope: 'global' });
         
         // Attendre que la déconnexion soit traitée
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        // Deuxième nettoyage
+        // Deuxième nettoyage pour s'assurer que tout est propre
         clearStoredAuthData();
         
-        // Nettoyage des cookies spécifiques au domaine streamgenius.io
-        const isProduction = window.location.hostname.includes('streamgenius.io');
+        // Mieux viser les cookies en fonction des domaines potentiels
+        const isProduction = window.location.hostname.endsWith('streamgenius.io');
         if (isProduction) {
+          // Traiter spécifiquement streamgenius.io et sous-domaines
+          document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=streamgenius.io;';
+          document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=streamgenius.io;';
           document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.streamgenius.io;';
           document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.streamgenius.io;';
-          document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-          document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         }
+        
+        // Nettoyage supplémentaire sans ciblage de domaine
+        document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         
         // Vérification finale après un délai
         setTimeout(() => {

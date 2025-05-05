@@ -35,3 +35,10 @@
   to = "https://:splat"
   status = 301
   force = true
+
+# Route cruciale pour le dashboard
+[[redirects]]
+  from = "/dashboard/*"
+  to = "/index.html"
+  status = 200
+  force = true
