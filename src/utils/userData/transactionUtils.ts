@@ -33,7 +33,8 @@ export const fetchUserTransactions = async (userId: string): Promise<Transaction
       gain: tx.gain,
       amount: tx.gain, // For backward compatibility
       report: tx.report,
-      type: tx.type || 'system' // Add fallback to 'system' if type doesn't exist
+      // Since 'type' doesn't exist in the database response, use report as a fallback
+      type: 'system' // Default type for all transactions
     }));
   } catch (err) {
     console.error("Error in fetchUserTransactions:", err);
@@ -138,7 +139,8 @@ export const getTransactionHistory = async (userId: string, page: number, pageSi
         gain: tx.gain,
         amount: tx.gain, // For backward compatibility
         report: tx.report,
-        type: tx.type || 'system' // Add fallback to 'system' if type doesn't exist
+        // Since 'type' doesn't exist in the database response, set a default type
+        type: 'system' // Default type for all transactions
       })) || [], 
       count: count || 0 
     };
@@ -215,7 +217,8 @@ export const getTodaysTransactions = async (userId: string): Promise<Transaction
       amount: t.gain,
       gain: t.gain,
       report: t.report,
-      type: t.type || 'system' // Add fallback to 'system' if type doesn't exist
+      // Since 'type' doesn't exist in the database response, use a default value
+      type: 'system' // Default type for all transactions
     }));
   } catch (error) {
     console.error("Error in getTodaysTransactions:", error);
