@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { clearAuthData } from '@/lib/supabase';
 
 export const useLoginSubmit = () => {
-  // Version ultra simplifiée et robuste de la fonction de connexion
+  // Version robuste de la fonction de connexion
   const handleSubmit = async (
     e: React.FormEvent,
     email: string,
@@ -31,26 +31,35 @@ export const useLoginSubmit = () => {
       // Nettoyage complet avant la tentative
       clearAuthData();
       
+      // Suppression explicite des jetons potentiellement obsolètes qui pourraient causer des conflits
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (e) {
+        console.log("Erreur lors de la déconnexion préalable ignorée");
+      }
+      
       // Court délai pour assurer que le nettoyage est effectif
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       console.log("Tentative de connexion pour:", email);
       
-      // Tentative de connexion avec une configuration simplifiée et maximale fiabilité
+      // Tentative de connexion avec des options optimisées pour la fiabilité
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
-        password,
+        password: password,
       });
       
       if (error) {
+        console.error("Erreur d'authentification:", error.message);
         throw error;
       }
 
       if (!data.session) {
+        console.error("Pas de session retournée");
         throw new Error("Pas de session retournée");
       }
       
-      console.log("Connexion réussie");
+      console.log("Connexion réussie, session active");
       
       // Sauvegarder l'email pour la prochaine connexion
       localStorage.setItem('last_logged_in_email', email);
@@ -61,13 +70,13 @@ export const useLoginSubmit = () => {
         description: "Redirection vers votre tableau de bord...",
       });
       
-      // Redirection complète avec rafraîchissement
+      // Redirection complète avec rafraîchissement - délai augmenté pour assurer la propagation
       setTimeout(() => {
         window.location.href = '/dashboard';
-      }, 800);
+      }, 1200);
       
     } catch (error: any) {
-      console.error("Erreur complète:", error);
+      console.error("Erreur d'authentification complète:", error);
       
       // Message d'erreur adapté
       toast({

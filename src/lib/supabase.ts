@@ -4,11 +4,12 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Create the Supabase client directly
+// Create the Supabase client with explicit configuration
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: true,
     storage: localStorage
   }
 });
@@ -16,6 +17,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Fonction pour nettoyer complètement les données d'authentification
 export const clearAuthData = () => {
   try {
+    // Supprimer la session actuelle de la mémoire de Supabase
+    try {
+      supabase.auth.signOut({ scope: 'local' });
+    } catch (e) {
+      // Ignorer les erreurs silencieusement
+    }
+    
     // Liste complète des clés potentielles liées à l'authentification
     const keysToRemove = [
       'sb-access-token',
@@ -44,15 +52,23 @@ export const clearAuthData = () => {
         key.includes('auth') ||
         key.includes('token')
       ) {
-        localStorage.removeItem(key);
+        try {
+          localStorage.removeItem(key);
+        } catch (e) {
+          // Ignorer
+        }
       }
     });
     
     // Ensuite supprimer explicitement nos clés connues
     keysToRemove.forEach(key => {
-      localStorage.removeItem(key);
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.removeItem(key);
+      try {
+        localStorage.removeItem(key);
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem(key);
+        }
+      } catch (e) {
+        // Ignorer
       }
     });
     
@@ -65,7 +81,12 @@ export const clearAuthData = () => {
         cookieName.includes('auth') ||
         cookieName.includes('token')
       ) {
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        try {
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+        } catch (e) {
+          // Ignorer
+        }
       }
     });
     
