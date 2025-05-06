@@ -16,11 +16,11 @@ export const isProductionEnvironment = (): boolean => {
          !hostname.includes('localhost');
 };
 
-// Configuration du client Supabase avec options améliorées pour la fiabilité
+// Configuration du client Supabase avec options optimisées
 const createSupabaseClient = (): SupabaseClient<Database> => {
-  console.log(`[Supabase] Initialisation du client (${isProductionEnvironment() ? "PROD" : "DEV"})`);
+  console.log("[Supabase] Initialisation du client");
   
-  // Options optimisées pour tous les environnements
+  // Options optimisées pour la fiabilité
   const options = {
     auth: {
       autoRefreshToken: true,
@@ -29,19 +29,7 @@ const createSupabaseClient = (): SupabaseClient<Database> => {
       flowType: 'pkce' as const,
       storage: localStorage,
       storageKey: 'sb-auth-token',
-      debug: true
     },
-    global: {
-      headers: {
-        'Cache-Control': 'no-store',
-        'X-Client-Info': 'streamgenius-webapp'
-      },
-      fetch: customFetch
-    },
-    // Délais d'attente plus longs pour les réseaux mobiles
-    realtime: {
-      timeout: 30000  // 30 secondes
-    }
   };
 
   try {
@@ -61,21 +49,6 @@ const createSupabaseClient = (): SupabaseClient<Database> => {
   }
 };
 
-// Wrapper pour fetch avec timeout
-const customFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-  const timeout = 20000; // 20 secondes de timeout
-  
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
-  return fetch(input, {
-    ...init,
-    signal: controller.signal
-  }).finally(() => {
-    clearTimeout(timeoutId);
-  });
-};
-
 // Instance unique du client Supabase
 export const supabase = createSupabaseClient();
 
@@ -84,29 +57,44 @@ export const clearStoredAuthData = () => {
   try {
     console.log("Nettoyage des données d'authentification");
     
-    // Nettoyer localStorage
-    const keysToRemove = [
-      'supabase.auth.token',
-      'sb-access-token',
-      'sb-refresh-token',
-      'sb-auth-token',
-      'sb-auth-token-prod',
-      'sb-auth-token-dev',
-      'sb-cfjibduhagxiwqkiyhqd-auth-token',
-      'auth_retries'
-    ];
-    
-    keysToRemove.forEach(key => {
-      try {
-        localStorage.removeItem(key);
-      } catch (e) {
-        // Ignorer les erreurs
+    // Nettoyer localStorage - approche complète
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('supabase') || 
+          key.includes('sb-') || 
+          key.startsWith('sb') || 
+          key.includes('auth') || 
+          key.includes('token')) {
+        try {
+          localStorage.removeItem(key);
+        } catch (e) {
+          // Ignorer les erreurs
+        }
       }
     });
     
-    // Nettoyer les cookies potentiels (cross-browser)
+    // Nettoyer sessionStorage si disponible
+    if (typeof sessionStorage !== 'undefined') {
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.includes('supabase') || 
+            key.includes('sb-') || 
+            key.startsWith('sb') || 
+            key.includes('auth') || 
+            key.includes('token')) {
+          try {
+            sessionStorage.removeItem(key);
+          } catch (e) {
+            // Ignorer les erreurs
+          }
+        }
+      });
+    }
+    
+    // Nettoyer les cookies spécifiques à Supabase
     document.cookie.split(';').forEach(c => {
-      document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/');
+      if (c.includes('sb-') || c.includes('supabase') || c.includes('auth')) {
+        const cookieName = c.split('=')[0].trim();
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+      }
     });
     
     return true;
@@ -116,7 +104,7 @@ export const clearStoredAuthData = () => {
   }
 };
 
-// Fonction pour forcer une réinitialisation de l'authentification
+// Fonction pour forcer une déconnexion complète
 export const forceRetrySigning = async () => {
   console.log("Réinitialisation de l'authentification");
   
@@ -131,7 +119,7 @@ export const forceRetrySigning = async () => {
   }
   
   // Attendre un court délai
-  await new Promise(resolve => setTimeout(resolve, 500));
+  await new Promise(resolve => setTimeout(resolve, 300));
   
   return true;
 };
