@@ -13,11 +13,30 @@ https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 /auth/callback/* /index.html 200!
 /auth/* /index.html 200!
 
-# Configuration Supabase avec CORS explicite et cache désactivé
+# Configuration Supabase avec gestion CORS optimisée et cache désactivé
 /auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200!
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: *
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+  Cache-Control: no-cache, no-store, must-revalidate
+
 /rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200!
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: *
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+  Cache-Control: no-cache, no-store, must-revalidate
+
 /storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200!
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: *
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+  Cache-Control: no-cache, no-store, must-revalidate
+
 /realtime/* https://cfjibduhagxiwqkiyhqd.supabase.co/realtime/:splat 200!
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: *
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+  Cache-Control: no-cache, no-store, must-revalidate
 
 # Routes pour les callbacks d'authentification - priorité élevée
 /auth/v1/callback/* /index.html 200!
@@ -30,4 +49,3 @@ https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
 # SPA fallback pour toutes les autres routes
 /* /index.html 200
-
