@@ -13,12 +13,7 @@ export const createClient = () =>
       detectSessionInUrl: true,
       storage: localStorage,
       storageKey: 'sb-auth-token',
-      flowType: 'pkce',  // Type de flux optimisé pour plus de sécurité
-      cookieOptions: {
-        secure: true,
-        sameSite: 'lax',
-        path: '/'
-      }
+      flowType: 'pkce'  // Type de flux optimisé pour plus de sécurité
     },
     global: {
       headers: {
