@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { LoginButton, LoginFields, useLoginFormState, useLoginSubmit } from './form';
-import { isProductionEnvironment } from '@/integrations/supabase/client';
 
 interface LoginFormProps {
   lastLoggedInEmail: string | null;

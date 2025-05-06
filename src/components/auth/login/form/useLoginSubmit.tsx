@@ -2,16 +2,16 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { supabase, clearStoredAuthData, isProductionEnvironment, forceRetrySigning } from "@/integrations/supabase/client";
+import { supabase, forceRetrySigning } from "@/integrations/supabase/client";
 
 export const useLoginSubmit = () => {
   const navigate = useNavigate();
 
-  // Fonction pour vérifier manuellement si on est authentifié
+  // Fonction simplifiée pour vérifier l'authentification
   const checkAuthentication = async (): Promise<boolean> => {
     try {
       const { data } = await supabase.auth.getSession();
-      return !!(data && data.session && data.session.user);
+      return !!(data && data.session);
     } catch (e) {
       return false;
     }
@@ -27,50 +27,35 @@ export const useLoginSubmit = () => {
     setIsLoading(true);
     
     try {
-      console.log("Connexion en cours pour:", email);
-      const isProduction = isProductionEnvironment();
-      console.log("Environnement détecté:", isProduction ? "PRODUCTION" : "DÉVELOPPEMENT");
+      console.log("Tentative de connexion pour:", email);
       
-      // Nettoyage préventif radical
-      await clearStoredAuthData();
+      // S'assurer qu'il n'y a pas de données d'authentification obsolètes
+      await forceRetrySigning();
       
-      // Petit délai pour s'assurer que le nettoyage est effectif
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Stockage des tentatives pour gestion d'erreurs
-      const retryCount = parseInt(localStorage.getItem('auth_retries') || '0');
-      localStorage.setItem('auth_retries', (retryCount + 1).toString());
-      
-      // Stratégie de connexion universelle, simplifiée pour tous les environnements
-      console.log("Tentative de connexion simplifiée");
-      
+      // Tentative de connexion standard
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
-        password: password,
+        password,
       });
       
       if (error) {
-        console.error("Erreur d'authentification:", error);
+        console.error("Erreur d'authentification:", error.message);
         
-        // Si erreur, essayer avec stratégie alternative
+        // Si l'erreur semble liée au réseau, tenter une approche alternative
         if (error.message.includes('network') || 
             error.message.includes('fetch') || 
             error.message.includes('Failed') ||
             error.message.includes('timeout')) {
           
-          console.log("Problème de réseau détecté, tentative de connexion alternative");
+          console.log("Problème de réseau détecté, nouvelle tentative");
           
-          // Vider à nouveau le stockage
-          await clearStoredAuthData();
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
-          // Forcer un nouveau processus d'authentification
+          // Nettoyer et réessayer
           await forceRetrySigning();
           
-          // Nouvelle tentative directe
+          // Seconde tentative
           const secondAttempt = await supabase.auth.signInWithPassword({
             email: email.trim(),
-            password: password,
+            password,
           });
           
           if (secondAttempt.error) {
@@ -81,40 +66,38 @@ export const useLoginSubmit = () => {
         }
       }
       
-      // Après connexion réussie, vérifier si la session est présente
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Vérifier que la session est bien établie
+      await new Promise(resolve => setTimeout(resolve, 500));
       const isAuthenticated = await checkAuthentication();
       
       if (!isAuthenticated) {
-        console.warn("Session non trouvée après connexion réussie, tentative de récupération");
+        console.warn("Session non établie après connexion apparemment réussie");
         
-        // Tentative de récupération silencieuse
+        // Tentative de récupération
         await supabase.auth.refreshSession();
         
-        // Seconde vérification
         const retryAuthentication = await checkAuthentication();
         if (!retryAuthentication) {
-          console.error("Impossible de confirmer l'authentification après plusieurs essais");
+          console.error("Impossible de confirmer l'authentification");
+          throw new Error("Session non établie après connexion");
         }
       }
       
-      console.log("Connexion réussie pour:", email);
+      console.log("Connexion réussie");
       
-      // Enregistrer l'email pour la prochaine connexion
+      // Sauvegarder l'email pour la prochaine connexion
       localStorage.setItem('last_logged_in_email', email);
-      localStorage.removeItem('auth_retries'); // Réinitialiser les compteurs de tentatives
       
-      // Afficher un toast de réussite
+      // Notification de succès
       toast({
         title: "Connexion réussie",
         description: "Redirection vers votre tableau de bord...",
       });
       
-      // Attendre un peu avant la redirection
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Attendre avant la redirection
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Redirection vers le tableau de bord avec remplacement de l'historique
-      console.log("Redirection vers le dashboard");
+      // Redirection
       navigate('/dashboard', { replace: true });
     } catch (error: any) {
       console.error("Erreur complète:", error);
@@ -125,9 +108,6 @@ export const useLoginSubmit = () => {
         description: "Email ou mot de passe incorrect.",
         variant: "destructive"
       });
-      
-      // Nettoyage après échec
-      clearStoredAuthData();
     } finally {
       setIsLoading(false);
     }

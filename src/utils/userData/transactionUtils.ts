@@ -1,97 +1,97 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { Transaction } from '@/types/userData';
 
 /**
- * Fetch transactions for a given user
- */
-export const fetchUserTransactions = async (userId: string): Promise<Transaction[]> => {
-  try {
-    const response = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false }) as any;
-    
-    const { data, error } = response;
-    
-    if (error) {
-      console.error("Error fetching transactions:", error);
-      return [];
-    }
-    
-    // Format transactions to adapt to application's required format
-    return data.map((tx: any) => ({
-      id: tx.id,
-      date: tx.created_at,
-      amount: tx.gain,
-      type: tx.type,
-      report: tx.description || tx.report, // Support both field names
-      gain: tx.gain, // By convention, positive amounts are gains
-    }));
-  } catch (error) {
-    console.error("Error in fetchUserTransactions:", error);
-    return [];
-  }
-};
-
-/**
- * Add a new transaction for a user
- */
-export const addTransaction = async (
-  userId: string,
-  gain: number,
-  description: string,
-  type: string = 'system'
-) => {
-  try {
-    const response = await supabase
-      .from('transactions')
-      .insert({
-        user_id: userId,
-        gain: gain,
-        report: description,
-        type,
-        date: new Date().toISOString().split('T')[0]
-      }) as any;
-    
-    const { data, error } = response;
-    
-    if (error) {
-      console.error("Error adding transaction:", error);
-      return null;
-    }
-    
-    return data ? data[0] : null;
-  } catch (error) {
-    console.error("Error in addTransaction:", error);
-    return null;
-  }
-};
-
-/**
- * Calculate today's total gains - critical for enforcing daily limits
+ * Calculer les gains d'aujourd'hui pour un utilisateur
+ * @param userId ID de l'utilisateur
+ * @returns Le total des gains d'aujourd'hui
  */
 export const calculateTodaysGains = async (userId: string): Promise<number> => {
   try {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    // Obtenir la date d'aujourd'hui au format UTC
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const todayStr = today.toISOString();
     
+    // Récupérer les transactions de la journée
     const { data, error } = await supabase
       .from('transactions')
-      .select('gain')
+      .select('amount')
       .eq('user_id', userId)
-      .eq('date', today);
-      
+      .eq('type', 'credit')
+      .gte('created_at', todayStr);
+    
     if (error) {
-      console.error("Error calculating today's gains:", error);
+      console.error("Erreur lors du calcul des gains:", error);
       return 0;
     }
     
-    const total = (data || []).reduce((sum, tx) => sum + (tx.gain || 0), 0);
-    console.log(`Today's total gains for ${userId}: ${total}€`);
-    return total;
-  } catch (error) {
-    console.error("Error calculating today's gains:", error);
+    // Calculer la somme des gains
+    return data?.reduce((sum, transaction) => sum + Number(transaction.amount), 0) || 0;
+  } catch (err) {
+    console.error("Erreur dans calculateTodaysGains:", err);
     return 0;
+  }
+};
+
+/**
+ * Calculer les dépenses d'aujourd'hui pour un utilisateur
+ * @param userId ID de l'utilisateur
+ * @returns Le total des dépenses d'aujourd'hui
+ */
+export const calculateTodaysExpenses = async (userId: string): Promise<number> => {
+  try {
+    // Obtenir la date d'aujourd'hui au format UTC
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const todayStr = today.toISOString();
+    
+    // Récupérer les transactions de la journée
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('amount')
+      .eq('user_id', userId)
+      .eq('type', 'debit')
+      .gte('created_at', todayStr);
+    
+    if (error) {
+      console.error("Erreur lors du calcul des dépenses:", error);
+      return 0;
+    }
+    
+    // Calculer la somme des dépenses
+    return data?.reduce((sum, transaction) => sum + Number(transaction.amount), 0) || 0;
+  } catch (err) {
+    console.error("Erreur dans calculateTodaysExpenses:", err);
+    return 0;
+  }
+};
+
+/**
+ * Récupérer l'historique des transactions d'un utilisateur
+ * @param userId ID de l'utilisateur
+ * @param page Le numéro de la page à récupérer
+ * @param pageSize Le nombre de transactions par page
+ * @returns Une liste de transactions
+ */
+export const getTransactionHistory = async (userId: string, page: number, pageSize: number) => {
+  const startIndex = (page - 1) * pageSize;
+
+  try {
+    const { data, error, count } = await supabase
+      .from('transactions')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(startIndex, startIndex + pageSize - 1);
+
+    if (error) {
+      console.error("Erreur lors de la récupération de l'historique des transactions:", error);
+      return { data: [], count: 0 };
+    }
+
+    return { data: data || [], count: count || 0 };
+  } catch (err) {
+    console.error("Erreur dans getTransactionHistory:", err);
+    return { data: [], count: 0 };
   }
 };
