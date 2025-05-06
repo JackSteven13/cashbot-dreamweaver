@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface DNSAlertProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "destructive" | "warning"; // Removed "info" to match Alert component's allowed variants
+  variant?: "default" | "destructive" | "warning";
   title?: string;
   description?: string;
   icon?: React.ReactNode;
   action?: React.ReactNode;
   onAction?: () => void;
+  hidden?: boolean; // Nouvelle prop pour masquer l'alerte
 }
 
 export function DNSAlert({
@@ -22,8 +23,12 @@ export function DNSAlert({
   icon,
   action = "Aide",
   onAction,
+  hidden = false, // Par défaut, l'alerte est visible
   ...props
 }: DNSAlertProps) {
+  // Si hidden est true, ne pas rendre le composant
+  if (hidden) return null;
+  
   // Déterminer l'icône en fonction du variant
   const alertIcon = icon || (
     variant === "destructive" ? <AlertCircle className="h-5 w-5" /> : 
@@ -63,12 +68,15 @@ export function NetworkStatusAlert({
   isOnline,
   onHelp,
   className,
+  hidden = true, // Par défaut, les alertes réseau sont maintenant masquées
   ...props
 }: {
   isOnline?: boolean;
   onHelp?: () => void;
+  hidden?: boolean;
 } & React.HTMLAttributes<HTMLDivElement>) {
-  if (isOnline === undefined) return null;
+  // Si hidden est true ou si isOnline est undefined, ne rien afficher
+  if (hidden || isOnline === undefined) return null;
 
   return isOnline ? (
     <DNSAlert

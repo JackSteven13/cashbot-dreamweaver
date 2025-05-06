@@ -63,7 +63,8 @@ const LoginContainer = ({ lastLoggedInEmail }: LoginContainerProps) => {
       <div className="glass-panel p-6 rounded-xl">
         <div className="flex justify-between items-center mb-4">
           <PreviousLoginInfo lastLoggedInEmail={lastLoggedInEmail} />
-          <NetworkStatusIndicator className="ml-auto" />
+          {/* Masquer les états d'erreur du NetworkStatusIndicator */}
+          <NetworkStatusIndicator className="ml-auto" hideErrorStates={true} />
         </div>
         
         <LoginForm lastLoggedInEmail={lastLoggedInEmail} />

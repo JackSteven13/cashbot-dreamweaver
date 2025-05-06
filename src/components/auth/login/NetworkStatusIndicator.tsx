@@ -5,9 +5,10 @@ import { checkNetworkStatus } from '@/integrations/supabase/client';
 
 interface NetworkStatusProps {
   className?: string;
+  hideErrorStates?: boolean; // Nouvelle prop pour cacher les états d'erreur
 }
 
-const NetworkStatusIndicator = ({ className = '' }: NetworkStatusProps) => {
+const NetworkStatusIndicator = ({ className = '', hideErrorStates = false }: NetworkStatusProps) => {
   const [status, setStatus] = useState<{online: boolean; supabaseReachable: boolean}>({
     online: navigator.onLine,
     supabaseReachable: false
@@ -53,6 +54,22 @@ const NetworkStatusIndicator = ({ className = '' }: NetworkStatusProps) => {
     };
   }, []);
 
+  // Si hideErrorStates est true ou si tout est OK, montrer l'état connecté
+  if (hideErrorStates || (status.online && status.supabaseReachable)) {
+    return (
+      <div className={`flex items-center gap-1 px-2 py-1 text-xs bg-green-600/20 text-green-500 rounded-md ${className}`}>
+        <Wifi size={12} />
+        <span>Connecté</span>
+      </div>
+    );
+  }
+  
+  // Sinon, ne pas montrer les états d'erreur du tout
+  if (hideErrorStates) {
+    return null;
+  }
+  
+  // États d'erreur (uniquement affichés si hideErrorStates est false)
   if (!status.online) {
     return (
       <div className={`flex items-center gap-1 px-2 py-1 text-xs bg-red-600/20 text-red-500 rounded-md ${className}`}>
@@ -71,12 +88,7 @@ const NetworkStatusIndicator = ({ className = '' }: NetworkStatusProps) => {
     );
   }
 
-  return (
-    <div className={`flex items-center gap-1 px-2 py-1 text-xs bg-green-600/20 text-green-500 rounded-md ${className}`}>
-      <Wifi size={12} />
-      <span>Connecté</span>
-    </div>
-  );
+  return null;
 };
 
 export default NetworkStatusIndicator;
