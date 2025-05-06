@@ -1,56 +1,51 @@
 
 import { useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase';
+import { createClient, clearAuthData } from '@/lib/supabase';
 
 /**
  * Composant pour nettoyer efficacement les données d'authentification
  */
 const AuthCleanup = () => {
   const isMounted = useRef(true);
+  const cleanupComplete = useRef(false);
   const supabase = createClient();
   
-  // Nettoyer les données d'authentification
+  // Nettoyer les données d'authentification de façon agressive
   useEffect(() => {
+    if (cleanupComplete.current) return;
+    
     console.log("🧹 AuthCleanup: Nettoyage en cours");
     
-    const clearAuthData = () => {
+    const performCleanup = async () => {
       if (!isMounted.current) return;
       
       try {
-        // Supprimer les tokens
-        localStorage.removeItem('sb-access-token');
-        localStorage.removeItem('sb-refresh-token');
-        localStorage.removeItem('sb-auth-token');
-        localStorage.removeItem('supabase.auth.token');
+        // Déconnexion explicite d'abord
+        try {
+          await supabase.auth.signOut({ scope: 'global' });
+        } catch (e) {
+          console.log("Erreur de déconnexion ignorée");
+        }
         
-        // Supprimer les cookies associés
-        const cookiesToRemove = ['sb-access-token', 'sb-refresh-token'];
-        cookiesToRemove.forEach(name => {
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-        });
+        // Premier nettoyage
+        clearAuthData();
+        
+        // Attendre un peu
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Second nettoyage pour s'assurer que tout est propre
+        if (isMounted.current) {
+          clearAuthData();
+          cleanupComplete.current = true;
+        }
       } catch (e) {
         console.error("Erreur lors du nettoyage:", e);
       }
     };
     
-    // Effectuer la déconnexion puis nettoyer
-    const performCleanup = async () => {
-      try {
-        // Tentative de déconnexion
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (e) {
-        console.error("Erreur de déconnexion:", e);
-      }
-      
-      // Nettoyage des données
-      clearAuthData();
-      
-      // Second nettoyage après un délai
-      setTimeout(clearAuthData, 300);
-    };
-    
     performCleanup();
     
+    // Nettoyage supplémentaire au démontage du composant
     return () => {
       isMounted.current = false;
     };

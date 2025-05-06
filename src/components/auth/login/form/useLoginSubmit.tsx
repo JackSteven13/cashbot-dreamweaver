@@ -2,13 +2,13 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { createClient } from '@/lib/supabase';
+import { createClient, clearAuthData } from '@/lib/supabase';
 
 export const useLoginSubmit = () => {
   const navigate = useNavigate();
   const supabase = createClient();
 
-  // Version améliorée de la fonction de connexion
+  // Version robuste et fiable de la fonction de connexion
   const handleSubmit = async (
     e: React.FormEvent,
     email: string,
@@ -19,17 +19,17 @@ export const useLoginSubmit = () => {
     setIsLoading(true);
     
     try {
+      console.log("Préparation de la connexion pour:", email);
+      
+      // Nettoyage complet des données d'authentification avant la tentative
+      clearAuthData();
+      
+      // Court délai pour s'assurer que le nettoyage est pris en compte
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       console.log("Tentative de connexion pour:", email);
       
-      // Nettoyage des données d'authentification obsolètes
-      localStorage.removeItem('sb-access-token');
-      localStorage.removeItem('sb-refresh-token');
-      localStorage.removeItem('sb-auth-token');
-      
-      // Délai court pour s'assurer que le nettoyage est terminé
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Tentative de connexion avec options simplifiées
+      // Tentative de connexion avec nouvelle instance
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -55,8 +55,8 @@ export const useLoginSubmit = () => {
         description: "Redirection vers votre tableau de bord...",
       });
       
-      // Redirection
-      navigate('/dashboard', { replace: true });
+      // Redirection complète avec rafraîchissement de page pour éviter les problèmes d'état
+      window.location.href = '/dashboard';
     } catch (error: any) {
       console.error("Erreur complète:", error);
       
@@ -66,6 +66,9 @@ export const useLoginSubmit = () => {
         description: "Email ou mot de passe incorrect.",
         variant: "destructive"
       });
+      
+      // Nettoyage après échec
+      clearAuthData();
     } finally {
       setIsLoading(false);
     }

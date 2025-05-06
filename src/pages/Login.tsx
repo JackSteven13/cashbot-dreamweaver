@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
-import { createClient } from '@/lib/supabase';
+import { createClient, clearAuthData } from '@/lib/supabase';
 
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
@@ -15,6 +15,9 @@ const Login = () => {
       try {
         console.log("Nettoyage des données d'authentification");
         
+        // Nettoyage complet
+        clearAuthData();
+        
         // Déconnexion explicite
         try {
           await supabase.auth.signOut({ scope: 'global' });
@@ -22,16 +25,8 @@ const Login = () => {
           console.log("Erreur de déconnexion ignorée:", e);
         }
         
-        // Nettoyage des tokens
-        localStorage.removeItem('sb-access-token');
-        localStorage.removeItem('sb-refresh-token');
-        localStorage.removeItem('sb-auth-token');
-        localStorage.removeItem('supabase.auth.token');
-        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-        
-        // Supprimer tous les cookies d'authentification
-        document.cookie = "sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        document.cookie = "sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        // Second nettoyage pour s'assurer que tout est propre
+        setTimeout(clearAuthData, 300);
         
         console.log("Nettoyage terminé");
       } catch (err) {
