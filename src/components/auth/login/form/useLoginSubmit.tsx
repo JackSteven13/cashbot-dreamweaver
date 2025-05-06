@@ -1,14 +1,12 @@
 
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { createClient, clearAuthData } from '@/lib/supabase';
 
 export const useLoginSubmit = () => {
-  const navigate = useNavigate();
   const supabase = createClient();
 
-  // Version robuste et fiable de la fonction de connexion
+  // Version ultra simplifiée et robuste de la fonction de connexion
   const handleSubmit = async (
     e: React.FormEvent,
     email: string,
@@ -16,32 +14,40 @@ export const useLoginSubmit = () => {
     setIsLoading: (isLoading: boolean) => void
   ) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: "Champs obligatoires",
+        description: "Veuillez saisir votre email et votre mot de passe",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      console.log("Préparation de la connexion pour:", email);
+      console.log("Préparation de la connexion");
       
-      // Nettoyage complet des données d'authentification avant la tentative
+      // Nettoyage complet avant la tentative
       clearAuthData();
       
-      // Court délai pour s'assurer que le nettoyage est pris en compte
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       console.log("Tentative de connexion pour:", email);
       
-      // Tentative de connexion avec nouvelle instance
+      // Tentative de connexion avec configuration simplifiée
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
       
       if (error) {
-        console.error("Erreur d'authentification:", error.message);
         throw error;
       }
 
       if (!data.session) {
-        throw new Error("Échec d'authentification - Pas de session retournée");
+        throw new Error("Pas de session retournée");
       }
       
       console.log("Connexion réussie");
@@ -55,8 +61,9 @@ export const useLoginSubmit = () => {
         description: "Redirection vers votre tableau de bord...",
       });
       
-      // Redirection complète avec rafraîchissement de page pour éviter les problèmes d'état
+      // Redirection complète avec rafraîchissement
       window.location.href = '/dashboard';
+      
     } catch (error: any) {
       console.error("Erreur complète:", error);
       

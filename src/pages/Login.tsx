@@ -7,26 +7,28 @@ import { createClient, clearAuthData } from '@/lib/supabase';
 
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
-  const supabase = createClient();
-
+  
   // Nettoyage complet au chargement de la page de login
   useEffect(() => {    
     const cleanupAuth = async () => {
       try {
         console.log("Nettoyage des données d'authentification");
         
-        // Nettoyage complet
+        // Premier nettoyage
         clearAuthData();
         
-        // Déconnexion explicite
+        // Création d'une instance propre de Supabase
+        const supabase = createClient();
+        
+        // Tentative de déconnexion explicite
         try {
           await supabase.auth.signOut({ scope: 'global' });
         } catch (e) {
-          console.log("Erreur de déconnexion ignorée:", e);
+          console.log("Erreur de déconnexion ignorée");
         }
         
         // Second nettoyage pour s'assurer que tout est propre
-        setTimeout(clearAuthData, 300);
+        setTimeout(clearAuthData, 500);
         
         console.log("Nettoyage terminé");
       } catch (err) {

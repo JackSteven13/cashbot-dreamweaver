@@ -2,53 +2,42 @@
 import { useEffect, useRef } from 'react';
 import { createClient, clearAuthData } from '@/lib/supabase';
 
-/**
- * Composant pour nettoyer efficacement les données d'authentification
- */
 const AuthCleanup = () => {
-  const isMounted = useRef(true);
-  const cleanupComplete = useRef(false);
-  const supabase = createClient();
+  const cleanupDone = useRef(false);
   
   // Nettoyer les données d'authentification de façon agressive
   useEffect(() => {
-    if (cleanupComplete.current) return;
-    
-    console.log("🧹 AuthCleanup: Nettoyage en cours");
+    if (cleanupDone.current) return;
     
     const performCleanup = async () => {
-      if (!isMounted.current) return;
+      console.log("🧹 AuthCleanup: Nettoyage agressif des données d'authentification");
+      
+      // Premier nettoyage
+      clearAuthData();
+      
+      // Récupérer une instance propre de Supabase
+      const supabase = createClient();
       
       try {
         // Déconnexion explicite d'abord
-        try {
-          await supabase.auth.signOut({ scope: 'global' });
-        } catch (e) {
-          console.log("Erreur de déconnexion ignorée");
-        }
-        
-        // Premier nettoyage
-        clearAuthData();
-        
-        // Attendre un peu
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Second nettoyage pour s'assurer que tout est propre
-        if (isMounted.current) {
-          clearAuthData();
-          cleanupComplete.current = true;
-        }
+        await supabase.auth.signOut({ scope: 'global' });
       } catch (e) {
-        console.error("Erreur lors du nettoyage:", e);
+        console.log("Erreur de déconnexion ignorée");
       }
+      
+      // Attendre un peu
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Second nettoyage pour s'assurer que tout est propre
+      clearAuthData();
+      
+      // Marquer comme terminé
+      cleanupDone.current = true;
+      
+      console.log("🧹 AuthCleanup: Nettoyage terminé");
     };
     
     performCleanup();
-    
-    // Nettoyage supplémentaire au démontage du composant
-    return () => {
-      isMounted.current = false;
-    };
   }, []);
 
   return null; // Composant sans rendu
