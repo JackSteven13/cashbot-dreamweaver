@@ -16,23 +16,31 @@ export const isProductionEnvironment = (): boolean => {
          !hostname.includes('localhost');
 };
 
-// Configuration du client Supabase avec options optimales pour tous les environnements
+// Configuration du client Supabase avec options améliorées pour la fiabilité
 const createSupabaseClient = (): SupabaseClient<Database> => {
   console.log(`[Supabase] Initialisation du client (${isProductionEnvironment() ? "PROD" : "DEV"})`);
   
-  // Options unifiées pour tous les environnements
+  // Options optimisées pour tous les environnements
   const options = {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'pkce' as const, // Type explicite pour éviter les erreurs TS
-      storage: localStorage
+      flowType: 'pkce' as const,
+      storage: localStorage,
+      storageKey: 'sb-auth-token',
+      debug: true
     },
     global: {
       headers: {
-        'Cache-Control': 'no-store'
-      }
+        'Cache-Control': 'no-store',
+        'X-Client-Info': 'streamgenius-webapp'
+      },
+      fetch: customFetch
+    },
+    // Délais d'attente plus longs pour les réseaux mobiles
+    realtime: {
+      timeout: 30000  // 30 secondes
     }
   };
 
@@ -46,16 +54,32 @@ const createSupabaseClient = (): SupabaseClient<Database> => {
     return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
         autoRefreshToken: true,
-        persistSession: true
+        persistSession: true,
+        storage: localStorage
       }
     });
   }
 };
 
+// Wrapper pour fetch avec timeout
+const customFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const timeout = 20000; // 20 secondes de timeout
+  
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  return fetch(input, {
+    ...init,
+    signal: controller.signal
+  }).finally(() => {
+    clearTimeout(timeoutId);
+  });
+};
+
 // Instance unique du client Supabase
 export const supabase = createSupabaseClient();
 
-// Fonction pour nettoyer les données d'authentification
+// Fonction améliorée pour nettoyer les données d'authentification
 export const clearStoredAuthData = () => {
   try {
     console.log("Nettoyage des données d'authentification");
@@ -80,6 +104,11 @@ export const clearStoredAuthData = () => {
       }
     });
     
+    // Nettoyer les cookies potentiels (cross-browser)
+    document.cookie.split(';').forEach(c => {
+      document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/');
+    });
+    
     return true;
   } catch (err) {
     console.error("Erreur lors du nettoyage:", err);
@@ -95,14 +124,14 @@ export const forceRetrySigning = async () => {
   clearStoredAuthData();
   
   try {
-    // Déconnexion explicite
-    await supabase.auth.signOut();
+    // Déconnexion explicite avec scope global
+    await supabase.auth.signOut({ scope: 'global' });
   } catch (e) {
     // Ignorer les erreurs
   }
   
   // Attendre un court délai
-  await new Promise(resolve => setTimeout(resolve, 300));
+  await new Promise(resolve => setTimeout(resolve, 500));
   
   return true;
 };

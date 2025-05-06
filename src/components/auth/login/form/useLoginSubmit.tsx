@@ -7,6 +7,25 @@ import { supabase, forceRetrySigning } from "@/integrations/supabase/client";
 export const useLoginSubmit = () => {
   const navigate = useNavigate();
 
+  // Fonction améliorée pour vérifier si la connexion internet est disponible
+  const checkInternetConnection = async (): Promise<boolean> => {
+    if (!navigator.onLine) {
+      return false;
+    }
+    
+    try {
+      // Tenter une requête simple vers Supabase pour vérifier la connectivité réelle
+      await fetch(`${supabase.supabaseUrl}/auth/v1/`, { 
+        method: 'HEAD',
+        mode: 'no-cors',
+        cache: 'no-store'
+      });
+      return true;
+    } catch (e) {
+      return navigator.onLine; // Fallback sur l'état du navigateur
+    }
+  };
+
   // Fonction simplifiée pour vérifier l'authentification
   const checkAuthentication = async (): Promise<boolean> => {
     try {
@@ -27,59 +46,89 @@ export const useLoginSubmit = () => {
     setIsLoading(true);
     
     try {
+      // Vérifier la connexion internet d'abord
+      const isOnline = await checkInternetConnection();
+      if (!isOnline) {
+        toast({
+          title: "Erreur de connexion",
+          description: "Veuillez vérifier votre connexion internet et réessayer.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
       console.log("Tentative de connexion pour:", email);
       
-      // S'assurer qu'il n'y a pas de données d'authentification obsolètes
+      // Nettoyage plus agressif avant la tentative de connexion
       await forceRetrySigning();
       
-      // Tentative de connexion standard
-      const { error } = await supabase.auth.signInWithPassword({
+      // Tentative de connexion avec timeout pour éviter les blocages
+      const loginPromise = supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
       
+      // Créer un timeout de 15 secondes
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Délai d'attente dépassé")), 15000);
+      });
+      
+      // Course entre la connexion et le timeout
+      const { error } = await Promise.race([
+        loginPromise,
+        timeoutPromise
+      ]) as any;
+      
       if (error) {
         console.error("Erreur d'authentification:", error.message);
         
-        // Si l'erreur semble liée au réseau, tenter une approche alternative
         if (error.message.includes('network') || 
             error.message.includes('fetch') || 
             error.message.includes('Failed') ||
             error.message.includes('timeout')) {
           
-          console.log("Problème de réseau détecté, nouvelle tentative");
-          
-          // Nettoyer et réessayer
-          await forceRetrySigning();
-          
-          // Seconde tentative
-          const secondAttempt = await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password,
+          toast({
+            title: "Problème de connexion",
+            description: "Impossible de communiquer avec le serveur d'authentification. Veuillez vérifier votre connexion internet.",
+            variant: "destructive"
           });
-          
-          if (secondAttempt.error) {
-            throw secondAttempt.error;
-          }
-        } else {
-          throw error;
+          setIsLoading(false);
+          return;
         }
+        
+        throw error;
       }
       
-      // Vérifier que la session est bien établie
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const isAuthenticated = await checkAuthentication();
+      // Vérifier que la session est bien établie, avec plusieurs tentatives
+      let isAuthenticated = false;
+      let attempts = 0;
+      
+      while (!isAuthenticated && attempts < 3) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        isAuthenticated = await checkAuthentication();
+        attempts++;
+      }
       
       if (!isAuthenticated) {
         console.warn("Session non établie après connexion apparemment réussie");
         
         // Tentative de récupération
-        await supabase.auth.refreshSession();
+        try {
+          await supabase.auth.refreshSession();
+          isAuthenticated = await checkAuthentication();
+        } catch (refreshError) {
+          console.error("Erreur lors du rafraîchissement de la session:", refreshError);
+        }
         
-        const retryAuthentication = await checkAuthentication();
-        if (!retryAuthentication) {
-          console.error("Impossible de confirmer l'authentification");
-          throw new Error("Session non établie après connexion");
+        if (!isAuthenticated) {
+          toast({
+            title: "Problème de synchronisation",
+            description: "Votre connexion a été acceptée mais la session n'a pas pu être établie. Veuillez réessayer.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
         }
       }
       
@@ -95,19 +144,27 @@ export const useLoginSubmit = () => {
       });
       
       // Attendre avant la redirection
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Redirection
-      navigate('/dashboard', { replace: true });
+      // Force reload pour garantir un état propre
+      window.location.href = '/dashboard';
     } catch (error: any) {
       console.error("Erreur complète:", error);
       
       // Message d'erreur adapté
-      toast({
-        title: "Échec de connexion",
-        description: "Email ou mot de passe incorrect.",
-        variant: "destructive"
-      });
+      if (error.message?.includes('timeout') || error.message?.includes('Délai')) {
+        toast({
+          title: "Délai d'attente dépassé",
+          description: "Le serveur met trop de temps à répondre. Veuillez réessayer plus tard.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Échec de connexion",
+          description: "Email ou mot de passe incorrect.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoading(false);
     }

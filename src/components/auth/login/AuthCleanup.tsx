@@ -1,65 +1,56 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { clearStoredAuthData, supabase } from '@/integrations/supabase/client';
 
+/**
+ * Composant invisible qui nettoie agressivement les données d'authentification
+ * au chargement de la page de connexion
+ */
 const AuthCleanup = () => {
-  // Utiliser une ref pour suivre si le composant est monté
-  const isMounted = useRef(true);
-  
-  // Nettoyer les données d'authentification de manière très agressive
   useEffect(() => {
-    console.log("🧹 AuthCleanup: Nettoyage radical en cours");
-    
-    // Fonction de nettoyage complète
-    const performFullCleanup = async () => {
-      if (!isMounted.current) return;
+    const cleanupAuth = async () => {
+      console.log("Exécution du nettoyage d'authentification au chargement de la page de connexion");
       
       try {
-        // 1. Déconnexion explicite
-        try {
-          await supabase.auth.signOut({ scope: 'global' });
-        } catch (e) {
-          console.error("Erreur lors de la déconnexion:", e);
-        }
-        
-        // 2. Nettoyage radical du stockage
+        // Premier nettoyage
         clearStoredAuthData();
         
-        // 3. Nettoyage supplémentaire des clés spécifiques
-        try {
-          localStorage.removeItem('supabase.auth.token');
-          sessionStorage.removeItem('supabase.auth.token');
-          localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-          sessionStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+        // Déconnexion explicite avec scope global
+        await supabase.auth.signOut({ scope: 'global' });
+        
+        // Attendre que la déconnexion soit traitée
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Deuxième nettoyage pour garantir un état propre
+        clearStoredAuthData();
+        
+        // Vérifier qu'aucune session n'est présente
+        const { data } = await supabase.auth.getSession();
+        
+        if (data.session) {
+          console.warn("Session toujours présente après nettoyage, forçage supplémentaire");
           
-          // 4. Supprimer explicitement tous les cookies liés à l'authentification
-          document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-          document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        } catch (err) {
-          console.error("Erreur lors du nettoyage spécifique:", err);
+          // Tentative finale de déconnexion
+          await supabase.auth.signOut();
+          clearStoredAuthData();
+          
+          // Effacer les cookies de domaine si nous sommes en production
+          if (window.location.hostname.includes('streamgenius.io')) {
+            document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=streamgenius.io;';
+            document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=streamgenius.io;';
+          }
         }
-      } catch (err) {
-        console.error("Erreur lors du nettoyage complet:", err);
+      } catch (error) {
+        console.error("Erreur pendant le nettoyage d'authentification:", error);
       }
     };
     
-    // Exécuter immédiatement
-    performFullCleanup();
-    
-    // Puis à nouveau après des délais pour s'assurer que tout est propre
-    const timer1 = setTimeout(performFullCleanup, 300);
-    const timer2 = setTimeout(performFullCleanup, 1000);
-    const timer3 = setTimeout(performFullCleanup, 2000);
-    
-    return () => {
-      isMounted.current = false;
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-    };
+    // Lancer le nettoyage
+    cleanupAuth();
   }, []);
-
-  return null; // Composant sans rendu
+  
+  // Ce composant ne rend rien
+  return null;
 };
 
 export default AuthCleanup;
