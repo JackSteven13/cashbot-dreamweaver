@@ -115,9 +115,59 @@ type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
 
 type ToastActionElement = React.ReactElement<typeof ToastAction>
 
+// Add useToast hook and toast function
+type ToastOptions = {
+  title?: string;
+  description?: string;
+  variant?: "default" | "destructive";
+  action?: ToastActionElement;
+  duration?: number;
+};
+
+const toastStore = {
+  toasts: [] as any[],
+  listeners: new Set<() => void>(),
+  notify: (options: ToastOptions) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    toastStore.toasts = [...toastStore.toasts, { id, ...options }];
+    toastStore.listeners.forEach(listener => listener());
+    return id;
+  },
+  dismiss: (id: string) => {
+    toastStore.toasts = toastStore.toasts.filter(toast => toast.id !== id);
+    toastStore.listeners.forEach(listener => listener());
+  },
+  subscribe: (listener: () => void) => {
+    toastStore.listeners.add(listener);
+    return () => toastStore.listeners.delete(listener);
+  }
+};
+
+const useToast = () => {
+  const [toasts, setToasts] = React.useState(toastStore.toasts);
+  
+  React.useEffect(() => {
+    const unsubscribe = toastStore.subscribe(() => {
+      setToasts([...toastStore.toasts]);
+    });
+    return unsubscribe;
+  }, []);
+  
+  return {
+    toasts,
+    toast: toastStore.notify,
+    dismiss: toastStore.dismiss
+  };
+};
+
+const toast = (options: ToastOptions) => {
+  return toastStore.notify(options);
+};
+
 export {
   type ToastProps,
   type ToastActionElement,
+  type ToastOptions,
   ToastProvider,
   ToastViewport,
   Toast,
@@ -125,4 +175,6 @@ export {
   ToastDescription,
   ToastClose,
   ToastAction,
+  useToast,
+  toast
 }
