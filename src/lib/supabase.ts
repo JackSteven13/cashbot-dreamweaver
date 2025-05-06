@@ -12,11 +12,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     storage: localStorage,
     flowType: 'implicit',
-    debug: true,
-    // Augmenter le timeout pour les requêtes d'auth
-    fetch: (url, options) => {
+    debug: true
+  },
+  global: {
+    // Move fetch configuration to global options
+    fetch: (...args) => {
+      const [url, options] = args;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondes timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
       
       return fetch(url, {
         ...options,
