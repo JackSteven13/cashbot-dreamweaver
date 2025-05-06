@@ -15,6 +15,7 @@ interface DNSAlertProps extends React.HTMLAttributes<HTMLDivElement> {
   hidden?: boolean;
 }
 
+// Ces composants retournent toujours null pour ne jamais s'afficher
 export function DNSAlert({
   className,
   variant = "destructive",
@@ -26,40 +27,7 @@ export function DNSAlert({
   hidden = false,
   ...props
 }: DNSAlertProps) {
-  if (hidden) return null;
-  
-  const alertIcon = icon || (
-    variant === "destructive" ? <AlertCircle className="h-5 w-5" /> : 
-    variant === "warning" ? <AlertCircle className="h-5 w-5" /> : 
-    <Info className="h-5 w-5" />
-  );
-
-  return (
-    <Alert 
-      variant={variant} 
-      className={cn("flex items-center justify-between gap-4 transition-all duration-300", className)}
-      {...props}
-    >
-      <div className="flex items-start gap-3">
-        {alertIcon}
-        <div>
-          {title && <AlertTitle>{title}</AlertTitle>}
-          {description && <AlertDescription>{description}</AlertDescription>}
-        </div>
-      </div>
-      
-      {action && onAction && (
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={onAction}
-          className="h-8 px-3 py-0 text-sm bg-slate-900/90 border-slate-700/50 hover:bg-slate-800"
-        >
-          {action}
-        </Button>
-      )}
-    </Alert>
-  );
+  return null;
 }
 
 export function NetworkStatusAlert({
@@ -73,6 +41,5 @@ export function NetworkStatusAlert({
   onHelp?: () => void;
   hidden?: boolean;
 } & React.HTMLAttributes<HTMLDivElement>) {
-  // Toujours caché par défaut
   return null;
 }
