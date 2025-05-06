@@ -8,56 +8,26 @@ import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
 
-  // Nettoyage radical au chargement de la page
+  // Nettoyage initial au chargement de la page
   useEffect(() => {    
     const cleanupAuth = async () => {
       try {
-        console.log("Nettoyage complet des données d'authentification");
+        console.log("Nettoyage des données d'authentification");
         
         // Premier nettoyage
         clearStoredAuthData();
         
-        // Déconnexion explicite de Supabase avec champ d'application global
-        await supabase.auth.signOut({ scope: 'global' });
-        
-        // Attendre que la déconnexion soit traitée
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Deuxième nettoyage pour s'assurer que tout est propre
-        clearStoredAuthData();
-        
-        // Mieux viser les cookies en fonction des domaines potentiels
-        const isProduction = window.location.hostname.endsWith('streamgenius.io');
-        if (isProduction) {
-          // Traiter spécifiquement streamgenius.io et sous-domaines
-          document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=streamgenius.io;';
-          document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=streamgenius.io;';
-          document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.streamgenius.io;';
-          document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.streamgenius.io;';
+        // Déconnexion explicite
+        try {
+          await supabase.auth.signOut();
+        } catch (err) {
+          console.error("Erreur lors de la déconnexion:", err);
         }
         
-        // Nettoyage supplémentaire sans ciblage de domaine
-        document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        
-        // Vérification finale après un délai
-        setTimeout(() => {
-          clearStoredAuthData();
-          
-          // Vérifier qu'aucune session n'est présente
-          supabase.auth.getSession().then(({ data }) => {
-            if (data.session) {
-              console.warn("Session toujours présente après nettoyage, forçage supplémentaire");
-              supabase.auth.signOut();
-              clearStoredAuthData();
-            } else {
-              console.log("Confirmation: aucune session active");
-            }
-          });
-        }, 1000);
+        // Second nettoyage après déconnexion
+        clearStoredAuthData();
       } catch (err) {
         console.error("Erreur de nettoyage d'authentification:", err);
-        clearStoredAuthData();
       }
     };
     
