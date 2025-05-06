@@ -6,7 +6,7 @@ interface LoginButtonProps {
   isLoading: boolean;
 }
 
-export function LoginButton({ isLoading }: LoginButtonProps) {
+const LoginButton = ({ isLoading }: LoginButtonProps) => {
   return (
     <Button 
       type="submit" 
@@ -26,4 +26,6 @@ export function LoginButton({ isLoading }: LoginButtonProps) {
       )}
     </Button>
   );
-}
+};
+
+export default LoginButton;

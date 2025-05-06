@@ -14,8 +14,11 @@ export const useLoginSubmit = () => {
     }
     
     try {
+      // Use the Supabase URL from the environment or a hardcoded value instead of accessing supabaseUrl directly
+      const supabaseApiUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://cfjibduhagxiwqkiyhqd.supabase.co'}/auth/v1/`;
+      
       // Tenter une requête simple vers Supabase pour vérifier la connectivité réelle
-      await fetch(`${supabase.supabaseUrl}/auth/v1/`, { 
+      await fetch(supabaseApiUrl, { 
         method: 'HEAD',
         mode: 'no-cors',
         cache: 'no-store'
