@@ -43,6 +43,19 @@ export const useLoginSubmit = () => {
         // Enregistrer l'email pour la prochaine connexion
         localStorage.setItem('last_logged_in_email', email);
         
+        // Log connection via edge function
+        try {
+          const { error: logError } = await supabase.functions.invoke('log-connection');
+          if (logError) {
+            console.error("Failed to log connection:", logError);
+          } else {
+            console.log("Connection logged successfully");
+          }
+        } catch (logErr) {
+          console.error("Error invoking log-connection function:", logErr);
+          // Non-fatal error, continue with login process
+        }
+        
         // Afficher un toast de réussite
         toast({
           title: "Connexion réussie",
