@@ -2,42 +2,18 @@
 import { supabase, SUPABASE_URL, isProductionEnvironment } from '@/integrations/supabase/client';
 
 /**
- * Vérification simplifiée de la connexion réseau
+ * Version simplifiée qui ne vérifie pas réellement la connectivité réseau
  */
 const checkNetworkConnectivity = async (): Promise<boolean> => {
-  if (!navigator.onLine) {
-    console.log("Le navigateur rapporte être hors ligne");
-    return false;
-  }
-  
-  try {
-    // Utiliser l'URL de base de Supabase pour tester la connectivité
-    const response = await fetch(`${SUPABASE_URL}`, {
-      method: 'HEAD',
-      mode: 'no-cors',
-      cache: 'no-store'
-    });
-    
-    return true;
-  } catch (error) {
-    console.error("Erreur lors de la vérification de connectivité:", error);
-    return navigator.onLine;
-  }
+  return true;
 };
 
 /**
- * Vérification d'authentification robuste
+ * Vérification d'authentification simplifiée
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
     console.log("Vérification d'authentification");
-    
-    // Vérifier la connectivité réseau
-    const isNetworkAvailable = await checkNetworkConnectivity();
-    if (!isNetworkAvailable) {
-      console.log("Réseau non disponible");
-      return false;
-    }
     
     try {
       // Vérification directe de session avec timeout

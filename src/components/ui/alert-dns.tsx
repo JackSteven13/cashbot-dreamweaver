@@ -12,7 +12,7 @@ interface DNSAlertProps extends React.HTMLAttributes<HTMLDivElement> {
   icon?: React.ReactNode;
   action?: React.ReactNode;
   onAction?: () => void;
-  hidden?: boolean; // Nouvelle prop pour masquer l'alerte
+  hidden?: boolean;
 }
 
 export function DNSAlert({
@@ -23,13 +23,11 @@ export function DNSAlert({
   icon,
   action = "Aide",
   onAction,
-  hidden = false, // Par défaut, l'alerte est visible
+  hidden = false,
   ...props
 }: DNSAlertProps) {
-  // Si hidden est true, ne pas rendre le composant
   if (hidden) return null;
   
-  // Déterminer l'icône en fonction du variant
   const alertIcon = icon || (
     variant === "destructive" ? <AlertCircle className="h-5 w-5" /> : 
     variant === "warning" ? <AlertCircle className="h-5 w-5" /> : 
@@ -68,36 +66,13 @@ export function NetworkStatusAlert({
   isOnline,
   onHelp,
   className,
-  hidden = true, // Par défaut, les alertes réseau sont maintenant masquées
+  hidden = true,
   ...props
 }: {
   isOnline?: boolean;
   onHelp?: () => void;
   hidden?: boolean;
 } & React.HTMLAttributes<HTMLDivElement>) {
-  // Si hidden est true ou si isOnline est undefined, ne rien afficher
-  if (hidden || isOnline === undefined) return null;
-
-  return isOnline ? (
-    <DNSAlert
-      variant="warning"
-      icon={<AlertCircle className="h-5 w-5 text-amber-500" />}
-      title="Problème de DNS détecté. Essayez de vider votre cache DNS."
-      action="Aide"
-      onAction={onHelp}
-      className={cn("bg-red-950/20 border-red-500/30", className)}
-      {...props}
-    />
-  ) : (
-    <DNSAlert
-      variant="destructive"
-      icon={<WifiOff className="h-5 w-5" />}
-      title="Connexion internet non disponible"
-      description="Vérifiez votre connexion et réessayez."
-      action="Réessayer"
-      onAction={() => window.location.reload()}
-      className={cn("bg-red-950/20 border-red-500/30", className)}
-      {...props}
-    />
-  );
+  // Toujours caché par défaut
+  return null;
 }
