@@ -1,3 +1,4 @@
+
 import React, { memo, useEffect, useState, useCallback } from 'react';
 import { useTransactions } from './transactions/hooks/useTransactions';
 import { Transaction } from '@/types/userData';
@@ -96,18 +97,29 @@ const TransactionsList = memo(({
     window.addEventListener('transactions:updated', handleRealtimeUpdate);
     
     // Configurer un canal Supabase pour les mises à jour en temps réel
-    const channel = supabase
-      .channel('transactions_changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'transactions',
-        filter: user?.id ? `user_id=eq.${user.id}` : undefined,
-      }, () => {
-        console.log('Realtime update detected for transactions');
-        fetchLatestTransactions();
-      })
-      .subscribe();
+    const setupRealtimeSubscription = async () => {
+      if (!user?.id) return;
+      
+      // S'abonner aux changements dans la table des transactions pour cet utilisateur
+      const channel = supabase
+        .channel('transactions_changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`,
+        }, () => {
+          console.log('Realtime update detected for transactions');
+          fetchLatestTransactions();
+        })
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+    
+    const realtimeCleanup = setupRealtimeSubscription();
     
     // Mise en place d'un rafraîchissement périodique toutes les 30 secondes
     const pollingInterval = setInterval(() => {
@@ -128,7 +140,9 @@ const TransactionsList = memo(({
       clearInterval(pollingInterval);
       
       // Nettoyer l'abonnement Realtime
-      supabase.removeChannel(channel);
+      realtimeCleanup.then(cleanup => {
+        if (cleanup) cleanup();
+      });
     };
   }, [fetchLatestTransactions, user]);
   

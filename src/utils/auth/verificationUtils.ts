@@ -1,114 +1,131 @@
 
-import { useState, useEffect } from 'react';
-import { supabase, SUPABASE_URL } from '@/integrations/supabase/client';
+import { supabase, isProductionEnvironment } from '@/integrations/supabase/client';
 
 /**
- * Vérification améliorée de la connexion réseau avec plusieurs méthodes
+ * Vérifier la connectivité réseau
  */
 const checkNetworkConnectivity = async (): Promise<boolean> => {
-  // Si le navigateur indique hors ligne, c'est déjà un bon indicateur
   if (!navigator.onLine) {
     console.log("Le navigateur rapporte être hors ligne");
     return false;
   }
   
+  // Vérifier la connexion à Supabase avec une requête simple
   try {
-    // Utiliser l'URL de base de Supabase avec un timestamp pour contourner le cache
-    const timestamp = new Date().getTime();
-    const response = await fetch(`${SUPABASE_URL}?_=${timestamp}`, {
+    const startTime = Date.now();
+    const response = await fetch(`${supabase.supabaseUrl}`, {
       method: 'HEAD',
-      mode: 'no-cors',
-      cache: 'no-store',
-      headers: {
-        'Pragma': 'no-cache',
-        'Cache-Control': 'no-cache'
-      },
-      credentials: 'omit'
+      mode: 'no-cors', // Permet de tester la connexion sans CORS
+      cache: 'no-store'
     });
+    const endTime = Date.now();
     
+    console.log(`Connectivité vérifiée en ${endTime - startTime}ms`);
     return true;
   } catch (error) {
     console.error("Erreur lors de la vérification de connectivité:", error);
-    return navigator.onLine;
+    return navigator.onLine; // Utiliser l'état en ligne comme fallback
   }
 };
 
 /**
- * Vérification d'authentification robuste avec réessai et contrôle réseau
+ * Vérifie si l'utilisateur est authentifié avec gestion d'erreur réseau améliorée
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
-    console.log("Vérification d'authentification");
+    console.log("Début de la vérification d'authentification");
     
-    // Vérifier la connectivité réseau d'abord
+    // Vérifier d'abord la connectivité réseau
     const isNetworkAvailable = await checkNetworkConnectivity();
     if (!isNetworkAvailable) {
-      console.log("Réseau non disponible");
+      console.log("Réseau non disponible, échec de la vérification");
       return false;
     }
     
-    // Ajouter un court délai pour éviter les problèmes de race condition
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Détection de l'environnement
+    const isProduction = isProductionEnvironment();
+    console.log(`Vérification d'auth en ${isProduction ? 'PRODUCTION' : 'DÉVELOPPEMENT'}`);
     
-    // Premier essai direct pour vérifier la session
-    try {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error("Erreur lors de la vérification de session:", sessionError);
-        // Continue à la tentative de rafraîchissement
-      } else if (sessionData?.session?.user?.id) {
-        console.log("Session valide trouvée directement");
-        return true;
-      }
-    } catch (err) {
-      console.error("Exception lors de la première vérification:", err);
-      // Continue à la tentative de rafraîchissement
-    }
+    // Vérifier localStorage avec clé adaptée selon l'environnement
+    const storageKey = isProduction ? 'sb-auth-token-prod' : 'sb-cfjibduhagxiwqkiyhqd-auth-token';
+    const hasLocalStorage = !!localStorage.getItem(storageKey);
     
-    // Deuxième essai - tenter de rafraîchir la session
-    try {
-      console.log("Tentative de rafraîchissement de la session");
-      const { data: refreshData } = await supabase.auth.refreshSession();
-      
-      if (refreshData?.session?.user?.id) {
-        console.log("Session rafraîchie avec succès");
-        return true;
-      }
-    } catch (refreshErr) {
-      console.error("Erreur lors du rafraîchissement:", refreshErr);
-    }
-    
-    // Dernier essai sans erreur
-    try {
-      // Nettoyage pour s'assurer qu'il n'y a pas de données pouvant causer des conflits
-      localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-      
-      // Attente supplémentaire
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Vérification finale
-      const { data: finalCheck } = await supabase.auth.getSession();
-      
-      if (finalCheck?.session?.user?.id) {
-        console.log("Session valide trouvée après rafraîchissement");
-        return true;
-      }
-      
-      console.log("Aucune session valide trouvée après tous les essais");
-      return false;
-    } catch (finalErr) {
-      console.error("Exception lors de la vérification finale:", finalErr);
+    if (!hasLocalStorage) {
+      console.log(`Aucun token trouvé dans localStorage (${storageKey})`);
       return false;
     }
+    
+    // En production, faire une vérification simplifiée pour éviter les erreurs CORS
+    if (isProduction) {
+      try {
+        // Récupérer la session avec un timeout court (3 secondes)
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 3000)
+        );
+        
+        const { data } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+        
+        if (!data || !data.session) {
+          console.log("Aucune session trouvée via getSession");
+          return false;
+        }
+        
+        console.log("Session trouvée en production, utilisateur authentifié");
+        return true;
+      } catch (err) {
+        console.error("Erreur lors de la vérification en production:", err);
+        
+        // Si erreur de timeout ou réseau, vérifier si le token existe et n'est pas expiré
+        try {
+          const tokenRaw = localStorage.getItem(storageKey);
+          if (!tokenRaw) return false;
+          
+          const token = JSON.parse(tokenRaw);
+          if (!token.access_token) return false;
+          
+          // Vérifier si le token a une date d'expiration et s'il est toujours valide
+          if (token.expires_at) {
+            const expiresAt = new Date(token.expires_at * 1000);
+            const now = new Date();
+            if (now < expiresAt) {
+              console.log("Token local valide en date d'expiration, considéré comme authentifié malgré l'erreur réseau");
+              return true;
+            }
+          }
+          
+          return false;
+        } catch (e) {
+          console.error("Erreur lors de la vérification du token local:", e);
+          return false;
+        }
+      }
+    }
+    
+    // En développement, vérification standard
+    const { data, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error("Erreur lors de la vérification d'authentification:", error);
+      return false;
+    }
+    
+    if (!data || !data.session || !data.session.user) {
+      console.log("Session invalide ou incomplète");
+      return false;
+    }
+    
+    console.log("Session valide confirmée pour:", data.session.user.email);
+    return true;
+    
   } catch (error) {
-    console.error("Exception générale lors de la vérification d'authentification:", error);
+    console.error("Exception lors de la vérification d'authentification:", error);
     return false;
   }
 };
 
 /**
- * Version simplifiée pour les vérifications rapides
+ * Version simplifiée de isUserAuthenticated
  */
 export const isUserAuthenticated = async (): Promise<boolean> => {
   return await verifyAuth();

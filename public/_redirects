@@ -9,42 +9,21 @@ https://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
 # Redirection www vers non-www
 https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
-# CRUCIAL - Traiter les retours d'authentification avec une priorité MAXIMALE
-/auth/callback/* /index.html 200!
-/auth/* /index.html 200!
+# Configuration Supabase avec en-têtes CORS explicites
+/auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200
+/rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200
+/storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200
+/realtime/* https://cfjibduhagxiwqkiyhqd.supabase.co/realtime/:splat 200
 
-# Configuration Supabase avec gestion CORS optimisée et cache désactivé
-/auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200!
-  Access-Control-Allow-Origin: *
-  Access-Control-Allow-Headers: *
-  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
-  Cache-Control: no-cache, no-store, must-revalidate
-
-/rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200!
-  Access-Control-Allow-Origin: *
-  Access-Control-Allow-Headers: *
-  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
-  Cache-Control: no-cache, no-store, must-revalidate
-
-/storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200!
-  Access-Control-Allow-Origin: *
-  Access-Control-Allow-Headers: *
-  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
-  Cache-Control: no-cache, no-store, must-revalidate
-
-/realtime/* https://cfjibduhagxiwqkiyhqd.supabase.co/realtime/:splat 200!
-  Access-Control-Allow-Origin: *
-  Access-Control-Allow-Headers: *
-  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
-  Cache-Control: no-cache, no-store, must-revalidate
-
-# Routes pour les callbacks d'authentification - priorité élevée
-/auth/v1/callback/* /index.html 200!
-/login/* /index.html 200!
+# Routes CRUCIALES pour les callbacks d'authentification - version relaxée 
+/auth/callback/* /index.html 200
+/auth/* /index.html 200
+/auth/v1/callback/* /index.html 200
+/login/* /index.html 200
 /login /index.html 200!
 /register /index.html 200!
 
-# Traitement spécial des pages principales
+# CRUCIAL: Traitement spécial des pages principale pour éviter les problèmes de routage
 /dashboard/* /index.html 200!
 
 # SPA fallback pour toutes les autres routes

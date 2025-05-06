@@ -13,13 +13,11 @@ export const useProfileFetcher = (): UseProfileFetcherResult => {
   // Function for retrieving profile data
   const fetchProfileData = useCallback(async (userId: string) => {
     try {
-      const response = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('full_name')
         .eq('id', userId)
-        .maybeSingle() as any;
-        
-      const { data, error } = response;
+        .single();
       
       if (error) {
         console.error("Error fetching profile:", error);

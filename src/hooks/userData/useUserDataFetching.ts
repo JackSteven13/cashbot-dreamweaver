@@ -1,49 +1,72 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { fetchUserProfile } from '@/utils/user/profileUtils';
+import { toast } from '@/components/ui/use-toast';
 import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
+import balanceManager from '@/utils/balance/balanceManager';
 
-/**
- * Hook for fetching user data with better state management
- */
 export const useUserDataFetching = () => {
-  const { user } = useAuth();
-  const [transactions, setTransactions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    if (!user?.id) {
-      console.error('No user ID found');
-      return;
+  const fetchUserData = useCallback(async (userId: string) => {
+    if (!userId) {
+      console.error("No user ID provided for fetching data");
+      return null;
     }
-
+    
     setIsLoading(true);
-    setError(null);
-
+    
     try {
-      const fetchedTransactions = await fetchUserTransactions(user.id);
-      setTransactions(fetchedTransactions);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch transactions'));
-      setTransactions([]);
-      console.error("Error fetching transactions:", err);
+      // Fetch user profile
+      const userProfile = await fetchUserProfile(userId);
+      
+      // Fetch balance from user_balances
+      const { data: balanceData, error: balanceError } = await supabase
+        .from('user_balances')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (balanceError && balanceError.code !== 'PGRST116') {
+        console.error("Error fetching user balance:", balanceError);
+        throw balanceError;
+      }
+      
+      // Synchronize with balance manager
+      if (balanceData?.balance) {
+        // Set the user ID before syncing the balance
+        balanceManager.setUserId(userId);
+        balanceManager.forceBalanceSync(balanceData.balance);
+      }
+      
+      // Fetch transactions
+      const transactions = await fetchUserTransactions(userId);
+      
+      const userData = {
+        profile: userProfile,
+        balance: balanceData?.balance || 0,
+        subscription: balanceData?.subscription || 'freemium',
+        id: userId,
+        transactions: transactions || [],
+        lastRefreshed: Date.now()
+      };
+      
+      return userData;
+    } catch (error) {
+      console.error("Error in fetchUserData:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch user data. Please try again later.",
+        variant: "destructive"
+      });
+      return null;
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return {
-    transactions,
-    isLoading,
-    error,
-    refresh: fetchData,
-  };
+  return { fetchUserData, isLoading };
 };
 
 export default useUserDataFetching;

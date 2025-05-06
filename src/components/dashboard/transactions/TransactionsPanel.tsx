@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -82,7 +83,7 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
   useEffect(() => {
     if (!user?.id) return;
     
-    const channel = supabase
+    const transactionChannel = supabase
       .channel('transactions-realtime')
       .on('postgres_changes', 
         { 
@@ -99,7 +100,7 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
       .subscribe();
       
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(transactionChannel);
     };
   }, [user, fetchLatestTransactions]);
   
@@ -129,7 +130,7 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
     };
   }, [fetchLatestTransactions]);
 
-  const handleViewAll = () => {
+  const handleViewAllClick = () => {
     navigate('/dashboard/transactions');
   };
   
@@ -189,7 +190,7 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
           {displayTransactions.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={handleViewAll} className="gap-1">
+            <Button variant="ghost" size="sm" onClick={handleViewAllClick} className="gap-1">
               Tout voir <ArrowRight className="h-4 w-4" />
             </Button>
           )}
@@ -200,7 +201,7 @@ const TransactionsPanel: React.FC<TransactionsPanelProps> = ({
           <div className="space-y-2">
             {displayTransactions.slice(0, 5).map((transaction, index) => (
               <TransactionListItem 
-                key={`tx-${index}-${transaction.date}-${refreshKey}`}
+                key={`${transaction.id || ''}-${index}-${refreshKey}`}
                 transaction={transaction}
                 refreshKey={refreshKey}
                 index={index}

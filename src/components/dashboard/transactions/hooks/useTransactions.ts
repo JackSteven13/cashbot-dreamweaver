@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Transaction } from '@/types/userData';
 import { useTransactionsState } from './useTransactionsState';
@@ -116,7 +117,7 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     if (!user?.id) return;
     
     // Écouter les événements Supabase pour les modifications de transactions
-    const channel = supabase
+    const transactionChannel = supabase
       .channel('transactions-changes')
       .on('postgres_changes', 
         { 
@@ -152,7 +153,7 @@ export const useTransactions = (initialTransactions: Transaction[]) => {
     }, 30000);
     
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(transactionChannel);
       window.removeEventListener('transactions:refresh', refreshHandler);
       window.removeEventListener('balance:update', refreshHandler);
       window.removeEventListener('automatic:revenue', refreshHandler);

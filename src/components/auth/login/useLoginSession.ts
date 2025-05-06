@@ -21,10 +21,10 @@ export const useLoginSession = () => {
       } catch (error) {
         console.error("Erreur lors de la récupération de l'email précédent:", error);
       }
-    }, 300);
+    }, 100);
     
     // Nettoyage supplémentaire après un délai plus long
-    const timer = setTimeout(clearStoredAuthData, 1000);
+    const timer = setTimeout(clearStoredAuthData, 800);
     
     return () => clearTimeout(timer);
   }, []);
