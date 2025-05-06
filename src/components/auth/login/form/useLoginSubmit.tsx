@@ -2,12 +2,13 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { supabase, forceRetrySigning } from "@/integrations/supabase/client";
+import { createClient } from '@/lib/supabase';
 
 export const useLoginSubmit = () => {
   const navigate = useNavigate();
+  const supabase = createClient();
 
-  // Version simplifiée qui se concentre uniquement sur l'authentification
+  // Version améliorée de la fonction de connexion
   const handleSubmit = async (
     e: React.FormEvent,
     email: string,
@@ -20,13 +21,15 @@ export const useLoginSubmit = () => {
     try {
       console.log("Tentative de connexion pour:", email);
       
-      // S'assurer qu'il n'y a pas de données d'authentification obsolètes
-      await forceRetrySigning();
+      // Nettoyage des données d'authentification obsolètes
+      localStorage.removeItem('sb-access-token');
+      localStorage.removeItem('sb-refresh-token');
+      localStorage.removeItem('sb-auth-token');
       
-      // Petit délai pour s'assurer que le nettoyage est terminé
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Délai court pour s'assurer que le nettoyage est terminé
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Tentative de connexion directe avec options simplifiées
+      // Tentative de connexion avec options simplifiées
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,

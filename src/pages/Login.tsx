@@ -3,50 +3,39 @@ import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
-import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
+import { createClient } from '@/lib/supabase';
 
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
+  const supabase = createClient();
 
-  // Nettoyage radical au chargement de la page de login
+  // Nettoyage complet au chargement de la page de login
   useEffect(() => {    
     const cleanupAuth = async () => {
       try {
-        console.log("Nettoyage complet des données d'authentification");
+        console.log("Nettoyage des données d'authentification");
         
-        // Déconnexion explicite avec champ d'application global
+        // Déconnexion explicite
         try {
           await supabase.auth.signOut({ scope: 'global' });
         } catch (e) {
           console.log("Erreur de déconnexion ignorée:", e);
         }
         
-        // Premier nettoyage
-        clearStoredAuthData();
+        // Nettoyage des tokens
+        localStorage.removeItem('sb-access-token');
+        localStorage.removeItem('sb-refresh-token');
+        localStorage.removeItem('sb-auth-token');
+        localStorage.removeItem('supabase.auth.token');
+        localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
         
-        // Attendre que la déconnexion soit traitée
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Supprimer tous les cookies d'authentification
+        document.cookie = "sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         
-        // Deuxième nettoyage pour s'assurer que tout est propre
-        clearStoredAuthData();
-        
-        // Vérification finale après un délai
-        setTimeout(() => {
-          // S'assurer qu'aucune session ne persiste
-          supabase.auth.getSession().then(({ data }) => {
-            if (data.session) {
-              console.warn("Session toujours présente après nettoyage, forçage supplémentaire");
-              supabase.auth.signOut();
-              clearStoredAuthData();
-            } else {
-              console.log("Confirmation: aucune session active");
-            }
-          });
-        }, 1000);
+        console.log("Nettoyage terminé");
       } catch (err) {
-        console.error("Erreur de nettoyage d'authentification:", err);
-        // Tentative finale de nettoyage
-        clearStoredAuthData();
+        console.error("Erreur lors du nettoyage:", err);
       }
     };
     
