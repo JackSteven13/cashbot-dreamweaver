@@ -33,7 +33,7 @@ export const fetchUserTransactions = async (userId: string): Promise<Transaction
       gain: tx.gain,
       amount: tx.gain, // For backward compatibility
       report: tx.report,
-      type: tx.type || 'system'
+      type: tx.report || 'system' // Default to 'system' if type doesn't exist
     }));
   } catch (err) {
     console.error("Error in fetchUserTransactions:", err);
@@ -58,7 +58,6 @@ export const calculateTodaysGains = async (userId: string): Promise<number> => {
       .from('transactions')
       .select('gain')
       .eq('user_id', userId)
-      .eq('type', 'credit')
       .gte('created_at', todayStr);
     
     if (error) {
@@ -91,7 +90,6 @@ export const calculateTodaysExpenses = async (userId: string): Promise<number> =
       .from('transactions')
       .select('gain')
       .eq('user_id', userId)
-      .eq('type', 'debit')
       .gte('created_at', todayStr);
     
     if (error) {
@@ -99,8 +97,11 @@ export const calculateTodaysExpenses = async (userId: string): Promise<number> =
       return 0;
     }
     
-    // Calculate the sum of expenses
-    return data?.reduce((sum, transaction) => sum + Number(transaction.gain), 0) || 0;
+    // Calculate the sum of expenses (all negative gains)
+    return data?.reduce((sum, transaction) => {
+      const amount = Number(transaction.gain);
+      return sum + (amount < 0 ? Math.abs(amount) : 0);
+    }, 0) || 0;
   } catch (err) {
     console.error("Error in calculateTodaysExpenses:", err);
     return 0;
@@ -212,9 +213,9 @@ export const getTodaysTransactions = async (userId: string): Promise<Transaction
       id: t.id,
       date: t.created_at || t.date,
       amount: t.gain,
-      type: t.report,
+      gain: t.gain,
       report: t.report,
-      gain: t.gain
+      type: t.report || 'system' // Default to 'system' if type doesn't exist
     }));
   } catch (error) {
     console.error("Error in getTodaysTransactions:", error);

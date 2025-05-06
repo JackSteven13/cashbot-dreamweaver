@@ -1,7 +1,8 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { fetchUserTransactions } from '@/utils/user/transactionUtils';
+import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 
 /**
  * Hook for fetching user data with better state management

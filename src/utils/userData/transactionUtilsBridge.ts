@@ -15,3 +15,11 @@ export const fetchUserTransactionsFromUserUtils = fetchUserTransactionsFromUser;
 export const addTransactionFromUserUtils = addTransactionFromUser;
 export const calculateTodaysGainsFromUserUtils = calculateTodaysGainsFromUser;
 export const getTodaysTransactionsFromUserUtils = getTodaysTransactionsFromUser;
+
+// Export our own implementations to use throughout the app
+export { 
+  fetchUserTransactions,
+  addTransaction,
+  calculateTodaysGains,
+  getTodaysTransactions
+} from './transactionUtils';
