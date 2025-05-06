@@ -1,6 +1,7 @@
 
 import { useEffect, useRef } from 'react';
-import { createClient, clearAuthData } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
+import { clearAuthData } from '@/lib/supabase';
 
 const AuthCleanup = () => {
   const cleanupDone = useRef(false);
@@ -14,9 +15,6 @@ const AuthCleanup = () => {
       
       // Premier nettoyage
       clearAuthData();
-      
-      // Récupérer une instance propre de Supabase
-      const supabase = createClient();
       
       try {
         // Déconnexion explicite d'abord

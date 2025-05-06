@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Dialog, 
@@ -37,18 +36,20 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
     try {
       setIsSubmitting(true);
       
-      // Send feedback to Supabase edge function
-      const { data, error } = await supabase.functions.invoke('contact-messages', {
-        body: {
-          path: 'submit',
-          name: 'User Feedback', 
+      // Alternative implementation without Supabase Edge Function
+      // Store feedback directly in the database or send via an API
+      try {
+        const { error } = await supabase.from('contact_messages').insert({
+          name: 'User Feedback',
           email: 'feedback@stream-genius.com',
           message: feedback
+        });
+        
+        if (error) {
+          throw error;
         }
-      });
-      
-      if (error) {
-        console.error('Error submitting feedback:', error);
+      } catch (e) {
+        console.error('Error submitting feedback:', e);
         toast({
           title: "Une erreur est survenue",
           description: "Impossible d'envoyer votre retour. Veuillez réessayer plus tard.",

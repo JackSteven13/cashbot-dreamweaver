@@ -3,7 +3,8 @@ import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
-import { createClient, clearAuthData } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
+import { clearAuthData } from '@/lib/supabase';
 
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
@@ -16,9 +17,6 @@ const Login = () => {
         
         // Premier nettoyage
         clearAuthData();
-        
-        // Création d'une instance propre de Supabase
-        const supabase = createClient();
         
         // Tentative de déconnexion explicite
         try {

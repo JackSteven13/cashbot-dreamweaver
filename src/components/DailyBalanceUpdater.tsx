@@ -170,12 +170,11 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
         const report = `Analyse automatique (${new Date().toLocaleTimeString()})`;
         
         try {
-          // Correction du type error avec as any
           const { error: txError } = await supabase
             .from('transactions')
             .insert([
               { user_id: userId, gain: finalGain, report, date: new Date().toISOString() }
-            ]) as any;
+            ]);
             
           if (txError) {
             console.error("Erreur lors de l'ajout de la transaction:", txError);
@@ -188,12 +187,11 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
           
         // Mettre à jour le solde dans la base de données
         try {
-          // Correction du type error avec as any
           const { data: userBalanceData, error: balanceError } = await supabase
             .from('user_balances')
             .select('balance')
             .eq('id', userId)
-            .single() as any;
+            .single();
             
           if (balanceError) {
             console.error("Erreur lors de la récupération du solde:", balanceError);
@@ -202,11 +200,10 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
           
           const newBalance = (userBalanceData?.balance || 0) + finalGain;
           
-          // Correction du type error avec as any
           const { error: updateError } = await supabase
             .from('user_balances')
             .update({ balance: newBalance })
-            .eq('id', userId) as any;
+            .eq('id', userId);
             
           if (updateError) {
             console.error("Erreur lors de la mise à jour du solde:", updateError);
@@ -263,12 +260,11 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
         // Ajouter une transaction en arrière-plan
         const report = `Analyse automatique (${new Date().toLocaleTimeString()})`;
         
-        // Correction du type error avec as any
         const { error: txError } = await supabase
           .from('transactions')
           .insert([
             { user_id: userId, gain: roundedGain, report, date: new Date().toISOString() }
-          ]) as any;
+          ]);
           
         if (txError) {
           console.error("Erreur lors de l'ajout de la transaction:", txError);
@@ -281,12 +277,11 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
         
       try {
         // Mettre à jour le solde dans la base de données
-        // Correction du type error avec as any
         const { data: userBalanceData, error: balanceError } = await supabase
           .from('user_balances')
           .select('balance')
           .eq('id', userId)
-          .single() as any;
+          .single();
           
         if (balanceError) {
           console.error("Erreur lors de la récupération du solde:", balanceError);
@@ -295,11 +290,10 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
         
         const newBalance = (userBalanceData?.balance || 0) + roundedGain;
         
-        // Correction du type error avec as any
         const { error: updateError } = await supabase
           .from('user_balances')
           .update({ balance: newBalance })
-          .eq('id', userId) as any;
+          .eq('id', userId);
           
         if (updateError) {
           console.error("Erreur lors de la mise à jour du solde:", updateError);

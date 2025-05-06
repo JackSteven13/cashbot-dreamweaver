@@ -10,23 +10,18 @@ export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ey
 // Instance singleton pour éviter les conflits
 let supabaseInstance: SupabaseClient<Database> | null = null;
 
-// Configuration simplifiée du client Supabase
-export const supabase = (): SupabaseClient<Database> => {
-  // Retourner l'instance existante si disponible
-  if (supabaseInstance) return supabaseInstance;
-  
-  // Options minimales mais suffisantes pour garantir une connexion fiable
-  const options = {
+// Create and return the Supabase client directly
+export const supabase = createClient<Database>(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY,
+  {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       storage: localStorage
     }
-  };
-
-  supabaseInstance = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, options);
-  return supabaseInstance;
-};
+  }
+);
 
 // Fonction pour nettoyer les données d'authentification - utilise la fonction de la bibliothèque
 export const clearStoredAuthData = () => {
@@ -39,12 +34,10 @@ export const forceRetrySigning = async () => {
   
   try {
     // Déconnexion explicite
-    await supabase().auth.signOut({ scope: 'global' });
+    await supabase.auth.signOut({ scope: 'global' });
   } catch (e) {
     // Ignorer les erreurs
   }
   
-  // Recréation d'une instance propre
-  supabaseInstance = null;
-  return supabase();
+  return supabase;
 };

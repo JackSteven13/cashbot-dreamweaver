@@ -1,11 +1,10 @@
 
 import * as React from 'react';
 import { toast } from '@/hooks/use-toast';
-import { createClient, clearAuthData } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
+import { clearStoredAuthData } from '@/integrations/supabase/client';
 
 export const useLoginSubmit = () => {
-  const supabase = createClient();
-
   // Version ultra simplifiée et robuste de la fonction de connexion
   const handleSubmit = async (
     e: React.FormEvent,
@@ -30,7 +29,7 @@ export const useLoginSubmit = () => {
       console.log("Préparation de la connexion");
       
       // Nettoyage complet avant la tentative
-      clearAuthData();
+      clearStoredAuthData();
       
       await new Promise(resolve => setTimeout(resolve, 500));
       
@@ -75,7 +74,7 @@ export const useLoginSubmit = () => {
       });
       
       // Nettoyage après échec
-      clearAuthData();
+      clearStoredAuthData();
     } finally {
       setIsLoading(false);
     }

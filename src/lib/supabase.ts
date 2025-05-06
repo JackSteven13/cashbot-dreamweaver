@@ -4,23 +4,14 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Garantir une seule instance du client Supabase
-let supabaseInstance = null;
-
-// Créer un client Supabase avec des options minimales mais robustes
-export const createClient = () => {
-  if (supabaseInstance) return supabaseInstance;
-  
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      storage: localStorage
-    }
-  });
-  
-  return supabaseInstance;
-};
+// Create the Supabase client directly
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    storage: localStorage
+  }
+});
 
 // Fonction pour nettoyer complètement les données d'authentification
 export const clearAuthData = () => {
@@ -56,3 +47,6 @@ export const clearAuthData = () => {
     return false;
   }
 };
+
+// For backward compatibility
+export { supabase as createClient };
