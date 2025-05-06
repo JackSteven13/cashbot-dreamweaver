@@ -122,10 +122,11 @@ type ToastOptions = {
   variant?: "default" | "destructive";
   action?: ToastActionElement;
   duration?: number;
+  className?: string; // Add className to fix TypeScript errors
 };
 
 const toastStore = {
-  toasts: [] as any[],
+  toasts: [] as (ToastOptions & { id: string })[],
   listeners: new Set<() => void>(),
   notify: (options: ToastOptions) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -139,7 +140,10 @@ const toastStore = {
   },
   subscribe: (listener: () => void) => {
     toastStore.listeners.add(listener);
-    return () => toastStore.listeners.delete(listener);
+    return () => {
+      toastStore.listeners.delete(listener);
+      return;
+    };
   }
 };
 
