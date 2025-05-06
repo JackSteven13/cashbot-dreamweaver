@@ -10,22 +10,21 @@ https://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
 https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
 # Configuration Supabase avec en-têtes CORS explicites
-/auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200!
-/rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200!
-/storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200!
-/realtime/* https://cfjibduhagxiwqkiyhqd.supabase.co/realtime/:splat 200!
+/auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200
+/rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200
+/storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200
+/realtime/* https://cfjibduhagxiwqkiyhqd.supabase.co/realtime/:splat 200
 
-# Routes CRUCIALES pour les callbacks d'authentification - version améliorée
-/auth/callback/* /index.html 200!
-/auth/* /index.html 200!
-/auth/v1/callback/* /index.html 200!
-/login/* /index.html 200!
+# Routes CRUCIALES pour les callbacks d'authentification - version relaxée 
+/auth/callback/* /index.html 200
+/auth/* /index.html 200
+/auth/v1/callback/* /index.html 200
+/login/* /index.html 200
 /login /index.html 200!
 /register /index.html 200!
 
-# CRUCIAL: Traitement spécial des pages principales
+# CRUCIAL: Traitement spécial des pages principale pour éviter les problèmes de routage
 /dashboard/* /index.html 200!
 
 # SPA fallback pour toutes les autres routes
 /* /index.html 200
-

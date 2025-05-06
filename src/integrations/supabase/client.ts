@@ -16,20 +16,24 @@ export const isProductionEnvironment = (): boolean => {
          !hostname.includes('localhost');
 };
 
-// Configuration du client Supabase avec options optimisées
+// Configuration du client Supabase avec options optimales pour tous les environnements
 const createSupabaseClient = (): SupabaseClient<Database> => {
-  console.log("[Supabase] Initialisation du client");
+  console.log(`[Supabase] Initialisation du client (${isProductionEnvironment() ? "PROD" : "DEV"})`);
   
-  // Options optimisées pour la fiabilité
+  // Options unifiées pour tous les environnements
   const options = {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'pkce' as const,
-      storage: localStorage,
-      storageKey: 'sb-auth-token',
+      flowType: 'pkce' as const, // Type explicite pour éviter les erreurs TS
+      storage: localStorage
     },
+    global: {
+      headers: {
+        'Cache-Control': 'no-store'
+      }
+    }
   };
 
   try {
@@ -42,8 +46,7 @@ const createSupabaseClient = (): SupabaseClient<Database> => {
     return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
         autoRefreshToken: true,
-        persistSession: true,
-        storage: localStorage
+        persistSession: true
       }
     });
   }
@@ -52,48 +55,28 @@ const createSupabaseClient = (): SupabaseClient<Database> => {
 // Instance unique du client Supabase
 export const supabase = createSupabaseClient();
 
-// Fonction améliorée pour nettoyer les données d'authentification
+// Fonction pour nettoyer les données d'authentification
 export const clearStoredAuthData = () => {
   try {
     console.log("Nettoyage des données d'authentification");
     
-    // Nettoyer localStorage - approche complète
-    Object.keys(localStorage).forEach(key => {
-      if (key.includes('supabase') || 
-          key.includes('sb-') || 
-          key.startsWith('sb') || 
-          key.includes('auth') || 
-          key.includes('token')) {
-        try {
-          localStorage.removeItem(key);
-        } catch (e) {
-          // Ignorer les erreurs
-        }
-      }
-    });
+    // Nettoyer localStorage
+    const keysToRemove = [
+      'supabase.auth.token',
+      'sb-access-token',
+      'sb-refresh-token',
+      'sb-auth-token',
+      'sb-auth-token-prod',
+      'sb-auth-token-dev',
+      'sb-cfjibduhagxiwqkiyhqd-auth-token',
+      'auth_retries'
+    ];
     
-    // Nettoyer sessionStorage si disponible
-    if (typeof sessionStorage !== 'undefined') {
-      Object.keys(sessionStorage).forEach(key => {
-        if (key.includes('supabase') || 
-            key.includes('sb-') || 
-            key.startsWith('sb') || 
-            key.includes('auth') || 
-            key.includes('token')) {
-          try {
-            sessionStorage.removeItem(key);
-          } catch (e) {
-            // Ignorer les erreurs
-          }
-        }
-      });
-    }
-    
-    // Nettoyer les cookies spécifiques à Supabase
-    document.cookie.split(';').forEach(c => {
-      if (c.includes('sb-') || c.includes('supabase') || c.includes('auth')) {
-        const cookieName = c.split('=')[0].trim();
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    keysToRemove.forEach(key => {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        // Ignorer les erreurs
       }
     });
     
@@ -104,7 +87,7 @@ export const clearStoredAuthData = () => {
   }
 };
 
-// Fonction pour forcer une déconnexion complète
+// Fonction pour forcer une réinitialisation de l'authentification
 export const forceRetrySigning = async () => {
   console.log("Réinitialisation de l'authentification");
   
@@ -112,8 +95,8 @@ export const forceRetrySigning = async () => {
   clearStoredAuthData();
   
   try {
-    // Déconnexion explicite avec scope global
-    await supabase.auth.signOut({ scope: 'global' });
+    // Déconnexion explicite
+    await supabase.auth.signOut();
   } catch (e) {
     // Ignorer les erreurs
   }

@@ -2,15 +2,10 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
+import { supabase, forceRetrySigning } from "@/integrations/supabase/client";
 
 export const useLoginSubmit = () => {
   const navigate = useNavigate();
-
-  // Fonction simplifiée qui retourne toujours true pour éviter les blocages
-  const checkInternetConnection = async (): Promise<boolean> => {
-    return true;
-  };
 
   // Fonction simplifiée pour vérifier l'authentification
   const checkAuthentication = async (): Promise<boolean> => {
@@ -18,7 +13,6 @@ export const useLoginSubmit = () => {
       const { data } = await supabase.auth.getSession();
       return !!(data && data.session);
     } catch (e) {
-      console.log("Erreur ignorée lors de la vérification d'authentification");
       return false;
     }
   };
@@ -35,37 +29,57 @@ export const useLoginSubmit = () => {
     try {
       console.log("Tentative de connexion pour:", email);
       
-      // Nettoyage des données d'authentification avant la tentative
-      clearStoredAuthData();
+      // S'assurer qu'il n'y a pas de données d'authentification obsolètes
+      await forceRetrySigning();
       
-      // Tentative de connexion directe
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // Tentative de connexion standard
+      const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
       
       if (error) {
         console.error("Erreur d'authentification:", error.message);
-        throw error;
+        
+        // Si l'erreur semble liée au réseau, tenter une approche alternative
+        if (error.message.includes('network') || 
+            error.message.includes('fetch') || 
+            error.message.includes('Failed') ||
+            error.message.includes('timeout')) {
+          
+          console.log("Problème de réseau détecté, nouvelle tentative");
+          
+          // Nettoyer et réessayer
+          await forceRetrySigning();
+          
+          // Seconde tentative
+          const secondAttempt = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          });
+          
+          if (secondAttempt.error) {
+            throw secondAttempt.error;
+          }
+        } else {
+          throw error;
+        }
       }
       
       // Vérifier que la session est bien établie
-      let isAuthenticated = false;
-      let attempts = 0;
-      
-      while (!isAuthenticated && attempts < 3) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        isAuthenticated = await checkAuthentication();
-        attempts++;
-      }
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const isAuthenticated = await checkAuthentication();
       
       if (!isAuthenticated) {
-        console.warn("Session non établie - tentative de récupération");
-        try {
-          await supabase.auth.refreshSession();
-          isAuthenticated = await checkAuthentication();
-        } catch (refreshError) {
-          console.error("Erreur lors du rafraîchissement:", refreshError);
+        console.warn("Session non établie après connexion apparemment réussie");
+        
+        // Tentative de récupération
+        await supabase.auth.refreshSession();
+        
+        const retryAuthentication = await checkAuthentication();
+        if (!retryAuthentication) {
+          console.error("Impossible de confirmer l'authentification");
+          throw new Error("Session non établie après connexion");
         }
       }
       
@@ -83,11 +97,12 @@ export const useLoginSubmit = () => {
       // Attendre avant la redirection
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Rediriger avec un refresh complet pour garantir un état propre
-      window.location.href = '/dashboard';
+      // Redirection
+      navigate('/dashboard', { replace: true });
     } catch (error: any) {
       console.error("Erreur complète:", error);
       
+      // Message d'erreur adapté
       toast({
         title: "Échec de connexion",
         description: "Email ou mot de passe incorrect.",
