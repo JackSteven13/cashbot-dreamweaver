@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 
 export interface UseProfileFetcherResult {
   username: string | null;
@@ -13,19 +13,19 @@ export const useProfileFetcher = (): UseProfileFetcherResult => {
   // Function for retrieving profile data
   const fetchProfileData = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const response = await supabase
         .from('profiles')
         .select('full_name')
         .eq('id', userId)
         .single();
       
-      if (error) {
-        console.error("Error fetching profile:", error);
+      if (response.error) {
+        console.error("Error fetching profile:", response.error);
         return;
       }
       
-      if (data) {
-        setUsername(data.full_name || 'Utilisateur');
+      if (response.data) {
+        setUsername(response.data.full_name || 'Utilisateur');
       }
     } catch (error) {
       console.error("Error fetching profile:", error);

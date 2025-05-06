@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
+import { supabase, clearStoredAuthData } from "@/lib/supabase";
 
 export const useLoginSubmit = () => {
   const navigate = useNavigate();

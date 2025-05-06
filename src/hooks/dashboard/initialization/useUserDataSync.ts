@@ -1,6 +1,6 @@
 
 import { useCallback } from 'react';
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import balanceManager from '@/utils/balance/balanceManager';
 
@@ -25,7 +25,8 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
       
       localStorage.setItem('data_syncing', 'true');
       
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
       
       if (!session) {
         console.log("No active session, skipping sync");
@@ -46,10 +47,19 @@ export const useUserDataSync = ({ mountedRef }: UseUserDataSyncParams) => {
           }
           
           // Fetch user data with parallel queries
-          const [userBalanceResult, profileResult] = await Promise.all([
-            supabase.from('user_balances').select('subscription, balance, daily_session_count').eq('id', session.user.id).maybeSingle(),
-            supabase.from('profiles').select('full_name, email').eq('id', session.user.id).maybeSingle()
-          ]);
+          const userBalancePromise = supabase
+            .from('user_balances')
+            .select('subscription, balance, daily_session_count')
+            .eq('id', session.user.id)
+            .maybeSingle();
+            
+          const profilePromise = supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', session.user.id)
+            .maybeSingle();
+            
+          const [userBalanceResult, profileResult] = await Promise.all([userBalancePromise, profilePromise]);
           
           // Check results and update localStorage
           if (!userBalanceResult.error && userBalanceResult.data) {

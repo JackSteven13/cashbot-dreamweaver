@@ -2,7 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import balanceManager from '@/utils/balance/balanceManager';
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { UserData } from '@/types/userData';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
@@ -95,13 +95,13 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
       lastUpdateRef.current = Date.now();
       
       // Vérifier d'abord si la limite quotidienne est atteinte
-      const { data: userData } = await supabase
+      const userData = await supabase
         .from('user_balances')
         .select('subscription')
         .eq('id', userId)
         .single();
       
-      const subscription = userData?.subscription || 'freemium';
+      const subscription = userData.data?.subscription || 'freemium';
       const dailyLimit = SUBSCRIPTION_LIMITS[subscription as keyof typeof SUBSCRIPTION_LIMITS] || 0.5;
       
       // Obtenir les gains quotidiens actuels
@@ -170,13 +170,13 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
           ]);
           
         // Mettre à jour le solde dans la base de données
-        const { data: userBalanceData } = await supabase
+        const userBalanceData = await supabase
           .from('user_balances')
           .select('balance')
           .eq('id', userId)
           .single();
           
-        const newBalance = (userBalanceData?.balance || 0) + finalGain;
+        const newBalance = (userBalanceData.data?.balance || 0) + finalGain;
         
         await supabase
           .from('user_balances')
@@ -234,13 +234,13 @@ const DailyBalanceUpdater: React.FC<DailyBalanceUpdaterProps> = ({ userId }) => 
         ]);
         
       // Mettre à jour le solde dans la base de données
-      const { data: userBalanceData } = await supabase
+      const userBalanceData = await supabase
         .from('user_balances')
         .select('balance')
         .eq('id', userId)
         .single();
         
-      const newBalance = (userBalanceData?.balance || 0) + roundedGain;
+      const newBalance = (userBalanceData.data?.balance || 0) + roundedGain;
       
       await supabase
         .from('user_balances')

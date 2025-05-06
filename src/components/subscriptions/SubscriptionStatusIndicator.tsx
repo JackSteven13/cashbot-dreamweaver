@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { Loader2, Sparkles, Zap, Crown } from 'lucide-react';
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 
 interface SubscriptionStatusIndicatorProps {
   isLoading: boolean;
@@ -19,42 +18,24 @@ const SubscriptionStatusIndicator: React.FC<SubscriptionStatusIndicatorProps> = 
     const verifySubscriptionWithSupabase = async () => {
       try {
         // Vérifier si l'utilisateur est connecté
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data } = await supabase.auth.getSession();
+        const session = data.session;
         
         if (session) {
-          // Essayer d'abord la fonction RPC pour une récupération fiable
-          const { data: rpcData, error: rpcError } = await supabase
-            .rpc('get_current_subscription', { 
-              user_id: session.user.id 
-            }, {
-              head: false, // Contourner le cache
-              count: 'exact' as const
-            }) as { data: string | null, error: any };
+          // Essayer d'abord une requête directe pour éviter les problèmes de typage avec RPC
+          const userData = await supabase
+            .from('user_balances')
+            .select('subscription')
+            .eq('id', session.user.id)
+            .single();
             
-          if (!rpcError && rpcData) {
+          if (userData.data && userData.data.subscription) {
             // Si le retour est "alpha", le remplacer par "starter" pour la migration
-            const mappedSubscription = rpcData === "alpha" ? "starter" : rpcData;
+            const mappedSubscription = userData.data.subscription === "alpha" ? "starter" : userData.data.subscription;
             setVerifiedSubscription(mappedSubscription);
             // Force la mise à jour du localStorage pour cohérence
             if (mappedSubscription !== localStorage.getItem('subscription')) {
               localStorage.setItem('subscription', mappedSubscription);
-            }
-          } else {
-            // Fallback sur requête directe
-            const { data: userData, error: directError } = await supabase
-              .from('user_balances')
-              .select('subscription')
-              .eq('id', session.user.id)
-              .single();
-              
-            if (!directError && userData && userData.subscription) {
-              // Si le retour est "alpha", le remplacer par "starter" pour la migration
-              const mappedSubscription = userData.subscription === "alpha" ? "starter" : userData.subscription;
-              setVerifiedSubscription(mappedSubscription);
-              // Force aussi la mise à jour du localStorage
-              if (mappedSubscription !== localStorage.getItem('subscription')) {
-                localStorage.setItem('subscription', mappedSubscription);
-              }
             }
           }
         }

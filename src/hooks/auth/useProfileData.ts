@@ -1,6 +1,6 @@
 
 import { useState, useCallback, useEffect } from 'react';
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 
 interface UseProfileDataResult {
   username: string | null;
@@ -26,14 +26,14 @@ export const useProfileData = (): UseProfileDataResult => {
       }
       
       // Get profile for welcome message
-      const { data: profileData, error: profileError } = await supabase
+      const profileResponse = await supabase
         .from('profiles')
         .select('full_name')
         .eq('id', userId)
         .maybeSingle();
       
-      if (profileError) {
-        console.error("Error fetching profile:", profileError);
+      if (profileResponse.error) {
+        console.error("Error fetching profile:", profileResponse.error);
       }
         
       // Get user data
@@ -42,13 +42,13 @@ export const useProfileData = (): UseProfileDataResult => {
         console.error("Error fetching user:", error);
       }
       
-      const user = data.user;
+      const user = data?.user;
       
       if (!user) {
         throw new Error("Aucun utilisateur trouvé malgré une session valide");
       }
       
-      const displayName = profileData?.full_name || 
+      const displayName = profileResponse.data?.full_name || 
                         user.user_metadata?.full_name || 
                         (user.email ? user.email.split('@')[0] : 'utilisateur');
       
