@@ -1,9 +1,10 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserData } from '@/types/userData';
 import { useAuth } from '@/hooks/useAuth';
-import { fetchUserTransactions, addTransaction } from '@/utils/user/transactionUtils';
+import { fetchUserTransactions, addTransaction } from '@/utils/userData/transactionUtils';
 
 export interface DashboardState {
   userData: UserData | null;

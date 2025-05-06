@@ -8,29 +8,29 @@ export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Vérifier la session existante
+    // Set up the auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      }
+    );
+
+    // Check for existing session
     const getInitialSession = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
-        setUser(data?.session?.user || null);
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
       } catch (error) {
-        console.error('Erreur lors de la récupération de la session:', error);
+        console.error('Error getting session:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Configurer l'écouteur d'état d'authentification
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user || null);
-        setIsLoading(false);
-      }
-    );
-
     getInitialSession();
 
-    // Nettoyage de l'abonnement
+    // Clean up subscription
     return () => {
       subscription.unsubscribe();
     };

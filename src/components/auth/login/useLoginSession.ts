@@ -1,33 +1,52 @@
 
 import { useState, useEffect } from 'react';
-import { clearStoredAuthData } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
 
 export const useLoginSession = () => {
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);
   
-  useEffect(() => {
-    // Nettoyer d'abord les données d'authentification de manière agressive
-    clearStoredAuthData();
+  // Check existing session on mount but don't auto-redirect to dashboard
+  const checkExistingSession = async () => {
+    setIsCheckingSession(true);
     
-    // Court délai pour s'assurer que le nettoyage est effectif
-    setTimeout(() => {
-      // Puis récupérer l'email précédemment utilisé
-      try {
-        const savedEmail = localStorage.getItem('last_logged_in_email');
-        if (savedEmail) {
-          console.log("Email précédemment utilisé récupéré:", savedEmail);
-          setLastLoggedInEmail(savedEmail);
-        }
-      } catch (error) {
-        console.error("Erreur lors de la récupération de l'email précédent:", error);
+    try {
+      // Force clear problematic stored sessions
+      localStorage.removeItem('supabase.auth.token');
+      
+      // We still check for a session, but we won't redirect automatically
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error("Session check error:", error);
+        setIsCheckingSession(false);
+        return;
       }
-    }, 100);
+      
+      // Even if we have a valid session, we don't redirect automatically anymore
+      // The user must explicitly log in with credentials
+      setIsCheckingSession(false);
+      
+      // Get last email for suggestion only
+      const savedEmail = localStorage.getItem('last_logged_in_email');
+      if (savedEmail) {
+        setLastLoggedInEmail(savedEmail);
+      }
+    } catch (err) {
+      console.error("Session check failed:", err);
+      setIsCheckingSession(false);
+    }
+  };
+  
+  useEffect(() => {
+    const sessionTimeout = setTimeout(() => {
+      setIsCheckingSession(false);
+    }, 3000); // Réduire le délai à 3 secondes max pour éviter un écran de chargement trop long
     
-    // Nettoyage supplémentaire après un délai plus long
-    const timer = setTimeout(clearStoredAuthData, 800);
+    checkExistingSession();
     
-    return () => clearTimeout(timer);
+    return () => clearTimeout(sessionTimeout);
   }, []);
 
-  return { lastLoggedInEmail };
+  return { isCheckingSession, lastLoggedInEmail };
 };

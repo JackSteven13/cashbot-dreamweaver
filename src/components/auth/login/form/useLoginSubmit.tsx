@@ -2,26 +2,12 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { supabase, forceRetrySigning } from "@/integrations/supabase/client";
+import { ToastAction } from '@/components/ui/toast';
+import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
+import { getNetworkStatus, attemptNetworkRecovery } from '@/utils/auth/networkUtils';
 
 export const useLoginSubmit = () => {
   const navigate = useNavigate();
-
-  // Fonction simplifiée pour vérifier si la connexion internet est disponible
-  const checkInternetConnection = async (): Promise<boolean> => {
-    // Toujours retourner true pour éviter les faux positifs
-    return true;
-  };
-
-  // Fonction simplifiée pour vérifier l'authentification
-  const checkAuthentication = async (): Promise<boolean> => {
-    try {
-      const { data } = await supabase.auth.getSession();
-      return !!(data && data.session);
-    } catch (e) {
-      return false;
-    }
-  };
 
   const handleSubmit = async (
     e: React.FormEvent,
@@ -30,85 +16,185 @@ export const useLoginSubmit = () => {
     setIsLoading: (isLoading: boolean) => void
   ) => {
     e.preventDefault();
-    setIsLoading(true);
+    
+    if (setIsLoading) {
+      setIsLoading(true);
+    }
+    
+    // Nettoyer complètement les données d'authentification stockées
+    clearStoredAuthData();
     
     try {
-      // Nettoyage plus agressif avant la tentative de connexion
-      await forceRetrySigning();
-      
-      // Créer des promises pour la tentative de connexion et le timeout
-      const loginPromise = supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-      
-      // Promise de timeout plus longue (20 secondes)
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Délai d'attente dépassé - le serveur met trop de temps à répondre")), 20000);
-      });
-      
-      // Course entre la connexion et le timeout
-      const { data, error } = await Promise.race([
-        loginPromise,
-        timeoutPromise
-      ]) as any;
-      
-      if (error) {
-        console.error("Erreur d'authentification détaillée:", error);
-        
-        // Si c'est une erreur d'authentification normale (identifiants incorrects)
-        throw error;
+      // Vérifier la connexion réseau et la résolution DNS de manière plus robuste
+      let networkStatus;
+      try {
+        networkStatus = await getNetworkStatus();
+      } catch (networkError) {
+        console.error("Erreur lors de la vérification du réseau:", networkError);
+        // Supposer que nous sommes hors ligne si la vérification échoue
+        networkStatus = { isOnline: false, dnsWorking: false };
       }
       
-      // Vérifier que la session est bien établie, avec un timeout plus court
-      let authCheckPromise = checkAuthentication();
-      const authCheckTimeout = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Timeout lors de la vérification de session")), 5000);
-      });
+      if (!networkStatus.isOnline) {
+        throw new Error("Vous semblez être hors ligne. Vérifiez votre connexion internet.");
+      }
       
-      const isAuthenticated = await Promise.race([authCheckPromise, authCheckTimeout])
-        .catch(() => {
-          return true; // On considère comme authentifié même en cas d'erreur pour éviter de bloquer
-        });
-      
-      if (!isAuthenticated) {
+      if (!networkStatus.dnsWorking) {
+        // Tentative de récupération réseau
+        let recovered = false;
         try {
-          const refreshPromise = supabase.auth.refreshSession();
-          await Promise.race([refreshPromise, authCheckTimeout]);
-        } catch (refreshError) {
-          console.error("Erreur lors du rafraîchissement de la session:", refreshError);
-          // Continuer malgré l'erreur
+          recovered = await attemptNetworkRecovery();
+        } catch (recoveryError) {
+          console.error("Erreur lors de la tentative de récupération réseau:", recoveryError);
+        }
+        
+        if (!recovered) {
+          throw new Error("Problème de connexion au serveur Supabase. Vérifiez votre connexion ou réessayez plus tard.");
         }
       }
       
-      console.log("Connexion réussie, session établie");
+      // Variable pour suivre les tentatives
+      let attemptCount = 0;
+      let maxAttempts = 3;
+      let authResult;
+      let lastError = null;
       
-      // Sauvegarder l'email pour la prochaine connexion
-      localStorage.setItem('last_logged_in_email', email);
+      do {
+        attemptCount++;
+        console.log(`Tentative d'authentification ${attemptCount}/${maxAttempts}...`);
+        
+        try {
+          // Configuration avancée pour la requête d'authentification
+          const authPromise = supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+          
+          // Définir un timeout de 15 secondes (augmenté pour les connexions lentes)
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("Délai d'attente dépassé pour la connexion")), 15000);
+          });
+          
+          // Utiliser race pour gérer le timeout
+          authResult = await Promise.race([authPromise, timeoutPromise]);
+          
+          if (!authResult.error) break;
+          lastError = authResult.error;
+          
+          // Attendre brièvement entre les tentatives avec délai exponentiel
+          if (attemptCount < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 800 * Math.pow(1.5, attemptCount)));
+          }
+        } catch (err) {
+          console.error("Erreur lors de la tentative d'authentification:", err);
+          lastError = err;
+          
+          // Attendre brièvement entre les tentatives avec délai exponentiel
+          if (attemptCount < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 800 * Math.pow(1.5, attemptCount)));
+          }
+        }
+      } while (attemptCount < maxAttempts && (!authResult || authResult.error));
       
-      // Notification de succès
-      toast({
-        title: "Connexion réussie",
-        description: "Redirection vers votre tableau de bord...",
-        duration: 3000
-      });
+      // Si nous avons toujours une erreur après toutes les tentatives
+      if (lastError || (authResult && authResult.error)) {
+        throw lastError || authResult.error;
+      }
       
-      // Attendre avant la redirection
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Force reload pour garantir un état propre
-      window.location.href = '/dashboard';
+      if (authResult?.data && authResult.data.user) {
+        // Sauvegarder l'email pour les futures suggestions
+        localStorage.setItem('last_logged_in_email', email);
+        
+        // Stocker l'origine du domaine pour aider à la compatibilité multi-domaines
+        localStorage.setItem('auth_origin_domain', window.location.hostname);
+        
+        toast({
+          title: "Connexion réussie",
+          description: `Bienvenue ${authResult.data.user.user_metadata?.full_name || authResult.data.user.email?.split('@')[0] || 'utilisateur'}!`,
+        });
+        
+        // Mettre en place une double vérification de session
+        setTimeout(async () => {
+          try {
+            // Vérifier que la session est bien établie avant de rediriger
+            const { data: sessionCheck } = await supabase.auth.getSession();
+            
+            if (sessionCheck && sessionCheck.session) {
+              // Session confirmée, rediriger
+              navigate('/dashboard', { replace: true });
+            } else {
+              // Session non confirmée, essayer une nouvelle connexion
+              console.log("Session non confirmée après connexion, nouvelle tentative...");
+              const secondAttempt = await supabase.auth.signInWithPassword({
+                email,
+                password
+              });
+              
+              if (!secondAttempt.error && secondAttempt.data.session) {
+                navigate('/dashboard', { replace: true });
+              } else {
+                throw new Error("Échec de validation de session après connexion");
+              }
+            }
+          } catch (sessionError) {
+            console.error("Erreur lors de la vérification de session:", sessionError);
+            toast({
+              title: "Erreur de session",
+              description: "Impossible de valider votre session. Veuillez réessayer.",
+              variant: "destructive",
+              action: <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
+                Réessayer
+              </ToastAction>
+            });
+            if (setIsLoading) {
+              setIsLoading(false);
+            }
+          }
+        }, 800);
+      } else {
+        throw new Error("Échec de connexion: aucune donnée utilisateur retournée");
+      }
     } catch (error: any) {
-      console.error("Erreur complète:", error);
+      console.error("Erreur de connexion:", error);
       
-      toast({
-        title: "Échec de connexion",
-        description: "Email ou mot de passe incorrect.",
-        variant: "destructive",
-        duration: 5000
-      });
-    } finally {
-      setIsLoading(false);
+      // Gestion plus robuste des erreurs réseau
+      if (!navigator.onLine || 
+          error.message?.includes('network') || 
+          error.message?.includes('réseau') ||
+          error.message?.includes('fetch') ||
+          error.message?.includes('Failed to fetch') ||
+          error.message?.includes("Délai d'attente dépassé")) {
+        toast({
+          title: "Problème de connexion réseau",
+          description: "Impossible de joindre le serveur Supabase. Vérifiez votre connexion internet et réessayez.",
+          variant: "destructive",
+          action: <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
+            Réessayer
+          </ToastAction>
+        });
+      } else if (error.message === "Invalid login credentials" || error.message?.includes("credentials")) {
+        toast({
+          title: "Identifiants incorrects",
+          description: "Email ou mot de passe incorrect",
+          variant: "destructive",
+          action: <ToastAction altText="Réessayer" onClick={() => null}>
+            OK
+          </ToastAction>
+        });
+      } else {
+        toast({
+          title: "Erreur de connexion",
+          description: "Impossible de se connecter. Veuillez réessayer.",
+          variant: "destructive",
+          action: <ToastAction altText="Réessayer" onClick={() => window.location.reload()}>
+            Réessayer
+          </ToastAction>
+        });
+      }
+      
+      if (setIsLoading) {
+        setIsLoading(false);
+      }
     }
   };
 

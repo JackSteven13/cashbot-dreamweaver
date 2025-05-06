@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { fetchUserTransactions } from '@/utils/user/transactionUtils';
+import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
 import { UserData, Transaction } from '@/types/userData';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';

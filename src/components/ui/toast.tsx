@@ -115,61 +115,6 @@ type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
 
 type ToastActionElement = React.ReactElement<typeof ToastAction>
 
-// Définition du type ToastOptions
-export interface ToastOptions {
-  title?: string;
-  description?: string;
-  variant?: "default" | "destructive";
-  action?: ToastActionElement;
-  duration?: number;
-  className?: string;
-}
-
-// Implémentation du store de toast
-const toastStore = {
-  toasts: [] as (ToastOptions & { id: string })[],
-  listeners: new Set<() => void>(),
-  notify: (options: ToastOptions) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    toastStore.toasts = [...toastStore.toasts, { id, ...options }];
-    toastStore.listeners.forEach(listener => listener());
-    return id;
-  },
-  dismiss: (id: string) => {
-    toastStore.toasts = toastStore.toasts.filter(toast => toast.id !== id);
-    toastStore.listeners.forEach(listener => listener());
-  },
-  subscribe: (listener: () => void) => {
-    toastStore.listeners.add(listener);
-    return () => {
-      toastStore.listeners.delete(listener);
-    };
-  }
-};
-
-// Implémentation directe du hook useToast
-function useToast() {
-  const [toasts, setToasts] = React.useState(toastStore.toasts);
-  
-  React.useEffect(() => {
-    const unsubscribe = toastStore.subscribe(() => {
-      setToasts([...toastStore.toasts]);
-    });
-    return unsubscribe;
-  }, []);
-  
-  return {
-    toasts,
-    toast: toastStore.notify,
-    dismiss: toastStore.dismiss
-  };
-}
-
-// Fonction toast pour faciliter l'affichage
-function toast(options: ToastOptions) {
-  return toastStore.notify(options);
-}
-
 export {
   type ToastProps,
   type ToastActionElement,
@@ -180,6 +125,4 @@ export {
   ToastDescription,
   ToastClose,
   ToastAction,
-  useToast,
-  toast
-};
+}

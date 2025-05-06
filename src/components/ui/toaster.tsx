@@ -1,5 +1,5 @@
 
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast"
 import {
   Toast,
   ToastClose,
@@ -7,10 +7,10 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "@/components/ui/toast";
+} from "@/components/ui/toast"
 
 export function Toaster() {
-  const { toasts } = useToast();
+  const { toasts } = useToast()
 
   return (
     <ToastProvider>
@@ -37,9 +37,9 @@ export function Toaster() {
             {action}
             <ToastClose className="text-gray-300 hover:text-white" />
           </Toast>
-        );
+        )
       })}
       <ToastViewport className="toast-viewport fixed top-0 z-[9999] flex flex-col items-center p-4 md:items-end gap-2 max-w-[100vw] w-full" />
     </ToastProvider>
-  );
+  )
 }

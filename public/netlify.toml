@@ -1,76 +1,70 @@
 
-# Configuration Netlify pour résoudre les problèmes d'authentification
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
 [build]
   command = "npm run build"
   publish = "dist"
 
-# Headers pour résoudre les problèmes CORS et CSP
+# SEO Improvements - Set custom headers to enhance indexing and security
 [[headers]]
   for = "/*"
   [headers.values]
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.gpteng.co; connect-src 'self' https://api.supabase.co https://lovable.dev https://cfjibduhagxiwqkiyhqd.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content"
+    Permissions-Policy = "camera=(), geolocation=(), microphone=()"
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers = "*"
-    Access-Control-Max-Age = "86400"
-    Access-Control-Allow-Credentials = "true"
-    Referrer-Policy = "no-referrer-when-downgrade"
-    Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * https://*.supabase.co wss://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *;"
-    X-Content-Type-Options = "nosniff"
+    Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    # SEO Improvements - No cashbot reference
+    X-Robots-Tag = "index, follow"
 
-# Configurations spéciales pour l'authentification
-[[redirects]]
-  from = "/auth/callback"
-  to = "/index.html"
-  status = 200
-  headers = { Access-Control-Allow-Origin = "*" }
-
-[[redirects]]
-  from = "/auth/callback/*"
-  to = "/index.html"
-  status = 200
-  headers = { Access-Control-Allow-Origin = "*" }
-
-# Redirection HTTPS
+# Force HTTP to HTTPS for all requests - High Priority
 [[redirects]]
   from = "http://*"
   to = "https://:splat"
   status = 301
   force = true
 
-# Redirection des domaines .fr vers .io
+# Redirect from .fr to .io domain - PRIORITY HIGH
 [[redirects]]
   from = "https://streamgenius.fr/*"
   to = "https://streamgenius.io/:splat"
   status = 301
   force = true
+  conditions = {Role = ["admin", "owner", "member", "visitor", "anonymous"]}
 
 [[redirects]]
   from = "https://www.streamgenius.fr/*"
   to = "https://streamgenius.io/:splat"
   status = 301
   force = true
+  conditions = {Role = ["admin", "owner", "member", "visitor", "anonymous"]}
 
-# Redirection www vers non-www
+# WWW to non-WWW redirect
 [[redirects]]
   from = "https://www.streamgenius.io/*"
   to = "https://streamgenius.io/:splat"
   status = 301
   force = true
 
-# Routes principales avec fallback SPA
-[[redirects]]
-  from = "/dashboard/*"
-  to = "/index.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/login"
-  to = "/index.html"
-  status = 200
-  force = true
-
+# Custom 404 page redirect
 [[redirects]]
   from = "/*"
   to = "/index.html"
-  status = 200
+  status = 404
+
+# Handle DNS errors with a fallback
+[[plugins]]
+  package = "@netlify/plugin-sitemap"
+
+# Custom site metadata for SEO
+[build.environment]
+  SITE_NAME = "StreamGenius"
+  SITE_DESCRIPTION = "Plateforme d'intelligence artificielle pour l'analyse publicitaire"

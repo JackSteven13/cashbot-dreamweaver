@@ -1,14 +1,19 @@
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
+import { refreshSession } from "@/utils/auth/index";
 
 interface UseAuthCheckerProps {
-  isMounted: React.RefObject<boolean>;
+  isMounted: React.MutableRefObject<boolean>;
   fetchProfileData: (userId: string) => Promise<void>;
   setIsAuthenticated: (value: boolean | null) => void;
   setAuthCheckFailed: (value: boolean) => void;
   setIsRetrying: (value: boolean) => void;
   incrementRetryAttempts: () => void;
+}
+
+interface UseAuthCheckerResult {
+  checkAuth: (isManualRetry?: boolean) => Promise<void>;
 }
 
 export const useAuthChecker = ({
@@ -18,63 +23,131 @@ export const useAuthChecker = ({
   setAuthCheckFailed,
   setIsRetrying,
   incrementRetryAttempts
-}: UseAuthCheckerProps) => {
-  
-  // Version simplifiée de la vérification d'authentification
+}: UseAuthCheckerProps): UseAuthCheckerResult => {
+  // References for safety checks
+  const checkInProgress = useRef(false);
+  const authTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Function to check authentication status
   const checkAuth = useCallback(async (isManualRetry = false) => {
-    if (!isMounted.current) return;
+    // Avoid concurrent executions
+    if (checkInProgress.current || !isMounted.current) {
+      console.log("Authentication check already in progress or component unmounted");
+      return;
+    }
+    
+    // Clean up local flags
+    localStorage.removeItem('auth_redirecting');
+    localStorage.removeItem('auth_redirect_timestamp');
+    
+    checkInProgress.current = true;
     
     if (isManualRetry) {
       setIsRetrying(true);
-      incrementRetryAttempts();
+      setAuthCheckFailed(false);
+      setIsAuthenticated(null);
     }
     
-    try {
-      // Vérifier simplement l'existence d'une session
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (!isMounted.current) return;
-      
-      if (error) {
-        console.error("Auth check error:", error);
-        setIsAuthenticated(false);
+    console.log("Authentication check started");
+    
+    // Set safety timeout
+    if (authTimeoutRef.current) {
+      clearTimeout(authTimeoutRef.current);
+    }
+    
+    authTimeoutRef.current = setTimeout(() => {
+      if (checkInProgress.current && isMounted.current) {
+        console.log("Auth check timeout reached, forcing failure");
         setAuthCheckFailed(true);
-        setIsRetrying(false);
+        setIsAuthenticated(false);
+        checkInProgress.current = false;
+      }
+    }, 5000); // 5 second safety timeout
+    
+    try {
+      // Check for local token first
+      const hasLocalToken = !!localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+      
+      if (!hasLocalToken) {
+        if (isMounted.current) {
+          setIsAuthenticated(false);
+          setAuthCheckFailed(false);
+        }
+        
+        if (authTimeoutRef.current) {
+          clearTimeout(authTimeoutRef.current);
+        }
+        
+        checkInProgress.current = false;
         return;
       }
       
-      if (data.session) {
-        setIsAuthenticated(true);
-        setAuthCheckFailed(false);
+      // Try refreshing session first
+      await refreshSession();
+      
+      // Brief delay to allow session propagation
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Get active session
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (!isMounted.current) {
+        if (authTimeoutRef.current) {
+          clearTimeout(authTimeoutRef.current);
+        }
         
-        // Récupérer les données du profil si nécessaire
-        try {
-          await fetchProfileData(data.session.user.id);
-        } catch (err) {
-          console.error("Failed to fetch profile data:", err);
+        checkInProgress.current = false;
+        return;
+      }
+      
+      if (error || !data.session) {
+        console.error("Error or no session:", error);
+        
+        if (isMounted.current) {
+          setAuthCheckFailed(true);
+          setIsAuthenticated(false);
+          incrementRetryAttempts();
+        }
+        
+        if (authTimeoutRef.current) {
+          clearTimeout(authTimeoutRef.current);
+        }
+        
+        checkInProgress.current = false;
+        return;
+      }
+      
+      // Valid session found
+      if (data.session && data.session.user) {
+        if (isMounted.current) {
+          setIsAuthenticated(true);
+          setAuthCheckFailed(false);
+          fetchProfileData(data.session.user.id);
         }
       } else {
-        setIsAuthenticated(false);
+        if (isMounted.current) {
+          setIsAuthenticated(false);
+          setAuthCheckFailed(false);
+        }
       }
     } catch (err) {
-      if (!isMounted.current) return;
+      console.error("Error during authentication check:", err);
       
-      console.error("Error during auth check:", err);
-      setAuthCheckFailed(true);
-      setIsAuthenticated(false);
-    } finally {
       if (isMounted.current) {
-        setIsRetrying(false);
+        setAuthCheckFailed(true);
+        setIsAuthenticated(false);
       }
+    } finally {
+      setIsRetrying(false);
+      
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current);
+        authTimeoutRef.current = null;
+      }
+      
+      checkInProgress.current = false;
     }
-  }, [
-    isMounted,
-    fetchProfileData,
-    setIsAuthenticated,
-    setAuthCheckFailed,
-    setIsRetrying,
-    incrementRetryAttempts
-  ]);
+  }, [fetchProfileData, isMounted, setAuthCheckFailed, setIsAuthenticated, setIsRetrying, incrementRetryAttempts]);
 
   return { checkAuth };
 };

@@ -1,145 +1,131 @@
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from './types';
+import { createClient } from '@supabase/supabase-js';
 
-// Configuration des URLs
-export const SUPABASE_URL = "https://cfjibduhagxiwqkiyhqd.supabase.co";
-export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4";
+const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Fonction simplifiée pour détecter l'environnement
-export const isProductionEnvironment = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  
-  const hostname = window.location.hostname;
-  return hostname.includes('streamgenius.io') || 
-         hostname.includes('netlify.app') || 
-         !hostname.includes('localhost');
-};
-
-// Configuration du client Supabase avec options améliorées pour la fiabilité
-const createSupabaseClient = (): SupabaseClient<Database> => {
-  console.log(`[Supabase] Initialisation du client (${isProductionEnvironment() ? "PROD" : "DEV"})`);
-  
-  // Options optimisées sans vérifications réseau complexes
-  const options = {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-      flowType: 'pkce' as const,
-      storage: localStorage,
-      storageKey: 'sb-auth-token',
+// Configuration compatible streamgenius.io et environnement de développement
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    storage: localStorage,
+    storageKey: 'sb-auth-token', // Clé universelle pour tous les domaines
+    flowType: 'implicit', // Flow plus simple pour éviter les problèmes PKCE
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'streamgenius@1.0.0',
+      'X-Client-Domain': typeof window !== 'undefined' ? window.location.hostname : 'unknown',
     },
-    global: {
-      headers: {
-        'Cache-Control': 'no-store',
-        'X-Client-Info': 'streamgenius-webapp'
-      }
+  },
+  // Paramètres réseau plus tolérants pour les connexions instables
+  realtime: {
+    params: {
+      eventsPerSecond: 1,
     },
-  };
+  },
+  // Paramètres plus robustes pour les domaines streamgenius.io et lovable.dev
+  db: {
+    schema: 'public'
+  },
+  // Ajout de paramètres pour améliorer la stabilité des requêtes
+  rest: {
+    headers: {
+      'Cache-Control': 'no-store, no-cache',
+      'Pragma': 'no-cache'
+    }
+  },
+});
 
-  try {
-    const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, options);
-    console.log("[Supabase] Client créé avec succès");
-    return client;
-  } catch (error) {
-    console.error("[Supabase] Erreur lors de la création du client:", error);
-    // Fallback avec options minimales
-    return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        storage: localStorage
-      }
-    });
-  }
-};
-
-// Instance unique du client Supabase
-export const supabase = createSupabaseClient();
-
-// Fonction améliorée pour nettoyer les données d'authentification
+/**
+ * Nettoie complètement toutes les données d'authentification
+ * Version robuste qui résout les problèmes de connexion multi-domaines
+ */
 export const clearStoredAuthData = () => {
   try {
-    console.log("Nettoyage complet des données d'authentification");
+    // Nettoyer tous les jetons possibles (anciens et nouveaux formats)
+    localStorage.removeItem('supabase-auth-token');
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+    localStorage.removeItem('sb-auth-token');
     
-    // Nettoyer localStorage - liste étendue
-    const keysToRemove = [
-      'supabase.auth.token',
-      'sb-access-token',
-      'sb-refresh-token',
-      'sb-auth-token',
-      'sb-auth-token-prod',
-      'sb-auth-token-dev',
-      'sb-cfjibduhagxiwqkiyhqd-auth-token',
-      'supabase.auth.refreshToken',
-      'supabase.auth.accessToken',
-      'auth_retries',
-      'auth_checking',
-      'auth_refreshing',
-      'auth_redirecting',
-      'auth_redirect_timestamp',
-      'auth_check_timestamp'
-    ];
+    // Nettoyer tous les refresh tokens
+    localStorage.removeItem('sb-refresh-token');
+    localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
+    localStorage.removeItem('supabase-auth-refresh');
     
-    keysToRemove.forEach(key => {
-      try {
-        localStorage.removeItem(key);
-      } catch (e) {
-        // Ignorer les erreurs
+    // Nettoyer d'autres flags et métadonnées
+    const allKeys = Object.keys(localStorage);
+    const authKeys = allKeys.filter(key => 
+      key.includes('auth') || 
+      key.includes('supabase') || 
+      key.includes('sb-') || 
+      key.includes('token')
+    );
+    
+    authKeys.forEach(key => localStorage.removeItem(key));
+    
+    // Nettoyer les cookies qui pourraient interférer
+    document.cookie.split(';').forEach(cookie => {
+      const [name] = cookie.trim().split('=');
+      if (name && (name.includes('sb-') || name.includes('supabase'))) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.streamgenius.io`;
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
       }
     });
     
-    // Nettoyage supplémentaire - parcourir tous les éléments de localStorage
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.includes('supabase') || key.includes('sb-') || key.includes('auth_'))) {
-        try {
-          localStorage.removeItem(key);
-        } catch (e) {
-          // Ignorer les erreurs
-        }
-      }
-    }
-    
-    // Nettoyer les cookies potentiels
-    document.cookie.split(';').forEach(c => {
-      const cookieName = c.trim().split('=')[0];
-      if (cookieName.includes('sb-') || cookieName.includes('supabase')) {
-        document.cookie = `${cookieName}=;expires=${new Date().toUTCString()};path=/;`;
-      }
-    });
-    
+    console.log("Nettoyage complet des données d'authentification effectué");
     return true;
   } catch (err) {
-    console.error("Erreur lors du nettoyage:", err);
+    console.error("Erreur lors du nettoyage des données d'authentification:", err);
     return false;
   }
 };
 
-// Fonction pour forcer une réinitialisation de l'authentification
-export const forceRetrySigning = async () => {
-  console.log("Réinitialisation forcée de l'authentification");
-  
-  // Nettoyage des données
-  clearStoredAuthData();
-  
+/**
+ * Fonction utilitaire pour tester la connexion à Supabase
+ * @returns true si la connexion est établie avec succès
+ */
+export const testSupabaseConnection = async (): Promise<boolean> => {
   try {
-    // Déconnexion explicite avec scope global
-    await supabase.auth.signOut({ scope: 'global' });
-  } catch (e) {
-    console.error("Erreur lors de la déconnexion forcée:", e);
-    // Continuer malgré l'erreur
+    // Paramètres pour une requête légère avec timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    // Test simple pour vérifier que Supabase est accessible
+    const { error } = await supabase.from('_health').select('*').limit(1).maybeSingle().abortSignal(controller.signal);
+    
+    clearTimeout(timeoutId);
+    
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 signifie juste que la table n'existe pas, ce qui est normal
+      console.error("Erreur de connexion à Supabase:", error);
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error("Exception lors du test de connexion à Supabase:", err);
+    return false;
   }
-  
-  // Attendre un court délai
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  return true;
 };
 
-// Version simplifiée qui ne fait pas de vérification réseau
-export const checkNetworkStatus = async (): Promise<{online: boolean, supabaseReachable: boolean}> => {
-  // Retourner toujours des valeurs positives pour éviter les faux négatifs
-  return { online: true, supabaseReachable: true };
+/**
+ * Récupère une session proprement
+ * @returns La session si elle existe, null sinon
+ */
+export const getSessionSafely = async () => {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error("Erreur lors de la récupération de session:", error);
+      return null;
+    }
+    return data.session;
+  } catch (err) {
+    console.error("Exception lors de la récupération de session:", err);
+    return null;
+  }
 };
