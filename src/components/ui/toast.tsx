@@ -115,16 +115,17 @@ type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
 
 type ToastActionElement = React.ReactElement<typeof ToastAction>
 
-// Add useToast hook and toast function
-type ToastOptions = {
+// Définition du type ToastOptions
+export interface ToastOptions {
   title?: string;
   description?: string;
   variant?: "default" | "destructive";
   action?: ToastActionElement;
   duration?: number;
-  className?: string; // Add className to fix TypeScript errors
-};
+  className?: string;
+}
 
+// Implémentation du store de toast
 const toastStore = {
   toasts: [] as (ToastOptions & { id: string })[],
   listeners: new Set<() => void>(),
@@ -142,12 +143,12 @@ const toastStore = {
     toastStore.listeners.add(listener);
     return () => {
       toastStore.listeners.delete(listener);
-      return;
     };
   }
 };
 
-const useToast = () => {
+// Implémentation directe du hook useToast
+function useToast() {
   const [toasts, setToasts] = React.useState(toastStore.toasts);
   
   React.useEffect(() => {
@@ -162,16 +163,16 @@ const useToast = () => {
     toast: toastStore.notify,
     dismiss: toastStore.dismiss
   };
-};
+}
 
-const toast = (options: ToastOptions) => {
+// Fonction toast pour faciliter l'affichage
+function toast(options: ToastOptions) {
   return toastStore.notify(options);
-};
+}
 
 export {
   type ToastProps,
   type ToastActionElement,
-  type ToastOptions,
   ToastProvider,
   ToastViewport,
   Toast,
@@ -181,4 +182,4 @@ export {
   ToastAction,
   useToast,
   toast
-}
+};

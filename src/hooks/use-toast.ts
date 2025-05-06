@@ -1,5 +1,6 @@
 
-// Re-export du hook de toast pour une utilisation partout dans l'application
-import { useToast, toast } from "@/components/ui/toast"
+// Re-export depuis le composant principal de toast
+import { useToast, toast, type ToastOptions } from "@/components/ui/toast";
 
-export { useToast, toast }
+export { useToast, toast };
+export type { ToastOptions };

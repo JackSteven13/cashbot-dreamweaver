@@ -1,5 +1,6 @@
 
-import * as React from "react"
-import { useToast, toast } from "@/components/ui/toast"
+// Re-export tout ce qui est nécessaire depuis le composant principal
+import { useToast, toast } from "@/components/ui/toast";
 
-export { useToast, toast }
+// Export des hooks et fonctions
+export { useToast, toast };

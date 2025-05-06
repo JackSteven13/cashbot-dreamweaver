@@ -1,5 +1,5 @@
 
-// Re-export du composant toast depuis le fichier TSX principal
-import { useToast, toast } from "@/components/ui/toast"
+// Version .ts qui réexporte simplement depuis toast.tsx
+import { useToast, toast } from "@/components/ui/toast";
 
-export { useToast, toast }
+export { useToast, toast };
