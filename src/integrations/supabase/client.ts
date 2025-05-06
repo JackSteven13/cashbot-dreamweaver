@@ -20,7 +20,7 @@ export const isProductionEnvironment = (): boolean => {
 const createSupabaseClient = (): SupabaseClient<Database> => {
   console.log(`[Supabase] Initialisation du client (${isProductionEnvironment() ? "PROD" : "DEV"})`);
   
-  // Options optimisées pour tous les environnements
+  // Options optimisées pour tous les environnements avec meilleure gestion des erreurs réseau
   const options = {
     auth: {
       autoRefreshToken: true,
@@ -61,19 +61,41 @@ const createSupabaseClient = (): SupabaseClient<Database> => {
   }
 };
 
-// Wrapper pour fetch avec timeout
+// Wrapper pour fetch avec timeout et retry
 const customFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const timeout = 20000; // 20 secondes de timeout
+  const maxRetries = 2;
   
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  // Fonction pour effectuer une tentative avec timeout
+  const fetchWithTimeout = async (attempt: number): Promise<Response> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+      const response = await fetch(input, {
+        ...init,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      
+      // Si nous avons atteint le nombre max de tentatives, propager l'erreur
+      if (attempt >= maxRetries) {
+        throw error;
+      }
+      
+      // Sinon, attendre un petit délai avant de réessayer
+      console.log(`Tentative ${attempt + 1}/${maxRetries + 1} échouée, nouvelle tentative dans ${attempt * 1000}ms...`);
+      await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+      
+      // Réessayer
+      return fetchWithTimeout(attempt + 1);
+    }
+  };
   
-  return fetch(input, {
-    ...init,
-    signal: controller.signal
-  }).finally(() => {
-    clearTimeout(timeoutId);
-  });
+  return fetchWithTimeout(0);
 };
 
 // Instance unique du client Supabase
@@ -82,9 +104,9 @@ export const supabase = createSupabaseClient();
 // Fonction améliorée pour nettoyer les données d'authentification
 export const clearStoredAuthData = () => {
   try {
-    console.log("Nettoyage des données d'authentification");
+    console.log("Nettoyage complet des données d'authentification");
     
-    // Nettoyer localStorage
+    // Nettoyer localStorage - liste étendue
     const keysToRemove = [
       'supabase.auth.token',
       'sb-access-token',
@@ -93,7 +115,14 @@ export const clearStoredAuthData = () => {
       'sb-auth-token-prod',
       'sb-auth-token-dev',
       'sb-cfjibduhagxiwqkiyhqd-auth-token',
-      'auth_retries'
+      'supabase.auth.refreshToken',
+      'supabase.auth.accessToken',
+      'auth_retries',
+      'auth_checking',
+      'auth_refreshing',
+      'auth_redirecting',
+      'auth_redirect_timestamp',
+      'auth_check_timestamp'
     ];
     
     keysToRemove.forEach(key => {
@@ -104,9 +133,24 @@ export const clearStoredAuthData = () => {
       }
     });
     
+    // Nettoyage supplémentaire - parcourir tous les éléments de localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('supabase') || key.includes('sb-') || key.includes('auth_'))) {
+        try {
+          localStorage.removeItem(key);
+        } catch (e) {
+          // Ignorer les erreurs
+        }
+      }
+    }
+    
     // Nettoyer les cookies potentiels (cross-browser)
     document.cookie.split(';').forEach(c => {
-      document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/');
+      const cookieName = c.trim().split('=')[0];
+      if (cookieName.includes('sb-') || cookieName.includes('supabase')) {
+        document.cookie = `${cookieName}=;expires=${new Date().toUTCString()};path=/;`;
+      }
     });
     
     return true;
@@ -118,7 +162,7 @@ export const clearStoredAuthData = () => {
 
 // Fonction pour forcer une réinitialisation de l'authentification
 export const forceRetrySigning = async () => {
-  console.log("Réinitialisation de l'authentification");
+  console.log("Réinitialisation forcée de l'authentification");
   
   // Nettoyage des données
   clearStoredAuthData();
@@ -127,11 +171,38 @@ export const forceRetrySigning = async () => {
     // Déconnexion explicite avec scope global
     await supabase.auth.signOut({ scope: 'global' });
   } catch (e) {
-    // Ignorer les erreurs
+    console.error("Erreur lors de la déconnexion forcée:", e);
+    // Continuer malgré l'erreur
   }
   
   // Attendre un court délai
   await new Promise(resolve => setTimeout(resolve, 500));
   
   return true;
+};
+
+// Ajouter cette fonction d'aide pour vérifier rapidement l'état de la connexion
+export const checkNetworkStatus = async (): Promise<{online: boolean, supabaseReachable: boolean}> => {
+  const online = navigator.onLine;
+  
+  if (!online) {
+    return { online, supabaseReachable: false };
+  }
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    // Test rapide de connexion à Supabase
+    await fetch(`${SUPABASE_URL}/auth/v1/`, { 
+      method: 'HEAD',
+      mode: 'no-cors',
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    return { online: true, supabaseReachable: true };
+  } catch (e) {
+    return { online: true, supabaseReachable: false };
+  }
 };

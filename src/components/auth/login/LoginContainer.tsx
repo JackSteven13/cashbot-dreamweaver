@@ -5,6 +5,7 @@ import LoginForm from './LoginForm';
 import LoginLinks from './LoginLinks';
 import PreviousLoginInfo from './PreviousLoginInfo';
 import AuthCleanup from './AuthCleanup';
+import NetworkStatusIndicator from './NetworkStatusIndicator';
 import { toast } from '@/hooks/use-toast';
 
 interface LoginContainerProps {
@@ -60,7 +61,11 @@ const LoginContainer = ({ lastLoggedInEmail }: LoginContainerProps) => {
       <LoginHeader />
       
       <div className="glass-panel p-6 rounded-xl">
-        <PreviousLoginInfo lastLoggedInEmail={lastLoggedInEmail} />
+        <div className="flex justify-between items-center mb-4">
+          <PreviousLoginInfo lastLoggedInEmail={lastLoggedInEmail} />
+          <NetworkStatusIndicator className="ml-auto" />
+        </div>
+        
         <LoginForm lastLoggedInEmail={lastLoggedInEmail} />
         <LoginLinks />
       </div>
