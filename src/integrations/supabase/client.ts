@@ -1,5 +1,5 @@
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { clearAuthData as libClearAuthData } from '@/lib/supabase';
 
@@ -7,17 +7,15 @@ import { clearAuthData as libClearAuthData } from '@/lib/supabase';
 export const SUPABASE_URL = "https://cfjibduhagxiwqkiyhqd.supabase.co";
 export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4";
 
-// Instance singleton pour éviter les conflits
-let supabaseInstance: SupabaseClient<Database> | null = null;
-
-// Create and return the Supabase client directly
+// Création d'une instance Supabase unique et résiliente
 export const supabase = createClient<Database>(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY,
   {
     auth: {
-      persistSession: true,
       autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
       storage: localStorage
     }
   }
@@ -37,7 +35,9 @@ export const forceRetrySigning = async () => {
     await supabase.auth.signOut({ scope: 'global' });
   } catch (e) {
     // Ignorer les erreurs
+    console.error("Erreur lors de la déconnexion forcée:", e);
   }
   
+  // Pour la rétrocompatibilité, retourner l'instance
   return supabase;
 };

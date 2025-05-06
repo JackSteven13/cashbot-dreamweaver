@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { clearStoredAuthData } from '@/integrations/supabase/client';
+import { clearAuthData } from '@/lib/supabase';
 
 export const useLoginSubmit = () => {
   // Version ultra simplifiée et robuste de la fonction de connexion
@@ -29,13 +29,14 @@ export const useLoginSubmit = () => {
       console.log("Préparation de la connexion");
       
       // Nettoyage complet avant la tentative
-      clearStoredAuthData();
+      clearAuthData();
       
+      // Court délai pour assurer que le nettoyage est effectif
       await new Promise(resolve => setTimeout(resolve, 500));
       
       console.log("Tentative de connexion pour:", email);
       
-      // Tentative de connexion avec configuration simplifiée
+      // Tentative de connexion avec une configuration simplifiée et maximale fiabilité
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -61,7 +62,9 @@ export const useLoginSubmit = () => {
       });
       
       // Redirection complète avec rafraîchissement
-      window.location.href = '/dashboard';
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 800);
       
     } catch (error: any) {
       console.error("Erreur complète:", error);
@@ -74,7 +77,7 @@ export const useLoginSubmit = () => {
       });
       
       // Nettoyage après échec
-      clearStoredAuthData();
+      clearAuthData();
     } finally {
       setIsLoading(false);
     }

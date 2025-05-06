@@ -23,9 +23,32 @@ export const clearAuthData = () => {
       'sb-auth-token',
       'supabase.auth.token',
       'sb-cfjibduhagxiwqkiyhqd-auth-token',
-      'supabase.auth.expires_at'
+      'supabase.auth.expires_at',
+      'supabase.auth.refresh_token',
+      'supabase.auth.provider_token',
+      'supabase.auth.tenant',
+      'supabase.auth.session',
+      'sb-provider-token',
+      'sb-provider-refresh-token',
+      'sn-csrf-cookie',
+      'lesson-auth-cookie',
+      'supabase.auth.event',
+      'session_cookie_subs'
     ];
     
+    // Chercher dans localStorage pour toute clé contenant 'supabase', 'sb-' ou 'auth'
+    Object.keys(localStorage).forEach(key => {
+      if (
+        key.includes('supabase') || 
+        key.includes('sb-') || 
+        key.includes('auth') ||
+        key.includes('token')
+      ) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Ensuite supprimer explicitement nos clés connues
     keysToRemove.forEach(key => {
       localStorage.removeItem(key);
       if (typeof sessionStorage !== 'undefined') {
@@ -36,7 +59,12 @@ export const clearAuthData = () => {
     // Nettoyer tous les cookies liés à Supabase
     document.cookie.split(';').forEach(cookie => {
       const cookieName = cookie.split('=')[0].trim();
-      if (cookieName.includes('sb-') || cookieName.includes('supabase')) {
+      if (
+        cookieName.includes('sb-') || 
+        cookieName.includes('supabase') || 
+        cookieName.includes('auth') ||
+        cookieName.includes('token')
+      ) {
         document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
       }
     });

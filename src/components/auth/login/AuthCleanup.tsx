@@ -13,18 +13,18 @@ const AuthCleanup = () => {
     const performCleanup = async () => {
       console.log("🧹 AuthCleanup: Nettoyage agressif des données d'authentification");
       
-      // Premier nettoyage
+      // Premier nettoyage complet
       clearAuthData();
       
       try {
-        // Déconnexion explicite d'abord
+        // Déconnexion explicite d'abord avec des options de sécurité maximales
         await supabase.auth.signOut({ scope: 'global' });
       } catch (e) {
-        console.log("Erreur de déconnexion ignorée");
+        console.log("Erreur de déconnexion ignorée:", e);
       }
       
-      // Attendre un peu
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Petit délai pour s'assurer que toutes les opérations asynchrones sont terminées
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Second nettoyage pour s'assurer que tout est propre
       clearAuthData();

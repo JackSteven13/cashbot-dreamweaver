@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
-import { supabase } from '@/integrations/supabase/client';
 import { clearAuthData } from '@/lib/supabase';
 
 const Login = () => {
@@ -15,18 +14,14 @@ const Login = () => {
       try {
         console.log("Nettoyage des données d'authentification");
         
-        // Premier nettoyage
+        // Premier nettoyage immédiat
         clearAuthData();
         
-        // Tentative de déconnexion explicite
-        try {
-          await supabase.auth.signOut({ scope: 'global' });
-        } catch (e) {
-          console.log("Erreur de déconnexion ignorée");
-        }
-        
-        // Second nettoyage pour s'assurer que tout est propre
+        // Deuxième nettoyage après un délai
         setTimeout(clearAuthData, 500);
+        
+        // Troisième nettoyage pour être absolument certain
+        setTimeout(clearAuthData, 1500);
         
         console.log("Nettoyage terminé");
       } catch (err) {
