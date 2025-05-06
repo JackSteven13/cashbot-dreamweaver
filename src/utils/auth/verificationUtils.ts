@@ -1,5 +1,5 @@
 
-import { supabase, SUPABASE_URL, isProductionEnvironment } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_URL } from '@/integrations/supabase/client';
 
 /**
  * Vérification simplifiée de la connexion réseau
