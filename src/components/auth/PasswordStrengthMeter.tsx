@@ -1,39 +1,38 @@
 
 import React from 'react';
-import { getPasswordStrength, getPasswordIssues } from '@/utils/auth/passwordValidator';
 
 interface PasswordStrengthMeterProps {
   password: string;
   email?: string;
 }
 
-const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({ password, email }) => {
-  const strength = getPasswordStrength(password, email);
-  const issues = getPasswordIssues(password, email);
+// Version simplifiée du composant PasswordStrengthMeter
+// Toutes les vérifications avancées sont retirées
+const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({ password }) => {
+  // Vérification basique de la longueur
+  if (!password) return null;
   
-  // Déterminer la couleur et le libellé en fonction du score
+  // Calcul simple de force basé uniquement sur la longueur
+  let strength = 0;
   let color = 'bg-red-500';
-  let label = 'Très faible';
+  let label = 'Faible';
   
-  if (strength >= 80) {
+  if (password.length >= 8) strength += 40;
+  if (password.length >= 10) strength += 20;
+  if (password.length >= 12) strength += 20;
+  if (/[A-Z]/.test(password)) strength += 10;
+  if (/[0-9]/.test(password)) strength += 10;
+  
+  if (strength >= 60) {
     color = 'bg-green-500';
-    label = 'Excellent';
-  } else if (strength >= 60) {
-    color = 'bg-green-400';
     label = 'Fort';
   } else if (strength >= 40) {
     color = 'bg-yellow-500';
     label = 'Moyen';
-  } else if (strength >= 20) {
-    color = 'bg-orange-500';
-    label = 'Faible';
   }
-  
-  // Ne pas afficher si le mot de passe est vide
-  if (!password) return null;
 
   return (
-    <div className="mt-2 space-y-2">
+    <div className="mt-2">
       <div className="flex items-center gap-2">
         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
           <div 
@@ -43,17 +42,6 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({ password,
         </div>
         <span className="text-xs font-medium whitespace-nowrap">{label}</span>
       </div>
-      
-      {issues.length > 0 && (
-        <ul className="text-xs text-red-500 space-y-1 mt-2">
-          {issues.map((issue, index) => (
-            <li key={index} className="flex items-start">
-              <span className="mr-1">•</span>
-              <span>{issue}</span>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 };

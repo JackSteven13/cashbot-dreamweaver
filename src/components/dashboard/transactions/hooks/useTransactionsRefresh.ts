@@ -1,7 +1,7 @@
 
 import { useRef, useCallback } from 'react';
 import { Transaction } from '@/types/userData';
-import { fetchUserTransactions } from '@/utils/userData/transactionUtils';
+import { fetchUserTransactions } from '@/utils/user/transactionUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 

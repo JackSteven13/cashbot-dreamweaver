@@ -1,9 +1,8 @@
 
 import { useState, useEffect, createContext, ReactNode, useContext } from 'react';
-import { supabase, clearStoredAuthData } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 
-// Interface pour le contexte d'authentification
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -23,97 +22,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Nettoyer les anciennes données au montage pour éviter les conflits
-    try {
-      // On garde uniquement ces clés qui ne sont pas directement liées à l'authentification
-      const keysToKeep = [
-        'last_logged_in_email',
-        'subscription',
-        'balance',
-        'username',
-        'daily_session_count'
-      ];
-      
-      const allKeys = Object.keys(localStorage);
-      const authKeys = allKeys.filter(key => 
-        (key.includes('auth') || key.includes('supabase') || key.includes('sb-') || key.includes('token')) && 
-        !keysToKeep.includes(key)
-      );
-      
-      authKeys.forEach(key => localStorage.removeItem(key));
-    } catch (e) {
-      console.error("Erreur lors du nettoyage initial:", e);
-    }
-
-    // Configuration de l'écouteur d'authentification avec désinscription robuste
-    let subscription: { unsubscribe: () => void } | null = null;
-    
-    try {
-      const { data } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          console.log(`État d'authentification: ${event}`);
-          setUser(session?.user ?? null);
-          setIsLoading(false);
-          
-          // Actions spécifiques selon l'événement
-          if (event === 'SIGNED_IN') {
-            console.log('Utilisateur connecté:', session?.user?.email);
-            
-            // Petit délai pour assurer la propagation des données
-            setTimeout(() => {
-              if (session?.user?.id) {
-                localStorage.setItem('user_id', session.user.id);
-              }
-            }, 100);
-          } else if (event === 'SIGNED_OUT') {
-            console.log('Utilisateur déconnecté');
-            localStorage.removeItem('user_id');
-            localStorage.removeItem('subscription');
-          }
-        }
-      );
-      
-      subscription = data.subscription;
-    } catch (error) {
-      console.error('Erreur lors de la configuration de l\'écouteur d\'authentification:', error);
-    }
-
-    // Vérification de la session existante
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+    // Configuration ultra simplifiée de l'écouteur d'authentification
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
         setUser(session?.user ?? null);
-      } catch (error) {
-        console.error('Erreur lors de la récupération de la session:', error);
-      } finally {
         setIsLoading(false);
       }
+    );
+    
+    // Vérification initiale de la session
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      setUser(data?.session?.user ?? null);
+      setIsLoading(false);
     };
-
+    
     checkSession();
 
-    // Nettoyage à la désinscription
+    // Nettoyage
     return () => {
-      if (subscription) {
-        try {
-          subscription.unsubscribe();
-        } catch (e) {
-          console.error('Erreur lors de la désinscription:', e);
-        }
-      }
+      subscription.unsubscribe();
     };
   }, []);
-
-  // Protection contre le blocage - forcer à false après 3 secondes
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (isLoading) {
-        setIsLoading(false);
-      }
-    }, 3000);
-    
-    return () => clearTimeout(timeout);
-  }, [isLoading]);
 
   return (
     <AuthContext.Provider value={{ user, isLoading }}>
@@ -127,7 +57,7 @@ export const useAuth = () => {
   const context = useContext(AuthContext);
   
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth doit être utilisé dans un AuthProvider');
   }
   
   return context;

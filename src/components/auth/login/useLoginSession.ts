@@ -1,34 +1,33 @@
 
 import { useState, useEffect } from 'react';
-import { supabase, clearStoredAuthData } from '@/integrations/supabase/client';
+import { clearStoredAuthData } from '@/integrations/supabase/client';
 
 export const useLoginSession = () => {
-  const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
   const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);
-
-  // Effet pour la vérification initiale de session
+  
   useEffect(() => {
-    const checkSession = async () => {
+    // Nettoyer d'abord les données d'authentification de manière agressive
+    clearStoredAuthData();
+    
+    // Court délai pour s'assurer que le nettoyage est effectif
+    setTimeout(() => {
+      // Puis récupérer l'email précédemment utilisé
       try {
-        // Nettoyer les données d'authentification pour éviter les problèmes
-        clearStoredAuthData();
-        
-        // Récupérer le dernier email utilisé pour se connecter
         const savedEmail = localStorage.getItem('last_logged_in_email');
-        setLastLoggedInEmail(savedEmail);
-        
-        // Simplification: juste marquer comme terminé
-        setIsCheckingSession(false);
+        if (savedEmail) {
+          console.log("Email précédemment utilisé récupéré:", savedEmail);
+          setLastLoggedInEmail(savedEmail);
+        }
       } catch (error) {
-        console.error("Erreur lors de la vérification de session:", error);
-        setIsCheckingSession(false);
+        console.error("Erreur lors de la récupération de l'email précédent:", error);
       }
-    };
-
-    checkSession();
+    }, 100);
+    
+    // Nettoyage supplémentaire après un délai plus long
+    const timer = setTimeout(clearStoredAuthData, 800);
+    
+    return () => clearTimeout(timer);
   }, []);
 
-  return { isCheckingSession, lastLoggedInEmail };
+  return { lastLoggedInEmail };
 };
-
-export default useLoginSession;

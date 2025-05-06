@@ -1,36 +1,31 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
 
 /**
- * Force la déconnexion complète de l'utilisateur
- * Version stable qui gère correctement les erreurs et la persistance
+ * Force la déconnexion de l'utilisateur et nettoie toutes les données d'authentification
  */
-export const forceSignOut = async () => {
+export const forceSignOut = async (): Promise<void> => {
+  console.log("Tentative de déconnexion forcée");
+  
   try {
-    // Nettoyage complet des tokens locaux avant la tentative de déconnexion
-    localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-    localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
-    localStorage.removeItem('sb-auth-token');
+    // Nettoyer toutes les données d'authentification pour éviter les conflits
+    clearStoredAuthData();
     
-    // Nettoyer tous les flags potentiellement bloquants
-    localStorage.removeItem('auth_checking');
-    localStorage.removeItem('auth_refreshing');
-    localStorage.removeItem('auth_redirecting');
-    localStorage.removeItem('auth_check_timestamp');
-    localStorage.removeItem('auth_refresh_timestamp');
-    localStorage.removeItem('auth_redirect_timestamp');
+    // Petit délai pour assurer un nettoyage complet
+    await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Tenter une déconnexion propre
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.log("Erreur lors de la déconnexion supabase:", error);
-      // Continuer malgré l'erreur puisque nous avons déjà nettoyé les tokens
-    }
+    // Déconnecter via l'API Supabase avec des options simplifiées
+    await supabase.auth.signOut();
     
-    return true;
+    // Deuxième nettoyage après la déconnexion pour s'assurer 
+    // qu'il ne reste aucune donnée d'authentification
+    clearStoredAuthData();
+    
+    console.log("Déconnexion forcée réussie");
   } catch (error) {
     console.error("Erreur lors de la déconnexion forcée:", error);
-    return false;
+    
+    // Même en cas d'erreur, tenter de nettoyer le stockage local
+    clearStoredAuthData();
   }
 };

@@ -118,7 +118,7 @@ export const useSessionStarter = ({
       // Mettre à jour les gains quotidiens dans le gestionnaire de solde
       balanceManager.addDailyGain(finalGain);
 
-      // Mettre à jour le solde total
+      // Mettre à jour le solde total avec forceUpdate=true pour garantir la mise à jour
       await updateBalance(finalGain, `Session d'analyse manuelle: +${finalGain.toFixed(2)}€`, true);
 
       // Marquer la séquence comme terminée
@@ -127,15 +127,31 @@ export const useSessionStarter = ({
       // Déclencher un événement pour rafraîchir les transactions
       window.dispatchEvent(new CustomEvent('transactions:refresh'));
 
-      // Force une mise à jour de l'interface
-      window.dispatchEvent(new CustomEvent('balance:update', {
-        detail: { 
-          amount: finalGain,
-          animate: true,
-          userId: userData?.id || userData?.profile?.id,
-          timestamp: Date.now()
-        }
-      }));
+      // Force une mise à jour de l'interface avec un délai pour garantir l'affichage
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('session:completed', {
+          detail: { 
+            gain: finalGain,
+            timestamp: Date.now()
+          }
+        }));
+  
+        window.dispatchEvent(new CustomEvent('balance:update', {
+          detail: { 
+            amount: finalGain,
+            animate: true,
+            userId: userData?.id || userData?.profile?.id,
+            timestamp: Date.now()
+          }
+        }));
+  
+        // Force une mise à jour du solde avec un événement spécifique
+        window.dispatchEvent(new CustomEvent('balance:force-update', {
+          detail: { 
+            newBalance: (userData.balance || 0) + finalGain
+          }
+        }));
+      }, 500);
 
       // Notification du succès
       toast({

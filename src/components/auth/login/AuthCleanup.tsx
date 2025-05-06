@@ -1,42 +1,55 @@
 
 import { useEffect } from 'react';
+import { clearStoredAuthData, supabase } from '@/integrations/supabase/client';
 
+/**
+ * Composant invisible qui nettoie agressivement les données d'authentification
+ * au chargement de la page de connexion
+ */
 const AuthCleanup = () => {
-  // Nettoyer les flags d'authentification potentiellement bloquants
   useEffect(() => {
-    // Protection contre les blocages persistants
-    const loginBlockingFlags = [
-      'auth_checking',
-      'auth_refreshing',
-      'auth_redirecting',
-      'auth_check_timestamp',
-      'auth_refresh_timestamp',
-      'auth_redirect_timestamp',
-      'auth_signing_out'
-    ];
-    
-    loginBlockingFlags.forEach(flag => {
-      localStorage.removeItem(flag);
-    });
-    
-    // Silencieusement nettoyer les jetons potentiellement invalides sans afficher d'alerte
-    const authToken = localStorage.getItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-    if (authToken) {
+    const cleanupAuth = async () => {
+      console.log("Exécution du nettoyage d'authentification au chargement de la page de connexion");
+      
       try {
-        const tokenData = JSON.parse(authToken);
-        const expiresAt = tokenData?.expires_at;
+        // Premier nettoyage
+        clearStoredAuthData();
         
-        if (expiresAt && Date.now() / 1000 >= expiresAt) {
-          console.log("Detected expired token, cleaning up silently");
-          localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
-          localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-refresh');
+        // Déconnexion explicite avec scope global
+        await supabase.auth.signOut({ scope: 'global' });
+        
+        // Attendre que la déconnexion soit traitée
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Deuxième nettoyage pour garantir un état propre
+        clearStoredAuthData();
+        
+        // Vérifier qu'aucune session n'est présente
+        const { data } = await supabase.auth.getSession();
+        
+        if (data.session) {
+          console.warn("Session toujours présente après nettoyage, forçage supplémentaire");
+          
+          // Tentative finale de déconnexion
+          await supabase.auth.signOut();
+          clearStoredAuthData();
+          
+          // Effacer les cookies de domaine si nous sommes en production
+          if (window.location.hostname.includes('streamgenius.io')) {
+            document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=streamgenius.io;';
+            document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=streamgenius.io;';
+          }
         }
-      } catch (e) {
-        console.error("Error parsing auth token:", e);
+      } catch (error) {
+        console.error("Erreur pendant le nettoyage d'authentification:", error);
       }
-    }
+    };
+    
+    // Lancer le nettoyage
+    cleanupAuth();
   }, []);
-
+  
+  // Ce composant ne rend rien
   return null;
 };
 

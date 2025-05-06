@@ -27,7 +27,7 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       setters.setDisplayedBalance(safeBalance);
       balanceManager.forceBalanceSync(safeBalance);
     }
-  }, [safeBalance, state.displayedBalance]);
+  }, [safeBalance, state.displayedBalance, setters]);
 
   // Listen for manual session events
   useEffect(() => {
@@ -60,12 +60,45 @@ const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
       }
     };
     
+    // Listen for balance update events
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        const { amount, animate, newBalance } = event.detail;
+        console.log(`useBalanceState: Event balance:update reçu, gain: ${amount}€, nouveau solde: ${newBalance || (state.displayedBalance + amount)}€`);
+        
+        if (newBalance !== undefined) {
+          // Si un nouveau solde est spécifié, l'utiliser directement
+          setters.setPreviousBalance(state.displayedBalance);
+          setters.setDisplayedBalance(newBalance);
+          if (animate) setters.setIsAnimating(true);
+        } else if (amount !== undefined) {
+          // Sinon, ajouter le montant au solde actuel
+          setters.setPreviousBalance(state.displayedBalance);
+          setters.setDisplayedBalance(state.displayedBalance + amount);
+          if (animate) {
+            setters.setGain(amount);
+            setters.setIsAnimating(true);
+          }
+        }
+        
+        // Réinitialiser l'animation après un délai
+        if (animate) {
+          setTimeout(() => {
+            setters.setIsAnimating(false);
+            setters.setGain(null);
+          }, 3000);
+        }
+      }
+    };
+    
     window.addEventListener('session:completed', handleSessionCompleted as EventListener);
     window.addEventListener('balance:force-update', handleForceUpdate as EventListener);
+    window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
     
     return () => {
       window.removeEventListener('session:completed', handleSessionCompleted as EventListener);
       window.removeEventListener('balance:force-update', handleForceUpdate as EventListener);
+      window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
     };
   }, [state.displayedBalance, setters]);
 

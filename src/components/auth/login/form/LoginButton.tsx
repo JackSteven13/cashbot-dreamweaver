@@ -1,7 +1,6 @@
 
-import React from 'react';
-import { ArrowRight, Loader2 } from 'lucide-react';
-import Button from '@/components/Button';
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Loader2 } from "lucide-react";
 
 interface LoginButtonProps {
   isLoading: boolean;
@@ -11,21 +10,18 @@ const LoginButton = ({ isLoading }: LoginButtonProps) => {
   return (
     <Button 
       type="submit" 
-      fullWidth 
-      size="lg" 
-      isLoading={isLoading} 
-      className="group"
       disabled={isLoading}
+      className="w-full flex items-center justify-center gap-2 py-6 text-base"
     >
       {isLoading ? (
         <>
-          <Loader2 size={18} className="mr-2 animate-spin" />
-          Connexion en cours...
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Connexion en cours...</span>
         </>
       ) : (
         <>
-          Se connecter
-          <ArrowRight size={18} className="ml-2 transition-transform group-hover:translate-x-1" />
+          <span>Se connecter</span>
+          <ArrowRight className="h-4 w-4" />
         </>
       )}
     </Button>

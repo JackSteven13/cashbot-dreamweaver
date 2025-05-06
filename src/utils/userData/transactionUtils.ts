@@ -1,184 +1,227 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { Transaction } from "@/types/userData";
+import { supabase } from '@/integrations/supabase/client';
+import { Transaction } from '@/types/userData';
 
 /**
- * Ajoute une transaction avec mécanisme de retry
- */
-export const addTransaction = async (userId: string, gain: number, report: string) => {
-  // Vérifier les données d'entrée pour éviter les incohérences
-  if (!userId) {
-    console.error("addTransaction: userId manquant");
-    return { success: false };
-  }
-  
-  if (isNaN(gain) || gain <= 0) {
-    console.error(`addTransaction: gain invalide (${gain})`);
-    return { success: false };
-  }
-  
-  // Formater le gain avec au maximum 2 décimales
-  const formattedGain = parseFloat(gain.toFixed(2));
-  const transactionDate = new Date().toISOString().split('T')[0];
-  
-  // Mécanisme de retry
-  const maxRetries = 3;
-  let retryCount = 0;
-  
-  // Ajouter un verrou pour éviter les transactions simultanées
-  const transactionLockKey = `transaction_lock_${userId}`;
-  const transactionLock = sessionStorage.getItem(transactionLockKey);
-  
-  if (transactionLock && Date.now() - parseInt(transactionLock) < 2000) {
-    console.log("Transaction en cours, attente...");
-    // Attendre un peu pour laisser la transaction précédente se terminer
-    await new Promise(resolve => setTimeout(resolve, 500));
-  }
-  
-  // Définir le verrou avec l'horodatage actuel
-  sessionStorage.setItem(transactionLockKey, Date.now().toString());
-  
-  try {
-    while (retryCount < maxRetries) {
-      try {
-        console.log(`Ajout de transaction pour l'utilisateur ${userId} (gain: ${formattedGain}€, tentative: ${retryCount + 1}/${maxRetries})`);
-        
-        // Ajouter la transaction en base de données
-        const { error: transactionError } = await supabase
-          .from('transactions')
-          .insert([{
-            user_id: userId,
-            date: transactionDate,
-            gain: formattedGain,
-            report: report
-          }]);
-          
-        if (transactionError) {
-          console.error("Erreur lors de la création de la transaction:", transactionError);
-          retryCount++;
-          
-          if (retryCount >= maxRetries) {
-            return { success: false };
-          }
-          
-          // Attendre avant de réessayer avec backoff exponentiel
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 500));
-          continue;
-        }
-        
-        // Déclencher un événement pour informer les autres composants
-        window.dispatchEvent(new CustomEvent('transaction:added', {
-          detail: {
-            transaction: {
-              date: transactionDate,
-              gain: formattedGain,
-              report: report
-            }
-          }
-        }));
-        
-        return { 
-          success: true, 
-          transaction: {
-            date: transactionDate,
-            gain: formattedGain,
-            report: report
-          } 
-        };
-      } catch (error) {
-        console.error(`Erreur lors de l'ajout de la transaction (tentative ${retryCount + 1}):`, error);
-        retryCount++;
-        
-        if (retryCount >= maxRetries) {
-          return { success: false };
-        }
-        
-        // Attendre avant de réessayer avec backoff exponentiel
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 500));
-      }
-    }
-  } finally {
-    // Toujours libérer le verrou une fois terminé
-    sessionStorage.removeItem(transactionLockKey);
-  }
-  
-  return { success: false };
-};
-
-/**
- * Récupère toutes les transactions d'un utilisateur
+ * Fetch user transactions with proper typing
+ * @param userId ID of the user
+ * @returns A list of transactions
  */
 export const fetchUserTransactions = async (userId: string): Promise<Transaction[]> => {
   try {
+    // Get today's date in ISO format
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const todayStr = today.toISOString();
+    
+    // Fetch transactions from the database
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
       .eq('user_id', userId)
-      .order('date', { ascending: false });
-      
+      .order('created_at', { ascending: false });
+    
     if (error) {
       console.error("Error fetching transactions:", error);
       return [];
     }
-    
-    return data || [];
+
+    // Map the data to Transaction type
+    return (data || []).map(tx => ({
+      id: tx.id,
+      date: tx.created_at || tx.date,
+      gain: tx.gain,
+      amount: tx.gain, // For backward compatibility
+      report: tx.report,
+      // Since 'type' doesn't exist in the database response, use report as a fallback
+      type: 'system' // Default type for all transactions
+    }));
   } catch (err) {
-    console.error("Exception while fetching transactions:", err);
+    console.error("Error in fetchUserTransactions:", err);
     return [];
   }
 };
 
 /**
- * Calcule les gains totaux d'aujourd'hui pour un utilisateur
+ * Calculate today's gains for a user
+ * @param userId ID of the user
+ * @returns The total gains for today
  */
 export const calculateTodaysGains = async (userId: string): Promise<number> => {
-  if (!userId) return 0;
-  
   try {
-    const today = new Date().toISOString().split('T')[0];
+    // Get today's date in UTC
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const todayStr = today.toISOString();
     
+    // Fetch transactions for today
     const { data, error } = await supabase
       .from('transactions')
       .select('gain')
       .eq('user_id', userId)
-      .eq('date', today);
-      
+      .gte('created_at', todayStr);
+    
     if (error) {
       console.error("Error calculating today's gains:", error);
       return 0;
     }
     
-    return (data || []).reduce((sum, tx) => sum + (tx.gain || 0), 0);
+    // Calculate the sum of gains
+    return data?.reduce((sum, transaction) => sum + Number(transaction.gain), 0) || 0;
   } catch (err) {
-    console.error("Exception while calculating today's gains:", err);
+    console.error("Error in calculateTodaysGains:", err);
     return 0;
   }
 };
 
 /**
- * Récupère les transactions d'aujourd'hui
+ * Calculate today's expenses for a user
+ * @param userId ID of the user
+ * @returns The total expenses for today
  */
-export const fetchTodayTransactions = async (userId: string): Promise<Transaction[]> => {
-  if (!userId) return [];
-  
+export const calculateTodaysExpenses = async (userId: string): Promise<number> => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    // Get today's date in UTC
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const todayStr = today.toISOString();
+    
+    // Fetch transactions for today
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('gain')
+      .eq('user_id', userId)
+      .gte('created_at', todayStr);
+    
+    if (error) {
+      console.error("Error calculating today's expenses:", error);
+      return 0;
+    }
+    
+    // Calculate the sum of expenses (all negative gains)
+    return data?.reduce((sum, transaction) => {
+      const amount = Number(transaction.gain);
+      return sum + (amount < 0 ? Math.abs(amount) : 0);
+    }, 0) || 0;
+  } catch (err) {
+    console.error("Error in calculateTodaysExpenses:", err);
+    return 0;
+  }
+};
+
+/**
+ * Get transaction history for a user with pagination
+ * @param userId ID of the user
+ * @param page Current page number
+ * @param pageSize Number of transactions per page
+ * @returns List of transactions and total count
+ */
+export const getTransactionHistory = async (userId: string, page: number, pageSize: number) => {
+  const startIndex = (page - 1) * pageSize;
+
+  try {
+    const { data, error, count } = await supabase
+      .from('transactions')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(startIndex, startIndex + pageSize - 1);
+
+    if (error) {
+      console.error("Error fetching transaction history:", error);
+      return { data: [], count: 0 };
+    }
+
+    return { 
+      data: data?.map(tx => ({
+        id: tx.id,
+        date: tx.created_at || tx.date,
+        gain: tx.gain,
+        amount: tx.gain, // For backward compatibility
+        report: tx.report,
+        // Since 'type' doesn't exist in the database response, set a default type
+        type: 'system' // Default type for all transactions
+      })) || [], 
+      count: count || 0 
+    };
+  } catch (err) {
+    console.error("Error in getTransactionHistory:", err);
+    return { data: [], count: 0 };
+  }
+};
+
+/**
+ * Add a transaction for a user
+ * @param userId ID of the user
+ * @param gain Amount of the transaction
+ * @param report Description of the transaction
+ * @param type Type of the transaction
+ * @returns The created transaction
+ */
+export const addTransaction = async (
+  userId: string,
+  gain: number,
+  report: string,
+  type: string = 'system'
+) => {
+  try {
+    // Format gain to 2 decimal places
+    const formattedGain = parseFloat(gain.toFixed(2));
+    
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: userId,
+        gain: formattedGain,
+        report: report,
+        type: type,
+        date: new Date().toISOString().split('T')[0]
+      })
+      .select();
+    
+    if (error) {
+      console.error("Error adding transaction:", error);
+      return null;
+    }
+    
+    return data ? data[0] : null;
+  } catch (error) {
+    console.error("Error in addTransaction:", error);
+    return null;
+  }
+};
+
+/**
+ * Get today's transactions for a user
+ * @param userId ID of the user
+ * @returns List of today's transactions
+ */
+export const getTodaysTransactions = async (userId: string): Promise<Transaction[]> => {
+  try {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
       .eq('user_id', userId)
-      .eq('date', today)
-      .order('created_at', { ascending: false });
+      .eq('date', today);
       
     if (error) {
       console.error("Error fetching today's transactions:", error);
       return [];
     }
     
-    return data || [];
-  } catch (err) {
-    console.error("Exception while fetching today's transactions:", err);
+    return (data || []).map(t => ({
+      id: t.id,
+      date: t.created_at || t.date,
+      amount: t.gain,
+      gain: t.gain,
+      report: t.report,
+      // Since 'type' doesn't exist in the database response, use a default value
+      type: 'system' // Default type for all transactions
+    }));
+  } catch (error) {
+    console.error("Error in getTodaysTransactions:", error);
     return [];
   }
 };
