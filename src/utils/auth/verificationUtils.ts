@@ -13,7 +13,9 @@ const checkNetworkConnectivity = async (): Promise<boolean> => {
   // Vérifier la connexion à Supabase avec une requête simple
   try {
     const startTime = Date.now();
-    const response = await fetch(`${supabase.supabaseUrl}`, {
+    // Instead of using the protected supabaseUrl property, we'll use the hardcoded URL
+    // that's already available in our lib/supabase.ts file
+    const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co', {
       method: 'HEAD',
       mode: 'no-cors', // Permet de tester la connexion sans CORS
       cache: 'no-store'
