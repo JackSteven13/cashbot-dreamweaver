@@ -184,24 +184,33 @@ export type Database = {
         Row: {
           connected_at: string
           created_at: string
+          email: string | null
+          error_message: string | null
           id: string
           ip_address: string | null
+          success: boolean | null
           user_agent: string | null
           user_id: string
         }
         Insert: {
           connected_at?: string
           created_at?: string
+          email?: string | null
+          error_message?: string | null
           id?: string
           ip_address?: string | null
+          success?: boolean | null
           user_agent?: string | null
           user_id: string
         }
         Update: {
           connected_at?: string
           created_at?: string
+          email?: string | null
+          error_message?: string | null
           id?: string
           ip_address?: string | null
+          success?: boolean | null
           user_agent?: string | null
           user_id?: string
         }

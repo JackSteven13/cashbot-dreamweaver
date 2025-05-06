@@ -14,6 +14,12 @@ serve(async (req) => {
   }
 
   try {
+    // Parse request body
+    const requestData = await req.json();
+    const { email, success = true, error_message = null } = requestData;
+    
+    console.log("Received connection log request:", { email, success, error_message });
+    
     // Create a Supabase client with the Auth context of the logged in user
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -25,15 +31,22 @@ serve(async (req) => {
       }
     );
 
-    // Get the authenticated user
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    let userId = null;
     
-    if (userError) {
-      throw userError;
-    }
-
-    if (!user) {
-      throw new Error("No user found");
+    // Only try to get user details if this is a successful login
+    if (success) {
+      try {
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+        
+        if (userError) {
+          console.error("User error:", userError);
+        } else if (user) {
+          userId = user.id;
+          console.log("User found:", userId);
+        }
+      } catch (authError) {
+        console.error("Auth error:", authError);
+      }
     }
 
     // Get request details
@@ -45,24 +58,36 @@ serve(async (req) => {
       clientIP = clientIP.split(",")[0].trim();
     }
 
-    console.log(`Logging connection for user ${user.id} from IP ${clientIP} with agent ${userAgent}`);
+    console.log(`Logging ${success ? 'successful' : 'failed'} connection attempt${userId ? ` for user ${userId}` : ' for ' + email} from IP ${clientIP}`);
 
-    // Log the user connection
+    // Prepare record to insert
+    const connectionRecord = {
+      user_id: userId || '00000000-0000-0000-0000-000000000000', // Anonymous UUID for failed attempts
+      ip_address: clientIP,
+      user_agent: userAgent,
+      connected_at: new Date().toISOString(),
+      email: email || null,
+      success: success,
+      error_message: error_message
+    };
+    
+    console.log("Inserting connection record:", connectionRecord);
+
+    // Log the connection attempt
     const { error: logError } = await supabaseClient
       .from("user_connections")
-      .insert([{ 
-        user_id: user.id,
-        ip_address: clientIP,
-        user_agent: userAgent,
-        connected_at: new Date().toISOString()
-      }]);
+      .insert([connectionRecord]);
     
     if (logError) {
+      console.error("DB insertion error:", logError);
       throw logError;
     }
 
     return new Response(
-      JSON.stringify({ message: "Connection logged successfully" }),
+      JSON.stringify({ 
+        message: "Connection attempt logged successfully",
+        success: true
+      }),
       { 
         headers: { 
           "Content-Type": "application/json",
@@ -75,7 +100,10 @@ serve(async (req) => {
     console.error("Error logging connection:", error);
     
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        success: false
+      }),
       { 
         headers: { 
           "Content-Type": "application/json",

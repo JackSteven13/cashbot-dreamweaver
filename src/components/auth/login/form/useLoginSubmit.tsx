@@ -33,7 +33,40 @@ export const useLoginSubmit = () => {
       
       if (error) {
         console.error("Erreur d'authentification:", error);
-        throw error;
+        
+        // Log failed connection attempt
+        try {
+          console.log("Logging failed connection attempt for:", email);
+          const { data: logData, error: logError } = await supabase.functions.invoke('log-connection', {
+            body: {
+              email,
+              success: false,
+              error_message: error.message
+            }
+          });
+          
+          if (logError) {
+            console.error("Failed to log connection error:", logError);
+          } else {
+            console.log("Failed connection logged successfully:", logData);
+          }
+        } catch (logErr) {
+          console.error("Exception when invoking log-connection function for failure:", logErr);
+        }
+        
+        // Message d'erreur adapté
+        toast({
+          title: "Échec de connexion",
+          description: "Email ou mot de passe incorrect.",
+          variant: "destructive"
+        });
+        
+        // Nettoyage après échec
+        clearStoredAuthData();
+        
+        // Sortie en fin de tentative échouée
+        setIsLoading(false);
+        return;
       }
       
       // Vérifier la présence d'une session après connexion
@@ -43,16 +76,24 @@ export const useLoginSubmit = () => {
         // Enregistrer l'email pour la prochaine connexion
         localStorage.setItem('last_logged_in_email', email);
         
-        // Log connection via edge function
+        // Log successful connection via edge function
         try {
-          const { error: logError } = await supabase.functions.invoke('log-connection');
+          console.log("Logging successful connection for:", email);
+          const { data: logData, error: logError } = await supabase.functions.invoke('log-connection', {
+            body: {
+              email,
+              success: true,
+              error_message: null
+            }
+          });
+          
           if (logError) {
             console.error("Failed to log connection:", logError);
           } else {
-            console.log("Connection logged successfully");
+            console.log("Connection logged successfully:", logData);
           }
         } catch (logErr) {
-          console.error("Error invoking log-connection function:", logErr);
+          console.error("Exception when invoking log-connection function:", logErr);
           // Non-fatal error, continue with login process
         }
         

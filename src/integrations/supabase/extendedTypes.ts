@@ -13,6 +13,9 @@ export interface ExtendedDatabase extends Database {
           ip_address: string | null;
           user_agent: string | null;
           created_at: string;
+          success: boolean;
+          error_message: string | null;
+          email: string | null;
         };
         Insert: {
           id?: string;
@@ -21,6 +24,9 @@ export interface ExtendedDatabase extends Database {
           ip_address?: string | null;
           user_agent?: string | null;
           created_at?: string;
+          success?: boolean;
+          error_message?: string | null;
+          email?: string | null;
         };
         Update: {
           id?: string;
@@ -29,6 +35,9 @@ export interface ExtendedDatabase extends Database {
           ip_address?: string | null;
           user_agent?: string | null;
           created_at?: string;
+          success?: boolean;
+          error_message?: string | null;
+          email?: string | null;
         };
         Relationships: [
           {
