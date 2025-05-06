@@ -10,7 +10,26 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storage: localStorage
+    storage: localStorage,
+    flowType: 'implicit',
+    debug: true,
+    // Augmenter le timeout pour les requêtes d'auth
+    fetch: (url, options) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondes timeout
+      
+      return fetch(url, {
+        ...options,
+        signal: controller.signal,
+        keepalive: true,
+        credentials: 'include',
+        headers: {
+          ...options?.headers,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        }
+      }).finally(() => clearTimeout(timeoutId));
+    }
   }
 });
 
@@ -41,7 +60,10 @@ export const clearAuthData = () => {
       'sn-csrf-cookie',
       'lesson-auth-cookie',
       'supabase.auth.event',
-      'session_cookie_subs'
+      'session_cookie_subs',
+      'auth_refreshing',
+      'auth_checking',
+      'auth_redirecting'
     ];
     
     // Chercher dans localStorage pour toute clé contenant 'supabase', 'sb-' ou 'auth'

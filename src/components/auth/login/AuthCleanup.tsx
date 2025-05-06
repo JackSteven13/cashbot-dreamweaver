@@ -1,10 +1,27 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { clearAuthData } from '@/lib/supabase';
+import { toast } from '@/hooks/use-toast';
 
 const AuthCleanup = () => {
   const cleanupDone = useRef(false);
+  const [networkFailed, setNetworkFailed] = useState(false);
+  
+  // Fonction pour vérifier la connectivité
+  const checkConnection = async () => {
+    try {
+      const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co', {
+        method: 'HEAD',
+        mode: 'no-cors',
+        cache: 'no-store'
+      });
+      return true;
+    } catch (e) {
+      console.error("Erreur de connectivité:", e);
+      return false;
+    }
+  };
   
   // Nettoyer les données d'authentification de façon agressive
   useEffect(() => {
@@ -12,6 +29,18 @@ const AuthCleanup = () => {
     
     const performCleanup = async () => {
       console.log("🧹 AuthCleanup: Nettoyage agressif des données d'authentification");
+      
+      // Vérifier la connectivité réseau
+      const isNetworkOk = await checkConnection();
+      if (!isNetworkOk) {
+        setNetworkFailed(true);
+        console.log("⚠️ Problème de connectivité réseau détecté");
+        toast({
+          title: "Problème de connexion",
+          description: "Vérifiez votre connexion Internet",
+          variant: "destructive"
+        });
+      }
       
       // Premier nettoyage complet
       clearAuthData();
@@ -51,7 +80,16 @@ const AuthCleanup = () => {
     };
   }, []);
 
-  return null; // Composant sans rendu
+  // Afficher une alerte si le réseau est inaccessible
+  if (networkFailed) {
+    return (
+      <div className="hidden">
+        {/* Composant invisible, l'alerte est gérée via toast */}
+      </div>
+    );
+  }
+
+  return null; // Composant sans rendu visuel
 };
 
 export default AuthCleanup;

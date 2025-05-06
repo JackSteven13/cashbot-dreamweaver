@@ -1,21 +1,29 @@
 
+import { useState, useEffect } from 'react';
 import { supabase, SUPABASE_URL } from '@/integrations/supabase/client';
 
 /**
- * Vérification simplifiée de la connexion réseau
+ * Vérification améliorée de la connexion réseau avec plusieurs méthodes
  */
 const checkNetworkConnectivity = async (): Promise<boolean> => {
+  // Si le navigateur indique hors ligne, c'est déjà un bon indicateur
   if (!navigator.onLine) {
     console.log("Le navigateur rapporte être hors ligne");
     return false;
   }
   
   try {
-    // Utiliser l'URL de base de Supabase pour tester la connectivité
-    const response = await fetch(`${SUPABASE_URL}`, {
+    // Utiliser l'URL de base de Supabase avec un timestamp pour contourner le cache
+    const timestamp = new Date().getTime();
+    const response = await fetch(`${SUPABASE_URL}?_=${timestamp}`, {
       method: 'HEAD',
       mode: 'no-cors',
-      cache: 'no-store'
+      cache: 'no-store',
+      headers: {
+        'Pragma': 'no-cache',
+        'Cache-Control': 'no-cache'
+      },
+      credentials: 'omit'
     });
     
     return true;
@@ -26,18 +34,21 @@ const checkNetworkConnectivity = async (): Promise<boolean> => {
 };
 
 /**
- * Vérification d'authentification robuste avec réessai intégré
+ * Vérification d'authentification robuste avec réessai et contrôle réseau
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
     console.log("Vérification d'authentification");
     
-    // Vérifier la connectivité réseau
+    // Vérifier la connectivité réseau d'abord
     const isNetworkAvailable = await checkNetworkConnectivity();
     if (!isNetworkAvailable) {
       console.log("Réseau non disponible");
       return false;
     }
+    
+    // Ajouter un court délai pour éviter les problèmes de race condition
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     // Premier essai direct pour vérifier la session
     try {
@@ -68,10 +79,15 @@ export const verifyAuth = async (): Promise<boolean> => {
       console.error("Erreur lors du rafraîchissement:", refreshErr);
     }
     
-    // Troisième essai - vérifier à nouveau la session après une courte pause
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+    // Dernier essai sans erreur
     try {
+      // Nettoyage pour s'assurer qu'il n'y a pas de données pouvant causer des conflits
+      localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+      
+      // Attente supplémentaire
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Vérification finale
       const { data: finalCheck } = await supabase.auth.getSession();
       
       if (finalCheck?.session?.user?.id) {

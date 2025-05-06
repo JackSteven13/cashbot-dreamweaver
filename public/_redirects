@@ -13,7 +13,7 @@ https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 /auth/callback/* /index.html 200!
 /auth/* /index.html 200!
 
-# Configuration Supabase avec CORS explicite
+# Configuration Supabase avec CORS explicite et cache désactivé
 /auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200!
 /rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200!
 /storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200!
@@ -30,3 +30,4 @@ https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
 # SPA fallback pour toutes les autres routes
 /* /index.html 200
+
