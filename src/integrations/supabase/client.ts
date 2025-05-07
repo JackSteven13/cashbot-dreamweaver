@@ -1,11 +1,11 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Configuration de Supabase avec des options de connexion robustes
+// Configuration de Supabase
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Client Supabase avec configuration simplifiée pour plus de stabilité
+// Client Supabase avec configuration optimisée pour Netlify
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -14,7 +14,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Fonction de nettoyage radical des données d'authentification
+// Fonction de nettoyage des données d'authentification
 export const clearStoredAuthData = () => {
   try {
     console.log("Nettoyage des données d'authentification");
@@ -46,7 +46,7 @@ export const clearStoredAuthData = () => {
 export const isProductionEnvironment = () => {
   return typeof window !== 'undefined' && 
          (window.location.hostname.includes('streamgenius.io') || 
-          window.location.hostname.includes('netlify.app'));
+          window.location.hostname.includes('streamgenius.netlify.app'));
 };
 
 // Fonction simplifiée pour vérifier la connectivité au serveur Supabase
@@ -58,7 +58,6 @@ export const pingSupabaseServer = async (): Promise<boolean> => {
         'Content-Type': 'application/json',
         'apikey': supabaseAnonKey
       },
-      // Éviter le cache
       cache: 'no-store'
     });
     

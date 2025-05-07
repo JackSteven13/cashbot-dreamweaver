@@ -28,7 +28,7 @@ export const useLoginSubmit = () => {
         return;
       }
       
-      // Tentative de connexion simplifiée
+      // Tentative de connexion
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,

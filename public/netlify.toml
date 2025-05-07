@@ -1,5 +1,5 @@
 
-# Configuration Netlify pour résoudre les problèmes d'authentification
+# Configuration Netlify pour streamgenius.io et streamgenius.netlify.app
 [build]
   command = "npm run build"
   publish = "dist"
