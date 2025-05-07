@@ -8,21 +8,36 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    autoRefreshToken: true
+    autoRefreshToken: true,
+    detectSessionInUrl: false
   }
 });
 
-// Fonction pour nettoyer les données d'authentification
+// Fonction pour nettoyer les données d'authentification de manière agressive
 export const clearStoredAuthData = () => {
   try {
     console.log("Nettoyage des données d'authentification");
     
-    // Nettoyer localStorage
-    localStorage.removeItem('supabase.auth.token');
-    localStorage.removeItem('sb-access-token');
-    localStorage.removeItem('sb-refresh-token');
-    localStorage.removeItem('sb-auth-token');
-    localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+    // Nettoyer localStorage - cibler toutes les clés possibles
+    const keysToRemove = [
+      'supabase.auth.token',
+      'sb-access-token',
+      'sb-refresh-token',
+      'sb-auth-token',
+      'sb-cfjibduhagxiwqkiyhqd-auth-token'
+    ];
+    
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
+    // Parcourir toutes les clés locales pour supprimer celles liées à l'authentification
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('supabase') || key.includes('sb-'))) {
+        localStorage.removeItem(key);
+      }
+    }
     
     // Nettoyer tous les cookies liés à l'authentification
     document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';

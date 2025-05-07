@@ -34,18 +34,13 @@ export const useLoginSubmit = () => {
       if (error) {
         console.error("Erreur d'authentification:", error);
         
-        // Log failed connection attempt
+        // Log failed connection attempt - Using direct fetch to avoid Supabase client issues
         try {
-          // Get the current session token if possible
-          const { data: sessionData } = await supabase.auth.getSession();
-          const accessToken = sessionData?.session?.access_token || '';
-          
-          // Utilisation directe de l'URL complète de la fonction edge
+          // Send log request directly with minimal headers and no auth token
           const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/functions/v1/log-connection', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
               email: email,
@@ -85,17 +80,17 @@ export const useLoginSubmit = () => {
         // Enregistrer l'email pour la prochaine connexion
         localStorage.setItem('last_logged_in_email', email);
         
-        // Log successful connection via direct fetch
+        // Log successful connection via direct fetch without auth token
         try {
           const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/functions/v1/log-connection', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${data.session.access_token}`,
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
               email: email,
               success: true,
+              user_id: data.user.id,
               error_message: null
             })
           });
@@ -138,7 +133,7 @@ export const useLoginSubmit = () => {
           body: JSON.stringify({
             email: email,
             success: false,
-            error_message: error?.message || "Erreur inconnue"
+            error_message: error instanceof Error ? error.message : "Erreur inconnue"
           })
         });
         

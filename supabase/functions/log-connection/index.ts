@@ -5,18 +5,32 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders, status: 200 });
   }
 
   try {
     // Parse request body
-    const requestData = await req.json();
-    const { email = "unknown", success = true, error_message = null } = requestData;
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (e) {
+      console.error("Failed to parse request JSON:", e);
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON in request body" }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400 
+        }
+      );
+    }
+    
+    const { email = "unknown", success = false, error_message = null, user_id = null } = requestData;
     
     console.log(`📝 Connection log: email=${email}, success=${success}, error_message=${error_message || "none"}`);
     
@@ -28,7 +42,11 @@ serve(async (req) => {
       throw new Error("Missing Supabase configuration");
     }
     
-    const supabase = createClient(supabaseUrl, supabaseServiceRole);
+    const supabase = createClient(supabaseUrl, supabaseServiceRole, {
+      auth: {
+        persistSession: false
+      }
+    });
 
     // Get request details
     let clientIP = req.headers.get("x-forwarded-for") || 
@@ -44,7 +62,7 @@ serve(async (req) => {
 
     // Prepare record to insert
     const connectionRecord = {
-      user_id: '00000000-0000-0000-0000-000000000000', // Anonymous UUID for failed attempts
+      user_id: user_id || '00000000-0000-0000-0000-000000000000', // Anonymous UUID for failed attempts
       ip_address: clientIP,
       user_agent: userAgent,
       connected_at: new Date().toISOString(),
@@ -85,7 +103,7 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        error: error.message || "Unknown error",
+        error: error instanceof Error ? error.message : "Unknown error",
         success: false
       }),
       { 
@@ -93,7 +111,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
           ...corsHeaders
         },
-        status: 400 
+        status: 500
       }
     );
   }
