@@ -22,10 +22,7 @@ export const useLoginSubmit = () => {
       // Nettoyer les données d'auth existantes
       clearStoredAuthData();
       
-      // Attendre un court instant pour s'assurer du nettoyage complet
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Utiliser la méthode signInWithPassword avec des options de base
+      // Version simplifiée sans vérifications de réseau qui posaient problème
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -34,14 +31,12 @@ export const useLoginSubmit = () => {
       if (error) {
         console.error("Erreur d'authentification:", error);
         
-        // Message d'erreur simplifié
         toast({
           title: "Échec de connexion",
           description: "Email ou mot de passe incorrect.",
           variant: "destructive"
         });
         
-        // Nettoyage après échec
         clearStoredAuthData();
         setIsLoading(false);
         return;
@@ -60,9 +55,6 @@ export const useLoginSubmit = () => {
           description: "Redirection vers votre tableau de bord...",
         });
         
-        // Petit délai pour permettre au toast d'être visible
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
         // Redirection vers le tableau de bord avec rafraîchissement complet
         window.location.href = '/dashboard';
       } else {
@@ -72,14 +64,12 @@ export const useLoginSubmit = () => {
     } catch (error) {
       console.error("Erreur complète:", error);
       
-      // Message d'erreur adapté
       toast({
         title: "Échec de connexion",
         description: "Email ou mot de passe incorrect.",
         variant: "destructive"
       });
       
-      // Nettoyage après échec
       clearStoredAuthData();
     } finally {
       setIsLoading(false);
