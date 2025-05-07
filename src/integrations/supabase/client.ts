@@ -15,10 +15,25 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     fetch: (url, options) => {
-      return fetch(url, options).catch(err => {
-        console.error("Erreur réseau Supabase:", err);
-        throw new Error("Problème de connexion au serveur d'authentification");
-      });
+      // Add timeout to fetch requests to avoid hanging forever
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const modifiedOptions = {
+        ...(options || {}),
+        signal: controller.signal,
+      };
+      
+      return fetch(url, modifiedOptions)
+        .then(response => {
+          clearTimeout(timeoutId);
+          return response;
+        })
+        .catch(err => {
+          clearTimeout(timeoutId);
+          console.error("Erreur réseau Supabase:", err);
+          throw new Error("Problème de connexion au serveur d'authentification");
+        });
     }
   }
 });
@@ -62,7 +77,7 @@ export const isProductionEnvironment = () => {
           window.location.hostname.includes('netlify.app'));
 };
 
-// Fonctions pour vérifier la connectivité aux serveurs
+// Fonctions améliorées pour vérifier la connectivité aux serveurs
 export const pingSupabaseServer = async (): Promise<boolean> => {
   try {
     const controller = new AbortController();
@@ -74,13 +89,53 @@ export const pingSupabaseServer = async (): Promise<boolean> => {
       headers: {
         'Content-Type': 'application/json',
         'apikey': supabaseAnonKey
-      }
+      },
+      // Use cache: 'no-store' to avoid cached responses
+      cache: 'no-store'
     });
     
     clearTimeout(timeoutId);
     return response.ok;
   } catch (error) {
     console.error("Impossible de contacter le serveur Supabase:", error);
+    return false;
+  }
+};
+
+// Fonction pour tester la connectivité avec un backup
+export const testConnectivity = async (): Promise<boolean> => {
+  try {
+    // Essayer d'abord le serveur Supabase
+    const isSupabaseReachable = await pingSupabaseServer();
+    if (isSupabaseReachable) {
+      return true;
+    }
+    
+    // Si Supabase n'est pas joignable, essayer un autre domaine populaire
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const response = await fetch('https://www.google.com/generate_204', {
+        method: 'HEAD',
+        signal: controller.signal,
+        cache: 'no-store'
+      });
+      clearTimeout(timeoutId);
+      
+      // Si Google est joignable mais pas Supabase, c'est un problème spécifique à Supabase
+      if (response.ok) {
+        console.log("Internet fonctionne mais Supabase est inaccessible");
+        return false;
+      }
+    } catch (e) {
+      // Si ni Supabase ni Google ne sont joignables, c'est probablement un problème de connexion internet
+      console.log("Problème de connexion internet général");
+      return false;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error("Erreur lors du test de connectivité:", error);
     return false;
   }
 };

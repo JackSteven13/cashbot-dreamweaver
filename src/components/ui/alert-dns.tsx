@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { AlertCircle, Info, WifiOff } from "lucide-react";
+import { AlertCircle, Info, WifiOff, RefreshCw } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -63,10 +63,12 @@ export function NetworkStatusAlert({
   isOnline,
   onHelp,
   className,
+  onRetry,
   ...props
 }: {
   isOnline?: boolean;
   onHelp?: () => void;
+  onRetry?: () => void;
 } & React.HTMLAttributes<HTMLDivElement>) {
   if (isOnline === undefined) return null;
 
@@ -74,7 +76,7 @@ export function NetworkStatusAlert({
     <DNSAlert
       variant="warning"
       icon={<AlertCircle className="h-5 w-5 text-amber-500" />}
-      title="Problème de DNS détecté. Essayez de vider votre cache DNS."
+      title="Problème avec le serveur d'authentification"
       action="Aide"
       onAction={onHelp}
       className={cn("bg-red-950/20 border-red-500/30", className)}
@@ -86,8 +88,33 @@ export function NetworkStatusAlert({
       icon={<WifiOff className="h-5 w-5" />}
       title="Connexion internet non disponible"
       description="Vérifiez votre connexion et réessayez."
+      action={onRetry ? "Réessayer" : "Actualiser"}
+      onAction={onRetry || (() => window.location.reload())}
+      className={cn("bg-red-950/20 border-red-500/30", className)}
+      {...props}
+    />
+  );
+}
+
+export function ServerStatusAlert({
+  isReachable,
+  onRetry,
+  className,
+  ...props
+}: {
+  isReachable: boolean | null;
+  onRetry: () => void;
+} & React.HTMLAttributes<HTMLDivElement>) {
+  if (isReachable === null || isReachable === true) return null;
+
+  return (
+    <DNSAlert
+      variant="destructive"
+      icon={<AlertCircle className="h-5 w-5" />}
+      title="Serveur inaccessible"
+      description="Impossible de contacter le serveur d'authentification."
       action="Réessayer"
-      onAction={() => window.location.reload()}
+      onAction={onRetry}
       className={cn("bg-red-950/20 border-red-500/30", className)}
       {...props}
     />
