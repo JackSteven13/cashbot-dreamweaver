@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LoginButton, LoginFields, useLoginFormState, useLoginSubmit } from './form';
-import { pingSupabaseServer, testConnectivity } from '@/integrations/supabase/client';
-import { NetworkStatusAlert } from '@/components/ui/alert-dns';
+import { pingSupabaseServer } from '@/integrations/supabase/client';
 
 interface LoginFormProps {
   lastLoggedInEmail: string | null;
@@ -20,8 +19,8 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   
   const { handleSubmit } = useLoginSubmit();
   const [formError, setFormError] = useState<string | null>(null);
-  const [serverReachable, setServerReachable] = useState<boolean | null>(null);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [serverReachable, setServerReachable] = useState<boolean | null>(null);
 
   // Vérifier la validité du formulaire avant soumission
   const validateForm = () => {
@@ -38,18 +37,6 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   };
 
   const onSubmit = async (e: React.FormEvent) => {
-    // Vérifie la connexion avant de soumettre le formulaire
-    if (serverReachable === false) {
-      // Si le serveur est déjà marqué comme inaccessible, faire une nouvelle vérification
-      const isReachable = await pingSupabaseServer();
-      setServerReachable(isReachable);
-      if (!isReachable) {
-        e.preventDefault();
-        setFormError('Serveur toujours inaccessible. Veuillez réessayer ultérieurement.');
-        return;
-      }
-    }
-    
     if (validateForm()) {
       handleSubmit(e, email, password, setIsLoading);
     } else {
@@ -57,30 +44,30 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     }
   };
   
-  const handleHelpClick = () => {
-    window.open('https://streamgenius.io/help/connection', '_blank');
+  const handleRetry = async () => {
+    setIsLoading(true);
+    try {
+      const isReachable = await pingSupabaseServer();
+      setServerReachable(isReachable);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Vérifier l'accessibilité du serveur au chargement
   useEffect(() => {
     const checkServerAccess = async () => {
       try {
-        const isNetworkOnline = navigator.onLine;
-        setIsOnline(isNetworkOnline);
+        const networkOnline = navigator.onLine;
+        setIsOnline(networkOnline);
         
-        if (!isNetworkOnline) {
+        if (!networkOnline) {
           setServerReachable(false);
           return;
         }
         
         const isReachable = await pingSupabaseServer();
         setServerReachable(isReachable);
-        
-        // Si le serveur n'est pas joignable, vérifier si c'est un problème de connexion internet
-        if (!isReachable) {
-          const hasInternet = await testConnectivity();
-          setIsOnline(hasInternet);
-        }
       } catch (error) {
         console.error("Erreur lors du test de connexion:", error);
         setServerReachable(false);
@@ -88,9 +75,6 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     };
     
     checkServerAccess();
-    
-    // Vérification périodique du serveur
-    const intervalId = setInterval(checkServerAccess, 20000); // toutes les 20 secondes
     
     // Ajouter des écouteurs pour les changements de statut en ligne
     const handleOnline = () => {
@@ -107,7 +91,6 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     window.addEventListener('offline', handleOffline);
     
     return () => {
-      clearInterval(intervalId);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
@@ -135,12 +118,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
           </p>
           <button
             type="button"
-            onClick={async () => {
-              setIsLoading(true);
-              const isReachable = await pingSupabaseServer();
-              setServerReachable(isReachable);
-              setIsLoading(false);
-            }}
+            onClick={handleRetry}
             className="mt-2 text-xs text-blue-300 hover:text-blue-200 transition-colors"
           >
             Vérifier à nouveau
@@ -149,7 +127,19 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
       )}
       
       {isOnline === false && (
-        <NetworkStatusAlert isOnline={false} onHelp={handleHelpClick} />
+        <div className="bg-red-950/30 border border-red-700/50 p-3 rounded-md text-sm text-red-200">
+          <p className="font-medium">Connexion internet non disponible</p>
+          <p className="text-xs mt-1 text-red-300/80">
+            Vérifiez votre connexion et réessayez.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-2 text-xs text-blue-300 hover:text-blue-200 transition-colors"
+          >
+            Actualiser
+          </button>
+        </div>
       )}
       
       <LoginFields

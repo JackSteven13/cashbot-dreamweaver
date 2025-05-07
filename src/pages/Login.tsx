@@ -13,37 +13,18 @@ const Login = () => {
     // Nettoyage complet des données d'authentification
     clearStoredAuthData();
     
-    // Tentative de déconnexion globale pour s'assurer d'un état propre
-    try {
-      const handleSignOut = async () => {
-        await supabase.auth.signOut({ scope: 'global' });
-      };
-      handleSignOut();
-    } catch (err) {
-      // Ignorer les erreurs, le nettoyage localStorage est suffisant
-      console.log("Erreur lors de la déconnexion, ignorée:", err);
-    }
-    
-    // Vérifier l'accessibilité du serveur Supabase
-    const checkServerStatus = async () => {
+    // Tentative de déconnexion pour s'assurer d'un état propre
+    const handleSignOut = async () => {
       try {
-        // Effectuer une requête HEAD pour vérifier si le serveur répond
-        await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/health', {
-          method: 'HEAD',
-          headers: { 
-            'Content-Type': 'application/json',
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4'
-          },
-          cache: 'no-store'
-        });
-        console.log("Serveur Supabase accessible");
-      } catch (error) {
-        console.error("Serveur Supabase inaccessible:", error);
+        await supabase.auth.signOut();
+        console.log("Déconnexion réussie");
+      } catch (err) {
+        // Ignorer les erreurs
+        console.log("Note: Déconnexion ignorée");
       }
     };
     
-    // Vérifier le statut du serveur au chargement
-    checkServerStatus();
+    handleSignOut();
   }, []);
 
   return (

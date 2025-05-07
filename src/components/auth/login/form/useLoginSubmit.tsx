@@ -1,12 +1,9 @@
 
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { supabase, pingSupabaseServer, testConnectivity } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useLoginSubmit = () => {
-  const navigate = useNavigate();
-
   const handleSubmit = async (
     e: React.FormEvent,
     email: string,
@@ -31,67 +28,20 @@ export const useLoginSubmit = () => {
         return;
       }
       
-      // Vérifier la connectivité au serveur Supabase avec timeout
-      const serverConnectivityPromise = pingSupabaseServer();
-      const timeoutPromise = new Promise<boolean>(resolve => 
-        setTimeout(() => resolve(false), 5000)
-      );
-      
-      const isServerReachable = await Promise.race([
-        serverConnectivityPromise, 
-        timeoutPromise
-      ]);
-      
-      if (!isServerReachable) {
-        // Vérifier si c'est un problème spécifique à Supabase ou internet en général
-        const hasInternet = await testConnectivity();
-        
-        if (hasInternet) {
-          toast({
-            title: "Serveur inaccessible",
-            description: "Impossible de contacter le serveur d'authentification. Veuillez réessayer ultérieurement.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Problème de connexion",
-            description: "Vérifiez votre connexion internet et réessayez.",
-            variant: "destructive"
-          });
-        }
-        
-        setIsLoading(false);
-        return;
-      }
-      
-      // Tentative de connexion avec timeout
-      const authPromise = supabase.auth.signInWithPassword({
+      // Tentative de connexion simplifiée
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
       
-      const timeoutAuthPromise = new Promise<any>(resolve => 
-        setTimeout(() => resolve({ error: { message: "Délai d'attente dépassé" } }), 15000));
-      
-      const { data, error } = await Promise.race([authPromise, timeoutAuthPromise]);
-      
       if (error) {
         console.error("Erreur d'authentification:", error);
         
-        // Message d'erreur adapté au problème
-        if (error.message.includes("Délai")) {
-          toast({
-            title: "Connexion trop lente",
-            description: "Le serveur met trop de temps à répondre. Veuillez réessayer.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Échec de connexion",
-            description: "Email ou mot de passe incorrect.",
-            variant: "destructive"
-          });
-        }
+        toast({
+          title: "Échec de connexion",
+          description: "Email ou mot de passe incorrect.",
+          variant: "destructive"
+        });
         
         setIsLoading(false);
         return;
