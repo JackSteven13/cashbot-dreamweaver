@@ -19,7 +19,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     headers: {
       'X-Client-Info': 'streamgenius-app'
     },
-    fetch: (url, options = {}) => {
+    fetch: (url, options: RequestInit = {}) => {
       // Ajouter des en-têtes CORS pour les requêtes cross-origin
       const headers = {
         ...options.headers,
@@ -30,7 +30,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         ...options,
         headers,
         // Augmenter le timeout pour les requêtes à 15 secondes
-        signal: options.signal || (new AbortController().signal)
+        signal: options.signal || (new AbortController()).signal
       });
     }
   }
