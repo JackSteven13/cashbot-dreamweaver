@@ -11,14 +11,15 @@ export const forceSignOut = async (): Promise<void> => {
     // Nettoyer toutes les données d'authentification pour éviter les conflits
     clearStoredAuthData();
     
-    // Petit délai pour assurer un nettoyage complet
-    await new Promise(resolve => setTimeout(resolve, 300));
+    try {
+      // Déconnecter via l'API Supabase avec scope global
+      await supabase.auth.signOut({ scope: 'global' });
+      console.log("Déconnexion API réussie");
+    } catch (error) {
+      console.error("Erreur API lors de la déconnexion:", error);
+    }
     
-    // Déconnecter via l'API Supabase avec des options simplifiées
-    await supabase.auth.signOut();
-    
-    // Deuxième nettoyage après la déconnexion pour s'assurer 
-    // qu'il ne reste aucune donnée d'authentification
+    // Second nettoyage après la déconnexion
     clearStoredAuthData();
     
     console.log("Déconnexion forcée réussie");
@@ -27,5 +28,17 @@ export const forceSignOut = async (): Promise<void> => {
     
     // Même en cas d'erreur, tenter de nettoyer le stockage local
     clearStoredAuthData();
+  }
+  
+  // Assurer la suppression de toutes les clés possibles
+  try {
+    // Rechercher et supprimer toutes les clés liées à Supabase une dernière fois
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('supabase') || key.includes('sb-') || key.includes('auth')) {
+        localStorage.removeItem(key);
+      }
+    });
+  } catch (err) {
+    console.error("Erreur lors du nettoyage final:", err);
   }
 };

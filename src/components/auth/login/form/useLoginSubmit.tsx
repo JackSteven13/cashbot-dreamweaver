@@ -1,7 +1,7 @@
 
 import * as React from 'react';
 import { toast } from '@/hooks/use-toast';
-import { supabase, clearStoredAuthData } from "@/lib/supabase";
+import { supabase, clearStoredAuthData, testSupabaseConnection } from "@/lib/supabase";
 
 export const useLoginSubmit = () => {
   const handleSubmit = async (
@@ -15,6 +15,20 @@ export const useLoginSubmit = () => {
     
     try {
       console.log("Tentative de connexion pour:", email);
+      
+      // Tester la connexion à Supabase avant de tenter l'authentification
+      const isConnected = await testSupabaseConnection();
+      
+      if (!isConnected) {
+        console.error("Impossible de se connecter à Supabase");
+        toast({
+          title: "Problème de connexion",
+          description: "Impossible de se connecter au serveur. Veuillez vérifier votre connexion internet.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
       
       // Nettoyer toutes les données d'authentification avant de se connecter
       clearStoredAuthData();
@@ -41,7 +55,7 @@ export const useLoginSubmit = () => {
         return;
       }
       
-      if (data.session) {
+      if (data?.session) {
         console.log("Connexion réussie pour:", email);
         
         // Enregistrer l'email pour la prochaine connexion

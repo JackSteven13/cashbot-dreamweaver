@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
-import { clearStoredAuthData, supabase } from "@/lib/supabase";
+import { supabase, clearStoredAuthData } from "@/lib/supabase";
 
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
@@ -11,15 +11,22 @@ const Login = () => {
   // Nettoyage initial des données d'authentification
   useEffect(() => {
     const cleanupAuth = async () => {
-      // Nettoyage local
+      // Nettoyer stockage local
       clearStoredAuthData();
       
-      // Tentative de déconnexion
       try {
-        await supabase.auth.signOut();
+        // Vérifier si on est déjà connecté
+        const { data } = await supabase.auth.getSession();
+        
+        // Si connecté, déconnexion globale
+        if (data.session) {
+          console.log("Session active détectée, déconnexion...");
+          await supabase.auth.signOut({ scope: 'global' });
+          console.log("Déconnexion réussie");
+        }
       } catch (err) {
         // Ignorer les erreurs - le nettoyage local est suffisant
-        console.log("Erreur ignorée lors de la déconnexion:", err);
+        console.log("Erreur ignorée lors de la vérification/déconnexion:", err);
       }
     };
     
