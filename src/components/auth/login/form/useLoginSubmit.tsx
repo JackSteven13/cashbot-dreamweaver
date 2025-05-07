@@ -19,10 +19,10 @@ export const useLoginSubmit = () => {
     try {
       console.log("Tentative de connexion pour:", email);
       
-      // Nettoyer les données d'auth existantes
+      // Nettoyage radical avant la connexion
       clearStoredAuthData();
       
-      // Version simplifiée sans vérifications de réseau qui posaient problème
+      // Connexion directe sans vérifications supplémentaires
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -49,13 +49,7 @@ export const useLoginSubmit = () => {
         // Enregistrer l'email pour la prochaine connexion
         localStorage.setItem('last_logged_in_email', email);
         
-        // Afficher un toast de réussite
-        toast({
-          title: "Connexion réussie",
-          description: "Redirection vers votre tableau de bord...",
-        });
-        
-        // Redirection vers le tableau de bord avec rafraîchissement complet
+        // Redirection immédiate vers le tableau de bord
         window.location.href = '/dashboard';
       } else {
         console.error("Pas de session après connexion réussie");

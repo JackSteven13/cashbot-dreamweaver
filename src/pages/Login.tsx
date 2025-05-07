@@ -3,35 +3,14 @@ import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
-import { supabase, clearStoredAuthData } from "@/lib/supabase";
+import { clearStoredAuthData } from "@/lib/supabase";
 
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
 
-  // Nettoyage initial au chargement de la page
+  // Nettoyage initial radical au chargement de la page
   useEffect(() => {    
-    const cleanupAuth = async () => {
-      try {
-        console.log("Nettoyage des données d'authentification");
-        
-        // Premier nettoyage
-        clearStoredAuthData();
-        
-        // Déconnexion explicite
-        try {
-          await supabase.auth.signOut({ scope: 'global' });
-        } catch (err) {
-          console.error("Erreur lors de la déconnexion:", err);
-        }
-        
-        // Second nettoyage après déconnexion
-        clearStoredAuthData();
-      } catch (err) {
-        console.error("Erreur de nettoyage d'authentification:", err);
-      }
-    };
-    
-    cleanupAuth();
+    clearStoredAuthData();
   }, []);
 
   return (
