@@ -10,7 +10,7 @@
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers = "*"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Client-Info, apikey, X-Supabase"
     Access-Control-Max-Age = "86400"
     Access-Control-Allow-Credentials = "true"
     Referrer-Policy = "no-referrer-when-downgrade"
@@ -22,12 +22,14 @@
   from = "/auth/callback"
   to = "/index.html"
   status = 200
+  force = true
   headers = { Access-Control-Allow-Origin = "*" }
 
 [[redirects]]
   from = "/auth/callback/*"
   to = "/index.html"
   status = 200
+  force = true
   headers = { Access-Control-Allow-Origin = "*" }
 
 # Redirection HTTPS

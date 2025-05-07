@@ -8,23 +8,48 @@ import { clearStoredAuthData, supabase } from "@/integrations/supabase/client";
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
 
-  // Nettoyage initial des données d'authentification au chargement de la page
+  // Nettoyage radical des données d'authentification au chargement de la page
   useEffect(() => {    
-    // Nettoyage complet des données d'authentification
-    clearStoredAuthData();
-    
-    // Tentative de déconnexion pour s'assurer d'un état propre
-    const handleSignOut = async () => {
+    const cleanupAuth = async () => {
+      // Nettoyage complet des données d'authentification
+      clearStoredAuthData();
+      
+      // Tentative de déconnexion pour s'assurer d'un état propre
       try {
-        await supabase.auth.signOut();
-        console.log("Déconnexion réussie");
+        await supabase.auth.signOut({ scope: 'global' });
+        console.log("Déconnexion complète effectuée");
+        
+        // Attendre un moment pour s'assurer que tout est bien nettoyé
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Second nettoyage après la déconnexion
+        clearStoredAuthData();
       } catch (err) {
-        // Ignorer les erreurs
-        console.log("Note: Déconnexion ignorée");
+        // Ignorer les erreurs et continuer
+        console.log("Note: déconnexion ignorée, poursuite du chargement");
       }
     };
     
-    handleSignOut();
+    cleanupAuth();
+    
+    // Vérifier si un header X-Supabase-Auth est présent dans le localStorage
+    const checkHeaders = () => {
+      try {
+        const authHeaderKey = Object.keys(localStorage).find(key => 
+          key.toLowerCase().includes('supabase') && 
+          key.toLowerCase().includes('header')
+        );
+        
+        if (authHeaderKey) {
+          localStorage.removeItem(authHeaderKey);
+          console.log("En-tête d'authentification Supabase nettoyé");
+        }
+      } catch (e) {
+        // Ignorer les erreurs
+      }
+    };
+    
+    checkHeaders();
   }, []);
 
   return (
