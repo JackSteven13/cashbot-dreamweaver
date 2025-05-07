@@ -48,27 +48,3 @@ export const isProductionEnvironment = () => {
          (window.location.hostname.includes('streamgenius.io') || 
           window.location.hostname.includes('streamgenius.netlify.app'));
 };
-
-// Fonction simplifiée pour vérifier la connectivité au serveur Supabase
-export const pingSupabaseServer = async (): Promise<boolean> => {
-  try {
-    const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/health', {
-      method: 'HEAD',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseAnonKey
-      },
-      cache: 'no-store'
-    });
-    
-    return response.ok;
-  } catch (error) {
-    console.error("Impossible de contacter le serveur Supabase:", error);
-    return false;
-  }
-};
-
-// Fonction simplifiée pour tester la connectivité internet
-export const testConnectivity = async (): Promise<boolean> => {
-  return navigator.onLine;
-};
