@@ -1,12 +1,9 @@
 
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from "@/lib/supabase";
+import { supabase, clearStoredAuthData } from "@/lib/supabase";
 
 export const useLoginSubmit = () => {
-  const navigate = useNavigate();
-
   const handleSubmit = async (
     e: React.FormEvent,
     email: string,
@@ -19,7 +16,13 @@ export const useLoginSubmit = () => {
     try {
       console.log("Tentative de connexion pour:", email);
       
-      // Tentative de connexion simple et directe
+      // Nettoyer toutes les données d'authentification avant de se connecter
+      clearStoredAuthData();
+      
+      // Attendre un court instant pour permettre le nettoyage
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Tentative de connexion avec méthode simplifiée
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -38,17 +41,16 @@ export const useLoginSubmit = () => {
         return;
       }
       
-      // Vérifier la présence d'une session après connexion
-      if (data.session && data.user) {
+      if (data.session) {
         console.log("Connexion réussie pour:", email);
         
         // Enregistrer l'email pour la prochaine connexion
         localStorage.setItem('last_logged_in_email', email);
         
-        // Redirection vers le tableau de bord avec un rechargement complet
+        // Rediriger vers le tableau de bord avec un rechargement complet
         window.location.href = '/dashboard';
       } else {
-        console.error("Pas de session après connexion réussie");
+        console.error("Session non créée après connexion");
         
         toast({
           title: "Erreur de session",
@@ -59,11 +61,11 @@ export const useLoginSubmit = () => {
         setIsLoading(false);
       }
     } catch (error) {
-      console.error("Erreur complète:", error);
+      console.error("Erreur inattendue:", error);
       
       toast({
         title: "Échec de connexion",
-        description: "Une erreur inattendue s'est produite. Veuillez réessayer.",
+        description: "Une erreur s'est produite. Veuillez réessayer.",
         variant: "destructive"
       });
       
