@@ -1,17 +1,22 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Configuration de Supabase
+// Configuration de Supabase avec URL et clé publique
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Client Supabase avec configuration optimisée
+// Client Supabase optimisé pour la production
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
     storage: localStorage
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'streamgenius-app'
+    }
   }
 });
 
@@ -39,6 +44,7 @@ export const clearStoredAuthData = () => {
     // Nettoyer les cookies liés à l'authentification
     document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'sb-auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
     return true;
   } catch (err) {

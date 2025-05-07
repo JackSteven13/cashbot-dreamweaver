@@ -17,39 +17,26 @@ const Login = () => {
       // Tentative de déconnexion pour s'assurer d'un état propre
       try {
         await supabase.auth.signOut({ scope: 'global' });
-        console.log("Déconnexion complète effectuée");
+        console.log("Déconnexion effectuée avec succès");
         
-        // Attendre un moment pour s'assurer que tout est bien nettoyé
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Second nettoyage après la déconnexion
+        // Second nettoyage après la déconnexion pour être certain
         clearStoredAuthData();
+        
+        // Vérifier si l'URL contient un token ou hash d'authentification
+        const hasAuthParams = window.location.hash.includes('access_token') || 
+                              window.location.hash.includes('error_code') ||
+                              window.location.search.includes('error_code');
+                              
+        // Nettoyer l'URL si elle contient des paramètres d'authentification
+        if (hasAuthParams) {
+          window.history.replaceState(null, document.title, window.location.pathname);
+        }
       } catch (err) {
-        // Ignorer les erreurs et continuer
-        console.log("Note: déconnexion ignorée, poursuite du chargement");
+        console.log("Poursuite du chargement - déconnexion ignorée");
       }
     };
     
     cleanupAuth();
-    
-    // Vérifier si un header X-Supabase-Auth est présent dans le localStorage
-    const checkHeaders = () => {
-      try {
-        const authHeaderKey = Object.keys(localStorage).find(key => 
-          key.toLowerCase().includes('supabase') && 
-          key.toLowerCase().includes('header')
-        );
-        
-        if (authHeaderKey) {
-          localStorage.removeItem(authHeaderKey);
-          console.log("En-tête d'authentification Supabase nettoyé");
-        }
-      } catch (e) {
-        // Ignorer les erreurs
-      }
-    };
-    
-    checkHeaders();
   }, []);
 
   return (

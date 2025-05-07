@@ -1,5 +1,5 @@
 
-# Configuration Netlify pour streamgenius.io et streamgenius.netlify.app
+# Configuration Netlify pour streamgenius.io
 [build]
   command = "npm run build"
   publish = "dist"
