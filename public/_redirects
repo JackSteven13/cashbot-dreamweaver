@@ -9,10 +9,11 @@ https://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
 # Redirection www vers non-www
 https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
-# Routes CRUCIALES pour les callbacks d'authentification Supabase
+# Routes CRUCIALES pour les callbacks d'authentification Supabase (priorité maximale)
 /auth/callback/* /index.html 200!
 /auth/* /index.html 200!
 /auth/v1/callback/* /index.html 200!
+/api/auth/* /index.html 200!
 /login/* /index.html 200!
 /login /index.html 200!
 /register /index.html 200!

@@ -1,16 +1,19 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
-import { clearStoredAuthData, supabase } from "@/integrations/supabase/client";
+import { clearStoredAuthData, supabase, checkSupabaseConnectivity } from "@/integrations/supabase/client";
 
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
+  const [connectivityChecked, setConnectivityChecked] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
 
   // Nettoyage radical des données d'authentification au chargement de la page
+  // et vérification de connectivité
   useEffect(() => {    
-    const cleanupAuth = async () => {
+    const initAuth = async () => {
       // Nettoyage complet des données d'authentification
       clearStoredAuthData();
       
@@ -31,12 +34,26 @@ const Login = () => {
         if (hasAuthParams) {
           window.history.replaceState(null, document.title, window.location.pathname);
         }
+        
+        // Vérifier la connectivité avec Supabase
+        const connected = await checkSupabaseConnectivity();
+        setIsConnected(connected);
+        setConnectivityChecked(true);
+        
+        if (!connected) {
+          console.error("Problème de connectivité avec Supabase détecté");
+        }
       } catch (err) {
-        console.log("Poursuite du chargement - déconnexion ignorée");
+        console.log("Erreur lors de l'initialisation:", err);
+        setIsConnected(true); // Par défaut, on suppose que la connexion est OK
+        setConnectivityChecked(true);
       }
     };
     
-    cleanupAuth();
+    initAuth();
+    
+    // S'assurer que le HTML a bien le mode sombre appliqué
+    document.documentElement.classList.add('dark');
   }, []);
 
   return (

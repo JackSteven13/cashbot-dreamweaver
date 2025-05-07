@@ -5,18 +5,14 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Client Supabase optimisé pour la production
+// Client Supabase avec configuration optimisée pour la persistance des sessions
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    storage: localStorage
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'streamgenius-app'
-    }
+    storage: localStorage,
+    flowType: 'implicit' // Utilise le flux implicite pour une meilleure compatibilité
   }
 });
 
@@ -58,4 +54,29 @@ export const isProductionEnvironment = () => {
   return typeof window !== 'undefined' && 
          (window.location.hostname.includes('streamgenius.io') || 
           window.location.hostname.includes('streamgenius.netlify.app'));
+};
+
+// Fonction pour vérifier la connectivité au serveur Supabase
+export const checkSupabaseConnectivity = async (): Promise<boolean> => {
+  try {
+    const startTime = Date.now();
+    const { data, error } = await supabase.from('_connection_test').select('*').limit(1).maybeSingle();
+    const endTime = Date.now();
+    
+    // Si la requête prend trop de temps, considérer comme un problème de connectivité
+    if (endTime - startTime > 5000) {
+      console.warn("La connexion à Supabase est lente");
+      return false;
+    }
+    
+    // Une erreur de table inexistante est normale et signifie que la connexion fonctionne
+    if (error && error.code === '42P01') {
+      return true;
+    }
+    
+    return !error;
+  } catch (err) {
+    console.error("Erreur de connectivité Supabase:", err);
+    return false;
+  }
 };

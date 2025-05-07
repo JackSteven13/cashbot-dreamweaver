@@ -1,23 +1,27 @@
 
 import React, { useState, useEffect } from 'react';
-import { LoginButton, LoginFields, useLoginFormState, useLoginSubmit } from './form';
+import { LoginButton, LoginFields, useLoginSubmit } from './form';
+import { clearStoredAuthData } from "@/integrations/supabase/client";
 
 interface LoginFormProps {
   lastLoggedInEmail: string | null;
 }
 
 const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
-  const { 
-    email, 
-    setEmail, 
-    password, 
-    setPassword, 
-    isLoading, 
-    setIsLoading 
-  } = useLoginFormState(lastLoggedInEmail);
-  
-  const { handleSubmit } = useLoginSubmit();
+  // État local du formulaire
+  const [email, setEmail] = useState(lastLoggedInEmail || '');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  
+  // Hook personnalisé pour gérer la soumission
+  const { handleSubmit } = useLoginSubmit();
+
+  // Nettoyer toutes les données d'authentification au chargement
+  useEffect(() => {
+    console.log("Nettoyage initial des données d'authentification");
+    clearStoredAuthData();
+  }, []);
 
   // Vérifier la validité du formulaire avant soumission
   const validateForm = () => {
@@ -35,7 +39,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
 
   const onSubmit = async (e: React.FormEvent) => {
     if (validateForm()) {
-      handleSubmit(e, email, password, setIsLoading);
+      handleSubmit(e, email, password, setIsLoading, setFormError);
     } else {
       e.preventDefault();
     }

@@ -17,7 +17,7 @@
     Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * https://*.supabase.co wss://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *;"
     X-Content-Type-Options = "nosniff"
 
-# Configurations spéciales pour l'authentification
+# Configurations spéciales pour l'authentification avec priorité maximale
 [[redirects]]
   from = "/auth/callback"
   to = "/index.html"
@@ -31,15 +31,22 @@
   status = 200
   force = true
   headers = { Access-Control-Allow-Origin = "*" }
+  
+[[redirects]]
+  from = "/api/auth/*"
+  to = "/index.html"
+  status = 200
+  force = true
+  headers = { Access-Control-Allow-Origin = "*" }
 
-# Redirection HTTPS
+# Redirection HTTPS avec priorité maximale
 [[redirects]]
   from = "http://*"
   to = "https://:splat"
   status = 301
   force = true
 
-# Redirection des domaines .fr vers .io
+# Redirection des domaines .fr vers .io avec priorité maximale
 [[redirects]]
   from = "https://streamgenius.fr/*"
   to = "https://streamgenius.io/:splat"
@@ -52,7 +59,7 @@
   status = 301
   force = true
 
-# Redirection www vers non-www
+# Redirection www vers non-www avec priorité maximale
 [[redirects]]
   from = "https://www.streamgenius.io/*"
   to = "https://streamgenius.io/:splat"
@@ -68,6 +75,12 @@
 
 [[redirects]]
   from = "/login"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/login/*"
   to = "/index.html"
   status = 200
   force = true
