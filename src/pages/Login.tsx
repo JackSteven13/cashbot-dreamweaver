@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
-import { supabase, clearStoredAuthData, checkNetworkConnectivity } from "@/lib/supabase";
+import { supabase, clearStoredAuthData } from "@/lib/supabase";
 
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
@@ -26,14 +26,6 @@ const Login = () => {
         
         // Second nettoyage après déconnexion
         clearStoredAuthData();
-        
-        // Vérifier la connectivité au serveur
-        const isConnected = await checkNetworkConnectivity();
-        if (!isConnected) {
-          console.warn("⚠️ Connectivité au serveur limitée détectée");
-        } else {
-          console.log("✅ Connectivité au serveur confirmée");
-        }
       } catch (err) {
         console.error("Erreur de nettoyage d'authentification:", err);
       }

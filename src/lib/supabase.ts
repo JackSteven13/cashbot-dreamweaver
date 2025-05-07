@@ -7,7 +7,7 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // Create a single supabase client for interacting with your database
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true,
+    persistSession: true, 
     autoRefreshToken: true,
     detectSessionInUrl: false,
     storage: localStorage
@@ -58,22 +58,7 @@ export const isProductionEnvironment = () => {
           window.location.hostname.includes('netlify.app'));
 };
 
-// Fonction pour vérifier si une URL est atteignable
-export const checkNetworkConnectivity = async (url = 'https://cfjibduhagxiwqkiyhqd.supabase.co/') => {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch(url, {
-      method: 'HEAD', 
-      mode: 'no-cors', 
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    return true;
-  } catch (error) {
-    console.error("Échec de la vérification réseau:", error);
-    return false;
-  }
+// Version simplifiée de la vérification de connectivité réseau
+export const checkNetworkConnectivity = async () => {
+  return navigator.onLine;
 };
