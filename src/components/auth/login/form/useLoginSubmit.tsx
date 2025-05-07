@@ -1,11 +1,58 @@
-
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { supabase, clearStoredAuthData } from "@/lib/supabase";
+import { supabase, clearStoredAuthData, checkNetworkConnectivity } from "@/lib/supabase";
 
 export const useLoginSubmit = () => {
   const navigate = useNavigate();
+  const [networkError, setNetworkError] = React.useState(false);
+
+  // Vérification périodique de la connectivité
+  React.useEffect(() => {
+    const checkConnectivity = async () => {
+      const isConnected = await checkNetworkConnectivity();
+      setNetworkError(!isConnected);
+    };
+    
+    // Vérifier immédiatement
+    checkConnectivity();
+    
+    // Vérifier toutes les 5 secondes
+    const interval = setInterval(checkConnectivity, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const logConnection = async (email: string, success: boolean, error_message: string | null = null, user_id: string | null = null) => {
+    try {
+      console.log("Tentative d'enregistrement de connexion:", { email, success });
+      
+      // Utiliser fetch directement sans passer par le client Supabase
+      const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/functions/v1/log-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          email: email,
+          success: success,
+          error_message: error_message,
+          user_id: user_id
+        }),
+        // Augmenter le timeout et activer keep-alive pour être plus robuste
+        cache: 'no-store'
+      });
+      
+      if (!response.ok) {
+        console.error("Échec de l'enregistrement de connexion:", await response.text());
+      } else {
+        console.log("Connexion enregistrée avec succès");
+      }
+    } catch (logErr) {
+      console.error("Exception lors de l'enregistrement de connexion:", logErr);
+      // Erreur non fatale, continuer avec le processus de connexion
+    }
+  };
 
   const handleSubmit = async (
     e: React.FormEvent,
@@ -15,6 +62,18 @@ export const useLoginSubmit = () => {
   ) => {
     e.preventDefault();
     setIsLoading(true);
+    
+    // Vérifier la connectivité avant de tenter la connexion
+    const isConnected = await checkNetworkConnectivity();
+    if (!isConnected) {
+      toast({
+        title: "Problème de connexion",
+        description: "Impossible de contacter le serveur. Vérifiez votre connexion internet.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return;
+    }
     
     try {
       console.log("Tentative de connexion pour:", email);
@@ -34,29 +93,8 @@ export const useLoginSubmit = () => {
       if (error) {
         console.error("Erreur d'authentification:", error);
         
-        // Log failed connection attempt - Using direct fetch to avoid Supabase client issues
-        try {
-          // Send log request directly with minimal headers and no auth token
-          const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/functions/v1/log-connection', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              email: email,
-              success: false,
-              error_message: error.message
-            })
-          });
-          
-          if (!response.ok) {
-            console.error("Failed to log connection error: Response not OK", await response.text());
-          } else {
-            console.log("Failed connection logged successfully");
-          }
-        } catch (logErr) {
-          console.error("Exception when logging connection failure:", logErr);
-        }
+        // Log échoué de façon robuste
+        await logConnection(email, false, error.message, null);
         
         // Message d'erreur adapté
         toast({
@@ -80,30 +118,8 @@ export const useLoginSubmit = () => {
         // Enregistrer l'email pour la prochaine connexion
         localStorage.setItem('last_logged_in_email', email);
         
-        // Log successful connection via direct fetch without auth token
-        try {
-          const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/functions/v1/log-connection', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              email: email,
-              success: true,
-              user_id: data.user.id,
-              error_message: null
-            })
-          });
-          
-          if (!response.ok) {
-            console.error("Failed to log connection: Response not OK", await response.text());
-          } else {
-            console.log("Connection logged successfully");
-          }
-        } catch (logErr) {
-          console.error("Exception when logging connection:", logErr);
-          // Non-fatal error, continue with login process
-        }
+        // Log réussi de façon robuste
+        await logConnection(email, true, null, data.user.id);
         
         // Afficher un toast de réussite
         toast({
@@ -114,8 +130,8 @@ export const useLoginSubmit = () => {
         // Petit délai pour permettre au toast d'être visible
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Redirection vers le tableau de bord
-        navigate('/dashboard', { replace: true });
+        // Redirection vers le tableau de bord avec rafraîchissement complet
+        window.location.href = '/dashboard';
       } else {
         console.error("Pas de session après connexion réussie");
         throw new Error("Échec de création de session");
@@ -124,30 +140,19 @@ export const useLoginSubmit = () => {
       console.error("Erreur complète:", error);
       
       // Tenter d'enregistrer l'échec même en cas d'erreur générale
-      try {
-        const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/functions/v1/log-connection', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            email: email,
-            success: false,
-            error_message: error instanceof Error ? error.message : "Erreur inconnue"
-          })
-        });
-        
-        if (!response.ok) {
-          console.error("Failed to log connection error in catch block: Response not OK", await response.text());
-        }
-      } catch (logErr) {
-        console.error("Impossible d'enregistrer l'échec de connexion:", logErr);
-      }
+      await logConnection(
+        email, 
+        false, 
+        error instanceof Error ? error.message : "Erreur inconnue", 
+        null
+      );
       
       // Message d'erreur adapté
       toast({
         title: "Échec de connexion",
-        description: "Email ou mot de passe incorrect.",
+        description: networkError ? 
+          "Problème de connexion au serveur. Vérifiez votre connexion internet." :
+          "Email ou mot de passe incorrect.",
         variant: "destructive"
       });
       
@@ -158,7 +163,7 @@ export const useLoginSubmit = () => {
     }
   };
 
-  return { handleSubmit };
+  return { handleSubmit, networkError };
 };
 
 export default useLoginSubmit;

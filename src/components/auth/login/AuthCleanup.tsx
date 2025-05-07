@@ -1,6 +1,6 @@
 
 import { useEffect, useRef } from 'react';
-import { clearStoredAuthData, supabase } from '@/integrations/supabase/client';
+import { clearStoredAuthData, supabase } from '@/lib/supabase';
 
 const AuthCleanup = () => {
   // Utiliser une ref pour suivre si le composant est monté
@@ -35,6 +35,9 @@ const AuthCleanup = () => {
           // 4. Supprimer explicitement tous les cookies liés à l'authentification
           document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
           document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          
+          // 5. Vider complètement le sessionStorage
+          sessionStorage.clear();
         } catch (err) {
           console.error("Erreur lors du nettoyage spécifique:", err);
         }

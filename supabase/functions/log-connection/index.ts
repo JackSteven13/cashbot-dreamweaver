@@ -2,44 +2,65 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
 
+// Configuration CORS plus permissive pour le développement
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
 
+// Fonction pour gérer les erreurs et retourner une réponse formatée
+function errorResponse(message, status = 400) {
+  console.error(`❌ Erreur: ${message}`);
+  return new Response(
+    JSON.stringify({ 
+      error: message, 
+      success: false 
+    }),
+    { 
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status 
+    }
+  );
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
+  console.log(`📥 Requête reçue: ${req.method}`);
+  
+  // Gérer les requêtes CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders, status: 200 });
+    console.log("👍 Réponse OPTIONS CORS");
+    return new Response(null, { 
+      headers: corsHeaders, 
+      status: 204 
+    });
   }
 
   try {
-    // Parse request body
+    if (req.method !== "POST") {
+      return errorResponse(`Méthode non autorisée: ${req.method}`, 405);
+    }
+    
+    // Analyser les données de la requête
     let requestData;
     try {
       requestData = await req.json();
+      console.log(`📊 Données reçues: ${JSON.stringify(requestData)}`);
     } catch (e) {
-      console.error("Failed to parse request JSON:", e);
-      return new Response(
-        JSON.stringify({ error: "Invalid JSON in request body" }),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400 
-        }
-      );
+      return errorResponse(`JSON invalide dans le corps de la requête: ${e.message}`);
     }
     
     const { email = "unknown", success = false, error_message = null, user_id = null } = requestData;
     
-    console.log(`📝 Connection log: email=${email}, success=${success}, error_message=${error_message || "none"}`);
+    console.log(`📝 Log de connexion: email=${email}, succès=${success}, erreur=${error_message || "aucune"}`);
     
-    // Create a Supabase client with service role for admin access
+    // Créer un client Supabase avec le rôle de service pour un accès administrateur
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
     if (!supabaseUrl || !supabaseServiceRole) {
-      throw new Error("Missing Supabase configuration");
+      throw new Error("Configuration Supabase manquante");
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceRole, {
@@ -48,21 +69,21 @@ serve(async (req) => {
       }
     });
 
-    // Get request details
+    // Obtenir les détails de la requête
     let clientIP = req.headers.get("x-forwarded-for") || 
                    req.headers.get("cf-connecting-ip") || 
                    "unknown";
     
     const userAgent = req.headers.get("user-agent") || "unknown";
 
-    // If IP is a comma-separated list (happens with proxies), get the first one
+    // Si l'IP est une liste séparée par des virgules (arrive avec les proxies), prendre la première
     if (clientIP && clientIP.includes(",")) {
       clientIP = clientIP.split(",")[0].trim();
     }
 
-    // Prepare record to insert
+    // Préparer l'enregistrement à insérer
     const connectionRecord = {
-      user_id: user_id || '00000000-0000-0000-0000-000000000000', // Anonymous UUID for failed attempts
+      user_id: user_id || '00000000-0000-0000-0000-000000000000', // UUID anonyme pour les tentatives échouées
       ip_address: clientIP,
       user_agent: userAgent,
       connected_at: new Date().toISOString(),
@@ -71,23 +92,28 @@ serve(async (req) => {
       error_message: error_message
     };
     
-    console.log("📊 Inserting connection record:", JSON.stringify(connectionRecord));
+    console.log("📊 Insertion de l'enregistrement:", JSON.stringify(connectionRecord));
 
-    // Log the connection attempt
-    const { error: logError } = await supabase
-      .from("user_connections")
-      .insert([connectionRecord]);
-    
-    if (logError) {
-      console.error("💾 DB insertion error:", logError);
-      throw logError;
+    // Enregistrer la tentative de connexion avec gestion d'erreurs améliorée
+    try {
+      const { error: logError } = await supabase
+        .from("user_connections")
+        .insert([connectionRecord]);
+      
+      if (logError) {
+        console.error("💾 Erreur d'insertion DB:", logError);
+        // On continue malgré l'erreur d'insertion - ne pas bloquer le flux
+      } else {
+        console.log("✅ Log de connexion sauvegardé avec succès");
+      }
+    } catch (dbErr) {
+      console.error("💥 Exception lors de l'insertion DB:", dbErr);
+      // On continue malgré l'erreur d'insertion
     }
-
-    console.log("✅ Connection log saved successfully");
     
     return new Response(
       JSON.stringify({ 
-        message: "Connection attempt logged successfully",
+        message: "Tentative de connexion enregistrée avec succès",
         success: true
       }),
       { 
@@ -99,11 +125,11 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("❌ Error logging connection:", error);
+    console.error("❌ Erreur lors de l'enregistrement de la connexion:", error);
     
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : "Erreur inconnue",
         success: false
       }),
       { 

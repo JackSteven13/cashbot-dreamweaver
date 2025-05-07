@@ -9,7 +9,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false
+    detectSessionInUrl: false,
+    storage: localStorage
   }
 });
 
@@ -55,4 +56,24 @@ export const isProductionEnvironment = () => {
   return typeof window !== 'undefined' && 
          (window.location.hostname.includes('streamgenius.io') || 
           window.location.hostname.includes('netlify.app'));
+};
+
+// Fonction pour vérifier si une URL est atteignable
+export const checkNetworkConnectivity = async (url = 'https://cfjibduhagxiwqkiyhqd.supabase.co/') => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(url, {
+      method: 'HEAD', 
+      mode: 'no-cors', 
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    return true;
+  } catch (error) {
+    console.error("Échec de la vérification réseau:", error);
+    return false;
+  }
 };
