@@ -8,11 +8,8 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  console.log("🔄 Log connection function called");
-  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    console.log("✅ Handling OPTIONS request (CORS)");
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -21,45 +18,17 @@ serve(async (req) => {
     const requestData = await req.json();
     const { email = "unknown", success = true, error_message = null } = requestData;
     
-    console.log(`📝 Received connection log: email=${email}, success=${success}, error_message=${error_message || "none"}`);
+    console.log(`📝 Connection log: email=${email}, success=${success}, error_message=${error_message || "none"}`);
     
-    // Create a Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    // Create a Supabase client with service role for admin access
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
-    console.log(`🔑 Creating Supabase client with URL: ${supabaseUrl.substring(0, 20)}...`);
-    
-    const supabaseClient = createClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization") ?? "" },
-        },
-      }
-    );
-
-    let userId = null;
-    
-    // Only try to get user details if this is a successful login
-    if (success) {
-      try {
-        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-        
-        if (userError) {
-          console.error("❌ User retrieval error:", userError.message);
-        } else if (user) {
-          userId = user.id;
-          console.log("👤 User found:", userId);
-        } else {
-          console.log("⚠️ No user found despite successful login");
-        }
-      } catch (authError: any) {
-        console.error("🚫 Auth error:", authError.message || authError);
-      }
-    } else {
-      console.log("❌ Failed login - not attempting to fetch user data");
+    if (!supabaseUrl || !supabaseServiceRole) {
+      throw new Error("Missing Supabase configuration");
     }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceRole);
 
     // Get request details
     let clientIP = req.headers.get("x-forwarded-for") || 
@@ -73,11 +42,9 @@ serve(async (req) => {
       clientIP = clientIP.split(",")[0].trim();
     }
 
-    console.log(`📍 ${success ? 'Successful' : 'Failed'} connection attempt${userId ? ` for user ${userId}` : ' for ' + email} from IP ${clientIP}`);
-
-    // Prepare record to insert - important: use anonymous UUID for failed attempts
+    // Prepare record to insert
     const connectionRecord = {
-      user_id: userId || '00000000-0000-0000-0000-000000000000', // Anonymous UUID for failed attempts
+      user_id: '00000000-0000-0000-0000-000000000000', // Anonymous UUID for failed attempts
       ip_address: clientIP,
       user_agent: userAgent,
       connected_at: new Date().toISOString(),
@@ -89,12 +56,12 @@ serve(async (req) => {
     console.log("📊 Inserting connection record:", JSON.stringify(connectionRecord));
 
     // Log the connection attempt
-    const { error: logError } = await supabaseClient
+    const { error: logError } = await supabase
       .from("user_connections")
       .insert([connectionRecord]);
     
     if (logError) {
-      console.error("💾 DB insertion error:", logError.message, logError.details);
+      console.error("💾 DB insertion error:", logError);
       throw logError;
     }
 
@@ -113,8 +80,8 @@ serve(async (req) => {
         status: 200 
       }
     );
-  } catch (error: any) {
-    console.error("❌ Error logging connection:", error.message || error);
+  } catch (error) {
+    console.error("❌ Error logging connection:", error);
     
     return new Response(
       JSON.stringify({ 

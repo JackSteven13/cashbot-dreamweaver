@@ -34,24 +34,29 @@ export const useLoginSubmit = () => {
       if (error) {
         console.error("Erreur d'authentification:", error);
         
-        // Log failed connection attempt - avec le bon format de données et en gestion d'erreur
+        // Log failed connection attempt
         try {
-          console.log("Logging failed connection attempt for:", email);
-          const { data: logData, error: logError } = await supabase.functions.invoke('log-connection', {
-            body: {
+          // Utilisation directe de l'URL complète de la fonction edge
+          const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/functions/v1/log-connection', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`,
+            },
+            body: JSON.stringify({
               email: email,
               success: false,
               error_message: error.message
-            }
+            })
           });
           
-          if (logError) {
-            console.error("Failed to log connection error:", logError);
+          if (!response.ok) {
+            console.error("Failed to log connection error: Response not OK", await response.text());
           } else {
-            console.log("Failed connection logged successfully:", logData);
+            console.log("Failed connection logged successfully");
           }
         } catch (logErr) {
-          console.error("Exception when invoking log-connection function for failure:", logErr);
+          console.error("Exception when logging connection failure:", logErr);
         }
         
         // Message d'erreur adapté
@@ -76,24 +81,28 @@ export const useLoginSubmit = () => {
         // Enregistrer l'email pour la prochaine connexion
         localStorage.setItem('last_logged_in_email', email);
         
-        // Log successful connection via edge function
+        // Log successful connection via direct fetch
         try {
-          console.log("Logging successful connection for:", email);
-          const { data: logData, error: logError } = await supabase.functions.invoke('log-connection', {
-            body: {
+          const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/functions/v1/log-connection', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${data.session.access_token}`,
+            },
+            body: JSON.stringify({
               email: email,
               success: true,
               error_message: null
-            }
+            })
           });
           
-          if (logError) {
-            console.error("Failed to log connection:", logError);
+          if (!response.ok) {
+            console.error("Failed to log connection: Response not OK", await response.text());
           } else {
-            console.log("Connection logged successfully:", logData);
+            console.log("Connection logged successfully");
           }
         } catch (logErr) {
-          console.error("Exception when invoking log-connection function:", logErr);
+          console.error("Exception when logging connection:", logErr);
           // Non-fatal error, continue with login process
         }
         
@@ -112,18 +121,26 @@ export const useLoginSubmit = () => {
         console.error("Pas de session après connexion réussie");
         throw new Error("Échec de création de session");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erreur complète:", error);
       
       // Tenter d'enregistrer l'échec même en cas d'erreur générale
       try {
-        await supabase.functions.invoke('log-connection', {
-          body: {
+        const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/functions/v1/log-connection', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
             email: email,
             success: false,
             error_message: error?.message || "Erreur inconnue"
-          }
+          })
         });
+        
+        if (!response.ok) {
+          console.error("Failed to log connection error in catch block: Response not OK", await response.text());
+        }
       } catch (logErr) {
         console.error("Impossible d'enregistrer l'échec de connexion:", logErr);
       }
