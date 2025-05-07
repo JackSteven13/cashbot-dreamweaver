@@ -91,7 +91,7 @@ export const useLoginSubmit = () => {
       setIsLoading(false);
     } catch (error) {
       console.error("Erreur complète:", error);
-      setFormError('Une erreur inattendue s'est produite. Veuillez réessayer.');
+      setFormError("Une erreur inattendue s'est produite. Veuillez réessayer.");
       setIsLoading(false);
     }
   };
