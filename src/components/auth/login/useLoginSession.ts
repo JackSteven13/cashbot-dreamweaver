@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { clearStoredAuthData } from '@/integrations/supabase/client';
+import { clearStoredAuthData } from '@/lib/supabase';
 
 export const useLoginSession = () => {
   const [lastLoggedInEmail, setLastLoggedInEmail] = useState<string | null>(null);

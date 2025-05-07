@@ -57,8 +57,3 @@ export const isProductionEnvironment = () => {
          (window.location.hostname.includes('streamgenius.io') || 
           window.location.hostname.includes('netlify.app'));
 };
-
-// Version simplifiée de la vérification de connectivité réseau
-export const checkNetworkConnectivity = async () => {
-  return navigator.onLine;
-};
