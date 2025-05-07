@@ -34,12 +34,12 @@ export const useLoginSubmit = () => {
       if (error) {
         console.error("Erreur d'authentification:", error);
         
-        // Log failed connection attempt
+        // Log failed connection attempt - avec le bon format de données et en gestion d'erreur
         try {
           console.log("Logging failed connection attempt for:", email);
           const { data: logData, error: logError } = await supabase.functions.invoke('log-connection', {
             body: {
-              email,
+              email: email,
               success: false,
               error_message: error.message
             }
@@ -81,7 +81,7 @@ export const useLoginSubmit = () => {
           console.log("Logging successful connection for:", email);
           const { data: logData, error: logError } = await supabase.functions.invoke('log-connection', {
             body: {
-              email,
+              email: email,
               success: true,
               error_message: null
             }
@@ -114,6 +114,19 @@ export const useLoginSubmit = () => {
       }
     } catch (error: any) {
       console.error("Erreur complète:", error);
+      
+      // Tenter d'enregistrer l'échec même en cas d'erreur générale
+      try {
+        await supabase.functions.invoke('log-connection', {
+          body: {
+            email: email,
+            success: false,
+            error_message: error?.message || "Erreur inconnue"
+          }
+        });
+      } catch (logErr) {
+        console.error("Impossible d'enregistrer l'échec de connexion:", logErr);
+      }
       
       // Message d'erreur adapté
       toast({

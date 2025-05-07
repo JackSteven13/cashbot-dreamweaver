@@ -8,22 +8,30 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("🔄 Log connection function called");
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
+    console.log("✅ Handling OPTIONS request (CORS)");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     // Parse request body
     const requestData = await req.json();
-    const { email, success = true, error_message = null } = requestData;
+    const { email = "unknown", success = true, error_message = null } = requestData;
     
-    console.log("Received connection log request:", { email, success, error_message });
+    console.log(`📝 Received connection log: email=${email}, success=${success}, error_message=${error_message || "none"}`);
     
-    // Create a Supabase client with the Auth context of the logged in user
+    // Create a Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    
+    console.log(`🔑 Creating Supabase client with URL: ${supabaseUrl.substring(0, 20)}...`);
+    
     const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      supabaseUrl,
+      supabaseAnonKey,
       {
         global: {
           headers: { Authorization: req.headers.get("Authorization") ?? "" },
@@ -39,28 +47,35 @@ serve(async (req) => {
         const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
         
         if (userError) {
-          console.error("User error:", userError);
+          console.error("❌ User retrieval error:", userError.message);
         } else if (user) {
           userId = user.id;
-          console.log("User found:", userId);
+          console.log("👤 User found:", userId);
+        } else {
+          console.log("⚠️ No user found despite successful login");
         }
-      } catch (authError) {
-        console.error("Auth error:", authError);
+      } catch (authError: any) {
+        console.error("🚫 Auth error:", authError.message || authError);
       }
+    } else {
+      console.log("❌ Failed login - not attempting to fetch user data");
     }
 
     // Get request details
-    let clientIP = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
+    let clientIP = req.headers.get("x-forwarded-for") || 
+                   req.headers.get("cf-connecting-ip") || 
+                   "unknown";
+    
     const userAgent = req.headers.get("user-agent") || "unknown";
 
     // If IP is a comma-separated list (happens with proxies), get the first one
-    if (clientIP.includes(",")) {
+    if (clientIP && clientIP.includes(",")) {
       clientIP = clientIP.split(",")[0].trim();
     }
 
-    console.log(`Logging ${success ? 'successful' : 'failed'} connection attempt${userId ? ` for user ${userId}` : ' for ' + email} from IP ${clientIP}`);
+    console.log(`📍 ${success ? 'Successful' : 'Failed'} connection attempt${userId ? ` for user ${userId}` : ' for ' + email} from IP ${clientIP}`);
 
-    // Prepare record to insert
+    // Prepare record to insert - important: use anonymous UUID for failed attempts
     const connectionRecord = {
       user_id: userId || '00000000-0000-0000-0000-000000000000', // Anonymous UUID for failed attempts
       ip_address: clientIP,
@@ -71,7 +86,7 @@ serve(async (req) => {
       error_message: error_message
     };
     
-    console.log("Inserting connection record:", connectionRecord);
+    console.log("📊 Inserting connection record:", JSON.stringify(connectionRecord));
 
     // Log the connection attempt
     const { error: logError } = await supabaseClient
@@ -79,10 +94,12 @@ serve(async (req) => {
       .insert([connectionRecord]);
     
     if (logError) {
-      console.error("DB insertion error:", logError);
+      console.error("💾 DB insertion error:", logError.message, logError.details);
       throw logError;
     }
 
+    console.log("✅ Connection log saved successfully");
+    
     return new Response(
       JSON.stringify({ 
         message: "Connection attempt logged successfully",
@@ -96,12 +113,12 @@ serve(async (req) => {
         status: 200 
       }
     );
-  } catch (error) {
-    console.error("Error logging connection:", error);
+  } catch (error: any) {
+    console.error("❌ Error logging connection:", error.message || error);
     
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: error.message || "Unknown error",
         success: false
       }),
       { 
