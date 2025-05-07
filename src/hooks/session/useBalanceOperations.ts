@@ -1,3 +1,4 @@
+
 import { toast } from "@/components/ui/use-toast";
 import { 
   updateUserBalance,
@@ -6,8 +7,8 @@ import {
 import { addTransaction } from "@/utils/transactionUtils";
 import { supabase } from "@/integrations/supabase/client";
 
-// Import checkDailyLimit from the correct location if this file exists and uses it
-import { checkDailyLimit } from '@/utils/auth';
+// Import checkDailyLimit from the correct location
+import { checkDailyLimit } from '@/utils/subscription';
 
 // Define return types for better type safety
 export interface BalanceUpdateResult {
