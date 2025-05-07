@@ -8,6 +8,12 @@ export const verifyAuth = async (): Promise<boolean> => {
   try {
     console.log("Début de la vérification d'authentification");
     
+    // Vérifier la connexion Internet du navigateur
+    if (!navigator.onLine) {
+      console.log("Pas de connexion Internet, authentification impossible");
+      return false;
+    }
+    
     // Tester la connectivité directe avec Supabase
     const isConnected = await testSupabaseConnection();
     if (!isConnected) {
@@ -19,13 +25,14 @@ export const verifyAuth = async (): Promise<boolean> => {
     const isProduction = isProductionEnvironment();
     
     // Tenter de récupérer la session avec un timeout court
-    const timeoutPromise = new Promise((_resolve, reject) => {
-      setTimeout(() => reject(new Error("Timeout")), 3000);
-    });
-    
-    const sessionPromise = supabase.auth.getSession();
-    
     try {
+      const controller = new AbortController();
+      const timeoutPromise = new Promise((_resolve, reject) => {
+        setTimeout(() => reject(new Error("Timeout")), 10000);
+      });
+      
+      const sessionPromise = supabase.auth.getSession();
+      
       const { data } = await Promise.race([
         sessionPromise,
         timeoutPromise

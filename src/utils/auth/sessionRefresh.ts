@@ -23,31 +23,36 @@ export const refreshSession = async () => {
       return null;
     }
     
-    // Utiliser refreshSession avec timeout pour éviter les blocages
-    const timeoutPromise = new Promise((_resolve, reject) => {
-      setTimeout(() => reject(new Error("Timeout lors du rafraîchissement de la session")), 5000);
-    });
-    
-    const refreshPromise = supabase.auth.refreshSession();
-    
-    // Race entre le timeout et la requête de rafraîchissement
-    const { data, error } = await Promise.race([
-      refreshPromise,
-      timeoutPromise.then(() => ({ data: { session: null }, error: new Error("Timeout") }))
-    ]) as any;
-    
-    if (error) {
-      console.error("Erreur lors du rafraîchissement de la session:", error);
+    // Utiliser refreshSession avec timeout
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
+      
+      // Utiliser la méthode de rafraîchissement de session
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      clearTimeout(timeoutId);
+      
+      if (error) {
+        console.error("Erreur lors du rafraîchissement de la session:", error);
+        return null;
+      }
+      
+      if (!data.session) {
+        console.log("Échec du rafraîchissement de la session - aucune nouvelle session retournée");
+        return null;
+      }
+      
+      console.log("Session rafraîchie avec succès");
+      return data.session;
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.error("Délai d'attente dépassé lors du rafraîchissement de la session");
+      } else {
+        console.error("Erreur lors du rafraîchissement de la session:", error);
+      }
       return null;
     }
-    
-    if (!data.session) {
-      console.log("Échec du rafraîchissement de la session - aucune nouvelle session retournée");
-      return null;
-    }
-    
-    console.log("Session rafraîchie avec succès");
-    return data.session;
   } catch (error) {
     console.error("Exception lors du rafraîchissement de la session:", error);
     return null;

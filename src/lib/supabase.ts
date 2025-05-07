@@ -10,15 +10,23 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    storage: localStorage
+    storage: localStorage,
+    detectSessionInUrl: false,
+    flowType: 'implicit'
+  },
+  realtime: {
+    timeout: 30000 // 30 seconds timeout for realtime connections
   },
   global: {
+    headers: {
+      'x-client-info': 'streamgenius-frontend'
+    },
     fetch: (...args) => {
-      // Ajout d'un timeout pour éviter les requêtes bloquées
-      // @ts-ignore - Le typings du fetch de Supabase est incomplet
       return fetch(...args, { 
         cache: 'no-store',
-        credentials: 'same-origin'
+        credentials: 'same-origin',
+        // Add timeout to fetch requests
+        signal: AbortSignal.timeout(15000) // 15 seconds timeout
       });
     }
   }
@@ -32,16 +40,29 @@ export const clearStoredAuthData = () => {
     localStorage.removeItem('sb-access-token');
     localStorage.removeItem('sb-refresh-token');
     localStorage.removeItem('sb-auth-token');
-    
-    // Supprimer la clé spécifique pour ce projet
+    localStorage.removeItem('sb-provider-token');
     localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
+    localStorage.removeItem('sb-auth-event');
+    localStorage.removeItem('sb-auth-session');
+    localStorage.removeItem('supabase.auth.refreshToken');
+    
+    // Supprimer les clés spécifiques pour ce projet
+    localStorage.removeItem('supabase.auth.event');
+    localStorage.removeItem('supabase.auth.session');
     
     // Supprimer les clés d'email et d'autres données
     localStorage.removeItem('last_logged_in_email');
+    localStorage.removeItem('current_auth_data');
+    localStorage.removeItem('auth_checking');
+    localStorage.removeItem('auth_refreshing');
+    localStorage.removeItem('auth_redirecting');
+    localStorage.removeItem('auth_redirect_timestamp');
+    localStorage.removeItem('auth_check_timestamp');
+    localStorage.removeItem('data_syncing');
     
     // Rechercher et supprimer toutes les clés liées à Supabase
     Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('supabase.') || key.startsWith('sb-')) {
+      if (key.startsWith('supabase.') || key.startsWith('sb-') || key.includes('auth_')) {
         localStorage.removeItem(key);
       }
     });
@@ -57,29 +78,61 @@ export const clearStoredAuthData = () => {
 export const isProductionEnvironment = () => {
   return typeof window !== 'undefined' && 
          (window.location.hostname.includes('streamgenius.io') || 
-          window.location.hostname.includes('netlify.app'));
+          window.location.hostname.includes('netlify.app') ||
+          window.location.hostname.includes('hostinger'));
 };
 
-// Function pour tester la connexion à Supabase
-export const testSupabaseConnection = async (): Promise<boolean> => {
-  try {
-    const startTime = performance.now();
-    const response = await fetch(`${supabaseUrl}/auth/v1/health`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseAnonKey
-      },
-      mode: 'cors',
-      cache: 'no-store'
-    });
-    
-    const endTime = performance.now();
-    console.log(`Supabase health check: ${response.status} in ${Math.round(endTime - startTime)}ms`);
-    
-    return response.status === 200;
-  } catch (error) {
-    console.error("Erreur lors du test de connexion à Supabase:", error);
-    return false;
+// Function pour tester la connexion à Supabase avec timeout et retry
+export const testSupabaseConnection = async (retries = 2): Promise<boolean> => {
+  let attempt = 0;
+  
+  while (attempt <= retries) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(`${supabaseUrl}/auth/v1/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey
+        },
+        mode: 'cors',
+        cache: 'no-store',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.status === 200) {
+        return true;
+      }
+      
+      console.warn(`Supabase health check failed (attempt ${attempt + 1}/${retries + 1}): ${response.status}`);
+      attempt++;
+      
+      if (attempt <= retries) {
+        // Wait with exponential backoff before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+      }
+    } catch (error) {
+      console.error(`Erreur lors du test de connexion à Supabase (tentative ${attempt + 1}/${retries + 1}):`, error);
+      
+      if (error.name === 'AbortError') {
+        console.error("Délai d'attente dépassé lors de la connexion à Supabase");
+      }
+      
+      attempt++;
+      
+      if (attempt <= retries) {
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+      } else {
+        return false;
+      }
+    }
   }
+  
+  return false;
 };
+
