@@ -1,7 +1,7 @@
 
 import * as React from 'react';
 import { toast } from '@/hooks/use-toast';
-import { supabase, clearStoredAuthData, testSupabaseConnection } from "@/lib/supabase";
+import { supabase, clearStoredAuthData, testSupabaseConnection, testBackupEndpoints } from "@/lib/supabase";
 
 export const useLoginSubmit = () => {
   const handleSubmit = async (
@@ -15,6 +15,10 @@ export const useLoginSubmit = () => {
     
     try {
       console.log("Tentative de connexion pour:", email);
+      
+      // Nettoyage initial des données d'authentification
+      clearStoredAuthData();
+      console.log("Nettoyage des données d'authentification effectué");
       
       // Vérifier la connexion Internet du navigateur
       if (!navigator.onLine) {
@@ -30,7 +34,13 @@ export const useLoginSubmit = () => {
       
       // Tester la connexion à Supabase avant de tenter l'authentification
       console.log("Test de connexion à Supabase...");
-      const isConnected = await testSupabaseConnection();
+      let isConnected = await testSupabaseConnection(2);
+      
+      // Si la connexion directe échoue, essayer les points de terminaison alternatifs
+      if (!isConnected) {
+        console.log("Test des endpoints de secours...");
+        isConnected = await testBackupEndpoints();
+      }
       
       if (!isConnected) {
         console.error("Impossible de se connecter à Supabase");
@@ -43,23 +53,17 @@ export const useLoginSubmit = () => {
         return;
       }
       
-      // Nettoyer toutes les données d'authentification avant de se connecter
-      clearStoredAuthData();
-      
-      // Attendre un court instant pour permettre le nettoyage
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Tentative de connexion avec méthode simplifiée et timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+      // Désactiver temporairement la vérification de l'état de la connexion pour forcer la connexion
+      console.log("Connexion à Supabase confirmée, tentative d'authentification");
       
       try {
+        console.log("Tentative d'authentification avec email et mot de passe");
+        
+        // Tentative d'authentification directe
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
-        
-        clearTimeout(timeoutId);
         
         if (error) {
           console.error("Erreur d'authentification:", error);
@@ -102,12 +106,10 @@ export const useLoginSubmit = () => {
           
           setIsLoading(false);
         }
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
+      } catch (authError: any) {
+        console.error("Erreur lors de la tentative de connexion:", authError);
         
-        console.error("Erreur lors de la tentative de connexion:", fetchError);
-        
-        if (fetchError.name === 'AbortError') {
+        if (authError.name === 'AbortError') {
           toast({
             title: "Délai dépassé",
             description: "La tentative de connexion a pris trop de temps. Veuillez réessayer.",

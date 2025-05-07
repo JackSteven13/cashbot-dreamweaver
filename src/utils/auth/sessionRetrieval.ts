@@ -7,11 +7,14 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const getCurrentSession = async () => {
   try {
-    // Petite attente pour éviter les problèmes de concurrence
-    await new Promise(resolve => setTimeout(resolve, 50));
+    // Configurer un timeout pour éviter que la requête ne bloque indéfiniment
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     
     // Utiliser getSession avec robustesse
     const { data, error } = await supabase.auth.getSession();
+    
+    clearTimeout(timeoutId);
     
     if (error) {
       console.error("Error getting session:", error);

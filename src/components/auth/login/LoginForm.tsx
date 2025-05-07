@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LoginButton, LoginFields, useLoginFormState, useLoginSubmit } from './form';
+import { testSupabaseConnection } from '@/lib/supabase';
 
 interface LoginFormProps {
   lastLoggedInEmail: string | null;
@@ -18,6 +19,27 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   
   const { handleSubmit } = useLoginSubmit();
   const [formError, setFormError] = useState<string | null>(null);
+  const [serverReachable, setServerReachable] = useState<boolean | null>(null);
+
+  // Tester la connexion à Supabase au chargement
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const isConnected = await testSupabaseConnection(2);
+        setServerReachable(isConnected);
+      } catch (error) {
+        console.error("Erreur lors du test de connectivité:", error);
+        setServerReachable(false);
+      }
+    };
+    
+    checkConnection();
+    
+    // Vérifie périodiquement la connectivité
+    const interval = setInterval(checkConnection, 60000); // Vérifier toutes les 60 secondes
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Vérifier la validité du formulaire avant soumission
   const validateForm = () => {
@@ -54,6 +76,13 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
         </div>
       )}
       
+      {serverReachable === false && (
+        <div className="bg-red-950/30 border border-red-700/50 p-3 rounded-md text-sm text-red-200">
+          Serveur inaccessible - Impossible de contacter le serveur d'authentification.
+          Veuillez réessayer ultérieurement.
+        </div>
+      )}
+      
       <LoginFields
         email={email}
         setEmail={setEmail}
@@ -63,7 +92,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
       />
       
       <div className="pt-2">
-        <LoginButton isLoading={isLoading} />
+        <LoginButton isLoading={isLoading} disabled={serverReachable === false} />
       </div>
     </form>
   );

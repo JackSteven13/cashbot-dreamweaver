@@ -14,21 +14,37 @@
     Access-Control-Max-Age = "86400"
     Access-Control-Allow-Credentials = "true"
     Referrer-Policy = "no-referrer-when-downgrade"
-    Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * https://*.supabase.co wss://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *;"
+    Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * https://*.supabase.co wss://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *;"
     X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+
+# Endpoint spécial pour les tests de santé
+[[redirects]]
+  from = "/api/health"
+  to = "https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/health"
+  status = 200
+  force = true
+  headers = { Access-Control-Allow-Origin = "*" }
 
 # Configurations spéciales pour l'authentification
 [[redirects]]
   from = "/auth/callback"
   to = "/index.html"
   status = 200
+  force = true
   headers = { Access-Control-Allow-Origin = "*" }
 
 [[redirects]]
   from = "/auth/callback/*"
   to = "/index.html"
   status = 200
+  force = true
   headers = { Access-Control-Allow-Origin = "*" }
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
 
 # Redirection HTTPS
 [[redirects]]

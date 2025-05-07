@@ -11,24 +11,32 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     storage: localStorage,
-    detectSessionInUrl: false,
-    flowType: 'implicit'
+    detectSessionInUrl: true,
+    flowType: 'pkce'
   },
   realtime: {
-    timeout: 30000 // 30 seconds timeout for realtime connections
+    timeout: 60000 // 60 seconds timeout for realtime connections
   },
   global: {
     headers: {
       'x-client-info': 'streamgenius-frontend'
     },
     fetch: (url, options) => {
-      return fetch(url, { 
+      const modifiedOptions = { 
         ...options,
         cache: 'no-store',
         credentials: 'same-origin',
-        // Add timeout to fetch requests
-        signal: AbortSignal.timeout(15000) // 15 seconds timeout
-      });
+        mode: 'cors'
+      };
+      
+      // Add timeout to fetch requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 seconds timeout
+      
+      return fetch(url, {
+        ...modifiedOptions,
+        signal: controller.signal
+      }).finally(() => clearTimeout(timeoutId));
     }
   }
 });
@@ -83,14 +91,15 @@ export const isProductionEnvironment = () => {
           window.location.hostname.includes('hostinger'));
 };
 
-// Function pour tester la connexion à Supabase avec timeout et retry
-export const testSupabaseConnection = async (retries = 2): Promise<boolean> => {
+// Function pour tester la connexion à Supabase avec timeout et retry améliorés
+export const testSupabaseConnection = async (retries = 3): Promise<boolean> => {
   let attempt = 0;
   
   while (attempt <= retries) {
     try {
+      console.log(`Tentative de connexion à Supabase #${attempt + 1}`);
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
       
       const response = await fetch(`${supabaseUrl}/auth/v1/health`, {
         method: 'GET',
@@ -100,12 +109,14 @@ export const testSupabaseConnection = async (retries = 2): Promise<boolean> => {
         },
         mode: 'cors',
         cache: 'no-store',
+        credentials: 'omit',
         signal: controller.signal
       });
       
       clearTimeout(timeoutId);
       
       if (response.status === 200) {
+        console.log('Connexion à Supabase réussie');
         return true;
       }
       
@@ -114,9 +125,11 @@ export const testSupabaseConnection = async (retries = 2): Promise<boolean> => {
       
       if (attempt <= retries) {
         // Wait with exponential backoff before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+        const backoffMs = 1000 * Math.pow(1.5, attempt);
+        console.log(`Nouvelle tentative dans ${backoffMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Erreur lors du test de connexion à Supabase (tentative ${attempt + 1}/${retries + 1}):`, error);
       
       if (error.name === 'AbortError') {
@@ -127,7 +140,9 @@ export const testSupabaseConnection = async (retries = 2): Promise<boolean> => {
       
       if (attempt <= retries) {
         // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+        const backoffMs = 1000 * Math.pow(1.5, attempt);
+        console.log(`Nouvelle tentative dans ${backoffMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
       } else {
         return false;
       }
@@ -137,3 +152,43 @@ export const testSupabaseConnection = async (retries = 2): Promise<boolean> => {
   return false;
 };
 
+// Fonction pour tester les services Supabase alternatifs en cas d'échec principal
+export const testBackupEndpoints = async (): Promise<boolean> => {
+  try {
+    const endpoints = [
+      'https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/health',
+      'https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/',
+      'https://cfjibduhagxiwqkiyhqd.functions.supabase.co/health'
+    ];
+    
+    // Tester chaque point de terminaison
+    for (const endpoint of endpoints) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
+        const response = await fetch(endpoint, {
+          method: 'GET',
+          headers: {
+            'apikey': supabaseAnonKey
+          },
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.status < 500) {
+          console.log(`Connexion réussie à l'endpoint de secours: ${endpoint}`);
+          return true;
+        }
+      } catch (error) {
+        console.warn(`Échec de connexion à ${endpoint}:`, error);
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error("Erreur lors du test des endpoints de secours:", error);
+    return false;
+  }
+};
