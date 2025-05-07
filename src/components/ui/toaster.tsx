@@ -23,7 +23,7 @@ export function Toaster() {
             key={id} 
             {...props} 
             className={`toast-notification ${isError ? 'destructive bg-red-950/90 text-white border-red-700/50' : ''} 
-              max-w-[90vw] md:max-w-md z-[9999] fixed shadow-lg 
+              max-w-[85vw] md:max-w-md z-[9999] fixed shadow-lg 
               border border-slate-700/50 bg-slate-900/95`}
           >
             <div className="grid gap-1.5 w-full">

@@ -5,10 +5,9 @@ import Button from '@/components/Button';
 
 interface LoginButtonProps {
   isLoading: boolean;
-  disabled?: boolean; // Added disabled as an optional prop
 }
 
-const LoginButton = ({ isLoading, disabled }: LoginButtonProps) => {
+const LoginButton = ({ isLoading }: LoginButtonProps) => {
   return (
     <Button 
       type="submit" 
@@ -16,7 +15,7 @@ const LoginButton = ({ isLoading, disabled }: LoginButtonProps) => {
       size="lg" 
       isLoading={isLoading} 
       className="group"
-      disabled={disabled || isLoading} // Use the provided disabled prop or default to isLoading
+      disabled={isLoading}
     >
       {isLoading ? (
         <>
