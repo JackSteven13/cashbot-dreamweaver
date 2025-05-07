@@ -21,8 +21,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     headers: {
       'x-client-info': 'streamgenius-frontend'
     },
-    fetch: (...args) => {
-      return fetch(...args, { 
+    fetch: (url, options) => {
+      return fetch(url, { 
+        ...options,
         cache: 'no-store',
         credentials: 'same-origin',
         // Add timeout to fetch requests
