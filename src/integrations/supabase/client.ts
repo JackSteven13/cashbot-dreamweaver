@@ -14,8 +14,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: localStorage
   },
   global: {
-    fetch: (...args) => {
-      return fetch(...args).catch(err => {
+    fetch: (url, options) => {
+      return fetch(url, options).catch(err => {
         console.error("Erreur réseau Supabase:", err);
         throw new Error("Problème de connexion au serveur d'authentification");
       });
