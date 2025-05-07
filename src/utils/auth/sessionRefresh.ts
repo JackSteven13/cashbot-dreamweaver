@@ -1,40 +1,35 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Tente de rafraîchir la session utilisateur actuelle
- * Version simplifiée pour plus de fiabilité
- * @returns La nouvelle session si le rafraîchissement a réussi, sinon null
+ * Essaie de rafraîchir la session de l'utilisateur
+ * @returns true si le rafraîchissement a réussi, false sinon
  */
-export const refreshSession = async () => {
+export const refreshSession = async (): Promise<boolean> => {
   try {
-    console.log("Tentative de rafraîchissement de la session");
+    console.log("Tentative de rafraîchissement de la session...");
     
-    // Vérifier si nous avons déjà une session
-    const { data: sessionData } = await supabase.auth.getSession();
+    // Utiliser un contrôleur d'abandon pour limiter le temps d'attente
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    if (!sessionData.session) {
-      console.log("Pas de session active à rafraîchir");
-      return null;
-    }
-    
-    // Utiliser le endpoint de rafraîchissement de session avec des options simples
     const { data, error } = await supabase.auth.refreshSession();
+    clearTimeout(timeoutId);
     
     if (error) {
       console.error("Erreur lors du rafraîchissement de la session:", error);
-      return null;
+      return false;
     }
     
-    if (!data.session) {
-      console.log("Échec du rafraîchissement de la session - aucune nouvelle session retournée");
-      return null;
+    if (!data || !data.session) {
+      console.log("Aucune session après rafraîchissement");
+      return false;
     }
     
     console.log("Session rafraîchie avec succès");
-    return data.session;
+    return true;
   } catch (error) {
     console.error("Exception lors du rafraîchissement de la session:", error);
-    return null;
+    return false;
   }
 };

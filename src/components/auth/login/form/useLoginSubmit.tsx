@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from "@/lib/supabase";
+import { supabase, pingSupabaseServer } from "@/integrations/supabase/client";
 
 export const useLoginSubmit = () => {
   const navigate = useNavigate();
@@ -19,11 +19,28 @@ export const useLoginSubmit = () => {
     try {
       console.log("Tentative de connexion pour:", email);
       
-      // Tentative de connexion simple et directe
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      // Vérifier d'abord la connectivité au serveur Supabase
+      const isServerReachable = await pingSupabaseServer();
+      if (!isServerReachable) {
+        toast({
+          title: "Serveur inaccessible",
+          description: "Impossible de contacter le serveur d'authentification. Veuillez réessayer ultérieurement.",
+          variant: "destructive"
+        });
+        
+        setIsLoading(false);
+        return;
+      }
+      
+      // Tentative de connexion avec timeout
+      const { data, error } = await Promise.race([
+        supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        }),
+        new Promise<any>(resolve => setTimeout(() => 
+          resolve({ error: { message: "Délai d'attente dépassé" } }), 10000))
+      ]);
       
       if (error) {
         console.error("Erreur d'authentification:", error);

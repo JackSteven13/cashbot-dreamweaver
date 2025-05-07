@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LoginButton, LoginFields, useLoginFormState, useLoginSubmit } from './form';
+import { pingSupabaseServer } from '@/integrations/supabase/client';
 
 interface LoginFormProps {
   lastLoggedInEmail: string | null;
@@ -18,6 +19,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   
   const { handleSubmit } = useLoginSubmit();
   const [formError, setFormError] = useState<string | null>(null);
+  const [serverReachable, setServerReachable] = useState<boolean | null>(null);
 
   // Vérifier la validité du formulaire avant soumission
   const validateForm = () => {
@@ -41,6 +43,25 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     }
   };
 
+  // Vérifier l'accessibilité du serveur au chargement
+  useEffect(() => {
+    const checkServerAccess = async () => {
+      try {
+        const isReachable = await pingSupabaseServer();
+        setServerReachable(isReachable);
+      } catch (error) {
+        console.error("Erreur lors du test de connexion:", error);
+        setServerReachable(false);
+      }
+    };
+    
+    checkServerAccess();
+    
+    // Vérification périodique du serveur
+    const intervalId = setInterval(checkServerAccess, 30000);
+    return () => clearInterval(intervalId);
+  }, []);
+
   // Effacer les erreurs lorsque les champs changent
   useEffect(() => {
     if (formError) setFormError(null);
@@ -54,6 +75,16 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
         </div>
       )}
       
+      {serverReachable === false && (
+        <div className="bg-red-950/30 border border-red-700/50 p-3 rounded-md text-sm text-red-200">
+          Serveur inaccessible
+          <p className="text-xs mt-1 text-red-300/80">
+            Impossible de contacter le serveur d'authentification.
+            Veuillez réessayer ultérieurement.
+          </p>
+        </div>
+      )}
+      
       <LoginFields
         email={email}
         setEmail={setEmail}
@@ -63,7 +94,10 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
       />
       
       <div className="pt-2">
-        <LoginButton isLoading={isLoading} />
+        <LoginButton 
+          isLoading={isLoading} 
+          disabled={serverReachable === false}
+        />
       </div>
     </form>
   );

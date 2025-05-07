@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
-import { clearStoredAuthData } from "@/lib/supabase";
+import { clearStoredAuthData, supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();

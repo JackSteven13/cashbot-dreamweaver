@@ -1,12 +1,12 @@
 
 import * as React from "react";
-import { AlertCircle, Info, WifiOff, Wifi } from "lucide-react";
+import { AlertCircle, Info, WifiOff } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface DNSAlertProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "destructive" | "warning"; // Removed "info" to match Alert component's allowed variants
+  variant?: "default" | "destructive" | "warning";
   title?: string;
   description?: string;
   icon?: React.ReactNode;

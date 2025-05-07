@@ -57,7 +57,7 @@
   status = 301
   force = true
 
-# Routes principales avec fallback SPA
+# Routes cruciales pour la navigation
 [[redirects]]
   from = "/dashboard/*"
   to = "/index.html"
