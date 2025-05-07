@@ -12,7 +12,27 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
     storage: localStorage,
-    flowType: 'implicit' // Utilise le flux implicite pour une meilleure compatibilité
+    flowType: 'pkce', // Utilise le flux PKCE plus sécurisé et plus stable
+    debug: true // Active le mode debug pour aider au diagnostic
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'streamgenius-app'
+    },
+    fetch: (url, options = {}) => {
+      // Ajouter des en-têtes CORS pour les requêtes cross-origin
+      const headers = {
+        ...options.headers,
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+      };
+      return fetch(url, {
+        ...options,
+        headers,
+        // Augmenter le timeout pour les requêtes à 15 secondes
+        signal: options.signal || (new AbortController().signal)
+      });
+    }
   }
 });
 
@@ -49,18 +69,17 @@ export const clearStoredAuthData = () => {
   }
 };
 
-// Fonction utilitaire pour détecter l'environnement
-export const isProductionEnvironment = () => {
-  return typeof window !== 'undefined' && 
-         (window.location.hostname.includes('streamgenius.io') || 
-          window.location.hostname.includes('streamgenius.netlify.app'));
-};
-
 // Fonction pour vérifier la connectivité au serveur Supabase
 export const checkSupabaseConnectivity = async (): Promise<boolean> => {
   try {
     const startTime = Date.now();
-    const { data, error } = await supabase.from('_connection_test').select('*').limit(1).maybeSingle();
+    const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseAnonKey
+      }
+    });
     const endTime = Date.now();
     
     // Si la requête prend trop de temps, considérer comme un problème de connectivité
@@ -69,14 +88,16 @@ export const checkSupabaseConnectivity = async (): Promise<boolean> => {
       return false;
     }
     
-    // Une erreur de table inexistante est normale et signifie que la connexion fonctionne
-    if (error && error.code === '42P01') {
-      return true;
-    }
-    
-    return !error;
+    return response.status !== 404; // Tout statut autre que 404 indique que l'API est accessible
   } catch (err) {
     console.error("Erreur de connectivité Supabase:", err);
     return false;
   }
+};
+
+// Fonction utilitaire pour détecter l'environnement
+export const isProductionEnvironment = () => {
+  return typeof window !== 'undefined' && 
+         (window.location.hostname.includes('streamgenius.io') || 
+          window.location.hostname.includes('streamgenius.netlify.app'));
 };

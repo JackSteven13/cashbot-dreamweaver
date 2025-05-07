@@ -28,7 +28,30 @@ export const useLoginSubmit = () => {
       clearStoredAuthData();
       
       // Attendre un court instant pour s'assurer que le nettoyage est effectué
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      try {
+        // Effectuer un test de connectivité à Supabase avant la tentative de connexion
+        const connectionTest = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4'
+          }
+        });
+        
+        if (!connectionTest.ok) {
+          console.error("Test de connectivité Supabase échoué:", await connectionTest.text());
+          setFormError("Impossible de se connecter au serveur. Veuillez réessayer plus tard.");
+          setIsLoading(false);
+          return;
+        }
+      } catch (connError) {
+        console.error("Erreur de test de connectivité:", connError);
+        setFormError("Problème de connexion au serveur. Vérifiez votre connexion internet.");
+        setIsLoading(false);
+        return;
+      }
       
       // Effectuer la déconnexion pour s'assurer qu'il n'y a pas de session active
       try {
@@ -40,7 +63,7 @@ export const useLoginSubmit = () => {
       }
       
       // Attendre un court instant après la déconnexion
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Tentative de connexion avec l'API Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -54,8 +77,8 @@ export const useLoginSubmit = () => {
         // Afficher un message d'erreur spécifique
         if (error.message.includes('Invalid login')) {
           setFormError('Email ou mot de passe incorrect.');
-        } else if (error.message.includes('network')) {
-          setFormError('Problème de connexion au serveur. Veuillez réessayer.');
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          setFormError('Problème de connexion au serveur. Vérifiez votre connexion et réessayez.');
         } else {
           setFormError(error.message || 'Échec de connexion');
         }
@@ -82,7 +105,7 @@ export const useLoginSubmit = () => {
         setTimeout(() => {
           // Redirection vers le tableau de bord
           window.location.href = '/dashboard';
-        }, 500);
+        }, 800);
         
         return;
       }

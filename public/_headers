@@ -4,20 +4,22 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * https://*.supabase.co wss://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *;
+  Content-Security-Policy: default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * https://*.supabase.co wss://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; frame-src *; worker-src 'self' blob:;
   Access-Control-Allow-Origin: *
   Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
-  Access-Control-Allow-Headers: Authorization, X-Client-Info, apikey, content-type, X-Supabase, Range
+  Access-Control-Allow-Headers: Authorization, X-Client-Info, apikey, content-type, X-Supabase, Range, x-supabase-auth
 
 /auth/*
   Access-Control-Allow-Origin: *
   Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
-  Access-Control-Allow-Headers: Authorization, X-Client-Info, apikey, content-type, X-Supabase, Range
+  Access-Control-Allow-Headers: Authorization, X-Client-Info, apikey, content-type, X-Supabase, Range, x-supabase-auth
   Access-Control-Allow-Credentials: true
   Access-Control-Expose-Headers: Content-Range, Range, Content-Length
+  Cache-Control: no-cache
 
 /api/auth/*
   Access-Control-Allow-Origin: *
   Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
-  Access-Control-Allow-Headers: Authorization, X-Client-Info, apikey, content-type, X-Supabase, Range
+  Access-Control-Allow-Headers: Authorization, X-Client-Info, apikey, content-type, X-Supabase, Range, x-supabase-auth
   Access-Control-Allow-Credentials: true
+  Cache-Control: no-cache
