@@ -36,12 +36,16 @@ export const useLoginSubmit = () => {
         
         // Log failed connection attempt
         try {
+          // Get the current session token if possible
+          const { data: sessionData } = await supabase.auth.getSession();
+          const accessToken = sessionData?.session?.access_token || '';
+          
           // Utilisation directe de l'URL complète de la fonction edge
           const response = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/functions/v1/log-connection', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`,
+              'Authorization': `Bearer ${accessToken}`,
             },
             body: JSON.stringify({
               email: email,
