@@ -9,7 +9,6 @@ export const useLoginSession = () => {
       // Récupérer l'email précédemment utilisé
       const savedEmail = localStorage.getItem('last_logged_in_email');
       if (savedEmail) {
-        console.log("Email précédemment utilisé récupéré:", savedEmail);
         setLastLoggedInEmail(savedEmail);
       }
     } catch (error) {

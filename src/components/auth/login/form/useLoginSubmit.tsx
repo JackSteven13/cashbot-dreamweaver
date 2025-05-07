@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { supabase, clearStoredAuthData } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 export const useLoginSubmit = () => {
   const navigate = useNavigate();
@@ -19,10 +19,7 @@ export const useLoginSubmit = () => {
     try {
       console.log("Tentative de connexion pour:", email);
       
-      // Nettoyage radical avant la connexion
-      clearStoredAuthData();
-      
-      // Connexion directe sans vérifications supplémentaires
+      // Tentative de connexion simple et directe
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -37,7 +34,6 @@ export const useLoginSubmit = () => {
           variant: "destructive"
         });
         
-        clearStoredAuthData();
         setIsLoading(false);
         return;
       }
@@ -49,23 +45,28 @@ export const useLoginSubmit = () => {
         // Enregistrer l'email pour la prochaine connexion
         localStorage.setItem('last_logged_in_email', email);
         
-        // Redirection immédiate vers le tableau de bord
+        // Redirection vers le tableau de bord avec un rechargement complet
         window.location.href = '/dashboard';
       } else {
         console.error("Pas de session après connexion réussie");
-        throw new Error("Échec de création de session");
+        
+        toast({
+          title: "Erreur de session",
+          description: "Impossible de créer une session. Veuillez réessayer.",
+          variant: "destructive"
+        });
+        
+        setIsLoading(false);
       }
     } catch (error) {
       console.error("Erreur complète:", error);
       
       toast({
         title: "Échec de connexion",
-        description: "Email ou mot de passe incorrect.",
+        description: "Une erreur inattendue s'est produite. Veuillez réessayer.",
         variant: "destructive"
       });
       
-      clearStoredAuthData();
-    } finally {
       setIsLoading(false);
     }
   };

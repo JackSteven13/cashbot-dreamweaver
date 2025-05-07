@@ -4,40 +4,35 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Créer un client Supabase avec des options minimalistes
+// Créer un client Supabase avec des options simplifiées
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true,
     autoRefreshToken: true,
+    persistSession: true,
     detectSessionInUrl: false,
     storage: localStorage
   }
 });
 
-// Fonction pour nettoyer les données d'authentification de manière agressive
+// Fonction de nettoyage radical des données d'authentification
 export const clearStoredAuthData = () => {
   try {
-    console.log("Nettoyage des données d'authentification");
+    console.log("Nettoyage complet des données d'authentification");
     
-    // Nettoyer localStorage - supprimer toutes les clés possibles
+    // Supprimer tous les tokens possibles
     localStorage.removeItem('supabase.auth.token');
     localStorage.removeItem('sb-access-token');
     localStorage.removeItem('sb-refresh-token');
     localStorage.removeItem('sb-auth-token');
+    
+    // Supprimer la clé spécifique pour ce projet
     localStorage.removeItem('sb-cfjibduhagxiwqkiyhqd-auth-token');
     
-    // Supprimer toutes les clés liées à Supabase
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.includes('supabase') || key.includes('sb-'))) {
-        keysToRemove.push(key);
+    // Rechercher et supprimer toutes les clés liées à Supabase
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('supabase.') || key.startsWith('sb-')) {
+        localStorage.removeItem(key);
       }
-    }
-    
-    // Supprimer en dehors de la boucle pour éviter les problèmes d'index
-    keysToRemove.forEach(key => {
-      localStorage.removeItem(key);
     });
     
     // Nettoyer les cookies liés à l'authentification
@@ -51,7 +46,7 @@ export const clearStoredAuthData = () => {
   }
 };
 
-// Détecter l'environnement
+// Fonction utilitaire pour détecter l'environnement
 export const isProductionEnvironment = () => {
   return typeof window !== 'undefined' && 
          (window.location.hostname.includes('streamgenius.io') || 

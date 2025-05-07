@@ -8,9 +8,21 @@ import { clearStoredAuthData } from "@/lib/supabase";
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
 
-  // Nettoyage initial radical au chargement de la page
+  // Nettoyage initial des données d'authentification au chargement de la page
   useEffect(() => {    
+    // Nettoyage complet des données d'authentification
     clearStoredAuthData();
+    
+    // Tentative de déconnexion globale pour s'assurer d'un état propre
+    try {
+      const handleSignOut = async () => {
+        await supabase.auth.signOut({ scope: 'global' });
+      };
+      handleSignOut();
+    } catch (err) {
+      // Ignorer les erreurs, le nettoyage localStorage est suffisant
+      console.log("Erreur lors de la déconnexion, ignorée:", err);
+    }
   }, []);
 
   return (
