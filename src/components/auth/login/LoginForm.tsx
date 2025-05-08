@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { LoginButton, LoginFields, useLoginSubmit } from './form';
-import { clearStoredAuthData } from "@/integrations/supabase/client";
+import { clearStoredAuthData, testSupabaseConnection } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface LoginFormProps {
   lastLoggedInEmail: string | null;
@@ -13,6 +14,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [serviceAvailable, setServiceAvailable] = useState<boolean | null>(null);
   
   // Hook personnalisé pour gérer la soumission
   const { handleSubmit } = useLoginSubmit();
@@ -26,14 +28,31 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     if (!navigator.onLine) {
       setFormError('Vous semblez être hors ligne. Vérifiez votre connexion internet.');
     }
+    
+    // Tester la disponibilité du service Supabase
+    const checkService = async () => {
+      try {
+        const isAvailable = await testSupabaseConnection();
+        setServiceAvailable(isAvailable);
+        if (!isAvailable) {
+          setFormError('Le service d\'authentification est momentanément indisponible. Veuillez réessayer dans quelques instants.');
+        }
+      } catch (e) {
+        console.error("Erreur lors du test de disponibilité:", e);
+      }
+    };
+    
+    checkService();
 
     // Écouter les changements de connectivité
     const handleOnline = () => {
       setFormError(null);
+      checkService();
     };
     
     const handleOffline = () => {
       setFormError('Vous êtes actuellement hors ligne.');
+      setServiceAvailable(false);
     };
 
     window.addEventListener('online', handleOnline);
@@ -62,6 +81,22 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!navigator.onLine) {
+      setFormError('Pas de connexion internet. Veuillez vérifier votre connexion et réessayer.');
+      return;
+    }
+    
+    // Vérifier à nouveau la disponibilité du service avant tentative de connexion
+    try {
+      const isAvailable = await testSupabaseConnection();
+      if (!isAvailable) {
+        setFormError('Le service d\'authentification est momentanément indisponible. Veuillez réessayer dans quelques instants.');
+        return;
+      }
+    } catch (e) {
+      console.error("Erreur lors du test de disponibilité:", e);
+    }
+    
     if (validateForm()) {
       handleSubmit(e, email, password, setIsLoading, setFormError);
     }
@@ -72,11 +107,20 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     if (formError) setFormError(null);
   }, [email, password]);
 
+  // Message d'erreur adapté à l'état du service
+  const getErrorMessage = () => {
+    if (formError) return formError;
+    if (serviceAvailable === false) {
+      return 'Le service d\'authentification est momentanément indisponible. Veuillez réessayer dans quelques instants.';
+    }
+    return null;
+  };
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {formError && (
+      {getErrorMessage() && (
         <div className="bg-red-950/30 border border-red-700/50 p-3 rounded-md text-sm text-red-200">
-          {formError}
+          {getErrorMessage()}
         </div>
       )}
       
