@@ -1,7 +1,7 @@
 
 import * as React from 'react';
 import { toast } from '@/hooks/use-toast';
-import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
+import { supabase, clearStoredAuthData, testSupabaseConnection } from "@/integrations/supabase/client";
 
 export const useLoginSubmit = () => {
   const handleSubmit = async (
@@ -27,6 +27,16 @@ export const useLoginSubmit = () => {
         return;
       }
       
+      // Tester la connexion à Supabase
+      console.log("Vérification de la connexion à Supabase...");
+      const isSupabaseOnline = await testSupabaseConnection();
+      
+      if (!isSupabaseOnline) {
+        setFormError('Le serveur est actuellement inaccessible. Veuillez réessayer dans quelques instants.');
+        setIsLoading(false);
+        return;
+      }
+      
       console.log("Tentative de connexion à Supabase...");
       
       // Attendre un instant pour s'assurer que la suppression des tokens est terminée
@@ -34,7 +44,7 @@ export const useLoginSubmit = () => {
       
       // Configuration du timeout manuel et du système d'annulation
       const controller = new AbortController();
-      const loginTimeout = 30000; // 30 secondes
+      const loginTimeout = 15000; // 15 secondes
       const timeoutId = setTimeout(() => controller.abort(), loginTimeout);
       
       try {
@@ -70,30 +80,25 @@ export const useLoginSubmit = () => {
           return;
         }
         
-        // Vérifier que la session contient un utilisateur valide
-        if (data.session && data.session.user) {
-          console.log("Connexion réussie pour:", email);
-          
-          // Enregistrer l'email pour la prochaine connexion
-          localStorage.setItem('last_logged_in_email', email);
-          
-          // Toast de succès
-          toast({
-            title: "Connexion réussie",
-            description: "Redirection vers le tableau de bord...",
-            variant: "default"
-          });
-          
-          // Attendre un court instant pour s'assurer que la session est bien enregistrée
-          setTimeout(() => {
-            // Redirection vers le tableau de bord
-            window.location.href = '/dashboard';
-          }, 1000);
-          
-          return;
-        }
+        console.log("Connexion réussie pour:", email);
         
-        setFormError('Erreur inattendue. Veuillez réessayer ou contacter le support.');
+        // Enregistrer l'email pour la prochaine connexion
+        localStorage.setItem('last_logged_in_email', email);
+        
+        // Toast de succès
+        toast({
+          title: "Connexion réussie",
+          description: "Redirection vers le tableau de bord...",
+          variant: "default"
+        });
+        
+        // Attendre un court instant pour s'assurer que la session est bien enregistrée
+        setTimeout(() => {
+          // Redirection vers le tableau de bord
+          window.location.href = '/dashboard';
+        }, 1000);
+        
+        return;
       } catch (fetchError: any) {
         // Nettoyer le timeout
         clearTimeout(timeoutId);

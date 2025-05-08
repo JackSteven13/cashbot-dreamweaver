@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LoginButton, LoginFields, useLoginSubmit } from './form';
-import { clearStoredAuthData } from "@/integrations/supabase/client";
+import { clearStoredAuthData, hasInternetConnection } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 interface LoginFormProps {
@@ -25,7 +25,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     clearStoredAuthData();
     
     // Vérifier si l'utilisateur est en ligne
-    if (!navigator.onLine) {
+    if (!hasInternetConnection()) {
       setFormError('Vous semblez être hors ligne. Vérifiez votre connexion internet.');
     }
 

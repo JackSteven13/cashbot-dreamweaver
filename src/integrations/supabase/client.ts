@@ -10,16 +10,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true, // Activer pour une meilleure détection des sessions
+    detectSessionInUrl: true,
     storage: typeof window !== 'undefined' ? localStorage : undefined
   },
   global: {
     fetch: (url, options) => {
-      // Configuration améliorée pour les requêtes avec timeout et retry
+      // Configuration avec timeout plus court
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondes
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 secondes
       
-      const customFetch = async (attempt = 1, maxAttempts = 3) => {
+      const customFetch = async (attempt = 1, maxAttempts = 2) => {
         try {
           const response = await fetch(url, {
             ...options,
@@ -30,12 +30,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
           });
           
           return response;
-        } catch (error) {
-          // Si l'erreur n'est pas liée à une annulation volontaire et que nous n'avons pas dépassé le nombre de tentatives
+        } catch (error: any) {
+          // Si ce n'est pas une erreur d'abandon volontaire et qu'on n'a pas dépassé le nombre de tentatives
           if (error.name !== 'AbortError' && attempt < maxAttempts) {
             console.log(`Tentative de reconnexion (${attempt}/${maxAttempts})...`);
-            // Attendre un peu plus longtemps à chaque tentative (backoff exponentiel)
-            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+            // Attendre un peu avant de réessayer (backoff linéaire simple)
+            await new Promise(resolve => setTimeout(resolve, 1000));
             return customFetch(attempt + 1, maxAttempts);
           }
           throw error;
@@ -49,10 +49,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Fonction améliorée de nettoyage radical des données d'authentification
+// Fonction améliorée de nettoyage des données d'authentification
 export const clearStoredAuthData = () => {
   try {
-    console.log("Nettoyage radical des données d'authentification");
+    console.log("Nettoyage des données d'authentification");
     
     // Supprimer tous les tokens Supabase
     if (typeof window === 'undefined') return true;
@@ -84,14 +84,6 @@ export const clearStoredAuthData = () => {
       console.warn("Impossible de nettoyer sessionStorage:", e);
     }
     
-    // Nettoyer les cookies potentiels liés à l'authentification
-    document.cookie.split(";").forEach(c => {
-      const cookieName = c.trim().split("=")[0];
-      if (cookieName.includes("sb-") || cookieName.includes("supabase")) {
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-      }
-    });
-    
     return true;
   } catch (err) {
     console.error("Erreur lors du nettoyage des données d'authentification:", err);
@@ -99,19 +91,16 @@ export const clearStoredAuthData = () => {
   }
 };
 
-// Fonction utilitaire pour détecter l'environnement
-export const isProductionEnvironment = () => {
-  return typeof window !== 'undefined' && 
-         (window.location.hostname.includes('streamgenius.io') || 
-          window.location.hostname.includes('netlify.app') ||
-          window.location.hostname.includes('lovable.dev'));
+// Fonction utilitaire pour vérifier la connexion internet
+export const hasInternetConnection = () => {
+  return navigator.onLine;
 };
 
 // Fonction pour tester la connexion à Supabase
 export const testSupabaseConnection = async () => {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     
     const response = await fetch(`${supabaseUrl}/rest/v1/?apikey=${supabaseAnonKey}`, {
       method: 'GET',
@@ -128,9 +117,4 @@ export const testSupabaseConnection = async () => {
     console.error("Erreur lors du test de connexion à Supabase:", error);
     return false;
   }
-};
-
-// Fonction pour vérifier si l'utilisateur dispose d'une connexion internet viable
-export const hasInternetConnection = () => {
-  return navigator.onLine;
 };
