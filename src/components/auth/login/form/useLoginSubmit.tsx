@@ -29,11 +29,22 @@ export const useLoginSubmit = () => {
       
       console.log("Tentative de connexion à Supabase...");
       
-      // Effectuer la connexion avec l'API Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      // Attendre un instant pour s'assurer que la suppression des tokens est terminée
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Effectuer la connexion avec l'API Supabase avec plus de timeout
+      const { data, error } = await Promise.race([
+        supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        }),
+        new Promise<{data: null, error: any}>((resolve) => {
+          setTimeout(() => resolve({
+            data: null, 
+            error: { message: 'Délai de connexion expiré. Le serveur met trop de temps à répondre.' }
+          }), 15000); // 15 secondes timeout
+        })
+      ]) as any;
       
       if (error) {
         console.error("Erreur d'authentification:", error);
@@ -41,7 +52,7 @@ export const useLoginSubmit = () => {
         // Afficher un message d'erreur spécifique
         if (error.message && error.message.includes('Invalid login')) {
           setFormError('Email ou mot de passe incorrect.');
-        } else if (error.message && (error.message.includes('network') || error.message.includes('fetch'))) {
+        } else if (error.message && (error.message.includes('network') || error.message.includes('fetch') || error.message.includes('Délai'))) {
           setFormError('Problème de connexion au serveur. Vérifiez votre connexion et réessayez.');
         } else {
           setFormError(error.message || 'Échec de connexion');

@@ -11,7 +11,7 @@ function isCustomDomain() {
          window.location.hostname.includes('streamgenius.io');
 }
 
-// Client Supabase avec configuration optimisée pour le domaine personnalisé
+// Client Supabase avec configuration compatible
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -70,5 +70,5 @@ export const clearStoredAuthData = () => {
 export const isProductionEnvironment = () => {
   return typeof window !== 'undefined' && 
          (window.location.hostname.includes('streamgenius.io') || 
-          window.location.hostname.includes('streamgenius.netlify.app'));
+          window.location.hostname.includes('netlify.app'));
 };

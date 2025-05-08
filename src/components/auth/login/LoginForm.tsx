@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { LoginButton, LoginFields, useLoginSubmit } from './form';
 import { clearStoredAuthData } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface LoginFormProps {
   lastLoggedInEmail: string | null;
@@ -13,6 +14,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
   
   // Hook personnalisé pour gérer la soumission
   const { handleSubmit } = useLoginSubmit();
@@ -21,6 +23,23 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   useEffect(() => {
     console.log("Nettoyage initial des données d'authentification");
     clearStoredAuthData();
+    
+    // Vérifier si l'utilisateur est en ligne
+    if (!navigator.onLine) {
+      setFormError('Vous semblez être hors ligne. Vérifiez votre connexion internet.');
+    }
+
+    // Écouter les changements de connectivité
+    const handleOnline = () => setFormError(null);
+    const handleOffline = () => setFormError('Vous êtes actuellement hors ligne.');
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   // Vérifier la validité du formulaire avant soumission
@@ -40,7 +59,18 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    setConnectionAttempts(prev => prev + 1);
+    
     if (validateForm()) {
+      // Si plusieurs tentatives échouées, informer l'utilisateur
+      if (connectionAttempts >= 3) {
+        toast({
+          title: "Plusieurs tentatives détectées",
+          description: "Nous allons essayer de vous connecter avec un délai plus long",
+          variant: "default"
+        });
+      }
+      
       handleSubmit(e, email, password, setIsLoading, setFormError);
     }
   };
