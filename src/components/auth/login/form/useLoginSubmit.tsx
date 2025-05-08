@@ -32,15 +32,13 @@ export const useLoginSubmit = () => {
       // Attendre un instant pour s'assurer que la suppression des tokens est terminée
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Configuration du timeout manuel pour la requête
-      const loginTimeout = 20000; // 20 secondes
-      
-      // Création d'un contrôleur d'abandon
+      // Configuration du timeout manuel et du système d'annulation
       const controller = new AbortController();
+      const loginTimeout = 30000; // 30 secondes
       const timeoutId = setTimeout(() => controller.abort(), loginTimeout);
       
       try {
-        // Effectuer la connexion avec l'API Supabase
+        // Utilisation de l'API de base pour la connexion
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
@@ -79,17 +77,24 @@ export const useLoginSubmit = () => {
           // Enregistrer l'email pour la prochaine connexion
           localStorage.setItem('last_logged_in_email', email);
           
+          // Toast de succès
+          toast({
+            title: "Connexion réussie",
+            description: "Redirection vers le tableau de bord...",
+            variant: "default"
+          });
+          
           // Attendre un court instant pour s'assurer que la session est bien enregistrée
           setTimeout(() => {
             // Redirection vers le tableau de bord
             window.location.href = '/dashboard';
-          }, 800);
+          }, 1000);
           
           return;
         }
         
         setFormError('Erreur inattendue. Veuillez réessayer ou contacter le support.');
-      } catch (fetchError) {
+      } catch (fetchError: any) {
         // Nettoyer le timeout
         clearTimeout(timeoutId);
         
@@ -97,9 +102,9 @@ export const useLoginSubmit = () => {
         
         // Gestion spécifique des erreurs d'abandon
         if (fetchError.name === 'AbortError') {
-          setFormError('La connexion a pris trop de temps. Veuillez réessayer.');
+          setFormError('La connexion a pris trop de temps. Le serveur peut être surchargé. Veuillez réessayer.');
         } else {
-          setFormError('Problème de connexion au serveur. Vérifiez votre connexion et réessayer.');
+          setFormError('Problème de connexion au serveur. Vérifiez votre connexion et réessayez.');
         }
       }
       

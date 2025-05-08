@@ -5,13 +5,30 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Configuration optimisée du client Supabase
+// Configuration optimisée du client Supabase pour une meilleure fiabilité
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false, // Désactivé pour éviter les problèmes de redirection
     storage: typeof window !== 'undefined' ? localStorage : undefined
+  },
+  global: {
+    fetch: (url, options) => {
+      // Configuration améliorée pour les requêtes avec timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondes
+      
+      return fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          ...options?.headers,
+        }
+      }).finally(() => {
+        clearTimeout(timeoutId);
+      });
+    }
   }
 });
 
@@ -21,6 +38,8 @@ export const clearStoredAuthData = () => {
     console.log("Nettoyage radical des données d'authentification");
     
     // Supprimer tous les tokens Supabase
+    if (typeof window === 'undefined') return true;
+    
     localStorage.removeItem('supabase.auth.token');
     localStorage.removeItem('sb-access-token');
     localStorage.removeItem('sb-refresh-token');

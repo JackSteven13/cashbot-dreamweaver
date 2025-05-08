@@ -11,6 +11,7 @@ https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
 # Correction critique des redirections d'authentification Supabase
 /auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200!
+/rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200!
 /auth/callback/* /index.html 200!
 /auth/* /index.html 200!
 /login/* /index.html 200!

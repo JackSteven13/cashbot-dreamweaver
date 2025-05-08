@@ -20,13 +20,17 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
+  
   useEffect(() => {
-    // Configuration de l'écouteur d'authentification
+    let mounted = true;
+    
+    // Configuration de l'écouteur d'authentification en premier
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setUser(session?.user ?? null);
-        setIsLoading(false);
+        if (mounted) {
+          setUser(session?.user ?? null);
+          setIsLoading(false);
+        }
       }
     );
     
@@ -34,18 +38,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const checkSession = async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        setUser(data?.session?.user ?? null);
+        
+        if (mounted) {
+          setUser(data?.session?.user ?? null);
+          setIsLoading(false);
+        }
       } catch (error) {
         console.error('Erreur lors de la récupération de la session:', error);
-      } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
     
     checkSession();
-
+    
     // Nettoyage
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
