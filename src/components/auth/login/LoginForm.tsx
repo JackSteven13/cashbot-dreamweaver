@@ -21,24 +21,22 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
 
   // Nettoyer toutes les données d'authentification au chargement
   useEffect(() => {
-    console.log("Nettoyage initial des données d'authentification");
+    // Nettoyage des données d'authentification existantes
     clearStoredAuthData();
     
-    // Vérifier si l'utilisateur est en ligne
-    if (!navigator.onLine) {
-      setFormError('Vous semblez être hors ligne. Vérifiez votre connexion internet.');
-    }
-    
-    // Tester la disponibilité du service Supabase
+    // Vérifier la connexion au service Supabase en arrière-plan
     const checkService = async () => {
       try {
         const isAvailable = await testSupabaseConnection();
         setServiceAvailable(isAvailable);
-        if (!isAvailable) {
+        
+        if (!isAvailable && navigator.onLine) {
           setFormError('Le service d\'authentification est momentanément indisponible. Veuillez réessayer dans quelques instants.');
+        } else if (!navigator.onLine) {
+          setFormError('Vous semblez être hors ligne. Vérifiez votre connexion internet.');
         }
       } catch (e) {
-        console.error("Erreur lors du test de disponibilité:", e);
+        console.warn("Erreur lors du test de disponibilité:", e);
       }
     };
     
@@ -88,17 +86,25 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     
     // Vérifier à nouveau la disponibilité du service avant tentative de connexion
     try {
+      setIsLoading(true);
       const isAvailable = await testSupabaseConnection();
+      
       if (!isAvailable) {
         setFormError('Le service d\'authentification est momentanément indisponible. Veuillez réessayer dans quelques instants.');
+        setIsLoading(false);
         return;
+      }
+      
+      // Service disponible, validation du formulaire et soumission
+      if (validateForm()) {
+        handleSubmit(e, email, password, setIsLoading, setFormError);
+      } else {
+        setIsLoading(false);
       }
     } catch (e) {
       console.error("Erreur lors du test de disponibilité:", e);
-    }
-    
-    if (validateForm()) {
-      handleSubmit(e, email, password, setIsLoading, setFormError);
+      setFormError("Une erreur s'est produite lors de la vérification du service. Veuillez réessayer.");
+      setIsLoading(false);
     }
   };
 
@@ -107,20 +113,11 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     if (formError) setFormError(null);
   }, [email, password]);
 
-  // Message d'erreur adapté à l'état du service
-  const getErrorMessage = () => {
-    if (formError) return formError;
-    if (serviceAvailable === false) {
-      return 'Le service d\'authentification est momentanément indisponible. Veuillez réessayer dans quelques instants.';
-    }
-    return null;
-  };
-
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {getErrorMessage() && (
+      {formError && (
         <div className="bg-red-950/30 border border-red-700/50 p-3 rounded-md text-sm text-red-200">
-          {getErrorMessage()}
+          {formError}
         </div>
       )}
       

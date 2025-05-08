@@ -12,7 +12,6 @@ export const useLoginSubmit = () => {
     setFormError: (error: string | null) => void
   ) => {
     e.preventDefault();
-    setIsLoading(true);
     
     try {
       console.log("Tentative de connexion pour:", email);
@@ -27,15 +26,15 @@ export const useLoginSubmit = () => {
         return;
       }
       
-      // Connexion à Supabase avec gestion du délai d'attente
       try {
+        // Connexion à Supabase avec gestion du délai d'attente
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes maximum
         
         // Connexion avec mécanisme de repli
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
-            // Connexion à Supabase
+            // Connexion à Supabase avec options simplifiées
             const { data, error } = await supabase.auth.signInWithPassword({
               email: email.trim(),
               password,
@@ -44,23 +43,20 @@ export const useLoginSubmit = () => {
             clearTimeout(timeoutId);
             
             if (error) {
-              console.error(`Erreur d'authentification (tentative ${attempt + 1}):`, error);
-              
               if (error.message?.includes('Invalid login')) {
                 setFormError('Email ou mot de passe incorrect.');
                 setIsLoading(false);
                 return;
-              } else if (error.message?.includes('Server closed') || error.message?.includes('Connection')) {
-                // En cas d'erreur de serveur, réessayer une fois
+              } else if (error.message?.includes('Server closed') || 
+                         error.message?.includes('Connection') || 
+                         error.message?.includes('network') || 
+                         error.message?.includes('timeout')) {
                 if (attempt === 0) {
-                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  console.log("Première tentative échouée, réessai...");
+                  await new Promise(resolve => setTimeout(resolve, 1500));
                   continue;
                 }
                 setFormError('Le service d\'authentification est momentanément indisponible. Veuillez réessayer dans quelques instants.');
-                setIsLoading(false);
-                return;
-              } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
-                setFormError('Problème de connexion au serveur. Vérifiez votre connexion et réessayez.');
                 setIsLoading(false);
                 return;
               } else {
@@ -77,8 +73,6 @@ export const useLoginSubmit = () => {
               return;
             }
             
-            console.log("Connexion réussie pour:", email);
-            
             // Enregistrer l'email pour la prochaine connexion
             localStorage.setItem('last_logged_in_email', email);
             
@@ -89,15 +83,18 @@ export const useLoginSubmit = () => {
               variant: "default"
             });
             
-            // Redirection vers le tableau de bord
+            // Redirection vers le tableau de bord avec rafraîchissement complet
             setTimeout(() => {
               window.location.href = '/dashboard';
             }, 1000);
             
-            // Connexion réussie, sortir de la boucle
-            break;
-          } catch (innerError) {
-            console.error(`Erreur lors de la tentative ${attempt + 1}:`, innerError);
+            return;
+          } catch (innerError: any) {
+            if (innerError.name === 'AbortError') {
+              setFormError("Le serveur met trop de temps à répondre. Veuillez réessayer.");
+              setIsLoading(false);
+              return;
+            }
             
             if (attempt === 1) {
               setFormError("Le service d'authentification est temporairement indisponible. Veuillez réessayer plus tard.");
@@ -106,7 +103,7 @@ export const useLoginSubmit = () => {
             }
             
             // Attendre avant de réessayer
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 1500));
           }
         }
       } catch (abortError) {
