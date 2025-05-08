@@ -19,11 +19,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     storage: typeof window !== 'undefined' ? localStorage : undefined,
     flowType: 'pkce',
-    cookieOptions: {
-      domain: isCustomDomain() ? '.streamgenius.io' : undefined,
-      secure: true,
-      sameSite: 'lax',
-    }
   },
   global: {
     headers: {
