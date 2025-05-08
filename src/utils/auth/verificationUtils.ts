@@ -1,5 +1,5 @@
 
-import { supabase, isProductionEnvironment } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Vérifier la connectivité réseau et l'accès à Supabase
@@ -25,9 +25,6 @@ export const verifyAuth = async (): Promise<boolean> => {
       console.log("Réseau non disponible");
       return false;
     }
-    
-    // Détection de l'environnement
-    const isProduction = isProductionEnvironment();
     
     // Vérifier localStorage
     const storageKey = 'sb-cfjibduhagxiwqkiyhqd-auth-token';

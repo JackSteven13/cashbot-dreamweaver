@@ -48,7 +48,7 @@ export const useLoginSubmit = () => {
       const timeoutId = setTimeout(() => controller.abort(), loginTimeout);
       
       try {
-        // Utilisation de l'API de base pour la connexion avec un signal d'abandon
+        // Utilisation de l'API de base pour la connexion sans options obsolètes
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,

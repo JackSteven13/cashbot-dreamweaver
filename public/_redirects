@@ -1,34 +1,4 @@
 
-# Force HTTPS
-http://*  https://:splat 301!
-
-# Redirection prioritaire .fr vers .io
-https://streamgenius.fr/* https://streamgenius.io/:splat 301!
-https://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
-
-# Redirection www vers non-www
-https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
-
-# Correction des redirections d'authentification Supabase
-/auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200!
-/rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200!
-/storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200!
-
-# Routes critiques d'authentification
-/auth/callback/* /index.html 200!
-/auth/* /index.html 200!
-/login/* /index.html 200!
-/login /index.html 200!
-/register /index.html 200!
-
-# Pages principales de l'application
-/dashboard/* /index.html 200!
-/dashboard /index.html 200!
-
-# Routes de fallback pour l'API Supabase
-/.supabase/* https://cfjibduhagxiwqkiyhqd.supabase.co/:splat 200
-/.rest/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/:splat 200
-/.auth/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/:splat 200
-
-# SPA fallback pour toutes les autres routes
-/* /index.html 200
+/*  /index.html  200
+/login  /index.html  200
+/dashboard/*  /index.html  200

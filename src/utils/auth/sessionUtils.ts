@@ -11,7 +11,7 @@ export const forceSignOut = async (): Promise<void> => {
     // Nettoyer toutes les données d'authentification pour éviter les conflits
     clearStoredAuthData();
     
-    // Déconnecter via l'API Supabase 
+    // Déconnecter via l'API Supabase - sans options obsolètes
     await supabase.auth.signOut();
     
     // Deuxième nettoyage après la déconnexion

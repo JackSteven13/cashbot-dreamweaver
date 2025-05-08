@@ -14,7 +14,8 @@ const AuthCleanup = () => {
         
         // 2. Déconnexion explicite
         try {
-          await supabase.auth.signOut({ scope: 'global' });
+          // Utiliser signOut sans options obsolètes pour éviter les avertissements de dépréciation
+          await supabase.auth.signOut();
         } catch (e) {
           console.error("Erreur lors de la déconnexion explicite:", e);
         }
