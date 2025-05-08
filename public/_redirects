@@ -9,14 +9,13 @@ https://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
 # Redirection www vers non-www
 https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
-# Correction critique des redirections d'authentification Supabase
+# Correction des redirections d'authentification Supabase
 /auth/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/:splat 200!
 /rest/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/:splat 200!
 /storage/v1/* https://cfjibduhagxiwqkiyhqd.supabase.co/storage/v1/:splat 200!
 
-# Routes critiques d'authentification - avec renforcement des priorités
-/auth/callback https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/callback 200!
-/auth/callback/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/v1/callback 200!
+# Routes critiques d'authentification
+/auth/callback/* /index.html 200!
 /auth/* /index.html 200!
 /login/* /index.html 200!
 /login /index.html 200!
@@ -26,7 +25,7 @@ https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 /dashboard/* /index.html 200!
 /dashboard /index.html 200!
 
-# Routes de fallback sécurisées pour l'API Supabase
+# Routes de fallback pour l'API Supabase
 /.supabase/* https://cfjibduhagxiwqkiyhqd.supabase.co/:splat 200
 /.rest/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/:splat 200
 /.auth/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/:splat 200

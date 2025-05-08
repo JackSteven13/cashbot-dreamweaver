@@ -22,20 +22,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Variable pour suivre si le composant est toujours monté
+    // Marquer ce composant comme monté
     let mounted = true;
     
     // Configuration de l'écouteur d'authentification en premier
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (mounted) {
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            console.log(`Événement d'authentification détecté: ${event}`);
-          } else if (event === 'SIGNED_OUT') {
-            console.log('Déconnexion détectée, mise à jour de l\'état');
-          }
-          
-          // Mise à jour synchrone du state
+          console.log(`Événement d'authentification: ${event}`);
           setUser(session?.user ?? null);
           setIsLoading(false);
         }
@@ -45,9 +39,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Vérification initiale de la session
     const checkSession = async () => {
       try {
-        // Attente courte pour éviter les conditions de course potentielles
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -62,19 +53,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
       } catch (error) {
         console.error('Exception lors de la récupération de la session:', error);
-        if (mounted) {
-          setIsLoading(false);
-        }
+        if (mounted) setIsLoading(false);
       }
     };
     
-    // Démarrer la vérification de session
+    // Lancer la vérification de session
     checkSession();
     
     // Nettoyage à la destruction du composant
     return () => {
       mounted = false;
-      if (subscription) subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
