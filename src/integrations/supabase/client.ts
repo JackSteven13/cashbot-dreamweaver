@@ -5,16 +5,28 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
-// Client Supabase avec configuration optimisée
+// Client Supabase avec configuration optimisée pour le domaine personnalisé
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
     storage: typeof window !== 'undefined' ? localStorage : undefined,
-    flowType: 'pkce'
+    flowType: 'pkce',
+    // Ajouter support pour le domaine personnalisé streamgenius.io
+    cookieOptions: {
+      domain: isCustomDomain() ? '.streamgenius.io' : undefined,
+      secure: true,
+      sameSite: 'lax'
+    }
   }
 });
+
+// Fonction pour détecter si nous sommes sur le domaine personnalisé
+function isCustomDomain() {
+  return typeof window !== 'undefined' && 
+         window.location.hostname.includes('streamgenius.io');
+}
 
 // Fonction de nettoyage radical des données d'authentification
 export const clearStoredAuthData = () => {
@@ -37,9 +49,16 @@ export const clearStoredAuthData = () => {
       }
     });
     
-    // Nettoyer les cookies liés à l'authentification
-    document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    // Nettoyer les cookies liés à l'authentification pour les deux domaines possibles
+    const domains = ['.streamgenius.io', window.location.hostname];
+    const paths = ['/', '/auth', '/login'];
+    
+    domains.forEach(domain => {
+      paths.forEach(path => {
+        document.cookie = `sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain};`;
+        document.cookie = `sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain};`;
+      });
+    });
     
     return true;
   } catch (err) {

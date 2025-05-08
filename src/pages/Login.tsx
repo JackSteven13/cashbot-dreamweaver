@@ -31,6 +31,11 @@ const Login = () => {
         if (hasAuthParams) {
           window.history.replaceState(null, document.title, window.location.pathname);
         }
+        
+        // Vérifier si on est sur le domaine personnalisé
+        if (window.location.hostname.includes('streamgenius.io')) {
+          console.log("Domaine personnalisé détecté");
+        }
       } catch (err) {
         console.log("Erreur lors de l'initialisation:", err);
       }

@@ -8,6 +8,7 @@
   Access-Control-Allow-Origin: *
   Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
   Access-Control-Allow-Headers: Authorization, X-Client-Info, apikey, content-type, X-Supabase, Range, x-supabase-auth
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 
 /auth/*
   Access-Control-Allow-Origin: *

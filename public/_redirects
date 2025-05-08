@@ -22,7 +22,7 @@ https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 /dashboard/* /index.html 200!
 /dashboard /index.html 200!
 
-# Redirections pour les API Supabase
+# Redirections pour les API Supabase avec support pour domaine personnalisé
 /.supabase/* https://cfjibduhagxiwqkiyhqd.supabase.co/:splat 200
 /.rest/* https://cfjibduhagxiwqkiyhqd.supabase.co/rest/:splat 200
 /.auth/* https://cfjibduhagxiwqkiyhqd.supabase.co/auth/:splat 200
