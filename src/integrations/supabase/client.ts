@@ -5,6 +5,19 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://cfjibduhagxiwqkiyhqd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4';
 
+// Simple utility to check if we're in production environment
+export const isProductionEnvironment = () => {
+  // Check if we're running in a production environment
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // Consider it production if not localhost, 127.0.0.1 or a direct IP
+    return !['localhost', '127.0.0.1'].includes(hostname) && 
+           !/^192\.168\./.test(hostname) && 
+           !/^10\./.test(hostname);
+  }
+  return false;
+};
+
 // Configuration optimisée et plus robuste du client Supabase
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
