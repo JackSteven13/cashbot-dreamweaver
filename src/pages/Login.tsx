@@ -4,10 +4,12 @@ import Navbar from '@/components/Navbar';
 import LoginContainer from '@/components/auth/login/LoginContainer';
 import { useLoginSession } from '@/components/auth/login/useLoginSession';
 import { clearStoredAuthData, supabase } from "@/integrations/supabase/client";
+import AuthCleanup from '@/components/auth/login/AuthCleanup';
 
 const Login = () => {
   const { lastLoggedInEmail } = useLoginSession();
   const cleanupDone = useRef(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Nettoyage des données d'authentification au chargement de la page
   useEffect(() => {    
@@ -32,13 +34,11 @@ const Login = () => {
           window.history.replaceState(null, document.title, window.location.pathname);
         }
         
-        // Vérifier si on est sur le domaine personnalisé
-        if (window.location.hostname.includes('streamgenius.io')) {
-          console.log("Domaine personnalisé détecté");
-        }
       } catch (err) {
         console.log("Erreur lors de l'initialisation:", err);
       }
+      
+      setIsInitialized(true);
     };
     
     initAuth();
@@ -50,6 +50,9 @@ const Login = () => {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
+      
+      {/* Nettoyage supplémentaire des données d'authentification */}
+      <AuthCleanup />
       
       <main className="flex-1 flex items-center justify-center pt-28 pb-12">
         <LoginContainer lastLoggedInEmail={lastLoggedInEmail} />

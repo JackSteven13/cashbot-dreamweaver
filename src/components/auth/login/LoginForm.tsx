@@ -30,8 +30,23 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     }
 
     // Écouter les changements de connectivité
-    const handleOnline = () => setFormError(null);
-    const handleOffline = () => setFormError('Vous êtes actuellement hors ligne.');
+    const handleOnline = () => {
+      setFormError(null);
+      toast({
+        title: "Connexion rétablie",
+        description: "Vous pouvez maintenant vous connecter",
+        variant: "default"
+      });
+    };
+    
+    const handleOffline = () => {
+      setFormError('Vous êtes actuellement hors ligne.');
+      toast({
+        title: "Connexion perdue",
+        description: "Vérifiez votre connexion internet",
+        variant: "destructive"
+      });
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);

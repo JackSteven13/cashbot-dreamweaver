@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Configuration ultra simplifiée de l'écouteur d'authentification
+    // Configuration de l'écouteur d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null);
@@ -32,9 +32,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     
     // Vérification initiale de la session
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      setUser(data?.session?.user ?? null);
-      setIsLoading(false);
+      try {
+        const { data } = await supabase.auth.getSession();
+        setUser(data?.session?.user ?? null);
+      } catch (error) {
+        console.error('Erreur lors de la récupération de la session:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     checkSession();

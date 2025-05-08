@@ -32,60 +32,77 @@ export const useLoginSubmit = () => {
       // Attendre un instant pour s'assurer que la suppression des tokens est terminée
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Effectuer la connexion avec l'API Supabase avec plus de timeout
-      const { data, error } = await Promise.race([
-        supabase.auth.signInWithPassword({
+      // Configuration du timeout manuel pour la requête
+      const loginTimeout = 20000; // 20 secondes
+      
+      // Création d'un contrôleur d'abandon
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), loginTimeout);
+      
+      try {
+        // Effectuer la connexion avec l'API Supabase
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
-        }),
-        new Promise<{data: null, error: any}>((resolve) => {
-          setTimeout(() => resolve({
-            data: null, 
-            error: { message: 'Délai de connexion expiré. Le serveur met trop de temps à répondre.' }
-          }), 15000); // 15 secondes timeout
-        })
-      ]) as any;
-      
-      if (error) {
-        console.error("Erreur d'authentification:", error);
+        });
         
-        // Afficher un message d'erreur spécifique
-        if (error.message && error.message.includes('Invalid login')) {
-          setFormError('Email ou mot de passe incorrect.');
-        } else if (error.message && (error.message.includes('network') || error.message.includes('fetch') || error.message.includes('Délai'))) {
-          setFormError('Problème de connexion au serveur. Vérifiez votre connexion et réessayez.');
-        } else {
-          setFormError(error.message || 'Échec de connexion');
+        // Nettoyer le timeout
+        clearTimeout(timeoutId);
+        
+        if (error) {
+          console.error("Erreur d'authentification:", error);
+          
+          // Afficher un message d'erreur spécifique
+          if (error.message && error.message.includes('Invalid login')) {
+            setFormError('Email ou mot de passe incorrect.');
+          } else if (error.message && (error.message.includes('network') || error.message.includes('fetch'))) {
+            setFormError('Problème de connexion au serveur. Vérifiez votre connexion et réessayez.');
+          } else {
+            setFormError(error.message || 'Échec de connexion');
+          }
+          
+          setIsLoading(false);
+          return;
         }
         
-        setIsLoading(false);
-        return;
+        if (!data?.session) {
+          console.error("Pas de session après connexion réussie");
+          setFormError('Impossible de créer une session. Veuillez réessayer.');
+          setIsLoading(false);
+          return;
+        }
+        
+        // Vérifier que la session contient un utilisateur valide
+        if (data.session && data.session.user) {
+          console.log("Connexion réussie pour:", email);
+          
+          // Enregistrer l'email pour la prochaine connexion
+          localStorage.setItem('last_logged_in_email', email);
+          
+          // Attendre un court instant pour s'assurer que la session est bien enregistrée
+          setTimeout(() => {
+            // Redirection vers le tableau de bord
+            window.location.href = '/dashboard';
+          }, 800);
+          
+          return;
+        }
+        
+        setFormError('Erreur inattendue. Veuillez réessayer ou contacter le support.');
+      } catch (fetchError) {
+        // Nettoyer le timeout
+        clearTimeout(timeoutId);
+        
+        console.error("Erreur fetch:", fetchError);
+        
+        // Gestion spécifique des erreurs d'abandon
+        if (fetchError.name === 'AbortError') {
+          setFormError('La connexion a pris trop de temps. Veuillez réessayer.');
+        } else {
+          setFormError('Problème de connexion au serveur. Vérifiez votre connexion et réessayer.');
+        }
       }
       
-      if (!data?.session) {
-        console.error("Pas de session après connexion réussie");
-        setFormError('Impossible de créer une session. Veuillez réessayer.');
-        setIsLoading(false);
-        return;
-      }
-      
-      // Vérifier que la session contient un utilisateur valide
-      if (data.session && data.session.user) {
-        console.log("Connexion réussie pour:", email);
-        
-        // Enregistrer l'email pour la prochaine connexion
-        localStorage.setItem('last_logged_in_email', email);
-        
-        // Attendre un court instant pour s'assurer que la session est bien enregistrée
-        setTimeout(() => {
-          // Redirection vers le tableau de bord
-          window.location.href = '/dashboard';
-        }, 800);
-        
-        return;
-      }
-      
-      setFormError('Erreur inattendue. Veuillez réessayer ou contacter le support.');
       setIsLoading(false);
     } catch (error) {
       console.error("Erreur complète:", error);
