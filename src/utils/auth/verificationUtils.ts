@@ -15,7 +15,7 @@ const checkNetworkConnectivity = async (): Promise<boolean> => {
 };
 
 /**
- * Vérifie si l'utilisateur est authentifié
+ * Vérifie si l'utilisateur est authentifié avec une gestion améliorée des erreurs de serveur
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
@@ -35,20 +35,47 @@ export const verifyAuth = async (): Promise<boolean> => {
       return false;
     }
     
-    // Récupérer la session avec un timeout court
-    const { data, error } = await supabase.auth.getSession();
-    
-    if (error) {
-      console.error("Erreur lors de la vérification d'authentification:", error);
+    // Récupérer la session avec un timeout et une gestion des erreurs améliorée
+    try {
+      // Utiliser un court timeout avec AbortController pour éviter les attentes infinies
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 secondes max
+      
+      const { data, error } = await supabase.auth.getSession();
+      
+      clearTimeout(timeoutId);
+      
+      if (error) {
+        // Vérifier spécifiquement les erreurs de connexion serveur
+        if (error.message?.includes('Server closed') || 
+            error.message?.includes('Failed to fetch') ||
+            error.message?.includes('Network') ||
+            error.message?.includes('ECONNREFUSED')) {
+          console.error("Erreur de connexion au serveur Supabase:", error);
+          return false;
+        }
+        
+        console.error("Erreur lors de la vérification d'authentification:", error);
+        return false;
+      }
+      
+      if (!data || !data.session) {
+        console.log("Aucune session trouvée");
+        return false;
+      }
+      
+      return true;
+    } catch (error: any) {
+      // Gestion spécifique des erreurs d'abandon et de connexion
+      if (error.name === 'AbortError') {
+        console.error("Délai d'attente dépassé lors de la vérification de session");
+      } else if (error.message?.includes('Failed to fetch') || error.message?.includes('Network')) {
+        console.error("Problème de connexion au serveur Supabase:", error);
+      } else {
+        console.error("Exception lors de la vérification d'authentification:", error);
+      }
       return false;
     }
-    
-    if (!data || !data.session) {
-      console.log("Aucune session trouvée");
-      return false;
-    }
-    
-    return true;
   } catch (error) {
     console.error("Exception lors de la vérification d'authentification:", error);
     return false;

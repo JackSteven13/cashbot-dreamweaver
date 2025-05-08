@@ -27,12 +27,12 @@ export const useLoginSubmit = () => {
         return;
       }
       
-      // Tester la connexion à Supabase
+      // Tester la connexion à Supabase de manière robuste
       console.log("Vérification de la connexion à Supabase...");
       const isSupabaseOnline = await testSupabaseConnection();
       
       if (!isSupabaseOnline) {
-        setFormError('Le serveur est actuellement inaccessible. Veuillez réessayer dans quelques instants.');
+        setFormError('Le service Supabase est actuellement inaccessible. Veuillez réessayer dans quelques instants.');
         setIsLoading(false);
         return;
       }
@@ -60,10 +60,12 @@ export const useLoginSubmit = () => {
         if (error) {
           console.error("Erreur d'authentification:", error);
           
-          // Afficher un message d'erreur spécifique
-          if (error.message && error.message.includes('Invalid login')) {
+          // Messages d'erreur spécifiques pour les différents types d'erreurs
+          if (error.message?.includes('Invalid login')) {
             setFormError('Email ou mot de passe incorrect.');
-          } else if (error.message && (error.message.includes('network') || error.message.includes('fetch'))) {
+          } else if (error.message?.includes('Server closed') || error.message?.includes('Connection')) {
+            setFormError('Le service d\'authentification est momentanément indisponible. Veuillez réessayer dans quelques instants.');
+          } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
             setFormError('Problème de connexion au serveur. Vérifiez votre connexion et réessayez.');
           } else {
             setFormError(error.message || 'Échec de connexion');
@@ -105,9 +107,11 @@ export const useLoginSubmit = () => {
         
         console.error("Erreur fetch:", fetchError);
         
-        // Gestion spécifique des erreurs d'abandon
-        if (fetchError.name === 'AbortError') {
-          setFormError('La connexion a pris trop de temps. Le serveur peut être surchargé. Veuillez réessayer.');
+        // Gestion spécifique des erreurs liées au serveur fermé
+        if (fetchError.message?.includes('Server closed') || 
+            fetchError.message?.includes('Connection') || 
+            fetchError.name === 'AbortError') {
+          setFormError('La connexion au service d\'authentification a échoué ou a pris trop de temps. Veuillez réessayer.');
         } else {
           setFormError('Problème de connexion au serveur. Vérifiez votre connexion et réessayez.');
         }

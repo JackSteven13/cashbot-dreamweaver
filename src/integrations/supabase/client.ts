@@ -45,11 +45,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
           
           return response;
         } catch (error: any) {
+          // Gestion spécifique des erreurs "Server closed"
+          const isServerClosedError = error.message?.includes('Server closed') || 
+                                      error.message?.includes('Failed to fetch');
+          
           // Si ce n'est pas une erreur d'abandon volontaire et qu'on n'a pas dépassé le nombre de tentatives
           if (error.name !== 'AbortError' && attempt < maxAttempts) {
             console.log(`Tentative de reconnexion (${attempt}/${maxAttempts})...`);
-            // Attendre un peu avant de réessayer (backoff exponentiel)
-            await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt), 8000)));
+            // Attendre un peu plus longtemps en cas d'erreur "Server closed" (backoff exponentiel)
+            const backoffTime = isServerClosedError ? 
+                               Math.min(2000 * Math.pow(2, attempt), 10000) : 
+                               Math.min(1000 * Math.pow(2, attempt), 8000);
+            
+            await new Promise(resolve => setTimeout(resolve, backoffTime));
             return customFetch(attempt + 1, maxAttempts);
           }
           throw error;
@@ -110,25 +118,56 @@ export const hasInternetConnection = () => {
   return typeof navigator !== 'undefined' && navigator.onLine;
 };
 
-// Fonction pour tester la connexion à Supabase
+// Fonction pour tester la connexion à Supabase avec gestion robuste des erreurs "Server closed"
 export const testSupabaseConnection = async () => {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
     
-    // Utilisation d'un endpoint simple pour vérifier la connexion
-    const response = await fetch(`${supabaseUrl}/rest/v1/?apikey=${supabaseAnonKey}`, {
-      method: 'HEAD', // HEAD request est plus léger qu'un GET
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseAnonKey,
-        'Cache-Control': 'no-cache, no-store'
+    // Utiliser un endpoint simple avec plusieurs tentatives
+    const testConnection = async (attempt = 1, maxAttempts = 3) => {
+      try {
+        // Utilisation d'un endpoint simple pour vérifier la connexion
+        const response = await fetch(`${supabaseUrl}/rest/v1/?apikey=${supabaseAnonKey}`, {
+          method: 'HEAD', // HEAD request est plus léger qu'un GET
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseAnonKey,
+            'Cache-Control': 'no-cache, no-store'
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        return response.ok;
+      } catch (error: any) {
+        // Ne pas réessayer si c'est une annulation délibérée
+        if (error.name === 'AbortError') {
+          console.error("Connection test timeout");
+          return false;
+        }
+        
+        // Gestion spécifique des erreurs "Server closed"
+        const isServerClosedError = error.message?.includes('Server closed') || 
+                                    error.message?.includes('Failed to fetch');
+        
+        if (attempt < maxAttempts) {
+          // Attendre plus longtemps en cas d'erreur de serveur fermé
+          const backoffTime = isServerClosedError ? 
+                             Math.min(2000 * Math.pow(2, attempt), 10000) : 
+                             Math.min(1000 * Math.pow(2, attempt), 5000);
+          
+          console.log(`Nouvelle tentative de connexion (${attempt}/${maxAttempts}) après ${backoffTime}ms`);
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+          return testConnection(attempt + 1, maxAttempts);
+        }
+        
+        console.error("Erreur lors du test de connexion à Supabase:", error);
+        return false;
       }
-    });
+    };
     
-    clearTimeout(timeoutId);
-    return response.ok;
+    return await testConnection();
   } catch (error) {
     console.error("Erreur lors du test de connexion à Supabase:", error);
     return false;
