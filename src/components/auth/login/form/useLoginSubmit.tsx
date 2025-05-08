@@ -30,7 +30,7 @@ export const useLoginSubmit = () => {
       console.log("Tentative de connexion à Supabase...");
       
       // Attendre un instant pour s'assurer que la suppression des tokens est terminée
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Effectuer la connexion avec l'API Supabase avec plus de timeout
       const { data, error } = await Promise.race([

@@ -11,20 +11,20 @@ function isCustomDomain() {
          window.location.hostname.includes('streamgenius.io');
 }
 
-// Client Supabase avec configuration compatible
+// Instance unique du client Supabase avec configuration correcte
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
     storage: typeof window !== 'undefined' ? localStorage : undefined,
-    flowType: 'pkce',
+    flowType: 'pkce'
   },
   global: {
     headers: {
-      'X-Custom-Domain': isCustomDomain() ? 'streamgenius.io' : undefined,
-    },
-  },
+      'X-Custom-Domain': isCustomDomain() ? 'streamgenius.io' : undefined
+    }
+  }
 });
 
 // Fonction de nettoyage radical des données d'authentification
