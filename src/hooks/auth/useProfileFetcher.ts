@@ -1,6 +1,5 @@
-
 import { useState, useCallback } from 'react';
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface UseProfileFetcherResult {
   username: string | null;

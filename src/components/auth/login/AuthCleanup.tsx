@@ -1,6 +1,6 @@
 
 import { useEffect } from 'react';
-import { clearStoredAuthData, supabase } from '@/lib/supabase';
+import { clearStoredAuthData, supabase } from '@/integrations/supabase/client';
 
 const AuthCleanup = () => {
   // Nettoyer les données d'authentification

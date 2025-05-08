@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, Sparkles, Zap, Crown } from 'lucide-react';
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SubscriptionStatusIndicatorProps {
   isLoading: boolean;

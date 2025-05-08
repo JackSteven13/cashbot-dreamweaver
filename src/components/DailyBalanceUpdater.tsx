@@ -2,7 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import balanceManager from '@/utils/balance/balanceManager';
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { UserData } from '@/types/userData';
 import { SUBSCRIPTION_LIMITS } from '@/utils/subscription';
 
