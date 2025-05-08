@@ -1,7 +1,7 @@
 
 import * as React from 'react';
 import { toast } from '@/hooks/use-toast';
-import { supabase, clearStoredAuthData, testSupabaseConnection } from "@/integrations/supabase/client";
+import { supabase, clearStoredAuthData, testSupabaseConnection, hasInternetConnection } from "@/integrations/supabase/client";
 
 export const useLoginSubmit = () => {
   const handleSubmit = async (
@@ -21,7 +21,7 @@ export const useLoginSubmit = () => {
       clearStoredAuthData();
       
       // Vérifier d'abord la connexion réseau
-      if (!navigator.onLine) {
+      if (!hasInternetConnection()) {
         setFormError('Pas de connexion internet. Vérifiez votre connexion et réessayez.');
         setIsLoading(false);
         return;
@@ -44,11 +44,11 @@ export const useLoginSubmit = () => {
       
       // Configuration du timeout manuel et du système d'annulation
       const controller = new AbortController();
-      const loginTimeout = 15000; // 15 secondes
+      const loginTimeout = 20000; // 20 secondes
       const timeoutId = setTimeout(() => controller.abort(), loginTimeout);
       
       try {
-        // Utilisation de l'API de base pour la connexion
+        // Utilisation de l'API de base pour la connexion avec un signal d'abandon
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,

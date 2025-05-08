@@ -28,17 +28,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     fetch: (url, options) => {
-      // Configuration avec timeout plus court
+      // Configuration avec timeout plus long pour les environnements instables
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 secondes
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondes
       
-      const customFetch = async (attempt = 1, maxAttempts = 2) => {
+      const customFetch = async (attempt = 1, maxAttempts = 3) => {
         try {
           const response = await fetch(url, {
             ...options,
             signal: controller.signal,
             headers: {
               ...options?.headers,
+              'Cache-Control': 'no-cache, no-store'
             }
           });
           
@@ -47,8 +48,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
           // Si ce n'est pas une erreur d'abandon volontaire et qu'on n'a pas dépassé le nombre de tentatives
           if (error.name !== 'AbortError' && attempt < maxAttempts) {
             console.log(`Tentative de reconnexion (${attempt}/${maxAttempts})...`);
-            // Attendre un peu avant de réessayer (backoff linéaire simple)
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Attendre un peu avant de réessayer (backoff exponentiel)
+            await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt), 8000)));
             return customFetch(attempt + 1, maxAttempts);
           }
           throw error;
@@ -106,21 +107,23 @@ export const clearStoredAuthData = () => {
 
 // Fonction utilitaire pour vérifier la connexion internet
 export const hasInternetConnection = () => {
-  return navigator.onLine;
+  return typeof navigator !== 'undefined' && navigator.onLine;
 };
 
 // Fonction pour tester la connexion à Supabase
 export const testSupabaseConnection = async () => {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     
+    // Utilisation d'un endpoint simple pour vérifier la connexion
     const response = await fetch(`${supabaseUrl}/rest/v1/?apikey=${supabaseAnonKey}`, {
-      method: 'GET',
+      method: 'HEAD', // HEAD request est plus léger qu'un GET
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        'apikey': supabaseAnonKey
+        'apikey': supabaseAnonKey,
+        'Cache-Control': 'no-cache, no-store'
       }
     });
     
@@ -128,6 +131,28 @@ export const testSupabaseConnection = async () => {
     return response.ok;
   } catch (error) {
     console.error("Erreur lors du test de connexion à Supabase:", error);
+    return false;
+  }
+};
+
+// Fonction pour vérifier et rafraîchir un token si nécessaire
+export const checkAndRefreshSession = async () => {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error("Erreur lors de la récupération de la session:", error);
+      return false;
+    }
+    
+    if (!data.session) {
+      console.log("Pas de session active");
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error("Exception lors de la vérification de la session:", err);
     return false;
   }
 };
