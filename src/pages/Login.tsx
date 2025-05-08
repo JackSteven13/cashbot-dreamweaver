@@ -15,18 +15,12 @@ const Login = () => {
       if (cleanupDone.current) return;
       cleanupDone.current = true;
       
-      console.log("Initialisation de l'authentification...");
-      
       // Nettoyage complet des données d'authentification
       clearStoredAuthData();
       
       // Tentative de déconnexion pour s'assurer d'un état propre
       try {
-        await supabase.auth.signOut({ scope: 'global' });
-        console.log("Déconnexion effectuée avec succès");
-        
-        // Second nettoyage après la déconnexion pour être certain
-        clearStoredAuthData();
+        await supabase.auth.signOut();
         
         // Vérifier si l'URL contient un token ou hash d'authentification
         const hasAuthParams = window.location.hash.includes('access_token') || 

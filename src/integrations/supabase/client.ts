@@ -13,11 +13,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     storage: typeof window !== 'undefined' ? localStorage : undefined,
     flowType: 'pkce'
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'streamgenius-app'
-    }
   }
 });
 
@@ -42,22 +37,9 @@ export const clearStoredAuthData = () => {
       }
     });
     
-    // Nettoyer les cookies liés à l'authentification - approche plus complète
-    document.cookie.split(';').forEach(cookie => {
-      const [name] = cookie.trim().split('=');
-      if (name && (name.includes('sb-') || name.includes('supabase'))) {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}; secure; SameSite=None`;
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-      }
-    });
-    
-    // Force également la déconnexion via les événements de stockage
-    try {
-      window.sessionStorage.clear();
-    } catch (e) {
-      console.warn("Impossible d'accéder à sessionStorage:", e);
-    }
+    // Nettoyer les cookies liés à l'authentification
+    document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
     return true;
   } catch (err) {

@@ -27,76 +27,31 @@ export const useLoginSubmit = () => {
         return;
       }
       
-      // Attendre un court instant pour s'assurer que le nettoyage est effectué
-      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log("Tentative de connexion à Supabase...");
       
-      console.log("Tentative de déconnexion préalable...");
-      // Effectuer la déconnexion pour s'assurer qu'il n'y a pas de session active
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-        console.log("Déconnexion préalable effectuée");
-      } catch (signOutErr) {
-        console.log("Erreur lors de la déconnexion préalable:", signOutErr);
-        // Continuer même en cas d'échec
-      }
+      // Effectuer la connexion avec l'API Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
       
-      // Attendre un court instant après la déconnexion
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Système de tentatives multiples
-      let attempts = 0;
-      const maxAttempts = 3; // Nombre maximum d'essais
-      let authResult = null;
-      let authError = null;
-      
-      while (attempts < maxAttempts) {
-        try {
-          console.log(`Tentative de connexion ${attempts + 1}/${maxAttempts}`);
-          
-          // Tentative de connexion avec l'API Supabase
-          const result = await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password,
-          });
-          
-          authResult = result.data;
-          authError = result.error;
-          
-          // Si pas d'erreur, sortir de la boucle
-          if (!authError) break;
-          
-          // Si erreur, attendre avant nouvelle tentative
-          console.error(`Erreur tentative ${attempts + 1}:`, authError);
-          
-          // Nettoyage entre les tentatives
-          clearStoredAuthData();
-          
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          attempts++;
-        } catch (error) {
-          console.error(`Exception tentative ${attempts + 1}:`, error);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          attempts++;
-        }
-      }
-      
-      if (authError) {
-        console.error("Erreur d'authentification après plusieurs tentatives:", authError);
+      if (error) {
+        console.error("Erreur d'authentification:", error);
         
         // Afficher un message d'erreur spécifique
-        if (authError.message && authError.message.includes('Invalid login')) {
+        if (error.message && error.message.includes('Invalid login')) {
           setFormError('Email ou mot de passe incorrect.');
-        } else if (authError.message && (authError.message.includes('network') || authError.message.includes('fetch'))) {
+        } else if (error.message && (error.message.includes('network') || error.message.includes('fetch'))) {
           setFormError('Problème de connexion au serveur. Vérifiez votre connexion et réessayez.');
         } else {
-          setFormError(authError.message || 'Échec de connexion');
+          setFormError(error.message || 'Échec de connexion');
         }
         
         setIsLoading(false);
         return;
       }
       
-      if (!authResult?.session) {
+      if (!data?.session) {
         console.error("Pas de session après connexion réussie");
         setFormError('Impossible de créer une session. Veuillez réessayer.');
         setIsLoading(false);
@@ -104,7 +59,7 @@ export const useLoginSubmit = () => {
       }
       
       // Vérifier que la session contient un utilisateur valide
-      if (authResult.session && authResult.session.user) {
+      if (data.session && data.session.user) {
         console.log("Connexion réussie pour:", email);
         
         // Enregistrer l'email pour la prochaine connexion
