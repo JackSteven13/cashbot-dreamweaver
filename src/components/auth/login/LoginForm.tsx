@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LoginButton, LoginFields, useLoginSubmit } from './form';
-import { clearStoredAuthData, hasInternetConnection } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { clearStoredAuthData } from "@/integrations/supabase/client";
 
 interface LoginFormProps {
   lastLoggedInEmail: string | null;
@@ -14,7 +13,6 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [connectionAttempts, setConnectionAttempts] = useState(0);
   
   // Hook personnalisé pour gérer la soumission
   const { handleSubmit } = useLoginSubmit();
@@ -25,27 +23,17 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     clearStoredAuthData();
     
     // Vérifier si l'utilisateur est en ligne
-    if (!hasInternetConnection()) {
+    if (!navigator.onLine) {
       setFormError('Vous semblez être hors ligne. Vérifiez votre connexion internet.');
     }
 
     // Écouter les changements de connectivité
     const handleOnline = () => {
       setFormError(null);
-      toast({
-        title: "Connexion rétablie",
-        description: "Vous pouvez maintenant vous connecter",
-        variant: "default"
-      });
     };
     
     const handleOffline = () => {
       setFormError('Vous êtes actuellement hors ligne.');
-      toast({
-        title: "Connexion perdue",
-        description: "Vérifiez votre connexion internet",
-        variant: "destructive"
-      });
     };
 
     window.addEventListener('online', handleOnline);
@@ -74,18 +62,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    setConnectionAttempts(prev => prev + 1);
-    
     if (validateForm()) {
-      // Si plusieurs tentatives échouées, informer l'utilisateur
-      if (connectionAttempts >= 3) {
-        toast({
-          title: "Plusieurs tentatives détectées",
-          description: "Nous allons essayer de vous connecter avec un délai plus long",
-          variant: "default"
-        });
-      }
-      
       handleSubmit(e, email, password, setIsLoading, setFormError);
     }
   };
