@@ -56,7 +56,7 @@ export const useLoginSubmit = () => {
       
       // Système de tentatives multiples
       let attempts = 0;
-      const maxAttempts = 2;
+      const maxAttempts = 3; // Augmentation du nombre d'essais
       let authResult = null;
       let authError = null;
       
@@ -78,6 +78,10 @@ export const useLoginSubmit = () => {
           
           // Si erreur, attendre avant nouvelle tentative
           console.error(`Erreur tentative ${attempts + 1}:`, authError);
+          
+          // Nettoyage entre les tentatives
+          clearStoredAuthData();
+          
           await new Promise(resolve => setTimeout(resolve, 1000));
           attempts++;
         } catch (error) {

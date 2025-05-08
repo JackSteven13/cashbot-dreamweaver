@@ -26,18 +26,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache'
-      };
+      } as Record<string, string>;
 
       // Désactiver les caches qui peuvent causer des problèmes
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondes timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 secondes timeout (réduit de 30 à 15)
 
       const fetchPromise = fetch(url, {
         ...options,
         headers,
         // Ne pas utiliser de cache
         cache: 'no-store',
-        credentials: 'same-origin',
+        credentials: 'include',
         signal: options.signal || controller.signal
       });
 
@@ -70,13 +70,22 @@ export const clearStoredAuthData = () => {
       }
     });
     
-    // Nettoyer les cookies liés à l'authentification
+    // Nettoyer les cookies liés à l'authentification - approche plus complète
     document.cookie.split(';').forEach(cookie => {
       const [name] = cookie.trim().split('=');
-      if (name.includes('sb-') || name.includes('supabase')) {
+      if (name && (name.includes('sb-') || name.includes('supabase'))) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}; secure; SameSite=None`;
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
         document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
       }
     });
+    
+    // Force également la déconnexion via les événements de stockage
+    try {
+      window.sessionStorage.clear();
+    } catch (e) {
+      console.warn("Impossible d'accéder à sessionStorage:", e);
+    }
     
     return true;
   } catch (err) {
@@ -96,11 +105,11 @@ export const checkSupabaseConnectivity = async (retryCount = 0): Promise<boolean
     const startTime = Date.now();
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 seconds timeout (réduit)
     
     try {
       const response = await fetch(`${supabaseUrl}/rest/v1/`, {
-        method: 'GET',
+        method: 'OPTIONS',  // Utilise OPTIONS qui est plus léger
         headers: {
           'Content-Type': 'application/json',
           'apikey': supabaseAnonKey,
@@ -108,6 +117,8 @@ export const checkSupabaseConnectivity = async (retryCount = 0): Promise<boolean
           'Pragma': 'no-cache'
         },
         cache: 'no-store',
+        credentials: 'omit', // Pas besoin de cookies pour ce test
+        mode: 'cors',
         signal: controller.signal
       });
       
@@ -115,12 +126,12 @@ export const checkSupabaseConnectivity = async (retryCount = 0): Promise<boolean
       const endTime = Date.now();
       
       // Si la requête prend trop de temps, considérer comme un problème de connectivité
-      if (endTime - startTime > 5000) {
+      if (endTime - startTime > 3000) {
         console.warn("La connexion à Supabase est lente");
-        return false;
+        return true; // On retourne quand même true pour ne pas bloquer
       }
       
-      return response.status !== 404; // Tout statut autre que 404 indique que l'API est accessible
+      return response.ok || response.status === 204; // OPTIONS retourne généralement 204
     } catch (innerErr) {
       clearTimeout(timeoutId);
       console.error("Erreur lors du test de connectivité:", innerErr);
@@ -128,7 +139,7 @@ export const checkSupabaseConnectivity = async (retryCount = 0): Promise<boolean
       // Tenter à nouveau avec un délai exponentiel
       if (retryCount < 3) {
         console.log(`Nouvelle tentative de connexion (${retryCount + 1}/3)...`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+        await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, retryCount)));
         return await checkSupabaseConnectivity(retryCount + 1);
       }
       
