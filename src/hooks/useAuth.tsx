@@ -22,12 +22,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
+    // Variable pour suivre si le composant est toujours monté
     let mounted = true;
     
     // Configuration de l'écouteur d'authentification en premier
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         if (mounted) {
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            console.log(`Événement d'authentification détecté: ${event}`);
+          } else if (event === 'SIGNED_OUT') {
+            console.log('Déconnexion détectée, mise à jour de l\'état');
+          }
+          
+          // Mise à jour synchrone du state
           setUser(session?.user ?? null);
           setIsLoading(false);
         }
@@ -37,26 +45,36 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Vérification initiale de la session
     const checkSession = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        // Attente courte pour éviter les conditions de course potentielles
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Erreur lors de la récupération de la session:', error);
+          if (mounted) setIsLoading(false);
+          return;
+        }
         
         if (mounted) {
           setUser(data?.session?.user ?? null);
           setIsLoading(false);
         }
       } catch (error) {
-        console.error('Erreur lors de la récupération de la session:', error);
+        console.error('Exception lors de la récupération de la session:', error);
         if (mounted) {
           setIsLoading(false);
         }
       }
     };
     
+    // Démarrer la vérification de session
     checkSession();
     
-    // Nettoyage
+    // Nettoyage à la destruction du composant
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      if (subscription) subscription.unsubscribe();
     };
   }, []);
 

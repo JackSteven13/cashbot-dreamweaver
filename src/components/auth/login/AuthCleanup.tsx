@@ -1,6 +1,6 @@
 
 import { useEffect } from 'react';
-import { clearStoredAuthData, supabase } from '@/integrations/supabase/client';
+import { clearStoredAuthData, supabase, testSupabaseConnection } from '@/integrations/supabase/client';
 
 const AuthCleanup = () => {
   // Nettoyer les données d'authentification de façon agressive
@@ -10,25 +10,26 @@ const AuthCleanup = () => {
     // Fonction de nettoyage approfondi
     const performCleanup = async () => {
       try {
-        // 1. Déconnexion globale explicite
+        // 1. Vérifier la connectivité avec Supabase
+        const isConnected = await testSupabaseConnection();
+        
+        if (!isConnected) {
+          console.warn("Impossible de se connecter à Supabase, les données seront nettoyées localement uniquement");
+          clearStoredAuthData();
+          return;
+        }
+        
+        // 2. Déconnexion globale explicite
         try {
           await supabase.auth.signOut({ scope: 'global' });
         } catch (e) {
           console.error("Erreur lors de la déconnexion:", e);
         }
         
-        // 2. Nettoyage radical du stockage local après un court délai
+        // 3. Nettoyage radical du stockage local après un court délai
         setTimeout(() => {
           clearStoredAuthData();
-        }, 100);
-        
-        // 3. Effacer également les cookies de session Supabase si possible
-        document.cookie.split(";").forEach((c) => {
-          const cookieName = c.trim().split("=")[0];
-          if (cookieName.includes("sb-") || cookieName.includes("supabase")) {
-            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-          }
-        });
+        }, 200);
         
         // 4. Vérifier l'URL pour les paramètres d'authentification
         if (window.location.hash && 
@@ -39,17 +40,17 @@ const AuthCleanup = () => {
         }
       } catch (err) {
         console.error("Erreur lors du nettoyage complet:", err);
+        // En cas d'erreur, forcer le nettoyage local
+        clearStoredAuthData();
       }
     };
     
-    // Exécuter immédiatement puis réexécuter périodiquement
+    // Exécuter immédiatement
     performCleanup();
     
-    // Réexécuter périodiquement pour garantir un état propre
-    const cleanupInterval = setInterval(performCleanup, 10000);
-    
     return () => {
-      clearInterval(cleanupInterval);
+      // Nettoyage final avant démontage
+      console.log("AuthCleanup: Nettoyage final avant démontage");
     };
   }, []);
 
