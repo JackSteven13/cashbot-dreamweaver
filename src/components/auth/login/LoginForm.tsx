@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LoginButton, LoginFields, useLoginSubmit } from './form';
-import { clearStoredAuthData } from "@/integrations/supabase/client";
+import { clearStoredAuthData, checkSupabaseConnectivity } from "@/integrations/supabase/client";
 
 interface LoginFormProps {
   lastLoggedInEmail: string | null;
@@ -13,6 +13,7 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const formSubmitted = useRef(false);
   
   // Hook personnalisé pour gérer la soumission
   const { handleSubmit } = useLoginSubmit();
@@ -21,6 +22,16 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   useEffect(() => {
     console.log("Nettoyage initial des données d'authentification");
     clearStoredAuthData();
+    
+    // Vérifier la connectivité à Supabase au chargement du formulaire
+    const checkConnectivity = async () => {
+      const isConnected = await checkSupabaseConnectivity();
+      if (!isConnected && !formSubmitted.current) {
+        setFormError("La connexion au serveur n'a pas pu être établie. Veuillez vérifier votre connexion internet.");
+      }
+    };
+    
+    checkConnectivity();
   }, []);
 
   // Vérifier la validité du formulaire avant soumission
@@ -38,7 +49,16 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
   };
 
   const onSubmit = async (e: React.FormEvent) => {
+    formSubmitted.current = true;
+    
     if (validateForm()) {
+      // Si le formulaire est valide, vérifier une dernière fois la connectivité
+      const isConnected = await checkSupabaseConnectivity();
+      if (!isConnected) {
+        setFormError("Impossible de se connecter au serveur. Veuillez vérifier votre connexion internet et réessayer.");
+        return;
+      }
+      
       handleSubmit(e, email, password, setIsLoading, setFormError);
     } else {
       e.preventDefault();

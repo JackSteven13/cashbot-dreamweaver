@@ -1,7 +1,7 @@
 
 import * as React from 'react';
 import { toast } from '@/hooks/use-toast';
-import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
+import { supabase, clearStoredAuthData, checkSupabaseConnectivity } from "@/integrations/supabase/client";
 
 export const useLoginSubmit = () => {
   const handleSubmit = async (
@@ -17,6 +17,9 @@ export const useLoginSubmit = () => {
     try {
       console.log("Tentative de connexion pour:", email);
       
+      // Nettoyer toutes les données d'authentification existantes
+      clearStoredAuthData();
+      
       // Vérifier d'abord la connectivité réseau
       if (!navigator.onLine) {
         setFormError('Pas de connexion internet. Vérifiez votre connexion et réessayez.');
@@ -24,35 +27,21 @@ export const useLoginSubmit = () => {
         return;
       }
       
-      // Nettoyer toutes les données d'authentification existantes
-      clearStoredAuthData();
-      
       // Attendre un court instant pour s'assurer que le nettoyage est effectué
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      try {
-        // Effectuer un test de connectivité à Supabase avant la tentative de connexion
-        const connectionTest = await fetch('https://cfjibduhagxiwqkiyhqd.supabase.co/rest/v1/', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamliZHVoYWd4aXdxa2l5aHFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxMTY1NTMsImV4cCI6MjA1NzY5MjU1M30.QRjnxj3RAjU_-G0PINfmPoOWixu8LTIsZDHcdGIVEg4'
-          }
-        });
-        
-        if (!connectionTest.ok) {
-          console.error("Test de connectivité Supabase échoué:", await connectionTest.text());
-          setFormError("Impossible de se connecter au serveur. Veuillez réessayer plus tard.");
-          setIsLoading(false);
-          return;
-        }
-      } catch (connError) {
-        console.error("Erreur de test de connectivité:", connError);
-        setFormError("Problème de connexion au serveur. Vérifiez votre connexion internet.");
+      // Vérifier la connectivité à Supabase avant de tenter la connexion
+      console.log("Test de connectivité à Supabase...");
+      const isConnected = await checkSupabaseConnectivity();
+      
+      if (!isConnected) {
+        console.error("Problème de connexion au serveur Supabase");
+        setFormError("Impossible de se connecter au serveur. Veuillez réessayer plus tard.");
         setIsLoading(false);
         return;
       }
       
+      console.log("Connectivité Supabase OK, tentative de déconnexion préalable...");
       // Effectuer la déconnexion pour s'assurer qu'il n'y a pas de session active
       try {
         await supabase.auth.signOut({ scope: 'global' });
@@ -63,31 +52,58 @@ export const useLoginSubmit = () => {
       }
       
       // Attendre un court instant après la déconnexion
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Tentative de connexion avec l'API Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      // Système de tentatives multiples
+      let attempts = 0;
+      const maxAttempts = 2;
+      let authResult = null;
+      let authError = null;
       
-      if (error) {
-        console.error("Erreur d'authentification:", error);
+      while (attempts < maxAttempts) {
+        try {
+          console.log(`Tentative de connexion ${attempts + 1}/${maxAttempts}`);
+          
+          // Tentative de connexion avec l'API Supabase
+          const result = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          });
+          
+          authResult = result.data;
+          authError = result.error;
+          
+          // Si pas d'erreur, sortir de la boucle
+          if (!authError) break;
+          
+          // Si erreur, attendre avant nouvelle tentative
+          console.error(`Erreur tentative ${attempts + 1}:`, authError);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          attempts++;
+        } catch (error) {
+          console.error(`Exception tentative ${attempts + 1}:`, error);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          attempts++;
+        }
+      }
+      
+      if (authError) {
+        console.error("Erreur d'authentification après plusieurs tentatives:", authError);
         
         // Afficher un message d'erreur spécifique
-        if (error.message.includes('Invalid login')) {
+        if (authError.message && authError.message.includes('Invalid login')) {
           setFormError('Email ou mot de passe incorrect.');
-        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+        } else if (authError.message && (authError.message.includes('network') || authError.message.includes('fetch'))) {
           setFormError('Problème de connexion au serveur. Vérifiez votre connexion et réessayez.');
         } else {
-          setFormError(error.message || 'Échec de connexion');
+          setFormError(authError.message || 'Échec de connexion');
         }
         
         setIsLoading(false);
         return;
       }
       
-      if (!data?.session) {
+      if (!authResult?.session) {
         console.error("Pas de session après connexion réussie");
         setFormError('Impossible de créer une session. Veuillez réessayer.');
         setIsLoading(false);
@@ -95,7 +111,7 @@ export const useLoginSubmit = () => {
       }
       
       // Vérifier que la session contient un utilisateur valide
-      if (data.session && data.session.user) {
+      if (authResult.session && authResult.session.user) {
         console.log("Connexion réussie pour:", email);
         
         // Enregistrer l'email pour la prochaine connexion
