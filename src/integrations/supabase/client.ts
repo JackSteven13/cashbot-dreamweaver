@@ -17,34 +17,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: {
       'X-Client-Info': 'streamgenius-app'
-    },
-    fetch: (url: string, options: RequestInit = {}) => {
-      // Configuration CORS améliorée
-      const headers = {
-        ...options.headers,
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      } as Record<string, string>;
-
-      // Désactiver les caches qui peuvent causer des problèmes
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 secondes timeout (réduit de 30 à 15)
-
-      const fetchPromise = fetch(url, {
-        ...options,
-        headers,
-        // Ne pas utiliser de cache
-        cache: 'no-store',
-        credentials: 'include',
-        signal: options.signal || controller.signal
-      });
-
-      // Nettoyer le timeout après la requête
-      fetchPromise.finally(() => clearTimeout(timeoutId));
-      
-      return fetchPromise;
     }
   }
 });
@@ -90,63 +62,6 @@ export const clearStoredAuthData = () => {
     return true;
   } catch (err) {
     console.error("Erreur lors du nettoyage des données d'authentification:", err);
-    return false;
-  }
-};
-
-// Fonction pour vérifier la connectivité au serveur Supabase
-export const checkSupabaseConnectivity = async (retryCount = 0): Promise<boolean> => {
-  try {
-    if (retryCount > 3) {
-      console.warn("Nombre maximum de tentatives de connexion atteint");
-      return false;
-    }
-    
-    const startTime = Date.now();
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 seconds timeout (réduit)
-    
-    try {
-      const response = await fetch(`${supabaseUrl}/rest/v1/`, {
-        method: 'OPTIONS',  // Utilise OPTIONS qui est plus léger
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseAnonKey,
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-        cache: 'no-store',
-        credentials: 'omit', // Pas besoin de cookies pour ce test
-        mode: 'cors',
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      const endTime = Date.now();
-      
-      // Si la requête prend trop de temps, considérer comme un problème de connectivité
-      if (endTime - startTime > 3000) {
-        console.warn("La connexion à Supabase est lente");
-        return true; // On retourne quand même true pour ne pas bloquer
-      }
-      
-      return response.ok || response.status === 204; // OPTIONS retourne généralement 204
-    } catch (innerErr) {
-      clearTimeout(timeoutId);
-      console.error("Erreur lors du test de connectivité:", innerErr);
-      
-      // Tenter à nouveau avec un délai exponentiel
-      if (retryCount < 3) {
-        console.log(`Nouvelle tentative de connexion (${retryCount + 1}/3)...`);
-        await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, retryCount)));
-        return await checkSupabaseConnectivity(retryCount + 1);
-      }
-      
-      return false;
-    }
-  } catch (err) {
-    console.error("Erreur de connectivité Supabase:", err);
     return false;
   }
 };

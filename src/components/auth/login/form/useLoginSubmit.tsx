@@ -1,7 +1,7 @@
 
 import * as React from 'react';
 import { toast } from '@/hooks/use-toast';
-import { supabase, clearStoredAuthData, checkSupabaseConnectivity } from "@/integrations/supabase/client";
+import { supabase, clearStoredAuthData } from "@/integrations/supabase/client";
 
 export const useLoginSubmit = () => {
   const handleSubmit = async (
@@ -20,7 +20,7 @@ export const useLoginSubmit = () => {
       // Nettoyer toutes les données d'authentification existantes
       clearStoredAuthData();
       
-      // Vérifier d'abord la connectivité réseau
+      // Vérifier d'abord la connexion réseau
       if (!navigator.onLine) {
         setFormError('Pas de connexion internet. Vérifiez votre connexion et réessayez.');
         setIsLoading(false);
@@ -30,18 +30,7 @@ export const useLoginSubmit = () => {
       // Attendre un court instant pour s'assurer que le nettoyage est effectué
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Vérifier la connectivité à Supabase avant de tenter la connexion
-      console.log("Test de connectivité à Supabase...");
-      const isConnected = await checkSupabaseConnectivity();
-      
-      if (!isConnected) {
-        console.error("Problème de connexion au serveur Supabase");
-        setFormError("Impossible de se connecter au serveur. Veuillez réessayer plus tard.");
-        setIsLoading(false);
-        return;
-      }
-      
-      console.log("Connectivité Supabase OK, tentative de déconnexion préalable...");
+      console.log("Tentative de déconnexion préalable...");
       // Effectuer la déconnexion pour s'assurer qu'il n'y a pas de session active
       try {
         await supabase.auth.signOut({ scope: 'global' });
@@ -56,7 +45,7 @@ export const useLoginSubmit = () => {
       
       // Système de tentatives multiples
       let attempts = 0;
-      const maxAttempts = 3; // Augmentation du nombre d'essais
+      const maxAttempts = 3; // Nombre maximum d'essais
       let authResult = null;
       let authError = null;
       
