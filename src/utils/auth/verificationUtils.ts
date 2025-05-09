@@ -1,8 +1,8 @@
 
-import { supabase, testSupabaseConnection } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Vérifie si l'utilisateur est authentifié avec une logique simplifiée et fiable
+ * Vérifie si l'utilisateur est authentifié avec une logique simplifiée
  */
 export const verifyAuth = async (): Promise<boolean> => {
   try {
@@ -12,42 +12,22 @@ export const verifyAuth = async (): Promise<boolean> => {
       return false;
     }
     
-    // Vérifier localStorage pour éviter des appels API inutiles
-    const storageKey = 'sb-auth-token';
-    const hasLocalStorage = !!localStorage.getItem(storageKey);
+    // Récupérer la session directement
+    const { data, error } = await supabase.auth.getSession();
     
-    if (!hasLocalStorage) {
-      console.log(`Aucun token trouvé dans localStorage`);
+    if (error) {
+      console.error("Erreur lors de la vérification d'authentification:", error);
       return false;
     }
     
-    // Récupérer la session avec un délai limité
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    try {
-      // Cette méthode va tenter de récupérer la session et rafraîchir le token si nécessaire
-      const { data, error } = await supabase.auth.getSession();
-      clearTimeout(timeoutId);
-      
-      if (error) {
-        console.error("Erreur lors de la vérification d'authentification:", error);
-        return false;
-      }
-      
-      if (!data || !data.session) {
-        console.log("Aucune session trouvée");
-        return false;
-      }
-      
-      return true;
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      console.error("Exception lors de l'appel à getSession:", fetchError);
+    if (!data || !data.session) {
+      console.log("Aucune session trouvée");
       return false;
     }
+    
+    return true;
   } catch (error) {
-    console.error("Exception générale lors de la vérification d'authentification:", error);
+    console.error("Exception lors de la vérification d'authentification:", error);
     return false;
   }
 };

@@ -26,91 +26,43 @@ export const useLoginSubmit = () => {
         return;
       }
       
-      try {
-        // Connexion à Supabase avec gestion du délai d'attente
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes maximum
-        
-        // Connexion avec mécanisme de repli
-        for (let attempt = 0; attempt < 2; attempt++) {
-          try {
-            // Connexion à Supabase avec options simplifiées
-            const { data, error } = await supabase.auth.signInWithPassword({
-              email: email.trim(),
-              password,
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (error) {
-              if (error.message?.includes('Invalid login')) {
-                setFormError('Email ou mot de passe incorrect.');
-                setIsLoading(false);
-                return;
-              } else if (error.message?.includes('Server closed') || 
-                         error.message?.includes('Connection') || 
-                         error.message?.includes('network') || 
-                         error.message?.includes('timeout')) {
-                if (attempt === 0) {
-                  console.log("Première tentative échouée, réessai...");
-                  await new Promise(resolve => setTimeout(resolve, 1500));
-                  continue;
-                }
-                setFormError('Le service d\'authentification est momentanément indisponible. Veuillez réessayer dans quelques instants.');
-                setIsLoading(false);
-                return;
-              } else {
-                setFormError(error.message || 'Échec de connexion');
-                setIsLoading(false);
-                return;
-              }
-            }
-            
-            if (!data?.session) {
-              console.error("Pas de session après connexion réussie");
-              setFormError('Impossible de créer une session. Veuillez réessayer.');
-              setIsLoading(false);
-              return;
-            }
-            
-            // Enregistrer l'email pour la prochaine connexion
-            localStorage.setItem('last_logged_in_email', email);
-            
-            // Toast de succès
-            toast({
-              title: "Connexion réussie",
-              description: "Redirection vers le tableau de bord...",
-              variant: "default"
-            });
-            
-            // Redirection vers le tableau de bord avec rafraîchissement complet
-            setTimeout(() => {
-              window.location.href = '/dashboard';
-            }, 1000);
-            
-            return;
-          } catch (innerError: any) {
-            if (innerError.name === 'AbortError') {
-              setFormError("Le serveur met trop de temps à répondre. Veuillez réessayer.");
-              setIsLoading(false);
-              return;
-            }
-            
-            if (attempt === 1) {
-              setFormError("Le service d'authentification est temporairement indisponible. Veuillez réessayer plus tard.");
-              setIsLoading(false);
-              return;
-            }
-            
-            // Attendre avant de réessayer
-            await new Promise(resolve => setTimeout(resolve, 1500));
-          }
+      // Connexion à Supabase sans options qui pourraient causer des conflits
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      
+      if (error) {
+        if (error.message?.includes('Invalid login')) {
+          setFormError('Email ou mot de passe incorrect.');
+        } else {
+          setFormError(error.message || 'Échec de connexion');
         }
-      } catch (abortError) {
-        console.error("Délai d'attente dépassé:", abortError);
-        setFormError("Le serveur met trop de temps à répondre. Veuillez réessayer.");
         setIsLoading(false);
+        return;
       }
+      
+      if (!data?.session) {
+        console.error("Pas de session après connexion réussie");
+        setFormError('Impossible de créer une session. Veuillez réessayer.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Enregistrer l'email pour la prochaine connexion
+      localStorage.setItem('last_logged_in_email', email);
+      
+      // Toast de succès
+      toast({
+        title: "Connexion réussie",
+        description: "Redirection vers le tableau de bord...",
+        variant: "default"
+      });
+      
+      // Redirection vers le tableau de bord avec rafraîchissement complet
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 1000);
     } catch (error) {
       console.error("Erreur complète:", error);
       setFormError("Une erreur inattendue s'est produite. Veuillez réessayer.");

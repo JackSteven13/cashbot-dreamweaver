@@ -24,19 +24,15 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
     // Nettoyage des données d'authentification existantes
     clearStoredAuthData();
     
-    // Vérifier la connexion au service Supabase en arrière-plan
+    // Vérifier la connexion au service Supabase
     const checkService = async () => {
-      try {
-        const isAvailable = await testSupabaseConnection();
-        setServiceAvailable(isAvailable);
-        
-        if (!isAvailable && navigator.onLine) {
-          setFormError('Le service d\'authentification est momentanément indisponible. Veuillez réessayer dans quelques instants.');
-        } else if (!navigator.onLine) {
-          setFormError('Vous semblez être hors ligne. Vérifiez votre connexion internet.');
-        }
-      } catch (e) {
-        console.warn("Erreur lors du test de disponibilité:", e);
+      const isAvailable = await testSupabaseConnection();
+      setServiceAvailable(isAvailable);
+      
+      if (!isAvailable && navigator.onLine) {
+        setFormError('Problème de connexion au service. Veuillez réessayer dans quelques instants.');
+      } else if (!navigator.onLine) {
+        setFormError('Vous semblez être hors ligne. Vérifiez votre connexion internet.');
       }
     };
     
@@ -78,19 +74,20 @@ const LoginForm = ({ lastLoggedInEmail }: LoginFormProps) => {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     
     if (!navigator.onLine) {
       setFormError('Pas de connexion internet. Veuillez vérifier votre connexion et réessayer.');
+      setIsLoading(false);
       return;
     }
     
-    // Vérifier à nouveau la disponibilité du service avant tentative de connexion
+    // Vérifier à nouveau la disponibilité du service
     try {
-      setIsLoading(true);
       const isAvailable = await testSupabaseConnection();
       
       if (!isAvailable) {
-        setFormError('Le service d\'authentification est momentanément indisponible. Veuillez réessayer dans quelques instants.');
+        setFormError('Le service est momentanément indisponible. Veuillez réessayer dans quelques instants.');
         setIsLoading(false);
         return;
       }

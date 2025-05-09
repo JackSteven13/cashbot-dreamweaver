@@ -9,16 +9,16 @@ https://www.streamgenius.fr/* https://streamgenius.io/:splat 301!
 # Redirection www vers non-www
 https://www.streamgenius.io/* https://streamgenius.io/:splat 301!
 
-# Routes critiques d'authentification
-/auth/callback/* /index.html 200!
-/auth/* /index.html 200!
-/login/* /index.html 200!
-/login /index.html 200!
-/register /index.html 200!
+# Routes critiques d'authentification avec réponse immédiate
+/auth/callback/* /index.html 200
+/auth/* /index.html 200
+/login/* /index.html 200
+/login /index.html 200
+/register /index.html 200
 
 # Pages principales de l'application
-/dashboard/* /index.html 200!
-/dashboard /index.html 200!
+/dashboard/* /index.html 200
+/dashboard /index.html 200
 
 # SPA fallback pour toutes les autres routes
 /* /index.html 200
